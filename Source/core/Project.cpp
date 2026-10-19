@@ -82,6 +82,7 @@ void Project::normalise() {
         for(size_t k=0;k<sections.size();++k) tidyNotes(t.clips[k],sections[k].bars*4.0);
     }
     masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
+    if(loopEnd-loopStart<1./960.)loop=false;
 }
 void Project::insertSection(int index,SongSection section,int copyFrom) {
     if(sections.size()>=64) return;
