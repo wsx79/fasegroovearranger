@@ -6,6 +6,10 @@ Fase Groove Arranger riunisce i motori originali di Fase Groove Piano, Drums e G
 
 Creato da Fabio 'Pitch' Serra / FS Pitch, DJ & Producer. I crediti dei motori originali restano Claude (Anthropic), AI coding assistant. L'integrazione dell'arranger è sviluppata con Codex (OpenAI), AI coding assistant. ECOSYSTEM apre crediti, licenze e privacy, con gli stessi collegamenti artista e donazioni delle altre app.
 
+## Avvio dei pacchetti desktop
+
+Scarica l'artifact del tuo sistema da GitHub Actions. Estrai lo ZIP dell'artifact e poi l'archivio di distribuzione contenuto: ZIP su Windows, tar.gz su macOS/Linux. Avvia Fase Groove Arranger.exe su Windows, il bundle .app su macOS oppure l'eseguibile su Linux. Gli archivi Unix conservano i permessi di esecuzione. Non serve una DAW esterna e non è richiesto il microfono. I pacchetti di sviluppo non hanno installer o firma di distribuzione.
+
 ## 2. Creare una canzone
 
 Scegli un genere: Piano House, Soulful, Deep, Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House, Neo Soul & Broken, Chill & Pads oppure Dance Stabs. La scelta prepara tempo, swing, progressione e parti di basso/archi adatte al genere. Imposta tonalità, scala, estensione e voicing. GENERATE SONG scrive il MIDI di tutte le tracce sbloccate.
