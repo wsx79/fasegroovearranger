@@ -31,6 +31,13 @@ public:
             bool ok=true;auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
             run("mix.wav",-1,false);run("mix.mp3",-1,true);
             for(int ti=0;ti<17;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
+            p.loop=true;p.loopStart=0;p.loopEnd=4;audio.publish(p);audio.seek(3.999);audio.play(true);
+            juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;
+            audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            bool transport=audio.position()>=0&&audio.position()<4&&audio.isPlaying();
+            audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            transport=transport&&live.getMagnitude(0,512)==0;
+            folder.getChildFile("transport.txt").replaceWithText(transport?"PASS seek, note chase, loop boundary and pause silence":"FAIL transport");ok=ok&&transport;
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());
