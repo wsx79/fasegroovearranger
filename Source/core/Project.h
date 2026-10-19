@@ -1,0 +1,75 @@
+// Copyright (C) 2026 Fabio 'Pitch' Serra
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#pragma once
+#include <algorithm>
+#include <array>
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace fga {
+constexpr int trackCount = 17;
+enum class Section { main, intro, breakdown, buildup, drop, outro };
+enum class Scope { song, track, section, clip };
+struct Note {
+    double start = 0, length = .25;
+    int pitch = 60, velocity = 96, lane = 0;
+    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane; }
+};
+struct Clip {
+    std::vector<Note> notes;
+    std::uint32_t seed = 1;
+    bool locked = false;
+    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked; }
+};
+struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
+struct Track {
+    std::string name;
+    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums
+    double gain = .75, pan = 0;
+    bool mute = false, solo = false, locked = false;
+    int sound = 0, sampleRoot = 60;
+    std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
+    std::vector<Clip> clips;
+};
+struct Settings {
+    int genre = 1, key = 9, scale = 1, extension = 2, voicing = 0;
+    double bpm = 122, swing = .2, density = .55, humanize = .2;
+    int bassMode = 3, stringsMode = 1;
+    std::uint32_t seed = 1979;
+    int chordCount = 4;
+    std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
+    std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
+};
+struct Project {
+    std::string name = "Untitled groove";
+    Settings settings;
+    std::vector<SongSection> sections;
+    std::vector<Track> tracks;
+    double masterGain = .8;
+    bool loop = false;
+    double loopStart = 0, loopEnd = 0;
+    double sectionStart(int index) const;
+    double length() const { return sectionStart((int)sections.size()); }
+    void normalise();
+    void insertSection(int index, SongSection section, int copyFrom = -1);
+    void removeSection(int index);
+    void moveSection(int from, int to);
+};
+const char* sectionName(Section);
+std::vector<std::string> genres();
+Project newProject(int genre = 1);
+void applyGenre(Project&, int genre);
+void chooseProgression(Project&, int preset);
+void randomiseHarmony(Project&, std::uint32_t seed);
+std::vector<std::string> chordNames(const Settings&);
+// A zero seed reproduces stored clips; a nonzero seed writes another deterministic take.
+void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
+void tidyNotes(Clip&, double beats);
+void transpose(Clip&, int semitones);
+void quantise(Clip&, double grid, double strength = 1);
+struct TimedEvent { double beat; int track, pitch, velocity, lane; };
+std::vector<TimedEvent> events(const Project&, int onlyTrack = -1);
+// Standard MIDI File type 1, 960 PPQ, tempo, time/key signatures and section markers.
+std::vector<std::uint8_t> midiFile(const Project&, int onlyTrack = -1);
+}

@@ -1,0 +1,19 @@
+# Architecture and provenance
+
+The application is a native JUCE GUI executable, not a wrapper around the three plugin binaries. All three original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. Original files remain unchanged; adaptation lives in `Source/core/Project.cpp`.
+
+`Project` holds musical settings, ordered sections and 17 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Track count/order is fixed in schema version 1. Section insertion/reordering/removal moves clips together. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
+
+Piano, bass and strings come from the Piano engine's distinct parts. Piano generation starts with an original genre-specific preset and uses its variation/intention generators. Drums and guitar use their original genre-aware random generators and arrangement renderers. Harmony is shared by scale degrees/free chord codes; guitar uses its original diatonic/code chord builders. Rich extensions outside the guitar's supported vocabulary are simplified to its supported chord colour.
+
+Scope generation writes only the eligible track/section clips; locks protect stored notes. A new take changes clip seeds. Rendering a saved take uses stored seeds without randomness. Reopening a project reads stored notes, rather than regenerating them.
+
+`AudioEngine` schedules pre-rendered note events into original guide instruments, JUCE SamplerSound, or a hosted native VST3/AU instance. It exposes a host playhead to plugins. The audio device uses output only. A try-lock avoids blocking the realtime callback on project/plugin mutations. Buffer/schedule preparation and generation occur outside the realtime callback. Per-track buffers mix with gain/pan/mute/solo/master and a final hard safety ceiling. This initial implementation does not compensate plugin latency.
+
+Offline audio export temporarily owns the processing engine and uses the same instruments/mixer. WAV is stereo PCM24 at device sample rate. MP3 renders at 44.1 kHz and uses the bundled Shine encoder at 320 kbps. Both include three seconds of tail. Temporary files are atomically committed only on success. Batch stems share the same song origin/duration; native plugin randomness can vary between passes. Audio export never substitutes a missing external instrument silently.
+
+`ProjectIO` handles versioned JSON `.fga` projects, validation, atomic saves, external sample/plugin paths and plugin-state blobs. No executable code is contained in a project itself; restoring a plugin loads its external native binary. Project import never runs shell commands. The application has no network client, updater, analytics, embedded website or cloud storage.
+
+`FamilyTheme.h`, fonts and FS PITCH logo are taken from the ecosystem. The Arranger icon uses track blocks in the same palette. Credits retain the original app credits and separately identify arranger integration. Italian/English guide and privacy/licence documents are embedded in the binary.
+
+Build targets: `fga_core`, `fga_mp3`, `FaseGrooveArranger`, core/MP3/IO tests. GitHub Actions builds the native app on Ubuntu, Windows and macOS, and runs a Linux audio-render smoke test. See VALIDATION.md for observed results and unverified cases.

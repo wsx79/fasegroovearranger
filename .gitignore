@@ -1,0 +1,10 @@
+build/
+build-*/
+.DS_Store
+.idea/
+.vscode/
+*.fga
+*.wav
+*.mp3
+*.mid
+*.user
