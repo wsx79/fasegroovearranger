@@ -22,7 +22,8 @@ AudioEngine::AudioEngine(){
 AudioEngine::~AudioEngine(){lifetime.reset();devices.removeAudioCallback(this);const juce::ScopedLock lock(mutex);for(auto& i:instruments)if(i->plugin)i->plugin->releaseResources();}
 void AudioEngine::publish(const Project& p){
     std::array<std::vector<TimedEvent>,trackCount> schedules;
-    for(auto e:events(p))schedules[(size_t)e.track].push_back(e);
+    auto canonical=p;canonical.normalise();
+    for(auto e:events(canonical))schedules[(size_t)e.track].push_back(e);
     const juce::ScopedLock lock(mutex);
     tempo=p.settings.bpm;length=p.length();master=p.masterGain;looping=p.loop;loopFrom=p.loopStart;loopTo=p.loopEnd;
     for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.schedule=std::move(schedules[ti]);i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.drums.setKit(t.sound);i.guitar.setSound(t.sound);}
@@ -79,7 +80,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
     for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s)output[ch][s]=std::clamp(output[ch][s],-.999f,.999f);
 }
 juce::Optional<juce::AudioPlayHead::PositionInfo> AudioEngine::getPosition() const{
-    PositionInfo p;p.setBpm(tempo.load());p.setPpqPosition(currentBeat.load());p.setTimeInSeconds(currentBeat.load()*60./tempo.load());p.setIsPlaying(playing.load()||exporting.load());p.setTimeSignature({4,4});return p;
+    PositionInfo p;p.setBpm(tempo.load());p.setPpqPosition(currentBeat.load());p.setTimeInSeconds(currentBeat.load()*60./tempo.load());p.setIsPlaying(playing.load()||exporting.load());p.setTimeSignature(juce::AudioPlayHead::TimeSignature{4,4});return p;
 }
 void AudioEngine::useInternal(int track){const juce::ScopedLock lock(mutex);auto& i=*instruments[(size_t)track];if(i.plugin)i.plugin->releaseResources();i.plugin.reset();i.synth.clearSounds();i.synth.clearVoices();if(track<3){for(int v=0;v<48;++v)i.synth.addVoice(new GuideVoice(i.tone,i.sound));if(track==2)i.synth.addSound(new GuideStringsTag(1));else i.synth.addSound(new GuideSoundTag);}
     i.mode=0;i.prepare(sampleRate,blockSize);needsReset=true;needsChase=playing;
