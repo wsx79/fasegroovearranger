@@ -50,7 +50,7 @@ void PianoRoll::paint(juce::Graphics& g){
     for(size_t i=0;i<notes.size();++i){const auto& n=notes[i];juce::Rectangle<float> r(64+(float)(n.start*pixelsPerBeat),24+(127-n.pitch)*12.f,std::max(5.f,(float)(n.length*pixelsPerBeat)),11);g.setColour(selected.count((int)i)?Palette::text:colour(owner.selectedTrack).withAlpha(.35f+n.velocity/200.f));g.fillRoundedRectangle(r,2);if(r.getWidth()>24){g.setColour(Palette::background.withAlpha(.7f));g.fillRect(r.getX()+2,r.getBottom()-3,(r.getWidth()-4)*n.velocity/127.f,1.5f);}}
     int vx=view.getX(),vy=view.getY();g.setColour(Palette::panel);g.fillRect(vx,vy,view.getWidth(),24);
     for(int b=0;b<(int)beats;b+=4)label(g,juce::String(b/4+1),{64+(int)(b*pixelsPerBeat)+5,vy,65,24},10,Palette::dim);
-    for(int n=0;n<128;++n){int y=24+(127-n)*12;g.setColour(n%12==0?Palette::control:Palette::panel);g.fillRect(vx,y,63,12);label(g,juce::MidiMessage::getMidiNoteName(n,true,true,3),{vx+8,y,50,12},8,n%12==0?Palette::text:Palette::dim);}
+    for(int n=0;n<128;++n){int y=24+(127-n)*12;g.setColour(n%12==0?Palette::control:Palette::panel);g.fillRect(vx,y,63,12);label(g,juce::MidiMessage::getMidiNoteName(n,true,true,4),{vx+8,y,50,12},8,n%12==0?Palette::text:Palette::dim);}
     const auto local=owner.audio.position()-owner.project.sectionStart(owner.selectedSection);if(local>=0&&local<beats){float x=64+(float)(local*pixelsPerBeat);if(x>vx+64){g.setColour(Palette::accent2);g.fillRect(x,(float)vy+24,1.5f,(float)view.getHeight()-24);}}
 }
 void PianoRoll::mouseDown(const juce::MouseEvent& e){
@@ -121,7 +121,7 @@ MainComponent::MainComponent(){
     pasteButton.onClick=[this]{if(clipboard.empty())return;checkpoint();clip().notes.insert(clip().notes.end(),clipboard.begin(),clipboard.end());tidyNotes(clip(),clipLength());piano.clearSelection();changed();};
     soundButton.onClick=[this]{showTrackMenu(selectedTrack);};
     sampleButton.onClick=[this]{int track=selectedTrack;chooseFile("Campione personale","*.wav;*.aif;*.aiff;*.flac;*.ogg",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this,track](juce::File file){loadSampleFile(track,file);});};
-    loadPluginButton.onClick=[this]{int track=selectedTrack;chooseFile("Scegli un plugin VST3 / AU","*.vst3;*.component",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[this,track](juce::File file){loadPluginFile(track,file);});};
+    loadPluginButton.onClick=[this]{showPluginMenu();};
     pluginEditorButton.onClick=[this]{if(auto* p=audio.plugin(selectedTrack)){pluginWindow=std::make_unique<PluginWindow>(*p);}else message("Nessun plugin caricato su questa traccia.");};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
     importButton.onClick=[this]{chooseFile("Importa note nella sezione selezionata","*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
@@ -188,13 +188,59 @@ void MainComponent::open(const juce::File& file){if(loadingPlugin){message("Atte
 void MainComponent::restoreInstruments(){pluginWindow.reset();for(int i=0;i<trackCount;++i){audio.useInternal(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,juce::File(utf(t.instrumentPath)),t.sampleRoot);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File(utf(t.instrumentPath)),utf(t.instrumentId),utf(t.instrumentState));}audio.publish(project);}
 void MainComponent::loadSampleFile(int track,const juce::File& file){pluginWindow.reset();checkpoint();auto& t=project.tracks[(size_t)track];int root=track>=4?fgd::defaultNote(track-4):60;auto r=audio.loadSample(track,file,root);if(r.failed()){message(r.getErrorMessage(),true);return;}t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);message("Campione caricato · nota radice "+juce::String(root)+" (tasto destro sulla traccia per cambiarla).");}
 void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
-    if(!file.exists()){if(id.isNotEmpty())audio.markMissing(track);message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
-    juce::OwnedArray<juce::PluginDescription> found;for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
-    juce::PluginDescription* selected=nullptr;for(auto* d:found)if((id.isEmpty()&&selected==nullptr)||d->createIdentifierString()==id)selected=d;
-    if(!selected){message("Nessuno strumento compatibile trovato. Scegli un bundle VST3 o AU.",true);return;}
-    if(!selected->isInstrument){message("Scegli uno strumento: questo slot riceve MIDI e produce audio.",true);return;}
-    pluginWindow.reset();if(id.isEmpty())checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);juce::Component::SafePointer<MainComponent> safe(this);const auto description=*selected;
-    audio.loadPlugin(track,description,[safe,track,description,state](juce::Result r){if(safe==nullptr)return;--safe->loadingPlugin;safe->loadPluginButton.setEnabled(safe->loadingPlugin==0);if(r.failed()){safe->message(r.getErrorMessage(),true);return;}auto& t=safe->project.tracks[(size_t)track];t.instrument="plugin";t.instrumentPath=description.fileOrIdentifier.toStdString();t.instrumentId=description.createIdentifierString().toStdString();if(state.isNotEmpty()){safe->audio.restorePluginState(track,state);t.instrumentState=state.toStdString();}safe->changed(false);safe->message("Plugin pronto: "+description.name);});
+    if(id.isNotEmpty())audio.markMissing(track);
+    if(auto xml=juce::XmlDocument::parse(id)){
+        juce::PluginDescription description;
+        if(description.loadFromXml(*xml)){
+            if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+            loadPluginDescription(track,description,state,true);return;
+        }
+    }
+    if(!file.exists()){message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+    juce::OwnedArray<juce::PluginDescription> found;
+    for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
+    juce::PluginDescription* selected=nullptr;
+    for(auto* d:found)if((id.isEmpty()&&selected==nullptr)||d->createIdentifierString()==id)selected=d;
+    if(!selected){message("Nessuno strumento compatibile trovato. Scegli il bundle VST3.",true);return;}
+    loadPluginDescription(track,*selected,state,id.isNotEmpty());
+}
+void MainComponent::loadPluginDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring){
+    if(!description.isInstrument){message("Scegli uno strumento: questo slot riceve MIDI e produce audio.",true);return;}
+    pluginWindow.reset();if(!restoring)checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);
+    juce::Component::SafePointer<MainComponent> safe(this);
+    audio.loadPlugin(track,description,[safe,track,description,state,restoring](juce::Result r){
+        if(safe==nullptr)return;
+        --safe->loadingPlugin;safe->loadPluginButton.setEnabled(safe->loadingPlugin==0);
+        if(r.failed()){safe->message(r.getErrorMessage(),true);return;}
+        auto& t=safe->project.tracks[(size_t)track];t.instrument="plugin";
+        t.instrumentPath=description.fileOrIdentifier.toStdString();
+        if(auto xml=description.createXml())t.instrumentId=xml->toString().toStdString();
+        t.instrumentState=state.toStdString();
+        if(state.isNotEmpty())safe->audio.restorePluginState(track,state);
+        if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
+        safe->message("Plugin pronto: "+description.name);
+    });
+}
+void MainComponent::showPluginMenu(){
+    juce::PopupMenu menu;menu.addItem(1,"Strumento VST3 da file");
+   #if JUCE_MAC
+    menu.addItem(2,"Audio Units installate");
+   #endif
+    juce::Component::SafePointer<MainComponent> safe(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadPluginButton),[safe](int id){
+        if(safe==nullptr)return;
+        if(id==1){int track=safe->selectedTrack;safe->chooseFile("Scegli un plugin VST3","*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[safe,track](juce::File file){if(safe!=nullptr)safe->loadPluginFile(track,file);});}
+        if(id==2){
+            auto list=std::make_shared<juce::OwnedArray<juce::PluginDescription>>();
+            for(int i=0;i<safe->audio.formats.getNumFormats();++i){auto* format=safe->audio.formats.getFormat(i);if(format->getName().containsIgnoreCase("AudioUnit")){
+                auto ids=format->searchPathsForPlugins(juce::FileSearchPath(),false,true);
+                for(auto key:ids)format->findAllTypesForFile(*list,key);
+            }}
+            juce::PopupMenu units;for(int i=0;i<list->size();++i)if((*list)[i]->isInstrument)units.addItem(i+1,(*list)[i]->name+" · "+(*list)[i]->manufacturerName);
+            if(units.getNumItems()==0){safe->message("Nessuna Audio Unit strumento installata.");return;}
+            int track=safe->selectedTrack;units.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&safe->loadPluginButton),[safe,list,track](int chosen){if(safe!=nullptr&&chosen>0&&chosen<=list->size())safe->loadPluginDescription(track,*(*list)[chosen-1]);});
+        }
+    });
 }
 void MainComponent::importFile(const juce::File& f){checkpoint();auto r=importMidi(f,clip(),clipLength());if(r.failed())message(r.getErrorMessage(),true);else{piano.clearSelection();changed();message("MIDI importato nel clip selezionato.");}}
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files){for(auto f:files)if(f.endsWithIgnoreCase(".fga")||f.endsWithIgnoreCase(".mid")||f.endsWithIgnoreCase(".midi")||f.endsWithIgnoreCase(".wav")||f.endsWithIgnoreCase(".aiff")||f.endsWithIgnoreCase(".flac"))return true;return false;}
