@@ -12,7 +12,7 @@ Scegli un genere: Piano House, Soulful, Deep, Gospel, Jackin', Jackin' Piano, Ga
 
 La struttura iniziale è Intro 8 battute, Main 16, Breakdown 8, Build-up 4, Drop 16 e Outro 8. Neo Soul e Chill partono con intro/outro da 4 battute. Le sezioni non sono semplici copie: i motori originali alleggeriscono intro e outro, aprono il breakdown, costruiscono il build-up e rendono pieno il drop. Variazioni e fill sono generati dai motori originali.
 
-La progressione è condivisa da piano, basso, archi e chitarra. PROGRESSION sceglie dalla libreria armonica originale. NEW CHORDS propone una nuova sequenza di gradi nella scala attuale. Le impostazioni nuove si applicano alla prossima generazione: non cambiano automaticamente le note che hai già modificato. Per applicare una nuova tonalità o progressione, rigenera insieme le parti interessate. Una traccia bloccata conserva il suo MIDI, quindi verifica l'armonia prima di bloccarla.
+La progressione è condivisa da piano, basso, archi e chitarra. EDIT CHORDS permette di impostare ogni slot come grado della scala oppure accordo maggiore, minore o dominante su una radice cromatica, e di scegliere da 1 a 8 accordi. PROGRESSION sceglie dalla libreria armonica originale. NEW CHORDS propone una nuova sequenza di gradi nella scala attuale. Le impostazioni nuove si applicano alla prossima generazione: non cambiano automaticamente le note che hai già modificato. Per applicare una nuova tonalità o progressione, rigenera insieme le parti interessate. Una traccia bloccata conserva il suo MIDI, quindi verifica l'armonia prima di bloccarla.
 
 ## 3. Tracce e sezioni
 
@@ -59,7 +59,7 @@ Il suono iniziale è quello di guida delle app originali. Piano e basso possono 
 
 LOAD SAMPLE assegna un WAV/AIFF/FLAC/OGG personale, fino a 60 secondi. Per gli strumenti intonati la radice iniziale è C4/MIDI 60; per gli elementi di batteria è la loro nota General MIDI. Il tasto destro sulla traccia permette di cambiarla. Il sampler usa il campione per tutte le altezze, con trasposizione; non è un campionatore multisample.
 
-LOAD VST3 / AU apre un plugin strumento nativo della tua macchina. Windows/Linux usano VST3; macOS supporta anche Audio Units. Scegli il bundle .vst3 o .component, non una cartella generica. OPEN VST mostra l'interfaccia del plugin, oppure i suoi parametri generici. C'è uno strumento per traccia. Non sono presenti slot effetto o bridge per plugin a 32 bit.
+LOAD VST3 / AU apre un plugin strumento nativo della tua macchina. Windows/Linux usano VST3; macOS supporta anche Audio Units. Dal menu scegli il bundle .vst3, non una cartella generica. Su macOS la voce Audio Units installate elenca gli strumenti registrati nel sistema. OPEN VST mostra l'interfaccia del plugin, oppure i suoi parametri generici. C'è uno strumento per traccia. Non sono presenti slot effetto o bridge per plugin a 32 bit.
 
 Il motore generativo resta sempre quello interno Fase Groove: lo strumento assegnato riceve le note e produce il suono. I plugin devono essere installati, autorizzati e compatibili con la stessa architettura dell'app. I plugin vengono caricati nel processo dell'app: salva prima di provare un plugin nuovo. Non sono ridistribuiti plugin o librerie commerciali.
 
