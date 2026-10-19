@@ -96,6 +96,8 @@ private:
     void open(const juce::File&);
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
+    void loadPluginDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
+    void showPluginMenu();
     void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>);
     void exportMenu();
     void exportFile(int type,int track);
