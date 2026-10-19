@@ -141,8 +141,8 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
         for(size_t si=0;si<p.sections.size();++si) {
             if((scope==Scope::section||scope==Scope::clip)&&(int)si!=section) continue;
             auto& clip=t.clips[si]; if(clip.locked) continue;
-            if(seed) clip.seed=mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
-            else if(clip.seed==1) clip.seed=mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
+            if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
+            else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             const double beats=p.sections[si].bars*4.0; const auto type=p.sections[si].type;
             auto ps=pianoSettings(s,clip.seed);
             if(ti<3) {
@@ -161,10 +161,10 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             } else {
                 fgd::DrumSettings ds; ds.pattern=fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
-                ds.riffSeed=mix(s.seed+313U); ds.sectionVariation=clip.seed;
+                ds.riffSeed=clip.seed; ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
                 ds.density=(float)s.density; ds.swing=(float)s.swing; ds.humanize=(float)s.humanize; ds.humanizeSeed=clip.seed;
                 ds.tempo=s.bpm; ds.bassSpace=true; ds.fillEveryBars=4; ds.variationEvery=4; ds.fillStyle=fgd::FillStyle::mix;
-                auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)type,p.sections[si].bars,clip.seed,-1}});
+                auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)type,p.sections[si].bars,ds.sectionVariation,-1}});
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             tidyNotes(clip,beats);
@@ -173,7 +173,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
 }
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;
-    c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[beats](const Note& n){return !std::isfinite(n.start)||!std::isfinite(n.length)||n.start>beats-tick||n.length<=0||n.pitch<0||n.pitch>127||n.velocity<1||n.velocity>127;}),c.notes.end());
+    c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[beats,tick](const Note& n){return !std::isfinite(n.start)||!std::isfinite(n.length)||n.start>beats-tick||n.length<=0||n.pitch<0||n.pitch>127||n.velocity<1||n.velocity>127;}),c.notes.end());
     for(auto& n:c.notes) {n.start=std::max(0.0,n.start);n.length=std::min(std::max(tick,n.length),beats-n.start);n.lane=std::clamp(n.lane,0,12);}
     std::stable_sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
     // One MIDI channel per instrument: coalesce simultaneous guitar-string hits
