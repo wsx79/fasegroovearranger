@@ -15,7 +15,7 @@ public:
     double pixelsPerBar=48;
 private: MainComponent& owner;
 };
-class PianoRoll : public juce::Component {
+class PianoRoll : public juce::Component,public juce::SettableTooltipClient {
 public:
     explicit PianoRoll(MainComponent&);
     void paint(juce::Graphics&) override;
@@ -76,6 +76,7 @@ private:
     juce::ComboBox soundBox,gridBox;
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     juce::TextButton sectionLoopButton{"LOOP SECTION"};
+    juce::TextButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
     std::vector<Project> undoStack,redoStack;
     std::vector<Note> clipboard;
@@ -103,6 +104,7 @@ private:
     void showDocument(const juce::String&,const juce::String&);
     void showAudioSettings();
     void closePluginEditor();
+    void showChordMenu();
     void message(const juce::String&,bool error=false);
     void timerCallback() override;
     void importFile(const juce::File&);
