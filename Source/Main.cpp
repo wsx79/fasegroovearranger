@@ -21,6 +21,44 @@ public:
     bool moreThanOneInstanceAllowed()override{return false;}
     void initialise(const juce::String&)override{
         auto args=getCommandLineParameterArray();
+        if(args.size()==3&&args[0]=="--host-smoke-test"){
+            window=std::make_unique<Window>();auto& audio=window->content->main.audio;
+            const auto folder=juce::File(args[2]);folder.createDirectory();
+            juce::OwnedArray<juce::PluginDescription> types;
+            for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(types,args[1]);
+            if(types.isEmpty()){folder.getChildFile("host-error.txt").replaceWithText("No VST3 instrument found");setApplicationReturnValue(1);quit();return;}
+            const auto description=*types[0];
+            audio.loadPlugin(0,description,[this,folder,description](juce::Result loaded){
+                auto& engine=window->content->main.audio;
+                auto fail=[&](juce::String text){folder.getChildFile("host-error.txt").appendText(text+"\n");setApplicationReturnValue(1);quit();};
+                if(loaded.failed()){fail(loaded.getErrorMessage());return;}
+                auto* plugin=engine.plugin(0);
+                if(!plugin||plugin->getParameters().isEmpty()){fail("Plugin parameters unavailable");return;}
+                for(int i=0;i<3;++i){
+                    std::unique_ptr<juce::AudioProcessorEditor> editor(plugin->createEditorIfNeeded());
+                    if(!editor){fail("Plugin editor unavailable");return;}
+                    editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);editor->setVisible(true);
+                    editor.reset();if(plugin->getActiveEditor()!=nullptr){fail("Plugin editor lifetime invalid");return;}
+                }
+                auto p=fga::newProject();p.sections={{fga::Section::main,1,"Main"}};p.normalise();
+                for(auto& track:p.tracks){track.mute=true;track.clips[0].notes.clear();}
+                auto& track=p.tracks[0];track.mute=false;track.instrument="plugin";track.instrumentPath=description.fileOrIdentifier.toStdString();
+                if(auto xml=description.createXml())track.instrumentId=xml->toString().toStdString();
+                track.clips[0].notes={{0,2,69,100,0}};
+                engine.capturePluginStates(p);
+                auto render=[&](const char* name){return engine.exportAudio(p,folder.getChildFile(name),0,false,[]{return false;},[](double){});};
+                auto r=render("host-before.wav");if(r.failed()){fail(r.getErrorMessage());return;}
+                r=fga::saveProject(p,folder.getChildFile("host-project.fga"));if(r.failed()){fail(r.getErrorMessage());return;}
+                plugin->getParameters()[0]->setValueNotifyingHost(.75f);
+                r=render("host-loud.wav");if(r.failed()){fail(r.getErrorMessage());return;}
+                fga::Project restored;r=fga::loadProject(folder.getChildFile("host-project.fga"),restored);if(r.failed()){fail(r.getErrorMessage());return;}
+                if(restored.tracks[0].instrumentState.empty()){fail("Plugin state missing from project");return;}
+                engine.restorePluginState(0,juce::String::fromUTF8(restored.tracks[0].instrumentState.c_str()));
+                r=render("host-restored.wav");if(r.failed()){fail(r.getErrorMessage());return;}
+                folder.getChildFile("host.txt").replaceWithText("PASS native VST3 load, MIDI/playhead, editor lifecycle and project state restore");
+                setApplicationReturnValue(0);quit();
+            });return;
+        }
         if(args.size()==2&&args[0]=="--smoke-test"){
             window=std::make_unique<Window>();
             const auto folder=juce::File(args[1]);folder.createDirectory();
