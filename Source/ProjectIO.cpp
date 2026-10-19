@@ -50,7 +50,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     }
     p.normalise();result=std::move(p);return juce::Result::ok();
 }
-juce::Result saveProject(const Project& p,const juce::File& file){juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(juce::JSON::toString(projectJson(p))))return juce::Result::fail("Scrittura progetto fallita.");return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");}
+juce::Result saveProject(const Project& p,const juce::File& file){juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(juce::JSON::toString(projectJson(p),false,17)))return juce::Result::fail("Scrittura progetto fallita.");return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");}
 juce::Result loadProject(const juce::File& file,Project& p){if(!file.existsAsFile()||file.getSize()>256*1024*1024)return juce::Result::fail("File mancante o superiore a 256 MB.");juce::var json;auto r=juce::JSON::parse(file.loadFileAsString(),json);return r.failed()?r:projectFromJson(json,p);}
 juce::Result importMidi(const juce::File& file,Clip& clip,double beats){
     auto in=file.createInputStream();if(!in)return juce::Result::fail("Impossibile aprire MIDI.");juce::MidiFile midi;if(!midi.readFrom(*in))return juce::Result::fail("File MIDI non valido.");const int ticks=midi.getTimeFormat();if(ticks<=0)return juce::Result::fail("MIDI SMPTE non supportato: usare PPQ.");
