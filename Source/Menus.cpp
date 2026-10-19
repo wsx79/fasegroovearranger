@@ -43,6 +43,22 @@ public:
 private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();
 };
 }
+void MainComponent::showChordMenu(){
+    juce::PopupMenu menu;menu.addSectionHeader("Progressione · un accordo per battuta");
+    auto names=chordNames(project.settings);
+    for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
+        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,"Grado "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
+        chord.addSubMenu("Nella scala",degrees);
+        for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-project.settings.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,project.settings.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?"Maggiore":quality==1?"Minore":"Dominante",roots);}
+        menu.addSubMenu(juce::String(slot+1)+" · "+juce::String::fromUTF8(names[(size_t)slot].c_str()),chord);
+    }
+    juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" accordi",true,n==project.settings.chordCount);menu.addSubMenu("Lunghezza progressione",lengths);
+    menu.addItem(3000,"Nuova progressione casuale");
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;safe->checkpoint();auto& s=safe->project.settings;
+        if(id>=1000&&id<1800){int slot=(id-1000)/100,value=(id-1000)%100;if(value<7){s.degrees[(size_t)slot]=value;s.freeChords[(size_t)slot]=-1;}else if(value>=10&&value<46)s.freeChords[(size_t)slot]=value-10;}
+        if(id>2000&&id<=2008)s.chordCount=id-2000;if(id==3000)randomiseHarmony(safe->project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());safe->changed(false);safe->message("Armonia aggiornata: GENERATE per scriverla nelle tracce sbloccate.");
+    });
+}
 void MainComponent::showTrackMenu(int track){
     juce::PopupMenu menu;const auto& t=project.tracks[(size_t)track];menu.addSectionHeader(u(t.name));menu.addItem(1,"Rinomina");menu.addItem(2,"Muto",true,t.mute);menu.addItem(3,"Solo",true,t.solo);menu.addItem(4,"Blocca generazione",true,t.locked);menu.addSeparator();menu.addItem(5,"Suoni originali Fase Groove");menu.addItem(6,"Rigenera traccia");
     if(t.instrument=="sample"){juce::PopupMenu roots;for(int n=24;n<=96;++n)roots.addItem(100+n,juce::MidiMessage::getMidiNoteName(n,true,true,3),true,n==t.sampleRoot);menu.addSubMenu("Radice campione",roots);}
