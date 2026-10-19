@@ -8,7 +8,7 @@ juce::var object(){return new juce::DynamicObject;}
 void set(juce::var& o,const char* key,const juce::var& v){o.getDynamicObject()->setProperty(key,v);}
 void set(juce::var& o,const char* key,const std::string& v){set(o,key,juce::var(juce::String::fromUTF8(v.c_str())));}
 void set(juce::var& o,const char* key,const char* v){set(o,key,juce::var(v));}
-double num(const juce::var& o,const char* key,double fallback){auto v=o.getProperty(key,fallback);return v.isDouble()||v.isInt()||v.isInt64()?(double)v:fallback;}
+double num(const juce::var& o,const char* key,double fallback){auto v=o.getProperty(key,fallback);if(!(v.isDouble()||v.isInt()||v.isInt64()))return fallback;double value=(double)v;return std::isfinite(value)?std::clamp(value,-1000000.,1000000.):fallback;}
 std::string str(const juce::var& o,const char* key,const char* fallback=""){return o.getProperty(key,fallback).toString().toStdString();}
 }
 juce::var projectJson(const Project& p){
