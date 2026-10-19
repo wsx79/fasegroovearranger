@@ -5,6 +5,8 @@ import math
 import struct
 import sys
 import wave
+import array
+import subprocess
 
 folder = Path(sys.argv[1])
 assert not (folder / 'error.txt').exists(), (folder / 'error.txt').read_text() if (folder / 'error.txt').exists() else ''
@@ -39,4 +41,8 @@ header = int.from_bytes(mp3[:4], 'big')
 assert header >> 21 == 0x7ff and (header >> 19) & 3 == 3 and (header >> 17) & 3 == 1
 assert (header >> 12) & 15 == 14 and (header >> 10) & 3 == 0 and (header >> 6) & 3 != 3
 assert (folder / 'interface.png').stat().st_size > 10000
+decoded = subprocess.run(['ffmpeg', '-v', 'error', '-i', str(folder / 'mix.mp3'), '-f', 'f32le', '-'], capture_output=True, check=True)
+samples = array.array('f'); samples.frombytes(decoded.stdout)
+assert samples and math.sqrt(sum(s*s for s in samples) / len(samples)) > .001
+assert (folder / 'transport.txt').read_text().startswith('PASS')
 print(f'PASS native rendering: {active} active stems, aligned {mix[1]} frames at {mix[0]} Hz, RMS {mix[2]:.5f}, silent mute mix, bundled MP3 and screenshot')
