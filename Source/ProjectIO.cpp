@@ -30,7 +30,7 @@ juce::var projectJson(const Project& p){
 juce::Result projectFromJson(const juce::var& o,Project& result){
     if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||(int)o["version"]!=1)return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
-    if(!sections||sections->isEmpty()||sections->size()>64||!tracks||tracks->size()!=trackCount)return juce::Result::fail("Struttura del progetto non valida (17 tracce, 1–64 sezioni).");
+    if(!sections||sections->isEmpty()||sections->size()>64||!tracks||tracks->size()!=trackCount)return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (17 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
