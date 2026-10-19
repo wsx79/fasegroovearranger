@@ -43,25 +43,18 @@ jobs:
       - name: Verify rendered audio
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
-      - name: Source provenance for binaries
+      - name: Package native distribution with source and licence notices
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
-        shell: bash
-        run: python -c "import os,pathlib; pathlib.Path('SOURCE.txt').write_text('Complete corresponding source and build instructions\nhttps://github.com/wsx79/fasegroovearranger/tree/' + os.environ['GITHUB_SHA'] + '\n')"
+        env:
+          FGA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/package.py
       - uses: actions/upload-artifact@v4
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         with:
           name: FaseGrooveArranger-${{ runner.os }}
           path: |
-            build/FaseGrooveArranger_artefacts/Release/
-            LICENSE
-            README.md
-            PRIVACY.it.md
-            THIRD_PARTY_NOTICES.md
-            ThirdParty/**/LICENSE
-            ThirdParty/shine/COPYING
-            Resources/Inter-OFL.txt
-            SOURCE.txt
-            docs/
+            dist/*.zip
+            dist/*.tar.gz
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Linux' && always()
