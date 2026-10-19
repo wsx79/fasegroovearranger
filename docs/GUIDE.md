@@ -8,7 +8,7 @@ Choose one of the original 13 genres, a key, scale, chord colour, voicing and pr
 
 NEW TRACK regenerates the selected instrument throughout the song. NEW SECTION regenerates that section across all unlocked instruments. NEW CLIP changes only the selected instrument/section cell. LOCK TRACK and LOCK CLIP protect material from generation while allowing manual editing. UNDO/REDO keeps up to 40 in-memory steps.
 
-Generation settings apply to the next generation; existing notes stay editable and keep their current pitches. Tempo changes playback immediately. After changing harmony or key, regenerate the relevant instruments together to keep them harmonically aligned. Locked material keeps its existing notes. NEW CHORDS prepares another progression in the selected scale; the progression menu uses the original piano library.
+Generation settings apply to the next generation; existing notes stay editable and keep their current pitches. Tempo changes playback immediately. After changing harmony or key, regenerate the relevant instruments together to keep them harmonically aligned. Locked material keeps its existing notes. EDIT CHORDS edits each slot as a scale degree or a chromatic major/minor/dominant chord and sets the progression length from 1 to 8 chords. NEW CHORDS prepares another progression in the selected scale; the progression menu uses the original piano library.
 
 Right-click a section header to rename, duplicate its MIDI, remove, reorder, change its musical function or change its length. A longer section needs regeneration or editing to fill the extra time. Shortening trims notes at the boundary. + SECTION inserts a generated Main section. Projects support 1–64 sections, each 1–128 bars, in 4/4.
 
@@ -26,7 +26,7 @@ The built-in sounds are the synthesized guide instruments from the original appl
 
 LOAD SAMPLE assigns a personal WAV/AIFF/FLAC/OGG sample of up to 60 seconds. Pitched instruments default to root MIDI 60; drums default to their GM note. Right-click the track to change the sample root. The sampler transposes a single sample; it does not implement multisample libraries.
 
-LOAD VST3 / AU assigns one native instrument plugin to a track. Select the actual .vst3/.component bundle. Windows/Linux support VST3; macOS additionally supports Audio Units. OPEN VST opens the plugin's editor or generic parameter editor. Plugins must match the application's architecture and have their own installation/licence. No third-party plugin binaries or sample libraries are bundled. Plugins run inside the application process; save before trying a new instrument.
+LOAD VST3 / AU assigns one native instrument plugin to a track. Select the actual .vst3 bundle. On macOS the installed Audio Units menu lists system-registered instruments. Windows/Linux support VST3; macOS additionally supports Audio Units. OPEN VST opens the plugin's editor or generic parameter editor. Plugins must match the application's architecture and have their own installation/licence. No third-party plugin binaries or sample libraries are bundled. Plugins run inside the application process; save before trying a new instrument.
 
 The generation engine always remains internal Fase Groove code; your instrument receives MIDI and supplies its sound. Plugin state is saved in the project. External samples/plugins are referenced by path, not embedded. Relink missing instruments with the load buttons or explicitly choose the original guide sound from the track menu. Missing instruments must be resolved before audio export.
 
