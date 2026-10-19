@@ -66,7 +66,14 @@ void PianoRoll::mouseDrag(const juce::MouseEvent& e){
     for(int i:selected)if(i>=0&&i<(int)notes.size()&&i<(int)before.size()){const auto n=before[(size_t)i];auto& now=notes[(size_t)i];if(velocityDrag)now.velocity=std::clamp(n.velocity+(int)(anchor.y-e.position.y),1,127);else if(resizing)now.length=std::clamp(n.length+delta,std::min(.0625,owner.clipLength()-n.start),owner.clipLength()-n.start);else{now.start=std::clamp(n.start+delta,0.,std::max(0.,owner.clipLength()-n.length));now.pitch=std::clamp(n.pitch+deltaPitch,0,127);}}
     repaint();
 }
-void PianoRoll::mouseUp(const juce::MouseEvent&){if(!before.empty()){before.clear();owner.changed();}}
+void PianoRoll::mouseUp(const juce::MouseEvent&){
+    if(before.empty())return;
+    before.clear();std::vector<Note> wanted;
+    for(int i:selected)if(i>=0&&i<(int)owner.clip().notes.size())wanted.push_back(owner.clip().notes[(size_t)i]);
+    tidyNotes(owner.clip(),owner.clipLength());selected.clear();
+    for(size_t i=0;i<owner.clip().notes.size();++i){const auto& n=owner.clip().notes[i];for(const auto& old:wanted)if(n.pitch==old.pitch&&std::abs(n.start-old.start)<1./960.){selected.insert((int)i);break;}}
+    owner.changed();
+}
 void PianoRoll::deleteSelected(){if(selected.empty())return;owner.checkpoint();auto& notes=owner.clip().notes;for(auto i=selected.rbegin();i!=selected.rend();++i)if(*i>=0&&*i<(int)notes.size())notes.erase(notes.begin()+*i);selected.clear();owner.changed();}
 bool PianoRoll::keyPressed(const juce::KeyPress& key){if(key==juce::KeyPress::deleteKey||key==juce::KeyPress::backspaceKey){deleteSelected();return true;}if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='A'){selected.clear();for(size_t i=0;i<owner.clip().notes.size();++i)selected.insert((int)i);repaint();return true;}return owner.keyPressed(key);}
 
@@ -132,7 +139,7 @@ MainComponent::MainComponent(){
     exportButton.onClick=[this]{exportMenu();};settingsButton.onClick=[this]{showAudioSettings();};aboutButton.onClick=[this]{showAbout();};helpButton.onClick=[this]{showDocument("Guida · Fase Groove Arranger",juce::String::fromUTF8(BinaryData::GUIDA_md,BinaryData::GUIDA_mdSize));};
     for(auto* b:{&songButton,&clipButton}){b->setColour(juce::TextButton::buttonColourId,Palette::accent);b->setColour(juce::TextButton::textColourOffId,Palette::background);}
     genreBox.setTooltip("I 13 generi delle app Fase Groove. Seleziona il genere, poi genera.");trackButton.setTooltip("Rigenera soltanto la traccia selezionata in tutte le sezioni.");sectionButton.setTooltip("Rigenera la sezione selezionata su tutte le tracce sbloccate.");clipButton.setTooltip("Rigenera solo questa traccia in questa sezione.");lockButton.setTooltip("Protegge dalla generazione; l'editing manuale resta disponibile.");lockClipButton.setTooltip("Protegge soltanto il clip selezionato dalla generazione.");piano.setTooltip("Clic: aggiungi. Trascina: sposta. Bordo destro: durata. Alt+trascina: velocity. Shift: selezione multipla. Tasto destro: elimina.");
-    refreshControls();audio.publish(project);setSize(1440,980);select(0,0);startTimerHz(20);
+    refreshControls();audio.publish(project);setSize(1440,980);select(0,0);message("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto.");startTimerHz(20);
 }
 MainComponent::~MainComponent(){stopTimer();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
@@ -165,12 +172,12 @@ void MainComponent::resized(){
     int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
     int x=w-752;for(auto* b:{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton}){place(*b,x,20,b==&aboutButton?112:82);x+=b==&aboutButton?120:90;}
     place(chordsLabel,370,43,w-390,18);place(chordEditButton,w-150,77,132);
-    x=16;place(rewindButton,x,77,36);x+=42;place(playButton,x,77,62);x+=68;place(stopButton,x,77,60);x+=66;place(loopButton,x,77,66);x+=72;place(positionLabel,x,77,114);x+=120;place(tempoSlider,x,77,158);x+=166;place(keyBox,x,77,64);x+=72;place(scaleBox,x,77,160);x+=168;place(undoButton,x,77,62);x+=68;place(redoButton,x,77,62);x+=74;place(masterSlider,x,77,156);
+    x=16;place(rewindButton,x,77,36);x+=42;place(playButton,x,77,62);x+=68;place(stopButton,x,77,60);x+=66;place(loopButton,x,77,90);x+=96;place(positionLabel,x,77,114);x+=120;place(tempoSlider,x,77,158);x+=166;place(keyBox,x,77,64);x+=72;place(scaleBox,x,77,160);x+=168;place(undoButton,x,77,62);x+=68;place(redoButton,x,77,62);x+=74;place(masterSlider,x,77,156);
     x=16;place(genreBox,x,118,178);x+=188;place(songButton,x,118,154);x+=164;place(trackButton,x,118,116);x+=124;place(sectionButton,x,118,124);x+=132;place(clipButton,x,118,114);x+=126;place(densitySlider,x,118,154);x+=162;place(swingSlider,x,118,150);x+=158;place(humanizeSlider,x,118,145);
     x=16;place(progressionBox,x,159,242);x+=250;place(harmonyButton,x,159,118);x+=126;place(extensionBox,x,159,128);x+=136;place(voicingBox,x,159,128);x+=136;place(bassBox,x,159,176);x+=184;place(stringsBox,x,159,160);x+=168;place(addSectionButton,x,159,114);x+=120;place(zoomSlider,x,159,150);
     arrangementPort.setBounds(12,202,w-24,std::max(100,getHeight()-566));
     int y=getHeight()-346;place(inspectorLabel,18,y,w-36,23);y+=27;
-    x=18;place(soundButton,x,y,106);x+=114;place(soundBox,x,y,164);x+=172;place(sampleButton,x,y,120);x+=128;place(loadPluginButton,x,y,144);x+=152;place(pluginEditorButton,x,y,104);x+=114;place(gainSlider,x,y,148);x+=156;place(panSlider,x,y,130);x+=138;place(muteButton,x,y,65);x+=68;place(soloButton,x,y,64);x+=68;place(lockButton,x,y,94);x+=98;place(lockClipButton,x,y,94);
+    x=18;place(soundButton,x,y,106);x+=114;place(soundBox,x,y,164);x+=172;place(sampleButton,x,y,120);x+=128;place(loadPluginButton,x,y,144);x+=152;place(pluginEditorButton,x,y,104);x+=114;place(gainSlider,x,y,148);x+=156;place(panSlider,x,y,130);x+=138;place(muteButton,x,y,82);x+=86;place(soloButton,x,y,82);x+=86;place(lockButton,x,y,130);x+=134;place(lockClipButton,x,y,130);
     y=getHeight()-271;place(editorLabel,18,y,w/2-18,24);place(sectionLoopButton,w-150,y,132,24);y+=29;
     x=18;for(auto* b:{&importButton,&copyButton,&pasteButton,&quantiseButton,&transposeDown,&transposeUp,&deleteNotes}){int width=b==&importButton?115:b==&quantiseButton?103:64;place(*b,x,y,width,25);x+=width+6;}place(gridBox,x+3,y,88,25);place(velocitySlider,x+101,y,154,25);
     pianoPort.setBounds(12,getHeight()-207,w-24,168);place(statusLabel,18,getHeight()-29,w-36,25);updateSizes();
