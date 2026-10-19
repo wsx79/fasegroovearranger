@@ -23,6 +23,24 @@ struct Clip {
     bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked; }
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
+// Stable storage IDs preserve existing projects and plugin assignments. The UI and
+// MIDI file use musical order through trackAtRow().
+int trackAtRow(int row);
+int rowForTrack(int track);
+struct EngineOptions {
+    int pattern = -1, velocity = 100, grooveBars = 2, fillEvery = 8, fillStyle = -1, variationEvery = 8;
+    double swing = -1, humanize = -1, density = -1, gate = .55, strum = .15, accent = .85, tone = .5;
+    double reverb = .12, chorus = 0, pump = 0, pumpRelease = .2;
+    int centre = 64, movement = 1, strumDirection = 0, topLine = 0, approach = 0, evolveBars = 0, humanizeStyle = 0, bassFeel = 0;
+    int rangeLow = 24, rangeHigh = 108, midiNote = -1;
+    bool octaveTop = false, realism = true, letRing = false, roomForBand = true, pushChanges = true, afterFill = true, genreFeel = true, bassSpace = true;
+    std::array<int,4> segments {0,1,2,3};
+    std::array<double,12> laneLevel {1,1,1,1,1,1,1,1,1,1,1,1};
+    std::array<double,12> laneSwing {1,1,1,1,1,1,1,1,1,1,1,1};
+    std::array<double,12> laneShift {};
+    std::array<int,12> laneOctave {};
+    std::array<bool,12> laneMute {};
+};
 struct Track {
     std::string name;
     int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums
@@ -30,6 +48,7 @@ struct Track {
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
+    EngineOptions engine;
     std::vector<Clip> clips;
 };
 struct Settings {
@@ -37,6 +56,8 @@ struct Settings {
     double bpm = 122, swing = .2, density = .55, humanize = .2;
     int bassMode = 3, stringsMode = 1;
     std::uint32_t seed = 1979;
+    double songMinutes = 5;
+    bool guitarLead = false;
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
     std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
@@ -60,6 +81,7 @@ const char* sectionName(Section);
 std::vector<std::string> genres();
 Project newProject(int genre = 1);
 void applyGenre(Project&, int genre);
+void arrangeSong(Project&);
 void chooseProgression(Project&, int preset);
 void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);

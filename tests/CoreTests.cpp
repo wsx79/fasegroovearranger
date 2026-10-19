@@ -9,7 +9,14 @@ void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 int main(int argc,char** argv){try{
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;
-        check(p.tracks.size()==17,"17 instrument tracks");check(p.sections.size()==6,"6 song stages");
+        for(double duration:{4.,6.,8.}){auto form=p;form.settings.songMinutes=duration;fga::arrangeSong(form);const auto minutes=form.length()/form.settings.bpm;check(minutes>=duration,"requested duration reached");check(minutes<duration+.55,"phrase rounding bounded");}
+        if(genre==1){auto lead=p;lead.settings.guitarLead=true;fga::generate(lead,fga::Scope::track,0);check(lead.tracks[0].clips!=p.tracks[0].clips,"original guitar lead piano answers");for(int ti=1;ti<17;++ti)check(lead.tracks[(size_t)ti].clips==p.tracks[(size_t)ti].clips,"lead piano generation isolation");auto shifted=p;shifted.tracks[4].engine.midiNote=50;fga::generate(shifted,fga::Scope::track,4);for(const auto& c:shifted.tracks[4].clips)for(auto n:c.notes)check(n.pitch==50,"custom drum MIDI mapping");}
+        check(p.tracks.size()==17,"17 instrument tracks");check(p.sections.size()>=6,"genre-specific song stages");
+        check(p.length()*60/p.settings.bpm>=300,"minimum requested five minute arrangement");
+        check(p.length()*60/p.settings.bpm<335,"phrase aligned duration");
+        check(p.sections.front().bars>=16&&p.sections.back().bars>=16,"mixable edges");
+        for(int track=0;track<4;++track){for(auto n:p.tracks[(size_t)track].clips.front().notes)check(n.start>=64,"clean intro");for(auto n:p.tracks[(size_t)track].clips.back().notes)check(n.start+n.length<=p.sections.back().bars*4.-64+1e-6,"clean outro");}
+        check(fga::trackAtRow(0)==4&&fga::trackAtRow(13)==1&&fga::trackAtRow(14)==0&&fga::trackAtRow(16)==3,"musical track order");
         check(p.length()>0,"song duration");check(fga::chordNames(p.settings).size()==4||p.settings.chordCount!=4,"harmony");
         for(size_t ti=0;ti<p.tracks.size();++ti)for(size_t si=0;si<p.sections.size();++si)for(auto n:p.tracks[ti].clips[si].notes){check(n.start>=0&&n.start+n.length<=p.sections[si].bars*4.+1e-6,"section bounds");check(n.length>0&&n.pitch>=0&&n.pitch<128&&n.velocity>0&&n.velocity<128,"valid MIDI");}
         fga::generate(p);for(size_t ti=0;ti<p.tracks.size();++ti)check(p.tracks[ti].clips==original.tracks[ti].clips,"repeatable stored seeds");

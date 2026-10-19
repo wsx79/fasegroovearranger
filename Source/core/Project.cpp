@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
+#include "PianoComping.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
@@ -57,6 +58,8 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
     return notes;
 }
 }
+int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3}; return order[std::clamp(row,0,16)]; }
+int rowForTrack(int track) { for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
 const char* sectionName(Section s) {
     static const char* names[]{"Main","Intro","Breakdown","Build-up","Drop","Outro"};
     return names[std::clamp((int)s,0,5)];
@@ -68,6 +71,7 @@ void Project::normalise() {
     s.genre=std::clamp(s.genre,0,12); s.key=std::clamp(s.key,0,11); s.scale=std::clamp(s.scale,0,12);
     s.extension=std::clamp(s.extension,0,10); s.voicing=std::clamp(s.voicing,0,10);
     s.bpm=finite(s.bpm,122,30,300); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
+    s.songMinutes=finite(s.songMinutes,5,4,20);
     s.chordCount=std::clamp(s.chordCount,1,8); s.bassMode=std::clamp(s.bassMode,0,sgk::numBassModes-1); s.stringsMode=std::clamp(s.stringsMode,0,10);
     for(auto& d:s.degrees) d=std::clamp(d,0,6);
     for(auto& c:s.freeChords) c=std::clamp(c,-1,35);
@@ -79,6 +83,16 @@ void Project::normalise() {
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; t.clips.resize(sections.size());
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
+        auto& e=t.engine;
+        e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
+        e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
+        e.gate=finite(e.gate,.55,.02,2);e.strum=finite(e.strum,.15,0,1);e.accent=finite(e.accent,.85,0,1);e.tone=finite(e.tone,.5,0,1);
+        e.reverb=finite(e.reverb,.12,0,1);e.chorus=finite(e.chorus,0,0,1);e.pump=finite(e.pump,0,0,1);e.pumpRelease=finite(e.pumpRelease,.2,.05,1);
+        e.centre=std::clamp(e.centre,24,108);e.rangeLow=std::clamp(e.rangeLow,0,126);e.rangeHigh=std::clamp(e.rangeHigh,e.rangeLow+1,127);
+        e.fillEvery=std::clamp(e.fillEvery,0,32);e.fillStyle=std::clamp(e.fillStyle,-1,20);e.variationEvery=std::clamp(e.variationEvery,0,32);e.midiNote=std::clamp(e.midiNote,-1,127);
+        e.topLine=std::clamp(e.topLine,0,5);e.approach=std::clamp(e.approach,0,2);e.movement=std::clamp(e.movement,0,2);e.strumDirection=std::clamp(e.strumDirection,0,2);e.evolveBars=std::clamp(e.evolveBars,0,32);e.humanizeStyle=std::clamp(e.humanizeStyle,0,3);e.bassFeel=std::clamp(e.bassFeel,0,2);
+        for(auto& v:e.segments)v=std::clamp(v,0,3);
+        for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
         for(size_t k=0;k<sections.size();++k) tidyNotes(t.clips[k],sections[k].bars*4.0);
     }
     masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
@@ -123,11 +137,36 @@ void applyGenre(Project& p,int genre) {
     p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
     p.settings.stringsMode=p.settings.genre==8?(int)sgk::StringsMode::discoOctaves:(int)sgk::StringsMode::pad;
 }
+void arrangeSong(Project& p) {
+    // Phrase lengths and dramatic arcs are specific to the original thirteen styles.
+    // Sixteen/32-bar percussion-only edges remain clean for beat matching.
+    const int genre=std::clamp(p.settings.genre,0,12);
+    static const std::vector<SongSection> forms[]{
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Piano theme"},{Section::breakdown,16,"Piano break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Piano drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Soulful verse"},{Section::main,16,"Answer"},{Section::breakdown,16,"Soul break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Soulful chorus"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Deep groove"},{Section::breakdown,16,"Atmosphere"},{Section::main,32,"Evolution"},{Section::drop,32,"Deep return"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,16,"Mix in"},{Section::main,32,"Gospel verse"},{Section::drop,16,"Response"},{Section::breakdown,16,"Gospel break"},{Section::buildup,8,"Choir lift"},{Section::drop,32,"Final response"},{Section::outro,16,"Mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Jackin groove"},{Section::breakdown,8,"Quick break"},{Section::drop,32,"Jackin drop"},{Section::main,16,"Drum workout"},{Section::buildup,8,"Lift"},{Section::drop,32,"Final jack"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Piano jack"},{Section::breakdown,8,"Piano cut"},{Section::buildup,8,"Build"},{Section::drop,32,"Piano drop"},{Section::main,16,"Variation"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"UK shuffle"},{Section::breakdown,16,"Bass break"},{Section::buildup,8,"Reload"},{Section::drop,32,"Garage drop"},{Section::breakdown,8,"Cut"},{Section::drop,32,"Second drop"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,32,"Percussion mix in"},{Section::main,32,"Afro groove"},{Section::main,16,"Call and response"},{Section::breakdown,16,"Percussion break"},{Section::buildup,8,"Rise"},{Section::drop,32,"Tribal return"},{Section::outro,32,"Percussion mix out"}},
+        {{Section::intro,32,"Disco mix in"},{Section::main,32,"Funk verse"},{Section::drop,16,"Disco chorus"},{Section::breakdown,16,"Strings break"},{Section::main,32,"Funk reprise"},{Section::drop,16,"Final chorus"},{Section::outro,32,"Disco mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"90s theme"},{Section::breakdown,16,"Piano breakdown"},{Section::buildup,16,"Rave build"},{Section::drop,32,"Anthem drop"},{Section::outro,32,"Mix out"}},
+        {{Section::intro,16,"Broken mix in"},{Section::main,24,"Neo soul verse"},{Section::drop,16,"Chorus"},{Section::breakdown,8,"Bridge"},{Section::main,24,"Second verse"},{Section::drop,16,"Final chorus"},{Section::outro,16,"Broken mix out"}},
+        {{Section::intro,16,"Chill mix in"},{Section::main,24,"First landscape"},{Section::breakdown,16,"Space"},{Section::main,24,"Second landscape"},{Section::drop,16,"Warm return"},{Section::outro,16,"Chill mix out"}},
+        {{Section::intro,32,"Mix in"},{Section::main,32,"Stab theme"},{Section::breakdown,16,"Breakdown"},{Section::buildup,16,"Tension"},{Section::drop,32,"Stab drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Mix out"}}
+    };
+    auto sections=forms[genre];
+    const int target=(int)std::ceil(p.settings.songMinutes*p.settings.bpm/4.);
+    int total=0;for(const auto& s:sections)total+=s.bars;
+    // Keep form proportions (including the genre's bridge and builds), in eight-bar phrases.
+    while(total<target){for(size_t i=1;i+1<sections.size()&&total<target;++i)if(sections[i].type==Section::main||sections[i].type==Section::drop){sections[i].bars+=8;total+=8;}}
+    while(total-8>=target){bool removed=false;for(size_t i=1;i+1<sections.size()&&total-8>=target;++i)if((sections[i].type==Section::main||sections[i].type==Section::drop)&&sections[i].bars>8){sections[i].bars-=8;total-=8;removed=true;}if(!removed)break;}
+    p.sections=std::move(sections);for(auto& t:p.tracks)t.clips.assign(p.sections.size(),{});
+    p.normalise();p.loopStart=0;p.loopEnd=p.length();
+}
 Project newProject(int genre) {
-    Project p;
-    p.sections={{Section::intro,8,"Intro"},{Section::main,16,"Main"},{Section::breakdown,8,"Breakdown"},{Section::buildup,4,"Build-up"},{Section::drop,16,"Drop"},{Section::outro,8,"Outro"}};
-    if(genre==10||genre==11) {p.sections[0].bars=4;p.sections[5].bars=4;}
-    p.normalise(); applyGenre(p,genre); p.loopEnd=p.length(); generate(p); return p;
+    Project p;applyGenre(p,genre);arrangeSong(p);generate(p);return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;
@@ -147,29 +186,55 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             const double beats=p.sections[si].bars*4.0; const auto type=p.sections[si].type;
-            auto ps=pianoSettings(s,clip.seed);
+            const auto& e=t.engine;
+            auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
+            auto ps=pianoSettings(trackSettings,clip.seed);
+            ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
+            ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
+            ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;
+            ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
+            ps.fillEveryBars=e.fillEvery;ps.fillStyle=(sgk::FillStyle)(e.fillStyle<0?(int)sgk::FillStyle::mix:std::min(e.fillStyle,sgk::numFillStyles-1));ps.variationEvery=e.variationEvery;
+            if(e.pattern>=0&&e.pattern<(int)sgk::groovePatterns().size())ps.pattern=e.pattern;
             if(ti<3) {
                 ps.section=(sgk::Section)type; ps.sectionVariation=clip.seed;
                 auto all=sgk::GrooveEngine::renderArrangement(ps,{{(sgk::Section)type,p.sections[si].bars,clip.seed,-1}});
+                if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
             } else if(ti==3) {
-                fgg::GuitarSettings gs; gs.pattern=fgg::randomPatternIndex(); gs.randomGenre=s.genre; gs.riffSeed=clip.seed;
-                gs.density=(float)s.density; gs.swing=(float)s.swing; gs.humanize=(float)s.humanize; gs.humanizeSeed=clip.seed;
-                gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=4; gs.variationEvery=4; gs.fillStyle=fgg::FillStyle::mix;
+                fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre; gs.riffSeed=clip.seed;
+                gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=clip.seed;
+                gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
+                gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
+                for(size_t l=0;l<12;++l){gs.levels[l]=(float)e.laneLevel[l];gs.laneSwing[l]=(float)e.laneSwing[l];gs.laneShift[l]=(float)e.laneShift[l];gs.octaves[l]=e.laneOctave[l];gs.muted[l]=e.laneMute[l];}
                 for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgg::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgg::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
                 auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)type,p.sections[si].bars,clip.seed,-1}});
                 clip.notes=notesFrom(all,beats,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
                 // Keep each note's articulation lane for the original guide guitar.
                 for(auto& n:clip.notes) for(const auto& e:all) if(e.isNoteOn()&&e.note==n.pitch&&std::abs(e.ppq-n.start)<.00001){n.lane=e.lane;break;}
             } else {
-                fgd::DrumSettings ds; ds.pattern=fgd::randomPatternIndex(); ds.randomGenre=s.genre;
+                fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
                 ds.riffSeed=clip.seed; ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
-                ds.density=(float)s.density; ds.swing=(float)s.swing; ds.humanize=(float)s.humanize; ds.humanizeSeed=clip.seed;
-                ds.tempo=s.bpm; ds.bassSpace=true; ds.fillEveryBars=4; ds.variationEvery=4; ds.fillStyle=fgd::FillStyle::mix;
+                ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=clip.seed;
+                ds.tempo=s.bpm; ds.bassSpace=e.bassSpace; ds.fillEveryBars=e.fillEvery; ds.variationEvery=e.variationEvery; ds.fillStyle=(fgd::FillStyle)(e.fillStyle<0?(int)fgd::FillStyle::mix:std::min(e.fillStyle,fgd::numFillStyles-1));
+                ds.velocity=e.velocity;ds.accentGroove=(float)e.accent;ds.genreFeel=e.genreFeel;ds.crashAfterFill=e.afterFill;ds.grooveBars=e.grooveBars;ds.segmentOrder=e.segments;
+                ds.laneSwing[(size_t)(ti-4)]=(float)e.laneSwing[0];ds.laneShift[(size_t)(ti-4)]=(float)e.laneShift[0];
+                if(e.midiNote>=0)ds.notes[(size_t)(ti-4)]=e.midiNote;
                 auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)type,p.sections[si].bars,ds.sectionVariation,-1}});
+
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
+            // DJ edges: harmonic instruments leave a clean 16-bar mixing window.
+            // Percussion layers enter/leave in eight-bar phrases, never a random cut.
+            if(type==Section::intro||type==Section::outro){
+                const double clean=std::min(16,p.sections[si].bars)*4.;
+                const double entry=ti<4?clean:ti==4?0:ti==8?0:ti<=10?16:32;
+                clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),[&](const Note& n){return type==Section::intro?n.start<entry:n.start>=beats-entry;}),clip.notes.end());
+                if(type==Section::outro)for(auto& n:clip.notes)n.length=std::min(n.length,std::max(.001,beats-entry-n.start));
+            }
+            // A musical phrase grows and answers without randomly choosing another preset
+            // on every repeat. Deep/chill avoid festival builds; jackin stays percussive.
+            if((s.genre==2||s.genre==11)&&type==Section::buildup&&ti>=5)clip.notes.clear();
             tidyNotes(clip,beats);
         }
     }

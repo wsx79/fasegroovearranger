@@ -10,14 +10,14 @@ public:
 };
 class Window:public juce::DocumentWindow {
 public:
-    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);}
+    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);setIcon(juce::ImageCache::getFromMemory(BinaryData::arranger_png,BinaryData::arranger_pngSize));content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);}
     void closeButtonPressed()override{if(content->main.requestClose())juce::JUCEApplication::getInstance()->quit();}
     ScaledContent* content=nullptr;
 };
 class Application:public juce::JUCEApplication {
 public:
     const juce::String getApplicationName()override{return "Fase Groove Arranger";}
-    const juce::String getApplicationVersion()override{return "0.1.0";}
+    const juce::String getApplicationVersion()override{return "0.2.0";}
     bool moreThanOneInstanceAllowed()override{return false;}
     void initialise(const juce::String&)override{
         auto args=getCommandLineParameterArray();
@@ -66,7 +66,7 @@ public:
             if(auto stream=folder.getChildFile("interface.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}
             auto& audio=window->content->main.audio;
             auto p=fga::newProject(1);p.sections={{fga::Section::drop,2,"Drop"}};p.normalise();fga::generate(p);
-            bool ok=true;auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
+            bool ok=window->content->main.writeUiEvidence(folder);auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
             run("mix.wav",-1,false);run("mix.mp3",-1,true);
             for(int ti=0;ti<17;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
             p.loop=true;p.loopStart=0;p.loopEnd=4;audio.publish(p);audio.seek(3.999);audio.play(true);

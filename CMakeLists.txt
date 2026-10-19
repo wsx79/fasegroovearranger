@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.1.0 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.2.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -25,7 +25,7 @@ if(NOT MSVC)
 endif()
 add_library(fga_mp3 STATIC Source/core/Mp3Encoder.cpp)
 target_link_libraries(fga_mp3 PUBLIC shine)
-add_library(fga_core STATIC Source/core/Project.cpp Source/core/Midi.cpp
+add_library(fga_core STATIC Source/core/Project.cpp Source/core/PianoComping.cpp Source/core/Midi.cpp
     ThirdParty/fasegroovepiano/Source/engine/Theory.cpp
     ThirdParty/fasegroovepiano/Source/engine/Generators.cpp
     ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.cpp
@@ -57,10 +57,11 @@ if(FGA_BUILD_APP)
     endif()
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"
         COMPANY_NAME "FS Pitch" BUNDLE_ID "com.fspitch.fasegroovearranger"
+        ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
         MICROPHONE_PERMISSION_ENABLED FALSE)
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
-        Resources/fs_pitch_logo.png Resources/arranger.svg docs/GUIDA.md docs/GUIDE.md PRIVACY.it.md THIRD_PARTY_NOTICES.md)
-    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/MainComponent.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp)
+        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md PRIVACY.it.md THIRD_PARTY_NOTICES.md)
+    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/MainComponent.cpp Source/InstrumentPanel.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp)
     target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1
         JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:FaseGrooveArranger,JUCE_PRODUCT_NAME>"

@@ -46,3 +46,5 @@ samples = array.array('f'); samples.frombytes(decoded.stdout)
 assert samples and math.sqrt(sum(s*s for s in samples) / len(samples)) > .001
 assert (folder / 'transport.txt').read_text().startswith('PASS')
 print(f'PASS native rendering: {active} active stems, aligned {mix[1]} frames at {mix[0]} Hz, RMS {mix[2]:.5f}, silent mute mix, bundled MP3 and screenshot')
+
+assert (folder / "ui.txt").read_text().startswith("PASS"), "instrument/editor interface routing"

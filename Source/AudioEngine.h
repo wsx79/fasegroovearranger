@@ -7,6 +7,7 @@
 #include "../ThirdParty/fasegroovedrums/Source/GuideDrums.h"
 #include "../ThirdParty/fasegrooveguitar/Source/GuideGuitar.h"
 #include <atomic>
+#include <juce_dsp/juce_dsp.h>
 namespace fga {
 struct Instrument {
     explicit Instrument(int track);
@@ -15,6 +16,9 @@ struct Instrument {
     int kind;
     std::atomic<float> tone{.5f}, sound{0};
     juce::Synthesiser synth;
+    juce::Reverb reverb;
+    juce::dsp::Chorus<float> chorus;
+    double pump=0,pumpRelease=.2;
     GuideDrums drums;
     GuideGuitar guitar;
     DrumSamples drumSamples;

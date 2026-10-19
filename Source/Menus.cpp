@@ -21,7 +21,7 @@ public:
     }
     void paint(juce::Graphics& g)override{
         g.fillAll(Palette::panel);auto line=[&](juce::String text,int y,int h,float size,juce::Colour colour=Palette::text){g.setColour(colour);g.setFont(FamilyTheme::font(size));g.drawText(text,20,y,getWidth()-40,h,juce::Justification::centred);};
-        line("FASE GROOVE ARRANGER",24,42,29,Palette::accent);line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),72,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.1.0 · Windows / macOS / Linux"),100,22,12,Palette::dim);
+        line("FASE GROOVE ARRANGER",24,42,29,Palette::accent);line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),72,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.2.0 · Windows / macOS / Linux"),100,22,12,Palette::dim);
         line("CREATED BY",142,22,11,Palette::accent);if(logo.isValid())g.drawImageWithin(logo,100,176,getWidth()-200,100,juce::RectanglePlacement::centred);line(juce::String::fromUTF8("Fabio 'Pitch' Serra · DJ & Producer"),280,25,17);line("Listen to my productions on Spotify",310,22,12,juce::Colour(0xff1db954));
         line("ORIGINAL ECOSYSTEM CODE",352,22,11,Palette::accent);line("Claude  (Anthropic)",379,25,17);line(juce::String::fromUTF8("AI coding assistant · credits retained from the original apps"),407,20,12,Palette::dim);
         line("ARRANGER INTEGRATION",445,22,11,Palette::accent);line("Codex  (OpenAI)",472,24,17);line("AI coding assistant",499,20,12,Palette::dim);
@@ -35,7 +35,7 @@ public:
     ExportTask(AudioEngine& e,Project p,juce::File path,std::vector<int> selected,bool mp3,std::function<void(juce::Result)> done)
     :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),engine(e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),callback(std::move(done)){}
     void run()override{
-        for(size_t i=0;i<tracks.size();++i){int track=tracks[i];auto file=tracks.size()>1?target.getChildFile(juce::String(track+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)track].name))+(isMp3?".mp3":".wav")):target;
+        for(size_t i=0;i<tracks.size();++i){int track=tracks[i];auto file=tracks.size()>1?target.getChildFile(juce::String(rowForTrack(track)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)track].name))+(isMp3?".mp3":".wav")):target;
             setStatusMessage(file.getFileName());result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());});if(result.failed())return;
         }
     }
@@ -91,8 +91,8 @@ void MainComponent::exportFile(int type,int track){
     chooseFile(batch?"Cartella esportazione (crea una sottocartella dedicata)":"Esporta "+juce::String(midi?"MIDI":mp3?"MP3":"WAV"),batch?"*":midi?"*.mid":mp3?"*.mp3":"*.wav",flags,[this,type,track,batch,mp3,midi,single](juce::File target){
         if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));if(target.createDirectory().failed()){message("Impossibile creare la cartella stem.",true);return;}}
         else target=target.withFileExtension(midi?"mid":mp3?"mp3":"wav");
-        if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithData(bytes.data(),bytes.size())||!temp.overwriteTargetFileWithTemporary())return false;return true;};bool ok=true;if(batch){for(int ti=0;ti<trackCount;++ti)ok=write(target.getChildFile(juce::String(ti+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)ti].name))+".mid"),ti)&&ok;}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
-        audio.stop();closePluginEditor();std::vector<int> tracks;if(batch)for(int ti=0;ti<trackCount;++ti)tracks.push_back(ti);else tracks.push_back(single?track:-1);
+        if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithData(bytes.data(),bytes.size())||!temp.overwriteTargetFileWithTemporary())return false;return true;};bool ok=true;if(batch){for(int ti=0;ti<trackCount;++ti)ok=write(target.getChildFile(juce::String(rowForTrack(ti)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)ti].name))+".mid"),ti)&&ok;}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
+        audio.stop();closePluginEditor();std::vector<int> tracks;if(batch)for(int row=0;row<trackCount;++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
         juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,[safe,target](juce::Result r){if(safe!=nullptr)safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());});exportTask->launchThread();
     });
 }

@@ -28,7 +28,8 @@ std::vector<std::uint8_t> midiFile(const Project& p,int onlyTrack) {
     for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);text(conductor,at-last,6,p.sections[si].name);last=at;}
     auto end=(std::uint32_t)std::llround(p.length()*960);meta(conductor,end-last,0x2f,{});chunk(out,std::move(conductor));
     auto canonical=p;canonical.normalise();auto all=events(canonical,onlyTrack);
-    for(size_t ti=0;ti<p.tracks.size();++ti){
+    for(int row=0;row<(int)p.tracks.size();++row){
+        const size_t ti=(size_t)trackAtRow(row);
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;
         Bytes data;text(data,0,3,p.tracks[ti].name);int channel=ti>=4?9:(int)ti;
         // GM hints make exported MIDI immediately useful in a GM player.

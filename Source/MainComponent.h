@@ -4,6 +4,7 @@
 #include "AudioEngine.h"
 #include "ProjectIO.h"
 #include "FamilyTheme.h"
+#include "InstrumentPanel.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -24,6 +25,11 @@ public:
     void mouseUp(const juce::MouseEvent&) override;
     bool keyPressed(const juce::KeyPress&) override;
     void clearSelection(){selected.clear();}
+    bool guitarNotes=false;
+    bool laneView() const;
+    float noteY(const Note&) const;
+    float noteHeight() const;
+    int laneAt(float) const;
     double grid=.25,pixelsPerBeat=76;
     std::set<int> selected;
     void deleteSelected();
@@ -34,7 +40,7 @@ private:
     bool resizing=false,velocityDrag=false;
     int hit(juce::Point<float>) const;
     double beat(float x) const {return std::max(0.,(x-64.)/pixelsPerBeat);}
-    int pitch(float y) const {return std::clamp(127-(int)((y-24)/12),0,127);}
+    int pitch(float y) const;
 };
 class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget {
 public:
@@ -52,17 +58,27 @@ public:
     void changed(bool schedule=true);
     void select(int track,int section);
     void showTrackMenu(int);
+    void showInstrument();
+    void showEditor();
+    void showArrangement();
     void showSectionMenu(int);
     void showClipMenu(int,int);
     Clip& clip(){return project.tracks[(size_t)selectedTrack].clips[(size_t)selectedSection];}
     double clipLength()const{return project.sections[(size_t)selectedSection].bars*4.;}
     void regenerate(Scope);
     bool requestClose();
+    bool writeUiEvidence(const juce::File&);
 private:
     FamilyLookAndFeel theme;
     juce::TooltipWindow tooltips{this,650};
     ArrangementView arrangement{*this};PianoRoll piano{*this};
-    juce::Viewport arrangementPort,pianoPort;
+    juce::Viewport arrangementPort,pianoPort,instrumentPort;
+    InstrumentPanel instrumentPanel{*this};
+    enum class Page { arrangement,instrument,editor };
+    Page page=Page::arrangement;
+    juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEAD"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
+    juce::Slider minutesSlider;
+    juce::ComboBox sectionSelector;
     juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"ECOSYSTEM"},helpButton{"GUIDA"};
     juce::TextButton playButton{"PLAY"},stopButton{"STOP"},rewindButton{"|<"},undoButton{"UNDO"},redoButton{"REDO"};
     juce::ToggleButton loopButton{"LOOP"};
@@ -113,5 +129,6 @@ private:
     void modifySelected(std::function<void(Clip&)>);
     friend class ArrangementView;
     friend class PianoRoll;
+    friend class InstrumentPanel;
 };
 }

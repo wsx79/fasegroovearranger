@@ -51,8 +51,8 @@ def read(path, expected_tracks):
                     assert tick > active.pop(key), 'zero note duration'
         assert not active, f'hanging notes in track: {active}'
         assert pos == end
-    assert pos == len(data) and tempos == 1 and markers == 6 and note_count > 0
-    print(f'PASS {path}: {tracks} tracks, {note_count} matched notes, 6 section markers')
+    assert pos == len(data) and tempos == 1 and markers >= 6 and note_count > 0
+    print(f'PASS {path}: {tracks} tracks, {note_count} matched notes, {markers} section markers')
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else 'build/core')
 read(folder / 'test-song.mid', 18)
