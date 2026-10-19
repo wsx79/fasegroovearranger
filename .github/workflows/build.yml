@@ -31,7 +31,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb ffmpeg
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=${{ runner.os == 'Linux' && 'ON' || 'OFF' }}
       - name: Build
         id: nativebuild
         run: cmake --build build --config Release -j2
@@ -43,6 +43,11 @@ jobs:
       - name: Verify rendered audio
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
+      - name: Native VST3 instrument integration
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
+        run: |
+          xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --host-smoke-test "build/ArrangerHostProbe_artefacts/Release/VST3/Arranger Host Probe.vst3" "$RUNNER_TEMP/arranger-smoke"
+          python3 scripts/verify-host.py "$RUNNER_TEMP/arranger-smoke"
       - name: Package native distribution with source and licence notices
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         env:
