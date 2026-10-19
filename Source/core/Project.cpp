@@ -118,7 +118,9 @@ void applyGenre(Project& p,int genre) {
     static const int presets[]{4,2,0,8,17,28,9,0,33,27,29,6,4};
     p.settings.bpm=tempos[p.settings.genre]; p.settings.swing=fgd::genreSwing(p.settings.genre);
     chooseProgression(p,presets[p.settings.genre]);
-    p.settings.bassMode=sgk::bassModeForLine(p.settings.genre%sgk::numBassLines);
+    // Match each style to an actual named bass line in the original library.
+    static const int bassLines[]{8,23,16,11,14,13,18,15,20,12,10,16,12};
+    p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
     p.settings.stringsMode=p.settings.genre==8?(int)sgk::StringsMode::discoOctaves:(int)sgk::StringsMode::pad;
 }
 Project newProject(int genre) {
