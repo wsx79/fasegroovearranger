@@ -27,20 +27,26 @@ jobs:
       - uses: actions/checkout@v4
       - name: Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb lame
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb ffmpeg
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
       - name: Build
+        id: nativebuild
         run: cmake --build build --config Release -j2
       - name: Tests
         run: ctest --test-dir build -C Release --output-on-failure
       - name: Standalone rendering smoke test
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --smoke-test "$RUNNER_TEMP/arranger-smoke"
       - name: Verify rendered audio
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
+      - name: Source provenance for binaries
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        shell: bash
+        run: python -c "import os,pathlib; pathlib.Path('SOURCE.txt').write_text('Complete corresponding source and build instructions\nhttps://github.com/wsx79/fasegroovearranger/tree/' + os.environ['GITHUB_SHA'] + '\n')"
       - uses: actions/upload-artifact@v4
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         with:
           name: FaseGrooveArranger-${{ runner.os }}
           path: |
@@ -49,6 +55,10 @@ jobs:
             README.md
             PRIVACY.it.md
             THIRD_PARTY_NOTICES.md
+            ThirdParty/**/LICENSE
+            ThirdParty/shine/COPYING
+            Resources/Inter-OFL.txt
+            SOURCE.txt
             docs/
           retention-days: 30
       - uses: actions/upload-artifact@v4
