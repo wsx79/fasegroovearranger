@@ -2,6 +2,10 @@
 
 Fase Groove Arranger combines the original Piano, Drums and Guitar generation engines in a native standalone MIDI workstation. Its 17 instrument tracks share a song arrangement and harmony. The three plugins do not need to be installed.
 
+## Run the desktop packages
+
+Download your platform artifact from GitHub Actions. Extract the artifact ZIP, then the distribution archive inside it: ZIP on Windows, tar.gz on macOS/Linux. Launch the .exe, .app bundle or Linux executable. Unix archives preserve executable permissions. An external DAW and microphone access are not needed. Development packages have no installer or distribution signing.
+
 ## Compose and arrange
 
 Choose one of the original 13 genres, a key, scale, chord colour, voicing and progression. Click GENERATE SONG. The initial form is Intro 8 bars, Main 16, Breakdown 8, Build-up 4, Drop 16 and Outro 8; Neo Soul and Chill have shorter intro/outro sections. The engines apply their original section behaviours, variations and fills.
