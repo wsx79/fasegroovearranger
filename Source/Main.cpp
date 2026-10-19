@@ -10,7 +10,7 @@ public:
 };
 class Window:public juce::DocumentWindow {
 public:
-    Window():DocumentWindow("Fase Groove Arranger · FS Pitch",juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);}
+    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);}
     void closeButtonPressed()override{if(content->main.requestClose())juce::JUCEApplication::getInstance()->quit();}
     ScaledContent* content=nullptr;
 };
