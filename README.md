@@ -39,7 +39,9 @@ On Ubuntu/Debian install the native development dependencies first:
 sudo apt-get install build-essential cmake libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
 ```
 
-GitHub Actions builds Windows, macOS and Linux packages and runs the tests. Download successful builds from the workflow's **Artifacts** panel. Development artifacts are unsigned; release signing/notarisation and installers are not configured.
+GitHub Actions builds Windows, macOS and Linux packages and runs the tests. Download successful builds from the workflow's **Artifacts** panel, then extract the distribution archive inside it: Windows `.zip`; macOS/Linux `.tar.gz`. The Unix archives preserve executable permissions. macOS binaries are universal (Apple Silicon + Intel); Windows bundles its C/C++ runtime statically. Development artifacts are unsigned; release signing/notarisation and installers are not configured.
+
+Distribution targets: Windows 10+, macOS 11+ and Ubuntu 24.04-compatible Linux systems. Build from source for other Linux distributions. Actual external plugins may require a newer OS.
 
 For the portable arranging and MP3 engines alone:
 
