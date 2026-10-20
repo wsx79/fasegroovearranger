@@ -71,7 +71,7 @@ def render(source):
     return '\n'.join(output), toc
 
 for language, name in [('it', 'GUIDA'), ('en', 'GUIDE')]:
-    source = (root / 'docs' / (name + '.md')).read_text()
+    source = (root / 'docs' / (name + '.md')).read_text(encoding='utf-8')
     body, toc = render(source)
     assert len(toc) == 13, name
     assert body.count('<table>') >= 10 and body.count('<figure>') == 4, name
@@ -86,5 +86,5 @@ for language, name in [('it', 'GUIDA'), ('en', 'GUIDE')]:
 <div class="layout"><nav aria-label="{contents}"><h2>{contents}</h2>{''.join(f'<a href="#{anchor}">{html.escape(label)}</a>' for anchor,label in toc)}</nav>
 <main><div class="tools"><label for="search">{search}</label><input id="search" type="search" placeholder="{search}"><button id="previous" aria-label="Previous result">‹</button><button id="next" aria-label="Next result">›</button><output id="count" aria-live="polite"></output><button id="smaller" aria-label="Smaller text">A−</button><button id="larger" aria-label="Larger text">A+</button></div><article>{body}</article><footer>FS PITCH / FASE GROOVE</footer></main></div>
 <script src="guide.js"></script></body></html>'''
-    (root / 'docs' / (name + '.html')).write_text(html_doc)
+    (root / 'docs' / (name + '.html')).write_text(html_doc, encoding='utf-8')
     print(f'PASS {name}: 13 linked chapters, {body.count("<table>")} tables, 4 screenshots, offline assets')
