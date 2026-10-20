@@ -37,6 +37,40 @@ void InstrumentPanel::rebuild(){
     if(guitar||drum){heading(guitar?"GUITAR / LANE MIXER":"DRUM / POCKET");const int lanes=guitar?12:1;for(int i=0;i<lanes;++i){const size_t l=(size_t)i;const juce::String name=guitar?fgg::laneShortName(i):fgd::laneName(track-4);if(guitar){knob(name+" LEVEL",0,200,1,e.laneLevel[l]*100,[l](auto& o,double v){o.laneLevel[l]=v/100;}," %");knob(name+" OCTAVE",-2,2,1,e.laneOctave[l],[l](auto& o,double v){o.laneOctave[l]=(int)v;});toggle(name+" MUTE",e.laneMute[l],[l](auto& o,bool v){o.laneMute[l]=v;});}knob(name+" SWING",0,150,1,e.laneSwing[l]*100,[l](auto& o,double v){o.laneSwing[l]=v/100;}," %");knob(name+" PUSH / PULL",-100,100,1,e.laneShift[l],[l](auto& o,double v){o.laneShift[l]=v;}," ms");}}
     resized();repaint();
 }
-void InstrumentPanel::resized(){const int cols=5,gap=14,w=(getWidth()-60-gap*(cols-1))/cols;int y=18,col=0;for(size_t i=0;i<controls.size();++i){for(const auto& h:headings)if(h.second==(int)i){if(col){y+=146;col=0;}y+=42;}auto& c=controls[i];c.component->setBounds(30+col*(w+gap),y+24,w,c.knob?102:32);if(++col==cols){col=0;y+=146;}}int height=y+(col?146:0)+20;if(getHeight()!=height)setSize(getWidth(),height);}
-void InstrumentPanel::paint(juce::Graphics& g){g.fillAll(Palette::background);for(const auto& h:headings){int y=18,col=0;for(int i=0;i<=h.second;++i){for(const auto& head:headings)if(head.second==i){if(col){y+=146;col=0;}if(head.second==h.second){g.setColour(Palette::accent);g.setFont(FamilyTheme::font(12,true));g.drawText(h.first,30,y+8,getWidth()-60,26,juce::Justification::centredLeft);}y+=42;}if(i<h.second&&++col==5){col=0;y+=146;}}}for(const auto& c:controls){auto r=c.component->getBounds();g.setColour(Palette::panel);g.fillRoundedRectangle(r.expanded(5,5).withTop(r.getY()-22).toFloat(),7);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(11,true));g.drawText(c.caption,r.getX(),r.getY()-22,r.getWidth(),20,juce::Justification::centred);}}
+void InstrumentPanel::resized(){
+    const int cols=5,gap=14,w=(getWidth()-60-gap*(cols-1))/cols;
+    headingY.resize(headings.size());int y=18,col=0;
+    for(size_t i=0;i<controls.size();++i){
+        bool lanes=false;
+        for(size_t h=0;h<headings.size();++h)if(headings[h].second==(int)i){
+            if(col){y+=146;col=0;}headingY[h]=y;y+=42;
+            lanes=headings[h].first=="GUITAR / LANE MIXER";
+        }
+        if(lanes){
+            const int laneWidth=(getWidth()-60-11*8)/12;
+            const int offsets[]{24,174,282,346,466},heights[]{124,82,32,94,94};
+            for(int lane=0;lane<12;++lane)for(int parameter=0;parameter<5;++parameter){
+                auto& c=controls[i+(size_t)(lane*5+parameter)];
+                if(parameter==0)if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get()))slider->setSliderStyle(juce::Slider::LinearVertical);
+                c.component->setBounds(30+lane*(laneWidth+8),y+offsets[parameter],laneWidth,heights[parameter]);
+            }
+            y+=580;col=0;break;
+        }
+        auto& c=controls[i];c.component->setBounds(30+col*(w+gap),y+24,w,c.knob?102:32);
+        if(++col==cols){col=0;y+=146;}
+    }
+    const int height=y+(col?146:0)+20;if(getHeight()!=height)setSize(getWidth(),height);
+}
+void InstrumentPanel::paint(juce::Graphics& g){
+    g.fillAll(Palette::background);
+    for(size_t h=0;h<headings.size()&&h<headingY.size();++h){
+        const int y=headingY[h],bottom=h+1<headingY.size()?headingY[h+1]-10:getHeight()-10;
+        auto area=juce::Rectangle<int>(18,y,getWidth()-36,std::max(32,bottom-y));
+        g.setColour(Palette::panel.withAlpha(.55f));g.fillRoundedRectangle(area.toFloat(),7);
+        g.setColour(Palette::panelEdge);g.drawRoundedRectangle(area.toFloat(),7,1);
+        g.setColour(Palette::accent);g.fillRect(30,y+14,3,12);g.setFont(FamilyTheme::font(12,true));
+        g.drawText(headings[h].first,42,y+8,getWidth()-84,26,juce::Justification::centredLeft);
+    }
+    for(const auto& c:controls){auto r=c.component->getBounds();g.setColour(Palette::panel);g.fillRoundedRectangle(r.expanded(5,5).withTop(r.getY()-22).toFloat(),7);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(11,true));g.drawText(c.caption,r.getX(),r.getY()-22,r.getWidth(),20,juce::Justification::centred);}
+}
 }

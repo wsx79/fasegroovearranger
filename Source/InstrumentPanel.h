@@ -17,6 +17,7 @@ private:
     struct Control { std::unique_ptr<juce::Component> component; juce::String caption; bool knob=false; };
     std::vector<Control> controls;
     std::vector<std::pair<juce::String,int>> headings;
+    std::vector<int> headingY;
     void heading(const juce::String&);
     void knob(const juce::String&,double,double,double,double,std::function<void(EngineOptions&,double)>,const juce::String& suffix={});
     void choice(const juce::String&,const juce::StringArray&,int,std::function<void(EngineOptions&,int)>);

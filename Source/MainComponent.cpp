@@ -222,7 +222,7 @@ void MainComponent::resized(){
 bool MainComponent::writeUiEvidence(const juce::File& folder){
     bool ok=true;auto capture=[&](const juce::String& name){auto screenshot=createComponentSnapshot(getLocalBounds());if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(screenshot,*out)&&ok;}else ok=false;};
     showArrangement();ok=ok&&arrangementPort.isVisible()&&!pianoPort.isVisible();capture("interface");
-    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();ok=ok&&instrumentPort.isVisible()&&!pianoPort.isVisible();capture("instrument-"+juce::String(track));showEditor();ok=ok&&pianoPort.getHeight()>400&&!arrangementPort.isVisible();if(track>=4)ok=ok&&piano.laneView();if(track==1||track==2)ok=ok&&!piano.laneView();capture("editor-"+juce::String(track));}
+    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();ok=ok&&instrumentPort.isVisible()&&!pianoPort.isVisible();capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=ok&&pianoPort.getHeight()>400&&!arrangementPort.isVisible();if(track>=4)ok=ok&&piano.laneView();if(track==1||track==2)ok=ok&&!piano.laneView();capture("editor-"+juce::String(track));}
     select(3,1);piano.guitarNotes=true;showEditor();ok=ok&&!piano.laneView();capture("guitar-notes");piano.guitarNotes=false;showArrangement();select(4,0);
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes":"FAIL interface routing");return ok;
 }
