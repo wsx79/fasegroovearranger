@@ -215,12 +215,12 @@ void InstrumentPanel::resized(){
         put("REGISTER",40,y+187,76,78);put("STRUM",120,y+187,76,78);
         put("MOVEMENT",202,y+165,102);put("Range",202,y+230,102,24);
         put("Top +8va",32,y+288,128,24);put("STRUM DIRECTION",168,y+286,136,24);
-        put("BASS FEEL",32,y+168,272);
+        put("BASS FEEL",32,y+184,272);
         circle.setBounds(338,y+30,cw-20,268);put("Free chords",342,y+308,230,24);
         put("GROOVE",gx+14,y+46,gw-170);tool("<",gx+gw-152,y+50,20);tool(">",gx+gw-132,y+50,20);tool("NEW RIFF",gx+gw-98,y+46,84);const int third=(gw-44)/3;put("Section",gx+14,y+98,third);put("GROOVE LENGTH",gx+22+third,y+98,third);put("VARIATION EVERY",gx+30+third*2,y+98,third);
         put("FILL EVERY",gx+14,y+150,(gw-38)*2/5,28);put("FILL STYLE",gx+24+(gw-38)*2/5,y+150,(gw-38)*3/5,28);
         put("NEW FEEL",gx+gw-92,y+186,78,20);put("HUMANIZE STYLE",gx+gw-228,y+186,130,20);
-        int k=0;for(const auto* n:{"SWING","GATE","VELOCITY","HUMANIZE","DENSITY"}){const int kw=(gw-24)/5;put(n,gx+12+k++*kw,y+218,kw,112);}
+        int k=0;const int feelCount=track==0?5:4;for(const auto* n:{"SWING","GATE","VELOCITY","HUMANIZE","DENSITY"}){if(track!=0&&juce::String(n)=="GATE")continue;const int kw=(gw-24)/feelCount;put(n,gx+12+k++*kw,y+218,kw,112);}
         const int sx=W-sw-4;tool("HEAR",sx,y+46,108);put("Sound",sx+116,y+46,108);tool("LOAD SAMPLE",sx,y+82,108);tool("BUILT-IN",sx+116,y+82,108);int kx=0;
         for(const auto* n:{"TONE","REVERB","VOLUME"})put(n,sx+(kx++)*74,y+112,70,72);
         put("Sidechain Source",sx,y+210,126,24);put("Sidechain Rate",sx+134,y+210,90,24);

@@ -252,7 +252,11 @@ MainComponent::~MainComponent(){updater.onResult=nullptr;if(musicalToolWindow)mu
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
 void MainComponent::checkpoint(){undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
 void MainComponent::changed(bool schedule){project.normalise();dirty=true;if(schedule)audio.publish(project);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaint();}
-void MainComponent::applyLanguage(){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();options.refreshText();updateOverlay.refreshText();repaint();
+void MainComponent::applyLanguage(){
+    if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
+    refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();
+    options.refreshText();updateOverlay.refreshText();repaint();
+}
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();repaint();}
 void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();panelSections.clear(juce::dontSendNotification);for(auto name:instrumentPanel.sectionNames())panelSections.addItem(name,panelSections.getNumItems()+1);panelSections.setTextWhenNothingSelected("ADVANCED");resized();instrumentPort.setViewPosition(0,0);repaint();}
 void MainComponent::showEditor(){page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
