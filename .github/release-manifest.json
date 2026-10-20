@@ -1,0 +1,10 @@
+{
+  "tag": "v0.4.5",
+  "source_sha": "db9c67bb0b293f1e5b103a62ab04d7f3fe6770fa",
+  "run_id": 39482258361,
+  "checksums": {
+    "FaseGrooveArranger-0.4.5-Linux-x86_64.tar.gz": "9d80d4b25ad835e5bee2e2954cc0c5c6028f73ab91ac7ac8cea9e9339d128398",
+    "FaseGrooveArranger-0.4.5-Windows-AMD64.zip": "fd46e197992b67e6bb01b02e0e852b73ecaf18e22c599797e22e1897d974e519",
+    "FaseGrooveArranger-0.4.5-macOS-universal.tar.gz": "f294689e04350e55347a6d7efe2f58603a85de078e9b7a47636b3f71e46b3d18"
+  }
+}
