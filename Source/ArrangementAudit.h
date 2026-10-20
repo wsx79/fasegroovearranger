@@ -67,6 +67,12 @@ inline bool writeClubAudioAudit(const juce::File& folder){
             preview.loop=false;preview.normalise();
             auto result=audio.exportAudio(preview,folder.getChildFile("preview-"+juce::String(genre)+".mp3"),-1,true,[]{return false;},[](double){});
             ok=result.wasOk()&&ok;
+            if(genre==4){
+                auto drums=preview;for(int ti=0;ti<4;++ti)drums.tracks[(size_t)ti].mute=true;
+                ok=audio.exportAudio(drums,folder.getChildFile("Jackin-drums.mp3"),-1,true,[]{return false;},[](double){}).wasOk()&&ok;
+                ok=audio.exportAudio(preview,folder.getChildFile("Jackin-bass.mp3"),1,true,[]{return false;},[](double){}).wasOk()&&ok;
+                ok=audio.exportAudio(preview,folder.getChildFile("Jackin-keys.mp3"),0,true,[]{return false;},[](double){}).wasOk()&&ok;
+            }
             if(genre==1||genre==2||genre==6||genre==8){
                 const auto bassFile=folder.getChildFile("bass-check.wav");
                 ok=audio.exportAudio(preview,bassFile,1,false,[]{return false;},[](double){}).wasOk()&&ok;
@@ -75,8 +81,8 @@ inline bool writeClubAudioAudit(const juce::File& folder){
                 bassReader.reset();bassFile.deleteFile();
             }
         }
-        if(genre==1){
-            const auto mp3=audio.exportAudio(p,folder.getChildFile("Soulful-House-full-song.mp3"),-1,true,[]{return false;},[](double){});
+        if(genre==1||genre==4){
+            const auto mp3=audio.exportAudio(p,folder.getChildFile(genre==1?"Soulful-House-full-song.mp3":"Jackin-full-song.mp3"),-1,true,[]{return false;},[](double){});
             ok=mp3.wasOk()&&ok;
         }
     }

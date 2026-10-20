@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.4.6** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.4.7** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)

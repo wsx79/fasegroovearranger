@@ -16,7 +16,7 @@ inline const GenreSound& genreSound(int genre){
         {0,0,1,2,1,3, .38,.28,.32,.42,.67,.25,.50, .60,.84,.20,.30}, // soulful: Rhodes / live kit
         {3,3,1,1,2,2, .24,.05,.24,.28,.42,.08,.38, .47,.92,.18,.16}, // deep: organ / 808
         {5,0,1,2,1,6, .57,.30,.42,.48,.72,.28,.56, .48,.82,.22,.19}, // gospel: Leslie / live kit
-        {4,3,0,0,0,4, .64,.24,.65,.63,.28,.06,.62, .48,.88,.12,.28}, // jackin: Wurli / 909
+        {1,4,0,0,0,0, .72,.54,.65,.68,.18,.00,.62, .56,.80,.12,.22}, // jackin: dry piano chops / articulate electric bass / 909
         {2,3,0,0,0,5, .75,.20,.60,.66,.30,.08,.64, .53,.86,.12,.21}, // piano jack: M1 / 909
         {0,3,0,1,2,5, .49,.04,.52,.62,.24,.05,.58, .48,.98,.12,.23}, // UK: chopped Rhodes / 808 sub
         {4,3,3,2,4,2, .35,.10,.40,.48,.52,.24,.48, .40,.88,.17,.35}, // Afro: dark keys / nylon / percussion
@@ -37,14 +37,18 @@ inline void applyGenreSound(Project& p){
     for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(t.locked)continue;auto& e=t.engine;
         e.fillEvery=ti<4?16:8;e.variationEvery=8;e.afterFill=true;
         if(ti==0){e.gate=a.gate;e.strum=a.strum;e.centre=p.settings.genre==11?67:64;e.octaveTop=p.settings.genre==9;e.density=a.density;e.humanize=p.settings.genre==10?.32:.14;}
-        if(ti==1){e.bassFeel=(p.settings.genre==2||p.settings.genre==6||p.settings.genre==7||p.settings.genre==12)?2:0;e.humanize=.05;e.realism=true;}
+        if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==2||p.settings.genre==6||p.settings.genre==7||p.settings.genre==12)?2:0;e.humanize=.05;e.realism=true;}
+        if(p.settings.genre==4){
+            // The bass is a short funky line, not a held low organ chord.
+            if(ti==1){e.gate=.30;e.humanize=.08;}
+        }
         if(ti==2)e.density=.3;
-        if(ti==3){e.strum=p.settings.genre==8?.12:.22;e.letRing=p.settings.genre==11;e.roomForBand=true;e.density=p.settings.genre==8?.68:.35;}
+        if(ti==3){e.strum=p.settings.genre==8?.12:.22;e.letRing=p.settings.genre==11;e.roomForBand=true;e.density=p.settings.genre==8?.68:p.settings.genre==4?.22:.35;if(p.settings.genre==4)e.strum=.06;}
         // Keep user instruments and their mix/routing. Genre changes configure
         // their MIDI vocabulary, while the original guide palette is curated.
         if(t.instrument!="internal")continue;
         t.pan=0;e.chorus=0;e.pump=0;e.reverb=0;
-        if(ti==0){t.sound=a.piano;t.gain=a.pianoGain;e.tone=a.pianoTone;e.reverb=p.settings.genre==11?.24:.10;e.chorus=p.settings.genre==1||p.settings.genre==10?.12:0;}
+        if(ti==0){t.sound=a.piano;t.gain=a.pianoGain;e.tone=a.pianoTone;e.reverb=p.settings.genre==11?.24:p.settings.genre==4?.025:.10;e.chorus=p.settings.genre==1||p.settings.genre==10?.12:0;}
         else if(ti==1){t.sound=a.bass;t.gain=a.bassGain;e.tone=a.bassTone;}
         else if(ti==2){t.gain=a.stringsGain;e.tone=p.settings.genre==8?.56:.25;e.reverb=.18;}
         else if(ti==3){t.sound=a.guitar;t.gain=a.guitarGain;e.tone=a.guitarTone;e.reverb=.07;t.pan=.14;}

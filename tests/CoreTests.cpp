@@ -52,6 +52,23 @@ int main(int argc,char** argv){try{
     volume.points={{8,.2,.4},{automated.sectionStart(1)+4,.8,-.5}};const auto oldSecond=volume.points[1].beat;automated.insertSection(1,{fga::Section::main,8,"Inserted"});check(volume.points[1].beat==oldSecond+32,"insert shifts automation");automated.removeSection(1);check(volume.points[1].beat==oldSecond,"remove shifts automation back");
     automated.moveSection(0,1);check(volume.points[0].beat==4&&volume.points[0].value==.8,"automation follows moved sections");
     fga::VolumeAutomation malformedVolume;malformedVolume.enabled=true;malformedVolume.points={{4,3,2},{-1,-2,-3},{4,.3,.5},{std::numeric_limits<double>::quiet_NaN(),1,0}};malformedVolume.normalise(8);check(malformedVolume.points.size()==2&&malformedVolume.points[0].beat==0&&malformedVolume.points[0].value==0&&malformedVolume.points[1].value==.3,"sanitize sort and merge automation points");
+    // Musical regression: Jackin' keeps a short, swung bass/chop pocket rather
+    // than layering the same string answers and held organ over every drop.
+    for(std::uint32_t seed:{1U,42U,1979U,7891U}){
+        auto jack=fga::newProject(4);jack.settings.seed=seed;fga::applyGenre(jack,4);fga::generate(jack);
+        check(jack.settings.bassMode==sgk::bassModeForLine(22),"Jackin has funky octave/ghost pickups rather than a sub hold");
+        check(jack.settings.stringsMode==0,"Jackin factory arrangement leaves room for the chopped hook");
+        int chorus=0;while(jack.sections[(size_t)chorus].type!=fga::Section::drop)++chorus;
+        const auto& bass=jack.tracks[1].clips[(size_t)chorus].notes;double lengths=0;bool swung=false;
+        for(auto n:bass){lengths+=n.length;double cell=std::fmod(n.start,1.);if(std::abs(cell-(.75+jack.settings.swing/12))<.015)swung=true;}
+        check(!bass.empty()&&lengths/bass.size()<.3&&swung,"Jackin bass has articulated notes and swung sixteenth pickups");
+        check(jack.tracks[2].clips[(size_t)chorus].notes.empty(),"no automatic string wash in Jackin drop");
+        for(auto n:jack.tracks[3].clips[(size_t)chorus].notes)check(((int)(n.start/4)%2)==1,"Jackin percussive guitar alternates with the chopped hook");
+        const auto& keys=jack.tracks[0].clips[(size_t)chorus].notes;lengths=0;for(auto n:keys)lengths+=n.length;
+        check(!keys.empty()&&lengths/keys.size()<.4,"Jackin hook is chopped, not a sustained keyboard bed");
+        auto custom=jack;custom.settings.stringsMode=1;fga::generate(custom,fga::Scope::track,2);
+        check(!custom.tracks[2].clips[(size_t)chorus].notes.empty(),"strings can still be enabled by the musician");
+    }
     std::set<std::string> palettes;
     for(int g=0;g<13;++g){auto styled=fga::newProject(g);std::ostringstream signature;for(int t:{0,1,3,4})signature<<styled.tracks[(size_t)t].sound<<":"<<styled.tracks[(size_t)t].engine.tone<<":";palettes.insert(signature.str());check(styled.tracks[1].pan==0&&styled.tracks[1].engine.reverb==0&&styled.tracks[1].engine.chorus==0,"dry centred default bass");check(styled.tracks[4].gain*.95>styled.tracks[8].gain*.28&&styled.tracks[4].gain*.95<3*styled.tracks[8].gain*.28,"drum balance includes original engine lane calibration");}
     check(palettes.size()==13,"thirteen distinct sound palettes, not one default kit/keyboard");

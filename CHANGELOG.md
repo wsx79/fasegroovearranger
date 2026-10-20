@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.4.7 — 2026-10-20
+
+- Jackin’: original-library chopped hooks, more articulated Wurlitzer bass, strings off by default and alternating percussive guitar in the requested funky/disco direction (Da Funk Junkies). Other genres remain unchanged.
+- Audit includes full Jackin’ song and separate drum, bass and keyboard previews; four-seed regressions and user-enabled strings checked.
+
 ## 0.4.6 — 2026-10-20
 
 - Correct drum balance for the original engine’s existing lane calibration: snare, clap and cymbals are no longer attenuated twice.

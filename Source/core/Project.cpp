@@ -30,7 +30,14 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     std::vector<int> candidates;
     const auto& patterns=sgk::groovePatterns();
     const auto category=sgk::grooveCategories()[(size_t)s.genre];
-    for(size_t i=0;i<patterns.size();++i) if(patterns[i].category==category) candidates.push_back((int)i);
+    for(size_t i=0;i<patterns.size();++i) if(patterns[i].category==category) {
+        // Jackin' is built around a chopped two-bar hook. Keep automatic
+        // selection out of held organ/warehouse phrases; explicit presets and
+        // hand-edited patterns below still take precedence.
+        if(s.genre==4 && patterns[i].name!="Disco Jack Chops" && patterns[i].name!="Jack Chops"
+                     && patterns[i].name!="Chicago Stab Jack" && patterns[i].name!="Jack Stab Skips")continue;
+        candidates.push_back((int)i);
+    }
     p.pattern=candidates.empty()?0:candidates[seed%candidates.size()];
     auto pattern=sgk::makeVariation(patterns[(size_t)p.pattern],seed);
     if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
@@ -276,7 +283,7 @@ void applyGenre(Project& p,int genre) {
     }
     chooseProgression(p,presets[p.settings.genre]);
     // Match each style to an actual named bass line in the original library.
-    static const int bassLines[]{8,23,16,11,14,13,18,15,20,12,10,16,12};
+    static const int bassLines[]{8,23,16,11,22,13,18,15,20,12,10,16,12};
     p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
     applyGenreSound(p);
 }
@@ -399,6 +406,7 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
         if(track==2&&sec.type==Section::main)return genre==8?phrase>=4:genre==11?phrase<6:phrase>=6;
         if(track==3&&!p.settings.guitarLead){
+            if(genre==4)return phrase%2==1; // percussive guitar answers the chopped keys
             if(genre==7)return phrase%4>=2; // percussion/guitar answers
             if(genre==2||genre==9||genre==12)return phrase>=6;
             return phrase%4>=2; // leave the first half to the piano
@@ -456,7 +464,12 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
             } else if(ti==3) {
-                fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre; gs.riffSeed=e.riffSeed?e.riffSeed:mix(s.seed+393U);gs.stepsPerChord=s.chordSteps;
+                fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre;
+                if(s.genre==4&&e.pattern<0){
+                    const auto& patterns=fgg::guitarPatterns();
+                    for(size_t i=0;i<patterns.size();++i)if(patterns[i].name=="Chicago Chank"){gs.pattern=(int)i;break;}
+                }
+                gs.riffSeed=e.riffSeed?e.riffSeed:mix(s.seed+393U);gs.stepsPerChord=s.chordSteps;
                 gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
                 gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
