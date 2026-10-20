@@ -11,7 +11,7 @@ namespace fga {
 namespace {
 juce::String slug(juce::String s){s=s.toLowerCase().replaceCharacter(0x00e0,'a').replaceCharacter(0x00e8,'e').replaceCharacter(0x00e9,'e').replaceCharacter(0x00ec,'i').replaceCharacter(0x00f2,'o').replaceCharacter(0x00f9,'u').replaceCharacter(' ','-');return s.retainCharacters("abcdefghijklmnopqrstuvwxyz0123456789-");}
 juce::Image guideImage(const juce::String& name){
-    if(name=="logo.svg"){juce::Image image(juce::Image::ARGB,560,160,true);juce::Graphics g(image);g.fillAll(Palette::background);Branding::drawFullLogo(g,{0,0,560,160});return image;}
+    if(name=="logo.svg"){juce::Image image(juce::Image::ARGB,560,160,true);juce::Graphics g(image);g.fillAll(Palette::background);Branding::drawFullLogo(g,{0,28,560,104});return image;}
     if(name=="options.png")return juce::ImageCache::getFromMemory(BinaryData::options_png,BinaryData::options_pngSize);
     if(name=="screenshot.png"||name.endsWith("guide_arrangement.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_arrangement_png,BinaryData::guide_arrangement_pngSize);
     if(name.endsWith("guide_piano.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_piano_png,BinaryData::guide_piano_pngSize);
