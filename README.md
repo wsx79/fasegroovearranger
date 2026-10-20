@@ -21,6 +21,8 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 - Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3 instrument per track (Audio Units also on macOS). Plugin editor and state persistence.
 - Project files (`.fga`), atomic saves, periodic local autosave and missing-instrument relinking.
 - Multitrack MIDI and individual MIDI files; stereo 24-bit WAV and 320 kbps stereo MP3, for a mix, one track or all 17 stems. **The MP3 encoder is bundled.**
+- Six original interface languages (English, Italian, Spanish, French, German and Portuguese), translated control tooltips with a saved on/off preference, and extended piano controls including step dynamics, inversions, independent riff/feel seeds and sustain/expression MIDI controllers.
+- Original piano DNA, Morph, Voicing Coach A/B, Chord Variation Lab and circle of fifths; MIDI harmony/rhythm analysis, opt-in keyboard chord learning and local track presets. Shared half/one/two/four-bar harmonic duration; guide-sound pump rate and tempo/Kick-MIDI source.
 - Italian/English guides, in-app privacy/permissions and the original ecosystem's credits, artist logo and links.
 
 ## Build and run

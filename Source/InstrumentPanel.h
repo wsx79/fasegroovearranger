@@ -24,6 +24,7 @@ private:
     void heading(const juce::String&);
     void knob(const juce::String&,double,double,double,double,std::function<void(EngineOptions&,double)>,const juce::String& suffix={});
     void choice(const juce::String&,const juce::StringArray&,int,std::function<void(EngineOptions&,int)>);
+    void sharedChoice(const juce::String&,const juce::StringArray&,int,std::function<void(int)>);
     void action(const juce::String&,std::function<void()>);
     void toggle(const juce::String&,bool,std::function<void(EngineOptions&,bool)>);
     void apply(std::function<void(EngineOptions&)>);

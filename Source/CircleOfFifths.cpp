@@ -26,7 +26,7 @@ namespace
 
     juce::Font font (float h, bool bold)
     {
-        return juce::Font (juce::FontOptions (h).withStyle (bold ? "Bold" : "Regular"));
+        return FamilyTheme::font(h,bold);
     }
 }
 

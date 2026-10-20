@@ -165,6 +165,9 @@ juce::String upper (const juce::String& text)
 juce::String tr (const juce::String& english)
 {
     const int lang = currentLanguage.load();
+    // "Close" is a voicing; "CLOSE" is the dialog action. Keep their musical meanings distinct.
+    if(english=="Close"){static const char* words[]{"Close","Stretto","Cerrado","Serré","Enge Lage","Fechado"};return juce::String::fromUTF8(words[juce::jlimit(0,5,lang)]);}
+
 
     const auto& map = index();
     const auto it = map.find (english.toLowerCase().toStdString());

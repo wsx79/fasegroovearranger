@@ -2,6 +2,25 @@
 #include "UiText.h"
 namespace fga {
 juce::String controlTip(const juce::String& key){
+    if(key.equalsIgnoreCase("NEW"))return tr("Start a new song project.");
+    if(key.equalsIgnoreCase("OPEN"))return tr("Open a local .fga project.");
+    if(key.equalsIgnoreCase("EXPORT"))return tr("Export the mix or separate tracks as MIDI, WAV or MP3.");
+    if(key.equalsIgnoreCase("LOAD SAMPLE"))return tr("Choose a personal audio sample for this track.");
+    if(key.equalsIgnoreCase("LOAD VST3 / AU"))return tr("Load an installed instrument; OPEN VST shows its own controls.");
+    if(key.equalsIgnoreCase("OPEN VST"))return tr("Load an installed instrument; OPEN VST shows its own controls.");
+    if(key.equalsIgnoreCase("COPY"))return tr("Copy or paste MIDI notes in the selected clip.");
+    if(key.equalsIgnoreCase("PASTE"))return tr("Copy or paste MIDI notes in the selected clip.");
+    if(key.equalsIgnoreCase("QUANTISE"))return tr("Align selected notes to the chosen grid.");
+    if(key.equalsIgnoreCase("TEMPO"))return tr("Change playback tempo immediately; existing MIDI notes are preserved.");
+    if(key.equalsIgnoreCase("Volume"))return tr("Set the audio level or stereo position of this track.");
+    if(key.equalsIgnoreCase("PAN"))return tr("Set the audio level or stereo position of this track.");
+    if(key.equalsIgnoreCase("ZOOM"))return tr("Change how much of the timeline is visible.");
+    if(key.equalsIgnoreCase("OPTIONS"))return tr("Choose the language, control tooltips, credits and privacy.");
+    if(key.equalsIgnoreCase("LOOP"))return tr("Repeat the song or the selected section during playback.");
+    if(key.equalsIgnoreCase("LOOP SECTION"))return tr("Repeat the song or the selected section during playback.");
+    if(key.equalsIgnoreCase("INSTRUMENT PANEL"))return tr("Go back to the arrangement or open this instrument's controls.");
+    if(key.equalsIgnoreCase("< ARRANGEMENT"))return tr("Go back to the arrangement or open this instrument's controls.");
+
     if(key.equalsIgnoreCase("GROOVE"))return tr("The rhythm of both hands, grouped by genre");
     if(key.equalsIgnoreCase("REGISTER"))return tr("Moves the right hand up or down the keyboard");
     if(key.equalsIgnoreCase("STRUM"))return tr("Rolls the chord notes like a pianist instead of hitting them all together");
@@ -57,6 +76,8 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("VARIATION EVERY"))return tr("Every 4 or 8 bars the last bar plays a variation of the groove, so the loop never feels static. Evolve: over 8 or 16 bars the same groove grows - as written, then ghost notes, then a variation, then a fill into the next round");
     if(key.equalsIgnoreCase("EVOLVE"))return tr("Every 4 or 8 bars the last bar plays a variation of the groove, so the loop never feels static. Evolve: over 8 or 16 bars the same groove grows - as written, then ghost notes, then a variation, then a fill into the next round");
     if(key.startsWithIgnoreCase("Inversion"))return tr("Change the inversion of this chord, from three steps down to three steps up.");
+    if(key.equalsIgnoreCase("Voicing"))return tr("How the chord notes are spread on the keyboard");
+    if(key.equalsIgnoreCase("Extensions"))return tr("How rich the chords are: triads, 7ths, 9ths, 11ths/13ths, 6/9, sus...");
     return tr(key)+". "+tr("Settings apply on the next generation; the MIDI already written stays editable.");
 }
 
@@ -70,7 +91,9 @@ void translateControls(juce::Component& c){
     juce::String key;
     if(auto* button=dynamic_cast<juce::Button*>(&c)){key=button->getButtonText();button->setButtonText(text(key,"button"));key=properties["buttonSource"].toString();}
     else if(auto* box=dynamic_cast<juce::ComboBox*>(&c)){
+        const int selectedId=box->getSelectedId();
         for(int i=0;i<box->getNumItems();++i){auto id=box->getItemId(i);box->changeItemText(id,text(box->getItemText(i),"item"+juce::String(id)));}
+        box->setSelectedId(selectedId,juce::dontSendNotification);
     }
     else if(auto* label=dynamic_cast<juce::Label*>(&c))label->setText(text(label->getText(),"label"),juce::dontSendNotification);
     if(properties.contains("fgaControl"))key=properties["fgaControl"].toString();

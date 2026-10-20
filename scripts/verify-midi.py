@@ -4,12 +4,13 @@ from pathlib import Path
 import struct
 import sys
 
-def read(path, expected_tracks):
+def read(path, expected_tracks, require_cc=False):
     data = Path(path).read_bytes()
     assert data[:4] == b'MThd'
     header_len, fmt, tracks, ppq = struct.unpack('>IHHH', data[4:14])
     assert (header_len, fmt, tracks, ppq) == (6, 1, expected_tracks, 960)
     pos, note_count, tempos, markers = 14, 0, 0, 0
+    controllers=set(); last_cc={}
     for _ in range(tracks):
         assert data[pos:pos+4] == b'MTrk'
         size = struct.unpack('>I', data[pos+4:pos+8])[0]
@@ -38,10 +39,14 @@ def read(path, expected_tracks):
                 if typ == 47: assert size == 0 and pos == end
             else:
                 typ, channel = status >> 4, status & 15
-                assert typ in (8, 9, 12)
+                assert typ in (8, 9, 11, 12)
                 pitch = data[pos]; pos += 1
                 if typ == 12: continue
                 velocity = data[pos]; pos += 1
+                if typ==11:
+                    controllers.add(pitch);last_cc[pitch]=velocity
+                    assert 0<=pitch<=127 and 0<=velocity<=127
+                    continue
                 key = channel, pitch
                 if typ == 9 and velocity:
                     assert key not in active, f'overlapping note {key}'
@@ -52,8 +57,11 @@ def read(path, expected_tracks):
         assert not active, f'hanging notes in track: {active}'
         assert pos == end
     assert pos == len(data) and tempos == 1 and markers >= 6 and note_count > 0
+    if require_cc: assert {11,64}.issubset(controllers) and last_cc[64]==0 and last_cc[11]==127, 'pedal/expression export and reset'
     print(f'PASS {path}: {tracks} tracks, {note_count} matched notes, {markers} section markers')
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else 'build/core')
 read(folder / 'test-song.mid', 18)
 read(folder / 'test-kick.mid', 2)
+
+read(folder / "test-piano-cc.mid",2,True)

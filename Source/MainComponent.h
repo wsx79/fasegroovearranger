@@ -8,6 +8,7 @@
 #include <set>
 namespace fga {
 class MainComponent;
+bool verifyPianoTools(MainComponent&,const juce::File&);
 class ArrangementView : public juce::Component {
 public:
     explicit ArrangementView(MainComponent& m):owner(m){}
