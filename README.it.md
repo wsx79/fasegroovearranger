@@ -19,7 +19,7 @@
 
 ---
 
-**Versione pubblicata: [0.4.3](https://github.com/wsx79/fasegroovearranger/releases/tag/v0.4.3).** I pacchetti verificati per Windows, macOS universal e Linux sono nella sezione **Assets** della release. È una versione iniziale di sviluppo.
+**[Scarica l’ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).** I pacchetti verificati per Windows, macOS universal e Linux sono nella sezione **Assets**. È un’applicazione iniziale di sviluppo.
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
