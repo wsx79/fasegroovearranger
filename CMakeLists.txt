@@ -60,7 +60,7 @@ if(FGA_BUILD_APP)
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
         MICROPHONE_PERMISSION_ENABLED FALSE)
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
-        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_mixer.png PRIVACY.it.md THIRD_PARTY_NOTICES.md)
+        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_mixer.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
     target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/MainComponent.cpp Source/InstrumentPanel.cpp Source/UiText.cpp Source/Localisation.cpp Source/PianoTools.cpp Source/CircleOfFifths.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp)
     target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1

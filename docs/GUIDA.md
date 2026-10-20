@@ -44,15 +44,15 @@ Se scarichi da GitHub Actions, nello ZIP dell'artifact trovi il pacchetto indica
 
 1. Nel menu del genere scegli **Soulful**.
 2. Lascia **5.0 min** oppure scegli la durata che ti serve.
-3. Premi **NEW ARRANGEMENT**: compaiono intro, parti principali, break e outro.
-4. Premi **PLAY** o la **barra spaziatrice** e ascolta.
+3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
+4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Clicca un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGEMENT**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
-7. Premi **SAVE**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
+6. Torna con **< ARRANGIAMENTO**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
+7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
-Vuoi un'altra versione? **NEW TRACK** cambia solo lo strumento scelto; **NEW CLIP** cambia solo quella traccia in quella sezione. **UNDO** ti riporta al tentativo precedente.
+Vuoi un'altra versione? **NUOVA TRACCIA** cambia solo lo strumento scelto; **NUOVO CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
 
-> Hai trovato una parte che ti piace? Apri il suo pannello e accendi **LOCK TRACK** o **LOCK CLIP** prima di provare altre varianti.
+> Hai trovato una parte che ti piace? Apri il suo pannello e accendi **BLOCCA TRACCIA** o **BLOCCA CLIP** prima di provare altre varianti.
 
 ## 3. La finestra, sezione per sezione
 
@@ -62,14 +62,14 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 
 | Dove | Cosa trovi |
 |---|---|
-| **NEW · OPEN · SAVE · SAVE AS** | Un progetto nuovo, l'apertura e il salvataggio dei tuoi brani. |
-| **PLAY · STOP · LOOP** | Ascolto, ritorno all'inizio e ripetizione della zona scelta. Il cursore azzurro mostra dove sei. |
+| **NUOVO · APRI · SALVA · SALVA COME** | Un progetto nuovo, l'apertura e il salvataggio dei tuoi brani. |
+| **AVVIA · FERMA · LOOP** | Ascolto, ritorno all'inizio e ripetizione della zona scelta. Il cursore azzurro mostra dove sei. |
 | **Genere e durata** | Il carattere del brano e la durata desiderata, da 4 a 12 minuti. |
-| **PROGRESSION · EDIT CHORDS** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
+| **PROGRESSIONE · MODIFICA ACCORDI** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
 | **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
 | **Nome della traccia** | Apre il pannello dello strumento, con groove, esecuzione, suono e mixer. |
 | **Clip** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
-| **AUDIO · OPTIONS · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
+| **AUDIO · OPZIONI · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
 
 I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
 
@@ -77,7 +77,7 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 ## 4. Costruire un brano: intro, break, drop
 
-**NEW ARRANGEMENT** prepara la forma del genere scelto e scrive il MIDI. La durata si arrotonda alla frase musicale successiva: un obiettivo di cinque minuti può diventare, per esempio, 5:14.
+**NUOVO ARRANGIAMENTO** prepara la forma del genere scelto e scrive il MIDI. La durata si arrotonda alla frase musicale successiva: un obiettivo di cinque minuti può diventare, per esempio, 5:14.
 
 | Parte | Come usarla |
 |---|---|
@@ -94,11 +94,11 @@ La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese;
 
 | Pulsante | Cosa cambia |
 |---|---|
-| **GENERATE SONG** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
-| **NEW TRACK** | La traccia selezionata, lungo tutto il brano. |
-| **NEW SECTION** | La sezione selezionata, su tutte le tracce sbloccate. |
-| **NEW CLIP** | Soltanto la traccia selezionata in quella sezione. |
-| **NEW ARRANGEMENT** | Ricostruisce forma e note in base a genere e durata. Prima devi sbloccare tracce e clip. |
+| **GENERA BRANO** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
+| **NUOVA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
+| **NUOVA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
+| **NUOVO CLIP** | Soltanto la traccia selezionata in quella sezione. |
+| **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere e durata. Prima devi sbloccare tracce e clip. |
 
 **Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** aggiunge una parte Main dopo quella scelta. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
 
@@ -111,17 +111,17 @@ La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese;
 | Controllo | Cosa fa |
 |---|---|
 | **Tonalità / Scala** | La fondamentale e il modo del brano. Sono in alto, accanto al tempo. |
-| **PROGRESSION** | Sceglie un giro dalla libreria di Fase Groove Piano. Alcuni giri impostano anche la scala adatta. |
-| **NEW CHORDS** | Prepara un altro giro di gradi nella scala scelta. |
-| **EDIT CHORDS** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, con durata condivisa. |
+| **PROGRESSIONE** | Sceglie un giro dalla libreria di Fase Groove Piano. Alcuni giri impostano anche la scala adatta. |
+| **NUOVI ACCORDI** | Prepara un altro giro di gradi nella scala scelta. |
+| **MODIFICA ACCORDI** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, con durata condivisa. |
 | **Estensioni / Voicing** | Il colore degli accordi e la disposizione delle note del piano. |
-| **DENSITY** | Da poche note a un groove più fitto. |
+| **DENSITÀ** | Da poche note a un groove più fitto. |
 | **SWING** | Sposta i sedicesimi alternati: da dritto a più shuffle. |
-| **FEEL / HUMANIZE** | Piccole differenze di tempo e dinamica. |
+| **FEEL / UMANIZZA** | Piccole differenze di tempo e dinamica. |
 
 Il **tempo** cambia subito la velocità di ascolto. Le altre scelte preparano la prossima generazione: le note che hai già scritto restano al loro posto finché non le applichi.
 
-Nel pannello di uno strumento, **APPLY TRACK** o **APPLY CLIP** applica i suoi parametri mantenendo la variante del groove. I pulsanti **NEW** nell'arrangiamento scelgono invece un'altra variante.
+Nel pannello di uno strumento, **APPLICA TRACCIA** o **APPLICA CLIP** applica i suoi parametri mantenendo la variante del groove. I pulsanti **NUOVO** nell'arrangiamento scelgono invece un'altra variante.
 
 > Dopo aver cambiato tonalità o giro, rigenera insieme gli strumenti interessati. Una parte bloccata conserva le sue note, anche se il resto del brano cambia armonia.
 
@@ -131,7 +131,7 @@ Le prime tredici tracce sono i pezzi della batteria: **Kick, Snare, Clap, Rim, C
 
 ![Il pannello del piano](images/guide_piano.png)
 
-Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli con cosa ascoltarlo; sotto trovi groove, feel, esecuzione e fill. **EDIT MIDI** apre le note; **< ARRANGEMENT** torna al brano.
+Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli con cosa ascoltarlo; sotto trovi groove, feel, esecuzione e fill. **EDIT MIDI** apre le note; **< ARRANGIAMENTO** torna al brano.
 
 | Strumento | Da dove partire |
 |---|---|
@@ -143,32 +143,34 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 
 ### Piano: vista estesa
 
+Le schermate mostrano la lingua inglese; i nomi dei comandi qui sotto seguono la lingua italiana.
+
 Il pannello del piano mostra i controlli estesi. Il menu **ESTESA** in alto porta direttamente a Esecuzione, Frasi/Fill, Ritmo/Dinamica, Strumenti musicali e Suono guida.
 
-Trovi i **rivolti per accordo**, il seed del riff e del feel, **NEW FEEL**, pedale ed espressione CC64/CC11, ordine e blocchi A–D, griglia di 32 step e cursori della dinamica. Clicca uno step per scegliere pausa, nota, accento, ghost, anticipo o tenuto. Trascina il cursore per la dinamica; doppio clic torna al valore automatico. **RND PIANO** cambia il ritmo rispettando i segmenti bloccati; **RND VELOCITY** cambia solo le dinamiche.
+Trovi i **rivolti per accordo**, il seed del riff e del feel, **NUOVO FEEL**, pedale ed espressione CC64/CC11, ordine e blocchi A–D, griglia di 32 step e cursori della dinamica. Clicca uno step per scegliere pausa, nota, accento, ghost, anticipo o tenuto. Trascina il cursore per la dinamica; doppio clic torna al valore automatico. **RND PIANO** cambia il ritmo rispettando i segmenti bloccati; **DINAMICHE CASUALI** cambia solo le dinamiche.
 
-**DNA**, **MORPH**, **A/B**, **VARIANTS** e il **CIRCOLO DELLE QUINTE** usano gli strumenti musicali originali. I risultati preparano i parametri: APPLY TRACK / APPLY CLIP scrive le note. A e B permettono anche l'ascolto del clip con due voicing: UNDO annulla la prova. PRESETS salva e carica i parametri della traccia in file `.fgapreset`. IMPORT MIDI stima accordi e ritmo; verifica il risultato prima di rigenerare. **LEARN** apprende un accordo quando rilasci tutti i tasti, dopo aver scelto l'ingresso MIDI.
+**DNA**, **MORPH**, **A/B**, **VARIANTS** e il **CIRCOLO DELLE QUINTE** usano gli strumenti musicali originali. I risultati preparano i parametri: APPLICA TRACCIA / APPLICA CLIP scrive le note. A e B permettono anche l'ascolto del clip con due voicing: ANNULLA annulla la prova. PRESETS salva e carica i parametri della traccia in file `.fgapreset`. IMPORTA MIDI stima accordi e ritmo; verifica il risultato prima di rigenerare. **LEARN** apprende un accordo quando rilasci tutti i tasti, dopo aver scelto l'ingresso MIDI.
 
-Da **EDIT CHORDS → Ogni accordo** imposti la durata armonica condivisa: mezza, una, due o quattro battute. Il pump del suono guida offre frequenza, rilascio e sorgente **Tempo / MIDI della cassa**. Quest'ultima segue le note della traccia Kick; non è un ingresso audio esterno.
+Da **MODIFICA ACCORDI → Ogni accordo** imposti la durata armonica condivisa: mezza, una, due o quattro battute. Il pump del suono guida offre frequenza, rilascio e sorgente **Tempo / MIDI della cassa**. Quest'ultima segue le note della traccia Kick; non è un ingresso audio esterno.
 
-Da **OPTIONS → Lingue** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso menu. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
+Da **OPZIONI → Lingue** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso menu. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
 
 ### Suono guida, campione o VST
 
 | Pulsante | Cosa scegli |
 |---|---|
 | **BUILT-IN** | Torna al suono guida. Piano e basso hanno i sette timbri di tastiera; archi, quattro chitarre e quattro kit hanno i loro suoni. |
-| **LOAD SAMPLE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. |
-| **LOAD VST3 / AU** | Uno strumento installato sul tuo computer. Scegli il bundle `.vst3`; su macOS puoi scegliere anche un'Audio Unit installata. |
-| **OPEN VST** | L'interfaccia dello strumento che hai caricato. |
+| **CARICA CAMPIONE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. |
+| **CARICA VST3 / AU** | Uno strumento installato sul tuo computer. Scegli il bundle `.vst3`; su macOS puoi scegliere anche un'Audio Unit installata. |
+| **APRI VST** | L'interfaccia dello strumento che hai caricato. |
 
-**GAIN, PAN, MUTE e SOLO** appartengono alla traccia. **TONE, REVERB, CHORUS e PUMP** cambiano soltanto il suono guida; per il suono del tuo VST usa i suoi comandi. I parametri di groove continuano a scrivere il MIDI che gli arriva.
+**GAIN, PAN, MUTE e SOLO** appartengono alla traccia. **TIMBRO, RIVERBERO, CHORUS e PUMP** cambiano soltanto il suono guida; per il suono del tuo VST usa i suoi comandi. I parametri di groove continuano a scrivere il MIDI che gli arriva.
 
 Per un campione intonato, la radice iniziale è MIDI 60. Per la batteria è la nota del pezzo. **Tasto destro sul nome → Radice campione** la cambia. È un campione trasposto sulle note della traccia, non una libreria multisample.
 
 ## 7. Modificare le note
 
-Clicca un **clip**: l'editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP SECTION** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
+Clicca un **clip**: l'editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP SEZIONE** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
 
 | Azione | Risultato |
 |---|---|
@@ -177,16 +179,16 @@ Clicca un **clip**: l'editor occupa la finestra. Il menu della sezione sceglie l
 | **Bordo destro della nota** | Cambia la durata delle note intonate. |
 | **Alt + trascina in verticale** | Cambia la dinamica, senza spostare la nota. |
 | **Shift + clic** | Aggiunge o toglie una nota dalla selezione. |
-| **Tasto destro / DELETE / Backspace** | Elimina la nota. Nelle lane della chitarra, il tasto destro elimina il gesto di pennata. |
+| **Tasto destro / ELIMINA / Backspace** | Elimina la nota. Nelle lane della chitarra, il tasto destro elimina il gesto di pennata. |
 | **Ctrl/Cmd + A** | Seleziona tutte le note del clip. |
-| **QUANTISE** | Allinea alla griglia scelta: 1/4, 1/8, 1/16 o 1/32. |
+| **QUANTIZZA** | Allinea alla griglia scelta: 1/4, 1/8, 1/16 o 1/32. |
 | **−12 / +12** | Sposta le note intonate di un'ottava. |
 | **VEL** | Cambia la dinamica della selezione; senza selezione, quella delle note nuove. |
-| **COPY / PASTE** | Copia la selezione, oppure tutto il clip, e incolla mantenendo le posizioni nella sezione. |
+| **COPIA / INCOLLA** | Copia la selezione, oppure tutto il clip, e incolla mantenendo le posizioni nella sezione. |
 
 Quantise e trasposizione lavorano sulla selezione; senza selezione, su tutto il clip. Lo **ZOOM** ingrandisce i dettagli nel tempo. **Esc** torna all'arrangiamento.
 
-**IMPORT MIDI**, oppure un `.mid` trascinato sulla finestra, sostituisce le note del clip scelto. Il tempo del progetto resta quello dell'Arranger. Nel kick o in un altro pezzo di batteria, le note importate vengono assegnate al solo pezzo scelto. **UNDO** recupera il clip precedente.
+**IMPORTA MIDI**, oppure un `.mid` trascinato sulla finestra, sostituisce le note del clip scelto. Il tempo del progetto resta quello dell'Arranger. Nel kick o in un altro pezzo di batteria, le note importate vengono assegnate al solo pezzo scelto. **ANNULLA** recupera il clip precedente.
 
 ## 8. La chitarra e il piano di accompagnamento
 
@@ -203,11 +205,11 @@ La chitarra si modifica come in Fase Groove Guitar: **dodici modi di suonare lo 
 | **ARP / LICK** | Una corda alla volta e frasi sull'accordo. |
 | **OCTAVE / POWER / ROOT** | Ottave, power chord e fondamentale sulle corde basse. |
 
-Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue note si selezionano e si spostano insieme. **NOTES / LANES** passa al piano roll quando vuoi intervenire su una singola nota.
+Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue note si selezionano e si spostano insieme. **NOTE / RIGHE** passa al piano roll quando vuoi intervenire su una singola nota.
 
 ### Chi porta avanti il giro?
 
-Nel pannello o nell'editor della chitarra, **SOLISTA** cambia i ruoli. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **UNDO** torna ai ruoli precedenti.
+Nel pannello o nell'editor della chitarra, **SOLISTA** cambia i ruoli. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
 
 ![Il mixer della chitarra](images/guide_mixer.png)
 
@@ -219,11 +221,11 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 ### Soulful: piano davanti, chitarra negli spazi
 
-1. Scegli **Soulful**, una durata di cinque o sei minuti e premi **NEW ARRANGEMENT**.
+1. Scegli **Soulful**, una durata di cinque o sei minuti e premi **NUOVO ARRANGIAMENTO**.
 2. Nel piano parti da **Rhodes (FM)** e un giro con settime o none.
-3. Ascolta la parte principale. Se è troppo piena, abbassa la densità del piano e premi **APPLY CLIP**.
+3. Ascolta la parte principale. Se è troppo piena, abbassa la densità del piano e premi **APPLICA CLIP**.
 4. Lascia la chitarra in accompagnamento. Usa il suo mixer per togliere le righe che coprono il piano.
-5. Blocca la parte di piano che ti piace e prova un **NEW TRACK** sul basso.
+5. Blocca la parte di piano che ti piace e prova un **NUOVA TRACCIA** sul basso.
 
 ### Deep: meno note, più spazio
 
@@ -236,8 +238,8 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 1. Scegli **Jackin'** o **Jackin' Piano**.
 2. Parti da gate corto sul piano e un feel più swingato.
-3. Nel break togli quello che serve alla ripartenza: un **NEW CLIP** sul piano può bastare.
-4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP SECTION**.
+3. Nel break togli quello che serve alla ripartenza: un **NUOVO CLIP** sul piano può bastare.
+4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP SEZIONE**.
 
 ### Funky & Disco: la chitarra guida
 
@@ -249,9 +251,9 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 ## 10. Salvare ed esportare
 
-**SAVE / SAVE AS** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
+**SALVA / SALVA COME** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
 
-Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. UNDO conserva fino a quaranta passaggi mentre l'app è aperta.
+Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. ANNULLA conserva fino a quaranta passaggi mentre l'app è aperta.
 
 | In EXPORT | Cosa ottieni |
 |---|---|
@@ -286,19 +288,19 @@ Hai preparato una nuova tonalità, mentre i clip contengono ancora le note prece
 
 ### Non sento niente
 
-Controlla **AUDIO**, l'uscita scelta, PLAY, il livello master e MUTE/SOLO. Nel pannello della traccia premi **BUILT-IN** per ascoltare con il suono guida. Se quello funziona, controlla il campione o il VST assegnato.
+Controlla **AUDIO**, l'uscita scelta, AVVIA, il livello master e MUTE/SOLO. Nel pannello della traccia premi **BUILT-IN** per ascoltare con il suono guida. Se quello funziona, controlla il campione o il VST assegnato.
 
 ### Il VST o il campione non si trova più
 
-Il progetto ne ricorda il percorso, ma il file può essere stato spostato o mancare su questo computer. Usa **LOAD SAMPLE** o **LOAD VST3 / AU** per ricollegarlo. Controlla anche che il plugin abbia la stessa architettura dell'app e la sua autorizzazione d'uso. Finché uno strumento manca, l'esportazione audio ti chiede di ricollegarlo.
+Il progetto ne ricorda il percorso, ma il file può essere stato spostato o mancare su questo computer. Usa **CARICA CAMPIONE** o **CARICA VST3 / AU** per ricollegarlo. Controlla anche che il plugin abbia la stessa architettura dell'app e la sua autorizzazione d'uso. Finché uno strumento manca, l'esportazione audio ti chiede di ricollegarlo.
 
 ### Ho modificato delle note. Come le tengo mentre provo altro?
 
-Accendi **LOCK CLIP** per quella parte o **LOCK TRACK** per tutto lo strumento. Poi usa i pulsanti NEW sugli altri elementi. Puoi continuare a modificare a mano anche una parte bloccata.
+Accendi **BLOCCA CLIP** per quella parte o **BLOCCA TRACCIA** per tutto lo strumento. Poi usa i pulsanti NUOVO sugli altri elementi. Puoi continuare a modificare a mano anche una parte bloccata.
 
 ### La durata non è esattamente quella che ho scelto
 
-Il brano chiude una frase musicale, invece di tagliarla a metà. Cambiare BPM dopo la generazione cambia anche la durata in minuti. Per rifare la forma al nuovo tempo scegli **NEW ARRANGEMENT**.
+Il brano chiude una frase musicale, invece di tagliarla a metà. Cambiare BPM dopo la generazione cambia anche la durata in minuti. Per rifare la forma al nuovo tempo scegli **NUOVO ARRANGIAMENTO**.
 
 ### Dove sono registrazione, automazioni e catene di effetti?
 
@@ -318,7 +320,7 @@ Usa un file MIDI con tempi in PPQ. I file SMPTE non sono supportati. L'importazi
 
 [Supporta il progetto con PayPal](https://paypal.me/fabios79)
 
-Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**, AI coding assistants. Crediti, licenze e privacy si aprono da **OPTIONS**.
+Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**, AI coding assistants. Crediti, licenze e privacy si aprono da **OPZIONI**.
 
 [Codice sorgente e famiglia Fase Groove](https://github.com/wsx79/fasegroovearranger)
 

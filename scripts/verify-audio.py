@@ -54,3 +54,5 @@ for name in ["guide-welcome-it.png", "guide-chapter-it.png", "guide-search-en.pn
     assert (folder / name).stat().st_size > 10000, name
 
 assert (folder / "localisation.txt").read_text().startswith("PASS"), "six languages, tooltips and extended piano"
+
+assert (folder / "piano-tools.txt").read_text().startswith("PASS"), "musical tools and MIDI chord learning"

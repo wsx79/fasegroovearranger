@@ -16,7 +16,7 @@ void drawFamilyLogo(juce::Graphics& g,juce::Rectangle<float> area){
 }
 InstrumentPanel::InstrumentPanel(MainComponent& m):owner(m){}
 void InstrumentPanel::heading(const juce::String& name){headings.push_back({name,(int)controls.size()});}
-void InstrumentPanel::apply(std::function<void(EngineOptions&)> fn){owner.checkpoint();fn(owner.project.tracks[(size_t)owner.selectedTrack].engine);owner.project.normalise();owner.changed(false);owner.message("Parametri pronti. APPLY TRACK o APPLY CLIP aggiorna il MIDI rispettando i blocchi.");}
+void InstrumentPanel::apply(std::function<void(EngineOptions&)> fn){owner.checkpoint();fn(owner.project.tracks[(size_t)owner.selectedTrack].engine);owner.project.normalise();owner.changed(false);owner.message("Settings apply on the next generation; the MIDI already written stays editable.");}
 void InstrumentPanel::knob(const juce::String& name,double lo,double hi,double step,double value,std::function<void(EngineOptions&,double)> fn,const juce::String& suffix){
     auto c=std::make_unique<juce::Slider>();c->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);c->setTextBoxStyle(juce::Slider::TextBoxBelow,false,110,22);c->setRange(lo,hi,step);c->setValue(value,juce::dontSendNotification);c->setTextValueSuffix(suffix);c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onDragStart=[this]{owner.checkpoint();};auto* raw=c.get();c->onValueChange=[this,raw,fn]{fn(owner.project.tracks[(size_t)owner.selectedTrack].engine,raw->getValue());owner.dirty=true;owner.audio.updateMix(owner.project);};addAndMakeVisible(*c);controls.push_back({std::move(c),name,true});
 }

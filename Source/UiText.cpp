@@ -78,6 +78,7 @@ juce::String controlTip(const juce::String& key){
     if(key.startsWithIgnoreCase("Inversion"))return tr("Change the inversion of this chord, from three steps down to three steps up.");
     if(key.equalsIgnoreCase("Voicing"))return tr("How the chord notes are spread on the keyboard");
     if(key.equalsIgnoreCase("Extensions"))return tr("How rich the chords are: triads, 7ths, 9ths, 11ths/13ths, 6/9, sus...");
+    if(key=="UNDO"||key=="REDO"||key=="CLOSE"||key=="DELETE"||key=="+12"||key=="-12")return tr(key);
     return tr(key)+". "+tr("Settings apply on the next generation; the MIDI already written stays editable.");
 }
 

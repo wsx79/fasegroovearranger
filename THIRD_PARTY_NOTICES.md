@@ -33,3 +33,5 @@ Shine is a simple fixed-point encoder without a psychoacoustic model. The app us
 VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units, macOS and Windows belong to their respective owners. Naming a format does not imply affiliation or endorsement.
 
 No proprietary plugin binary, commercial sample library or third-party musical recording is bundled. Users provide and license their own instruments and samples. Generated MIDI/audio is not required to be AGPL merely because it was produced by this application; rights in any user-supplied content continue to apply. The software is provided without warranty as set out in its licences.
+
+The six-language UI dictionaries and CircleOfFifths component are adapted from those same family snapshots, under their original AGPL notices. The guitar step engine has an Arranger-specific shared harmonic-duration adapter; the 16-step default retains the plugin behaviour.

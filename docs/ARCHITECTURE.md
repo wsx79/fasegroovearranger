@@ -1,6 +1,6 @@
 # Architecture and provenance
 
-The application is a native JUCE GUI executable, not a wrapper around the three plugin binaries. All three original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. Original files remain unchanged; adaptation lives in `Source/core/Project.cpp`.
+The application is a native JUCE GUI executable, not a wrapper around the three plugin binaries. All three original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar step adapter adds a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
 `Project` holds musical settings, ordered sections and 17 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Track count/order is fixed in schema version 1. Section insertion/reordering/removal moves clips together. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
 
@@ -17,3 +17,7 @@ Offline audio export temporarily owns the processing engine and uses the same in
 `FamilyTheme.h`, fonts and FS PITCH logo are taken from the ecosystem. The Arranger icon uses the shared family mark. Credits present the creator and development assistance together, with contributor attribution retained. Italian/English guides and privacy/licence documents are embedded in the binary. The native guide reader renders headings, control tables, examples and screenshots with chapter navigation, full-text search and adjustable text size; it uses no browser or network. The same Markdown sources produce offline HTML guides.
 
 Build targets: `fga_core`, `fga_mp3`, `FaseGrooveArranger`, core/MP3/IO tests. GitHub Actions builds the native app on Ubuntu, Windows and macOS, and runs a Linux audio-render smoke test. See VALIDATION.md for observed results and unverified cases.
+
+The UI reuses the original six-language family dictionaries, the circle of fifths and musical tool algorithms. Language/tooltip preferences live in an Arranger-specific settings file. Translating ComboBox labels preserves item IDs and does not change musical project data. Extended piano controls persist in optional schema-v1 fields; older projects retain their stored MIDI. The step grid and velocity editor drive the original user-pattern and velocity-order engine.
+
+Opt-in MIDI chord learning uses a selected device callback and restores its enabled state when closed. Pedal/expression controllers are scheduled to hosted instruments and SMF export, with sustain-aware seek chase. Guide-sound pump can follow a tempo subdivision or the kick MIDI schedule; it does not expose an external audio-sidechain bus. Musical tools prepare settings; explicit APPLY preserves the editable MIDI workflow.
