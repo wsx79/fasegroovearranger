@@ -226,7 +226,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
 
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
-            if(ti>=4)for(auto& n:clip.notes)n.lane=ti-4;
+            if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             // DJ edges: harmonic instruments leave a clean 16-bar mixing window.
             // Percussion layers enter/leave in eight-bar phrases, never a random cut.
             if(type==Section::intro||type==Section::outro){
