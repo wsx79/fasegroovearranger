@@ -53,3 +53,9 @@ width instead of filling the 1440px workstation. Previously the fixed-width
 Harmony/Circle/Sound or Part/Chords/Sound cards left all extra space in Groove,
 which changed the reference proportions. Global standalone routing remains in
 the DAW toolbar; no musical controls are removed.
+
+Also restore Piano::drawPanel's 6px corners, 11px letter-spaced titles and smaller
+rounded accent tick, rather than applying Drums/Guitar's 8px cards and title
+geometry to every instrument. The missing coloured frame below Piano/Bass/Strings
+tabs is copied from Piano's paint routine. Guitar's chord cards now use the
+original small-row insets and long-name font sizing.

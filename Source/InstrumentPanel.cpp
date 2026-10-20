@@ -28,7 +28,19 @@ public:
     void mouseDown(const juce::MouseEvent&)override{edit();}
     void paint(juce::Graphics& g)override{
         auto names=chordNames(owner.project.settings);const int rows=names.size()>4?2:1,perRow=((int)names.size()+rows-1)/rows;const float w=getWidth()/(float)perRow,h=76.f/rows;
-        for(size_t i=0;i<names.size();++i){auto r=juce::Rectangle<float>((i%perRow)*w,34+(i/perRow)*h,w,h).reduced(3,rows>1?1.5f:0.f);g.setColour(Palette::control);g.fillRoundedRectangle(r,6);g.setColour(Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(r.reduced(.5f),6,1);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(rows>1?8.f:9.5f,true));g.drawText(tr("Bar")+" "+juce::String((int)i+1),r.reduced(4,6).withHeight(12),juce::Justification::centred);g.setColour(Palette::text);g.setFont(FamilyTheme::font(rows>1?12.5f:19.f,true));g.drawFittedText(juce::String::fromUTF8(names[i].c_str()),r.withTrimmedTop(18).reduced(4,4).toNearestInt(),juce::Justification::centred,1,.6f);}
+        for(size_t i=0;i<names.size();++i){
+            const bool small=rows>1;
+            auto r=juce::Rectangle<float>((i%perRow)*w,34+(i/perRow)*h,w,h).reduced(3,small?1.5f:0.f);
+            g.setColour(Palette::control);g.fillRoundedRectangle(r,6);
+            g.setColour(Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(r.reduced(.5f),6,1);
+            auto inner=r.reduced(4,small?2.f:6.f);
+            g.setColour(Palette::dim);g.setFont(FamilyTheme::font(small?8.f:9.5f,true));
+            g.drawText(small?juce::String((int)i+1):tr("Bar").toUpperCase()+" "+juce::String((int)i+1),
+                       inner.removeFromTop(small?9.f:12.f),juce::Justification::centred);
+            const auto name=juce::String::fromUTF8(names[i].c_str());
+            g.setColour(Palette::text);g.setFont(FamilyTheme::font(small?12.5f:name.length()>5?15.f:19.f,true));
+            g.drawFittedText(name,inner.toNearestInt(),juce::Justification::centred,1,.6f);
+        }
         g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10));g.drawText(tr("The chord slots play"),0,getHeight()-28,getWidth(),26,juce::Justification::centred);
     }
 };
@@ -306,7 +318,33 @@ void InstrumentPanel::resized(){
 }
 void InstrumentPanel::paint(juce::Graphics& g){
     g.fillAll(Palette::background);
-    for(const auto& card:cards){g.setColour(Palette::panel);g.fillRoundedRectangle(card.bounds.toFloat(),8);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(card.bounds.toFloat().reduced(.5f),8,1);g.setColour(Palette::accent);g.fillRect(card.bounds.getX()+12,card.bounds.getY()+9,3,12);auto font=FamilyTheme::font(11.5f,true);g.setFont(font);g.setColour(Palette::text);g.drawText(tr(card.title),card.bounds.getX()+23,card.bounds.getY()+4,card.bounds.getWidth()-32,24,juce::Justification::centredLeft);}
+    for(const auto& card:cards){
+        const bool piano=owner.selectedTrack<3;
+        const auto area=card.bounds;
+        const auto r=area.toFloat();
+        const float radius=piano?6.f:8.f;
+        g.setColour(Palette::panel);g.fillRoundedRectangle(r,radius);
+        g.setColour(Palette::panelEdge);g.drawRoundedRectangle(r.reduced(.5f),radius,1);
+        if(piano){
+            // Piano::drawPanel has its own smaller, letter-spaced title.
+            auto head=area.reduced(14,8).removeFromTop(16).toFloat();
+            g.setColour(Palette::accent);g.fillRoundedRectangle(head.getX(),head.getCentreY()-5,2.5f,10,1);
+            auto font=FamilyTheme::font(11,true);font.setExtraKerningFactor(.12f);
+            g.setFont(font);g.setColour(Palette::text.withAlpha(.85f));
+            g.drawText(tr(card.title),head.withTrimmedLeft(9),juce::Justification::centredLeft);
+            if(card.title=="HARMONY & SCALES"){
+                const auto ink=owner.selectedTrack==0?Palette::accent:owner.selectedTrack==1?Palette::accent2:Palette::strings;
+                const auto frame=juce::Rectangle<float>((float)area.getX()+14,(float)area.getY()+106,272,220);
+                g.setColour(ink.withAlpha(.06f));g.fillRoundedRectangle(frame,6);
+                g.setColour(ink.withAlpha(.7f));g.drawRoundedRectangle(frame.reduced(.5f),6,1.2f);
+            }
+        }else{
+            // Drums/Guitar::drawPanel: the original title and rounded tick.
+            g.setColour(Palette::accent);g.fillRoundedRectangle((float)area.getX()+12,(float)area.getY()+11,3,12,1);
+            g.setColour(Palette::text.withAlpha(.92f));g.setFont(FamilyTheme::font(11.5f,true));
+            g.drawText(tr(card.title).toUpperCase(),area.withHeight(34).withTrimmedLeft(21).withTrimmedRight(12),juce::Justification::centredLeft);
+        }
+    }
     if(owner.selectedTrack>=3)for(const auto& card:cards)if(card.title=="GROOVE"&&card.bounds.getHeight()==118){
         const auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;
         for(int part=0;part<4;++part){const int x=432+part*(getWidth()-466)/4;auto r=juce::Rectangle<float>((float)x,(float)card.bounds.getY()+18,(float)(getWidth()-466)/4-8,96);
