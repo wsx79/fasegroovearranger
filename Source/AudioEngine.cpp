@@ -36,7 +36,7 @@ void AudioEngine::seek(double beat){const juce::ScopedLock lock(mutex);currentBe
 void AudioEngine::setLoop(bool enabled,double from,double to){const juce::ScopedLock lock(mutex);looping=enabled;loopFrom=std::clamp(from,0.0,length);loopTo=std::clamp(to,loopFrom,length);}
 void AudioEngine::resetAt(double beat){
     for(auto& ptr:instruments){auto& i=*ptr;i.reset();i.cursor=(size_t)(std::lower_bound(i.schedule.begin(),i.schedule.end(),beat,[](const TimedEvent& e,double b){return e.beat<b;})-i.schedule.begin());
-        i.midi.addEvent(juce::MidiMessage::controllerEvent(1,64,0),0);i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);
+        i.midi.addEvent(juce::MidiMessage::controllerEvent(1,64,0),0);i.midi.addEvent(juce::MidiMessage::controllerEvent(1,11,127),0);i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);
         if(needsChase){std::array<int,128> vel{},lane{},cc;cc.fill(-1);std::array<bool,128> pressed{};bool sustain=false;
             for(size_t k=0;k<i.cursor;++k){const auto& e=i.schedule[k];if(e.controller>=0){cc[(size_t)e.controller]=e.velocity;if(e.controller==64){sustain=e.velocity>=64;if(!sustain)for(size_t n=0;n<128;++n)if(!pressed[n])vel[n]=0;}}else{auto n=(size_t)e.pitch;pressed[n]=e.velocity>0;if(e.velocity>0||!sustain)vel[n]=e.velocity;lane[n]=e.lane;}}
             for(int c=0;c<128;++c)if(cc[(size_t)c]>=0)i.midi.addEvent(juce::MidiMessage::controllerEvent(1,c,cc[(size_t)c]),0);
