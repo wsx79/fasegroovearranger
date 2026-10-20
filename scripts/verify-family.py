@@ -20,11 +20,18 @@ for path, sha in expected.items():
 for name in ['GUIDA', 'GUIDE']:
     doc = root / 'docs' / f'{name}.md'
     text = doc.read_text(encoding='utf-8')
-    assert len(re.findall(r'^## [0-9]+\.', text, re.M)) == 13, doc
+    assert len(re.findall(r'^## [0-9]+\.', text, re.M)) == 9, doc
     for target in re.findall(r'!?\[[^\]]*\]\(([^)]+)\)', text):
         if target.startswith(('https://', 'http://', '#', 'mailto:')):
             continue
         assert (doc.parent / target.split('#')[0]).exists(), (doc, target)
+    assert '*🇬' in text or '*🇮' in text, doc
+    assert '<img src="logo.svg" alt="Fase Groove Arranger" width="560">' in text, doc
+    assert '<img src="screenshot.png"' in text and 'width="900"' in text, doc
+    assert '<img src="options.png"' in text and 'width="460"' in text, doc
+    assert text.count('\n---\n')==9, doc
+    for image in re.findall(r'<img[^>]+src="([^"]+)"',text):
+        assert (doc.parent/image).is_file(),(doc,image)
 for name in ['README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.md', 'PRIVACY.it.md']:
     assert (root / name).is_file(), name
 print('PASS exact family theme + Inter fonts, IT/EN Markdown manuals and local links')

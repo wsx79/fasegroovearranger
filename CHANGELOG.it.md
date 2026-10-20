@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.4.4 — Guida della famiglia Fase Groove
+
+- Ripresa dalla guida Piano la struttura in nove capitoli, con cambio lingua, logo e schermate centrati, separatori, tabelle, ricette, FAQ e chiusura con artista e musica.
+- Conservate nelle sezioni corrispondenti tutte le istruzioni Arranger per strumenti, note, forme per genere, suoni, automazione ed export.
+- Schermate aggiornate dalla 0.4.3 verificata. Il lettore offline interpreta immagini centrate, corsivi, sottotitoli ed elenchi del Markdown originale.
+
 ## 0.4.3 — Automazione volume delle tracce
 
 - Corsia volume opzionale per tutte le 17 tracce: punti trascinabili, griglia/tempi liberi, curve, bypass, cancellazione e annulla/ripeti. Nascosta e disattivata all’avvio; nascondere non disattiva l’ascolto.

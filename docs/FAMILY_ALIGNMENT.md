@@ -59,3 +59,11 @@ rounded accent tick, rather than applying Drums/Guitar's 8px cards and title
 geometry to every instrument. The missing coloured frame below Piano/Bass/Strings
 tabs is copied from Piano's paint routine. Guitar's chord cards now use the
 original small-row insets and long-name font sizing.
+
+## Manual alignment, 0.4.4
+
+Compared the actual six source manuals in Piano, Drums and Guitar. Their chapter structures differ: Piano has nine numbered chapters plus its historical update section, Guitar thirteen, Drums eighteen. Arranger now uses Piano as the explicit full-manual template: title/language link, 560px centered family logo, contents, horizontal chapter separators, install/quick-start/interface/export/live use/song/recipes/FAQ/music order, 900px screenshots and 460px settings image. Shared artist/music wording and the recipe table are reused; only standalone-specific chapter names/content differ. There is no invented thirteen-chapter manual skeleton.
+
+Reference Git blobs: Piano IT `2e7a28ad397e386345fb291f8021c749bf5793e4`, EN `4c83139fc5c4510fa45576bc2f74edcd613ddc34`; Guitar IT `3c8b00bee2392503d3eddd2d19e264db8d71991e`, EN `f9db9319b6cf4247d56ad761871a71792ced8658`; Drums IT `07091ece5f2e39b81d538e32064287ec88eae040`, EN `f9d3725392e241c24dfe13872f2490dc87640b10`. The original source files remain Markdown; the centered `p/img` markup is the same image convention used by Piano, not a separate HTML manual. The Arranger offline reader is a standalone convenience; the reference plugins do not implement this reader.
+
+Full Arranger-specific instructions remain in the relevant chapters. The distinct Arranger icon/wordmark replaces Piano branding, and native 0.4.3 screenshots replace the previous 0.4.1 captures. Cover SVG uses the existing Arranger icon and family wordmark layout; the offline cover calls the existing Branding::drawFullLogo directly.
