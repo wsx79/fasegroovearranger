@@ -494,7 +494,7 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
 
         const bool chordHit = isChordLane (lane);
         // A chord hit on the last 8th of a bar plays the chord coming next (the push).
-        const bool push = s.pushChanges && chordHit && stepInBar >= 14 && symbol != 'g' && ! (nextChord == chord);
+        const bool push = s.pushChanges && chordHit && mod(step,std::max(1,s.stepsPerChord)) >= std::max(1,s.stepsPerChord)-2 && symbol != 'g' && ! (nextChord == chord);
         // Now and then (with Humanize) the last bar of the phrase answers with another top note.
         const bool answer = human > 0.0 && phraseBar == 3
                          && (lane == (int) Lane::stab || lane == (int) Lane::slide || lane == (int) Lane::chank);

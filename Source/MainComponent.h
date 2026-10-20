@@ -108,6 +108,8 @@ private:
     std::unique_ptr<juce::FileChooser> chooser;
     class PluginWindow;
     std::unique_ptr<PluginWindow> pluginWindow;
+    juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
+    int musicalToolKind=0;
     std::unique_ptr<juce::ThreadWithProgressWindow> exportTask;
     void refreshControls();
     void refreshTrack();

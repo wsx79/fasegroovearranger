@@ -40,7 +40,7 @@ void AudioEngine::resetAt(double beat){
         if(needsChase){std::array<int,128> vel{},lane{},cc;cc.fill(-1);std::array<bool,128> pressed{};bool sustain=false;
             for(size_t k=0;k<i.cursor;++k){const auto& e=i.schedule[k];if(e.controller>=0){cc[(size_t)e.controller]=e.velocity;if(e.controller==64){sustain=e.velocity>=64;if(!sustain)for(size_t n=0;n<128;++n)if(!pressed[n])vel[n]=0;}}else{auto n=(size_t)e.pitch;pressed[n]=e.velocity>0;if(e.velocity>0||!sustain)vel[n]=e.velocity;lane[n]=e.lane;}}
             for(int c=0;c<128;++c)if(cc[(size_t)c]>=0)i.midi.addEvent(juce::MidiMessage::controllerEvent(1,c,cc[(size_t)c]),0);
-            for(int n=0;n<128;++n)if(vel[(size_t)n]>0){i.midi.addEvent(juce::MidiMessage::noteOn(1,n,(juce::uint8)vel[(size_t)n]),0);if(i.kind==3)i.guitarEvents.push_back({0,n,vel[(size_t)n]/127.f,lane[(size_t)n]});}}
+            for(int n=0;n<128;++n)if(vel[(size_t)n]>0){i.midi.addEvent(juce::MidiMessage::noteOn(1,n,(juce::uint8)vel[(size_t)n]),0);if(!pressed[(size_t)n])i.midi.addEvent(juce::MidiMessage::noteOff(1,n),0);if(i.kind==3)i.guitarEvents.push_back({0,n,vel[(size_t)n]/127.f,lane[(size_t)n]});}}
 
     }needsReset=false;needsChase=false;
 }

@@ -29,7 +29,6 @@ namespace
             for (const auto& e : table)
                 m[juce::String::fromUTF8(e.en).toLowerCase().toStdString()] = &e;
             for (const auto& e : table) m.emplace(juce::String::fromUTF8(e.it).toLowerCase().toStdString(), &e);
-            for (const auto& e : table) m.emplace(juce::String::fromUTF8(e.it).toLowerCase().toStdString(), &e);
             return m;
         }();
         return map;
