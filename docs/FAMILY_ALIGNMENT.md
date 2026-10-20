@@ -17,7 +17,7 @@ Source comparison, 20 October 2026. Reference branches are `main` at:
 | Credits | Different text order, button sizes, spacing and colours | Original creator/artwork, CODE, licence, JUCE footer and centered 126px source/Ko-fi/PayPal/Spotify buttons. Preserve existing Claude and Codex attributions. |
 | Preferences | Interface-size and update controls missing | Saved interface size and optional GitHub release checker, in the original positions. Reuse the original 640 × 560 UpdateOverlay and three-button layout, adapting INSTALL NOW to DOWNLOAD for portable packages. Standalone audio, guide, privacy and licence actions extend the settings below those rows. |
 | Transport | Text PLAY/STOP/UNDO/REDO in a flat row | Copy the original `IconButton` implementation. Same transport sizes, connected edges and cyan play action; same two-row utility grouping beside the logo. File commands occupy the positions needed by a project-based standalone app. |
-| Piano | Narrower circle, missing groove arrows, custom caption placement | Restore the extended 300/262/252px harmony/circle/sound panels, groove arrows beside NEW RIFF, section/length/variation grouping, instrument tabs and sound row. Knob captions below, parameter-menu captions above, as in the original Knob/ParamCombo. All extended controls remain accessible. |
+| Piano | Narrower circle, missing groove arrows, custom caption placement | Restore the extended 300/262/252px harmony/circle/sound panels, groove arrows beside NEW RIFF, section/length/variation grouping, instrument tabs and sound row. Piano knob captions above (16px), as in Piano::Knob; Drums/Guitar captions below (14px), as in their Knob. Piano uses the original 10px caption font with 0.08 kerning; Drums/Guitar use 11px. Parameter-menu captions remain above. All extended controls remain accessible. |
 | Drums/Guitar | Reordered section/fill fields and NEW FEEL; selectors/sound routing outside their original cards | Restore groove navigation, framed A–D part previews, the original 4×4 Drums pad geometry, selected drum/part controls, the original section/fills then variation/fill-style rows, NEW FEEL and fill toggle in the heading, and guide-sound selector above tone/reverb/volume. Drums' selected-lane dice applies to its selected clip. |
 | Branding | Custom wordmark painter mixed into InstrumentPanel | Copy the family `Branding.h/.cpp` API and wordmark proportions. New SVG/PNG mark shows staggered track phrases and a shared ruler/playhead; no piano-key silhouette. Native window icon and BinaryData use this resource. |
 | Documentation | Separate invented HTML export, no Italian README or changelogs | Source manuals are GUIDA.md / GUIDE.md as in all three references. Remove duplicate HTML generation; add the family README header/navigation and IT/EN changelogs. Preserve the existing offline native reader. |
@@ -36,3 +36,14 @@ Source comparison, 20 October 2026. Reference branches are `main` at:
 ## Verification
 
 `scripts/verify-family.py` checks the exact shared theme/font Git blobs and both Markdown manuals with their local links. The native smoke test checks every instrument control's bounds/overlaps, SETTINGS / ABOUT geometry, MIDI editing, six languages and audio/host behaviour. Native screenshots are emitted for direct visual review; numeric layout checks alone do not establish visual equivalence.
+
+## Follow-up comparison
+
+A second source comparison found that the previous pass had incorrectly applied
+Drums/Guitar's bottom knob captions to Piano too. Restore Piano's own top-caption
+geometry and typography, including Bass/Strings panels from that editor. Restore
+the missing random-chord dice beside Guitar's progression button, using the
+existing shared harmony operation; the shared key selector stays in the DAW header.
+These corrections do not establish complete visual parity. Continue comparing
+individual panels against their corresponding plugin, including missing actions
+and editor layouts, rather than treating a successful build as visual approval.
