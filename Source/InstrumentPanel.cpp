@@ -43,7 +43,7 @@ void InstrumentPanel::knob(const juce::String& name,double lo,double hi,double s
     auto c=std::make_unique<juce::Slider>();c->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);c->setTextBoxStyle(juce::Slider::TextBoxBelow,false,70,16);c->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);c->setRange(lo,hi,step);c->setValue(value,juce::dontSendNotification);c->setTextValueSuffix(suffix);c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onDragStart=[this]{owner.checkpoint();};auto* raw=c.get();c->onValueChange=[this,raw,fn]{fn(owner.project.tracks[(size_t)owner.selectedTrack].engine,raw->getValue());owner.dirty=true;owner.audio.updateMix(owner.project);};addAndMakeVisible(*c);controls.push_back({std::move(c),name,true});
 }
 void InstrumentPanel::choice(const juce::String& name,const juce::StringArray& items,int selected,std::function<void(EngineOptions&,int)> fn){auto c=std::make_unique<juce::ComboBox>();c->addItemList(items,1);c->setSelectedItemIndex(selected,juce::dontSendNotification);auto* raw=c.get();c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onChange=[this,raw,fn]{apply([&](EngineOptions& e){fn(e,raw->getSelectedItemIndex());});};addAndMakeVisible(*c);controls.push_back({std::move(c),name,false});}
-void InstrumentPanel::sharedChoice(const juce::String& name,const juce::StringArray& items,int selected,std::function<void(int)> fn){auto c=std::make_unique<juce::ComboBox>();c->addItemList(items,1);c->setSelectedItemIndex(selected,juce::dontSendNotification);c->getProperties().set("fgaControl",name);auto* raw=c.get();c->onChange=[this,raw,fn]{owner.checkpoint();fn(raw->getSelectedItemIndex());owner.changed(false);};addAndMakeVisible(*c);controls.push_back({std::move(c),name,false});}
+void InstrumentPanel::sharedChoice(const juce::String& name,const juce::StringArray& items,int selected,std::function<void(int)> fn){auto c=std::make_unique<juce::ComboBox>();c->addItemList(items,1);c->setSelectedItemIndex(selected,juce::dontSendNotification);if(selected<0)c->setTextWhenNothingSelected("Browse...");c->getProperties().set("fgaControl",name);auto* raw=c.get();c->onChange=[this,raw,fn]{owner.checkpoint();fn(raw->getSelectedItemIndex());owner.changed(false);};addAndMakeVisible(*c);controls.push_back({std::move(c),name,false});}
 void InstrumentPanel::action(const juce::String& name,std::function<void()> fn){auto c=std::make_unique<juce::TextButton>(tr(name));c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=std::move(fn);addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});}
 void InstrumentPanel::toggle(const juce::String& name,bool value,std::function<void(EngineOptions&,bool)> fn){auto c=std::make_unique<juce::ToggleButton>(tr(name));c->setToggleState(value,juce::dontSendNotification);auto* raw=c.get();c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=[this,raw,fn]{apply([&](EngineOptions& e){fn(e,raw->getToggleState());});};addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});}
 void InstrumentPanel::rebuild(){
@@ -72,9 +72,10 @@ void InstrumentPanel::rebuild(){
         heading("Musical tools");for(const auto& pair:std::initializer_list<std::pair<const char*,int>>{{"DNA",1},{"MORPH",2},{"A/B",3},{"VARIANTS",4},{"IMPORT MIDI",6},{"PRESETS",7},{"LEARN",8}})action(pair.first,[this,tool=pair.second]{owner.showPianoTools(tool);});
     }
     heading("GUIDE SOUND");knob("TONE",0,100,1,e.tone*100,[](auto& o,double v){o.tone=v/100;}," %");
-    knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");knob("CHORUS",0,100,1,e.chorus*100,[](auto& o,double v){o.chorus=v/100;}," %");knob("PUMP",0,100,1,e.pump*100,[](auto& o,double v){o.pump=v/100;}," %");knob("PUMP RELEASE",5,100,1,e.pumpRelease*100,[](auto& o,double v){o.pumpRelease=v/100;}," % beat");
-    choice("Sidechain Rate",{"1/4","1/8","1/2","1/16"},e.pumpRate,[](auto& o,int v){o.pumpRate=v;});choice("Sidechain Source",{"Tempo (internal)","Kick MIDI"},e.pumpSource,[](auto& o,int v){o.pumpSource=v;});
-    if(guitar||drum){heading(guitar?"GUITAR / LANE MIXER":"DRUM / POCKET");const int lanes=guitar?12:1;for(int i=0;i<lanes;++i){const size_t l=(size_t)i;const juce::String name=guitar?fgg::laneShortName(i):fgd::laneName(track-4);if(guitar){knob(name+" LEVEL",0,200,1,e.laneLevel[l]*100,[l](auto& o,double v){o.laneLevel[l]=v/100;}," %");knob(name+" OCTAVE",-2,2,1,e.laneOctave[l],[l](auto& o,double v){o.laneOctave[l]=(int)v;});toggle(name+" MUTE",e.laneMute[l],[l](auto& o,bool v){o.laneMute[l]=v;});}knob(name+" SWING",0,150,1,e.laneSwing[l]*100,[l](auto& o,double v){o.laneSwing[l]=v/100;}," %");knob(name+" PUSH / PULL",-100,100,1,e.laneShift[l],[l](auto& o,double v){o.laneShift[l]=v;}," ms");}}
+    knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");
+    knob("VOLUME",0,200,1,owner.project.tracks[(size_t)track].gain*100,[this](auto&,double v){owner.project.tracks[(size_t)owner.selectedTrack].gain=v/100;}," %");
+    if(track<3){knob("CHORUS",0,100,1,e.chorus*100,[](auto& o,double v){o.chorus=v/100;}," %");knob("PUMP",0,100,1,e.pump*100,[](auto& o,double v){o.pump=v/100;}," %");knob("PUMP RELEASE",5,100,1,e.pumpRelease*100,[](auto& o,double v){o.pumpRelease=v/100;}," % beat");choice("Sidechain Rate",{"1/4","1/8","1/2","1/16"},e.pumpRate,[](auto& o,int v){o.pumpRate=v;});choice("Sidechain Source",{"Tempo (internal)","Kick MIDI"},e.pumpSource,[](auto& o,int v){o.pumpSource=v;});}
+    if(guitar||drum){heading(guitar?"GUITAR / LANE MIXER":"DRUM / POCKET");const int lanes=guitar?12:1;for(int i=0;i<lanes;++i){const size_t l=(size_t)i;const juce::String name=guitar?fgg::laneShortName(i):fgd::laneName(track-4);if(guitar){knob(name+" LEVEL",0,200,1,e.laneLevel[l]*100,[l](auto& o,double v){o.laneLevel[l]=v/100;}," %");choice(name+" OCTAVE",{"-2","-1","0","+1","+2"},e.laneOctave[l]+2,[l](auto& o,int v){o.laneOctave[l]=v-2;});toggle(name+" MUTE",e.laneMute[l],[l](auto& o,bool v){o.laneMute[l]=v;});}knob(name+" SWING",0,150,1,e.laneSwing[l]*100,[l](auto& o,double v){o.laneSwing[l]=v/100;}," %");knob(name+" PUSH / PULL",-100,100,1,e.laneShift[l],[l](auto& o,double v){o.laneShift[l]=v;}," ms");}}
     if(guitar){
         juce::StringArray lanes;for(int i=0;i<12;++i)lanes.add(fgg::laneShortName(i));
         sharedChoice("Guitar part",lanes,guitarLane,[this](int v){guitarLane=v;juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
@@ -85,7 +86,10 @@ void InstrumentPanel::rebuild(){
     }
     if(track>=3)action("NEW FEEL",[this]{apply([](auto& o){o.humanizeSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});});});
     action("NEW RIFF",[this]{apply([](auto& o){o.riffSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});});});
-    if(track<4){
+    if(track<3){
+        juce::StringArray presets;for(const auto& p:sgk::progressionPresets())presets.add(juce::String(p.category)+" / "+p.name);
+        sharedChoice("Ready progressions",presets,-1,[this](int v){chooseProgression(owner.project,v);updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
+        action("RANDOM CHORDS",[this]{owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());owner.changed(false);updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
         juce::StringArray lengths;for(int i=1;i<=8;++i)lengths.add(juce::String(i));
         sharedChoice("Length",lengths,owner.project.settings.chordCount-1,[this](int v){owner.project.settings.chordCount=v+1;juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
         sharedChoice("Each chord",{"1/2 bar","1 bar","2 bars","4 bars"},owner.project.settings.chordSteps==8?0:owner.project.settings.chordSteps==16?1:owner.project.settings.chordSteps==32?2:3,[this](int v){owner.project.settings.chordSteps=8<<v;});
@@ -111,14 +115,14 @@ void InstrumentPanel::resized(){
     auto card=[&](const juce::String& title,int x,int y,int w,int h){cards.push_back({title,{x,y,w,h}});};
     auto put=[&](const juce::String& name,int x,int y,int w,int h=28){for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()==name){c.component->setBounds(x,y,w,h);return;}};
     auto tool=[&](const juce::String& name,int x,int y,int w){put(name,x,y,w,24);};
-    const int progHeight=track<4?114:0;
-    if(track<4){
-        card("PROGRESSION",18,10,W-36,104);
-        put("Length",32,79,94,24);put("Each chord",134,79,112,24);
-        tool("VARIANTS",32,31,100);tool("LEARN",140,31,104);
-        auto names=chordNames(owner.project.settings);const int slotW=(W-284)/8;
-        for(int i=0;i<8;++i){const int x=266+i*slotW;put("Degree "+juce::String(i+1),x,79,slotW-8,24);
-            if(piano&&track==0){put("Inversion "+juce::String(i+1),x,30,slotW-8,22);for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()=="Inversion "+juce::String(i+1))if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setSliderStyle(juce::Slider::IncDecButtons);slider->setTextBoxStyle(juce::Slider::TextBoxLeft,false,32,20);}}
+    const int progHeight=track<3?138:0;
+    if(track<3){
+        card("PROGRESSION",18,10,W-36,128);
+        put("Ready progressions",32,59,146,28);tool("RANDOM CHORDS",186,59,70);put("Length",32,105,94,24);put("Each chord",134,105,180,24);
+        tool("VARIANTS",150,17,96);tool("LEARN",264,59,50);
+        auto names=chordNames(owner.project.settings);const int slotW=(W-346)/8;
+        for(int i=0;i<8;++i){const int x=328+i*slotW;put("Degree "+juce::String(i+1),x,101,slotW-8,24);
+            if(piano&&track==0){put("Inversion "+juce::String(i+1),x,40,slotW-8,22);for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()=="Inversion "+juce::String(i+1))if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setSliderStyle(juce::Slider::IncDecButtons);slider->setTextBoxStyle(juce::Slider::TextBoxLeft,false,32,20);}}
         }
     }
     const int y=progHeight+10;
@@ -140,9 +144,9 @@ void InstrumentPanel::resized(){
         tool("NEW FEEL",gx+gw-100,y+214,86);put("HUMANIZE STYLE",gx+14,y+214,gw-124,24);
         int k=0;for(const auto* n:{"SWING","GATE","VELOCITY","HUMANIZE","DENSITY"}){const int kw=(gw-24)/5;put(n,gx+12+k++*kw,y+266,kw,58);}
         const int sx=W-sw-4;int kx=0;
-        for(const auto* n:{"TONE","REVERB","CHORUS"})put(n,sx+(kx++)*74,y+59,70,76);
+        for(const auto* n:{"TONE","REVERB","VOLUME"})put(n,sx+(kx++)*74,y+59,70,76);
         put("Sidechain Source",sx,y+174,126);put("Sidechain Rate",sx+134,y+174,90);
-        put("PUMP",sx,y+239,100,78);put("PUMP RELEASE",sx+114,y+239,110,78);
+        put("CHORUS",sx,y+239,70,78);put("PUMP",sx+74,y+239,70,78);put("PUMP RELEASE",sx+148,y+239,76,78);
     }else{
         // Drums/Guitar: the original wide groove/ABCD row and four compact cards.
         card("GROOVE",18,y,W-36,118);
@@ -152,12 +156,12 @@ void InstrumentPanel::resized(){
         card(guitar?"GUITAR PART":"KIT & SOUNDS",18,my,part,186);
         card(guitar?"CHORDS":"DRUM / POCKET",318,my,chords,186);
         card("GROOVE",grooveX,my,grooveW,186);card("GUIDE SOUND",W-sound-18,my,sound,186);
-        if(guitar){put("Guitar part",32,my+43,164);put("Part mute",202,my+43,92,24);put("Part octave",32,my+108,70);put("Part level",202,my+81,92,55);put("Let ring",32,my+154,100,24);put("Room for band",136,my+154,158,24);put("Chord summary",326,my+28,244,150);put("STRUM",W-sound+4,my+153,100,24);put("Strum after fill",grooveX+grooveW-136,my+6,122,20);}
+        if(guitar){put("Guitar part",32,my+43,164);put("Part mute",202,my+43,92,24);put("Part octave",32,my+108,70);put("Part level",202,my+81,92,55);put("Let ring",32,my+154,100,24);put("Room for band",136,my+154,158,24);put("Chord summary",326,my+28,244,150);put("STRUM",W-sound+4,my+153,100,24);put("Strum after fill",grooveX+grooveW-136,my+6,122,20);put("Push changes",W-sound+20,my+6,210,20);}
         else{put("MIDI NOTE",32,my+45,100,74);put("Genre feel",148,my+42,146,24);put("Bass space",148,my+76,146,24);put("Crash after fill",32,my+143,180,24);const auto name=juce::String(fgd::laneName(track-4));put(name+" SWING",332,my+58,110,80);put(name+" PUSH / PULL",450,my+58,110,80);}
         put("FILL EVERY",grooveX+14,my+42,(grooveW-38)/2);put("FILL STYLE",grooveX+24+(grooveW-38)/2,my+42,(grooveW-38)/2);
         put("VARIATION EVERY",grooveX+14,my+84,grooveW-28,24);
         int k=0;for(const auto* n:{"SWING","HUMANIZE","VELOCITY","ACCENTS"}){const int kw=(grooveW-24)/4;put(n,grooveX+12+k++*kw,my+127,kw,52);}
-        const int sx=W-sound-4;int kx=0;for(const auto* n:{"TONE","REVERB","CHORUS"})put(n,sx+(kx++)*78,my+57,74,70);
+        const int sx=W-sound-4;int kx=0;for(const auto* n:{"TONE","REVERB","VOLUME"})put(n,sx+(kx++)*78,my+57,74,70);
     }
     int bottom=y+(piano?350:324);
     if(piano){
@@ -172,11 +176,12 @@ void InstrumentPanel::resized(){
         bottom+=134;
     }
     if(guitar){
-        card("GUITAR / LANE MIXER",18,bottom,W-36,310);
+        card("GUITAR / LANE MIXER",18,bottom,W-36,490);
         const int lw=(W-64)/12;for(int lane=0;lane<12;++lane){const auto name=juce::String(fgg::laneShortName(lane));const int x=32+lane*lw;
-            put(name+" LEVEL",x,bottom+52,lw-8,104);put(name+" OCTAVE",x,bottom+185,lw-8,28);put(name+" MUTE",x,bottom+225,lw-8,24);
+            put(name+" PUSH / PULL",x,bottom+72,lw-8,64);put(name+" SWING",x,bottom+160,lw-8,64);
+            put(name+" LEVEL",x,bottom+250,lw-8,142);put(name+" OCTAVE",x,bottom+416,lw-8,24);put(name+" MUTE",x,bottom+454,lw-8,24);
             for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()==name+" LEVEL")if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get()))slider->setSliderStyle(juce::Slider::LinearVertical);
-        }bottom+=320;
+        }bottom+=500;
     }
     // Less frequently used lane timing and sound parameters remain reachable in
     // their own strips; none of the extended Piano parameters are discarded.
@@ -192,7 +197,8 @@ void InstrumentPanel::resized(){
 void InstrumentPanel::paint(juce::Graphics& g){
     g.fillAll(Palette::background);
     for(const auto& card:cards){g.setColour(Palette::panel);g.fillRoundedRectangle(card.bounds.toFloat(),6);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(card.bounds.toFloat(),6,1);g.setColour(Palette::accent);g.fillRect(card.bounds.getX()+13,card.bounds.getY()+11,2,10);auto font=FamilyTheme::font(10,true);font.setExtraKerningFactor(.08f);g.setFont(font);g.setColour(Palette::text);g.drawText(tr(card.title),card.bounds.getX()+23,card.bounds.getY()+4,card.bounds.getWidth()-32,24,juce::Justification::centredLeft);}
-    for(const auto& c:controls){if(c.component->getWidth()==0||dynamic_cast<PianoStepGrid*>(c.component.get()))continue;auto r=c.component->getBounds();if(c.caption.startsWith("Degree ")||c.caption.startsWith("Inversion "))continue;g.setColour(Palette::dim);g.setFont(FamilyTheme::font(9,true));g.drawText(tr(c.caption).toUpperCase(),r.getX(),r.getY()-17,r.getWidth(),15,c.knob?juce::Justification::centred:juce::Justification::centredLeft);}
-    if(owner.selectedTrack<4){auto names=chordNames(owner.project.settings);const int sw=(getWidth()-284)/8;for(size_t i=0;i<names.size();++i){g.setColour(Palette::text);g.setFont(FamilyTheme::font(14,true));g.drawText(juce::String::fromUTF8(names[i].c_str()),266+(int)i*sw,51,sw-8,20,juce::Justification::centred);}}
+    if(owner.selectedTrack==3)for(const auto& card:cards)if(card.title=="GUITAR / LANE MIXER"){const int lw=(getWidth()-64)/12;for(int lane=0;lane<12;++lane){const int x=32+lane*lw;auto r=juce::Rectangle<float>((float)x-2,(float)card.bounds.getY()+32,(float)lw-4,450);g.setColour(Palette::field);g.fillRoundedRectangle(r,5);const auto ink=lane<=1?Palette::accent:lane<=4?Palette::accent2:lane<=6?Palette::percussion:lane<=8?Palette::cymbals:Palette::toms;g.setColour(ink);g.fillRoundedRectangle(r.withHeight(3).reduced(6,0),1.5f);g.setColour(Palette::text);g.setFont(FamilyTheme::font(10.5f,true));g.drawText(tr(fgg::laneShortName(lane)),r.withTrimmedTop(5).withHeight(16),juce::Justification::centred);}}
+    for(const auto& c:controls){if(c.component->getWidth()==0||dynamic_cast<PianoStepGrid*>(c.component.get()))continue;auto r=c.component->getBounds();if(c.caption.startsWith("Degree ")||c.caption.startsWith("Inversion "))continue;g.setColour(Palette::dim);g.setFont(FamilyTheme::font(9,true));auto caption=c.caption;if(owner.selectedTrack==3)for(int lane=0;lane<12;++lane){auto prefix=juce::String(fgg::laneShortName(lane))+" ";if(caption.startsWith(prefix))caption=caption.substring(prefix.length());}g.drawText(tr(caption).toUpperCase(),r.getX(),r.getY()-17,r.getWidth(),15,c.knob?juce::Justification::centred:juce::Justification::centredLeft);}
+    if(owner.selectedTrack<3){auto names=chordNames(owner.project.settings);const int sw=(getWidth()-346)/8;for(size_t i=0;i<names.size();++i){g.setColour(Palette::text);g.setFont(FamilyTheme::font(14,true));g.drawText(juce::String::fromUTF8(names[i].c_str()),328+(int)i*sw,67,sw-8,22,juce::Justification::centred);}}
 }
 }

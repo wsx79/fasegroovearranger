@@ -265,12 +265,12 @@ void arrangeSong(Project& p) {
     const auto& guitar=p.tracks[3].engine;
     int motif=std::max({piano.grooveBars,kit.grooveBars,guitar.grooveBars});
     double activity=piano.density>=0?piano.density:p.settings.density;
-    if(piano.pattern>=0&&piano.pattern<(int)sgk::groovePatterns().size()){
-        const auto& pattern=sgk::groovePatterns()[(size_t)piano.pattern];
-        motif=std::max(motif,(pattern.length()+15)/16);
-        int hits=0;for(char c:pattern.rightHand)if(c!='.'&&c!='=')++hits;
-        activity=.5*activity+.5*hits/std::max(1,pattern.length());
-    }
+    // Resolve automatic, named and user grooves through the same original
+    // pattern used for rendering, including custom step edits and groove length.
+    const auto pattern=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,0,p.settings.seed));
+    motif=std::max(motif,(pattern.length()+15)/16);
+    int hits=0;for(char c:pattern.rightHand)if(c!='.'&&c!='=')++hits;
+    activity=.5*activity+.5*hits/std::max(1,pattern.length());
     if(kit.pattern>=0&&kit.pattern<(int)fgd::drumPatterns().size())
         motif=std::max(motif,(fgd::drumPatterns()[(size_t)kit.pattern].length()+15)/16);
     if(guitar.pattern>=0&&guitar.pattern<(int)fgg::guitarPatterns().size())
@@ -279,7 +279,7 @@ void arrangeSong(Project& p) {
     int phrase=8;while(phrase<32&&(phrase%harmonicBars!=0||phrase%motif!=0))phrase+=8;
     // Unusual user progressions retain their own complete harmonic phrase.
     if(phrase%harmonicBars!=0)phrase=harmonicBars;
-    const int development=motif>=4||piano.evolveBars>=16?1:activity>.85?-1:0;
+    const int development=(motif>=4?1:0)+(piano.evolveBars>=16?1:0)+(activity<.35?1:0);
     for(auto& section:sections){
         if(section.type==Section::main||section.type==Section::drop)
             section.bars=std::clamp(((section.bars+phrase-1)/phrase+development)*phrase,phrase,128);

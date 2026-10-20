@@ -1,6 +1,7 @@
 name: Build and test standalone
 on:
   push:
+    branches: [main]
     paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
   pull_request:
     paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
