@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.4.6 — 2026-10-20
+
+- Bilanciamento della batteria corretto tenendo conto dei guadagni già applicati dal motore originale: snare, clap e piatti non vengono attenuati due volte.
+- Master dei nuovi progetti a 0,45 e verifica true peak delle tredici anteprime MP3, oltre al controllo PCM dei brani completi.
+
 ## 0.4.5 — Timbri per genere e bilanciamento della band
 
 - Tredici palette dei motori guida originali: suoni, kit, timbro, voicing, gate, effetti, livelli e ruoli degli strumenti specifici per stile.

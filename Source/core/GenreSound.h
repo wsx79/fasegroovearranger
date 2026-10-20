@@ -49,7 +49,9 @@ inline void applyGenreSound(Project& p){
         else if(ti==2){t.gain=a.stringsGain;e.tone=p.settings.genre==8?.56:.25;e.reverb=.18;}
         else if(ti==3){t.sound=a.guitar;t.gain=a.guitarGain;e.tone=a.guitarTone;e.reverb=.07;t.pan=.14;}
         else {t.sound=a.kit;e.tone=a.drumTone;const int lane=ti-4;
-            static constexpr double levels[]{.94,.28,.42,.20,.26,.25,.17,.22,.16,.26,.18,.22,.18};
+            // GuideDrums already scales each lane (kick .95, snare .6, hats .28).
+            // Keep that balance audible instead of attenuating the upper kit twice.
+            static constexpr double levels[]{.60,.90,.85,.90,.85,.85,.75,.90,.75,.72,.72,.72,.72};
             t.gain=levels[lane];if(p.settings.genre==7&&(lane==7||lane==9))t.gain*=1.35;
             if(lane>=4)t.pan=lane%2==0?-.15:.15;
             if(lane==1||lane==2||lane==12)e.reverb=.05;

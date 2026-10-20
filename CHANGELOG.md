@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.4.6 — 2026-10-20
+
+- Correct drum balance for the original engine’s existing lane calibration: snare, clap and cymbals are no longer attenuated twice.
+- New-project master at 0.45 and true-peak verification of all thirteen MP3 previews alongside full-song PCM checks.
+
 ## 0.4.5 — Genre sound palettes and band balance
 
 - Thirteen curated palettes using the original keyboard, guitar and drum guide engines: genre-specific sounds, kit, tone, voicing, gate, effects, levels and instrument roles.

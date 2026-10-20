@@ -70,3 +70,5 @@ Le rampe di velocity aggiunte dall’arranger alle parti melodiche di intro/outr
 ## Aggiornamento 0.4.5: suoni e mix
 
 La calibrazione 0.4.2 del solo master è sostituita, per i nuovi brani, da livelli di traccia e preset diversi per genere con master 0,55. Il margine è verificato sul rendering completo. Dettagli e limiti: [suoni per genere](GENRE_SOUND.md).
+
+La 0.4.6 porta il master dei nuovi progetti a 0,45 per il margine di codifica MP3 e ribilancia le tracce tenendo conto dei guadagni interni del kit originale; i mix salvati restano invariati.

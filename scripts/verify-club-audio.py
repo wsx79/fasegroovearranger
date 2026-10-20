@@ -7,6 +7,7 @@ import array
 import csv
 import json
 import math
+import re
 import subprocess
 import sys
 
@@ -39,3 +40,12 @@ samples = array.array('f'); samples.frombytes(decoded.stdout)
 assert samples and all(math.isfinite(v) for v in samples)
 assert math.sqrt(sum(v*v for v in samples) / len(samples)) > .001
 print('PASS full Soulful MP3 independently decoded, including song duration and audio tail')
+
+# Codec reconstruction can overshoot safe PCM peaks; validate the delivered MP3s.
+for i in range(13):
+    preview=folder / f'preview-{i}.mp3'
+    proc=subprocess.run(['ffmpeg','-nostdin','-v','info','-i',str(preview),'-af','loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json','-f','null','-'],capture_output=True,text=True,check=True)
+    values=json.loads(re.findall(r'\{[^{}]+"input_i"[^{}]+\}',proc.stderr,re.S)[-1])
+    assert float(values['input_tp']) <= -1, (i,'MP3 true peak',values)
+    assert float(values['input_i']) > -60, (i,'silent preview')
+    print(f"PASS preview {i}: {values['input_i']} LUFS, {values['input_tp']} dBTP")

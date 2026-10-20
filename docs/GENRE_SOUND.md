@@ -1,6 +1,6 @@
-# Suoni e ruoli per genere — 0.4.5
+# Suoni e ruoli per genere — 0.4.6
 
-La 0.4.4 lasciava quasi tutti gli strumenti sullo stesso suono guida, kit e livello. Il basso aveva anche il panorama per nota di una tastiera: le note basse finivano a sinistra. La 0.4.5 configura i motori originali della famiglia per ruolo e stile.
+La 0.4.4 lasciava quasi tutti gli strumenti sullo stesso suono guida, kit e livello. Il basso aveva anche il panorama per nota di una tastiera: le note basse finivano a sinistra. La 0.4.6 configura i motori originali della famiglia per ruolo e stile.
 
 | Genere | Tastiera | Kit | Ruolo |
 |---|---|---|---|
@@ -24,10 +24,12 @@ Il basso guida usa la stessa sintesi del Piano con uscita centrata; un passa-bas
 
 Nel corpo del brano le chitarre di accompagnamento rispondono al piano e gli archi/percussioni entrano per frasi. La cassa, il backbeat e l'hat chiuso non vengono troncati dall'orchestrazione aggiuntiva. Le finestre DJ di intro/outro restano dentro la canzone. Le pause composte sono note assenti nel MIDI, non un'automazione volume nascosta. Pattern utente e parti bloccate sono conservati; le note scritte a mano cambiano solo quando rigeneri il relativo clip.
 
-Scegliere il genere applica la sua palette ai suoni interni sbloccati e prepara i parametri MIDI. Campioni/VST, percorsi, stato, guadagni e panorama personali restano assegnati. I progetti già salvati conservano timbri e mix finché non scegli nuovamente un genere; il miglioramento del basso guida centrato/filtrato riguarda invece il renderer interno. I nuovi brani partono con rapporti di traccia calibrati e master 0,55; i vecchi guadagni master restano salvati.
+Scegliere il genere applica la sua palette ai suoni interni sbloccati e prepara i parametri MIDI. Campioni/VST, percorsi, stato, guadagni e panorama personali restano assegnati. I progetti già salvati conservano timbri e mix finché non scegli nuovamente un genere; il miglioramento del basso guida centrato/filtrato riguarda invece il renderer interno. I nuovi brani partono con rapporti di traccia calibrati e master 0,45; i vecchi guadagni master restano salvati.
 
 ## Verifica e ascolto
 
 I test controllano tredici palette distinte, basso asciutto/centrato, preservazione degli strumenti personali, scope, blocchi e struttura per genere. L'audit nativo renderizza i tredici brani interi e genera `preview-0.mp3` … `preview-12.mp3`: le prime otto battute del primo drop effettivo, più la coda. Su Soulful, Deep, UK e Disco controlla anche il basso stereo (L = R con il preset asciutto).
 
 Picchi finiti, assenza di clipping e differenze spettrali non dimostrano da soli che una canzone piaccia. Le anteprime servono al confronto all'ascolto; i preset sono una base modificabile, non un master da distribuzione. Per confrontare con la 0.4.4 usa lo stesso passaggio e un volume percepito equivalente.
+
+La 0.4.6 corregge inoltre il bilanciamento della batteria: il motore Drums applica già guadagni diversi per cassa, snare e piatti. I livelli di traccia tengono conto di questa calibrazione, evitando una seconda forte attenuazione della parte alta del kit. Il master dei nuovi progetti è 0,45 per lasciare margine anche alla codifica MP3. Le anteprime vengono decodificate e controllate anche come true peak.

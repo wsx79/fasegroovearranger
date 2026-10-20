@@ -360,7 +360,7 @@ Project newProject(int genre) {
     Project p;
     // Balanced genre-specific guide levels leave summing headroom. Saved
     // projects keep their own master and mix; new songs use the curated balance.
-    p.masterGain=.55;
+    p.masterGain=.45;
     applyGenre(p,genre);arrangeSong(p);generate(p);return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
