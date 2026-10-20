@@ -161,7 +161,7 @@ void MainComponent::closePluginEditor(){pluginWindow.reset();}
 void MainComponent::checkpoint(){undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
 void MainComponent::changed(bool schedule){project.normalise();dirty=true;if(schedule)audio.publish(project);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaint();}
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();repaint();}
-void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();resized();repaint();}
+void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();resized();instrumentPort.setViewPosition(0,0);repaint();}
 void MainComponent::showEditor(){page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
 void MainComponent::select(int track,int section){selectedTrack=std::clamp(track,0,16);selectedSection=std::clamp(section,0,(int)project.sections.size()-1);piano.clearSelection();refreshTrack();updateSizes();int centre=selectedTrack==1?40:selectedTrack>=4?fgd::defaultNote(selectedTrack-4):64;pianoPort.setViewPosition(0,piano.laneView()?0:std::max(0,24+(127-centre)*12-pianoPort.getHeight()/2));arrangement.repaint();piano.repaint();}
 void MainComponent::refreshControls(){

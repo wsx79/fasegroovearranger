@@ -9,6 +9,7 @@
 #include <limits>
 #include <random>
 #include <stdexcept>
+#include <type_traits>
 
 namespace fga {
 namespace {
@@ -41,7 +42,7 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
 }
 template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>& stream, double beats, Filter filter) {
     std::array<int,128> active; active.fill(-1);
-    std::vector<Note> notes;
+    std::vector<Note> notes;notes.reserve(stream.size()/2);
     for(const auto& e:stream) {
         if(!filter(e)||e.note<0||e.note>127) continue;
         auto& index=active[(size_t)e.note];
@@ -49,7 +50,8 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
             if(index>=0) notes[(size_t)index].length=std::max(.001,e.ppq-notes[(size_t)index].start);
             const double start=std::clamp(e.ppq,0.0,beats);
             if(start>=beats) {index=-1;continue;}
-            notes.push_back({start,.25,e.note,std::clamp(e.velocity,1,127),0}); index=(int)notes.size()-1;
+            int lane=0;if constexpr(std::is_same_v<E,fgg::NoteEvent>||std::is_same_v<E,fgd::NoteEvent>)lane=e.lane;
+            notes.push_back({start,.25,e.note,std::clamp(e.velocity,1,127),lane}); index=(int)notes.size()-1;
         } else if(index>=0) {
             notes[(size_t)index].length=std::max(.001,std::min(beats,e.ppq)-notes[(size_t)index].start); index=-1;
         }
@@ -211,8 +213,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgg::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgg::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
                 auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)type,p.sections[si].bars,clip.seed,-1}});
                 clip.notes=notesFrom(all,beats,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
-                // Keep each note's articulation lane for the original guide guitar.
-                for(auto& n:clip.notes) for(const auto& e:all) if(e.isNoteOn()&&e.note==n.pitch&&std::abs(e.ppq-n.start)<.00001){n.lane=e.lane;break;}
+                // Articulation lanes are carried directly by notesFrom, in linear time.
             } else {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
