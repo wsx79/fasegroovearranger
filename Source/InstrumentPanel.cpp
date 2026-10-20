@@ -282,7 +282,7 @@ void InstrumentPanel::resized(){
         bottom+=290;
         card("PERFORMANCE",18,bottom,W-36,124);
         for(int i=0;i<4;++i){const int x=32+i*164;put("SEGMENT "+juce::String("ABCD").substring(i,i+1),x,bottom+46,72,24);put("Velocity order "+juce::String("ABCD").substring(i,i+1),x+80,bottom+46,72,24);put("Lock "+juce::String("ABCD").substring(i,i+1),x,bottom+80,150,24);}
-        put("Riff seed",704,bottom+45,110,50);put("Humanize seed",824,bottom+45,110,50);put("EVOLVE",944,bottom+45,100,50);put("Realism",1052,bottom+42,150,24);put("Pedal & Expression CC",1052,bottom+78,W-1090,24);
+        put("Riff seed",704,bottom+45,110,50);put("Humanize seed",824,bottom+45,110,50);put("EVOLVE",944,bottom+45,100,50);put("Realism",1052,bottom+42,W-1090,24);put("Pedal & Expression CC",1052,bottom+78,W-1090,24);
         bottom+=134;
     }
     if(track>=4){

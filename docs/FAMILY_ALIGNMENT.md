@@ -47,3 +47,9 @@ existing shared harmony operation; the shared key selector stays in the DAW head
 These corrections do not establish complete visual parity. Continue comparing
 individual panels against their corresponding plugin, including missing actions
 and editor layouts, rather than treating a successful build as visual approval.
+
+The native instrument viewport now centers the reference editors' 1180px design
+width instead of filling the 1440px workstation. Previously the fixed-width
+Harmony/Circle/Sound or Part/Chords/Sound cards left all extra space in Groove,
+which changed the reference proportions. Global standalone routing remains in
+the DAW toolbar; no musical controls are removed.

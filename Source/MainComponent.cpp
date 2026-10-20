@@ -320,7 +320,11 @@ void MainComponent::resized(){
             inspectorLabel.setVisible(false);soundButton.setVisible(false);sampleButton.setVisible(false);soundBox.setVisible(false);
             x=18;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&loadPluginButton,130},{&pluginEditorButton,96},{&gainSlider,138},{&panSlider,132},{&muteButton,60},{&soloButton,60},{&lockButton,138},{&lockClipButton,138},{&trackButton,114},{&clipButton,114}}){place(*item.first,x,162,item.second);x+=item.second+6;}
             trackButton.setVisible(true);trackButton.setButtonText("APPLY TRACK");clipButton.setVisible(true);clipButton.setButtonText("APPLY CLIP");
-            instrumentPort.setBounds(12,204,w-24,getHeight()-243);instrumentPanel.setSize(instrumentPort.getWidth()-16,instrumentPanel.getHeight());
+            // Keep the plugins' 1180px design width. Extra DAW width must not
+            // stretch only the Groove card and alter the family's proportions.
+            const int panelWidth=std::min(1180,w-40);
+            instrumentPort.setBounds((w-panelWidth-16)/2,204,panelWidth+16,getHeight()-243);
+            instrumentPanel.setSize(panelWidth,instrumentPanel.getHeight());
         }else{
             place(editorLabel,20,159,640,28);place(guitarNotesButton,w-340,159,180);place(sectionLoopButton,w-150,159,132);
             x=18;for(auto* b:{&importButton,&copyButton,&pasteButton,&quantiseButton,&transposeDown,&transposeUp,&deleteNotes}){int width=b==&importButton?115:b==&quantiseButton?103:64;place(*b,x,203,width,28);x+=width+6;}place(gridBox,x+3,203,88);place(velocitySlider,x+101,203,154);place(zoomSlider,x+265,203,160);zoomSlider.setVisible(true);place(drawTool,1034,203,52);place(selectTool,1090,203,52);place(eraseTool,1146,203,52);place(brushAccent,700,159,80);place(brushHit,780,159,70);place(brushGhost,850,159,80);place(brushFlam,930,159,74);place(fitNotesButton,w-110,203,88);pianoPort.setBounds(12,246,w-24,getHeight()-285);
