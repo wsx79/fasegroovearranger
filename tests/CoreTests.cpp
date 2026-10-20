@@ -59,8 +59,9 @@ int main(int argc,char** argv){try{
         check(jack.settings.bassMode==sgk::bassModeForLine(22),"Jackin has funky octave/ghost pickups rather than a sub hold");
         check(jack.settings.stringsMode==0,"Jackin factory arrangement leaves room for the chopped hook");
         int chorus=0;while(jack.sections[(size_t)chorus].type!=fga::Section::drop)++chorus;
-        const auto& bass=jack.tracks[1].clips[(size_t)chorus].notes;double lengths=0;bool swung=false;
-        for(auto n:bass){lengths+=n.length;double cell=std::fmod(n.start,1.);if(std::abs(cell-(.75+jack.settings.swing/12))<.015)swung=true;}
+        const auto& bass=jack.tracks[1].clips[(size_t)chorus].notes;double lengths=0;bool swung=false;int lowest=127;
+        for(auto n:bass){lowest=std::min(lowest,n.pitch);lengths+=n.length;double cell=std::fmod(n.start,1.);if(std::abs(cell-(.75+jack.settings.swing/12))<.015)swung=true;}
+        check(lowest>=28&&lowest<=42,"Jackin rendered bass keeps a low fundamental under the octave riff");
         check(!bass.empty()&&lengths/bass.size()<.3&&swung,"Jackin bass has articulated notes and swung sixteenth pickups");
         check(jack.tracks[2].clips[(size_t)chorus].notes.empty(),"no automatic string wash in Jackin drop");
         for(auto n:jack.tracks[3].clips[(size_t)chorus].notes)check(((int)(n.start/4)%2)==1,"Jackin percussive guitar alternates with the chopped hook");

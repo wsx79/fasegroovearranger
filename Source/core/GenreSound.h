@@ -40,7 +40,7 @@ inline void applyGenreSound(Project& p){
         if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==2||p.settings.genre==6||p.settings.genre==7||p.settings.genre==12)?2:0;e.humanize=.05;e.realism=true;}
         if(p.settings.genre==4){
             // The bass is a short funky line, not a held low organ chord.
-            if(ti==1){e.gate=.30;e.humanize=.08;}
+            if(ti==1){e.gate=.30;e.humanize=.08;e.bassFeel=1;}
         }
         if(ti==2)e.density=.3;
         if(ti==3){e.strum=p.settings.genre==8?.12:.22;e.letRing=p.settings.genre==11;e.roomForBand=true;e.density=p.settings.genre==8?.68:p.settings.genre==4?.22:.35;if(p.settings.genre==4)e.strum=.06;}

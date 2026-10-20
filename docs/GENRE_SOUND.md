@@ -36,7 +36,7 @@ La 0.4.6 corregge inoltre il bilanciamento della batteria: il motore Drums appli
 
 ## Jackin’ — correzione 0.4.7
 
-Il profilo precedente lasciava gli archi su stabs anche in tutti i drop e il basso su un organo filtrato con gate 0,55. La sola etichetta Jackin’ e lo swing non bastavano a dare un’identità all’insieme. Ora la selezione automatica del piano usa quattro hook a chops della libreria originale: Disco Jack Chops, Jack Chops, Chicago Stab Jack e Jack Stab Skips. Il gate del piano è 0,18, lo strum è zero e l’ambiente è quasi asciutto. Il piano usa Soulful Grand; il basso usa il Wurlitzer originale più aperto, gate 0,30 e la linea Funky Octave Skip già presente nel motore, con ottave e ghost note.
+Il profilo precedente lasciava gli archi su stabs anche in tutti i drop e il basso su un organo filtrato con gate 0,55. La sola etichetta Jackin’ e lo swing non bastavano a dare un’identità all’insieme. Ora la selezione automatica del piano usa quattro hook a chops della libreria originale: Disco Jack Chops, Jack Chops, Chicago Stab Jack e Jack Stab Skips. Il gate del piano è 0,18, lo strum è zero e l’ambiente è quasi asciutto. Il piano usa Soulful Grand; il basso usa il Wurlitzer originale più aperto, gate 0,30 e la linea Funky Octave Skip già presente nel motore, con ottave e ghost note, nel registro basso voice-led originale (non il registro della tastiera).
 
 Gli archi partono spenti (si possono riattivare), la chitarra risponde a battute alterne con Chicago Chank della libreria originale, scratch e accordi palm muted. Cassa in quattro, snare/clap e hat conservano il generatore Drums e lo swing del genere. Jackin’ Piano e gli altri undici generi non cambiano. Pattern espliciti, note editate e blocchi conservano le regole esistenti.
 
