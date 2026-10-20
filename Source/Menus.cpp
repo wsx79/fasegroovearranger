@@ -17,7 +17,7 @@ public:
     }
     void paint(juce::Graphics& g)override{
         g.fillAll(Palette::panel);auto line=[&](juce::String text,int y,int h,float size,juce::Colour colour=Palette::text){g.setColour(colour);g.setFont(FamilyTheme::font(size));g.drawText(text,20,y,getWidth()-40,h,juce::Justification::centred);};
-        drawFamilyLogo(g,{210,18,360,64});line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),88,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.3.0 · Windows / macOS / Linux"),116,22,12,Palette::dim);
+        drawFamilyLogo(g,{210,18,360,64});line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),88,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.4.0 · Windows / macOS / Linux"),116,22,12,Palette::dim);
         line("CREATED BY",148,22,11,Palette::accent);if(logo.isValid())g.drawImageWithin(logo,100,176,getWidth()-200,100,juce::RectanglePlacement::centred);line(juce::String::fromUTF8("Fabio 'Pitch' Serra · DJ & Producer"),280,25,17);line("Listen to my productions on Spotify",310,22,12,juce::Colour(0xff1db954));
         line("DEVELOPMENT ASSISTANCE",366,22,11,Palette::accent);line("Claude (Anthropic)  /  Codex (OpenAI)",402,26,17);line("AI coding assistants",438,22,12,Palette::dim);
         line(juce::String::fromUTF8("Free & open source · GNU AGPL v3 or later"),543,24,13);line(juce::String::fromUTF8("Built with JUCE · Inter typeface: SIL Open Font License"),570,20,11,Palette::dim);line("VST is a registered trademark of Steinberg Media Technologies GmbH",594,20,10,Palette::dim);

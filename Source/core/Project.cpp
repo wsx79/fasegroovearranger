@@ -236,30 +236,56 @@ void applyGenre(Project& p,int genre) {
     p.settings.stringsMode=p.settings.genre==8?(int)sgk::StringsMode::discoOctaves:(int)sgk::StringsMode::pad;
 }
 void arrangeSong(Project& p) {
+    p.normalise();
     // Phrase lengths and dramatic arcs are specific to the original thirteen styles.
-    // Sixteen/32-bar percussion-only edges remain clean for beat matching.
+    // Transitions belong to the musical form; the instrument engines shape intro/outro.
+    // No target in minutes and no compulsory silent harmonic mixing window.
     const int genre=std::clamp(p.settings.genre,0,12);
     static const std::vector<SongSection> forms[]{
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Piano theme"},{Section::breakdown,16,"Piano break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Piano drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Soulful verse"},{Section::main,16,"Answer"},{Section::breakdown,16,"Soul break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Soulful chorus"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Deep groove"},{Section::breakdown,16,"Atmosphere"},{Section::main,32,"Evolution"},{Section::drop,32,"Deep return"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,16,"Mix in"},{Section::main,32,"Gospel verse"},{Section::drop,16,"Response"},{Section::breakdown,16,"Gospel break"},{Section::buildup,8,"Choir lift"},{Section::drop,32,"Final response"},{Section::outro,16,"Mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Jackin groove"},{Section::breakdown,8,"Quick break"},{Section::drop,32,"Jackin drop"},{Section::main,16,"Drum workout"},{Section::buildup,8,"Lift"},{Section::drop,32,"Final jack"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Piano jack"},{Section::breakdown,8,"Piano cut"},{Section::buildup,8,"Build"},{Section::drop,32,"Piano drop"},{Section::main,16,"Variation"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"UK shuffle"},{Section::breakdown,16,"Bass break"},{Section::buildup,8,"Reload"},{Section::drop,32,"Garage drop"},{Section::breakdown,8,"Cut"},{Section::drop,32,"Second drop"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,32,"Percussion mix in"},{Section::main,32,"Afro groove"},{Section::main,16,"Call and response"},{Section::breakdown,16,"Percussion break"},{Section::buildup,8,"Rise"},{Section::drop,32,"Tribal return"},{Section::outro,32,"Percussion mix out"}},
-        {{Section::intro,32,"Disco mix in"},{Section::main,32,"Funk verse"},{Section::drop,16,"Disco chorus"},{Section::breakdown,16,"Strings break"},{Section::main,32,"Funk reprise"},{Section::drop,16,"Final chorus"},{Section::outro,32,"Disco mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"90s theme"},{Section::breakdown,16,"Piano breakdown"},{Section::buildup,16,"Rave build"},{Section::drop,32,"Anthem drop"},{Section::outro,32,"Mix out"}},
-        {{Section::intro,16,"Broken mix in"},{Section::main,24,"Neo soul verse"},{Section::drop,16,"Chorus"},{Section::breakdown,8,"Bridge"},{Section::main,24,"Second verse"},{Section::drop,16,"Final chorus"},{Section::outro,16,"Broken mix out"}},
-        {{Section::intro,16,"Chill mix in"},{Section::main,24,"First landscape"},{Section::breakdown,16,"Space"},{Section::main,24,"Second landscape"},{Section::drop,16,"Warm return"},{Section::outro,16,"Chill mix out"}},
-        {{Section::intro,32,"Mix in"},{Section::main,32,"Stab theme"},{Section::breakdown,16,"Breakdown"},{Section::buildup,16,"Tension"},{Section::drop,32,"Stab drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Mix out"}}
+        {{Section::intro,32,"Intro"},{Section::main,32,"Piano theme"},{Section::breakdown,16,"Piano break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Piano drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"Soulful verse"},{Section::main,16,"Answer"},{Section::breakdown,16,"Soul break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Soulful chorus"},{Section::outro,32,"Outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"Deep groove"},{Section::breakdown,16,"Atmosphere"},{Section::main,32,"Evolution"},{Section::drop,32,"Deep return"},{Section::outro,32,"Outro"}},
+        {{Section::intro,16,"Intro"},{Section::main,32,"Gospel verse"},{Section::drop,16,"Response"},{Section::breakdown,16,"Gospel break"},{Section::buildup,8,"Choir lift"},{Section::drop,32,"Final response"},{Section::outro,16,"Outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"Jackin groove"},{Section::breakdown,8,"Quick break"},{Section::drop,32,"Jackin drop"},{Section::main,16,"Drum workout"},{Section::buildup,8,"Lift"},{Section::drop,32,"Final jack"},{Section::outro,32,"Outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"Piano jack"},{Section::breakdown,8,"Piano cut"},{Section::buildup,8,"Build"},{Section::drop,32,"Piano drop"},{Section::main,16,"Variation"},{Section::outro,32,"Outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"UK shuffle"},{Section::breakdown,16,"Bass break"},{Section::buildup,8,"Reload"},{Section::drop,32,"Garage drop"},{Section::breakdown,8,"Cut"},{Section::drop,32,"Second drop"},{Section::outro,32,"Outro"}},
+        {{Section::intro,32,"Percussion intro"},{Section::main,32,"Afro groove"},{Section::main,16,"Call and response"},{Section::breakdown,16,"Percussion break"},{Section::buildup,8,"Rise"},{Section::drop,32,"Tribal return"},{Section::outro,32,"Percussion outro"}},
+        {{Section::intro,32,"Disco intro"},{Section::main,32,"Funk verse"},{Section::drop,16,"Disco chorus"},{Section::breakdown,16,"Strings break"},{Section::main,32,"Funk reprise"},{Section::drop,16,"Final chorus"},{Section::outro,32,"Disco outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"90s theme"},{Section::breakdown,16,"Piano breakdown"},{Section::buildup,16,"Rave build"},{Section::drop,32,"Anthem drop"},{Section::outro,32,"Outro"}},
+        {{Section::intro,16,"Broken intro"},{Section::main,24,"Neo soul verse"},{Section::drop,16,"Chorus"},{Section::breakdown,8,"Bridge"},{Section::main,24,"Second verse"},{Section::drop,16,"Final chorus"},{Section::outro,16,"Broken outro"}},
+        {{Section::intro,16,"Chill intro"},{Section::main,24,"First landscape"},{Section::breakdown,16,"Space"},{Section::main,24,"Second landscape"},{Section::drop,16,"Warm return"},{Section::outro,16,"Chill outro"}},
+        {{Section::intro,32,"Intro"},{Section::main,32,"Stab theme"},{Section::breakdown,16,"Breakdown"},{Section::buildup,16,"Tension"},{Section::drop,32,"Stab drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}}
     };
     auto sections=forms[genre];
-    const int target=(int)std::ceil(p.settings.songMinutes*p.settings.bpm/4.);
-    int total=0;for(const auto& s:sections)total+=s.bars;
-    // Keep form proportions (including the genre's bridge and builds), in eight-bar phrases.
-    while(total<target){for(size_t i=1;i+1<sections.size()&&total<target;++i)if(sections[i].type==Section::main||sections[i].type==Section::drop){sections[i].bars+=8;total+=8;}}
-    while(total-8>=target){bool removed=false;for(size_t i=1;i+1<sections.size()&&total-8>=target;++i)if((sections[i].type==Section::main||sections[i].type==Section::drop)&&sections[i].bars>8){sections[i].bars-=8;total-=8;removed=true;}if(!removed)break;}
+    // A phrase resolves both the harmonic cycle and the selected groove. Longer
+    // evolving motifs need more room; dense material answers sooner. This changes
+    // musical repeats, never stretches a form to an arbitrary clock duration.
+    const auto& piano=p.tracks[0].engine;
+    const auto& kit=p.tracks[4].engine;
+    const auto& guitar=p.tracks[3].engine;
+    int motif=std::max({piano.grooveBars,kit.grooveBars,guitar.grooveBars});
+    double activity=piano.density>=0?piano.density:p.settings.density;
+    if(piano.pattern>=0&&piano.pattern<(int)sgk::groovePatterns().size()){
+        const auto& pattern=sgk::groovePatterns()[(size_t)piano.pattern];
+        motif=std::max(motif,(pattern.length()+15)/16);
+        int hits=0;for(char c:pattern.rightHand)if(c!='.'&&c!='=')++hits;
+        activity=.5*activity+.5*hits/std::max(1,pattern.length());
+    }
+    if(kit.pattern>=0&&kit.pattern<(int)fgd::drumPatterns().size())
+        motif=std::max(motif,(fgd::drumPatterns()[(size_t)kit.pattern].length()+15)/16);
+    if(guitar.pattern>=0&&guitar.pattern<(int)fgg::guitarPatterns().size())
+        motif=std::max(motif,(fgg::guitarPatterns()[(size_t)guitar.pattern].length()+15)/16);
+    const int harmonicBars=std::max(1,(p.settings.chordCount*p.settings.chordSteps+15)/16);
+    int phrase=8;while(phrase<32&&(phrase%harmonicBars!=0||phrase%motif!=0))phrase+=8;
+    // Unusual user progressions retain their own complete harmonic phrase.
+    if(phrase%harmonicBars!=0)phrase=harmonicBars;
+    const int development=motif>=4||piano.evolveBars>=16?1:activity>.85?-1:0;
+    for(auto& section:sections){
+        if(section.type==Section::main||section.type==Section::drop)
+            section.bars=std::clamp(((section.bars+phrase-1)/phrase+development)*phrase,phrase,128);
+        else if(section.type==Section::intro||section.type==Section::outro)
+            section.bars=std::clamp(((section.bars+phrase-1)/phrase)*phrase,phrase,64);
+    }
     std::vector<SongSection> bounded;
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
     p.sections=std::move(bounded);for(auto& t:p.tracks)t.clips.assign(p.sections.size(),{});
@@ -306,7 +332,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             } else {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
-                ds.riffSeed=clip.seed; ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
+                ds.riffSeed=e.riffSeed?e.riffSeed:clip.seed; ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
                 ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 ds.tempo=s.bpm; ds.bassSpace=e.bassSpace; ds.fillEveryBars=e.fillEvery; ds.variationEvery=e.variationEvery; ds.fillStyle=(fgd::FillStyle)(e.fillStyle<0?(int)fgd::FillStyle::mix:std::min(e.fillStyle,fgd::numFillStyles-1));
                 ds.velocity=e.velocity;ds.accentGroove=(float)e.accent;ds.genreFeel=e.genreFeel;ds.crashAfterFill=e.afterFill;ds.grooveBars=e.grooveBars;ds.segmentOrder=e.segments;
@@ -317,14 +343,9 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
-            // DJ edges: harmonic instruments leave a clean 16-bar mixing window.
-            // Percussion layers enter/leave in eight-bar phrases, never a random cut.
-            if(type==Section::intro||type==Section::outro){
-                const double clean=std::min(16,p.sections[si].bars)*4.;
-                const double entry=ti<4?clean:ti==4?0:ti==8?0:ti<=10?16:32;
-                clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),[&](const Note& n){return type==Section::intro?n.start<entry:n.start>=beats-entry;}),clip.notes.end());
-                if(type==Section::outro)for(auto& n:clip.notes)n.length=std::min(n.length,std::max(.001,beats-entry-n.start));
-            }
+            // Keep the original engines' genre-aware entrances and releases.
+            // Intro/outro are actual song sections, not sixteen bars forcibly
+            // stripped of piano, bass, strings and guitar after rendering.
             // A musical phrase grows and answers without randomly choosing another preset
             // on every repeat. Deep/chill avoid festival builds; jackin stays percussive.
             if((s.genre==2||s.genre==11)&&type==Section::buildup&&ti>=5)clip.notes.clear();

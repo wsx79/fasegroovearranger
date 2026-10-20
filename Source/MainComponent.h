@@ -27,6 +27,16 @@ public:
     bool keyPressed(const juce::KeyPress&) override;
     void clearSelection(){selected.clear();}
     bool guitarNotes=false;
+    int lowNote=48,highNote=72,brushVelocity=100;
+    bool flamBrush=false;
+    int tool=0;
+    bool selecting=false;
+    juce::Rectangle<float> marquee;
+    void fitNotes();
+    float rowHeight()const{return laneView()?40.f:std::max(5.f,(getHeight()-148.f)/(highNote-lowNote+1));}
+    int leftMargin()const{return laneView()?148:64;}
+    float velocityTop()const{return (float)getHeight()-96;}
+    void editVelocity(juce::Point<float>);
     bool laneView() const;
     float noteY(const Note&) const;
     float noteHeight() const;
@@ -39,9 +49,9 @@ private:
     MainComponent& owner;
     std::vector<Note> before;
     juce::Point<float> anchor;
-    bool resizing=false,velocityDrag=false;
+    bool resizing=false,velocityDrag=false,editingVelocity=false;
     int hit(juce::Point<float>) const;
-    double beat(float x) const {return std::max(0.,(x-64.)/pixelsPerBeat);}
+    double beat(float x) const {return std::max(0.,(x-leftMargin())/pixelsPerBeat);}
     int pitch(float y) const;
 };
 class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget {
@@ -83,7 +93,7 @@ private:
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
     juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"SOLISTA"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
-    juce::Slider minutesSlider;
+    juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
     juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};
     juce::TextButton playButton{"PLAY"},stopButton{"STOP"},rewindButton{"|<"},undoButton{"UNDO"},redoButton{"REDO"};
@@ -95,7 +105,8 @@ private:
     juce::TextButton soundButton{"INSTRUMENT"},pluginEditorButton{"OPEN VST"},sampleButton{"LOAD SAMPLE"},loadPluginButton{"LOAD VST3 / AU"};
     juce::Slider gainSlider,panSlider,velocitySlider;
     juce::ToggleButton muteButton{"MUTE"},soloButton{"SOLO"},lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
-    juce::ComboBox soundBox,gridBox;
+    juce::ComboBox soundBox,gridBox,brushBox;
+    juce::TextButton fitNotesButton{"FIT"},drawTool{"Draw"},selectTool{"Select"},eraseTool{"Erase"};
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     juce::TextButton sectionLoopButton{"LOOP SECTION"};
     juce::TextButton chordEditButton{"EDIT CHORDS"};

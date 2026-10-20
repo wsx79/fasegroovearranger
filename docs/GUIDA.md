@@ -43,7 +43,7 @@ Se scarichi da GitHub Actions, nello ZIP dell'artifact trovi il pacchetto indica
 ## 2. Primo brano in 60 secondi
 
 1. Nel menu del genere scegli **Soulful**.
-2. Lascia **5.0 min** oppure scegli la durata che ti serve.
+2. Scegli il groove: la durata segue il genere e lo sviluppo delle frasi, senza un numero di minuti imposto.
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Clicca un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
@@ -58,13 +58,13 @@ Vuoi un'altra versione? **NUOVA TRACCIA** cambia solo lo strumento scelto; **NUO
 
 ![La finestra di Fase Groove Arranger](images/guide_arrangement.png)
 
-In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere, durata e giro di accordi. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
+In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
 | Dove | Cosa trovi |
 |---|---|
 | **NUOVO · APRI · SALVA · SALVA COME** | Un progetto nuovo, l'apertura e il salvataggio dei tuoi brani. |
 | **AVVIA · FERMA · LOOP** | Ascolto, ritorno all'inizio e ripetizione della zona scelta. Il cursore azzurro mostra dove sei. |
-| **Genere e durata** | Il carattere del brano e la durata desiderata, da 4 a 12 minuti. |
+| **Genere e durata** | Il genere determina la forma; la durata è un risultato di groove e frasi armoniche, mostrato senza un cursore dei minuti. |
 | **PROGRESSIONE · MODIFICA ACCORDI** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
 | **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
 | **Nome della traccia** | Apre il pannello dello strumento, con groove, esecuzione, suono e mixer. |
@@ -77,16 +77,16 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 ## 4. Costruire un brano: intro, break, drop
 
-**NUOVO ARRANGIAMENTO** prepara la forma del genere scelto e scrive il MIDI. La durata si arrotonda alla frase musicale successiva: un obiettivo di cinque minuti può diventare, per esempio, 5:14.
+**NUOVO ARRANGIAMENTO** prepara la forma del genere scelto e scrive il MIDI. La durata deriva dalle sezioni del genere, dai cicli armonici completi e dallo sviluppo del groove. Un motivo più lungo o in evoluzione ha spazio per completarsi; un groove denso può rispondere prima. Non esiste un obiettivo fisso in minuti.
 
 | Parte | Come usarla |
 |---|---|
-| **Intro / Mix in** | L'ingresso del brano, 16 o 32 battute. Le prime 16 non hanno piano, basso, archi o chitarra: hai spazio per il mixaggio. |
+| **Intro** | L’ingresso appartiene alla struttura del genere. Frasi complete, entrate e sviluppo degli strumenti tengono conto delle transizioni tra brani; nessuna finestra armonica vuota è imposta. |
 | **Main** | Il groove principale. Qui fai riconoscere il giro e il suono del brano. |
 | **Breakdown** | Un respiro: cambiano gli spazi e il ruolo degli strumenti. |
 | **Build-up** | Una salita verso la ripartenza, nei generi che la prevedono. |
 | **Drop** | Il ritorno del groove pieno. Non deve per forza suonare identico alla prima parte. |
-| **Outro / Mix out** | L'uscita, 16 o 32 battute. Le ultime 16 lasciano di nuovo spazio al mixaggio. |
+| **Outro** | La chiusura segue le frasi e le uscite degli strumenti previste dai motori originali. Il mixaggio viene considerato nella struttura, senza togliere obbligatoriamente sedici battute armoniche. |
 
 La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro & Latin** dà spazio alle percussioni; **Funky & Disco** alterna strofe e ritornelli.
 
@@ -98,7 +98,7 @@ La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese;
 | **NUOVA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
 | **NUOVA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
 | **NUOVO CLIP** | Soltanto la traccia selezionata in quella sezione. |
-| **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere e durata. Prima devi sbloccare tracce e clip. |
+| **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere, frasi armoniche e sviluppo del groove. Prima devi sbloccare tracce e clip. |
 
 **Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** aggiunge una parte Main dopo quella scelta. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
 
@@ -145,7 +145,7 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 
 Le schermate mostrano la lingua inglese; i nomi dei comandi qui sotto seguono la lingua italiana.
 
-Il pannello del piano mostra i controlli estesi. Il menu **ESTESA** in alto porta direttamente a Esecuzione, Frasi/Fill, Ritmo/Dinamica, Strumenti musicali e Suono guida.
+Il piano usa i pannelli affiancati della vista estesa: Armonia e scale, Circolo delle quinte, Groove e Suono guida. Sotto trovi Ritmo/Dinamica ed Esecuzione. Tonalità, scala e trasporto restano nella barra della DAW. Il menu **ESTESA** porta direttamente alle sezioni.
 
 Trovi i **rivolti per accordo**, il seed del riff e del feel, **NUOVO FEEL**, pedale ed espressione CC64/CC11, ordine e blocchi A–D, griglia di 32 step e cursori della dinamica. Clicca uno step per scegliere pausa, nota, accento, ghost, anticipo o tenuto. Trascina il cursore per la dinamica; doppio clic torna al valore automatico. **RND PIANO** cambia il ritmo rispettando i segmenti bloccati; **DINAMICHE CASUALI** cambia solo le dinamiche.
 
@@ -221,7 +221,7 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 ### Soulful: piano davanti, chitarra negli spazi
 
-1. Scegli **Soulful**, una durata di cinque o sei minuti e premi **NUOVO ARRANGIAMENTO**.
+1. Scegli **Soulful** e il groove, poi premi **NUOVO ARRANGIAMENTO**.
 2. Nel piano parti da **Rhodes (FM)** e un giro con settime o none.
 3. Ascolta la parte principale. Se è troppo piena, abbassa la densità del piano e premi **APPLICA CLIP**.
 4. Lascia la chitarra in accompagnamento. Usa il suo mixer per togliere le righe che coprono il piano.
@@ -298,9 +298,9 @@ Il progetto ne ricorda il percorso, ma il file può essere stato spostato o manc
 
 Accendi **BLOCCA CLIP** per quella parte o **BLOCCA TRACCIA** per tutto lo strumento. Poi usa i pulsanti NUOVO sugli altri elementi. Puoi continuare a modificare a mano anche una parte bloccata.
 
-### La durata non è esattamente quella che ho scelto
+### Da cosa dipende la durata?
 
-Il brano chiude una frase musicale, invece di tagliarla a metà. Cambiare BPM dopo la generazione cambia anche la durata in minuti. Per rifare la forma al nuovo tempo scegli **NUOVO ARRANGIAMENTO**.
+La forma dipende dal genere; il groove e il ciclo armonico stabiliscono lo sviluppo in frasi complete. La durata mostrata segue il brano generato. Cambiare BPM modifica la durata in minuti, senza forzare un nuovo numero di battute.
 
 ### Dove sono registrazione, automazioni e catene di effetti?
 

@@ -43,7 +43,7 @@ From GitHub Actions, the artifact ZIP contains the package shown above: extract 
 ## 2. Your first song in 60 seconds
 
 1. Choose **Soulful** in the genre menu.
-2. Keep **5.0 min** or set the duration you need.
+2. Choose the groove: song length follows genre and phrase development, without a fixed minute target.
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
@@ -58,13 +58,13 @@ Want another take? **NEW TRACK** changes just the selected instrument; **NEW CLI
 
 ![The Fase Groove Arranger window](images/guide_arrangement.png)
 
-The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, duration and chord progression. The large area is the song, with sections across and instruments down the side.
+The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
 | Where | What you find |
 |---|---|
 | **NEW · OPEN · SAVE · SAVE AS** | Start, open and save your songs. |
 | **PLAY · STOP · LOOP** | Listen, return to the beginning and repeat the selected region. The blue cursor shows your position. |
-| **Genre and duration** | The song's character and target length, from 4 to 12 minutes. |
+| **Genre and duration** | Genre defines the form. Length follows groove development and complete harmonic phrases; the display shows the result. |
 | **PROGRESSION · EDIT CHORDS** | Ready-made progressions and individual chords. HARMONY shows the current progression. |
 | **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
 | **Track name** | Opens its instrument panel, with groove, playing, sound and mixer controls. |
@@ -77,16 +77,16 @@ Colours follow the instruments: **amber** for piano and kick, **cyan** for bass 
 
 ## 4. Building a song: intro, break, drop
 
-**NEW ARRANGEMENT** writes the song form and MIDI for the chosen genre. Its length rounds up to a musical phrase: a five-minute target can become, for example, 5:14.
+**NEW ARRANGEMENT** derives song length from the genre’s sections, complete harmonic cycles and groove development. Longer evolving motifs have room to unfold; dense grooves may answer sooner. There is no minute target.
 
 | Part | How to use it |
 |---|---|
-| **Intro / Mix in** | The song's entrance, 16 or 32 bars. Its first 16 bars leave out piano, bass, strings and guitar for DJ mixing. |
+| **Intro** | The entrance belongs to the genre’s form. Complete phrases and instrument entrances support transitions without compulsory silent harmonic windows. |
 | **Main** | The principal groove. Establish the song's progression and sound here. |
 | **Breakdown** | Some breathing room, changing the space and the instruments' roles. |
 | **Build-up** | A rise towards the return, in styles that call for it. |
 | **Drop** | The full groove comes back. It need not sound exactly like the first main part. |
-| **Outro / Mix out** | The exit, 16 or 32 bars. Its last 16 bars again leave harmonic space for mixing. |
+| **Outro** | The exit follows the original engines’ phrasing and instrument releases. Mixing is considered in the structure without forcing sixteen bars of harmonic silence. |
 
 The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro & Latin** develops its percussion; **Funky & Disco** moves between verses and choruses.
 
@@ -98,7 +98,7 @@ The form follows the style. **Deep and Chill** develop through longer passages; 
 | **NEW TRACK** | The selected instrument throughout the song. |
 | **NEW SECTION** | This section across all unlocked tracks. |
 | **NEW CLIP** | Just the selected track in this section. |
-| **NEW ARRANGEMENT** | Rebuilds the form and notes for the genre and duration. Unlock tracks and clips first. |
+| **NEW ARRANGEMENT** | Rebuilds the form and notes from genre, harmonic phrases and groove development. Unlock tracks and clips first. |
 
 **Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** adds a Main part after the selected section. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
 
@@ -143,7 +143,7 @@ Click an instrument's **name** to open its panel. Choose how to hear it at the t
 
 ### Piano: extended view
 
-The piano panel exposes its extended controls. The **ADVANCED** menu jumps to Performance, Phrases/Fills, Rhythm/Velocity, Musical tools and Guide sound.
+Piano uses the extended editor’s adjacent panels: Harmony & Scales, Circle of Fifths, Groove and Guide Sound. Rhythm/Velocity and Performance are below. Key, scale and transport remain in the DAW toolbar. **ADVANCED** jumps to the panel sections.
 
 It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**, sustain/expression CC64/CC11, A–D order and locks, a 32-step rhythm grid and individual velocity faders. Click a step to cycle rest, note, accent, ghost, push or hold. Drag a fader for velocity; double-click restores automatic dynamics. **RND PIANO** changes rhythm while respecting locked segments; **RND VELOCITY** changes dynamics only.
 
@@ -219,7 +219,7 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 
 ### Soulful: piano in front, guitar in the spaces
 
-1. Choose **Soulful**, five or six minutes, then **NEW ARRANGEMENT**.
+1. Choose **Soulful** and a groove, then **NEW ARRANGEMENT**.
 2. Start the piano with **Rhodes (FM)** and seventh or ninth chords.
 3. Listen to the main part. If it is too busy, lower piano density and click **APPLY CLIP**.
 4. Keep guitar in accompaniment and mute lanes that cover the piano.
@@ -296,9 +296,9 @@ The project remembers its path, but the file may have moved or may not be instal
 
 Enable **LOCK CLIP** for that part, or **LOCK TRACK** for the instrument. Use NEW on other elements. You can still edit locked material manually.
 
-### Why is the duration slightly different?
+### What determines the duration?
 
-The song closes a musical phrase rather than cutting it short. Changing BPM afterwards also changes the length in minutes. Use **NEW ARRANGEMENT** to rebuild the form at the new tempo.
+Genre sets the musical form; the groove and harmonic cycle determine its development in complete phrases. Changing BPM changes the resulting duration without forcing a new bar count.
 
 ### Where are recording, automation and effect chains?
 
