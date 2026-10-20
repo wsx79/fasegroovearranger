@@ -19,7 +19,7 @@
 
 ---
 
-**Versione di sviluppo: 0.4.3.** I pacchetti verificati sono negli artifact della [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). Non è ancora una release pubblicata.
+**Versione pubblicata: [0.4.3](https://github.com/wsx79/fasegroovearranger/releases/tag/v0.4.3).** I pacchetti verificati per Windows, macOS universal e Linux sono nella sezione **Assets** della release. È una versione iniziale di sviluppo.
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
@@ -58,7 +58,7 @@ cmake --build build --config Release -j2
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Le [build GitHub Actions](https://github.com/wsx79/fasegroovearranger/actions) producono `.zip` Windows e `.tar.gz` macOS/Linux. Estrai anche l'archivio contenuto nell'artifact. I pacchetti di sviluppo sono portatili e non firmati; macOS include Intel e Apple Silicon. Requisiti: Windows 10+, macOS 11+, Linux compatibile con Ubuntu 24.04. Dipendenze Linux e dettagli tecnici nel [README inglese](README.md#build-and-run).
+Scarica i pacchetti pubblicati da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): `.zip` Windows e `.tar.gz` macOS/Linux. Estrai l'archivio per usare l'applicazione. I pacchetti sono portatili e non firmati; macOS include Intel e Apple Silicon. Le [build GitHub Actions](https://github.com/wsx79/fasegroovearranger/actions) offrono anche artifact di sviluppo: in quel caso estrai anche l'archivio contenuto nell'artifact. Requisiti: Windows 10+, macOS 11+, Linux compatibile con Ubuntu 24.04. Dipendenze Linux e dettagli tecnici nel [README inglese](README.md#build-and-run).
 
 Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_BUILD_APP=OFF`.
 

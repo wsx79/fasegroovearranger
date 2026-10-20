@@ -19,7 +19,7 @@
 
 ---
 
-**Development build: 0.4.3** — [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). This is not a published release.
+**Current release: [0.4.3](https://github.com/wsx79/fasegroovearranger/releases/tag/v0.4.3).** Download the verified Windows, macOS universal and Linux packages from **Assets**. This is an initial development version.
 
 Create a complete song with the original Piano, Drums and Guitar engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
 
@@ -65,7 +65,7 @@ On Ubuntu/Debian install the native development dependencies first:
 sudo apt-get install build-essential cmake libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
 ```
 
-GitHub Actions builds Windows, macOS and Linux packages and runs the tests. Download successful builds from the workflow's **Artifacts** panel, then extract the distribution archive inside it: Windows `.zip`; macOS/Linux `.tar.gz`. The Unix archives preserve executable permissions. macOS binaries are universal (Apple Silicon + Intel); Windows bundles its C/C++ runtime statically. Development artifacts are unsigned; release signing/notarisation and installers are not configured.
+Download the published packages from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): Windows `.zip`; macOS/Linux `.tar.gz`. Extract the archive to use the portable application. The Unix archives preserve executable permissions. macOS binaries are universal (Apple Silicon + Intel); Windows bundles its C/C++ runtime statically. Packages are unsigned; signing/notarisation and installers are not configured. GitHub Actions also provides development builds in the workflow's **Artifacts** panel; extract the distribution archive inside an artifact.
 
 Distribution targets: Windows 10+, macOS 11+ and Ubuntu 24.04-compatible Linux systems. Build from source for other Linux distributions. Actual external plugins may require a newer OS.
 
