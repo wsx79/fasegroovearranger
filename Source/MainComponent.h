@@ -80,7 +80,7 @@ private:
     juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEAD"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     juce::Slider minutesSlider;
     juce::ComboBox sectionSelector;
-    juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"ECOSYSTEM"},helpButton{"GUIDA"};
+    juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDA"};
     juce::TextButton playButton{"PLAY"},stopButton{"STOP"},rewindButton{"|<"},undoButton{"UNDO"},redoButton{"REDO"};
     juce::ToggleButton loopButton{"LOOP"};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
@@ -120,6 +120,8 @@ private:
     void exportFile(int type,int track);
     void loadSampleFile(int,const juce::File&);
     void showAbout();
+    void showGuide(bool english=false);
+    bool writeHelpEvidence(const juce::File&);
     void showDocument(const juce::String&,const juce::String&);
     void showAudioSettings();
     void closePluginEditor();

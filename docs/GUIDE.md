@@ -1,73 +1,313 @@
-# Fase Groove Arranger — English guide
+# User guide – Fase Groove Arranger
 
-Fase Groove Arranger combines the original Piano, Drums and Guitar generation engines in a native standalone MIDI workstation. Its 17 instrument tracks share a song arrangement and harmony. The three plugins do not need to be installed.
+[Versione italiana](GUIDA.md)
 
-## Run the desktop packages
+Fase Groove Arranger **creates the MIDI for a whole song**: choose a style and a chord progression, listen to piano, bass, strings, drums and guitar, change what you like, then **export the song or its separate tracks** with your own sounds.
 
-Download your platform artifact from GitHub Actions. Extract the artifact ZIP, then the distribution archive inside it: ZIP on Windows, tar.gz on macOS/Linux. Launch the .exe, .app bundle or Linux executable. Unix archives preserve executable permissions. An external DAW and microphone access are not needed. Development packages have no installer or distribution signing.
+The grooves come from Fase Groove Piano, Drums and Guitar. Here they play in one song, sharing its key, tempo and arrangement.
 
-## Compose and arrange
+**Contents**
 
-Choose one of the original 13 genres, key, scale, chord colour, voicing and progression. Set the target duration (4–12 minutes, default 5) and click NEW ARRANGEMENT. It rebuilds the song form and MIDI; locked tracks/clips must first be unlocked, and UNDO restores the previous form. GENERATE SONG keeps the existing structure and generation locks.
+1. [Installation](#1-installation)
+2. [Your first song in 60 seconds](#2-your-first-song-in-60-seconds)
+3. [The window, section by section](#3-the-window-section-by-section)
+4. [Building a song: intro, break, drop](#4-building-a-song-intro-break-drop)
+5. [Chords, key and feel](#5-chords-key-and-feel)
+6. [Tracks and your own sounds](#6-tracks-and-your-own-sounds)
+7. [Editing the notes](#7-editing-the-notes)
+8. [Guitar lead and piano accompaniment](#8-guitar-lead-and-piano-accompaniment)
+9. [Recipes to get started](#9-recipes-to-get-started)
+10. [Saving and exporting](#10-saving-and-exporting)
+11. [Shortcuts](#11-shortcuts)
+12. [Questions and troubleshooting](#12-questions-and-troubleshooting)
+13. [Listen to my music and credits](#13-listen-to-my-music-and-credits)
 
-Each genre has its own form: deep/chill evolution, short jackin breaks, two garage drops, soulful/gospel call and response, Afro percussion development, or disco verses/choruses. Durations round up to a musical phrase. Intros/outros use 16 or 32 bars according to style, with no harmonic instruments in the first/last 16 bars for DJ mixing. Instrument layers enter/leave on phrases. Harmony and tempo remain shared DAW controls.
+---
 
-NEW TRACK regenerates the selected instrument throughout the song. NEW SECTION regenerates that section across all unlocked instruments. NEW CLIP changes only the selected instrument/section cell. LOCK TRACK and LOCK CLIP protect material from generation while allowing manual editing. UNDO/REDO keeps up to 40 in-memory steps.
+## 1. Installation
 
-Generation settings apply to the next generation; existing notes stay editable and keep their current pitches. Tempo changes playback immediately. After changing harmony or key, regenerate the relevant instruments together to keep them harmonically aligned. Locked material keeps its existing notes. EDIT CHORDS edits each slot as a scale degree or a chromatic major/minor/dominant chord and sets the progression length from 1 to 8 chords. NEW CHORDS prepares another progression in the selected scale; the progression menu uses the original piano library.
+Download your platform package and extract it. The app works on its own: **you do not need a DAW or the three Fase Groove plugins installed**.
 
-Right-click a section header to rename, duplicate its MIDI, remove, reorder, change its musical function or change its length. A longer section needs regeneration or editing to fill the extra time. Shortening trims notes at the boundary. + SECTION inserts a generated Main section. Projects support 1–64 sections, each 1–128 bars, in 4/4.
+| System | Package | Start |
+|---|---|---|
+| Windows | `.zip` | Open the extracted folder and run `Fase Groove Arranger.exe`. |
+| macOS | `.tar.gz` | Extract and open `Fase Groove Arranger.app`. The package is universal: Intel and Apple Silicon. |
+| Linux | `.tar.gz` | Extract and run `Fase Groove Arranger`. Keep the executable permissions. |
 
-## Instrument panels and MIDI editors
+From GitHub Actions, the artifact ZIP contains the package shown above: extract that too. These packages are portable and have no installer or distribution signature.
 
-Tracks appear in musical order: all thirteen drum pieces, Bass, Piano, Strings, Guitar. Click a track **name** for its instrument panel; click a **clip** for the large MIDI editor. < ARRANGEMENT or Escape returns to the song. EDIT MIDI / INSTRUMENT PANEL switches views; the section selector changes which part is edited. No piano roll is docked below the arrangement.
+**First launch:** open **AUDIO**, choose your output and a buffer suited to the device. The app uses audio output; it does not open the microphone.
 
-Family branding, graphite panels and rotary controls accompany instrument groove/playing/fill settings. Piano exposes register, gate, strum, direction, movement, range, top line, approach and realism; bass/strings expose their original style libraries. Each drum has its own MIDI mapping and pocket. Guitar has let ring, room for band, push changes and all twelve lane levels, octaves, mutes, swing and timing shifts. APPLY TRACK / APPLY CLIP writes settings to unlocked MIDI while keeping the current groove take. The NEW buttons in the arrangement choose another random take. Tone, reverb, chorus and pump affect internal guide sounds immediately; assigned plugins use their own sound controls. Key/BPM/link controls are not duplicated in instrument panels.
+> Start with the guide sound. You can hear and build the whole song before choosing your instruments.
 
-GUITAR LEAD in the guitar views switches the piano to the original plugin's accompaniment/answer logic. Piano and guitar regenerate with stored seeds, respecting locks; UNDO reverses the change.
+## 2. Your first song in 60 seconds
 
-Piano, bass and strings show only their own notes. Drum editors contain one lane for the selected piece and imported/pasted notes follow that drum's MIDI mapping. Guitar opens all twelve original playing lanes together: a click adds a chord gesture, dragging selects its grouped notes, and right-click removes the gesture. NOTES / LANES switches to an ordinary piano roll for individual guitar notes. ZOOM changes horizontal scale.
+1. Choose **Soulful** in the genre menu.
+2. Keep **5.0 min** or set the duration you need.
+3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
+4. Press **PLAY** or the **space bar** and listen.
+5. Click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
+6. Return with **< ARRANGEMENT**. Click the **Piano track name** and choose a guide sound, sample or your own VST.
+7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
-## Edit MIDI
+Want another take? **NEW TRACK** changes just the selected instrument; **NEW CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
 
-Select an arrangement cell to open its piano roll. Click empty space to add a note, drag a note to move it, drag its right edge to resize, or Alt-drag vertically to change velocity. Shift-click selects multiple notes. Right-click, Delete or Backspace deletes. Ctrl/Cmd+A selects the clip's notes while the piano roll is focused.
+> Found a part you like? Open its panel and enable **LOCK TRACK** or **LOCK CLIP** before trying other takes.
 
-QUANTISE uses the selected grid (quarter through 32nd notes). -12/+12 transpose by an octave. VEL changes selected notes or sets the velocity of new notes. With no selection, quantise/transpose apply to the complete clip. COPY copies the selection, or the entire clip when no notes are selected. PASTE preserves section-relative timing. Notes are trimmed to section bounds and same-pitch overlaps are reconciled for reliable note-offs.
+## 3. The window, section by section
 
-IMPORT MIDI or drag a PPQ .mid file into the application to replace the selected clip. All imported note tracks are merged into that clip and cropped to the section. Project tempo stays unchanged. SMPTE MIDI is not supported.
+![The Fase Groove Arranger window](images/guide_arrangement.png)
 
-## Assign instruments
+The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
-The built-in sounds are the synthesized guide instruments from the original applications, including electric/acoustic-style keyboards, organs, strings, a plucked guitar and four drum kits. Guitar articulations remain together on one track; each drum is a separate track.
+| Where | What you find |
+|---|---|
+| **NEW · OPEN · SAVE · SAVE AS** | Start, open and save your songs. |
+| **PLAY · STOP · LOOP** | Listen, return to the beginning and repeat the selected region. The blue cursor shows your position. |
+| **Genre and duration** | The song's character and target length, from 4 to 12 minutes. |
+| **PROGRESSION · EDIT CHORDS** | Ready-made progressions and individual chords. HARMONY shows the current progression. |
+| **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
+| **Track name** | Opens its instrument panel, with groove, playing, sound and mixer controls. |
+| **Clip** | Opens the large MIDI editor for just that track and section. |
+| **AUDIO · OPTIONS · GUIDA** | Output device; information, credits and privacy; the guide. |
 
-LOAD SAMPLE assigns a personal WAV/AIFF/FLAC/OGG sample of up to 60 seconds. Pitched instruments default to root MIDI 60; drums default to their GM note. Right-click the track to change the sample root. The sampler transposes a single sample; it does not implement multisample libraries.
+Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
-LOAD VST3 / AU assigns one native instrument plugin to a track. Select the actual .vst3 bundle. On macOS the installed Audio Units menu lists system-registered instruments. Windows/Linux support VST3; macOS additionally supports Audio Units. OPEN VST opens the plugin's editor or generic parameter editor. Plugins must match the application's architecture and have their own installation/licence. No third-party plugin binaries or sample libraries are bundled. Plugins run inside the application process; save before trying a new instrument.
+**M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to start from there. **ZOOM** changes how much of the song you see.
 
-The generation engine always remains internal Fase Groove code; your instrument receives MIDI and supplies its sound. Plugin state is saved in the project. External samples/plugins are referenced by path, not embedded. Relink missing instruments with the load buttons or explicitly choose the original guide sound from the track menu. Missing instruments must be resolved before audio export.
+## 4. Building a song: intro, break, drop
 
-## Playback and mixing
+**NEW ARRANGEMENT** writes the song form and MIDI for the chosen genre. Its length rounds up to a musical phrase: a five-minute target can become, for example, 5:14.
 
-PLAY/Space toggles playback; STOP returns to the beginning. |< rewinds. Click a section header to seek. Held notes are chased when playback starts in the middle of a chord. LOOP toggles the loop region; LOOP SECTION sets that region to the selected section.
+| Part | How to use it |
+|---|---|
+| **Intro / Mix in** | The song's entrance, 16 or 32 bars. Its first 16 bars leave out piano, bass, strings and guitar for DJ mixing. |
+| **Main** | The principal groove. Establish the song's progression and sound here. |
+| **Breakdown** | Some breathing room, changing the space and the instruments' roles. |
+| **Build-up** | A rise towards the return, in styles that call for it. |
+| **Drop** | The full groove comes back. It need not sound exactly like the first main part. |
+| **Outro / Mix out** | The exit, 16 or 32 bars. Its last 16 bars again leave harmonic space for mixing. |
 
-Each track has gain, pan, mute, solo and a meter. The master affects all outputs. Keep headroom: the final safety ceiling can distort an overloaded mix. AUDIO selects the output device, sample rate and buffer. The application opens no microphone input.
+The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro & Latin** develops its percussion; **Funky & Disco** moves between verses and choruses.
 
-## Save and export
+### Change only what you need
 
-SAVE/SAVE AS writes `.fga` projects containing the notes, arrangement, generation settings, locks, mixer and instrument state. Saves use a temporary file and atomic replacement. Unsaved work is copied once per minute to `FS Pitch/Fase Groove Arranger/autosave.fga` in the user application-data directory. AUDIO opens that folder or restores the autosave. Keep separate saved versions for long-term history.
+| Button | What changes |
+|---|---|
+| **GENERATE SONG** | New takes on all unlocked tracks, keeping the existing sections. |
+| **NEW TRACK** | The selected instrument throughout the song. |
+| **NEW SECTION** | This section across all unlocked tracks. |
+| **NEW CLIP** | Just the selected track in this section. |
+| **NEW ARRANGEMENT** | Rebuilds the form and notes for the genre and duration. Unlock tracks and clips first. |
 
-EXPORT writes a complete multitrack SMF MIDI file, one instrument MIDI file or separate MIDI stems. MIDI includes tempo, 4/4 signature, key/scale metadata, section markers and track names at 960 PPQ. Drums use GM channel 10. MIDI contains notes, not plugin sound.
+**Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** adds a Main part after the selected section. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
 
-Audio export supports a stereo 24-bit WAV at the current device sample rate, or stereo 320 kbps / 44.1 kHz MP3 with the bundled Shine encoder. Export the mix, one instrument or all 17 stems. Every stem starts at the song beginning and includes three seconds of tail. Empty tracks produce matching silent files. Mix export respects mute/solo; individual stems ignore mute/solo and retain track gain/pan/master. Batch exports create a dated subfolder. Playback stops during rendering; the progress dialog supports cancellation.
+> Try this: duplicate a drop, change only the bass in the second copy, then make the piano sparser. Keep a recognisable idea and change who carries it.
 
-WAV is the lossless format for further production and exact stem alignment. MP3 adds codec delay/padding and is intended for sharing. Plugins with internal randomisation or round-robin samples may vary between renders. Plugin latency compensation is not implemented.
+## 5. Chords, key and feel
 
-## Shortcuts, credits and privacy
+**The song has one shared key and scale.** Piano, bass, strings and guitar use the same progression. There is no need to LINK the individual instruments.
 
-Space: play/pause. Ctrl/Cmd+S: save. Ctrl/Cmd+Shift+S: save as. Ctrl/Cmd+Z: undo. Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y: redo. Piano roll shortcuts apply when the editor is focused.
+| Control | What it does |
+|---|---|
+| **Key / Scale** | The root and mode, at the top beside tempo. |
+| **PROGRESSION** | A progression from the Fase Groove Piano library. Some also choose a suitable scale. |
+| **NEW CHORDS** | Prepares another degree progression in the selected scale. |
+| **EDIT CHORDS** | Change each chord: a scale degree, or major, minor or dominant on a chromatic root. One to eight chords, one per bar. |
+| **Extensions / Voicing** | Chord colour and the piano notes' arrangement. |
+| **DENSITY** | From a few notes to a busier groove. |
+| **SWING** | Moves alternating sixteenths, from straight towards shuffle. |
+| **FEEL / HUMANIZE** | Small timing and velocity differences. |
 
-ECOSYSTEM opens credits, privacy and third-party notices. Creator: Fabio 'Pitch' Serra / FS Pitch, DJ & Producer. Original ecosystem code: Claude (Anthropic), AI coding assistant. Arranger integration: Codex (OpenAI), AI coding assistant. Original artist logo, Spotify and donation links are retained. The application is AGPL-3.0-or-later software.
+**Tempo** changes playback speed immediately. Other choices prepare the next generation; the notes you have written stay in place until you apply them.
 
-The app is offline with no accounts, analytics, telemetry or music uploads. It reads files you select and writes local projects, autosaves and exports. External links open your browser only when clicked. Third-party plugins have their own privacy/permission terms. See PRIVACY.md and THIRD_PARTY_NOTICES.md.
+Inside an instrument panel, **APPLY TRACK** or **APPLY CLIP** applies its parameters while keeping the current groove take. The **NEW** buttons in the arrangement choose a different take.
 
-Version 0.2.0 does not include audio/MIDI recording, audio editing, automation lanes, time stretching, effects chains, buses/sends, controller recording, signatures other than 4/4, plugin delay compensation or sandboxed plugin scanning. It is an initial MIDI arranging workstation, with compatibility requiring validation against your actual plugins. Development packages are unsigned and have no installer.
+> After changing the key or progression, regenerate the relevant harmonic instruments together. A locked part keeps its notes, even when the rest of the song changes harmony.
+
+## 6. Tracks and your own sounds
+
+The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Then come **Bass, Piano, Strings and Guitar**. The guitar stays together on one track.
+
+![The piano instrument panel](images/guide_piano.png)
+
+Click an instrument's **name** to open its panel. Choose how to hear it at the top; below are groove, feel, playing and fills. **EDIT MIDI** opens the notes; **< ARRANGEMENT** returns to the song.
+
+| Instrument | Where to start |
+|---|---|
+| **Piano** | Groove, gate, register and strum; then movement, top line and range to refine the right hand. |
+| **Bass** | A bass line and its feel: classic, sub or sub with gaps on the beat. |
+| **Strings** | A strings style, from sustained support to a rhythmic part. |
+| **Drums** | Just the selected piece: groove, velocity, MIDI note and pocket. |
+| **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
+
+### Guide sound, sample or VST
+
+| Button | What you choose |
+|---|---|
+| **BUILT-IN** | Return to the guide sound. Piano and bass have seven keyboard tones; strings, four guitars and four drum kits have their own sounds. |
+| **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. |
+| **LOAD VST3 / AU** | An instrument installed on your computer. Choose the `.vst3` bundle; macOS also lists installed Audio Units. |
+| **OPEN VST** | The loaded instrument's own interface. |
+
+**GAIN, PAN, MUTE and SOLO** belong to the track. **TONE, REVERB, CHORUS and PUMP** change only the guide sound; use your VST's controls for its sound. The groove controls still write the MIDI sent to it.
+
+A pitched sample starts with root MIDI 60; drums use the piece's note. **Right-click the track name → sample root** changes it. This is a single sample transposed across the track's notes, not a multisample library.
+
+## 7. Editing the notes
+
+Click a **clip** to open the full editor. Choose which part to edit in the section menu; **LOOP SECTION** repeats it while you work. Each editor shows only its own track. A drum piece has one row.
+
+| Action | Result |
+|---|---|
+| **Click empty space** | Add a note on the grid. |
+| **Drag a note** | Move it in time; in the pitched piano roll, also change its pitch. |
+| **Drag its right edge** | Change the length of pitched notes. |
+| **Alt + drag vertically** | Change velocity without moving the note. |
+| **Shift + click** | Add or remove a note from the selection. |
+| **Right-click / DELETE / Backspace** | Delete a note. In the guitar lane view, right-click removes the strum gesture. |
+| **Ctrl/Cmd + A** | Select all notes in the clip. |
+| **QUANTISE** | Align to the selected grid: 1/4, 1/8, 1/16 or 1/32. |
+| **−12 / +12** | Transpose pitched notes by an octave. |
+| **VEL** | Change selected-note velocity; with no selection, set it for new notes. |
+| **COPY / PASTE** | Copy selected notes, or the whole clip, and paste at the same section-relative positions. |
+
+Quantise and transpose affect the selection, or the whole clip when nothing is selected. **ZOOM** opens up timing detail. **Escape** returns to the arrangement.
+
+**IMPORT MIDI**, or dropping a `.mid` onto the window, replaces the selected clip's notes. Project tempo stays as set in the Arranger. In a drum track, imported notes are mapped to just that piece. **UNDO** restores the previous clip.
+
+## 8. Guitar lead and piano accompaniment
+
+![The guitar's twelve playing lanes](images/guide_guitar.png)
+
+Edit the guitar as in Fase Groove Guitar: **twelve ways of playing the same chord, all on one track**.
+
+| Lane | What it plays |
+|---|---|
+| **DOWN / UP** | Down-strums of the chord and up-strums on the high strings. |
+| **STAB / CHANK** | Short chords and very short funk chops. |
+| **SCRATCH** | A muted percussive hit to fill rhythmic spaces. |
+| **SLIDE / SWELL** | Slides into the chord and gradually swelling entries. |
+| **ARP / LICK** | One string at a time and phrases over the chord. |
+| **OCTAVE / POWER / ROOT** | Octaves, power chords and low-string roots. |
+
+Click a lane to add a gesture on that bar's chord. Its notes select and move together. **NOTES / LANES** switches to the piano roll when you want to edit individual notes.
+
+### Who carries the progression?
+
+In the guitar panel or editor, **GUITAR ACCOMPANIMENT / GUITAR LEAD** changes the roles. With **LEAD** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
+
+![The guitar mixer](images/guide_mixer.png)
+
+The twelve lanes sit side by side in the mixer: **level, octave, mute, swing share and push/pull**. Push/pull is in milliseconds: negative is earlier, positive later.
+
+> Try **Room for band** to leave the bass its space. For a more percussive guitar, shorten strums and reduce **Let ring**. Listen with the piano, not only in solo.
+
+## 9. Recipes to get started
+
+### Soulful: piano in front, guitar in the spaces
+
+1. Choose **Soulful**, five or six minutes, then **NEW ARRANGEMENT**.
+2. Start the piano with **Rhodes (FM)** and seventh or ninth chords.
+3. Listen to the main part. If it is too busy, lower piano density and click **APPLY CLIP**.
+4. Keep guitar in accompaniment and mute lanes that cover the piano.
+5. Lock the piano take you like, then try **NEW TRACK** on bass.
+
+### Deep: fewer notes, more room
+
+1. Choose **Deep** and generate the form.
+2. Try a compact piano register, longer gate and fewer notes.
+3. Choose a **Sub** bass feel. Keep strings as support and listen to the break.
+4. Duplicate a main part and change just one or two instruments in the reprise.
+
+### Jackin': short grooves and strong returns
+
+1. Choose **Jackin'** or **Jackin' Piano**.
+2. Start with short piano gate and more swing.
+3. Strip back the break to set up the return: a **NEW CLIP** on piano may be enough.
+4. Keep the kick recognisable and compare the return with what came before using **LOOP SECTION**.
+
+### Funky & Disco: let guitar lead
+
+1. Choose **Funky & Disco** and generate the song.
+2. Open guitar and enable **GUITAR LEAD**.
+3. Listen to DOWN, UP, CHANK and OCTAVE in context; lower lanes that overlap too much.
+4. Try strings in the chorus and leave more space in the part before it.
+5. Check the outro: the final sixteen bars should stay clear of harmonic instruments for mixing.
+
+## 10. Saving and exporting
+
+**SAVE / SAVE AS** writes a `.fga` project: sections, notes, parameters, locks, mixer and VST state. Samples and plugins stay at their paths; keep the files used in the song.
+
+An autosave is written once a minute when work has changed. **AUDIO → restore autosave** opens it; **open autosave folder** shows its location. Save separately named copies for versions you want to keep. UNDO retains up to forty steps while the app is open.
+
+| In EXPORT | What you get |
+|---|---|
+| **MIDI** | The multitrack song, one track or separate files for all tracks. Includes tempo and section markers, not the sounds. |
+| **WAV** | Mix, one track or all stems, in 24-bit stereo. Use this for further mixing. |
+| **MP3** | Mix, one track or all stems, stereo 320 kbps / 44.1 kHz. The encoder is included. |
+
+All WAV stems start at the song's beginning, have the same length and include a three-second tail. Even an empty track produces an aligned file. Mix export follows mute/solo; a stem exports even when its track is muted and retains gain, pan and master level.
+
+> Choose WAV to bring stems into a DAW. MP3 adds codec delay: useful for listening and sharing, rather than precise track alignment.
+
+## 11. Shortcuts
+
+| Keys | Action |
+|---|---|
+| **Space** | Play / pause. |
+| **Escape** | Return from the editor to the arrangement. |
+| **Ctrl/Cmd + S** | Save. |
+| **Ctrl/Cmd + Shift + S** | Save as. |
+| **Ctrl/Cmd + Z** | Undo. |
+| **Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y** | Redo. |
+| **Ctrl/Cmd + A**, in the editor | Select the clip's notes. |
+| **Delete / Backspace**, in the editor | Delete the selection. |
+
+In this guide, **Ctrl/Cmd + F** focuses search. The arrows beside search move between results; **A− / A+** changes text size. Click a screenshot to open it larger.
+
+## 12. Questions and troubleshooting
+
+### I changed key, but still hear the old chords
+
+You have prepared a new key while the clips still contain their previous notes. Regenerate the relevant harmonic instruments. Check locks: a locked part keeps its notes.
+
+### I cannot hear anything
+
+Check **AUDIO**, output device, PLAY, master level and MUTE/SOLO. Click **BUILT-IN** in the track panel to try the guide sound. If that works, check the assigned sample or VST.
+
+### A VST or sample cannot be found
+
+The project remembers its path, but the file may have moved or may not be installed here. Relink it with **LOAD SAMPLE** or **LOAD VST3 / AU**. Check the plugin's architecture and its authorisation. Missing instruments must be relinked before audio export.
+
+### How do I keep edited notes while trying other takes?
+
+Enable **LOCK CLIP** for that part, or **LOCK TRACK** for the instrument. Use NEW on other elements. You can still edit locked material manually.
+
+### Why is the duration slightly different?
+
+The song closes a musical phrase rather than cutting it short. Changing BPM afterwards also changes the length in minutes. Use **NEW ARRANGEMENT** to rebuild the form at the new tempo.
+
+### Where are recording, automation and effect chains?
+
+This version works on MIDI arrangements. Audio/MIDI recording, automation, audio editing, buses/sends, external effect chains and plugin delay compensation are not present. Export MIDI and WAV to continue in your DAW. Some advanced Fase Groove plugin controls have not yet been brought into the Arranger.
+
+### My MIDI file will not import
+
+Use a PPQ MIDI file; SMPTE files are not supported. Import fills the selected clip up to its section length; it does not reconstruct an entire external song automatically.
+
+## 13. Listen to my music and credits
+
+**Fase Groove Arranger is by Fabio 'Pitch' Serra / FS Pitch, DJ & Producer.**
+
+[Listen to Fabio 'Pitch' Serra on Spotify](https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP)
+
+[Buy me a coffee on Ko-fi](https://ko-fi.com/fabios1979)
+
+[Support the project with PayPal](https://paypal.me/fabios79)
+
+Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**, AI coding assistants. Open credits, licences and privacy through **OPTIONS**.
+
+[Source code and the Fase Groove family](https://github.com/wsx79/fasegroovearranger)
+
+The app is free and open source, **GNU AGPL v3 or later**, built with JUCE and the Inter typeface. It works offline with no accounts, analytics or music uploads. External links open your browser only when you choose them. Your samples and plugins keep their own licences and terms; Privacy and Licences are included in the package.

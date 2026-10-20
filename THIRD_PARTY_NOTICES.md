@@ -4,7 +4,7 @@
 
 Copyright (C) 2026 Fabio 'Pitch' Serra / FS Pitch. Application and original generation engines: **GNU Affero General Public License version 3 or later**, full text in `LICENSE` and in the original source folders.
 
-Creator: **Fabio 'Pitch' Serra — DJ & Producer**. Original Piano/Drums/Guitar code credit retained from their About pages: **Claude (Anthropic) — AI coding assistant**. Arranger implementation/integration: **Codex (OpenAI) — AI coding assistant**. The original FS PITCH artist logo, Inter theme and artist/donation links are retained.
+Creator: **Fabio 'Pitch' Serra — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI) — AI coding assistants**. The original FS PITCH artist logo, Inter theme and artist/donation links are retained. Source provenance and licences for each component are listed below.
 
 Original sources, copied with copyright and licence notices:
 

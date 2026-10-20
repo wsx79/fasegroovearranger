@@ -14,6 +14,6 @@ Offline audio export temporarily owns the processing engine and uses the same in
 
 `ProjectIO` handles versioned JSON `.fga` projects, validation, atomic saves, external sample/plugin paths and plugin-state blobs. No executable code is contained in a project itself; restoring a plugin loads its external native binary. Project import never runs shell commands. The application has no network client, updater, analytics, embedded website or cloud storage.
 
-`FamilyTheme.h`, fonts and FS PITCH logo are taken from the ecosystem. The Arranger icon uses track blocks in the same palette. Credits retain the original app credits and separately identify arranger integration. Italian/English guide and privacy/licence documents are embedded in the binary.
+`FamilyTheme.h`, fonts and FS PITCH logo are taken from the ecosystem. The Arranger icon uses the shared family mark. Credits present the creator and development assistance together, with contributor attribution retained. Italian/English guides and privacy/licence documents are embedded in the binary. The native guide reader renders headings, control tables, examples and screenshots with chapter navigation, full-text search and adjustable text size; it uses no browser or network. The same Markdown sources produce offline HTML guides.
 
 Build targets: `fga_core`, `fga_mp3`, `FaseGrooveArranger`, core/MP3/IO tests. GitHub Actions builds the native app on Ubuntu, Windows and macOS, and runs a Linux audio-render smoke test. See VALIDATION.md for observed results and unverified cases.

@@ -1,34 +1,29 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "GuidePage.h"
 #include <BinaryData.h>
 namespace fga {
 namespace {
 juce::String u(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(title,"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton("Annulla",0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
-class TextPage:public juce::Component {
-public:
-    TextPage(juce::String text){editor.setMultiLine(true);editor.setReadOnly(true);editor.setScrollbarsShown(true);editor.setFont(FamilyTheme::font(14));editor.setText(text);addAndMakeVisible(editor);setSize(850,650);}
-    void resized()override{editor.setBounds(getLocalBounds().reduced(16));}
-private:juce::TextEditor editor;
-};
 class AboutPage:public juce::Component {
 public:
-    AboutPage(){
+    AboutPage(){setLookAndFeel(&theme);
         logo=juce::ImageCache::getFromMemory(BinaryData::fs_pitch_logo_png,BinaryData::fs_pitch_logo_pngSize);
         const juce::StringArray titles{"SOURCE CODE","Ko-fi","PayPal","Spotify"};const juce::StringArray urls{"https://github.com/wsx79/fasegroovearranger","https://ko-fi.com/fabios1979","https://paypal.me/fabios79","https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP"};
         for(int i=0;i<4;++i){auto* b=buttons.add(new juce::TextButton(titles[i]));auto url=urls[i];b->onClick=[url]{juce::URL(url).launchInDefaultBrowser();};addAndMakeVisible(b);}setSize(780,690);
     }
     void paint(juce::Graphics& g)override{
         g.fillAll(Palette::panel);auto line=[&](juce::String text,int y,int h,float size,juce::Colour colour=Palette::text){g.setColour(colour);g.setFont(FamilyTheme::font(size));g.drawText(text,20,y,getWidth()-40,h,juce::Justification::centred);};
-        line("FASE GROOVE ARRANGER",24,42,29,Palette::accent);line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),72,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.2.0 · Windows / macOS / Linux"),100,22,12,Palette::dim);
+        drawFamilyLogo(g,{210,18,360,64});line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),72,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.2.1 · Windows / macOS / Linux"),100,22,12,Palette::dim);
         line("CREATED BY",142,22,11,Palette::accent);if(logo.isValid())g.drawImageWithin(logo,100,176,getWidth()-200,100,juce::RectanglePlacement::centred);line(juce::String::fromUTF8("Fabio 'Pitch' Serra · DJ & Producer"),280,25,17);line("Listen to my productions on Spotify",310,22,12,juce::Colour(0xff1db954));
-        line("ORIGINAL ECOSYSTEM CODE",352,22,11,Palette::accent);line("Claude  (Anthropic)",379,25,17);line(juce::String::fromUTF8("AI coding assistant · credits retained from the original apps"),407,20,12,Palette::dim);
-        line("ARRANGER INTEGRATION",445,22,11,Palette::accent);line("Codex  (OpenAI)",472,24,17);line("AI coding assistant",499,20,12,Palette::dim);
+        line("DEVELOPMENT ASSISTANCE",366,22,11,Palette::accent);line("Claude (Anthropic)  /  Codex (OpenAI)",402,26,17);line("AI coding assistants",438,22,12,Palette::dim);
         line(juce::String::fromUTF8("Free & open source · GNU AGPL v3 or later"),543,24,13);line(juce::String::fromUTF8("Built with JUCE · Inter typeface: SIL Open Font License"),570,20,11,Palette::dim);line("VST is a registered trademark of Steinberg Media Technologies GmbH",594,20,10,Palette::dim);
     }
+    ~AboutPage()override{setLookAndFeel(nullptr);}
     void resized()override{int width=(getWidth()-70)/4;for(int i=0;i<buttons.size();++i)buttons[i]->setBounds(20+i*(width+10),getHeight()-52,width,32);}
-private:juce::Image logo;juce::OwnedArray<juce::TextButton> buttons;
+private:FamilyLookAndFeel theme;juce::Image logo;juce::OwnedArray<juce::TextButton> buttons;
 };
 class ExportTask:public juce::ThreadWithProgressWindow {
 public:
@@ -75,8 +70,10 @@ void MainComponent::showClipMenu(int track,int section){
     juce::PopupMenu m;m.addItem(1,"Rigenera solo questo clip");m.addItem(2,"Blocca generazione",true,project.tracks[(size_t)track].clips[(size_t)section].locked);m.addItem(3,"Copia MIDI");m.addItem(4,"Incolla MIDI",!clipboard.empty());m.addItem(5,"Svuota clip");m.addItem(6,"Loop sezione");juce::Component::SafePointer<MainComponent> safe(this);
     m.showMenuAsync(juce::PopupMenu::Options(),[safe,track,section](int id){if(safe==nullptr||id==0)return;safe->select(track,section);if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==3)safe->copyButton.triggerClick();if(id==4)safe->pasteButton.triggerClick();if(id==5){safe->checkpoint();safe->clip().notes.clear();safe->changed();}if(id==6)safe->sectionLoopButton.triggerClick();});
 }
-void MainComponent::showDocument(const juce::String& title,const juce::String& text){juce::DialogWindow::LaunchOptions o;o.dialogTitle=title;o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(new TextPage(text));o.launchAsync();}
-void MainComponent::showAbout(){juce::PopupMenu m;m.addItem(1,juce::String::fromUTF8("Crediti · Fase Groove ecosystem"));m.addItem(2,"Privacy e permessi");m.addItem(3,"Licenze e attribuzioni");m.addItem(4,"Guida italiana");m.addItem(5,"English guide");juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&aboutButton),[safe](int id){if(safe==nullptr)return;if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Ecosystem");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;o.content.setOwned(new AboutPage);o.launchAsync();}if(id==2)safe->showDocument("Privacy e permessi",juce::String::fromUTF8(BinaryData::PRIVACY_it_md,BinaryData::PRIVACY_it_mdSize));if(id==3)safe->showDocument("Licenze",juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));if(id==4)safe->helpButton.triggerClick();if(id==5)safe->showDocument("English guide",juce::String::fromUTF8(BinaryData::GUIDE_md,BinaryData::GUIDE_mdSize));});}
+void MainComponent::showGuide(bool english){juce::DialogWindow::LaunchOptions o;o.dialogTitle=english?"Fase Groove Arranger / User guide":"Fase Groove Arranger / Guida";o.dialogBackgroundColour=Palette::background;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createGuidePage(english).release());o.launchAsync();}
+bool MainComponent::writeHelpEvidence(const juce::File& folder){AboutPage about;auto image=about.createComponentSnapshot(about.getLocalBounds());bool ok=false;if(auto out=folder.getChildFile("credits.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*out);}return verifyGuidePages(folder)&&ok;}
+void MainComponent::showDocument(const juce::String& title,const juce::String& text){juce::DialogWindow::LaunchOptions o;o.dialogTitle=title;o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createReferencePage(title,text).release());o.launchAsync();}
+void MainComponent::showAbout(){juce::PopupMenu m;m.addItem(1,juce::String::fromUTF8("Informazioni e crediti"));m.addItem(2,"Privacy e permessi");m.addItem(3,"Licenze e attribuzioni");m.addItem(4,"Guida italiana");m.addItem(5,"English guide");juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&aboutButton),[safe](int id){if(safe==nullptr)return;if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Ecosystem");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;o.content.setOwned(new AboutPage);o.launchAsync();}if(id==2)safe->showDocument("Privacy e permessi",juce::String::fromUTF8(BinaryData::PRIVACY_it_md,BinaryData::PRIVACY_it_mdSize));if(id==3)safe->showDocument("Licenze",juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));if(id==4)safe->helpButton.triggerClick();if(id==5)safe->showGuide(true);});}
 void MainComponent::showAudioSettings(){
     juce::PopupMenu menu;menu.addItem(1,"Dispositivo audio / buffer");menu.addItem(3,"Apri cartella autosave");menu.addItem(4,"Recupera autosave");juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton),[safe](int id){if(safe==nullptr)return;if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,0,0,2,false,false,true,false);selector->setSize(680,500);o.content.setOwned(selector);o.launchAsync();}
         if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else safe->open(folder.getChildFile("autosave.fga"));}

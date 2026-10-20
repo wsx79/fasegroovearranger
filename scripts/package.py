@@ -17,7 +17,7 @@ if system == 'macOS':
     arch = 'universal' if {'arm64', 'x86_64'}.issubset(architectures) else '-'.join(architectures)
 else:
     arch = platform.machine()
-name = f'FaseGrooveArranger-0.2.0-{system}-{arch}'
+name = f'FaseGrooveArranger-0.2.1-{system}-{arch}'
 dist = root / 'dist'
 stage = dist / name
 stage.mkdir(parents=True, exist_ok=True)
@@ -25,7 +25,8 @@ native = root / 'build/FaseGrooveArranger_artefacts/Release'
 assert native.is_dir(), f'Native build missing: {native}'
 shutil.copytree(native, stage, dirs_exist_ok=True)
 for file in ['LICENSE', 'README.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
-             'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING',
+             'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
+             'Resources/arranger.svg', 'ThirdParty/shine/COPYING',
              'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
              'ThirdParty/fasegrooveguitar/LICENSE']:
     target = stage / file

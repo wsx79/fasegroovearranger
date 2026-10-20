@@ -1,111 +1,313 @@
-# Fase Groove Arranger — Guida italiana
+# Guida di utilizzo – Fase Groove Arranger
 
-## 1. L'ecosistema
+[English version](GUIDE.md)
 
-Fase Groove Arranger riunisce i motori originali di Fase Groove Piano, Drums e Guitar in una workstation MIDI standalone. Non serve installare i tre plugin. L'interfaccia riprende colori, carattere Inter, logo artista e linguaggio visivo delle app della famiglia.
+Fase Groove Arranger **crea il MIDI di un brano intero**: scegli un genere e un giro di accordi, ascolti piano, basso, archi, batteria e chitarra, cambi quello che vuoi e poi **esporti il brano o le singole tracce** con i tuoi suoni.
 
-Creato da Fabio 'Pitch' Serra / FS Pitch, DJ & Producer. I crediti dei motori originali restano Claude (Anthropic), AI coding assistant. L'integrazione dell'arranger è sviluppata con Codex (OpenAI), AI coding assistant. ECOSYSTEM apre crediti, licenze e privacy, con gli stessi collegamenti artista e donazioni delle altre app.
+I groove sono quelli di Fase Groove Piano, Drums e Guitar. Qui suonano nello stesso brano: una tonalità, un tempo e un arrangiamento condivisi.
 
-## Avvio dei pacchetti desktop
+**Indice**
 
-Scarica l'artifact del tuo sistema da GitHub Actions. Estrai lo ZIP dell'artifact e poi l'archivio di distribuzione contenuto: ZIP su Windows, tar.gz su macOS/Linux. Avvia Fase Groove Arranger.exe su Windows, il bundle .app su macOS oppure l'eseguibile su Linux. Gli archivi Unix conservano i permessi di esecuzione. Non serve una DAW esterna e non è richiesto il microfono. I pacchetti di sviluppo non hanno installer o firma di distribuzione.
+1. [Installazione](#1-installazione)
+2. [Primo brano in 60 secondi](#2-primo-brano-in-60-secondi)
+3. [La finestra, sezione per sezione](#3-la-finestra-sezione-per-sezione)
+4. [Costruire un brano: intro, break, drop](#4-costruire-un-brano-intro-break-drop)
+5. [Accordi, tonalità e feel](#5-accordi-tonalita-e-feel)
+6. [Le tracce e i tuoi suoni](#6-le-tracce-e-i-tuoi-suoni)
+7. [Modificare le note](#7-modificare-le-note)
+8. [La chitarra e il piano di accompagnamento](#8-la-chitarra-e-il-piano-di-accompagnamento)
+9. [Ricette per partire](#9-ricette-per-partire)
+10. [Salvare ed esportare](#10-salvare-ed-esportare)
+11. [Scorciatoie](#11-scorciatoie)
+12. [Domande frequenti e problemi](#12-domande-frequenti-e-problemi)
+13. [Ascolta la mia musica e crediti](#13-ascolta-la-mia-musica-e-crediti)
 
-## 2. Creare una canzone
+---
 
-Scegli un genere: Piano House, Soulful, Deep, Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House, Neo Soul & Broken, Chill & Pads oppure Dance Stabs. La scelta prepara tempo, swing, progressione e parti di basso/archi adatte al genere. Imposta tonalità, scala, estensione e voicing. GENERATE SONG scrive il MIDI di tutte le tracce sbloccate.
+## 1. Installazione
 
-Imposta la durata desiderata (4–12 minuti nell'interfaccia, 5 di default) e premi NEW ARRANGEMENT. Questo ricostruisce forma e MIDI: usa UNDO per recuperare il lavoro precedente. Le tracce e i clip bloccati devono essere sbloccati prima di cambiare struttura. GENERATE SONG mantiene invece le sezioni e i blocchi esistenti.
+Scarica il pacchetto del tuo sistema e scompattalo. L'app funziona da sola: **non devi installare una DAW o i tre plugin Fase Groove**.
 
-Ogni genere ha una forma propria: Deep e Chill evolvono senza build da festival; Jackin' alterna groove, break brevi e ripartenze; Garage ha due drop e un taglio; Soulful/Gospel hanno risposte e riprese; Afro privilegia le percussioni e Disco le strofe/ritornelli. La durata si arrotonda alla frase musicale successiva. Intro e outro durano 16 o 32 battute secondo lo stile; le prime e le ultime 16 battute sono prive di piano, basso, archi e chitarra per consentire il mixaggio. Gli altri strati entrano/escono per frasi. Tempo e armonia sono controlli della DAW, condivisi da tutti gli strumenti.
+| Sistema | Pacchetto | Avvio |
+|---|---|---|
+| Windows | `.zip` | Apri la cartella estratta e avvia `Fase Groove Arranger.exe`. |
+| macOS | `.tar.gz` | Estrai l'archivio e apri `Fase Groove Arranger.app`. Il pacchetto è universale, Intel e Apple Silicon. |
+| Linux | `.tar.gz` | Estrai l'archivio e avvia `Fase Groove Arranger`. Conserva i permessi di esecuzione. |
 
-La progressione è condivisa da piano, basso, archi e chitarra. EDIT CHORDS permette di impostare ogni slot come grado della scala oppure accordo maggiore, minore o dominante su una radice cromatica, e di scegliere da 1 a 8 accordi. PROGRESSION sceglie dalla libreria armonica originale. NEW CHORDS propone una nuova sequenza di gradi nella scala attuale. Le impostazioni nuove si applicano alla prossima generazione: non cambiano automaticamente le note che hai già modificato. Per applicare una nuova tonalità o progressione, rigenera insieme le parti interessate. Una traccia bloccata conserva il suo MIDI, quindi verifica l'armonia prima di bloccarla.
+Se scarichi da GitHub Actions, nello ZIP dell'artifact trovi il pacchetto indicato nella tabella: estrai anche quello. Questi pacchetti sono portatili; non hanno installer o firma di distribuzione.
 
-## 3. Tracce e sezioni
+**Al primo avvio:** premi **AUDIO**, scegli l'uscita che usi per ascoltare e un buffer adatto al tuo dispositivo. L'app usa l'uscita audio; non apre il microfono.
 
-Le tracce sono ordinate così: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Bass, Piano, Strings, Guitar. Ogni elemento ha MIDI, strumento, volume, pan, mute e solo propri. La chitarra resta una sola traccia con tutte le sue lane.
+> Parti dal suono guida. Puoi ascoltare e costruire tutto il brano prima di scegliere i tuoi strumenti.
 
-Il clic sul **nome della traccia** apre il pannello dello strumento. Il clic su un **clip** apre l'editor MIDI grande, che occupa l'area di lavoro: il piano roll non resta sotto l'arrangiamento. < ARRANGEMENT o Esc torna alla canzone. EDIT MIDI e INSTRUMENT PANEL consentono di passare tra i due editor. Il selettore di sezione cambia la parte da modificare. Il clic sull'intestazione di una sezione sposta il cursore al suo inizio.
+## 2. Primo brano in 60 secondi
 
-Il pannello riprende marchio, superfici, colori e manopole della famiglia Fase Groove. Contiene groove, dinamica, swing, humanize, densità, variazioni/fill e parametri dello strumento. Il piano offre registro, gate, strum, direzione, movimento, range, top line, approcci e realism; basso e archi hanno i loro stili; la batteria espone soltanto il pezzo selezionato, nota MIDI e pocket. La chitarra offre let ring, room for band, push changes e il mixer delle 12 lane con livelli, ottave, mute, swing e anticipo/ritardo. I parametri sono salvati nel progetto; APPLY TRACK / APPLY CLIP riscrivono il MIDI rispettando i blocchi e mantenendo la variante ritmica attuale. I pulsanti NEW nell’arrangiamento scelgono invece una nuova variante casuale. TONE, REVERB, CHORUS, PUMP e PUMP RELEASE cambiano il suono guida interno; i suoni/VST personali conservano i propri controlli. Non ci sono LINK, tonalità o BPM duplicati nel pannello.
+1. Nel menu del genere scegli **Soulful**.
+2. Lascia **5.0 min** oppure scegli la durata che ti serve.
+3. Premi **NEW ARRANGEMENT**: compaiono intro, parti principali, break e outro.
+4. Premi **PLAY** o la **barra spaziatrice** e ascolta.
+5. Clicca un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
+6. Torna con **< ARRANGEMENT**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
+7. Premi **SAVE**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
-**GUITAR LEAD** nella schermata della chitarra attiva le risposte e gli spazi del piano di accompagnamento usando la logica del plugin originale. Aggiorna piano e chitarra rispettando i blocchi ed è annullabile. Disattivalo per tornare ai ruoli normali.
+Vuoi un'altra versione? **NEW TRACK** cambia solo lo strumento scelto; **NEW CLIP** cambia solo quella traccia in quella sezione. **UNDO** ti riporta al tentativo precedente.
 
-Il tasto destro sull'intestazione della sezione consente rinomina, duplica con MIDI, elimina, sposta, durata e funzione musicale. Cambiare la funzione prepara il prossimo rendering; cambiare la durata conserva le note che rientrano nella nuova lunghezza e tronca quelle oltre il limite. Se allunghi la sezione, rigenera per riempire il tratto nuovo. La duplicazione copia tutte le note e tutti i blocchi del segmento.
+> Hai trovato una parte che ti piace? Apri il suo pannello e accendi **LOCK TRACK** o **LOCK CLIP** prima di provare altre varianti.
 
-+ SECTION aggiunge una sezione Main dopo quella selezionata e ne genera il contenuto. Puoi avere da 1 a 64 sezioni, ciascuna da 1 a 128 battute, in 4/4. Il tasto destro sulla traccia consente rinomina e scelta della nota radice di un campione.
+## 3. La finestra, sezione per sezione
 
-## 4. Rigenerare soltanto quello che serve
+![La finestra di Fase Groove Arranger](images/guide_arrangement.png)
 
-- GENERATE SONG: tutte le sezioni di tutte le tracce sbloccate.
-- NEW TRACK: la sola traccia selezionata, lungo tutta la canzone.
-- NEW SECTION: la sola sezione selezionata, su tutte le tracce sbloccate.
-- NEW CLIP: soltanto la traccia selezionata nella sezione selezionata, per esempio il basso nel Drop.
+In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere, durata e giro di accordi. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
-LOCK TRACK protegge l'intera traccia. LOCK CLIP protegge soltanto la cella selezionata. I blocchi proteggono dalla generazione; le modifiche manuali restano disponibili. Le operazioni sono annullabili con UNDO/REDO. Ogni clip salva il proprio seed, così il progetto mantiene la variante generata senza generazioni imprevedibili alla riapertura.
+| Dove | Cosa trovi |
+|---|---|
+| **NEW · OPEN · SAVE · SAVE AS** | Un progetto nuovo, l'apertura e il salvataggio dei tuoi brani. |
+| **PLAY · STOP · LOOP** | Ascolto, ritorno all'inizio e ripetizione della zona scelta. Il cursore azzurro mostra dove sei. |
+| **Genere e durata** | Il carattere del brano e la durata desiderata, da 4 a 12 minuti. |
+| **PROGRESSION · EDIT CHORDS** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
+| **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
+| **Nome della traccia** | Apre il pannello dello strumento, con groove, esecuzione, suono e mixer. |
+| **Clip** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
+| **AUDIO · OPTIONS · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
 
-DENSITY regola la quantità di note, SWING lo spostamento ritmico e FEEL la humanisation. Sono impostazioni per la generazione successiva. Il BPM cambia subito la velocità di riproduzione, senza modificare la posizione musicale delle note.
+I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
 
-## 5. Editor MIDI grande
+**M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull'intestazione di una sezione porta la riproduzione al suo inizio. Lo **ZOOM** cambia quanto brano vedi.
 
-Piano, basso e archi mostrano soltanto le note della propria traccia. Gli elementi di batteria hanno una singola riga: l'editor del kick contiene soltanto il kick; le note importate/incollate vengono adattate alla sua nota MIDI. La chitarra apre tutte le 12 lane del VST: aggiungere un hit costruisce le note della relativa articolazione sull'accordo della battuta. Clic e trascinamento selezionano/spostano insieme le note dello stesso gesto; il tasto destro lo elimina. NOTES / LANES passa al piano roll per modificare anche ogni singola nota della chitarra. ZOOM cambia la scala orizzontale dell'editor.
+## 4. Costruire un brano: intro, break, drop
 
+**NEW ARRANGEMENT** prepara la forma del genere scelto e scrive il MIDI. La durata si arrotonda alla frase musicale successiva: un obiettivo di cinque minuti può diventare, per esempio, 5:14.
 
-- Clic in uno spazio vuoto: aggiungi una nota sulla griglia.
-- Trascina la nota: cambia posizione e altezza.
-- Trascina il bordo destro: modifica la durata.
-- Alt + trascina verticalmente: cambia velocity.
-- Shift + clic: aggiungi/rimuovi dalla selezione multipla.
-- Tasto destro su una nota, DELETE o Backspace: elimina.
-- Ctrl/Cmd + A con il piano roll attivo: seleziona tutte le note del clip.
-- QUANTISE: allinea l'inizio delle note alla griglia 1/4, 1/8, 1/16 o 1/32.
-- -12 / +12: trasponi di un'ottava.
-- VEL: cambia la velocity delle note selezionate; senza selezione imposta quella delle nuove note.
-- COPY / PASTE: copia le note selezionate, o l'intero clip se nessuna nota è selezionata, e incolla nella sezione attuale mantenendo i tempi relativi.
+| Parte | Come usarla |
+|---|---|
+| **Intro / Mix in** | L'ingresso del brano, 16 o 32 battute. Le prime 16 non hanno piano, basso, archi o chitarra: hai spazio per il mixaggio. |
+| **Main** | Il groove principale. Qui fai riconoscere il giro e il suono del brano. |
+| **Breakdown** | Un respiro: cambiano gli spazi e il ruolo degli strumenti. |
+| **Build-up** | Una salita verso la ripartenza, nei generi che la prevedono. |
+| **Drop** | Il ritorno del groove pieno. Non deve per forza suonare identico alla prima parte. |
+| **Outro / Mix out** | L'uscita, 16 o 32 battute. Le ultime 16 lasciano di nuovo spazio al mixaggio. |
 
-Quantise e trasposizione agiscono sulla selezione, oppure sull'intero clip quando non ci sono note selezionate. Le note oltre la durata della sezione vengono rimosse o accorciate. Le note sovrapposte sullo stesso pitch vengono unite/troncate per mantenere note-on e note-off coerenti su un singolo canale MIDI.
+La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro & Latin** dà spazio alle percussioni; **Funky & Disco** alterna strofe e ritornelli.
 
-IMPORT MIDI e il trascinamento di un file .mid importano tutte le note PPQ nel clip selezionato, fino alla durata della sezione. Il MIDI importato sostituisce il clip; UNDO ripristina il contenuto precedente. Il tempo del progetto resta quello impostato nell'arranger. I file MIDI SMPTE non sono supportati.
+### Cambiare solo quello che serve
 
-## 6. Suoni, campioni e VST
+| Pulsante | Cosa cambia |
+|---|---|
+| **GENERATE SONG** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
+| **NEW TRACK** | La traccia selezionata, lungo tutto il brano. |
+| **NEW SECTION** | La sezione selezionata, su tutte le tracce sbloccate. |
+| **NEW CLIP** | Soltanto la traccia selezionata in quella sezione. |
+| **NEW ARRANGEMENT** | Ricostruisce forma e note in base a genere e durata. Prima devi sbloccare tracce e clip. |
 
-Il suono iniziale è quello di guida delle app originali. Piano e basso possono usare Rhodes, Soulful Grand, House Piano, House Organ, Wurlitzer, Gospel Organ e Warm Pad. Gli archi usano la voce strings originale. La chitarra offre Clean Funk, Warm Jazz, Disco Chorus e Nylon. La batteria offre House 909, Deep 808, Disco Live e Lo-Fi Soul.
+**Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** aggiunge una parte Main dopo quella scelta. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
 
-LOAD SAMPLE assegna un WAV/AIFF/FLAC/OGG personale, fino a 60 secondi. Per gli strumenti intonati la radice iniziale è C4/MIDI 60; per gli elementi di batteria è la loro nota General MIDI. Il tasto destro sulla traccia permette di cambiarla. Il sampler usa il campione per tutte le altezze, con trasposizione; non è un campionatore multisample.
+> Prova così: duplica il drop, cambia soltanto il basso della seconda copia, poi alleggerisci il piano. Mantieni un'idea riconoscibile e cambia chi la porta avanti.
 
-LOAD VST3 / AU apre un plugin strumento nativo della tua macchina. Windows/Linux usano VST3; macOS supporta anche Audio Units. Dal menu scegli il bundle .vst3, non una cartella generica. Su macOS la voce Audio Units installate elenca gli strumenti registrati nel sistema. OPEN VST mostra l'interfaccia del plugin, oppure i suoi parametri generici. C'è uno strumento per traccia. Non sono presenti slot effetto o bridge per plugin a 32 bit.
+## 5. Accordi, tonalità e feel
 
-Il motore generativo resta sempre quello interno Fase Groove: lo strumento assegnato riceve le note e produce il suono. I plugin devono essere installati, autorizzati e compatibili con la stessa architettura dell'app. I plugin vengono caricati nel processo dell'app: salva prima di provare un plugin nuovo. Non sono ridistribuiti plugin o librerie commerciali.
+**Tonalità e scala sono una sola scelta per tutto il brano.** Piano, basso, archi e chitarra usano lo stesso giro. Non serve collegare i singoli strumenti con LINK.
 
-Lo stato del plugin viene salvato nel progetto. Campioni e plugin sono referenziati tramite percorso e non vengono incorporati nel file .fga. Se mancano, ricollegali con LOAD SAMPLE / LOAD VST3. L'esportazione richiede che gli strumenti mancanti siano risolti; puoi anche scegliere esplicitamente i suoni originali dal menu traccia.
+| Controllo | Cosa fa |
+|---|---|
+| **Tonalità / Scala** | La fondamentale e il modo del brano. Sono in alto, accanto al tempo. |
+| **PROGRESSION** | Sceglie un giro dalla libreria di Fase Groove Piano. Alcuni giri impostano anche la scala adatta. |
+| **NEW CHORDS** | Prepara un altro giro di gradi nella scala scelta. |
+| **EDIT CHORDS** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, uno per battuta. |
+| **Estensioni / Voicing** | Il colore degli accordi e la disposizione delle note del piano. |
+| **DENSITY** | Da poche note a un groove più fitto. |
+| **SWING** | Sposta i sedicesimi alternati: da dritto a più shuffle. |
+| **FEEL / HUMANIZE** | Piccole differenze di tempo e dinamica. |
 
-## 7. Mixer e trasporto
+Il **tempo** cambia subito la velocità di ascolto. Le altre scelte preparano la prossima generazione: le note che hai già scritto restano al loro posto finché non le applichi.
 
-PLAY o Spazio avvia/mette in pausa; STOP ferma e torna all'inizio. |< riporta il cursore all'inizio. Le note tenute vengono ricostruite quando riparti in mezzo a un accordo. LOOP attiva la regione corrente; LOOP SECTION imposta i limiti alla sezione selezionata. La regione iniziale è tutta la canzone.
+Nel pannello di uno strumento, **APPLY TRACK** o **APPLY CLIP** applica i suoi parametri mantenendo la variante del groove. I pulsanti **NEW** nell'arrangiamento scelgono invece un'altra variante.
 
-GAIN e PAN regolano la traccia. MUTE esclude la traccia dal mix. Se una traccia è SOLO, suonano soltanto le tracce in solo. Il livello master regola tutte le uscite. I meter accanto alle tracce indicano il livello. Mantieni margine nel mix: la protezione finale limita i picchi a circa 0 dBFS e può distorcere se sovraccaricata.
+> Dopo aver cambiato tonalità o giro, rigenera insieme gli strumenti interessati. Una parte bloccata conserva le sue note, anche se il resto del brano cambia armonia.
 
-AUDIO apre la scelta del dispositivo, della frequenza e del buffer. L'app usa soltanto l'uscita: non richiede microfono né registra audio. La latenza dei plugin non viene compensata in questa versione.
+## 6. Le tracce e i tuoi suoni
 
-## 8. Progetti e autosave
+Le prime tredici tracce sono i pezzi della batteria: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Seguono **Bass, Piano, Strings e Guitar**. La chitarra resta tutta su una traccia.
 
-SAVE salva il progetto .fga; SAVE AS crea una nuova copia. Il file comprende impostazioni musicali, struttura, note, blocchi, mixer e stati degli strumenti. Il salvataggio usa un file temporaneo e sostituzione atomica. Il progetto precedente resta conservato se la scrittura fallisce.
+![Il pannello del piano](images/guide_piano.png)
 
-Ogni minuto, se ci sono modifiche, viene scritto un autosave locale nella cartella dati dell'app: FS Pitch/Fase Groove Arranger/autosave.fga. AUDIO → Apri cartella autosave mostra la cartella. AUDIO → Recupera autosave apre il progetto di recupero. L'autosave è una sola copia di recupero: salva separatamente le versioni che vuoi conservare.
+Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli con cosa ascoltarlo; sotto trovi groove, feel, esecuzione e fill. **EDIT MIDI** apre le note; **< ARRANGEMENT** torna al brano.
 
-UNDO/REDO conserva fino a 40 passaggi in memoria; la cronologia non viene salvata nel progetto. La chiusura con modifiche non salvate richiede di scegliere se scartarle. Salva dal pulsante SAVE prima di confermare la chiusura.
+| Strumento | Da dove partire |
+|---|---|
+| **Piano** | Groove, gate, registro e strum; poi movimento, linea in alto e range per rifinire la mano destra. |
+| **Bass** | La linea di basso e il suo feel: classico, sub o sub con spazi sul beat. |
+| **Strings** | Lo stile degli archi: un sostegno lungo o una parte più ritmica. |
+| **Batteria** | Soltanto il pezzo scelto: groove, dinamica, nota MIDI e posizione rispetto al beat. |
+| **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
 
-## 9. Esportazione
+### Suono guida, campione o VST
 
-EXPORT offre MIDI multitraccia, singola traccia MIDI e tutte le tracce MIDI separate. I file contengono tempo, firma 4/4, metadati tonalità/scala, nomi delle tracce e marker di sezione, a 960 PPQ. La batteria usa il canale General MIDI 10; gli altri strumenti hanno canali separati. I suoni dei VST non sono contenuti nel MIDI.
+| Pulsante | Cosa scegli |
+|---|---|
+| **BUILT-IN** | Torna al suono guida. Piano e basso hanno i sette timbri di tastiera; archi, quattro chitarre e quattro kit hanno i loro suoni. |
+| **LOAD SAMPLE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. |
+| **LOAD VST3 / AU** | Uno strumento installato sul tuo computer. Scegli il bundle `.vst3`; su macOS puoi scegliere anche un'Audio Unit installata. |
+| **OPEN VST** | L'interfaccia dello strumento che hai caricato. |
 
-WAV è stereo 24 bit alla frequenza del dispositivo. MP3 è stereo 320 kbps a 44.1 kHz, con encoder Shine integrato: non serve scaricare software. Entrambi possono esportare il mix, la traccia selezionata o tutti i 17 stem. Gli stem mantengono lo stesso inizio, la durata della canzone e tre secondi di coda, per essere allineati in una DAW.
+**GAIN, PAN, MUTE e SOLO** appartengono alla traccia. **TONE, REVERB, CHORUS e PUMP** cambiano soltanto il suono guida; per il suono del tuo VST usa i suoi comandi. I parametri di groove continuano a scrivere il MIDI che gli arriva.
 
-Il mix rispetta mute e solo. L'export di una traccia singola/stem la include anche se è muta o altre tracce sono in solo; mantiene il suo gain, pan e livello master. Gli export multipli creano una nuova sottocartella datata. Le tracce vuote producono file silenziosi della stessa durata. La riproduzione viene fermata durante il rendering; una finestra mostra avanzamento e annullamento.
+Per un campione intonato, la radice iniziale è MIDI 60. Per la batteria è la nota del pezzo. **Tasto destro sul nome → Radice campione** la cambia. È un campione trasposto sulle note della traccia, non una libreria multisample.
 
-I plugin possono produrre take leggermente differenti fra render se usano campioni round-robin o casualità interna. MP3 è lossy e aggiunge ritardo/padding del codec: per riallineare stem e per mix professionali usa WAV. Non è implementata compensazione della latenza dei plugin.
+## 7. Modificare le note
 
-## 10. Privacy, permessi e limiti attuali
+Clicca un **clip**: l'editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP SECTION** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
 
-Il programma funziona offline: nessun account, pubblicità, analytics o telemetria, nessun upload di musica. Legge i file scelti e scrive progetto, autosave ed export locali. I pulsanti esterni di crediti aprono il browser soltanto su tua azione. I plugin hanno condizioni e permessi propri. Leggi PRIVACY.it.md e THIRD_PARTY_NOTICES.md, disponibili anche da ECOSYSTEM.
+| Azione | Risultato |
+|---|---|
+| **Clic nel vuoto** | Aggiunge una nota sulla griglia. |
+| **Trascina una nota** | La sposta nel tempo; nel piano roll intonato cambia anche l'altezza. |
+| **Bordo destro della nota** | Cambia la durata delle note intonate. |
+| **Alt + trascina in verticale** | Cambia la dinamica, senza spostare la nota. |
+| **Shift + clic** | Aggiunge o toglie una nota dalla selezione. |
+| **Tasto destro / DELETE / Backspace** | Elimina la nota. Nelle lane della chitarra, il tasto destro elimina il gesto di pennata. |
+| **Ctrl/Cmd + A** | Seleziona tutte le note del clip. |
+| **QUANTISE** | Allinea alla griglia scelta: 1/4, 1/8, 1/16 o 1/32. |
+| **−12 / +12** | Sposta le note intonate di un'ottava. |
+| **VEL** | Cambia la dinamica della selezione; senza selezione, quella delle note nuove. |
+| **COPY / PASTE** | Copia la selezione, oppure tutto il clip, e incolla mantenendo le posizioni nella sezione. |
 
-Questa versione è una workstation per arrangiamento MIDI. Non include ancora registrazione audio/MIDI, editing audio, automazione, warp audio, catene effetti, bus/send, registrazione controller, time signature differenti da 4/4 o scansione plugin isolata. Non dichiara compatibilità con ogni VST: va verificata con gli strumenti effettivi. I pacchetti di sviluppo non sono firmati/notarizzati e non hanno installer.
+Quantise e trasposizione lavorano sulla selezione; senza selezione, su tutto il clip. Lo **ZOOM** ingrandisce i dettagli nel tempo. **Esc** torna all'arrangiamento.
+
+**IMPORT MIDI**, oppure un `.mid` trascinato sulla finestra, sostituisce le note del clip scelto. Il tempo del progetto resta quello dell'Arranger. Nel kick o in un altro pezzo di batteria, le note importate vengono assegnate al solo pezzo scelto. **UNDO** recupera il clip precedente.
+
+## 8. La chitarra e il piano di accompagnamento
+
+![Le dodici lane della chitarra](images/guide_guitar.png)
+
+La chitarra si modifica come in Fase Groove Guitar: **dodici modi di suonare lo stesso accordo, tutti nella stessa traccia**.
+
+| Riga | Cosa suona |
+|---|---|
+| **DOWN / UP** | Pennate giù sull'accordo e pennate su sulle corde acute. |
+| **STAB / CHANK** | Accordi corti e chop funk molto brevi. |
+| **SCRATCH** | Il colpo stoppato, per riempire gli spazi ritmici. |
+| **SLIDE / SWELL** | Slide verso l'accordo e ingressi in crescendo. |
+| **ARP / LICK** | Una corda alla volta e frasi sull'accordo. |
+| **OCTAVE / POWER / ROOT** | Ottave, power chord e fondamentale sulle corde basse. |
+
+Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue note si selezionano e si spostano insieme. **NOTES / LANES** passa al piano roll quando vuoi intervenire su una singola nota.
+
+### Chi porta avanti il giro?
+
+Nel pannello o nell'editor della chitarra, **GUITAR ACCOMPANIMENT / GUITAR LEAD** cambia i ruoli. Con **LEAD** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **UNDO** torna ai ruoli precedenti.
+
+![Il mixer della chitarra](images/guide_mixer.png)
+
+Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di swing e push/pull**. Il push/pull è in millisecondi: negativo anticipa, positivo ritarda.
+
+> Per lasciare spazio al basso, prova **Room for band**. Per una chitarra più percussiva, accorcia le pennate e riduci **Let ring**. Ascolta la chitarra insieme al piano, non soltanto in solo.
+
+## 9. Ricette per partire
+
+### Soulful: piano davanti, chitarra negli spazi
+
+1. Scegli **Soulful**, una durata di cinque o sei minuti e premi **NEW ARRANGEMENT**.
+2. Nel piano parti da **Rhodes (FM)** e un giro con settime o none.
+3. Ascolta la parte principale. Se è troppo piena, abbassa la densità del piano e premi **APPLY CLIP**.
+4. Lascia la chitarra in accompagnamento. Usa il suo mixer per togliere le righe che coprono il piano.
+5. Blocca la parte di piano che ti piace e prova un **NEW TRACK** sul basso.
+
+### Deep: meno note, più spazio
+
+1. Scegli **Deep** e genera la forma del brano.
+2. Nel piano prova un registro più raccolto, gate più lungo e poche note.
+3. Per il basso scegli un feel **Sub**. Lascia gli archi come sostegno e ascolta il break.
+4. Duplica una parte principale e cambia soltanto una o due tracce nella ripresa.
+
+### Jackin': groove corto e ripartenze
+
+1. Scegli **Jackin'** o **Jackin' Piano**.
+2. Parti da gate corto sul piano e un feel più swingato.
+3. Nel break togli quello che serve alla ripartenza: un **NEW CLIP** sul piano può bastare.
+4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP SECTION**.
+
+### Funky & Disco: la chitarra guida
+
+1. Scegli **Funky & Disco** e genera il brano.
+2. Apri la chitarra e attiva **GUITAR LEAD**.
+3. Ascolta DOWN, UP, CHANK e OCTAVE nel contesto; riduci quelle che si sovrappongono troppo.
+4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
+5. Controlla l'outro: le ultime sedici battute devono restare libere dagli strumenti armonici per il mixaggio.
+
+## 10. Salvare ed esportare
+
+**SAVE / SAVE AS** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
+
+Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. UNDO conserva fino a quaranta passaggi mentre l'app è aperta.
+
+| In EXPORT | Cosa ottieni |
+|---|---|
+| **MIDI** | Il brano multitraccia, una traccia o tutte le tracce in file separati. Comprende tempo e marker delle sezioni; non contiene i suoni. |
+| **WAV** | Mix, singola traccia o tutti gli stem, stereo a 24 bit. È il formato da usare per continuare il mixaggio. |
+| **MP3** | Mix, singola traccia o tutti gli stem, stereo a 320 kbps / 44,1 kHz. L'encoder è incluso. |
+
+Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono tre secondi di coda. Anche una traccia vuota produce un file allineato. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
+
+> Per riportare gli stem in una DAW scegli WAV. L'MP3 aggiunge il ritardo del codec: va bene per ascoltare e condividere, non per l'allineamento preciso delle tracce.
+
+## 11. Scorciatoie
+
+| Tasti | Azione |
+|---|---|
+| **Spazio** | Play / pausa. |
+| **Esc** | Torna all'arrangiamento dall'editor. |
+| **Ctrl/Cmd + S** | Salva. |
+| **Ctrl/Cmd + Shift + S** | Salva con un altro nome. |
+| **Ctrl/Cmd + Z** | Annulla. |
+| **Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y** | Ripeti. |
+| **Ctrl/Cmd + A**, nell'editor | Seleziona le note del clip. |
+| **Delete / Backspace**, nell'editor | Elimina la selezione. |
+
+Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca passano tra i risultati; **A− / A+** cambia la dimensione del testo. Clicca una schermata per aprirla più grande.
+
+## 12. Domande frequenti e problemi
+
+### Ho cambiato tonalità, ma sento ancora gli accordi di prima
+
+Hai preparato una nuova tonalità, mentre i clip contengono ancora le note precedenti. Rigenera gli strumenti armonici interessati. Controlla i blocchi: una parte bloccata mantiene le proprie note.
+
+### Non sento niente
+
+Controlla **AUDIO**, l'uscita scelta, PLAY, il livello master e MUTE/SOLO. Nel pannello della traccia premi **BUILT-IN** per ascoltare con il suono guida. Se quello funziona, controlla il campione o il VST assegnato.
+
+### Il VST o il campione non si trova più
+
+Il progetto ne ricorda il percorso, ma il file può essere stato spostato o mancare su questo computer. Usa **LOAD SAMPLE** o **LOAD VST3 / AU** per ricollegarlo. Controlla anche che il plugin abbia la stessa architettura dell'app e la sua autorizzazione d'uso. Finché uno strumento manca, l'esportazione audio ti chiede di ricollegarlo.
+
+### Ho modificato delle note. Come le tengo mentre provo altro?
+
+Accendi **LOCK CLIP** per quella parte o **LOCK TRACK** per tutto lo strumento. Poi usa i pulsanti NEW sugli altri elementi. Puoi continuare a modificare a mano anche una parte bloccata.
+
+### La durata non è esattamente quella che ho scelto
+
+Il brano chiude una frase musicale, invece di tagliarla a metà. Cambiare BPM dopo la generazione cambia anche la durata in minuti. Per rifare la forma al nuovo tempo scegli **NEW ARRANGEMENT**.
+
+### Dove sono registrazione, automazioni e catene di effetti?
+
+Questa versione lavora sull'arrangiamento MIDI. Registrazione audio/MIDI, automazioni, editing audio, bus/send, catene di effetti esterni e compensazione della latenza dei plugin non sono presenti. Puoi esportare MIDI e WAV per continuare il lavoro nella tua DAW. Alcuni controlli avanzati dei plugin Fase Groove non sono ancora riportati nell'Arranger.
+
+### Il file MIDI non viene importato
+
+Usa un file MIDI con tempi in PPQ. I file SMPTE non sono supportati. L'importazione entra nel clip scelto e si ferma alla durata della sua sezione; non ricostruisce automaticamente una canzone esterna completa.
+
+## 13. Ascolta la mia musica e crediti
+
+**Fase Groove Arranger è di Fabio 'Pitch' Serra / FS Pitch, DJ & Producer.**
+
+[Ascolta Fabio 'Pitch' Serra su Spotify](https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP)
+
+[Offrimi un caffè su Ko-fi](https://ko-fi.com/fabios1979)
+
+[Supporta il progetto con PayPal](https://paypal.me/fabios79)
+
+Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**, AI coding assistants. Crediti, licenze e privacy si aprono da **OPTIONS**.
+
+[Codice sorgente e famiglia Fase Groove](https://github.com/wsx79/fasegroovearranger)
+
+L'app è gratuita e open source, **GNU AGPL v3 o successiva**. Usa JUCE e il carattere Inter. Funziona offline, senza account, analytics o caricamenti della tua musica. I collegamenti esterni aprono il browser soltanto se li scegli. Campioni e VST personali mantengono le proprie licenze e condizioni; i dettagli sono in Privacy e Licenze, incluse nel pacchetto.
