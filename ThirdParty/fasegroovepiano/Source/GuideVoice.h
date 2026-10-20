@@ -51,8 +51,8 @@ struct GuideStringsTag : public juce::SynthesiserSound
 class GuideVoice : public juce::SynthesiserVoice
 {
 public:
-    GuideVoice (const std::atomic<float>& toneParam, const std::atomic<float>& soundParam)
-        : tone (toneParam), soundChoice (soundParam) {}
+    GuideVoice (const std::atomic<float>& toneParam, const std::atomic<float>& soundParam, bool centreOutput = false)
+        : tone (toneParam), soundChoice (soundParam), centred (centreOutput) {}
 
     bool canPlaySound (juce::SynthesiserSound* s) override
     {
@@ -80,6 +80,8 @@ public:
         const double pan = juce::jlimit (-1.0, 1.0, (note - 62) / 40.0);
         panL = std::cos ((pan + 1.0) * juce::MathConstants<double>::pi * 0.25) * juce::MathConstants<double>::sqrt2;
         panR = std::sin ((pan + 1.0) * juce::MathConstants<double>::pi * 0.25) * juce::MathConstants<double>::sqrt2;
+
+        if (centred) panL = panR = 1.0;
 
         switch (sound)
         {
@@ -513,6 +515,7 @@ private:
     //==============================================================================
     const std::atomic<float>& tone;
     const std::atomic<float>& soundChoice;
+    const bool centred; // Arranger bass; original plugin callers retain keyboard spread.
     juce::Random random;
 
     GuideSound sound = GuideSound::rhodes;

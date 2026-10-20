@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.4.4** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.4.5** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -135,6 +135,10 @@ Click an instrument's **name** to open its panel. Choose how to hear it at the t
 | **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
 
 Guitar-part **VOLUME** faders control the guide sound; the selected part’s **LEVEL** changes MIDI dynamics on generation. Part mutes also affect playback of existing notes. MIDI export preserves the clip’s notes.
+
+### Genre sound palettes
+
+Genre also prepares the original guide sounds, kit, tone, voicing and band balance. The guide bass stays centred and dry; guitar and strings leave phrase space for the theme. Personal samples and VSTs retain their assignment and mix. Settings prepare the next MIDI generation; audio controls change immediately. Old projects retain their stored presets until a genre is selected again. See [genre sounds and roles](https://github.com/wsx79/fasegroovearranger/blob/main/docs/GENRE_SOUND.md).
 
 #### Piano: extended view
 

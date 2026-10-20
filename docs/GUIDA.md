@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.4.4** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.4.5** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -135,6 +135,10 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 | **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
 
 I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL** della parte scelta cambia le dinamiche MIDI alla generazione. I mute delle parti agiscono anche sull’ascolto delle note già scritte. L’esportazione MIDI conserva le note del clip.
+
+### Suoni per genere
+
+Il genere prepara anche suoni, kit, timbro, voicing e bilanciamento dei motori interni. Il basso guida resta al centro e asciutto; chitarra e archi lasciano spazio al tema per frasi. Campioni e VST personali conservano assegnazione e mix. Le scelte preparano la prossima generazione MIDI; i controlli audio cambiano subito. I vecchi progetti conservano i preset memorizzati finché non scegli nuovamente il genere. Vedi [suoni e ruoli per genere](https://github.com/wsx79/fasegroovearranger/blob/main/docs/GENRE_SOUND.md).
 
 #### Piano: vista estesa
 

@@ -17,6 +17,7 @@ struct Instrument {
     std::atomic<float> tone{.5f}, sound{0};
     juce::Synthesiser synth;
     juce::Reverb reverb;
+    juce::dsp::StateVariableTPTFilter<float> bassLowPass;
     juce::dsp::Chorus<float> chorus;
     double pump=0,pumpRelease=.2;int pumpRate=0,pumpSource=0;
     GuideDrums drums;

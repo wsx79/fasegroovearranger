@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.4.5 — Timbri per genere e bilanciamento della band
+
+- Tredici palette dei motori guida originali: suoni, kit, timbro, voicing, gate, effetti, livelli e ruoli degli strumenti specifici per stile.
+- Basso guida al centro, con passa-basso collegato al timbro; campioni e VST personali non attraversano questa elaborazione.
+- Risposte piano/chitarra e ingressi di archi/percussioni per frasi, riducendo la sovrapposizione continua. Conservati pattern utente, blocchi, assegnazioni e MIDI modificabile.
+- Audit dei brani completi, tredici anteprime MP3 da otto battute e controllo del basso stereo.
+
 ## 0.4.4 — Guida della famiglia Fase Groove
 
 - Ripresa dalla guida Piano la struttura in nove capitoli, con cambio lingua, logo e schermate centrati, separatori, tabelle, ricette, FAQ e chiusura con artista e musica.

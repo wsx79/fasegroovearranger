@@ -58,6 +58,23 @@ inline bool writeClubAudioAudit(const juce::File& folder){
         ok=rawPeak<.9985&&peak<.9985&&rms>.001&&minimum>.00001&&first>.0001&&last>.0001&&ok;
         report+=juce::String(genres()[(size_t)genre])+"\t"+juce::String(p.settings.bpm)+"\t"+juce::String(p.length()/4)+"\t"+juce::String(seconds,4)+"\t"+juce::String(peak,6)+"\t"+juce::String(rawPeak,6)+"\t"+juce::String(rms,6)+"\t"+juce::String(minimum,6)+"\t"+juce::String(first,6)+"\t"+juce::String(last,6)+"\n";
         folder.getChildFile("full-song-audio.tsv").replaceWithText(report);
+        // Listen to the same eight-bar chorus window in every style, with
+        // actual stored MIDI and guide presets (not an unrelated demo synth).
+        {
+            int section=0;for(size_t si=0;si<p.sections.size();++si)if(p.sections[si].type==Section::drop){section=(int)si;break;}
+            auto preview=p;preview.sections={p.sections[(size_t)section]};preview.sections[0].bars=8;
+            for(int ti=0;ti<trackCount;++ti)preview.tracks[(size_t)ti].clips={p.tracks[(size_t)ti].clips[(size_t)section]};
+            preview.loop=false;preview.normalise();
+            auto result=audio.exportAudio(preview,folder.getChildFile("preview-"+juce::String(genre)+".mp3"),-1,true,[]{return false;},[](double){});
+            ok=result.wasOk()&&ok;
+            if(genre==1||genre==2||genre==6||genre==8){
+                const auto bassFile=folder.getChildFile("bass-check.wav");
+                ok=audio.exportAudio(preview,bassFile,1,false,[]{return false;},[](double){}).wasOk()&&ok;
+                auto bassReader=std::unique_ptr<juce::AudioFormatReader>(formats.createReaderFor(bassFile));
+                double side=0,mid=0;if(!bassReader)ok=false;else{juce::AudioBuffer<float> b(2,8192);for(juce::int64 pos=0;pos<bassReader->lengthInSamples;pos+=8192){int n=(int)std::min<juce::int64>(8192,bassReader->lengthInSamples-pos);bassReader->read(&b,0,n,pos,true,true);for(int i=0;i<n;++i){const double l=b.getSample(0,i),r=b.getSample(1,i);side+=(l-r)*(l-r);mid+=(l+r)*(l+r);}}ok=mid>0&&side<mid*1e-10&&ok;}
+                bassReader.reset();bassFile.deleteFile();
+            }
+        }
         if(genre==1){
             const auto mp3=audio.exportAudio(p,folder.getChildFile("Soulful-House-full-song.mp3"),-1,true,[]{return false;},[](double){});
             ok=mp3.wasOk()&&ok;

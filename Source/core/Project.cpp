@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
 #include "PianoComping.h"
+#include "GenreSound.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
@@ -258,6 +259,7 @@ void randomiseHarmony(Project& p,std::uint32_t seed) {
     std::copy(degrees.begin(),degrees.end(),p.settings.degrees.begin());
 }
 void applyGenre(Project& p,int genre) {
+    p.normalise();
     p.settings.genre=std::clamp(genre,0,12);
     static const int presets[]{4,2,0,8,17,28,9,0,33,27,29,6,4};
     const auto& profile=genreProfile(p.settings.genre);
@@ -276,7 +278,7 @@ void applyGenre(Project& p,int genre) {
     // Match each style to an actual named bass line in the original library.
     static const int bassLines[]{8,23,16,11,14,13,18,15,20,12,10,16,12};
     p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
-    p.settings.stringsMode=p.settings.genre==8?(int)sgk::StringsMode::discoOctaves:(int)sgk::StringsMode::pad;
+    applyGenreSound(p);
 }
 void arrangeSong(Project& p) {
     p.normalise();
@@ -356,10 +358,9 @@ void arrangeSong(Project& p) {
 }
 Project newProject(int genre) {
     Project p;
-    // Seventeen guide instruments need summing headroom. Keep the user's mix
-    // balance and saved-project gains intact; only initialise new songs 6 dB
-    // below the previous master (0.8 -> 0.4).
-    p.masterGain=.4;
+    // Balanced genre-specific guide levels leave summing headroom. Saved
+    // projects keep their own master and mix; new songs use the curated balance.
+    p.masterGain=.55;
     applyGenre(p,genre);arrangeSong(p);generate(p);return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
@@ -388,6 +389,27 @@ int mixEntry(int genre,int track,int bars) {
         if(genre==7&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
     }
     return std::clamp(((entry*bars/32+7)/8)*8,0,bars);
+}
+void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
+    const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
+    if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
+    const auto& e=p.tracks[(size_t)track].engine;
+    const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():fgd::userPatternIndex();
+    if(e.pattern==user)return;
+    auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
+        if(track==2&&sec.type==Section::main)return genre==8?phrase>=4:genre==11?phrase<6:phrase>=6;
+        if(track==3&&!p.settings.guitarLead){
+            if(genre==7)return phrase%4>=2; // percussion/guitar answers
+            if(genre==2||genre==9||genre==12)return phrase>=6;
+            return phrase%4>=2; // leave the first half to the piano
+        }
+        // Different percussion layers announce phrases; never gate the kick,
+        // backbeat or closed hat. These are compositional rests, not audio mute.
+        if(track==10||track==12||track==14||track==15)return genre==7?phrase>=2:phrase>=4;
+        return true;
+    };
+    auto& notes=clip.notes;notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return !active(n.start);}),notes.end());
+    for(auto& n:notes){const double next=(std::floor(n.start/4)+1)*4;for(double at=next;at<n.start+n.length;at+=4)if(!active(at)){n.length=at-n.start;break;}}
 }
 void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
     if(type!=Section::intro&&type!=Section::outro)return;
@@ -460,6 +482,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
+            shapeBandRoles(clip,p,ti,(int)si);
             shapeMixSection(clip,s.genre,ti,type,p.sections[si].bars);
             tidyNotes(clip,beats);
         }

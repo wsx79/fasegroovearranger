@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.4.5 — Genre sound palettes and band balance
+
+- Thirteen curated palettes using the original keyboard, guitar and drum guide engines: genre-specific sounds, kit, tone, voicing, gate, effects, levels and instrument roles.
+- Dedicated guide bass stays centred instead of inheriting keyboard note panning; low-pass follows its tone. User samples and VSTs bypass this guide processing.
+- Piano/guitar answers and phrase-based string/percussion entrances reduce constant layering. User patterns, locked material, routing and manual MIDI remain editable.
+- Full-song audit plus thirteen eight-bar MP3 previews and stereo bass checks.
+
 ## 0.4.4 — Family guide alignment
 
 - Use the Piano manual's nine-chapter structure, language link, centered logo/screenshots, separators, control tables, recipes, FAQ style and creator/music closing in both manuals.

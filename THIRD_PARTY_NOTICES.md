@@ -35,3 +35,5 @@ VST is a registered trademark of Steinberg Media Technologies GmbH. Audio Units,
 No proprietary plugin binary, commercial sample library or third-party musical recording is bundled. Users provide and license their own instruments and samples. Generated MIDI/audio is not required to be AGPL merely because it was produced by this application; rights in any user-supplied content continue to apply. The software is provided without warranty as set out in its licences.
 
 The six-language UI dictionaries and CircleOfFifths component are adapted from those same family snapshots, under their original AGPL notices. The guitar step engine has an Arranger-specific shared harmonic-duration adapter; the 16-step default retains the plugin behaviour.
+
+Arranger 0.4.5 adds an optional centred-output constructor argument to the vendored Piano `GuideVoice`, used only by its dedicated bass track. Original callers retain keyboard spread by default. The synthesis algorithms remain the original family engines; Arranger applies its own genre presets, mix levels, musical layer scheduling and built-in bass low-pass after synthesis.

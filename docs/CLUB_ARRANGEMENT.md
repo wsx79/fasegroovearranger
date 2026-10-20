@@ -66,3 +66,7 @@ Le misure verificano struttura, integrità e rendering. La valutazione artistica
 ## Aggiornamento 0.4.3: volume indipendente dalle note
 
 Le rampe di velocity aggiunte dall’arranger alle parti melodiche di intro/outro e ai lift organici sono rimosse. Restano l’articolazione originale dei motori e gli ingressi/uscite degli strumenti per frasi. Il volume può ora essere disegnato nella corsia di automazione audio di ciascuna traccia, inizialmente nascosta e in bypass, senza riscrivere il MIDI. La forma e i BPM seguono la stessa politica 0.4.2 documentata sopra.
+
+## Aggiornamento 0.4.5: suoni e mix
+
+La calibrazione 0.4.2 del solo master è sostituita, per i nuovi brani, da livelli di traccia e preset diversi per genere con master 0,55. Il margine è verificato sul rendering completo. Dettagli e limiti: [suoni per genere](GENRE_SOUND.md).
