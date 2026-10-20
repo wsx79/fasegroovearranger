@@ -217,7 +217,7 @@ void OptionsOverlay::paint (juce::Graphics& g)
 
     if (! showingAbout)
     {
-        // Under the settings: the shortcuts of the guitar.
+        // Under the shared settings: the standalone arranger shortcuts.
         auto keys = juce::Rectangle<float> (r.getX() + 28.0f, r.getY() + 336.0f, r.getWidth() - 28.0f, 220.0f);
         g.setColour (Palette::dim);
         g.setFont (FamilyTheme::font (11.0f, true));

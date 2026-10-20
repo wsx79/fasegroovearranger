@@ -71,7 +71,7 @@ The top contains project commands, transport and the controls shared by everyone
 | **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
 | **Track name** | Opens its instrument panel, with groove, playing, sound and mixer controls. |
 | **Clip** | Opens the large MIDI editor for just that track and section. |
-| **AUDIO · OPTIONS · GUIDA** | Output device; information, credits and privacy; the guide. |
+| **AUDIO · OPTIONS · GUIDE** | Output device; information, credits and privacy; the guide. |
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
@@ -155,7 +155,7 @@ It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**,
 
 **EDIT CHORDS → Each chord** sets the shared harmonic duration: half, one, two or four bars. Guide-sound pump provides rate, release and **Tempo / Kick MIDI** source. Kick MIDI follows notes in the Kick track; it is not an external audio input.
 
-**OPTIONS → Languages** selects English, Italian, Spanish, French, German or Portuguese. Control tooltips can be toggled in the same menu. Both preferences stay on this computer; complete manuals are available in Italian and English.
+**OPTIONS → SETTINGS → Language** selects English, Italian, Spanish, French, German or Portuguese. Control tooltips can be toggled in the same panel. Both preferences stay on this computer; complete manuals are available in Italian and English.
 
 ### Guide sound, sample or VST
 

@@ -149,7 +149,7 @@ bool PianoRoll::verifyEditing(){
     owner.clip()=saved;tool=savedTool;flamBrush=savedFlam;clearSelection();owner.changed();fitNotes();return ok;
 }
 void PianoRoll::deleteSelected(){if(selected.empty())return;owner.checkpoint();auto& notes=owner.clip().notes;for(auto i=selected.rbegin();i!=selected.rend();++i)if(*i>=0&&*i<(int)notes.size())notes.erase(notes.begin()+*i);selected.clear();owner.changed();}
-bool PianoRoll::keyPressed(const juce::KeyPress& key){if(key==juce::KeyPress::deleteKey||key==juce::KeyPress::backspaceKey){deleteSelected();return true;}if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='A'){selected.clear();for(size_t i=0;i<owner.clip().notes.size();++i)selected.insert((int)i);repaint();return true;}return owner.keyPressed(key);}
+bool PianoRoll::keyPressed(const juce::KeyPress& key){if(key==juce::KeyPress::deleteKey||key==juce::KeyPress::backspaceKey){deleteSelected();return true;}if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='C'){owner.copyButton.triggerClick();return true;}if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='V'){owner.pasteButton.triggerClick();return true;}if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='A'){selected.clear();for(size_t i=0;i<owner.clip().notes.size();++i)selected.insert((int)i);repaint();return true;}return owner.keyPressed(key);}
 
 class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
@@ -224,7 +224,7 @@ MainComponent::MainComponent(){
     openButton.onClick=[this]{chooseFile("Apri progetto Fase Groove Arranger","*.fga",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){open(f);});};
     newButton.onClick=[this]{if(loadingPlugin)return;if(!requestClose())return;audio.stop();pluginWindow.reset();checkpoint();for(int i=0;i<trackCount;++i)audio.useInternal(i);project=newProject(genreBox.getSelectedItemIndex());projectFile=juce::File();selectedSection=0;selectedTrack=4;changed();showArrangement();};
     exportButton.onClick=[this]{exportMenu();};settingsButton.onClick=[this]{showAudioSettings();};aboutButton.onClick=[this]{showAbout();};helpButton.onClick=[this]{showGuide(Localisation::current()!=Localisation::Language::italian);};
-    playButton.primary=true;playButton.onColour=Palette::accent2;playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("Stop playback."));rewindButton.setTooltip(tr("Back to the beginning."));undoButton.setTooltip(tr("Undo"));redoButton.setTooltip(tr("Redo"));
+    playButton.primary=true;playButton.onColour=Palette::accent2;playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("Stop playback and return to the beginning."));rewindButton.setTooltip(tr("Back to the beginning."));undoButton.setTooltip(tr("Undo"));redoButton.setTooltip(tr("Redo"));
     rewindButton.setConnectedEdges(juce::Button::ConnectedOnRight);playButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);stopButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     for(auto* b:{&songButton,&clipButton}){b->setColour(juce::TextButton::buttonColourId,Palette::accent);b->setColour(juce::TextButton::textColourOffId,Palette::background);}
     for(const auto& entry:std::initializer_list<std::pair<juce::Component*,const char*>>{{&genreBox,"GROOVE"},{&keyBox,"KEY"},{&scaleBox,"Scale / mode"},{&extensionBox,"Extensions"},{&voicingBox,"Voicing"},{&progressionBox,"PROGRESSION"},{&tempoSlider,"TEMPO"},{&swingSlider,"SWING"},{&densitySlider,"DENSITY"},{&humanizeSlider,"HUMANIZE"},{&masterSlider,"Volume"},{&gainSlider,"Volume"},{&panSlider,"PAN"},{&velocitySlider,"VELOCITY"},{&zoomSlider,"ZOOM"},{&durationLabel,"NEW ARRANGEMENT"}})entry.first->getProperties().set("fgaControl",entry.second);
@@ -236,16 +236,16 @@ MainComponent::MainComponent(){
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
     options.onAudioSettings=[this]{showAudioSettings();};
     options.onDocument=[this](int id){if(id==0)showGuide(Localisation::current()!=Localisation::Language::italian);if(id==1){const bool it=Localisation::current()==Localisation::Language::italian;showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==2)showDocument(tr("Licences and attributions"),juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));};
-    options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);updater.start(true);};
+    options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);options.checkUpdatesButton.setButtonText(tr("CHECKING..."));updater.start(true);};
     updater.onResult=[this](const Updater::Result& result,bool manual){
-        options.checkUpdatesButton.setEnabled(true);
+        options.checkUpdatesButton.setEnabled(true);options.refreshText();
         if(result.status==Updater::Result::Status::ready){
             juce::Component::SafePointer<MainComponent> safe(this);
             juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::InfoIcon)
-                .withTitle(tr("Update available")+" / "+result.version).withMessage(result.notes)
+                .withTitle(tr("New version")+" / "+result.version).withMessage(result.notes)
                 .withButton(tr("Download")).withButton(tr("Skip this version")).withButton(tr("CLOSE")),
                 [safe,version=result.version](int choice){if(!safe)return;if(choice==1)juce::URL("https://github.com/wsx79/fasegroovearranger/releases/latest").launchInDefaultBrowser();if(choice==2)Localisation::setSetting("skippedVersion",version);});
-        }else if(manual)message(result.status==Updater::Result::Status::upToDate?tr("You are up to date."):result.status==Updater::Result::Status::noRelease?tr("No published release yet. Development builds are in GitHub Actions."):tr("Could not check for updates. Try again later."));
+        }else if(manual)message(result.status==Updater::Result::Status::upToDate?tr("You have the latest version."):result.status==Updater::Result::Status::noRelease?tr("No published release yet. Development builds are in GitHub Actions."):tr("Could not check for updates. Check your internet connection and try again."));
     };
     if(Updater::autoCheckEnabled()&&!juce::JUCEApplication::getCommandLineParameters().contains("smoke-test"))updater.start(false);
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();message(juce::String::fromUTF8("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto."));startTimerHz(20);
@@ -353,7 +353,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, apply preserves take":"FAIL interface routing");return ok;
 }
 void MainComponent::timerCallback(){
-    const double beat=audio.position();positionLabel.setText(juce::String((int)beat/4+1).paddedLeft('0',3)+" : "+juce::String((int)beat%4+1)+"   /   "+juce::String((int)project.length()/4),juce::dontSendNotification);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);arrangement.repaint();piano.repaint();
+    const double beat=audio.position();positionLabel.setText(juce::String((int)beat/4+1).paddedLeft('0',3)+" : "+juce::String((int)beat%4+1)+"   /   "+juce::String((int)project.length()/4),juce::dontSendNotification);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);arrangement.repaint();piano.repaint();if(page==Page::instrument)instrumentPanel.repaint();
     if(++ticks%1200==0&&dirty&&!loadingPlugin){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}

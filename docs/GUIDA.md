@@ -157,7 +157,7 @@ Trovi i **rivolti per accordo**, il seed del riff e del feel, **NUOVO FEEL**, pe
 
 Da **MODIFICA ACCORDI → Ogni accordo** imposti la durata armonica condivisa: mezza, una, due o quattro battute. Il pump del suono guida offre frequenza, rilascio e sorgente **Tempo / MIDI della cassa**. Quest'ultima segue le note della traccia Kick; non è un ingresso audio esterno.
 
-Da **OPZIONI → Lingue** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso menu. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
+Da **OPZIONI → IMPOSTAZIONI → Lingua** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso pannello. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
 
 ### Suono guida, campione o VST
 

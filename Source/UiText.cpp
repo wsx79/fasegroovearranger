@@ -5,7 +5,12 @@ juce::String controlTip(const juce::String& key){
     if(key=="<")return tr("Previous groove");
     if(key==">")return tr("Next groove");
     if(key=="RND LANE")return tr("Try another take of this track, keeping the rest of the song.");
-    if(key=="HEAR")return tr("Guide sound");
+    if(key=="HEAR")return tr("Turn this track's sound on or off; MIDI export is unchanged.");
+    if(key=="Piano"||key=="Bass"||key=="Strings")return tr("Open this instrument's settings.");
+    if(key=="Drum volume")return tr("Volume of the guide sound");
+    if(key=="Sound")return tr("The guide sound you hear (the MIDI stays the same)");
+    if(key=="BUILT-IN")return tr("Use the original Fase Groove guide sound on this track.");
+    if(key=="Free chords")return tr("Free chords: drag the dots anywhere on the circle, even outside the scale");
     if(key=="Section")return tr("Select the song section to edit.");
     if(key.equalsIgnoreCase("NEW"))return tr("Start a new song project.");
     if(key.equalsIgnoreCase("OPEN"))return tr("Open a local .fga project.");

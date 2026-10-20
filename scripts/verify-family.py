@@ -13,6 +13,8 @@ expected = {
 }
 for path, sha in expected.items():
     data = (root / path).read_bytes()
+    if path.endswith(".h"):
+        data = data.replace(b"\r\n", b"\n")  # Git autocrlf on Windows; canonical Git blob is LF.
     actual = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
     assert actual == sha, f'{path}: family asset has diverged ({actual})'
 for name in ['GUIDA', 'GUIDE']:
