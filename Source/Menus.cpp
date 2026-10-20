@@ -8,24 +8,6 @@ namespace fga {
 namespace {
 juce::String u(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
-class AboutPage:public juce::Component {
-public:
-    AboutPage(){setLookAndFeel(&theme);
-        logo=juce::ImageCache::getFromMemory(BinaryData::fs_pitch_logo_png,BinaryData::fs_pitch_logo_pngSize);
-        const juce::StringArray titles{"SOURCE CODE","Ko-fi","PayPal","Spotify"};const juce::StringArray urls{"https://github.com/wsx79/fasegroovearranger","https://ko-fi.com/fabios1979","https://paypal.me/fabios79","https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP"};
-        for(int i=0;i<4;++i){auto* b=buttons.add(new juce::TextButton(titles[i]));auto url=urls[i];b->onClick=[url]{juce::URL(url).launchInDefaultBrowser();};addAndMakeVisible(b);}setSize(780,690);
-    }
-    void paint(juce::Graphics& g)override{
-        g.fillAll(Palette::panel);auto line=[&](juce::String text,int y,int h,float size,juce::Colour colour=Palette::text){g.setColour(colour);g.setFont(FamilyTheme::font(size));g.drawText(text,20,y,getWidth()-40,h,juce::Justification::centred);};
-        drawFamilyLogo(g,{210,18,360,64});line(juce::String::fromUTF8("Piano + Drums + Guitar · one ecosystem"),88,22,14,Palette::dim);line(juce::String::fromUTF8("Standalone 0.4.0 · Windows / macOS / Linux"),116,22,12,Palette::dim);
-        line("CREATED BY",148,22,11,Palette::accent);if(logo.isValid())g.drawImageWithin(logo,100,176,getWidth()-200,100,juce::RectanglePlacement::centred);line(juce::String::fromUTF8("Fabio 'Pitch' Serra · DJ & Producer"),280,25,17);line("Listen to my productions on Spotify",310,22,12,juce::Colour(0xff1db954));
-        line("DEVELOPMENT ASSISTANCE",366,22,11,Palette::accent);line("Claude (Anthropic)  /  Codex (OpenAI)",402,26,17);line("AI coding assistants",438,22,12,Palette::dim);
-        line(juce::String::fromUTF8("Free & open source · GNU AGPL v3 or later"),543,24,13);line(juce::String::fromUTF8("Built with JUCE · Inter typeface: SIL Open Font License"),570,20,11,Palette::dim);line("VST is a registered trademark of Steinberg Media Technologies GmbH",594,20,10,Palette::dim);
-    }
-    ~AboutPage()override{setLookAndFeel(nullptr);}
-    void resized()override{int width=(getWidth()-70)/4;for(int i=0;i<buttons.size();++i)buttons[i]->setBounds(20+i*(width+10),getHeight()-52,width,32);}
-private:FamilyLookAndFeel theme;juce::Image logo;juce::OwnedArray<juce::TextButton> buttons;
-};
 class ExportTask:public juce::ThreadWithProgressWindow {
 public:
     ExportTask(AudioEngine& e,Project p,juce::File path,std::vector<int> selected,bool mp3,std::function<void(juce::Result)> done)
@@ -73,9 +55,22 @@ void MainComponent::showClipMenu(int track,int section){
     m.showMenuAsync(juce::PopupMenu::Options(),[safe,track,section](int id){if(safe==nullptr||id==0)return;safe->select(track,section);if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==3)safe->copyButton.triggerClick();if(id==4)safe->pasteButton.triggerClick();if(id==5){safe->checkpoint();safe->clip().notes.clear();safe->changed();}if(id==6)safe->sectionLoopButton.triggerClick();});
 }
 void MainComponent::showGuide(bool english){juce::DialogWindow::LaunchOptions o;o.dialogTitle=english?"Fase Groove Arranger / User guide":"Fase Groove Arranger / Guida";o.dialogBackgroundColour=Palette::background;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createGuidePage(english).release());o.launchAsync();}
-bool MainComponent::writeHelpEvidence(const juce::File& folder){AboutPage about;auto image=about.createComponentSnapshot(about.getLocalBounds());bool ok=false;if(auto out=folder.getChildFile("credits.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*out);}return verifyGuidePages(folder)&&ok;}
+bool MainComponent::writeHelpEvidence(const juce::File& folder){
+    bool ok=Updater::isNewer("v0.4.2","0.4.1")&&!Updater::isNewer("0.4.1","0.4.1")&&!Updater::isNewer("v0.3.9","0.4.1")&&Updater::isNewer("0.10.0","0.9.9");
+    for(bool about:{true,false}){
+        options.show(about,1.f);auto image=createComponentSnapshot(getLocalBounds());
+        if(auto out=folder.getChildFile(about?"credits.png":"settings.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*out)&&ok;}else ok=false;
+        ok=options.verifyLayout()&&ok;
+    }
+    options.setVisible(false);
+    folder.getChildFile("family-options.txt").replaceWithText(ok?"PASS family SETTINGS/ABOUT tabs, settings, credits and link geometry":"FAIL family options");
+    return verifyGuidePages(folder)&&ok;
+}
 void MainComponent::showDocument(const juce::String& title,const juce::String& text){juce::DialogWindow::LaunchOptions o;o.dialogTitle=title;o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createReferencePage(title,text).release());o.launchAsync();}
-void MainComponent::showAbout(){juce::PopupMenu m;juce::PopupMenu languages;for(int i=0;i<Localisation::numLanguages;++i)languages.addItem(100+i,juce::String::fromUTF8(Localisation::languageName(i)),true,(int)Localisation::current()==i);m.addSubMenu(tr("Languages"),languages);m.addItem(110,tr("Tooltips"),true,Localisation::tipsEnabled());m.addSeparator();m.addItem(1,tr("Information and credits"));m.addItem(2,tr("Privacy and permissions"));m.addItem(3,tr("Licences and attributions"));m.addItem(4,tr("Italian guide"));m.addItem(5,tr("English guide"));juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&aboutButton),[safe](int id){if(safe==nullptr)return;if(id>=100&&id<106){Localisation::setCurrent((Localisation::Language)(id-100));safe->applyLanguage();return;}if(id==110){Localisation::setTipsEnabled(!Localisation::tipsEnabled());safe->applyLanguage();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Ecosystem");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;o.content.setOwned(new AboutPage);o.launchAsync();}if(id==2){const bool it=Localisation::current()==Localisation::Language::italian;safe->showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==3)safe->showDocument("Licenze",juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));if(id==4)safe->showGuide(false);if(id==5)safe->showGuide(true);});}
+void MainComponent::showAbout(){
+    float scale=1.f;if(auto* p=getParentComponent())scale=p->getWidth()/1440.f;
+    options.show(false,scale);
+}
 void MainComponent::showAudioSettings(){
     juce::PopupMenu menu;menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton),[safe](int id){if(safe==nullptr)return;if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,0,0,2,false,false,true,false);selector->setSize(680,500);o.content.setOwned(selector);o.launchAsync();}
         if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else safe->open(folder.getChildFile("autosave.fga"));}

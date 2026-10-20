@@ -2,6 +2,11 @@
 #include "UiText.h"
 namespace fga {
 juce::String controlTip(const juce::String& key){
+    if(key=="<")return tr("Previous groove");
+    if(key==">")return tr("Next groove");
+    if(key=="RND LANE")return tr("Try another take of this track, keeping the rest of the song.");
+    if(key=="HEAR")return tr("Guide sound");
+    if(key=="Section")return tr("Select the song section to edit.");
     if(key.equalsIgnoreCase("NEW"))return tr("Start a new song project.");
     if(key.equalsIgnoreCase("OPEN"))return tr("Open a local .fga project.");
     if(key.equalsIgnoreCase("EXPORT"))return tr("Export the mix or separate tracks as MIDI, WAV or MP3.");

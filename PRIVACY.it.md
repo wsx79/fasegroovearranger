@@ -1,12 +1,12 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.3.0 · 20 ottobre 2026
+Versione 0.4.1 · 20 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
 ## Dati e connessioni
 
-L'app elabora musica sul dispositivo. Non richiede account, non raccoglie dati personali per un servizio remoto e non contiene analytics, telemetria, pubblicità, cookie o caricamento automatico di file. Non effettua controlli aggiornamenti o connessioni di rete proprie durante l'uso ordinario. La generazione avviene nei motori C++ integrati; non invia prompt o musica a servizi AI.
+L'app elabora musica sul dispositivo. Non richiede account, non raccoglie dati personali per un servizio remoto e non contiene analytics, telemetria, pubblicità, cookie o caricamento automatico di file. La verifica delle release GitHub è l'unica connessione propria dell'app ed è disattivabile, come descritto sotto. La generazione avviene nei motori C++ integrati; non invia prompt o musica a servizi AI.
 
 Le pagine di codice sorgente, Spotify e donazioni si aprono nel browser soltanto quando premi il relativo pulsante. Tali servizi applicano le proprie condizioni e informative. Le dipendenze possono essere scaricate da GitHub durante la compilazione da sorgente; questo non avviene durante l'esecuzione dell'app già compilata.
 
@@ -32,3 +32,7 @@ Questa informativa descrive il comportamento del codice dell'arranger. Non sosti
 ## Lingue, tooltip e MIDI
 
 Lingua e attivazione dei tooltip sono preferenze locali salvate sul computer. LEARN legge le note della tastiera MIDI soltanto dopo che scegli un ingresso MIDI nella sua finestra; quando la chiudi, il callback viene rimosso e viene ripristinata l’attivazione precedente del dispositivo. Non registra audio e non usa il microfono. I preset personali restano file locali.
+
+## Aggiornamenti GitHub
+
+Come nelle altre app della famiglia, la verifica delle release GitHub è attiva per impostazione iniziale e si disattiva in OPZIONI → IMPOSTAZIONI. CHECK NOW avvia una verifica manuale. Viene interrogato solo `api.github.com/repos/wsx79/fasegroovearranger/releases/latest`; GitHub riceve i normali dati di connessione (IP e user-agent), senza progetti, MIDI, campioni o stato dei plugin. Il download si apre nel browser solo premendo il pulsante. Non sono installati aggiornamenti automaticamente. Lingua, dimensione, tooltip, preferenza aggiornamenti ed eventuale versione ignorata sono salvati nel file locale delle impostazioni. Su Linux la verifica usa il comando `curl`, come nelle app originali; se manca, la verifica fallisce senza impedire il lavoro offline.

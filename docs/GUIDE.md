@@ -56,6 +56,8 @@ Want another take? **NEW TRACK** changes just the selected instrument; **NEW CLI
 
 ## 3. The window, section by section
 
+**OPTIONS → SETTINGS** follows the same panel as Piano, Drums and Guitar: language, interface size, tooltips and updates. **ABOUT** contains credits and SOURCE CODE, Ko-fi, PayPal and Spotify buttons. Audio, guide, privacy and licences open from the buttons below the preferences. This Markdown document is the source guide, as in the other family apps.
+
 ![The Fase Groove Arranger window](images/guide_arrangement.png)
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.

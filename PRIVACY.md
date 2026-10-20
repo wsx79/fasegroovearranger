@@ -1,10 +1,10 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.3.0 · 20 October 2026
+Version 0.4.1 · 20 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 
-The application processes music locally. It has no accounts, ads, analytics, telemetry, cookies, automatic uploads or built-in update checks. Its integrated C++ engines generate music on your device and do not send data to AI services. Source dependencies may be downloaded while building the software; the compiled application runs offline.
+The application processes music locally. It has no accounts, ads, analytics, telemetry, cookies or automatic uploads. Its integrated C++ engines generate music on your device and do not send data to AI services. Source dependencies may be downloaded while building the software; the compiled application runs offline.
 
 Source-code, artist and donation links open the browser only when clicked. The linked services have their own terms and privacy policies. Native VST3/AU plugins run in the application's process and can access resources or services according to their own behaviour; their privacy practices are separate.
 
@@ -19,3 +19,7 @@ This notice describes the arranger's source code, not the behaviour of external 
 ## Languages, tooltips and MIDI
 
 Language and tooltip preferences are saved locally on this computer. LEARN reads keyboard notes only after you choose a MIDI input in its window. Closing it removes the callback and restores the device’s previous enabled state. It does not record audio or use the microphone. Personal presets remain local files.
+
+## GitHub updates
+
+As in the other family apps, GitHub release checking is enabled initially and can be disabled in OPTIONS → SETTINGS. CHECK NOW starts a manual check. Only `api.github.com/repos/wsx79/fasegroovearranger/releases/latest` is queried; GitHub receives ordinary connection data (IP and user-agent), without projects, MIDI, samples or plugin state. Downloads open in the browser only after clicking the button. No update is installed automatically. Language, size, tooltips, update preference and any skipped version are stored in the local settings file. Linux checking uses the `curl` command, as in the original apps; if unavailable, checking fails without preventing offline work.

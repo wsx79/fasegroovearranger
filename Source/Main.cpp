@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "Localisation.h"
 namespace {
 class ScaledContent:public juce::Component {
 public:
@@ -10,16 +11,25 @@ public:
 };
 class Window:public juce::DocumentWindow {
 public:
-    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);setIcon(juce::ImageCache::getFromMemory(BinaryData::arranger_png,BinaryData::arranger_pngSize));content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);}
+    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);setIcon(juce::ImageCache::getFromMemory(BinaryData::arranger_png,BinaryData::arranger_pngSize));content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1008,686,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);
+        content->main.onScaleChosen=[this](float scale){
+            auto screen=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
+            int width=juce::jlimit(1008,std::max(1008,screen.getWidth()-60),juce::roundToInt(1440*scale));
+            int height=juce::jlimit(686,std::max(686,screen.getHeight()-70),juce::roundToInt(980*scale));
+            centreWithSize(width,height);Localisation::setSetting("uiScale",width/1440.f);
+        };
+        const float saved=Localisation::setting("uiScale","1").getFloatValue();if(saved>0&&saved!=1.f)content->main.onScaleChosen(saved);
+    }
     void closeButtonPressed()override{if(content->main.requestClose())juce::JUCEApplication::getInstance()->quit();}
     ScaledContent* content=nullptr;
 };
 class Application:public juce::JUCEApplication {
 public:
     const juce::String getApplicationName()override{return "Fase Groove Arranger";}
-    const juce::String getApplicationVersion()override{return "0.4.0";}
+    const juce::String getApplicationVersion()override{return JUCE_APPLICATION_VERSION_STRING;}
     bool moreThanOneInstanceAllowed()override{return false;}
     void initialise(const juce::String&)override{
+        juce::LookAndFeel::setDefaultLookAndFeel(&theme);
         auto args=getCommandLineParameterArray();
         if(args.size()==3&&args[0]=="--host-smoke-test"){
             window=std::make_unique<Window>();auto& audio=window->content->main.audio;
@@ -85,9 +95,9 @@ public:
         }
         window=std::make_unique<Window>();
     }
-    void shutdown()override{window.reset();}
+    void shutdown()override{window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
-private:std::unique_ptr<Window> window;
+private:FamilyLookAndFeel theme;std::unique_ptr<Window> window;
 };
 }
 START_JUCE_APPLICATION(Application)

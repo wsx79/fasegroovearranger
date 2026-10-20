@@ -283,4 +283,3 @@ inline void FamilyLookAndFeel::drawScrollbar (juce::Graphics& g, juce::ScrollBar
     g.setColour (down ? Palette::accent : over ? Palette::panelEdge.brighter (0.6f) : Palette::panelEdge.brighter (0.3f));
     g.fillRoundedRectangle (thumb.reduced (1.5f), 3.0f);
 }
-

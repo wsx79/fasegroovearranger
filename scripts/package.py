@@ -2,6 +2,7 @@
 """Package the native app and its notices; tar preserves Unix executable modes."""
 from pathlib import Path
 import os
+import re
 import platform
 import shutil
 import subprocess
@@ -17,14 +18,15 @@ if system == 'macOS':
     arch = 'universal' if {'arm64', 'x86_64'}.issubset(architectures) else '-'.join(architectures)
 else:
     arch = platform.machine()
-name = f'FaseGrooveArranger-0.4.0-{system}-{arch}'
+version = re.search(r'project\(FaseGrooveArranger VERSION ([0-9.]+)', (root / 'CMakeLists.txt').read_text())[1]
+name = f'FaseGrooveArranger-{version}-{system}-{arch}'
 dist = root / 'dist'
 stage = dist / name
 stage.mkdir(parents=True, exist_ok=True)
 native = root / 'build/FaseGrooveArranger_artefacts/Release'
 assert native.is_dir(), f'Native build missing: {native}'
 shutil.copytree(native, stage, dirs_exist_ok=True)
-for file in ['LICENSE', 'README.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
+for file in ['LICENSE', 'README.md', 'README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
              'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
              'Resources/arranger.svg', 'ThirdParty/shine/COPYING',
              'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',

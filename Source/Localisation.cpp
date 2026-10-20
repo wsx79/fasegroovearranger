@@ -1,4 +1,4 @@
-// Fase Groove Piano - Copyright (C) 2026 Fabio 'Pitch' Serra
+// Fase Groove Arranger - Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 #include "Localisation.h"
@@ -77,7 +77,7 @@ namespace
             return;
         }
 
-        juce::String text ("language: Fase Groove Piano\n");
+        juce::String text ("language: Fase Groove Arranger\n");
         for (auto* key : juceTexts)
             text << "\"" << juce::String (key).replace ("\"", "\\\"") << "\" = \""
                  << tr (key).replace ("\"", "\\\"") << "\"\n";

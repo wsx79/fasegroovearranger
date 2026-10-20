@@ -56,6 +56,8 @@ Vuoi un'altra versione? **NUOVA TRACCIA** cambia solo lo strumento scelto; **NUO
 
 ## 3. La finestra, sezione per sezione
 
+**OPZIONI → IMPOSTAZIONI** segue lo stesso pannello di Piano, Drums e Guitar: lingua, dimensione interfaccia, tooltip e aggiornamenti. **INFO** contiene i crediti e i pulsanti SOURCE CODE, Ko-fi, PayPal e Spotify. Audio, guida, privacy e licenze si aprono dai pulsanti aggiunti sotto le preferenze. La guida sorgente è questo documento Markdown, come nelle altre app.
+
 ![La finestra di Fase Groove Arranger](images/guide_arrangement.png)
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.

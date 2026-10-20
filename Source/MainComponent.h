@@ -5,6 +5,9 @@
 #include "ProjectIO.h"
 #include "FamilyTheme.h"
 #include "InstrumentPanel.h"
+#include "FamilyOptions.h"
+#include "FamilyControls.h"
+#include "Updater.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -66,6 +69,7 @@ public:
     bool keyPressed(const juce::KeyPress&) override;
     bool isInterestedInFileDrag(const juce::StringArray&) override;
     void filesDropped(const juce::StringArray&,int,int) override;
+    std::function<void(float)> onScaleChosen;
     Project project;
     int selectedTrack=0,selectedSection=0;
     AudioEngine audio;
@@ -89,6 +93,8 @@ public:
     bool writeUiEvidence(const juce::File&);
 private:
     FamilyLookAndFeel theme;
+    OptionsOverlay options;
+    Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};
     juce::Viewport arrangementPort,pianoPort,instrumentPort;
@@ -99,7 +105,7 @@ private:
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
     juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};
-    juce::TextButton playButton{"PLAY"},stopButton{"STOP"},rewindButton{"|<"},undoButton{"UNDO"},redoButton{"REDO"};
+    IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     juce::ToggleButton loopButton{"LOOP"};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;

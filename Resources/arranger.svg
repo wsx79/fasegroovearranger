@@ -1,16 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
-  <!-- Arranger: interlocking song sections on three tracks. Family rail and slant,
-       distinct arrangement symbol: no piano keys or instrument-specific silhouette. -->
+  <!-- Fase Groove Arranger: five staggered track phrases under a common song ruler.
+       Original vector mark. Family slant and warm gradient; no piano keys. -->
   <defs>
     <linearGradient id="warm" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffb35c"/><stop offset="1" stop-color="#ff7a3d"/></linearGradient>
-    <linearGradient id="cool" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#75d8f6"/><stop offset="1" stop-color="#4c9ce8"/></linearGradient>
   </defs>
-  <rect width="256" height="256" rx="56" fill="#17111c"/>
-  <g transform="translate(27 0) skewX(-12)">
-    <path d="M46 40H214L204 52H36Z" fill="#fff"/>
-    <path d="M36 70H105V104H36Z M113 70H204V104H113Z" fill="url(#warm)"/>
-    <path d="M36 118H77V152H36Z M85 118H156V152H85Z M164 118H204V152H164Z" fill="url(#cool)"/>
-    <path d="M36 166H133V200H36Z M141 166H204V190L194 200H141Z" fill="url(#warm)"/>
-    <path d="M113 64V209" stroke="#fff" stroke-width="4" opacity=".9"/>
+  <rect width="256" height="256" rx="56" fill="#0d0f13"/>
+  <g transform="translate(28 0) skewX(-12)">
+    <path d="M38 40H211L201 52H28Z" fill="#e7e9ec"/>
+    <g fill="url(#warm)">
+      <path d="M28 68H96V90H28Z M104 68H201V90H104Z"/>
+      <path d="M64 98H132V120H64Z M140 98H201V120H140Z"/>
+      <path d="M28 128H60V150H28Z M68 128H164V150H68Z"/>
+      <path d="M64 158H132V180H64Z M140 158H201V180H140Z"/>
+      <path d="M28 188H96V210H28Z M104 188H164V210H104Z"/>
+    </g>
+    <path d="M112 58V218" stroke="#e7e9ec" stroke-width="4"/>
   </g>
 </svg>
