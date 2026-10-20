@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.4.3 — Automazione volume delle tracce
+
+- Corsia volume opzionale per tutte le 17 tracce: punti trascinabili, griglia/tempi liberi, curve, bypass, cancellazione e annulla/ripeti. Nascosta e disattivata all’avvio; nascondere non disattiva l’ascolto.
+- Guadagno audio dopo lo strumento, continuo per campione: motori interni, campioni e VST/AU; stessa elaborazione in ascolto ed export WAV/MP3 di mix e tracce. MIDI invariato.
+- Inviluppi salvati nel progetto con campi opzionali; vecchi progetti senza automazione attiva. I punti seguono inserimento, duplicazione, eliminazione e spostamento delle sezioni.
+- Rimosse le rampe extra alle velocity aggiunte dall’arranger in intro/outro e lift organici; conservate articolazione ed espressione dei motori originali.
+- Controlli e tooltip in sei lingue, guide Markdown aggiornate; verifiche del motore, persistenza, gesti UI e curva audio.
+
 [English](CHANGELOG.md)
 
 ## 0.4.2 — 20 ottobre 2026

@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.4.3 — Track volume automation
+
+- Optional volume lanes on all 17 tracks: draggable points, beat snap/free timing, curved segments, bypass, clear and undo/redo. Hidden and bypassed by default; hiding never mutes automation.
+- Sample-accurate post-instrument gain for internal engines, user samples and VST/AU; shared playback and mix/stem WAV/MP3 export graph. MIDI notes/CC stay unchanged.
+- Optional project fields preserve envelopes; old projects default to bypass. Section insertion, duplication, deletion and reordering move points with the musical material.
+- Remove arranger-added note-velocity fades in intro/outro and organic lifts. Preserve original engine articulation and expression.
+- Six-language controls/tooltips and adapted Markdown manuals. Core, persistence, native editing gestures and audio-envelope checks.
+
 [Italiano](CHANGELOG.it.md)
 
 ## 0.4.2 — 2026-10-20

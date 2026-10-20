@@ -255,6 +255,22 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 4. Try strings in the chorus and leave more space in the part before it.
 5. Check intro and outro: entrances and exits should follow the genre’s phrases; the first and final rhythmic phrases leave room for blending.
 
+### Track volume automation
+
+In the arrangement view, **A** in each track header opens its volume lane. **AUTOMATION** shows or hides the selected track’s lane. Lanes start hidden and automation starts bypassed, leaving the instrument fader in control.
+
+- Click in the lane to add a point and enable automation. The first edit also creates unity-gain endpoints.
+- Drag points to change time and level. Timing snaps to one beat; hold **Shift** for free timing. Zoom in for precise editing.
+- **Alt-drag a segment between points** to bend its rise or fall; the centre is linear.
+- Right-click to delete a point, reset its outgoing curve, clear the envelope, or enable/bypass automation.
+- **ON / BYPASS** at the left enables or bypasses the envelope while retaining points. Hiding a lane with **A** does not change playback. Point edits support UNDO/REDO.
+
+Values multiply the track fader: 0% is silence, 100% leaves the level unchanged, and 200% adds about 6 dB. Gain changes continuously, including sustained notes and effect tails. Values hold before the first and after the last point. It works with built-in sounds, samples and VST/AU instruments, during playback and WAV/MP3 mix and stem export.
+
+Envelopes are saved in `.fga` projects, independently of BPM and MIDI regeneration. Inserting, duplicating, deleting or moving sections moves their points too. Changing section length or using NEW ARRANGEMENT keeps absolute point times, clamped to the new song length: review the envelope afterwards. Old projects open with automation bypassed. Lane visibility belongs to the current editing session and is not saved in the project.
+
+Volume automation **does not change note velocities or export MIDI CC**: it is DAW audio gain. Original engine dynamics still work; extra arranger velocity ramps previously used to imitate fades are removed. Export audio to carry the curves into another application; MIDI retains musical notes and original CC.
+
 ## 10. Saving and exporting
 
 **SAVE / SAVE AS** writes a `.fga` project: sections, notes, parameters, locks, mixer and VST state. Samples and plugins stay at their paths; keep the files used in the song.
@@ -310,7 +326,7 @@ Genre sets the musical form; the groove and harmonic cycle determine its develop
 
 ### Where are recording, automation and effect chains?
 
-This version works on MIDI arrangements. Audio/MIDI recording, automation, audio editing, buses/sends, external effect chains and plugin delay compensation are not present. Export MIDI and WAV to continue in your DAW. Some advanced Fase Groove plugin controls have not yet been brought into the Arranger.
+This version works on MIDI arrangements. Audio/MIDI recording, automation beyond track volume, audio editing, buses/sends, external effect chains and plugin delay compensation are not present. Export MIDI and WAV to continue in your DAW. Some advanced Fase Groove plugin controls have not yet been brought into the Arranger.
 
 ### My MIDI file will not import
 

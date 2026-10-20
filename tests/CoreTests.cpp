@@ -43,5 +43,14 @@ int main(int argc,char** argv){try{
     fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
     c.notes.push_back({std::numeric_limits<double>::quiet_NaN(),1,60,90,0});fga::tidyNotes(c,1);check(c.notes.size()==2,"invalid input sanitised");
     auto edge=fga::newProject();edge.loop=true;edge.loopStart=0;edge.loopEnd=.00000001;edge.normalise();check(!edge.loop,"sub-tick loop disabled");
+    auto automated=fga::newProject();const auto dryMidi=fga::midiFile(automated);auto& volume=automated.tracks[4].volume;
+    check(!volume.enabled&&volume.valueAt(8)==1,"automation defaults bypassed");
+    volume.points={{0,0,0},{8,1,0},{16,.5,0}};check(volume.valueAt(4)==1,"disabled envelope is unity");volume.enabled=true;
+    check(volume.valueAt(4)==.5&&volume.valueAt(12)==.75&&volume.valueAt(100)==.5,"linear interpolation and endpoint hold");volume.points[0].curve=1;check(std::abs(volume.valueAt(4)-.75)<1e-12,"curved interpolation");
+    double previous=-1;for(int k=0;k<=800;++k){auto v=volume.valueAt(k/100.);check(v>=previous&&v<=1,"bounded monotonic curve");previous=v;}
+    check(fga::midiFile(automated)==dryMidi,"audio automation must not alter MIDI notes or CC");const auto savedVolume=volume.points;fga::generate(automated,fga::Scope::clip,4,1,992);check(volume.enabled&&volume.points.size()==savedVolume.size()&&volume.points[0].curve==1,"regenerate preserves automation");
+    volume.points={{8,.2,.4},{automated.sectionStart(1)+4,.8,-.5}};const auto oldSecond=volume.points[1].beat;automated.insertSection(1,{fga::Section::main,8,"Inserted"});check(volume.points[1].beat==oldSecond+32,"insert shifts automation");automated.removeSection(1);check(volume.points[1].beat==oldSecond,"remove shifts automation back");
+    automated.moveSection(0,1);check(volume.points[0].beat==4&&volume.points[0].value==.8,"automation follows moved sections");
+    fga::VolumeAutomation malformedVolume;malformedVolume.enabled=true;malformedVolume.points={{4,3,2},{-1,-2,-3},{4,.3,.5},{std::numeric_limits<double>::quiet_NaN(),1,0}};malformedVolume.normalise(8);check(malformedVolume.points.size()==2&&malformedVolume.points[0].beat==0&&malformedVolume.points[0].value==0&&malformedVolume.points[1].value==.3,"sanitize sort and merge automation points");
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

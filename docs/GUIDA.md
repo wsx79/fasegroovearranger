@@ -257,6 +257,22 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
 5. Controlla intro e outro: la prima e l’ultima frase ritmica lasciano spazio al mixaggio; gli strumenti entrano ed escono dentro la struttura del brano.
 
+### Automazione del volume traccia
+
+Nella vista arrangiamento, **A** nell’intestazione di ogni traccia apre la corsia volume. **AUTOMAZIONE** apre o nasconde quella della traccia selezionata. Le corsie partono nascoste e l’automazione è disattivata: il volume normale resta al fader dello strumento.
+
+- Clic nella corsia: aggiunge un punto e attiva l’automazione; il primo clic crea anche gli estremi a volume neutro.
+- Trascina un punto: cambia posizione e livello. La griglia è di un beat; **Maiusc** consente tempi liberi. Aumenta lo zoom per lavorare con precisione.
+- **Alt + trascina sul segmento fra due punti**: curva la salita o la discesa; al centro resta lineare.
+- Clic destro: elimina il punto, azzera la sua curva, cancella l’inviluppo oppure attiva/disattiva l’automazione.
+- **ON / BYPASS** a sinistra della corsia: attiva o esclude la linea mantenendo i punti. Nasconderla con **A** non ne modifica l’ascolto. ANNULLA/RIPETI comprende le modifiche ai punti.
+
+Il valore è un moltiplicatore del fader: 0% = silenzio, 100% = volume invariato, 200% = circa +6 dB. Fra i punti il valore cambia continuamente, anche sulle note tenute e sulle code degli effetti. Prima del primo punto e dopo l’ultimo mantiene il valore estremo. Funziona sui suoni interni, sui campioni e sui VST/AU, in riproduzione e nei WAV/MP3 di mix e singole tracce.
+
+L’inviluppo si salva nel `.fga`, è indipendente dai BPM e dalla rigenerazione MIDI; inserendo, duplicando, eliminando o spostando sezioni anche i punti si spostano con esse. Cambiare la durata di una sezione o creare una nuova forma con NUOVO ARRANGIAMENTO mantiene invece i tempi assoluti dei punti e li limita alla nuova durata: ricontrolla la linea. I vecchi progetti si aprono con automazione spenta. La visibilità è una preferenza della sessione di lavoro e non è salvata nel progetto.
+
+L’automazione volume **non modifica le velocity e non viene convertita in CC MIDI**: resta un controllo audio della DAW. Le dinamiche espressive dei motori originali continuano a funzionare; le rampe extra di velocity aggiunte dall’arranger per simulare un fade sono rimosse. Per portare le curve fuori dall’app esporta l’audio; il MIDI contiene le note e i CC musicali originali.
+
 ## 10. Salvare ed esportare
 
 **SALVA / SALVA COME** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
@@ -312,7 +328,7 @@ La forma dipende dal genere; il groove e il ciclo armonico stabiliscono lo svilu
 
 ### Dove sono registrazione, automazioni e catene di effetti?
 
-Questa versione lavora sull'arrangiamento MIDI. Registrazione audio/MIDI, automazioni, editing audio, bus/send, catene di effetti esterni e compensazione della latenza dei plugin non sono presenti. Puoi esportare MIDI e WAV per continuare il lavoro nella tua DAW. Alcuni controlli avanzati dei plugin Fase Groove non sono ancora riportati nell'Arranger.
+Questa versione lavora sull'arrangiamento MIDI. Registrazione audio/MIDI, automazioni diverse dal volume traccia, editing audio, bus/send, catene di effetti esterni e compensazione della latenza dei plugin non sono presenti. Puoi esportare MIDI e WAV per continuare il lavoro nella tua DAW. Alcuni controlli avanzati dei plugin Fase Groove non sono ancora riportati nell'Arranger.
 
 ### Il file MIDI non viene importato
 

@@ -86,6 +86,22 @@ public:
             for(int ti=0;ti<17;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
             const auto guitarMidi=fga::midiFile(p,3);p.tracks[3].engine.laneVolume.fill(0);run("guitar-volume-zero.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;
             p.tracks[3].engine.laneVolume.fill(1);p.tracks[3].engine.laneMute.fill(true);run("guitar-lanes-muted.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;p.tracks[3].engine.laneMute.fill(false);
+            {
+                // Use a user sample for exact cross-render comparison: original
+                // drums deliberately vary their noise seed on every trigger.
+                const auto savedGain=p.tracks[4].gain;p.tracks[4].gain=.05;
+                bool sampleLoaded=audio.loadSample(4,folder.getChildFile("stem-4.wav"),36).wasOk();run("automation-reference.wav",4,false);
+                const auto notes=fga::midiFile(p,4);auto& volume=p.tracks[4].volume;volume.enabled=true;volume.points={{0,0,.8},{4,1,-.6},{8,.25,0}};
+                run("automation-curve.wav",4,false);volume.points={{0,0,0}};run("automation-zero.wav",4,false);volume.enabled=false;run("automation-bypass.wav",4,false);
+                juce::AudioFormatManager readerFormats;readerFormats.registerBasicFormats();auto reference=std::unique_ptr<juce::AudioFormatReader>(readerFormats.createReaderFor(folder.getChildFile("automation-reference.wav")));
+                bool automation=sampleLoaded&&reference!=nullptr;
+                for(const auto& filename:{"automation-curve.wav","automation-zero.wav","automation-bypass.wav"}){
+                    auto rendered=std::unique_ptr<juce::AudioFormatReader>(readerFormats.createReaderFor(folder.getChildFile(filename)));if(!rendered||!reference||rendered->lengthInSamples!=reference->lengthInSamples){automation=false;continue;}
+                    fga::VolumeAutomation expected;expected.enabled=juce::String(filename)!="automation-bypass.wav";expected.points=juce::String(filename)=="automation-curve.wav"?std::vector<fga::VolumePoint>{{0,0,.8},{4,1,-.6},{8,.25,0}}:std::vector<fga::VolumePoint>{{0,0,0}};
+                    juce::AudioBuffer<float> dry(2,4096),wet(2,4096);double error=0;for(juce::int64 pos=0;pos<reference->lengthInSamples;pos+=4096){int count=(int)std::min<juce::int64>(4096,reference->lengthInSamples-pos);reference->read(&dry,0,count,pos,true,true);rendered->read(&wet,0,count,pos,true,true);for(int s=0;s<count;++s)for(int ch=0;ch<2;++ch)error=std::max(error,std::abs(wet.getSample(ch,s)-dry.getSample(ch,s)*expected.valueAt((pos+s)/reference->sampleRate*p.settings.bpm/60.)));}automation=automation&&error<2e-6;
+                }
+                automation=automation&&fga::midiFile(p,4)==notes;folder.getChildFile("volume-automation-audio.txt").replaceWithText(automation?"PASS sample-accurate curve, silence, bypass, MIDI unchanged":"FAIL volume automation audio");ok=automation&&ok;volume={};p.tracks[4].gain=savedGain;audio.useInternal(4);
+            }
             p.loop=true;p.loopStart=0;p.loopEnd=4;audio.publish(p);audio.seek(3.999);audio.play(true);
             juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;
             audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);

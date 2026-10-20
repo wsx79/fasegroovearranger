@@ -31,6 +31,8 @@ struct Instrument {
     juce::MidiBuffer midi;
     std::unique_ptr<juce::AudioPluginInstance> plugin;
     std::vector<TimedEvent> schedule;
+    VolumeAutomation volume;
+    std::vector<float> volumeGains;
     double gain=.75,pan=0;
     bool mute=false,solo=false;
     int mode=0; // 0 original guide, 1 user sampler, 2 user plugin, 3 missing instrument (silence)

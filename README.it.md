@@ -19,7 +19,7 @@
 
 ---
 
-**Versione di sviluppo: 0.4.2.** I pacchetti verificati sono negli artifact della [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). Non è ancora una release pubblicata.
+**Versione di sviluppo: 0.4.3.** I pacchetti verificati sono negli artifact della [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). Non è ancora una release pubblicata.
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
@@ -69,7 +69,7 @@ Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_B
 - [Architettura e provenienza](docs/ARCHITECTURE.md) · [Confronto UI famiglia](docs/FAMILY_ALIGNMENT.md)
 - [Licenze di terze parti](THIRD_PARTY_NOTICES.md) · [Verifiche](docs/VALIDATION.md)
 
-Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, automazioni, audio warping, catene effetti, bus/send, registrazione dei controller MIDI, compensazione della latenza dei plugin e scansione isolata non sono implementati. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
+Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, automazioni di parametri diversi dal volume traccia, audio warping, catene effetti, bus/send, registrazione dei controller MIDI, compensazione della latenza dei plugin e scansione isolata non sono implementati. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
 
 I suoni guida sono sintetizzati, non librerie commerciali campionate. Per la produzione finale puoi usare i tuoi strumenti. WAV è senza perdita; MP3 aggiunge il ritardo/padding del codec.
 

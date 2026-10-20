@@ -200,6 +200,7 @@ void Project::normalise() {
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; t.clips.resize(sections.size());
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
+        t.volume.normalise(length());
         auto& e=t.engine;
         e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
         e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
@@ -225,16 +226,24 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
     index=std::clamp(index,0,(int)sections.size());
     std::vector<Clip> copies;
     for(auto& t:tracks) copies.push_back(copyFrom>=0&&copyFrom<(int)t.clips.size()?t.clips[(size_t)copyFrom]:Clip{});
+    const double start=sectionStart(index),duration=std::clamp(section.bars,1,128)*4.;
+    for(auto& t:tracks){auto original=t.volume.points;for(auto& point:t.volume.points)if(point.beat>=start)point.beat+=duration;
+        if(copyFrom>=0&&copyFrom<(int)sections.size()){const double from=sectionStart(copyFrom),end=sectionStart(copyFrom+1);for(auto point:original)if(point.beat>=from&&point.beat<end&&point.beat-from<duration){point.beat=start+point.beat-from;t.volume.points.push_back(point);}}
+    }
     sections.insert(sections.begin()+index,std::move(section));
     for(size_t i=0;i<tracks.size();++i) tracks[i].clips.insert(tracks[i].clips.begin()+index,copies[i]);
     normalise();
 }
 void Project::removeSection(int index) {
     if(sections.size()<2||index<0||index>=(int)sections.size()) return;
+    const double start=sectionStart(index),end=sectionStart(index+1);
+    for(auto& t:tracks){auto& points=t.volume.points;points.erase(std::remove_if(points.begin(),points.end(),[&](const VolumePoint& p){return p.beat>=start&&p.beat<end;}),points.end());for(auto& point:points)if(point.beat>=end)point.beat-=end-start;}
     sections.erase(sections.begin()+index); for(auto& t:tracks) t.clips.erase(t.clips.begin()+index); normalise();
 }
 void Project::moveSection(int from,int to) {
     if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to) return;
+    const double oldStart=sectionStart(from),oldEnd=sectionStart(from+1),destination=from<to?sectionStart(to+1)-(oldEnd-oldStart):sectionStart(to);
+    for(auto& t:tracks){for(auto& point:t.volume.points){if(point.beat>=oldStart&&point.beat<oldEnd)point.beat+=destination-oldStart;else if(from<to&&point.beat>=oldEnd&&point.beat<destination+oldEnd-oldStart)point.beat-=oldEnd-oldStart;else if(from>to&&point.beat>=destination&&point.beat<oldStart)point.beat+=oldEnd-oldStart;}t.volume.normalise(length());}
     auto s=sections[(size_t)from]; sections.erase(sections.begin()+from); sections.insert(sections.begin()+to,s);
     for(auto& t:tracks) {auto c=std::move(t.clips[(size_t)from]); t.clips.erase(t.clips.begin()+from); t.clips.insert(t.clips.begin()+to,std::move(c));}
 }
@@ -390,11 +399,6 @@ void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
     }),notes.end());
     for(auto& n:notes){
         if(type==Section::outro)n.length=std::min(n.length,cutoff-n.start);
-        if(track<4){
-            const double progress=n.start/(bars*4.);
-            const double level=type==Section::intro?.7+.3*progress:1.-.3*progress;
-            n.velocity=std::clamp((int)std::lround(n.velocity*level),1,127);
-        }
     }
 }
 }
@@ -457,12 +461,6 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             }
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeMixSection(clip,s.genre,ti,type,p.sections[si].bars);
-            if(type==Section::buildup&&!profile.rollingBuild){
-                for(auto& n:clip.notes){
-                    const double progress=n.start/beats;
-                    n.velocity=std::clamp((int)std::lround(n.velocity*(.72+.28*progress)),1,127);
-                }
-            }
             tidyNotes(clip,beats);
         }
     }

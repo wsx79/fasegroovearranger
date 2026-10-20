@@ -62,3 +62,7 @@ Blocchi di tracce/clip, rigenerazione isolata, editing MIDI e gli strumenti esis
 - `python3 scripts/verify-club-audio.py CARTELLA`: controlla durata calcolata/progetto e decodifica il riferimento MP3 con FFmpeg. L'audit nativo usa i suoni integrati; i VST e i campioni personali richiedono il normale ascolto e bilanciamento nel progetto dell'utente.
 
 Le misure verificano struttura, integrità e rendering. La valutazione artistica del brano va fatta anche ascoltandolo; l'MP3 di riferimento serve a questo confronto.
+
+## Aggiornamento 0.4.3: volume indipendente dalle note
+
+Le rampe di velocity aggiunte dall’arranger alle parti melodiche di intro/outro e ai lift organici sono rimosse. Restano l’articolazione originale dei motori e gli ingressi/uscite degli strumenti per frasi. Il volume può ora essere disegnato nella corsia di automazione audio di ciascuna traccia, inizialmente nascosta e in bypass, senza riscrivere il MIDI. La forma e i BPM seguono la stessa politica 0.4.2 documentata sopra.

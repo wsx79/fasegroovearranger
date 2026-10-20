@@ -82,6 +82,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("STOP"))return tr("Stop playback and return to the beginning.");
     if(key.equalsIgnoreCase("NEW ARRANGEMENT"))return tr("Rebuild the song form from genre, harmonic phrases and groove development.");
     if(key.equalsIgnoreCase("NEW CLIP"))return tr("Generate new notes only in the selected part; locked parts stay.");
+    if(key.equalsIgnoreCase("AUTOMATION"))return tr("Show or hide the selected track's volume automation. Playback is controlled by ON / BYPASS in the lane.");
     if(key.equalsIgnoreCase("NEW SECTION"))return tr("Generate new notes only in the selected part; locked parts stay.");
     if(key.equalsIgnoreCase("GENERATE SONG"))return tr("Generate new notes only in the selected part; locked parts stay.");
     if(key.equalsIgnoreCase("AUDIO"))return tr("Choose the audio output and buffer size.");

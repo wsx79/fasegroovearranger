@@ -126,6 +126,9 @@ juce::var projectJson(const Project& p){
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
         set(a,"engine",engineJson(t.engine));
+        auto volume=object();set(volume,"enabled",t.volume.enabled);juce::Array<juce::var> points;
+        for(const auto& p:t.volume.points){juce::Array<juce::var> point;point.add(p.beat);point.add(p.value);point.add(p.curve);points.add(point);}
+        set(volume,"points",points);set(a,"volumeAutomation",volume);
         set(a,"instrument",t.instrument);set(a,"instrumentPath",t.instrumentPath);set(a,"instrumentId",t.instrumentId);set(a,"instrumentState",t.instrumentState);
         juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);set(b,"locked",clip.locked);juce::Array<juce::var> notes;
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
@@ -146,6 +149,15 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     size_t noteCount=0;
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         readEngine(a["engine"],t.engine);
+        const auto volume=a["volumeAutomation"];t.volume.enabled=(bool)volume.getProperty("enabled",false);
+        if(auto* points=volume["points"].getArray()){
+            if(points->size()>16384)return juce::Result::fail("Too many volume automation points.");
+            for(const auto& point:*points){
+                if(!point.isArray()||point.size()!=3)return juce::Result::fail("Invalid volume automation point.");
+                for(int k=0;k<3;++k)if(!(point[k].isDouble()||point[k].isInt()||point[k].isInt64())||!std::isfinite((double)point[k]))return juce::Result::fail("Invalid volume automation value.");
+                t.volume.points.push_back({(double)point[0],(double)point[1],(double)point[2]});
+            }
+        }
         t.instrument=str(a,"instrument","internal");if(t.instrument!="internal"&&t.instrument!="sample"&&t.instrument!="plugin")return juce::Result::fail("Tipo strumento non valido.");
         t.instrumentPath=str(a,"instrumentPath");t.instrumentId=str(a,"instrumentId");t.instrumentState=str(a,"instrumentState");
         auto* clips=a["clips"].getArray();if(!clips||clips->size()!=sections->size())return juce::Result::fail("Clip e sezioni non corrispondono.");

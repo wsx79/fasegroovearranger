@@ -12,13 +12,30 @@
 namespace fga {
 class MainComponent;
 bool verifyPianoTools(MainComponent&,const juce::File&);
-class ArrangementView : public juce::Component {
+class ArrangementView : public juce::Component, public juce::SettableTooltipClient {
 public:
     explicit ArrangementView(MainComponent& m):owner(m){}
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+    void mouseMove(const juce::MouseEvent&) override;
+    bool verifyAutomation(const juce::File&);
+    int rowY(int row) const;
+    int rowAt(int y) const;
+    int totalHeight() const {return rowY(trackCount);}
+    std::array<bool,trackCount> volumeVisible{};
     double pixelsPerBar=6;
-private: MainComponent& owner;
+private:
+    MainComponent& owner;
+    int dragTrack=-1,dragPoint=-1;
+    bool bending=false;
+    double originalCurve=0;
+    float dragY=0;
+    int pointAt(int track,juce::Point<float>) const;
+    float volumeY(int track,double value) const;
+    void editPoint(juce::Point<float>,bool snap);
+
 };
 class PianoRoll : public juce::Component,public juce::SettableTooltipClient {
 public:
@@ -103,6 +120,7 @@ private:
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
     juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"SOLISTA"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
+    juce::TextButton automationButton{"AUTOMATION"};
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
     juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};

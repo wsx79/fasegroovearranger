@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "VolumeAutomation.h"
 
 namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
@@ -58,6 +59,7 @@ struct Track {
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
+    VolumeAutomation volume;
     EngineOptions engine;
     std::vector<Clip> clips;
 };
