@@ -38,6 +38,7 @@ void InstrumentPanel::rebuild(){
     resized();repaint();
 }
 void InstrumentPanel::resized(){
+    if(getWidth()<100)return;
     const int cols=5,gap=14,w=(getWidth()-60-gap*(cols-1))/cols;
     headingY.resize(headings.size());int y=18,col=0;
     for(size_t i=0;i<controls.size();++i){

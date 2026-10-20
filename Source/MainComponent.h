@@ -13,7 +13,7 @@ public:
     explicit ArrangementView(MainComponent& m):owner(m){}
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
-    double pixelsPerBar=48;
+    double pixelsPerBar=6;
 private: MainComponent& owner;
 };
 class PianoRoll : public juce::Component,public juce::SettableTooltipClient {
@@ -29,6 +29,7 @@ public:
     bool laneView() const;
     float noteY(const Note&) const;
     float noteHeight() const;
+    float noteWidth(const Note&) const;
     int laneAt(float) const;
     double grid=.25,pixelsPerBeat=76;
     std::set<int> selected;

@@ -24,7 +24,7 @@ def inspect(path):
     return rate, frames, math.sqrt(squared / max(count, 1)), peak
 
 mix = inspect(folder / 'mix.wav')
-assert mix[2] > .001 and 0 < mix[3] <= 1, mix
+assert mix[2] > .001 and 0 < mix[3] < .9985, ("default mix must retain headroom", mix)
 active = 0
 for i in range(17):
     stem = inspect(folder / f'stem-{i}.wav')
