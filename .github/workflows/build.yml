@@ -1,0 +1,81 @@
+name: Build and test standalone
+on:
+  push:
+    branches: [main]
+    paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
+  pull_request:
+    paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: build-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  core:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DFGA_BUILD_APP=OFF -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build -j2
+      - run: ctest --test-dir build --output-on-failure
+      - run: mkdir -p build/midi && build/fga_core_tests build/midi && python3 scripts/verify-midi.py build/midi
+  standalone:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Linux dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb ffmpeg
+      - name: Validate family resources and Markdown guides
+        run: python scripts/verify-family.py
+      - name: Configure
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=${{ runner.os == 'Linux' && 'ON' || 'OFF' }}
+      - name: Build
+        id: nativebuild
+        run: cmake --build build --config Release -j2
+      - name: Tests
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Standalone rendering smoke test
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
+        run: xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --smoke-test "$RUNNER_TEMP/arranger-smoke"
+      - name: Verify rendered audio
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
+        run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
+      - name: Native VST3 instrument integration
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
+        run: |
+          xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --host-smoke-test "build/ArrangerHostProbe_artefacts/Release/VST3/Arranger Host Probe.vst3" "$RUNNER_TEMP/arranger-smoke"
+          python3 scripts/verify-host.py "$RUNNER_TEMP/arranger-smoke"
+      - name: Complete club arrangements and independent audio audit
+        if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
+        run: |
+          xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --club-audit "$RUNNER_TEMP/club-audit"
+          python3 scripts/verify-club-audio.py "$RUNNER_TEMP/club-audit"
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux' && always()
+        with:
+          name: Club-arrangement-evidence
+          path: ${{ runner.temp }}/club-audit/
+      - name: Package native distribution with source and licence notices
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        env:
+          FGA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python scripts/package.py
+      - uses: actions/upload-artifact@v4
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        with:
+          name: FaseGrooveArranger-${{ runner.os }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+          retention-days: 30
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux' && always()
+        with:
+          name: Smoke-test-evidence
+          path: ${{ runner.temp }}/arranger-smoke/
