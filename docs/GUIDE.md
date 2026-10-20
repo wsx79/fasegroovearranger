@@ -15,7 +15,7 @@ The grooves come from Fase Groove Piano, Drums and Guitar. Here they play in one
 5. [Chords, key and feel](#5-chords-key-and-feel)
 6. [Tracks and your own sounds](#6-tracks-and-your-own-sounds)
 7. [Editing the notes](#7-editing-the-notes)
-8. [Guitar lead and piano accompaniment](#8-guitar-lead-and-piano-accompaniment)
+8. [Guitar soloist and piano accompaniment](#8-guitar-soloist-and-piano-accompaniment)
 9. [Recipes to get started](#9-recipes-to-get-started)
 10. [Saving and exporting](#10-saving-and-exporting)
 11. [Shortcuts](#11-shortcuts)
@@ -176,7 +176,7 @@ Quantise and transpose affect the selection, or the whole clip when nothing is s
 
 **IMPORT MIDI**, or dropping a `.mid` onto the window, replaces the selected clip's notes. Project tempo stays as set in the Arranger. In a drum track, imported notes are mapped to just that piece. **UNDO** restores the previous clip.
 
-## 8. Guitar lead and piano accompaniment
+## 8. Guitar soloist and piano accompaniment
 
 ![The guitar's twelve playing lanes](images/guide_guitar.png)
 
@@ -195,7 +195,7 @@ Click a lane to add a gesture on that bar's chord. Its notes select and move tog
 
 ### Who carries the progression?
 
-In the guitar panel or editor, **GUITAR ACCOMPANIMENT / GUITAR LEAD** changes the roles. With **LEAD** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
+In the guitar panel or editor, **SOLISTA** changes the roles. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
 
 ![The guitar mixer](images/guide_mixer.png)
 
@@ -230,7 +230,7 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 ### Funky & Disco: let guitar lead
 
 1. Choose **Funky & Disco** and generate the song.
-2. Open guitar and enable **GUITAR LEAD**.
+2. Open guitar and enable **SOLISTA**.
 3. Listen to DOWN, UP, CHANK and OCTAVE in context; lower lanes that overlap too much.
 4. Try strings in the chorus and leave more space in the part before it.
 5. Check the outro: the final sixteen bars should stay clear of harmonic instruments for mixing.

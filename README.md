@@ -15,7 +15,7 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 - Genre-specific extended forms, 4–12 minute target duration, phrase-aligned development and 16/32-bar DJ intros/outros with clean harmonic mixing windows.
 - Six musical section types, duplication, ordering, renaming and adjustable bar lengths.
 - Key, 13 scales, chord progression library, chord colour, voicing, bass/strings patterns, tempo, density, swing and humanisation.
-- Separate instrument panels and large MIDI editors, isolated drum lanes, all guitar lanes together, original guitar-lead/piano-comping logic, and per-instrument generation settings.
+- Separate instrument panels and large MIDI editors, isolated drum lanes, all guitar lanes together, original guitar-soloist/piano-comping logic, and per-instrument generation settings.
 - Editable piano roll: draw, move, resize, delete, change velocity, select multiple notes, quantise, transpose and copy/paste. Import standard PPQ MIDI into a selected clip.
 - Native audio playback, seeking and song/section loops; per-track gain, pan, mute, solo and meters; master level.
 - Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3 instrument per track (Audio Units also on macOS). Plugin editor and state persistence.

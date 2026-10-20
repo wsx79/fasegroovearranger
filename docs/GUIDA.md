@@ -195,7 +195,7 @@ Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue 
 
 ### Chi porta avanti il giro?
 
-Nel pannello o nell'editor della chitarra, **GUITAR ACCOMPANIMENT / GUITAR LEAD** cambia i ruoli. Con **LEAD** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **UNDO** torna ai ruoli precedenti.
+Nel pannello o nell'editor della chitarra, **SOLISTA** cambia i ruoli. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **UNDO** torna ai ruoli precedenti.
 
 ![Il mixer della chitarra](images/guide_mixer.png)
 
@@ -230,7 +230,7 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 ### Funky & Disco: la chitarra guida
 
 1. Scegli **Funky & Disco** e genera il brano.
-2. Apri la chitarra e attiva **GUITAR LEAD**.
+2. Apri la chitarra e attiva **SOLISTA**.
 3. Ascolta DOWN, UP, CHANK e OCTAVE nel contesto; riduci quelle che si sovrappongono troppo.
 4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
 5. Controlla l'outro: le ultime sedici battute devono restare libere dagli strumenti armonici per il mixaggio.
