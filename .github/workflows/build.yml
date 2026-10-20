@@ -60,7 +60,14 @@ jobs:
         if: runner.os == 'Linux' && always()
         with:
           name: Club-arrangement-evidence
-          path: ${{ runner.temp }}/club-audit/
+          path: |
+            ${{ runner.temp }}/club-audit/
+            !${{ runner.temp }}/club-audit/Jackin-*.mp3
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux' && always()
+        with:
+          name: Jackin-audio-evidence
+          path: ${{ runner.temp }}/club-audit/Jackin-*.mp3
       - name: Package native distribution with source and licence notices
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         env:

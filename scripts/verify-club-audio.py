@@ -49,3 +49,12 @@ for i in range(13):
     assert float(values['input_tp']) <= -1, (i,'MP3 true peak',values)
     assert float(values['input_i']) > -60, (i,'silent preview')
     print(f"PASS preview {i}: {values['input_i']} LUFS, {values['input_tp']} dBTP")
+
+# The targeted Jackin review includes the complete song and audible role stems.
+for name in ['Jackin-full-song.mp3','Jackin-drums.mp3','Jackin-bass.mp3','Jackin-keys.mp3']:
+    path=folder/name
+    assert path.stat().st_size>10000,name
+    info=json.loads(subprocess.run(['ffprobe','-v','error','-show_entries','format=duration','-of','json',str(path)],capture_output=True,text=True,check=True).stdout)
+    expected=float(rows[4]['seconds'])+3 if 'full-song' in name else 8*240/float(rows[4]['bpm'])+3
+    assert abs(float(info['format']['duration'])-expected)<.2,name
+print('PASS Jackin full-song MP3 and isolated drum, bass and keyboard preview durations')
