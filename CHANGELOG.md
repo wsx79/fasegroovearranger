@@ -4,6 +4,8 @@
 
 ## 0.4.2 — 2026-10-20
 
+- Prevent guide-mix clipping in new songs with 6 dB more master headroom; audit raw peaks before encoding and reject non-finite audio.
+
 - Club arrangements: progressive mix-in/out inside the song, working BPM ranges by genre, and groove-preserving soulful/organic lifts.
 - Keep each song’s motif across sections; preserve the DJ phrase grid and harmonic continuity with odd chord counts.
 - Correct sub-tick outro spill, factory grooves left over after a genre change, and inconsistent normalisation in MIDI/audio exports.

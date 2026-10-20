@@ -58,7 +58,7 @@ public:
     void capturePluginStates(Project&);
     void restorePluginState(int,const juce::String&);
     // Same processing graph for playback and export. Export temporarily owns the engine.
-    juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress);
+    juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr);
     void markMissing(int);
     juce::Optional<PositionInfo> getPosition() const override;
     void audioDeviceAboutToStart(juce::AudioIODevice*) override;

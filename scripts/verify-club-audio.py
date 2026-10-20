@@ -23,6 +23,7 @@ for i, row in enumerate(rows):
     assert bpm == settings['bpm'] and bars == float(row['bars'])
     assert math.isclose(float(row['seconds']), bars * 240 / bpm, abs_tol=.001)
     assert 0 < float(row['peak']) < .9985 and float(row['rms']) > .001
+    assert 0 < float(row['raw_peak']) < .9985, 'pre-encoder clipping'
     assert float(row['min_phrase_rms']) > .00001
     assert float(row['first_phrase_rms']) > .0001 and float(row['last_phrase_rms']) > .0001
     assert all(section['bars'] % 8 == 0 for section in project['sections'])

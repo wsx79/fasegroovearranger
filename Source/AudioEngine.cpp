@@ -114,7 +114,8 @@ juce::AudioPluginInstance* AudioEngine::plugin(int track){return instruments[(si
 void AudioEngine::capturePluginStates(Project& p){const juce::ScopedLock lock(mutex);for(size_t ti=0;ti<instruments.size();++ti)if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);p.tracks[ti].instrumentState=state.toBase64Encoding().toStdString();}}
 void AudioEngine::restorePluginState(int track,const juce::String& state){juce::MemoryBlock data;if(data.fromBase64Encoding(state)){const juce::ScopedLock lock(mutex);if(auto* p=instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
 void AudioEngine::markMissing(int track){const juce::ScopedLock lock(mutex);instruments[(size_t)track]->mode=3;}
-juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress){
+juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak){
+    if(rawPeak)*rawPeak=0;
     if(onlyTrack < -1 || onlyTrack>=trackCount)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
@@ -128,7 +129,12 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     juce::AudioBuffer<float> buffer(2,blockSize);const auto total=(juce::int64)std::ceil((p.length()*60./p.settings.bpm+3.)*sampleRate);
     for(juce::int64 at=0;at<total;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(blockSize,total-at);buffer.clear();
         {const juce::ScopedLock lock(mutex);currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack);}
-        for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample)buffer.setSample(ch,sample,std::clamp(buffer.getSample(ch,sample),-.999f,.999f));
+        for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample){
+            const float value=buffer.getSample(ch,sample);
+            if(!std::isfinite(value))return juce::Result::fail("Audio non finito: controlla lo strumento e i livelli.");
+            if(rawPeak)*rawPeak=std::max(*rawPeak,(double)std::abs(value));
+            buffer.setSample(ch,sample,std::clamp(value,-.999f,.999f));
+        }
         if(!writer->writeFromAudioSampleBuffer(buffer,0,n))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)total*(mp3?.8:1.));
     }writer.reset();
     if(!mp3)return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare il WAV.");

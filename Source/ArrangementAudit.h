@@ -13,7 +13,7 @@ inline bool writeClubAudioAudit(const juce::File& folder){
     if(folder.createDirectory().failed())return false;
     AudioEngine audio;audio.devices.closeAudioDevice();
     juce::AudioFormatManager formats;formats.registerBasicFormats();
-    juce::String report="genre\tbpm\tbars\tseconds\tpeak\trms\tmin_phrase_rms\tfirst_phrase_rms\tlast_phrase_rms\n";
+    juce::String report="genre\tbpm\tbars\tseconds\tpeak\traw_peak\trms\tmin_phrase_rms\tfirst_phrase_rms\tlast_phrase_rms\n";
     bool ok=true;
     for(int genre=0;genre<13;++genre){
         auto p=newProject(genre);
@@ -23,7 +23,8 @@ inline bool writeClubAudioAudit(const juce::File& folder){
         ok=folder.getChildFile(name+".mid").replaceWithData(midi.data(),midi.size())&&ok;
         ok=saveProject(p,folder.getChildFile(name+".fga")).wasOk()&&ok;
         const auto wav=folder.getChildFile("render-check.wav");
-        const auto result=audio.exportAudio(p,wav,-1,false,[]{return false;},[](double){});
+        double rawPeak=0;
+        const auto result=audio.exportAudio(p,wav,-1,false,[]{return false;},[](double){},&rawPeak);
         if(result.failed()){folder.getChildFile("error.txt").appendText(name+": "+result.getErrorMessage()+"\n");return false;}
         std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(wav));
         if(!reader||reader->numChannels!=2)return false;
@@ -54,8 +55,8 @@ inline bool writeClubAudioAudit(const juce::File& folder){
         const double first=std::sqrt(energies.front()/std::max<juce::int64>(1,counts.front()));
         const double last=std::sqrt(energies.back()/std::max<juce::int64>(1,counts.back()));
         // Detect clipped guide mixes and accidental whole-phrase silence.
-        ok=peak<.9985&&rms>.001&&minimum>.00001&&first>.0001&&last>.0001&&ok;
-        report+=juce::String(genres()[(size_t)genre])+"\t"+juce::String(p.settings.bpm)+"\t"+juce::String(p.length()/4)+"\t"+juce::String(seconds,4)+"\t"+juce::String(peak,6)+"\t"+juce::String(rms,6)+"\t"+juce::String(minimum,6)+"\t"+juce::String(first,6)+"\t"+juce::String(last,6)+"\n";
+        ok=rawPeak<.9985&&peak<.9985&&rms>.001&&minimum>.00001&&first>.0001&&last>.0001&&ok;
+        report+=juce::String(genres()[(size_t)genre])+"\t"+juce::String(p.settings.bpm)+"\t"+juce::String(p.length()/4)+"\t"+juce::String(seconds,4)+"\t"+juce::String(peak,6)+"\t"+juce::String(rawPeak,6)+"\t"+juce::String(rms,6)+"\t"+juce::String(minimum,6)+"\t"+juce::String(first,6)+"\t"+juce::String(last,6)+"\n";
         folder.getChildFile("full-song-audio.tsv").replaceWithText(report);
         if(genre==1){
             const auto mp3=audio.exportAudio(p,folder.getChildFile("Soulful-House-full-song.mp3"),-1,true,[]{return false;},[](double){});

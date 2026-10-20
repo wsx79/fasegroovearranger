@@ -4,6 +4,8 @@
 
 ## 0.4.2 — 20 ottobre 2026
 
+- Corretti picchi in clipping nei nuovi mix guida: 6 dB di margine aggiuntivo sul master, misura dei picchi prima dell’encoder e rifiuto di audio non finito.
+
 - Arrangiamenti da club: passaggi progressivi per il mixaggio dentro intro/outro, range BPM per genere e lift soulful/organici che mantengono il groove.
 - Motivo coerente fra sezioni, frasi regolari per i DJ e continuità armonica anche con numeri dispari di accordi.
 - Corretti sconfinamenti inferiori a un tick nell’outro, groove factory del vecchio genere e normalizzazione incoerente nell’export MIDI/audio.

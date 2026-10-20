@@ -49,7 +49,8 @@ Alla scelta del genere, il centro viene adattato leggermente a densità e seed e
 3. Il fallback delle progressioni dispari perdeva la griglia delle frasi DJ. Corrette la suddivisione e la fase armonica condivisa anche da Piano/Bass/Strings/Guitar.
 4. Note anticipate vicinissime al taglio dell'outro potevano essere riallungate dalla durata minima MIDI. Ora non sconfinano nell'ultima frase ritmica.
 5. Cambiare genere poteva lasciare selezionato un vecchio groove factory incompatibile. Si torna al groove automatico del nuovo genere, conservando i pattern scritti dall'utente.
-6. Gli export potevano normalizzare le note ma usare tempo, tonalità o lunghezza del progetto non normalizzato per metadati e rendering. Ora usano lo stesso progetto validato; indici di stem non validi sono rifiutati.
+6. Il rendering completo ha rilevato clipping in sette mix guida predefiniti, non visibile nel test breve. I nuovi brani partono con 6 dB di margine in più sul master (0,8 → 0,4), mantenendo i rapporti fra gli strumenti. I livelli dei progetti già salvati non vengono cambiati. L’audit misura anche il picco prima della conversione/clamp, non soltanto il WAV.
+7. Gli export potevano normalizzare le note ma usare tempo, tonalità o lunghezza del progetto non normalizzato per metadati e rendering. Ora usano lo stesso progetto validato; indici di stem non validi sono rifiutati.
 
 Blocchi di tracce/clip, rigenerazione isolata, editing MIDI e gli strumenti esistenti rimangono disponibili. Queste modifiche non riprogettano l'interfaccia.
 

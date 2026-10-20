@@ -346,7 +346,12 @@ void arrangeSong(Project& p) {
     p.normalise();p.loopStart=0;p.loopEnd=p.length();
 }
 Project newProject(int genre) {
-    Project p;applyGenre(p,genre);arrangeSong(p);generate(p);return p;
+    Project p;
+    // Seventeen guide instruments need summing headroom. Keep the user's mix
+    // balance and saved-project gains intact; only initialise new songs 6 dB
+    // below the previous master (0.8 -> 0.4).
+    p.masterGain=.4;
+    applyGenre(p,genre);arrangeSong(p);generate(p);return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;
