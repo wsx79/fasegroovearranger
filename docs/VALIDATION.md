@@ -1,5 +1,21 @@
 # Validation record
 
+## Family alignment, 0.4.1
+
+[Windows, universal macOS and Linux validation](https://github.com/wsx79/fasegroovearranger/actions/runs/39393262535), source `8d9d10d1cf2dd3f32e3e2c6baeeff56ec510a3c9`, passed all four jobs, including native smoke and VST3 integration. The four manual screenshots now come directly from that native build. The following update-overlay and embedded-image refresh is checked by its own subsequent workflow, linked in the pull request.
+
+- Exact canonical family theme and Inter Regular/SemiBold Git blobs verified offline on all three systems; Windows checkout CRLF is normalized for the theme hash.
+- All instrument controls fit without overlap: Piano, Bass, Strings, Kick and Guitar. The SETTINGS / ABOUT geometry, link-button positions and sizes match the copied family overlay.
+- Actual native screenshots inspected: extended Piano configuration, Drums pads and settings, Guitar and twelve-part mixer, individual editors, settings, credits and six languages. Review used Linux native rendering; Windows/macOS builds and tests also passed.
+- MIDI editing gestures passed for five instrument types and guitar note mode. Six-language switching preserved musical JSON and item IDs; original Piano musical tools and MIDI chord-learning simulation passed.
+- Independent SMF parsing passed 18-track song export (12,344 matched notes), isolated Kick (615 notes), Piano with sustain/expression (2,830 notes), note pairing and seven section markers.
+- Native audio checks passed 12 active and five intentionally empty stems, aligned at 305,809 frames / 44.1 kHz; mix RMS 0.14136. Muting and guitar part faders silenced audio while retaining stored MIDI; MP3 was independently decoded by ffmpeg.
+- The real test VST3 loaded, received MIDI/playhead data, opened/closed its editor and restored its saved state. It is a fixture, not validation of arbitrary commercial instruments.
+- Bilingual native manuals passed 13 chapters, tables, four screenshots, navigation, search and zoom. Source guides remain Markdown; the invented separate HTML export has been removed.
+- Updater version comparison is checked offline; live release availability, networking and browser download depend on GitHub and the target device. Portable updates require user installation, and no project data is uploaded.
+
+See [FAMILY_ALIGNMENT.md](FAMILY_ALIGNMENT.md) for pinned reference revisions, the original UI differences and necessary standalone adaptations. Historical records below describe earlier revisions and formats, not the current distribution.
+
 ## Family editor revision, 0.4.0
 
 [Native builds on Windows, macOS and Linux](https://github.com/wsx79/fasegroovearranger/actions/runs/39385637071), source `56e67d16c57446acc098fe7218c2b76bf39f115c`, passed all four jobs. Native screenshots were inspected against the original Piano extended layout, Drums grid and Guitar layout. Panel bounds/overlap checks passed for Piano, Bass, Strings, Kick and Guitar; six-language switching and original musical tool checks passed. The subsequent [native revision](https://github.com/wsx79/fasegroovearranger/actions/runs/39387405449), source `f53d1b61532f9a45b3a54a862f4af22289092692`, also passed all four jobs. Actual editor gestures passed for all five instrument types and guitar note mode. Independent WAV inspection confirmed silence with guitar guide faders at zero and guitar parts muted, while MIDI bytes stayed unchanged. Further source refinements must be checked against their own final CI result.

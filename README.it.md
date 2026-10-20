@@ -23,6 +23,8 @@
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
+![Fase Groove Arranger](docs/images/guide_arrangement.png)
+
 ## Funzioni
 
 - 17 tracce: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Basso, Piano, Archi e Chitarra. La chitarra conserva le sue 12 parti in una sola traccia.

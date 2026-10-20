@@ -94,6 +94,7 @@ public:
 private:
     FamilyLookAndFeel theme;
     OptionsOverlay options;
+    UpdateOverlay updateOverlay;
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};

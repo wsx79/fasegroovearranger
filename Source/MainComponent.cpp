@@ -230,7 +230,7 @@ MainComponent::MainComponent(){
     for(const auto& entry:std::initializer_list<std::pair<juce::Component*,const char*>>{{&genreBox,"GROOVE"},{&keyBox,"KEY"},{&scaleBox,"Scale / mode"},{&extensionBox,"Extensions"},{&voicingBox,"Voicing"},{&progressionBox,"PROGRESSION"},{&tempoSlider,"TEMPO"},{&swingSlider,"SWING"},{&densitySlider,"DENSITY"},{&humanizeSlider,"HUMANIZE"},{&masterSlider,"Volume"},{&gainSlider,"Volume"},{&panSlider,"PAN"},{&velocitySlider,"VELOCITY"},{&zoomSlider,"ZOOM"},{&durationLabel,"NEW ARRANGEMENT"}})entry.first->getProperties().set("fgaControl",entry.second);
     piano.getProperties().set("fgaTip","Draw notes, drag to move, drag the edge for duration; Alt-drag changes velocity.");
 
-    addChildComponent(options);
+    addChildComponent(options);addChildComponent(updateOverlay);
     options.onLanguageChanged=[this]{applyLanguage();};
     options.onScaleChosen=[this](float scale){if(onScaleChosen)onScaleChosen(scale);};
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
@@ -239,13 +239,11 @@ MainComponent::MainComponent(){
     options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);options.checkUpdatesButton.setButtonText(tr("CHECKING..."));updater.start(true);};
     updater.onResult=[this](const Updater::Result& result,bool manual){
         options.checkUpdatesButton.setEnabled(true);options.refreshText();
-        if(result.status==Updater::Result::Status::ready){
-            juce::Component::SafePointer<MainComponent> safe(this);
-            juce::AlertWindow::showAsync(juce::MessageBoxOptions().withIconType(juce::MessageBoxIconType::InfoIcon)
-                .withTitle(tr("New version")+" / "+result.version).withMessage(result.notes)
-                .withButton(tr("Download")).withButton(tr("Skip this version")).withButton(tr("CLOSE")),
-                [safe,version=result.version](int choice){if(!safe)return;if(choice==1)juce::URL("https://github.com/wsx79/fasegroovearranger/releases/latest").launchInDefaultBrowser();if(choice==2)Localisation::setSetting("skippedVersion",version);});
-        }else if(manual)message(result.status==Updater::Result::Status::upToDate?tr("You have the latest version."):result.status==Updater::Result::Status::noRelease?tr("No published release yet. Development builds are in GitHub Actions."):tr("Could not check for updates. Check your internet connection and try again."));
+        if(result.status==Updater::Result::Status::ready){updateOverlay.show(result);
+        }else if(manual){
+            const auto text=result.status==Updater::Result::Status::upToDate?tr("You have the latest version."):result.status==Updater::Result::Status::noRelease?tr("No published release yet. Development builds are in GitHub Actions."):tr("Could not check for updates. Check your internet connection and try again.");
+            message(text);juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,JUCE_APPLICATION_NAME_STRING,text);
+        }
     };
     if(Updater::autoCheckEnabled()&&!juce::JUCEApplication::getCommandLineParameters().contains("smoke-test"))updater.start(false);
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();message(juce::String::fromUTF8("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto."));startTimerHz(20);
@@ -254,7 +252,7 @@ MainComponent::~MainComponent(){updater.onResult=nullptr;if(musicalToolWindow)mu
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
 void MainComponent::checkpoint(){undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
 void MainComponent::changed(bool schedule){project.normalise();dirty=true;if(schedule)audio.publish(project);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaint();}
-void MainComponent::applyLanguage(){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();options.refreshText();repaint();}
+void MainComponent::applyLanguage(){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();options.refreshText();updateOverlay.refreshText();repaint();
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();repaint();}
 void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();panelSections.clear(juce::dontSendNotification);for(auto name:instrumentPanel.sectionNames())panelSections.addItem(name,panelSections.getNumItems()+1);panelSections.setTextWhenNothingSelected("ADVANCED");resized();instrumentPort.setViewPosition(0,0);repaint();}
 void MainComponent::showEditor(){page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
@@ -326,7 +324,7 @@ void MainComponent::resized(){
     }
     chordsLabel.setVisible(song);
     if(song){trackButton.setButtonText("NEW TRACK");clipButton.setButtonText("NEW CLIP");}
-    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);updateSizes();translateControls(*this);
+    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();translateControls(*this);
 }
 bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     const auto saved=Localisation::current();const auto originalJson=juce::JSON::toString(projectJson(project),false,17);bool ok=true;static const char* codes[]{"en","it","es","fr","de","pt"};static const char* expected[]{"NEW TRACK","NUOVA TRACCIA","NUEVA PISTA","NOUVELLE PISTE","NEUE SPUR","NOVA FAIXA"};
@@ -357,7 +355,7 @@ void MainComponent::timerCallback(){
     if(++ticks%1200==0&&dirty&&!loadingPlugin){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
-bool MainComponent::keyPressed(const juce::KeyPress& k){if(k==juce::KeyPress::escapeKey){if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}if(k==juce::KeyPress::spaceKey){audio.play(!audio.isPlaying());return true;}if(k.getModifiers().isCommandDown()){int code=k.getKeyCode();if(code=='S'){save(k.getModifiers().isShiftDown());return true;}if(code=='Z'){undo(k.getModifiers().isShiftDown());return true;}if(code=='Y'){undo(true);return true;}}return false;}
+bool MainComponent::keyPressed(const juce::KeyPress& k){if(k==juce::KeyPress::escapeKey){if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}if(k==juce::KeyPress::spaceKey){audio.play(!audio.isPlaying());return true;}if(k.getModifiers().isCommandDown()){int code=k.getKeyCode();if(code=='S'){save(k.getModifiers().isShiftDown());return true;}if(code=='Z'){undo(k.getModifiers().isShiftDown());return true;}if(code=='Y'){undo(true);return true;}}return false;}
 bool MainComponent::requestClose(){if(!dirty)return true;return juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon,"Modifiche non salvate","Il progetto contiene modifiche. Scartarle?\nUsa SAVE per conservarle prima di chiudere.","Scarta","Annulla");}
 void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback){chooser=std::make_unique<juce::FileChooser>(tr(title),projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),filter);juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback](const juce::FileChooser& fc){auto f=fc.getResult();if(safe!=nullptr&&f!=juce::File())callback(f);});}
 void MainComponent::save(bool as){if(loadingPlugin){message("Attendi il caricamento dello strumento.");return;}audio.capturePluginStates(project);if(as||projectFile==juce::File()){chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[this](juce::File file){projectFile=file.withFileExtension("fga");project.name=projectFile.getFileNameWithoutExtension().toStdString();auto r=saveProject(project,projectFile);if(r.wasOk()){dirty=false;message("Progetto salvato: "+projectFile.getFullPathName());repaint();}else message(r.getErrorMessage(),true);});}else{auto r=saveProject(project,projectFile);if(r.wasOk()){dirty=false;message("Progetto salvato.");repaint();}else message(r.getErrorMessage(),true);}}

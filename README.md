@@ -19,9 +19,13 @@
 
 ---
 
+**Development build: 0.4.1** — [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). This is not a published release.
+
 Create a complete song with the original Piano, Drums and Guitar engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
+
+![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
 ## What is implemented
 

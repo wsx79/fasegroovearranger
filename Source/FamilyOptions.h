@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include "FamilyTheme.h"
+#include "Updater.h"
 namespace fga {
 class OptionsOverlay : public juce::Component
 {
@@ -36,6 +37,23 @@ private:
     juce::Label languageLabel, sizeLabel;
     juce::ComboBox languageBox, sizeBox;
     juce::ToggleButton tipsToggle, updatesToggle;
+};
+
+class UpdateOverlay : public juce::Component
+{
+public:
+    UpdateOverlay();
+    void show (const Updater::Result&);
+    void refreshText();
+    bool verifyLayout()const;
+    void paint (juce::Graphics&) override;
+    void resized() override;
+
+private:
+    juce::Rectangle<float> card() const { return getLocalBounds().toFloat().withSizeKeepingCentre (640.0f, 560.0f); }
+    Updater::Result result;
+    juce::TextEditor notes;
+    juce::TextButton installButton, laterButton, skipButton;
 };
 
 }

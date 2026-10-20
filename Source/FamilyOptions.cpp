@@ -309,4 +309,127 @@ bool OptionsOverlay::verifyLayout() const
         && sourceButton.getY()==spotifyButton.getY() && sourceButton.getWidth()==126;
 }
 
+namespace {
+    juce::String plain (juce::String text)
+    {
+        text = text.replace ("\r\n", "\n").replace ("**", "").replace ("*", "").replace ("`", "");
+        juce::StringArray raw, lines;
+        raw.addLines (text);
+        for (auto& line : raw)
+        {
+            // Changelog lines are wrapped at ~100 columns: join them back (the text box wraps).
+            if (line.startsWith ("  ") && line.trim().isNotEmpty() && ! lines.isEmpty() && lines[lines.size() - 1].isNotEmpty())
+                lines.getReference (lines.size() - 1) << " " << line.trim();
+            else
+                lines.add (line);
+        }
+        for (auto& line : lines)
+        {
+            if (line.startsWith ("### ")) line = Localisation::upper (line.substring (4));
+            else if (line.startsWith ("## ")) line = line.substring (3);
+            else if (line.startsWith ("- ")) line = juce::String::fromUTF8 ("\xe2\x80\xa2 ") + line.substring (2);
+        }
+        return lines.joinIntoString ("\n").trim();
+    }
+}
+
+UpdateOverlay::UpdateOverlay()
+{
+    notes.setMultiLine (true, true);
+    notes.setReadOnly (true);
+    notes.setScrollbarsShown (true);
+    notes.setIndents (10, 8);
+    notes.setCaretVisible (false);
+    notes.setFont (FamilyTheme::font (14.0f));
+    notes.setColour (juce::TextEditor::backgroundColourId, Palette::background);
+    notes.setColour (juce::TextEditor::textColourId, Palette::text);
+    notes.setColour (juce::TextEditor::outlineColourId, Palette::accent.withAlpha (0.3f));
+    addAndMakeVisible (notes);
+
+    installButton.setColour (juce::TextButton::buttonColourId, Palette::accent);
+    installButton.setColour (juce::TextButton::textColourOffId, Palette::background);
+    for (auto* b : { &installButton, &laterButton, &skipButton })
+        addAndMakeVisible (b);
+
+    installButton.onClick = [this]
+    {
+        juce::URL("https://github.com/wsx79/fasegroovearranger/releases/latest").launchInDefaultBrowser();
+        setVisible (false);
+    };
+    laterButton.onClick = [this] { setVisible (false); };
+    skipButton.onClick = [this]
+    {
+        Localisation::setSetting("skippedVersion",result.version);
+        setVisible (false);
+    };
+    refreshText();
+}
+
+void UpdateOverlay::show (const Updater::Result& r)
+{
+    result = r;
+    notes.setText (plain(r.notes), false);
+    notes.moveCaretToTop (false);
+    refreshText();
+    setVisible (true);
+    toFront (false);
+}
+
+void UpdateOverlay::refreshText()
+{
+    installButton.setButtonText (tr ("DOWNLOAD"));
+    laterButton.setButtonText (tr ("LATER"));
+    skipButton.setButtonText (tr ("SKIP THIS VERSION"));
+    repaint();
+}
+
+void UpdateOverlay::resized()
+{
+    auto inner = card().toNearestInt().reduced (28, 22);
+    inner.removeFromTop (92);
+    auto buttons = inner.removeFromBottom (34);
+    inner.removeFromBottom (44);
+    notes.setBounds (inner);
+
+    const int w = 170, gap = 12;
+    buttons = buttons.withSizeKeepingCentre (3 * w + 2 * gap, buttons.getHeight());
+    for (auto* b : { &installButton, &laterButton, &skipButton })
+    {
+        b->setBounds (buttons.removeFromLeft (w));
+        buttons.removeFromLeft (gap);
+    }
+}
+
+void UpdateOverlay::paint (juce::Graphics& g)
+{
+    g.fillAll (juce::Colours::black.withAlpha (0.78f));
+
+    auto c = card();
+    g.setColour (Palette::panel);
+    g.fillRoundedRectangle (c, 10.0f);
+    g.setColour (Palette::panelEdge.brighter (0.3f));
+    g.drawRoundedRectangle (c, 10.0f, 1.0f);
+
+    auto r = c.reduced (28.0f, 22.0f);
+    g.setColour (Palette::accent);
+    g.setFont (FamilyTheme::font (22.0f, true));
+    g.drawText (tr ("New version") + " " + result.version + " " + tr ("available"), r.removeFromTop (30.0f), juce::Justification::centredLeft);
+    g.setColour (Palette::dim);
+    g.setFont (FamilyTheme::font (13.0f));
+    g.drawText (tr ("You have") + " " + juce::String (JUCE_APPLICATION_VERSION_STRING) + ". " + tr ("What's new:"),
+                r.removeFromTop (26.0f), juce::Justification::centredLeft);
+
+    const char* how = "DOWNLOAD opens the GitHub release page. Choose the package for your system.";
+    auto bottom = c.reduced (28.0f, 22.0f).removeFromBottom (34.0f + 44.0f).removeFromTop (44.0f);
+    g.drawFittedText (tr (how), bottom.toNearestInt(), juce::Justification::centredLeft, 2);
+    g.setFont (FamilyTheme::font (11.0f));
+    g.drawText ("github.com/wsx79/fasegroovearranger/releases", r.removeFromTop (20.0f), juce::Justification::centredLeft);
+}
+
+bool UpdateOverlay::verifyLayout()const{
+    return card().toNearestInt().contains(notes.getBounds()) && installButton.getWidth()==170
+        && installButton.getRight()+12==laterButton.getX() && laterButton.getRight()+12==skipButton.getX()
+        && notes.getBottom()<installButton.getY();
+}
+
 }

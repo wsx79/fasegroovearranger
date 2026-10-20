@@ -89,7 +89,7 @@ void InstrumentPanel::action(const juce::String& name,std::function<void()> fn){
 void InstrumentPanel::toggle(const juce::String& name,bool value,std::function<void(EngineOptions&,bool)> fn){
     std::unique_ptr<juce::Button> c;
     const bool compact=name=="Part mute"||name=="Mute"||name=="Crash after fill"||name=="Strum after fill";
-    const auto text=tr(name=="Part mute"?"MUTE":name=="Crash after fill"?"CRASH":name=="Strum after fill"?"BIG STRUM":name=="HEAR"?"Guide sound":name);
+    const auto text=tr((name=="Part mute"||name=="Mute")?"MUTE":name=="Crash after fill"?"CRASH":name=="Strum after fill"?"BIG STRUM":name=="HEAR"?"Guide sound":name);
     if(compact)c=std::make_unique<juce::TextButton>(text);else c=std::make_unique<juce::ToggleButton>(text);
     c->setClickingTogglesState(true);c->setToggleState(value,juce::dontSendNotification);auto* raw=c.get();c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=[this,raw,fn]{apply([&](EngineOptions& e){fn(e,raw->getToggleState());});};addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});
 }
