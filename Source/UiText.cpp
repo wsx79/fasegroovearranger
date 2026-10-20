@@ -95,6 +95,7 @@ void translateControls(juce::Component& c){
         const int selectedId=box->getSelectedId();
         for(int i=0;i<box->getNumItems();++i){auto id=box->getItemId(i);box->changeItemText(id,text(box->getItemText(i),"item"+juce::String(id)));}
         box->setSelectedId(selectedId,juce::dontSendNotification);
+        box->setTextWhenNothingSelected(text(box->getTextWhenNothingSelected(),"placeholder"));
     }
     else if(auto* label=dynamic_cast<juce::Label*>(&c))label->setText(text(label->getText(),"label"),juce::dontSendNotification);
     if(properties.contains("fgaControl"))key=properties["fgaControl"].toString();

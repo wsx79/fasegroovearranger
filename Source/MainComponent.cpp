@@ -31,7 +31,7 @@ void ArrangementView::paint(juce::Graphics& g){
         float meter=std::clamp(owner.audio.level((int)ti),0.f,1.f);g.setColour(Palette::cymbals.withAlpha(.7f));g.fillRect(x+199,y+trackHeight-5-(int)(meter*25),4,(int)(meter*25));
     }
     int y=view.getY();g.setColour(Palette::panel);g.fillRect(view.getX(),y,view.getWidth(),32);
-    for(size_t si=0;si<p.sections.size();++si){int x=headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar);int w=(int)(p.sections[si].bars*pixelsPerBar);g.setColour((int)si==owner.selectedSection?Palette::accent.withAlpha(.17f):Palette::control);g.fillRect(x+2,y+2,w-4,28);label(g,utf(p.sections[si].name)+juce::String::fromUTF8("  ·  ")+juce::String(p.sections[si].bars)+" bars",{x+10,y,w-16,30},11,(int)si==owner.selectedSection?Palette::accent:Palette::text);}
+    for(size_t si=0;si<p.sections.size();++si){int x=headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar);int w=(int)(p.sections[si].bars*pixelsPerBar);g.setColour((int)si==owner.selectedSection?Palette::accent.withAlpha(.17f):Palette::control);g.fillRect(x+2,y+2,w-4,28);label(g,utf(p.sections[si].name)+juce::String::fromUTF8("  ·  ")+juce::String(p.sections[si].bars)+" "+tr("bars"),{x+10,y,w-16,30},11,(int)si==owner.selectedSection?Palette::accent:Palette::text);}
     g.setColour(Palette::panel);g.fillRect(view.getX(),y,headerWidth,32);label(g,"INSTRUMENT / TRACK",{view.getX()+16,y,190,32},10,Palette::dim);
     const float playX=headerWidth+(float)(owner.audio.position()/4*pixelsPerBar);if(playX>view.getX()+headerWidth){g.setColour(Palette::accent2);g.fillRect(playX,(float)y+31,1.5f,(float)view.getHeight()-31);}
 }
@@ -166,7 +166,7 @@ MainComponent::~MainComponent(){if(musicalToolWindow)musicalToolWindow->closeBut
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
 void MainComponent::checkpoint(){undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
 void MainComponent::changed(bool schedule){project.normalise();dirty=true;if(schedule)audio.publish(project);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaint();}
-void MainComponent::applyLanguage(){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();translateControls(*this);if(page==Page::instrument)instrumentPanel.rebuild();repaint();}
+void MainComponent::applyLanguage(){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();repaint();}
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();repaint();}
 void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();panelSections.clear(juce::dontSendNotification);for(auto name:instrumentPanel.sectionNames())panelSections.addItem(tr(name),panelSections.getNumItems()+1);panelSections.setTextWhenNothingSelected(tr("ADVANCED"));resized();instrumentPort.setViewPosition(0,0);repaint();}
 void MainComponent::showEditor(){page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
@@ -174,7 +174,7 @@ void MainComponent::select(int track,int section){selectedTrack=std::clamp(track
 void MainComponent::refreshControls(){
     refreshing=true;auto& s=project.settings;minutesSlider.setValue(s.songMinutes,juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);leadButton.setButtonText("SOLISTA");sectionSelector.clear(juce::dontSendNotification);for(size_t i=0;i<project.sections.size();++i)sectionSelector.addItem(utf(project.sections[i].name),((int)i)+1);sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
     tempoSlider.setValue(s.bpm,juce::dontSendNotification);swingSlider.setValue(s.swing*100,juce::dontSendNotification);densitySlider.setValue(s.density*100,juce::dontSendNotification);humanizeSlider.setValue(s.humanize*100,juce::dontSendNotification);masterSlider.setValue(project.masterGain*100,juce::dontSendNotification);loopButton.setToggleState(project.loop,juce::dontSendNotification);
-    juce::StringArray chords;for(auto name:chordNames(s))chords.add(utf(name));chordsLabel.setText("HARMONY   "+chords.joinIntoString("    /    "),juce::dontSendNotification);
+    juce::StringArray chords;for(auto name:chordNames(s))chords.add(utf(name));chordsLabel.setText(tr("HARMONY")+"   "+chords.joinIntoString("    /    "),juce::dontSendNotification);
     undoButton.setEnabled(!undoStack.empty());redoButton.setEnabled(!redoStack.empty());refreshing=false;refreshTrack();updateSizes();translateControls(*this);
 }
 void MainComponent::refreshTrack(){
@@ -193,7 +193,7 @@ void MainComponent::paint(juce::Graphics& g){
     label(g,"FS PITCH / PIANO + DRUMS + GUITAR",{332,13,330,20},10,Palette::dim);
     const double seconds=project.length()*60/project.settings.bpm;label(g,utf(project.name)+(dirty?" *":"")+"   /   "+juce::String((int)seconds/60)+":"+juce::String((int)seconds%60).paddedLeft('0',2),{332,38,330,20},13);
     for(int y:{69,110,192,getHeight()-31}){g.setColour(Palette::panelEdge);g.fillRect(12,y,getWidth()-24,1);}
-    if(page!=Page::arrangement)label(g,(page==Page::instrument?"INSTRUMENT / ":"MIDI EDITOR / ")+utf(project.tracks[(size_t)selectedTrack].name).toUpperCase(),{196,122,400,28},18,colour(selectedTrack));
+    if(page!=Page::arrangement)label(g,tr(page==Page::instrument?"INSTRUMENT":"MIDI EDITOR")+" / "+utf(project.tracks[(size_t)selectedTrack].name).toUpperCase(),{196,122,400,28},18,colour(selectedTrack));
 }
 void MainComponent::resized(){
     const int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
