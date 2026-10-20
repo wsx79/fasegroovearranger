@@ -9,11 +9,13 @@ Created by **Fabio 'Pitch' Serra / FS Pitch**. Original ecosystem code credit: *
 ## What is implemented
 
 - The original, vendored C++ generation engines run inside the application; no Fase Groove plugin installation is required.
-- 17 tracks: Piano, Bass, Strings, Guitar, Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom and Crash.
+- 17 tracks in musical order: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Bass, Piano, Strings and Guitar.
 - The guitar stays together as one instrument, preserving its playing lanes internally.
 - Full-song, single-track, single-section and single-clip generation, deterministic stored takes, track/clip generation locks, and 40-step undo/redo.
+- Genre-specific extended forms, 4–12 minute target duration, phrase-aligned development and 16/32-bar DJ intros/outros with clean harmonic mixing windows.
 - Six musical section types, duplication, ordering, renaming and adjustable bar lengths.
 - Key, 13 scales, chord progression library, chord colour, voicing, bass/strings patterns, tempo, density, swing and humanisation.
+- Separate instrument panels and large MIDI editors, isolated drum lanes, all guitar lanes together, original guitar-lead/piano-comping logic, and per-instrument generation settings.
 - Editable piano roll: draw, move, resize, delete, change velocity, select multiple notes, quantise, transpose and copy/paste. Import standard PPQ MIDI into a selected clip.
 - Native audio playback, seeking and song/section loops; per-track gain, pan, mute, solo and meters; master level.
 - Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3 instrument per track (Audio Units also on macOS). Plugin editor and state persistence.
@@ -55,8 +57,8 @@ Without CMake, `bash scripts/test-core.sh` runs the arranging tests with g++.
 
 ## First song
 
-1. Choose a genre, key and progression. Click **GENERATE SONG**.
-2. Select an instrument/section cell. Edit its notes in the piano roll.
+1. Choose a genre, key, progression and duration. Click **NEW ARRANGEMENT**.
+2. Click a track name for its instrument panel, or a clip for its large MIDI editor. Escape returns to the arrangement.
 3. Use **NEW TRACK**, **NEW SECTION** or **NEW CLIP** to try another take. Lock parts you want to keep.
 4. Assign an internal sound, **LOAD SAMPLE**, or **LOAD VST3 / AU**. Use **OPEN VST** for the plugin's own controls.
 5. Save a `.fga` project, then use **EXPORT** for MIDI, WAV or MP3.
@@ -71,7 +73,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.1.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation lanes, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.2.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation lanes, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

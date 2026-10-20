@@ -14,15 +14,21 @@ Scarica l'artifact del tuo sistema da GitHub Actions. Estrai lo ZIP dell'artifac
 
 Scegli un genere: Piano House, Soulful, Deep, Gospel, Jackin', Jackin' Piano, Garage & UK, Afro & Latin, Funky & Disco, '90s Piano House, Neo Soul & Broken, Chill & Pads oppure Dance Stabs. La scelta prepara tempo, swing, progressione e parti di basso/archi adatte al genere. Imposta tonalità, scala, estensione e voicing. GENERATE SONG scrive il MIDI di tutte le tracce sbloccate.
 
-La struttura iniziale è Intro 8 battute, Main 16, Breakdown 8, Build-up 4, Drop 16 e Outro 8. Neo Soul e Chill partono con intro/outro da 4 battute. Le sezioni non sono semplici copie: i motori originali alleggeriscono intro e outro, aprono il breakdown, costruiscono il build-up e rendono pieno il drop. Variazioni e fill sono generati dai motori originali.
+Imposta la durata desiderata (4–12 minuti nell'interfaccia, 5 di default) e premi NEW ARRANGEMENT. Questo ricostruisce forma e MIDI: usa UNDO per recuperare il lavoro precedente. Le tracce e i clip bloccati devono essere sbloccati prima di cambiare struttura. GENERATE SONG mantiene invece le sezioni e i blocchi esistenti.
+
+Ogni genere ha una forma propria: Deep e Chill evolvono senza build da festival; Jackin' alterna groove, break brevi e ripartenze; Garage ha due drop e un taglio; Soulful/Gospel hanno risposte e riprese; Afro privilegia le percussioni e Disco le strofe/ritornelli. La durata si arrotonda alla frase musicale successiva. Intro e outro durano 16 o 32 battute secondo lo stile; le prime e le ultime 16 battute sono prive di piano, basso, archi e chitarra per consentire il mixaggio. Gli altri strati entrano/escono per frasi. Tempo e armonia sono controlli della DAW, condivisi da tutti gli strumenti.
 
 La progressione è condivisa da piano, basso, archi e chitarra. EDIT CHORDS permette di impostare ogni slot come grado della scala oppure accordo maggiore, minore o dominante su una radice cromatica, e di scegliere da 1 a 8 accordi. PROGRESSION sceglie dalla libreria armonica originale. NEW CHORDS propone una nuova sequenza di gradi nella scala attuale. Le impostazioni nuove si applicano alla prossima generazione: non cambiano automaticamente le note che hai già modificato. Per applicare una nuova tonalità o progressione, rigenera insieme le parti interessate. Una traccia bloccata conserva il suo MIDI, quindi verifica l'armonia prima di bloccarla.
 
 ## 3. Tracce e sezioni
 
-Le tracce sono Piano, Bass, Strings, Guitar e tredici elementi della batteria: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom e Crash. Ogni elemento ha il proprio MIDI, strumento, volume, pan, mute e solo. Le articolazioni della chitarra restano insieme in una sola traccia.
+Le tracce sono ordinate così: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Bass, Piano, Strings, Guitar. Ogni elemento ha MIDI, strumento, volume, pan, mute e solo propri. La chitarra resta una sola traccia con tutte le sue lane.
 
-Clicca una cella per selezionare traccia e sezione. La cella evidenziata corrisponde al piano roll sotto. La linea azzurra indica la posizione di riproduzione. Il clic sull'intestazione di una sezione sposta il cursore al suo inizio.
+Il clic sul **nome della traccia** apre il pannello dello strumento. Il clic su un **clip** apre l'editor MIDI grande, che occupa l'area di lavoro: il piano roll non resta sotto l'arrangiamento. < ARRANGEMENT o Esc torna alla canzone. EDIT MIDI e INSTRUMENT PANEL consentono di passare tra i due editor. Il selettore di sezione cambia la parte da modificare. Il clic sull'intestazione di una sezione sposta il cursore al suo inizio.
+
+Il pannello riprende marchio, superfici, colori e manopole della famiglia Fase Groove. Contiene groove, dinamica, swing, humanize, densità, variazioni/fill e parametri dello strumento. Il piano offre registro, gate, strum, direzione, movimento, range, top line, approcci e realism; basso e archi hanno i loro stili; la batteria espone soltanto il pezzo selezionato, nota MIDI e pocket. La chitarra offre let ring, room for band, push changes e il mixer delle 12 lane con livelli, ottave, mute, swing e anticipo/ritardo. I parametri sono salvati nel progetto; APPLY TRACK / APPLY CLIP riscrivono il MIDI rispettando i blocchi. TONE, REVERB, CHORUS, PUMP e PUMP RELEASE cambiano il suono guida interno; i suoni/VST personali conservano i propri controlli. Non ci sono LINK, tonalità o BPM duplicati nel pannello.
+
+**GUITAR LEAD** nella schermata della chitarra attiva le risposte e gli spazi del piano di accompagnamento usando la logica del plugin originale. Aggiorna piano e chitarra rispettando i blocchi ed è annullabile. Disattivalo per tornare ai ruoli normali.
 
 Il tasto destro sull'intestazione della sezione consente rinomina, duplica con MIDI, elimina, sposta, durata e funzione musicale. Cambiare la funzione prepara il prossimo rendering; cambiare la durata conserva le note che rientrano nella nuova lunghezza e tronca quelle oltre il limite. Se allunghi la sezione, rigenera per riempire il tratto nuovo. La duplicazione copia tutte le note e tutti i blocchi del segmento.
 
@@ -39,7 +45,10 @@ LOCK TRACK protegge l'intera traccia. LOCK CLIP protegge soltanto la cella selez
 
 DENSITY regola la quantità di note, SWING lo spostamento ritmico e FEEL la humanisation. Sono impostazioni per la generazione successiva. Il BPM cambia subito la velocità di riproduzione, senza modificare la posizione musicale delle note.
 
-## 5. Piano roll
+## 5. Editor MIDI grande
+
+Piano, basso e archi mostrano soltanto le note della propria traccia. Gli elementi di batteria hanno una singola riga: l'editor del kick contiene soltanto il kick; le note importate/incollate vengono adattate alla sua nota MIDI. La chitarra apre tutte le 12 lane del VST: aggiungere un hit costruisce le note della relativa articolazione sull'accordo della battuta. Clic e trascinamento selezionano/spostano insieme le note dello stesso gesto; il tasto destro lo elimina. NOTES / LANES passa al piano roll per modificare anche ogni singola nota della chitarra. ZOOM cambia la scala orizzontale dell'editor.
+
 
 - Clic in uno spazio vuoto: aggiungi una nota sulla griglia.
 - Trascina la nota: cambia posizione e altezza.

@@ -93,7 +93,7 @@ void Project::normalise() {
         e.topLine=std::clamp(e.topLine,0,5);e.approach=std::clamp(e.approach,0,2);e.movement=std::clamp(e.movement,0,2);e.strumDirection=std::clamp(e.strumDirection,0,2);e.evolveBars=std::clamp(e.evolveBars,0,32);e.humanizeStyle=std::clamp(e.humanizeStyle,0,3);e.bassFeel=std::clamp(e.bassFeel,0,2);
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
-        for(size_t k=0;k<sections.size();++k) tidyNotes(t.clips[k],sections[k].bars*4.0);
+        for(size_t k=0;k<sections.size();++k){if(i>=4)for(auto& n:t.clips[k].notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}tidyNotes(t.clips[k],sections[k].bars*4.0);}
     }
     masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
@@ -162,7 +162,9 @@ void arrangeSong(Project& p) {
     // Keep form proportions (including the genre's bridge and builds), in eight-bar phrases.
     while(total<target){for(size_t i=1;i+1<sections.size()&&total<target;++i)if(sections[i].type==Section::main||sections[i].type==Section::drop){sections[i].bars+=8;total+=8;}}
     while(total-8>=target){bool removed=false;for(size_t i=1;i+1<sections.size()&&total-8>=target;++i)if((sections[i].type==Section::main||sections[i].type==Section::drop)&&sections[i].bars>8){sections[i].bars-=8;total-=8;removed=true;}if(!removed)break;}
-    p.sections=std::move(sections);for(auto& t:p.tracks)t.clips.assign(p.sections.size(),{});
+    std::vector<SongSection> bounded;
+    for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
+    p.sections=std::move(bounded);for(auto& t:p.tracks)t.clips.assign(p.sections.size(),{});
     p.normalise();p.loopStart=0;p.loopEnd=p.length();
 }
 Project newProject(int genre) {
@@ -224,6 +226,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
 
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
+            if(ti>=4)for(auto& n:clip.notes)n.lane=ti-4;
             // DJ edges: harmonic instruments leave a clean 16-bar mixing window.
             // Percussion layers enter/leave in eight-bar phrases, never a random cut.
             if(type==Section::intro||type==Section::outro){

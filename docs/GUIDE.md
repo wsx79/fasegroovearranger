@@ -8,13 +8,25 @@ Download your platform artifact from GitHub Actions. Extract the artifact ZIP, t
 
 ## Compose and arrange
 
-Choose one of the original 13 genres, a key, scale, chord colour, voicing and progression. Click GENERATE SONG. The initial form is Intro 8 bars, Main 16, Breakdown 8, Build-up 4, Drop 16 and Outro 8; Neo Soul and Chill have shorter intro/outro sections. The engines apply their original section behaviours, variations and fills.
+Choose one of the original 13 genres, key, scale, chord colour, voicing and progression. Set the target duration (4–12 minutes, default 5) and click NEW ARRANGEMENT. It rebuilds the song form and MIDI; locked tracks/clips must first be unlocked, and UNDO restores the previous form. GENERATE SONG keeps the existing structure and generation locks.
+
+Each genre has its own form: deep/chill evolution, short jackin breaks, two garage drops, soulful/gospel call and response, Afro percussion development, or disco verses/choruses. Durations round up to a musical phrase. Intros/outros use 16 or 32 bars according to style, with no harmonic instruments in the first/last 16 bars for DJ mixing. Instrument layers enter/leave on phrases. Harmony and tempo remain shared DAW controls.
 
 NEW TRACK regenerates the selected instrument throughout the song. NEW SECTION regenerates that section across all unlocked instruments. NEW CLIP changes only the selected instrument/section cell. LOCK TRACK and LOCK CLIP protect material from generation while allowing manual editing. UNDO/REDO keeps up to 40 in-memory steps.
 
 Generation settings apply to the next generation; existing notes stay editable and keep their current pitches. Tempo changes playback immediately. After changing harmony or key, regenerate the relevant instruments together to keep them harmonically aligned. Locked material keeps its existing notes. EDIT CHORDS edits each slot as a scale degree or a chromatic major/minor/dominant chord and sets the progression length from 1 to 8 chords. NEW CHORDS prepares another progression in the selected scale; the progression menu uses the original piano library.
 
 Right-click a section header to rename, duplicate its MIDI, remove, reorder, change its musical function or change its length. A longer section needs regeneration or editing to fill the extra time. Shortening trims notes at the boundary. + SECTION inserts a generated Main section. Projects support 1–64 sections, each 1–128 bars, in 4/4.
+
+## Instrument panels and MIDI editors
+
+Tracks appear in musical order: all thirteen drum pieces, Bass, Piano, Strings, Guitar. Click a track **name** for its instrument panel; click a **clip** for the large MIDI editor. < ARRANGEMENT or Escape returns to the song. EDIT MIDI / INSTRUMENT PANEL switches views; the section selector changes which part is edited. No piano roll is docked below the arrangement.
+
+Family branding, graphite panels and rotary controls accompany instrument groove/playing/fill settings. Piano exposes register, gate, strum, direction, movement, range, top line, approach and realism; bass/strings expose their original style libraries. Each drum has its own MIDI mapping and pocket. Guitar has let ring, room for band, push changes and all twelve lane levels, octaves, mutes, swing and timing shifts. APPLY TRACK / APPLY CLIP writes settings to unlocked MIDI. Tone, reverb, chorus and pump affect internal guide sounds immediately; assigned plugins use their own sound controls. Key/BPM/link controls are not duplicated in instrument panels.
+
+GUITAR LEAD in the guitar views switches the piano to the original plugin's accompaniment/answer logic. Piano and guitar regenerate with stored seeds, respecting locks; UNDO reverses the change.
+
+Piano, bass and strings show only their own notes. Drum editors contain one lane for the selected piece and imported/pasted notes follow that drum's MIDI mapping. Guitar opens all twelve original playing lanes together: a click adds a chord gesture, dragging selects its grouped notes, and right-click removes the gesture. NOTES / LANES switches to an ordinary piano roll for individual guitar notes. ZOOM changes horizontal scale.
 
 ## Edit MIDI
 
@@ -58,4 +70,4 @@ ECOSYSTEM opens credits, privacy and third-party notices. Creator: Fabio 'Pitch'
 
 The app is offline with no accounts, analytics, telemetry or music uploads. It reads files you select and writes local projects, autosaves and exports. External links open your browser only when clicked. Third-party plugins have their own privacy/permission terms. See PRIVACY.md and THIRD_PARTY_NOTICES.md.
 
-Version 0.1.0 does not include audio/MIDI recording, audio editing, automation lanes, time stretching, effects chains, buses/sends, controller recording, signatures other than 4/4, plugin delay compensation or sandboxed plugin scanning. It is an initial MIDI arranging workstation, with compatibility requiring validation against your actual plugins. Development packages are unsigned and have no installer.
+Version 0.2.0 does not include audio/MIDI recording, audio editing, automation lanes, time stretching, effects chains, buses/sends, controller recording, signatures other than 4/4, plugin delay compensation or sandboxed plugin scanning. It is an initial MIDI arranging workstation, with compatibility requiring validation against your actual plugins. Development packages are unsigned and have no installer.
