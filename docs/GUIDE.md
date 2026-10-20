@@ -83,14 +83,18 @@ Colours follow the instruments: **amber** for piano and kick, **cyan** for bass 
 
 | Part | How to use it |
 |---|---|
-| **Intro** | The entrance belongs to the genre’s form. Complete phrases and instrument entrances support transitions without compulsory silent harmonic windows. |
+| **Intro** | Rhythmic phrases provide room for the DJ blend; chords, bass and other instruments then enter progressively within the intro. |
 | **Main** | The principal groove. Establish the song's progression and sound here. |
 | **Breakdown** | Some breathing room, changing the space and the instruments' roles. |
 | **Build-up** | A rise towards the return, in styles that call for it. |
 | **Drop** | The full groove comes back. It need not sound exactly like the first main part. |
-| **Outro** | The exit follows the original engines’ phrasing and instrument releases. Mixing is considered in the structure without forcing sixteen bars of harmonic silence. |
+| **Outro** | Instruments leave progressively within the outro. The final rhythmic phrase allows the next blend; no separate mixing passage is appended outside the song. |
 
 The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro & Latin** develops its percussion; **Funky & Disco** moves between verses and choruses.
+
+Tempo is chosen within the genre range: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125 BPM. The tempo control uses the selected style’s range. Neo Soul / Broken and Chill / Pads retain their slower warm-up character. Duration in seconds is `bars × 240 / BPM`.
+
+The song keeps its base groove across sections, changing performance, density and roles. Generated sections follow eight-bar phrases even with three, five or seven chords; the harmonic cycle continues across section boundaries instead of always restarting at chord one.
 
 ### Change only what you need
 
@@ -249,7 +253,7 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 2. Open guitar and enable **SOLISTA**.
 3. Listen to DOWN, UP, CHANK and OCTAVE in context; lower lanes that overlap too much.
 4. Try strings in the chorus and leave more space in the part before it.
-5. Check the outro: the final sixteen bars should stay clear of harmonic instruments for mixing.
+5. Check intro and outro: entrances and exits should follow the genre’s phrases; the first and final rhythmic phrases leave room for blending.
 
 ## 10. Saving and exporting
 

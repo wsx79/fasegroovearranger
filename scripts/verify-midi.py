@@ -65,3 +65,6 @@ read(folder / 'test-song.mid', 18)
 read(folder / 'test-kick.mid', 2)
 
 read(folder / "test-piano-cc.mid",2,True)
+
+for path in sorted(folder.glob("club-*.mid")):
+    read(path,18)

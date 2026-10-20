@@ -19,7 +19,7 @@
 
 ---
 
-**Development build: 0.4.1** — [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). This is not a published release.
+**Development build: 0.4.2** — [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). This is not a published release.
 
 Create a complete song with the original Piano, Drums and Guitar engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
 
@@ -97,7 +97,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.4.1** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation lanes, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.4.2** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation lanes, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 
@@ -106,3 +106,5 @@ The original guide instruments are synthesized audition sounds; they are not sam
 [Fase Groove Piano](https://github.com/wsx79/fasegroovepiano) · [Fase Groove Drums](https://github.com/wsx79/fasegroovedrums) · [Fase Groove Guitar](https://github.com/wsx79/fasegrooveguitar)
 
 [Ko-fi](https://ko-fi.com/fabios1979) · [PayPal](https://paypal.me/fabios79) · [Spotify](https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP)
+
+[Club arrangement policy, sources and musical validation](docs/CLUB_ARRANGEMENT.md).

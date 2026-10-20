@@ -90,6 +90,13 @@ struct Project {
 };
 const char* sectionName(Section);
 std::vector<std::string> genres();
+// Automatic club-arrangement policy. These are curated working ranges, not
+// universal genre definitions; see docs/CLUB_ARRANGEMENT.md for the sources.
+struct GenreProfile {
+    int minBpm, maxBpm, preferredBpm, mixingBars;
+    bool rollingBuild;
+};
+const GenreProfile& genreProfile(int genre);
 Project newProject(int genre = 1);
 void applyGenre(Project&, int genre);
 void arrangeSong(Project&);

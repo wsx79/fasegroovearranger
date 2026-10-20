@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
 #include "Localisation.h"
+#include "ArrangementAudit.h"
 namespace {
 class ScaledContent:public juce::Component {
 public:
@@ -31,6 +32,10 @@ public:
     void initialise(const juce::String&)override{
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
         auto args=getCommandLineParameterArray();
+        if(args.size()==2&&args[0]=="--club-audit"){
+            const bool ok=fga::writeClubAudioAudit(juce::File(args[1]));
+            setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==3&&args[0]=="--host-smoke-test"){
             window=std::make_unique<Window>();auto& audio=window->content->main.audio;
             const auto folder=juce::File(args[2]);folder.createDirectory();

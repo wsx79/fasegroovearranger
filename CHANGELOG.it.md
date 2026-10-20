@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.md)
 
+## 0.4.2 — 20 ottobre 2026
+
+- Arrangiamenti da club: passaggi progressivi per il mixaggio dentro intro/outro, range BPM per genere e lift soulful/organici che mantengono il groove.
+- Motivo coerente fra sezioni, frasi regolari per i DJ e continuità armonica anche con numeri dispari di accordi.
+- Corretti sconfinamenti inferiori a un tick nell’outro, groove factory del vecchio genere e normalizzazione incoerente nell’export MIDI/audio.
+- Audit MIDI/audio completo dei tredici generi, MP3 Soulful di riferimento e note sulle fonti musicali.
+
 ## [0.4.1] — In sviluppo
 
 - Pannello OPZIONI con schede IMPOSTAZIONI / INFO ripreso da Guitar: geometria, pulsanti e crediti della famiglia.

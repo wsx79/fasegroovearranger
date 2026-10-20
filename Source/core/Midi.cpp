@@ -12,8 +12,9 @@ void meta(Bytes& out,std::uint32_t delta,int type,const Bytes& bytes){variable(o
 void text(Bytes& out,std::uint32_t delta,int type,const std::string& s){meta(out,delta,type,Bytes(s.begin(),s.end()));}
 void chunk(Bytes& file,Bytes data){file.insert(file.end(),{'M','T','r','k'});be(file,(std::uint32_t)data.size(),4);file.insert(file.end(),data.begin(),data.end());}
 }
-std::vector<std::uint8_t> midiFile(const Project& p,int onlyTrack) {
-    if(onlyTrack>=(int)p.tracks.size())throw std::out_of_range("MIDI track");
+std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
+    auto p=source;p.normalise();
+    if(onlyTrack < -1 || onlyTrack>=(int)p.tracks.size())throw std::out_of_range("MIDI track");
     Bytes out{'M','T','h','d'};be(out,6,4);be(out,1,2);be(out,onlyTrack<0?(std::uint32_t)p.tracks.size()+1:2,2);be(out,960,2);
     Bytes conductor; text(conductor,0,3,p.name); const auto tempo=(std::uint32_t)std::llround(60000000.0/std::clamp(p.settings.bpm,30.0,300.0));
     meta(conductor,0,0x51,{(std::uint8_t)(tempo>>16),(std::uint8_t)(tempo>>8),(std::uint8_t)tempo});meta(conductor,0,0x58,{4,2,24,8});
@@ -27,7 +28,7 @@ std::vector<std::uint8_t> midiFile(const Project& p,int onlyTrack) {
     std::uint32_t last=0;
     for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);text(conductor,at-last,6,p.sections[si].name);last=at;}
     auto end=(std::uint32_t)std::llround(p.length()*960);meta(conductor,end-last,0x2f,{});chunk(out,std::move(conductor));
-    auto canonical=p;canonical.normalise();auto all=events(canonical,onlyTrack);
+    auto all=events(p,onlyTrack);
     for(int row=0;row<(int)p.tracks.size();++row){
         const size_t ti=(size_t)trackAtRow(row);
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;

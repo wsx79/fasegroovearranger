@@ -20,9 +20,9 @@ AudioEngine::AudioEngine(){
     devices.initialise(0,2,nullptr,true);devices.addAudioCallback(this);
 }
 AudioEngine::~AudioEngine(){lifetime.reset();devices.removeAudioCallback(this);const juce::ScopedLock lock(mutex);for(auto& i:instruments)if(i->plugin)i->plugin->releaseResources();}
-void AudioEngine::publish(const Project& p){
+void AudioEngine::publish(const Project& source){
+    auto canonical=source;canonical.normalise();const auto& p=canonical;
     std::array<std::vector<TimedEvent>,trackCount> schedules;
-    auto canonical=p;canonical.normalise();
     for(auto e:events(canonical))schedules[(size_t)e.track].push_back(e);
     const juce::ScopedLock lock(mutex);
     tempo=p.settings.bpm;length=p.length();master=p.masterGain;looping=p.loop;loopFrom=p.loopStart;loopTo=p.loopEnd;
@@ -114,7 +114,9 @@ juce::AudioPluginInstance* AudioEngine::plugin(int track){return instruments[(si
 void AudioEngine::capturePluginStates(Project& p){const juce::ScopedLock lock(mutex);for(size_t ti=0;ti<instruments.size();++ti)if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);p.tracks[ti].instrumentState=state.toBase64Encoding().toStdString();}}
 void AudioEngine::restorePluginState(int track,const juce::String& state){juce::MemoryBlock data;if(data.fromBase64Encoding(state)){const juce::ScopedLock lock(mutex);if(auto* p=instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
 void AudioEngine::markMissing(int track){const juce::ScopedLock lock(mutex);instruments[(size_t)track]->mode=3;}
-juce::Result AudioEngine::exportAudio(const Project& p,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress){
+juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress){
+    if(onlyTrack < -1 || onlyTrack>=trackCount)return juce::Result::fail("Invalid export track");
+    auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
     struct Guard{AudioEngine& e;~Guard(){const juce::ScopedLock lock(e.mutex);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.needsReset=true;e.exporting=false;}} guard{*this};
     publish(p);

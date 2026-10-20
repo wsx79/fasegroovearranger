@@ -2,6 +2,13 @@
 
 [Italiano](CHANGELOG.it.md)
 
+## 0.4.2 — 2026-10-20
+
+- Club arrangements: progressive mix-in/out inside the song, working BPM ranges by genre, and groove-preserving soulful/organic lifts.
+- Keep each song’s motif across sections; preserve the DJ phrase grid and harmonic continuity with odd chord counts.
+- Correct sub-tick outro spill, factory grooves left over after a genre change, and inconsistent normalisation in MIDI/audio exports.
+- Full-song MIDI/audio audit for all thirteen genres, reference Soulful MP3 and source-based arrangement notes.
+
 ## [0.4.1] — Unreleased
 
 - Restore the Guitar family OPTIONS overlay: SETTINGS / ABOUT geometry, controls, links and credits.

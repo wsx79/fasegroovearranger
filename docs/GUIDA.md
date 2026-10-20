@@ -83,14 +83,18 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 | Parte | Come usarla |
 |---|---|
-| **Intro** | L’ingresso appartiene alla struttura del genere. Frasi complete, entrate e sviluppo degli strumenti tengono conto delle transizioni tra brani; nessuna finestra armonica vuota è imposta. |
+| **Intro** | L’ingresso appartiene alla struttura del genere. Frasi complete, entrate e sviluppo degli strumenti tengono conto delle transizioni tra brani; le prime frasi lasciano spazio al mixaggio, poi entrano progressivamente accordi, basso e altri strumenti. |
 | **Main** | Il groove principale. Qui fai riconoscere il giro e il suono del brano. |
 | **Breakdown** | Un respiro: cambiano gli spazi e il ruolo degli strumenti. |
 | **Build-up** | Una salita verso la ripartenza, nei generi che la prevedono. |
 | **Drop** | Il ritorno del groove pieno. Non deve per forza suonare identico alla prima parte. |
-| **Outro** | La chiusura segue le frasi e le uscite degli strumenti previste dai motori originali. Il mixaggio viene considerato nella struttura, senza togliere obbligatoriamente sedici battute armoniche. |
+| **Outro** | Gli strumenti escono progressivamente dentro la sezione; l’ultima frase ritmica permette il passaggio al brano successivo. Nessuna parte per il mixaggio viene aggiunta fuori dalla canzone. |
 
 La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro & Latin** dà spazio alle percussioni; **Funky & Disco** alterna strofe e ritornelli.
+
+I BPM sono scelti nel range del genere: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125. Il controllo tempo usa il range dello stile scelto. Le categorie Neo Soul / Broken e Chill / Pads mantengono un carattere da warm-up a BPM più bassi. La durata in secondi è `battute × 240 / BPM`.
+
+Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, densità e ruoli. Le sezioni automatiche seguono frasi da otto battute anche con progressioni di tre, cinque o sette accordi; il ciclo armonico continua attraverso i confini invece di ripartire sempre dal primo accordo.
 
 ### Cambiare solo quello che serve
 
@@ -251,7 +255,7 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 2. Apri la chitarra e attiva **SOLISTA**.
 3. Ascolta DOWN, UP, CHANK e OCTAVE nel contesto; riduci quelle che si sovrappongono troppo.
 4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
-5. Controlla l'outro: le ultime sedici battute devono restare libere dagli strumenti armonici per il mixaggio.
+5. Controlla intro e outro: la prima e l’ultima frase ritmica lasciano spazio al mixaggio; gli strumenti entrano ed escono dentro la struttura del brano.
 
 ## 10. Salvare ed esportare
 

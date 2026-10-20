@@ -19,7 +19,7 @@
 
 ---
 
-**Versione di sviluppo: 0.4.1.** I pacchetti verificati sono negli artifact della [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). Non è ancora una release pubblicata.
+**Versione di sviluppo: 0.4.2.** I pacchetti verificati sono negli artifact della [PR #1](https://github.com/wsx79/fasegroovearranger/pull/1). Non è ancora una release pubblicata.
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
@@ -80,3 +80,5 @@ I suoni guida sono sintetizzati, non librerie commerciali campionate. Per la pro
 Creato da **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**. JUCE, font Inter (SIL OFL) e componenti elencati negli avvisi inclusi. Software libero **AGPL-3.0-or-later**.
 
 [Ko-fi](https://ko-fi.com/fabios1979) · [PayPal](https://paypal.me/fabios79) · [Spotify](https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP)
+
+[Arrangiamenti da club: fonti, scelte musicali e verifica](docs/CLUB_ARRANGEMENT.md).
