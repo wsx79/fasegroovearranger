@@ -62,7 +62,8 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
 }
 sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t seed){
     const auto& s=p.settings;const auto& e=p.tracks[(size_t)track].engine;auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
-    auto ps=pianoSettings(trackSettings,seed);
+    auto ps=pianoSettings(trackSettings,e.riffSeed?e.riffSeed:seed);
+    ps.humanizeSeed=e.humanizeSeed?e.humanizeSeed:seed;
     ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
     ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
     ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;

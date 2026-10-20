@@ -11,6 +11,7 @@ class InstrumentPanel : public juce::Component {
 public:
     explicit InstrumentPanel(MainComponent&);
     void rebuild();
+    void refreshFromProject();
     juce::String layoutProblems()const;
     int sectionPosition(const juce::String& name)const{for(size_t i=0;i<headings.size()&&i<headingY.size();++i)if(headings[i].first==name)return headingY[i];return 0;}
     juce::StringArray sectionNames()const{juce::StringArray names;for(const auto& h:headings)names.add(h.first);return names;}
