@@ -68,10 +68,14 @@ public:
     double clipLength()const{return project.sections[(size_t)selectedSection].bars*4.;}
     void regenerate(Scope);
     bool requestClose();
+    bool writeLanguageEvidence(const juce::File&);
+    void applyLanguage();
+    void showPianoTools(int);
+    void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
 private:
     FamilyLookAndFeel theme;
-    juce::TooltipWindow tooltips{this,650};
+    std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};
     juce::Viewport arrangementPort,pianoPort,instrumentPort;
     InstrumentPanel instrumentPanel{*this};
@@ -79,8 +83,8 @@ private:
     Page page=Page::arrangement;
     juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"SOLISTA"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     juce::Slider minutesSlider;
-    juce::ComboBox sectionSelector;
-    juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDA"};
+    juce::ComboBox sectionSelector,panelSections;
+    juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};
     juce::TextButton playButton{"PLAY"},stopButton{"STOP"},rewindButton{"|<"},undoButton{"UNDO"},redoButton{"REDO"};
     juce::ToggleButton loopButton{"LOOP"};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};

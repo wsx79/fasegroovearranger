@@ -26,19 +26,22 @@ void AudioEngine::publish(const Project& p){
     for(auto e:events(canonical))schedules[(size_t)e.track].push_back(e);
     const juce::ScopedLock lock(mutex);
     tempo=p.settings.bpm;length=p.length();master=p.masterGain;looping=p.loop;loopFrom=p.loopStart;loopTo=p.loopEnd;
-    for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.schedule=std::move(schedules[ti]);i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}
+    for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.schedule=std::move(schedules[ti]);i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;i.pumpRate=t.engine.pumpRate;i.pumpSource=t.engine.pumpSource;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}
     currentBeat=std::min(currentBeat.load(),length);needsReset=true;needsChase=playing;
 }
 void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length)currentBeat=looping?loopFrom:0;playing=enabled;needsReset=true;needsChase=enabled;}
-void AudioEngine::updateMix(const Project& p){const juce::ScopedLock lock(mutex);tempo=p.settings.bpm;master=p.masterGain;for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}}
+void AudioEngine::updateMix(const Project& p){const juce::ScopedLock lock(mutex);tempo=p.settings.bpm;master=p.masterGain;for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;i.pumpRate=t.engine.pumpRate;i.pumpSource=t.engine.pumpSource;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}}
 void AudioEngine::stop(){play(false);seek(0);}
 void AudioEngine::seek(double beat){const juce::ScopedLock lock(mutex);currentBeat=std::clamp(beat,0.0,length);needsReset=true;needsChase=playing;}
 void AudioEngine::setLoop(bool enabled,double from,double to){const juce::ScopedLock lock(mutex);looping=enabled;loopFrom=std::clamp(from,0.0,length);loopTo=std::clamp(to,loopFrom,length);}
 void AudioEngine::resetAt(double beat){
     for(auto& ptr:instruments){auto& i=*ptr;i.reset();i.cursor=(size_t)(std::lower_bound(i.schedule.begin(),i.schedule.end(),beat,[](const TimedEvent& e,double b){return e.beat<b;})-i.schedule.begin());
-        i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);
-        if(needsChase){std::array<int,128> vel{},lane{};for(size_t k=0;k<i.cursor;++k){const auto& e=i.schedule[k];vel[(size_t)e.pitch]=e.velocity;lane[(size_t)e.pitch]=e.lane;}
+        i.midi.addEvent(juce::MidiMessage::controllerEvent(1,64,0),0);i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);
+        if(needsChase){std::array<int,128> vel{},lane{},cc;cc.fill(-1);std::array<bool,128> pressed{};bool sustain=false;
+            for(size_t k=0;k<i.cursor;++k){const auto& e=i.schedule[k];if(e.controller>=0){cc[(size_t)e.controller]=e.velocity;if(e.controller==64){sustain=e.velocity>=64;if(!sustain)for(size_t n=0;n<128;++n)if(!pressed[n])vel[n]=0;}}else{auto n=(size_t)e.pitch;pressed[n]=e.velocity>0;if(e.velocity>0||!sustain)vel[n]=e.velocity;lane[n]=e.lane;}}
+            for(int c=0;c<128;++c)if(cc[(size_t)c]>=0)i.midi.addEvent(juce::MidiMessage::controllerEvent(1,c,cc[(size_t)c]),0);
             for(int n=0;n<128;++n)if(vel[(size_t)n]>0){i.midi.addEvent(juce::MidiMessage::noteOn(1,n,(juce::uint8)vel[(size_t)n]),0);if(i.kind==3)i.guitarEvents.push_back({0,n,vel[(size_t)n]/127.f,lane[(size_t)n]});}}
+
     }needsReset=false;needsChase=false;
 }
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack){
@@ -46,8 +49,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
     for(int ti=0;ti<trackCount;++ti){auto& i=*instruments[(size_t)ti];
         while(i.cursor<i.schedule.size()&&i.schedule[i.cursor].beat<end){const auto& e=i.schedule[i.cursor++];if(e.beat<beat-1e-8)continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
-            i.midi.addEvent(e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
-            if(ti==3)i.guitarEvents.push_back({at,e.pitch,e.velocity/127.f,e.lane});
+            i.midi.addEvent(e.controller>=0?juce::MidiMessage::controllerEvent(1,e.controller,e.velocity):e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
+            if(ti==3&&e.controller<0)i.guitarEvents.push_back({at,e.pitch,e.velocity/127.f,e.lane});
         }
         juce::AudioBuffer<float> block(i.scratch.getArrayOfWritePointers(),i.scratch.getNumChannels(),count);block.clear();
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
@@ -56,7 +59,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         if(i.mode==0){
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);i.chorus.process(context);
             i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);
-            if(i.pump>0)for(int sample=0;sample<count;++sample){const double phase=std::fmod(beat+sample/samplesPerBeat,1.);const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}
+            if(i.pump>0)for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;static const double rates[]{1,.5,2,.25};double phase=std::fmod(time,rates[i.pumpRate]);if(i.pumpSource==1){const auto& kick=instruments[4]->schedule;auto it=std::upper_bound(kick.begin(),kick.end(),time,[](double t,const TimedEvent& e){return t<e.beat;});phase=100;while(it!=kick.begin()){--it;if(it->controller<0&&it->velocity>0){phase=time-it->beat;break;}}}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}
         }
         i.midi.clear();i.guitarEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));

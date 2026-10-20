@@ -10,6 +10,9 @@ class InstrumentPanel : public juce::Component {
 public:
     explicit InstrumentPanel(MainComponent&);
     void rebuild();
+    int sectionPosition(const juce::String& name)const{for(size_t i=0;i<headings.size()&&i<headingY.size();++i)if(headings[i].first==name)return headingY[i];return 0;}
+    juce::StringArray sectionNames()const{juce::StringArray names;for(const auto& h:headings)names.add(h.first);return names;}
+
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
@@ -21,6 +24,7 @@ private:
     void heading(const juce::String&);
     void knob(const juce::String&,double,double,double,double,std::function<void(EngineOptions&,double)>,const juce::String& suffix={});
     void choice(const juce::String&,const juce::StringArray&,int,std::function<void(EngineOptions&,int)>);
+    void action(const juce::String&,std::function<void()>);
     void toggle(const juce::String&,bool,std::function<void(EngineOptions&,bool)>);
     void apply(std::function<void(EngineOptions&)>);
 };

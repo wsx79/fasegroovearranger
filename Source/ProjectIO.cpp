@@ -12,6 +12,7 @@ double num(const juce::var& o,const char* key,double fallback){auto v=o.getPrope
 std::string str(const juce::var& o,const char* key,const char* fallback=""){return o.getProperty(key,fallback).toString().toStdString();}
 juce::var engineJson(const EngineOptions& e){auto o=object();
     set(o,"pattern",e.pattern);
+    set(o,"riffSeed",(juce::int64)e.riffSeed);set(o,"humanizeSeed",(juce::int64)e.humanizeSeed);set(o,"pumpRate",e.pumpRate);set(o,"pumpSource",e.pumpSource);set(o,"pedalCC",e.pedalCC);
     set(o,"velocity",e.velocity);
     set(o,"grooveBars",e.grooveBars);
     set(o,"fillEvery",e.fillEvery);
@@ -50,9 +51,24 @@ juce::var engineJson(const EngineOptions& e){auto o=object();
     {juce::Array<juce::var> values;for(auto v:e.laneShift)values.add(v);set(o,"laneShift",values);}
     {juce::Array<juce::var> values;for(auto v:e.laneOctave)values.add(v);set(o,"laneOctave",values);}
     {juce::Array<juce::var> values;for(auto v:e.laneMute)values.add(v);set(o,"laneMute",values);}
+    {juce::Array<juce::var> a;for(auto v:e.inversions)a.add((int)v);set(o,"inversions",a);}
+    {juce::Array<juce::var> a;for(auto v:e.velocityOrder)a.add((int)v);set(o,"velocityOrder",a);}
+    {juce::Array<juce::var> a;for(auto v:e.segmentLocked)a.add((int)v);set(o,"segmentLocked",a);}
+    {juce::Array<juce::var> a;for(auto v:e.userRight)a.add((int)v);set(o,"userRight",a);}
+    {juce::Array<juce::var> a;for(auto v:e.userLeft)a.add((int)v);set(o,"userLeft",a);}
+    {juce::Array<juce::var> a;for(auto v:e.userVelRight)a.add((int)v);set(o,"userVelRight",a);}
+    {juce::Array<juce::var> a;for(auto v:e.userVelLeft)a.add((int)v);set(o,"userVelLeft",a);}
     return o;
 }
 void readEngine(const juce::var& o,EngineOptions& e){
+    e.riffSeed=(std::uint32_t)(juce::int64)o.getProperty("riffSeed",0);e.humanizeSeed=(std::uint32_t)(juce::int64)o.getProperty("humanizeSeed",0);e.pumpRate=(int)num(o,"pumpRate",0);e.pumpSource=(int)num(o,"pumpSource",0);e.pedalCC=(bool)o.getProperty("pedalCC",false);
+    if(auto* a=o["inversions"].getArray())for(size_t i=0;i<e.inversions.size()&&i<(size_t)a->size();++i)e.inversions[i]=(int)(*a)[(int)i];
+    if(auto* a=o["velocityOrder"].getArray())for(size_t i=0;i<e.velocityOrder.size()&&i<(size_t)a->size();++i)e.velocityOrder[i]=(int)(*a)[(int)i];
+    if(auto* a=o["segmentLocked"].getArray())for(size_t i=0;i<e.segmentLocked.size()&&i<(size_t)a->size();++i)e.segmentLocked[i]=(int)(*a)[(int)i];
+    if(auto* a=o["userRight"].getArray())for(size_t i=0;i<e.userRight.size()&&i<(size_t)a->size();++i)e.userRight[i]=(int)(*a)[(int)i];
+    if(auto* a=o["userLeft"].getArray())for(size_t i=0;i<e.userLeft.size()&&i<(size_t)a->size();++i)e.userLeft[i]=(int)(*a)[(int)i];
+    if(auto* a=o["userVelRight"].getArray())for(size_t i=0;i<e.userVelRight.size()&&i<(size_t)a->size();++i)e.userVelRight[i]=(int)(*a)[(int)i];
+    if(auto* a=o["userVelLeft"].getArray())for(size_t i=0;i<e.userVelLeft.size()&&i<(size_t)a->size();++i)e.userVelLeft[i]=(int)(*a)[(int)i];
     e.pattern=(int)num(o,"pattern",e.pattern);
     e.velocity=(int)num(o,"velocity",e.velocity);
     e.grooveBars=(int)num(o,"grooveBars",e.grooveBars);
@@ -101,7 +117,7 @@ juce::var projectJson(const Project& p){
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
     set(s,"songMinutes",c.songMinutes);set(s,"guitarLead",c.guitarLead);
-    set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);
+    set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
     juce::Array<juce::var> degrees,free;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);set(o,"settings",s);
     set(o,"masterGain",p.masterGain);set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
     juce::Array<juce::var> sections,tracks;
@@ -120,7 +136,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
-    s.songMinutes=num(j,"songMinutes",5);s.guitarLead=(bool)j.getProperty("guitarLead",false);
+    s.chordSteps=(int)num(j,"chordSteps",16);s.songMinutes=num(j,"songMinutes",5);s.guitarLead=(bool)j.getProperty("guitarLead",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
     p.masterGain=num(o,"masterGain",.8);p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);

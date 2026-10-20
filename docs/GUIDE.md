@@ -113,7 +113,7 @@ The form follows the style. **Deep and Chill** develop through longer passages; 
 | **Key / Scale** | The root and mode, at the top beside tempo. |
 | **PROGRESSION** | A progression from the Fase Groove Piano library. Some also choose a suitable scale. |
 | **NEW CHORDS** | Prepares another degree progression in the selected scale. |
-| **EDIT CHORDS** | Change each chord: a scale degree, or major, minor or dominant on a chromatic root. One to eight chords, one per bar. |
+| **EDIT CHORDS** | Change each chord: a scale degree, or major, minor or dominant on a chromatic root. One to eight chords, with a shared harmonic duration. |
 | **Extensions / Voicing** | Chord colour and the piano notes' arrangement. |
 | **DENSITY** | From a few notes to a busier groove. |
 | **SWING** | Moves alternating sixteenths, from straight towards shuffle. |
@@ -140,6 +140,18 @@ Click an instrument's **name** to open its panel. Choose how to hear it at the t
 | **Strings** | A strings style, from sustained support to a rhythmic part. |
 | **Drums** | Just the selected piece: groove, velocity, MIDI note and pocket. |
 | **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
+
+### Piano: extended view
+
+The piano panel exposes its extended controls. The **ADVANCED** menu jumps to Performance, Phrases/Fills, Rhythm/Velocity, Musical tools and Guide sound.
+
+It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**, sustain/expression CC64/CC11, A–D order and locks, a 32-step rhythm grid and individual velocity faders. Click a step to cycle rest, note, accent, ghost, push or hold. Drag a fader for velocity; double-click restores automatic dynamics. **RND PIANO** changes rhythm while respecting locked segments; **RND VELOCITY** changes dynamics only.
+
+**DNA**, **MORPH**, **A/B**, **VARIANTS** and the **CIRCLE OF FIFTHS** use the original musical tools. Results prepare settings: APPLY TRACK / APPLY CLIP writes the notes. A and B also audition a clip with two voicings; UNDO reverses the trial. PRESETS saves and loads track settings in `.fgapreset` files. IMPORT MIDI estimates chords and rhythm; check the result before regenerating. **LEARN** accepts a chord when all keys are released, after you choose a MIDI input.
+
+**EDIT CHORDS → Each chord** sets the shared harmonic duration: half, one, two or four bars. Guide-sound pump provides rate, release and **Tempo / Kick MIDI** source. Kick MIDI follows notes in the Kick track; it is not an external audio input.
+
+**OPTIONS → Languages** selects English, Italian, Spanish, French, German or Portuguese. Control tooltips can be toggled in the same menu. Both preferences stay on this computer; complete manuals are available in Italian and English.
 
 ### Guide sound, sample or VST
 

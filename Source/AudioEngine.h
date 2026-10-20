@@ -18,7 +18,7 @@ struct Instrument {
     juce::Synthesiser synth;
     juce::Reverb reverb;
     juce::dsp::Chorus<float> chorus;
-    double pump=0,pumpRelease=.2;
+    double pump=0,pumpRelease=.2;int pumpRate=0,pumpSource=0;
     GuideDrums drums;
     GuideGuitar guitar;
     DrumSamples drumSamples;

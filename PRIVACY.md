@@ -1,6 +1,6 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.1.0 · 19 October 2026
+Version 0.3.0 · 20 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 
@@ -15,3 +15,7 @@ You can delete projects, exports and autosaves with your file manager. Removing 
 Permissions are limited to audio output, access to chosen files and local application data, loading native instrument code, and opening requested browser links. The application opens no microphone/audio input and does not record the room. It requires no administrator account, camera, location, contacts, calendar or cloud account. System prompts can depend on packaging, audio devices and third-party plugins.
 
 This notice describes the arranger's source code, not the behaviour of external plugins or websites. For project requests use the repository, keeping private data out of public issues.
+
+## Languages, tooltips and MIDI
+
+Language and tooltip preferences are saved locally on this computer. LEARN reads keyboard notes only after you choose a MIDI input in its window. Closing it removes the callback and restores the device’s previous enabled state. It does not record audio or use the microphone. Personal presets remain local files.

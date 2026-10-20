@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
 constexpr int trackCount = 17;
 enum class Section { main, intro, breakdown, buildup, drop, outro };
@@ -28,6 +29,14 @@ struct SongSection { Section type = Section::main; int bars = 8; std::string nam
 int trackAtRow(int row);
 int rowForTrack(int track);
 struct EngineOptions {
+    std::uint32_t riffSeed=0,humanizeSeed=0;
+    int pumpRate=0,pumpSource=0;
+    bool pedalCC=false;
+    std::array<int,8> inversions {};
+    std::array<int,4> velocityOrder {0,1,2,3};
+    std::array<bool,4> segmentLocked {};
+    std::array<char,32> userRight {},userLeft {};
+    std::array<unsigned char,32> userVelRight {},userVelLeft {};
     int pattern = -1, velocity = 100, grooveBars = 2, fillEvery = 8, fillStyle = -1, variationEvery = 8;
     double swing = -1, humanize = -1, density = -1, gate = .55, strum = .15, accent = .85, tone = .5;
     double reverb = .12, chorus = 0, pump = 0, pumpRelease = .2;
@@ -58,6 +67,7 @@ struct Settings {
     std::uint32_t seed = 1979;
     double songMinutes = 5;
     bool guitarLead = false;
+    int chordSteps = 16;
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
     std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
@@ -87,10 +97,13 @@ void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
 // A zero seed reproduces stored clips; a nonzero seed writes another deterministic take.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
+sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed);
+void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
+void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);
 void tidyNotes(Clip&, double beats);
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1);
-struct TimedEvent { double beat; int track, pitch, velocity, lane; };
+struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; };
 std::vector<TimedEvent> events(const Project&, int onlyTrack = -1);
 // Standard MIDI File type 1, 960 PPQ, tempo, time/key signatures and section markers.
 std::vector<std::uint8_t> midiFile(const Project&, int onlyTrack = -1);

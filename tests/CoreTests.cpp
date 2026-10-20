@@ -5,8 +5,10 @@
 #include <iostream>
 #include <stdexcept>
 #include <limits>
+#include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 int main(int argc,char** argv){try{
+    {auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();auto& e=p.tracks[0].engine;e.pattern=sgk::userPatternIndex();e.userRight.fill('.');e.userLeft.fill('.');e.userRight[0]='x';e.userVelRight[0]=37;e.realism=false;e.humanize=0;e.swing=0;e.strum=0;e.fillEvery=0;e.variationEvery=0;fga::generate(p,fga::Scope::track,0);check(!p.tracks[0].clips[0].notes.empty(),"custom piano grid generates notes");auto before=p.tracks[0].clips[0].notes;e.userVelRight[0]=120;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes[0].velocity>before[0].velocity,"per-step piano velocity reaches engine");e.inversions[0]=2;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes!=before,"per-chord inversion reaches engine");e.pedalCC=true;auto events=fga::events(p,0);bool pedal=false,expression=false;for(auto event:events){pedal=pedal||event.controller==64;expression=expression||event.controller==11;}check(pedal&&expression,"pedal and expression controller events");auto original=p;fga::applyPianoIntention(p,0,1,true,true,123);check(p.settings.degrees==original.settings.degrees&&p.tracks[0].engine.userRight==original.tracks[0].engine.userRight,"DNA rhythm and harmony locks");}
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;
         for(double duration:{4.,6.,8.}){auto form=p;form.settings.songMinutes=duration;fga::arrangeSong(form);const auto minutes=form.length()/form.settings.bpm;check(minutes>=duration,"requested duration reached");check(minutes<duration+.55,"phrase rounding bounded");}

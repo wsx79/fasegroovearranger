@@ -60,6 +60,96 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
     return notes;
 }
 }
+sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t seed){
+    const auto& s=p.settings;const auto& e=p.tracks[(size_t)track].engine;auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
+    auto ps=pianoSettings(trackSettings,seed);
+    ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
+    ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
+    ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;
+    ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
+    ps.fillEveryBars=e.fillEvery;ps.fillStyle=(sgk::FillStyle)(e.fillStyle<0?(int)sgk::FillStyle::mix:std::min(e.fillStyle,sgk::numFillStyles-1));ps.variationEvery=e.variationEvery;
+    ps.stepsPerChord=s.chordSteps;ps.inversions=e.inversions;ps.velocityOrder=e.velocityOrder;
+    if(e.humanizeSeed)ps.humanizeSeed=e.humanizeSeed;
+    if(e.riffSeed)ps.riffSeed=e.riffSeed;
+    if(e.pattern>=0&&e.pattern<=sgk::userPatternIndex())ps.pattern=e.pattern;
+    if(e.pattern==sgk::userPatternIndex()){ps.userRight=e.userRight;ps.userLeft=e.userLeft;ps.userVelRight=e.userVelRight;ps.userVelLeft=e.userVelLeft;}
+    return ps;
+}
+void setPianoPattern(EngineOptions& e,const sgk::GroovePattern& pattern){
+    e.pattern=sgk::userPatternIndex();
+    for(size_t i=0;i<32;++i){e.userRight[i]=pattern.rightHand.empty()?'.':pattern.rightHand[i%pattern.rightHand.size()];e.userLeft[i]=pattern.leftHand.empty()?'.':pattern.leftHand[i%pattern.leftHand.size()];}
+}
+void applyPianoIntention(Project& p,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed)
+{
+    const auto which = (sgk::Intention) std::clamp (intention,0,sgk::numIntentions-1);
+    const auto s = pianoEngineSettings(p,track,seed);auto& e=p.tracks[(size_t)track].engine;
+    if(e.swing<0)e.swing=p.settings.swing;
+    if(e.humanize<0)e.humanize=p.settings.humanize;
+    auto nudge=[](auto& value,double delta,double lo,double hi){value=(std::decay_t<decltype(value)>)std::clamp((double)value+delta,lo,hi);};
+
+    if (! keepRhythm)
+    {
+        const auto source = sgk::applySegmentOrder (sgk::GrooveEngine::basePattern (s), s.segmentOrder);
+        if (source.length() == sgk::userPatternLength)
+        {
+            auto result = sgk::applyIntention (source, which, seed);
+            for (int seg = 0; seg < sgk::numSegments; ++seg)
+                if (e.segmentLocked[(size_t) seg])
+                    sgk::copySegment (result, source, seg);   // locked parts stay
+            sgk::repairHolds (result.rightHand);
+            sgk::repairHolds (result.leftHand);
+            e.segments={0,1,2,3};
+            setPianoPattern(e,result);
+        }
+
+        // The feel goes with the rhythm.
+        switch (which)
+        {
+            case sgk::Intention::soulful:   nudge (e.swing, 0.05f, 0.0f, 0.5f); nudge (e.gate, 0.08f, 0.1f, 1.0f); nudge (e.humanize, 0.05f, 0.0f, 0.6f); break;
+            case sgk::Intention::funky:     nudge (e.swing, 0.08f, 0.0f, 0.55f); nudge (e.gate, -0.12f, 0.2f, 1.0f); nudge (e.velocity, 4.0f, 1.0f, 127.0f); break;
+            case sgk::Intention::minimal:   nudge (e.gate, 0.08f, 0.1f, 1.0f); e.fillEvery = (std::decay_t<decltype(e.fillEvery)>)(0.0f); break;
+            case sgk::Intention::energetic: nudge (e.velocity, 6.0f, 1.0f, 127.0f); nudge (e.gate, -0.05f, 0.2f, 1.0f);
+                                            if ((int)e.fillEvery == 0) e.fillEvery = (std::decay_t<decltype(e.fillEvery)>)(2.0f);
+                                            e.octaveTop = (std::decay_t<decltype(e.octaveTop)>)(1.0f); break;
+            case sgk::Intention::sophisticated: nudge (e.strum, 0.08f, 0.0f, 1.0f); break;
+            case sgk::Intention::straighter: nudge (e.swing, -0.1f, 0.0f, 0.55f); nudge (e.humanize, -0.05f, 0.0f, 0.6f); break;
+        }
+    }
+
+    if (! keepHarmony)
+    {
+        // Only colours and voicings: the chords of the progression never change.
+        const int ext = (int)p.settings.extension;
+        const int voicing = (int)p.settings.voicing;
+        switch (which)
+        {
+            case sgk::Intention::soulful:
+                if (ext < 2) p.settings.extension = (std::decay_t<decltype(p.settings.extension)>)(2.0f);                     // 9ths
+                if (voicing == (int) sgk::Voicing::close) p.settings.voicing = (std::decay_t<decltype(p.settings.voicing)>)((float) sgk::Voicing::rootless);
+                if ((int)e.approach == 0) e.approach = (std::decay_t<decltype(e.approach)>)(1.0f);
+                break;
+            case sgk::Intention::funky:
+                if (ext == 0) p.settings.extension = (std::decay_t<decltype(p.settings.extension)>)(1.0f);                    // 7ths
+                if (voicing == (int) sgk::Voicing::wide) p.settings.voicing = (std::decay_t<decltype(p.settings.voicing)>)((float) sgk::Voicing::close);
+                break;
+            case sgk::Intention::minimal:
+                if (ext > 2) p.settings.extension = (std::decay_t<decltype(p.settings.extension)>)(1.0f);
+                p.settings.voicing = (std::decay_t<decltype(p.settings.voicing)>)((float) sgk::Voicing::shell);
+                break;
+            case sgk::Intention::energetic:
+                if (voicing == (int) sgk::Voicing::shell) p.settings.voicing = (std::decay_t<decltype(p.settings.voicing)>)((float) sgk::Voicing::close);
+                break;
+            case sgk::Intention::sophisticated:
+                p.settings.extension = (std::decay_t<decltype(p.settings.extension)>)(ext == 3 ? 4.0f : 3.0f);                // 11ths / 13ths, or 6/9
+                p.settings.voicing = (std::decay_t<decltype(p.settings.voicing)>)((float) (voicing == (int) sgk::Voicing::drop2 ? sgk::Voicing::drop24 : sgk::Voicing::drop2));
+                if ((int)e.approach == 0) e.approach = (std::decay_t<decltype(e.approach)>)(2.0f);
+                break;
+            case sgk::Intention::straighter:
+                break;   // a rhythm move only
+        }
+    }
+}
+
 int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3}; return order[std::clamp(row,0,16)]; }
 int rowForTrack(int track) { for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
 const char* sectionName(Section s) {
@@ -71,6 +161,7 @@ double Project::sectionStart(int index) const { double p=0; for(int i=0;i<std::c
 void Project::normalise() {
     auto& s=settings;
     s.genre=std::clamp(s.genre,0,12); s.key=std::clamp(s.key,0,11); s.scale=std::clamp(s.scale,0,12);
+    if(s.chordSteps!=8&&s.chordSteps!=16&&s.chordSteps!=32&&s.chordSteps!=64)s.chordSteps=16;
     s.extension=std::clamp(s.extension,0,10); s.voicing=std::clamp(s.voicing,0,10);
     s.bpm=finite(s.bpm,122,30,300); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
     s.songMinutes=finite(s.songMinutes,5,4,20);
@@ -93,6 +184,11 @@ void Project::normalise() {
         e.centre=std::clamp(e.centre,24,108);e.rangeLow=std::clamp(e.rangeLow,0,126);e.rangeHigh=std::clamp(e.rangeHigh,e.rangeLow+1,127);
         e.fillEvery=std::clamp(e.fillEvery,0,32);e.fillStyle=std::clamp(e.fillStyle,-1,20);e.variationEvery=std::clamp(e.variationEvery,0,32);e.midiNote=std::clamp(e.midiNote,-1,127);
         e.topLine=std::clamp(e.topLine,0,5);e.approach=std::clamp(e.approach,0,2);e.movement=std::clamp(e.movement,0,2);e.strumDirection=std::clamp(e.strumDirection,0,2);e.evolveBars=std::clamp(e.evolveBars,0,32);e.humanizeStyle=std::clamp(e.humanizeStyle,0,3);e.bassFeel=std::clamp(e.bassFeel,0,2);
+        e.pumpRate=std::clamp(e.pumpRate,0,3);e.pumpSource=std::clamp(e.pumpSource,0,1);
+        for(auto& v:e.inversions)v=std::clamp(v,-3,3);
+        for(auto& v:e.velocityOrder)v=std::clamp(v,0,3);
+        for(auto* row:{&e.userRight,&e.userLeft})for(auto& v:*row)if(std::string(".xXg>=ud").find(v)==std::string::npos)v='.';
+        for(auto* row:{&e.userVelRight,&e.userVelLeft})for(auto& v:*row)v=std::min((unsigned char)127,v);
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
         for(size_t k=0;k<sections.size();++k){if(i>=4)for(auto& n:t.clips[k].notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}tidyNotes(t.clips[k],sections[k].bars*4.0);}
@@ -191,22 +287,15 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             const double beats=p.sections[si].bars*4.0; const auto type=p.sections[si].type;
             const auto& e=t.engine;
-            auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
-            auto ps=pianoSettings(trackSettings,clip.seed);
-            ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
-            ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
-            ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;
-            ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
-            ps.fillEveryBars=e.fillEvery;ps.fillStyle=(sgk::FillStyle)(e.fillStyle<0?(int)sgk::FillStyle::mix:std::min(e.fillStyle,sgk::numFillStyles-1));ps.variationEvery=e.variationEvery;
-            if(e.pattern>=0&&e.pattern<(int)sgk::groovePatterns().size())ps.pattern=e.pattern;
+            auto ps=pianoEngineSettings(p,ti,clip.seed);
             if(ti<3) {
                 ps.section=(sgk::Section)type; ps.sectionVariation=clip.seed;
                 auto all=sgk::GrooveEngine::renderArrangement(ps,{{(sgk::Section)type,p.sections[si].bars,clip.seed,-1}});
                 if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
             } else if(ti==3) {
-                fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre; gs.riffSeed=clip.seed;
-                gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=clip.seed;
+                fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre; gs.riffSeed=e.riffSeed?e.riffSeed:clip.seed;gs.stepsPerChord=s.chordSteps;
+                gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
                 gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
                 for(size_t l=0;l<12;++l){gs.levels[l]=(float)e.laneLevel[l];gs.laneSwing[l]=(float)e.laneSwing[l];gs.laneShift[l]=(float)e.laneShift[l];gs.octaves[l]=e.laneOctave[l];gs.muted[l]=e.laneMute[l];}
@@ -218,7 +307,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
                 ds.riffSeed=clip.seed; ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
-                ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=clip.seed;
+                ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 ds.tempo=s.bpm; ds.bassSpace=e.bassSpace; ds.fillEveryBars=e.fillEvery; ds.variationEvery=e.variationEvery; ds.fillStyle=(fgd::FillStyle)(e.fillStyle<0?(int)fgd::FillStyle::mix:std::min(e.fillStyle,fgd::numFillStyles-1));
                 ds.velocity=e.velocity;ds.accentGroove=(float)e.accent;ds.genreFeel=e.genreFeel;ds.crashAfterFill=e.afterFill;ds.grooveBars=e.grooveBars;ds.segmentOrder=e.segments;
                 ds.laneSwing[(size_t)(ti-4)]=(float)e.laneSwing[0];ds.laneShift[(size_t)(ti-4)]=(float)e.laneShift[0];
@@ -264,12 +353,18 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
         const auto& t=p.tracks[ti];
         for(size_t si=0;si<t.clips.size()&&si<p.sections.size();++si) {
             const double begin=p.sectionStart((int)si),end=p.sections[si].bars*4.;
+            if(ti==0&&t.engine.pedalCC&&!t.clips[si].notes.empty()){
+                const double chord=p.settings.chordSteps*.25;
+                for(double at=0;at<end;at+=chord){out.push_back({begin+at,(int)ti,64,0,0,64});out.push_back({begin+at+.02,(int)ti,64,127,0,64});}
+                for(double at=0;at<end;at+=.25){const int expression=p.sections[si].type==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
+                out.push_back({begin+end,(int)ti,64,0,0,64});out.push_back({begin+end,(int)ti,11,127,0,11});
+            }
             for(const auto& n:t.clips[si].notes) {
                 out.push_back({begin+n.start,(int)ti,n.pitch,n.velocity,n.lane});
                 out.push_back({begin+std::min(end,n.start+n.length),(int)ti,n.pitch,0,n.lane});
             }
         }
     }
-    std::stable_sort(out.begin(),out.end(),[](const TimedEvent& a,const TimedEvent& b){if(a.beat!=b.beat)return a.beat<b.beat;return a.velocity<b.velocity;});return out;
+    std::stable_sort(out.begin(),out.end(),[](const TimedEvent& a,const TimedEvent& b){if(a.beat!=b.beat)return a.beat<b.beat;if((a.controller>=0)!=(b.controller>=0))return a.controller>=0;return a.velocity<b.velocity;});return out;
 }
 }

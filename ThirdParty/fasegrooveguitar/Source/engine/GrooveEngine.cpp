@@ -311,7 +311,7 @@ int GrooveEngine::loopLengthInSteps (const GuitarSettings& s) noexcept
     if (! s.useLiveChord)
     {
         // The chords come round after numChords bars (or fewer, when they repeat inside).
-        steps = lcm (steps, chordPeriod (s) * 16);
+        steps = lcm (steps, chordPeriod (s) * std::max(1,s.stepsPerChord));
     }
     if (s.variationEvery > 0)
         steps = lcm (steps, s.variationEvery * 16);
@@ -362,11 +362,13 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
 {
     const long long bar = floorDiv (step, 16);
     const int stepInBar = mod (step, 16);
-    const auto chord = chordAt (s, bar);
-    const ChordVoicing& voicing = voicingAt (s, bar);
+    const auto chordSlot=floorDiv(step,std::max(1,s.stepsPerChord));
+    const auto chord = chordAt (s, chordSlot);
+    const ChordVoicing& voicing = voicingAt (s, chordSlot);
     // The chord of the next bar: the last 8th of a bar can push into it.
-    const auto nextChord = chordAt (s, bar + 1);
-    const ChordVoicing& nextVoicing = voicingAt (s, bar + 1);
+    const auto nextSlot=floorDiv(step+2,std::max(1,s.stepsPerChord));
+    const auto nextChord = chordAt (s, nextSlot);
+    const ChordVoicing& nextVoicing = voicingAt (s, nextSlot);
 
     // Every N bars the last bar plays a variation of the groove (the turnaround).
     const bool varied = s.variationEvery > 0 && mod (bar, s.variationEvery) == s.variationEvery - 1

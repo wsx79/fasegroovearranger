@@ -1,6 +1,6 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.1.0 · 19 ottobre 2026
+Versione 0.3.0 · 20 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
@@ -28,3 +28,7 @@ Puoi eliminare i progetti/esportazioni dal file manager e cancellare l'autosave 
 Non sono richiesti amministratore, rubrica, calendario, posizione, camera o accesso cloud. I permessi effettivamente mostrati dal sistema possono variare in base al packaging, al dispositivo audio e agli strumenti caricati.
 
 Questa informativa descrive il comportamento del codice dell'arranger. Non sostituisce le informative dei plugin o dei siti esterni. Per richieste sul progetto usa il repository; evita di inserire dati privati nelle issue pubbliche.
+
+## Lingue, tooltip e MIDI
+
+Lingua e attivazione dei tooltip sono preferenze locali salvate sul computer. LEARN legge le note della tastiera MIDI soltanto dopo che scegli un ingresso MIDI nella sua finestra; quando la chiudi, il callback viene rimosso e viene ripristinata l’attivazione precedente del dispositivo. Non registra audio e non usa il microfono. I preset personali restano file locali.

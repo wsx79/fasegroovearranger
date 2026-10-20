@@ -113,7 +113,7 @@ La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese;
 | **Tonalità / Scala** | La fondamentale e il modo del brano. Sono in alto, accanto al tempo. |
 | **PROGRESSION** | Sceglie un giro dalla libreria di Fase Groove Piano. Alcuni giri impostano anche la scala adatta. |
 | **NEW CHORDS** | Prepara un altro giro di gradi nella scala scelta. |
-| **EDIT CHORDS** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, uno per battuta. |
+| **EDIT CHORDS** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, con durata condivisa. |
 | **Estensioni / Voicing** | Il colore degli accordi e la disposizione delle note del piano. |
 | **DENSITY** | Da poche note a un groove più fitto. |
 | **SWING** | Sposta i sedicesimi alternati: da dritto a più shuffle. |
@@ -140,6 +140,18 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 | **Strings** | Lo stile degli archi: un sostegno lungo o una parte più ritmica. |
 | **Batteria** | Soltanto il pezzo scelto: groove, dinamica, nota MIDI e posizione rispetto al beat. |
 | **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
+
+### Piano: vista estesa
+
+Il pannello del piano mostra i controlli estesi. Il menu **ESTESA** in alto porta direttamente a Esecuzione, Frasi/Fill, Ritmo/Dinamica, Strumenti musicali e Suono guida.
+
+Trovi i **rivolti per accordo**, il seed del riff e del feel, **NEW FEEL**, pedale ed espressione CC64/CC11, ordine e blocchi A–D, griglia di 32 step e cursori della dinamica. Clicca uno step per scegliere pausa, nota, accento, ghost, anticipo o tenuto. Trascina il cursore per la dinamica; doppio clic torna al valore automatico. **RND PIANO** cambia il ritmo rispettando i segmenti bloccati; **RND VELOCITY** cambia solo le dinamiche.
+
+**DNA**, **MORPH**, **A/B**, **VARIANTS** e il **CIRCOLO DELLE QUINTE** usano gli strumenti musicali originali. I risultati preparano i parametri: APPLY TRACK / APPLY CLIP scrive le note. A e B permettono anche l'ascolto del clip con due voicing: UNDO annulla la prova. PRESETS salva e carica i parametri della traccia in file `.fgapreset`. IMPORT MIDI stima accordi e ritmo; verifica il risultato prima di rigenerare. **LEARN** apprende un accordo quando rilasci tutti i tasti, dopo aver scelto l'ingresso MIDI.
+
+Da **EDIT CHORDS → Ogni accordo** imposti la durata armonica condivisa: mezza, una, due o quattro battute. Il pump del suono guida offre frequenza, rilascio e sorgente **Tempo / MIDI della cassa**. Quest'ultima segue le note della traccia Kick; non è un ingresso audio esterno.
+
+Da **OPTIONS → Lingue** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso menu. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
 
 ### Suono guida, campione o VST
 

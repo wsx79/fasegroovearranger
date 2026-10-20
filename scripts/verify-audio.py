@@ -52,3 +52,5 @@ assert (folder / "ui.txt").read_text().startswith("PASS"), "instrument/editor in
 assert (folder / "guide.txt").read_text().startswith("PASS"), "native guide navigation, search and layout"
 for name in ["guide-welcome-it.png", "guide-chapter-it.png", "guide-search-en.png", "credits.png"]:
     assert (folder / name).stat().st_size > 10000, name
+
+assert (folder / "localisation.txt").read_text().startswith("PASS"), "six languages, tooltips and extended piano"

@@ -17,7 +17,7 @@ if system == 'macOS':
     arch = 'universal' if {'arm64', 'x86_64'}.issubset(architectures) else '-'.join(architectures)
 else:
     arch = platform.machine()
-name = f'FaseGrooveArranger-0.2.1-{system}-{arch}'
+name = f'FaseGrooveArranger-0.3.0-{system}-{arch}'
 dist = root / 'dist'
 stage = dist / name
 stage.mkdir(parents=True, exist_ok=True)

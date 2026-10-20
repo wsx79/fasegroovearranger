@@ -53,6 +53,7 @@ struct GuitarSettings
     // The chords: one per bar, numChords bars round. When liveChord is set (notes held on the MIDI
     // input, e.g. from Fase Groove Piano), every bar plays that chord instead.
     std::array<Chord, maxChords> chords {};
+    int stepsPerChord = 16; // Arranger: shared harmonic duration; 16 preserves plugin behaviour.
     int numChords = 4;                     // the chords used, one per bar (1 to maxChords)
     bool useLiveChord = false;
     ChordTones liveChord {};
