@@ -141,6 +141,8 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 | **Batteria** | Soltanto il pezzo scelto: groove, dinamica, nota MIDI e posizione rispetto al beat. |
 | **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
 
+I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL** della parte scelta cambia le dinamiche MIDI alla generazione. I mute delle parti agiscono anche sull’ascolto delle note già scritte. L’esportazione MIDI conserva le note del clip.
+
 ### Piano: vista estesa
 
 Le schermate mostrano la lingua inglese; i nomi dei comandi qui sotto seguono la lingua italiana.

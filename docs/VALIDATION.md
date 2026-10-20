@@ -1,5 +1,13 @@
 # Validation record
 
+## Family editor revision, 0.4.0
+
+[Native builds on Windows, macOS and Linux](https://github.com/wsx79/fasegroovearranger/actions/runs/39385637071), source `56e67d16c57446acc098fe7218c2b76bf39f115c`, passed all four jobs. Native screenshots were inspected against the original Piano extended layout, Drums grid and Guitar layout. Panel bounds/overlap checks passed for Piano, Bass, Strings, Kick and Guitar; six-language switching and original musical tool checks passed. Further visual refinements and editing-gesture/audio tests are part of the subsequent source revision and require that revision’s CI result.
+
+The local core suite passes all thirteen genres with complete phrases, stored-take determinism, scope isolation and locks. New checks verify that the legacy minute property and tempo do not stretch the musical form to a clock target, longer developing motifs and sparse/busy grooves affect phrase development, and the original intro’s harmonic content is not stripped into a compulsory mixing window. Independent SMF parsing passes conductor + 17 tracks and isolated Kick/Piano stems, matched note pairs, controller resets and section markers.
+
+Default genre forms currently range from 4:25 (Gospel) to 6:05 (Jackin’) at their default tempi. These are outcomes, not fixed durations; changing motifs, harmonic cycles and evolution can change the form.
+
 This document distinguishes executed checks from outstanding platform/plugin validation.
 
 ## Executed in the development workspace

@@ -141,6 +141,8 @@ Click an instrument's **name** to open its panel. Choose how to hear it at the t
 | **Drums** | Just the selected piece: groove, velocity, MIDI note and pocket. |
 | **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
 
+Guitar-part **VOLUME** faders control the guide sound; the selected part’s **LEVEL** changes MIDI dynamics on generation. Part mutes also affect playback of existing notes. MIDI export preserves the clip’s notes.
+
 ### Piano: extended view
 
 Piano uses the extended editor’s adjacent panels: Harmony & Scales, Circle of Fifths, Groove and Guide Sound. Rhythm/Velocity and Performance are below. Key, scale and transport remain in the DAW toolbar. **ADVANCED** jumps to the panel sections.

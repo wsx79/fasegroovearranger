@@ -13,7 +13,12 @@ public:
     MainComponent& owner;std::function<void()> edit;
     ChordSummary(MainComponent& o,std::function<void()> fn):owner(o),edit(std::move(fn)){setTooltip(controlTip("PROGRESSION"));}
     void mouseDown(const juce::MouseEvent&)override{edit();}
-    void paint(juce::Graphics& g)override{auto names=chordNames(owner.project.settings);const int rows=((int)names.size()+3)/4;const float w=getWidth()/4.f,h=getHeight()/(float)std::max(1,rows);for(size_t i=0;i<names.size();++i){auto r=juce::Rectangle<float>((i%4)*w,(i/4)*h,w,h).reduced(3,3);g.setColour(Palette::field);g.fillRoundedRectangle(r,4);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(r,4,1);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(9,true));g.drawText(juce::String((int)i+1),r.withHeight(18).reduced(5,0),juce::Justification::centredLeft);g.setColour(Palette::accent);g.setFont(FamilyTheme::font(14,true));g.drawText(juce::String::fromUTF8(names[i].c_str()),r,juce::Justification::centred);}}
+    void paint(juce::Graphics& g)override{
+        auto names=chordNames(owner.project.settings);const int rows=names.size()>4?2:1,perRow=((int)names.size()+rows-1)/rows;const float w=getWidth()/(float)perRow,h=76.f/rows;
+        auto browse=juce::Rectangle<float>(0,0,(float)getWidth(),26);g.setColour(Palette::control);g.fillRoundedRectangle(browse,4);g.setColour(Palette::text);g.setFont(FamilyTheme::font(11,true));g.drawText(tr("PROGRESSION..."),browse,juce::Justification::centred);
+        for(size_t i=0;i<names.size();++i){auto r=juce::Rectangle<float>((i%perRow)*w,34+(i/perRow)*h,w,h).reduced(3,rows>1?1.5f:0.f);g.setColour(Palette::control);g.fillRoundedRectangle(r,6);g.setColour(Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(r.reduced(.5f),6,1);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(rows>1?8.f:9.5f,true));g.drawText(tr("Bar")+" "+juce::String((int)i+1),r.reduced(4,6).withHeight(12),juce::Justification::centred);g.setColour(Palette::text);g.setFont(FamilyTheme::font(rows>1?12.5f:19.f,true));g.drawFittedText(juce::String::fromUTF8(names[i].c_str()),r.withTrimmedTop(18).reduced(4,4).toNearestInt(),juce::Justification::centred,1,.6f);}
+        g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10));g.drawText(tr("The chord slots play"),0,getHeight()-28,getWidth(),26,juce::Justification::centred);
+    }
 };
 void drawFamilyLogo(juce::Graphics& g,juce::Rectangle<float> area){
     if(auto icon=juce::Drawable::createFromImageData(BinaryData::arranger_svg,BinaryData::arranger_svgSize))icon->drawWithin(g,area.removeFromLeft(area.getHeight()),juce::RectanglePlacement::centred,1);
@@ -44,7 +49,7 @@ void InstrumentPanel::knob(const juce::String& name,double lo,double hi,double s
 }
 void InstrumentPanel::choice(const juce::String& name,const juce::StringArray& items,int selected,std::function<void(EngineOptions&,int)> fn){auto c=std::make_unique<juce::ComboBox>();c->addItemList(items,1);c->setSelectedItemIndex(selected,juce::dontSendNotification);auto* raw=c.get();c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onChange=[this,raw,fn]{apply([&](EngineOptions& e){fn(e,raw->getSelectedItemIndex());});};addAndMakeVisible(*c);controls.push_back({std::move(c),name,false});}
 void InstrumentPanel::sharedChoice(const juce::String& name,const juce::StringArray& items,int selected,std::function<void(int)> fn){auto c=std::make_unique<juce::ComboBox>();c->addItemList(items,1);c->setSelectedItemIndex(selected,juce::dontSendNotification);if(selected<0)c->setTextWhenNothingSelected("Browse...");c->getProperties().set("fgaControl",name);auto* raw=c.get();c->onChange=[this,raw,fn]{owner.checkpoint();fn(raw->getSelectedItemIndex());owner.changed(false);};addAndMakeVisible(*c);controls.push_back({std::move(c),name,false});}
-void InstrumentPanel::action(const juce::String& name,std::function<void()> fn){auto c=std::make_unique<juce::TextButton>(tr(name));c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=std::move(fn);addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});}
+void InstrumentPanel::action(const juce::String& name,std::function<void()> fn){auto c=std::make_unique<juce::TextButton>(tr(name=="RANDOM CHORDS"?"Random":name));c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=std::move(fn);addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});}
 void InstrumentPanel::toggle(const juce::String& name,bool value,std::function<void(EngineOptions&,bool)> fn){auto c=std::make_unique<juce::ToggleButton>(tr(name));c->setToggleState(value,juce::dontSendNotification);auto* raw=c.get();c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));c->onClick=[this,raw,fn]{apply([&](EngineOptions& e){fn(e,raw->getToggleState());});};addAndMakeVisible(*c);controls.push_back({std::move(c),{},false});}
 void InstrumentPanel::rebuild(){
     controls.clear();headings.clear();const int track=owner.selectedTrack;const auto e=owner.project.tracks[(size_t)track].engine;const bool piano=track==0,bass=track==1,strings=track==2,guitar=track==3,drum=track>=4;
@@ -75,8 +80,10 @@ void InstrumentPanel::rebuild(){
     knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");
     knob("VOLUME",0,200,1,owner.project.tracks[(size_t)track].gain*100,[this](auto&,double v){owner.project.tracks[(size_t)owner.selectedTrack].gain=v/100;}," %");
     if(track<3){knob("CHORUS",0,100,1,e.chorus*100,[](auto& o,double v){o.chorus=v/100;}," %");knob("PUMP",0,100,1,e.pump*100,[](auto& o,double v){o.pump=v/100;}," %");knob("PUMP RELEASE",5,100,1,e.pumpRelease*100,[](auto& o,double v){o.pumpRelease=v/100;}," % beat");choice("Sidechain Rate",{"1/4","1/8","1/2","1/16"},e.pumpRate,[](auto& o,int v){o.pumpRate=v;});choice("Sidechain Source",{"Tempo (internal)","Kick MIDI"},e.pumpSource,[](auto& o,int v){o.pumpSource=v;});}
-    if(guitar||drum){heading(guitar?"GUITAR / LANE MIXER":"DRUM / POCKET");const int lanes=guitar?12:1;for(int i=0;i<lanes;++i){const size_t l=(size_t)i;const juce::String name=guitar?fgg::laneShortName(i):fgd::laneName(track-4);if(guitar){knob(name+" LEVEL",0,200,1,e.laneLevel[l]*100,[l](auto& o,double v){o.laneLevel[l]=v/100;}," %");choice(name+" OCTAVE",{"-2","-1","0","+1","+2"},e.laneOctave[l]+2,[l](auto& o,int v){o.laneOctave[l]=v-2;});toggle(name+" MUTE",e.laneMute[l],[l](auto& o,bool v){o.laneMute[l]=v;});}knob(name+" SWING",0,150,1,e.laneSwing[l]*100,[l](auto& o,double v){o.laneSwing[l]=v/100;}," %");knob(name+" PUSH / PULL",-100,100,1,e.laneShift[l],[l](auto& o,double v){o.laneShift[l]=v;}," ms");}}
+    if(guitar||drum){heading(guitar?"GUITAR / LANE MIXER":"DRUM / POCKET");const int lanes=guitar?12:1;for(int i=0;i<lanes;++i){const size_t l=(size_t)i;const juce::String name=guitar?fgg::laneShortName(i):fgd::laneName(track-4);if(guitar){knob(name+" VOLUME",0,200,1,e.laneVolume[l]*100,[l](auto& o,double v){o.laneVolume[l]=v/100;}," %");choice(name+" OCTAVE",{"-2","-1","0","+1","+2"},e.laneOctave[l]+2,[l](auto& o,int v){o.laneOctave[l]=v-2;});toggle(name+" MUTE",e.laneMute[l],[l](auto& o,bool v){o.laneMute[l]=v;});}knob(name+" SWING",0,150,1,e.laneSwing[l]*100,[l](auto& o,double v){o.laneSwing[l]=v/100;}," %");knob(name+" PUSH / PULL",-100,100,1,e.laneShift[l],[l](auto& o,double v){o.laneShift[l]=v;}," ms");}}
     if(guitar){
+        action("SOLISTA",[this]{if(owner.leadButton.onClick)owner.leadButton.onClick();});
+        if(auto* button=dynamic_cast<juce::Button*>(controls.back().component.get())){button->setClickingTogglesState(true);button->setToggleState(owner.project.settings.guitarLead,juce::dontSendNotification);}
         juce::StringArray lanes;for(int i=0;i<12;++i)lanes.add(fgg::laneShortName(i));
         sharedChoice("Guitar part",lanes,guitarLane,[this](int v){guitarLane=v;juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
         knob("Part level",0,200,1,e.laneLevel[(size_t)guitarLane]*100,[lane=guitarLane](auto& o,double v){o.laneLevel[(size_t)lane]=v/100;}," %");
@@ -118,8 +125,8 @@ void InstrumentPanel::resized(){
     const int progHeight=track<3?138:0;
     if(track<3){
         card("PROGRESSION",18,10,W-36,128);
-        put("Ready progressions",32,59,146,28);tool("RANDOM CHORDS",186,59,70);put("Length",32,105,94,24);put("Each chord",134,105,180,24);
-        tool("VARIANTS",150,17,96);tool("LEARN",264,59,50);
+        put("Ready progressions",32,59,134,28);tool("RANDOM CHORDS",174,59,74);put("Length",32,105,94,24);put("Each chord",134,105,180,24);
+        tool("VARIANTS",150,17,96);tool("LEARN",256,59,58);
         auto names=chordNames(owner.project.settings);const int slotW=(W-346)/8;
         for(int i=0;i<8;++i){const int x=328+i*slotW;put("Degree "+juce::String(i+1),x,101,slotW-8,24);
             if(piano&&track==0){put("Inversion "+juce::String(i+1),x,40,slotW-8,22);for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()=="Inversion "+juce::String(i+1))if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setSliderStyle(juce::Slider::IncDecButtons);slider->setTextBoxStyle(juce::Slider::TextBoxLeft,false,32,20);}}
@@ -156,17 +163,19 @@ void InstrumentPanel::resized(){
         card(guitar?"GUITAR PART":"KIT & SOUNDS",18,my,part,186);
         card(guitar?"CHORDS":"DRUM / POCKET",318,my,chords,186);
         card("GROOVE",grooveX,my,grooveW,186);card("GUIDE SOUND",W-sound-18,my,sound,186);
-        if(guitar){put("Guitar part",32,my+43,164);put("Part mute",202,my+43,92,24);put("Part octave",32,my+108,70);put("Part level",202,my+81,92,55);put("Let ring",32,my+154,100,24);put("Room for band",136,my+154,158,24);put("Chord summary",326,my+28,244,150);put("STRUM",W-sound+4,my+153,100,24);put("Strum after fill",grooveX+grooveW-136,my+6,122,20);put("Push changes",W-sound+20,my+6,210,20);}
+        if(guitar){tool("SOLISTA",214,my+6,88);put("Guitar part",32,my+43,164);put("Part mute",202,my+43,92,24);put("Part octave",32,my+108,70);put("Part level",202,my+81,92,55);put("Let ring",32,my+154,100,24);put("Room for band",136,my+154,158,24);put("Chord summary",326,my+28,244,150);put("STRUM",W-sound+4,my+153,100,24);put("Strum after fill",grooveX+grooveW-136,my+6,122,20);put("Push changes",W-138,my+6,110,20);}
         else{put("MIDI NOTE",32,my+45,100,74);put("Genre feel",148,my+42,146,24);put("Bass space",148,my+76,146,24);put("Crash after fill",32,my+143,180,24);const auto name=juce::String(fgd::laneName(track-4));put(name+" SWING",332,my+58,110,80);put(name+" PUSH / PULL",450,my+58,110,80);}
         put("FILL EVERY",grooveX+14,my+42,(grooveW-38)/2);put("FILL STYLE",grooveX+24+(grooveW-38)/2,my+42,(grooveW-38)/2);
         put("VARIATION EVERY",grooveX+14,my+84,grooveW-28,24);
         int k=0;for(const auto* n:{"SWING","HUMANIZE","VELOCITY","ACCENTS"}){const int kw=(grooveW-24)/4;put(n,grooveX+12+k++*kw,my+127,kw,52);}
         const int sx=W-sound-4;int kx=0;for(const auto* n:{"TONE","REVERB","VOLUME"})put(n,sx+(kx++)*78,my+57,74,70);
     }
+    if(!piano)for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()=="DENSITY"||c.component->getProperties()["fgaControl"].toString()=="STRUM")if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setSliderStyle(juce::Slider::LinearHorizontal);slider->setTextBoxStyle(juce::Slider::TextBoxRight,false,48,22);}
+    for(auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();if(name=="REGISTER")if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get()))slider->textFromValueFunction=[](double v){return juce::MidiMessage::getMidiNoteName((int)v,true,true,4);};if(owner.selectedTrack==3&&name.endsWith(" MUTE"))if(auto* button=dynamic_cast<juce::Button*>(c.component.get()))button->setButtonText(tr("Mute"));}
     int bottom=y+(piano?350:324);
     if(piano){
         card("RHYTHM / VELOCITY",18,bottom,W-36,280);
-        int tx=32;for(const auto* n:{"RND PIANO","RND BASS","RND VELOCITY","MORPH","DNA","A/B","IMPORT MIDI","PRESETS"}){tool(n,tx,bottom+31,112);tx+=118;}
+        int tx=32;for(const auto* n:{"RND PIANO","RND BASS","RND VELOCITY","MORPH","DNA","A/B","IMPORT MIDI","PRESETS"}){bool exists=false;for(const auto& c:controls)exists=exists||c.component->getProperties()["fgaControl"].toString()==n;if(exists){tool(n,tx,bottom+31,112);tx+=118;}}
         for(auto& c:controls)if(dynamic_cast<PianoStepGrid*>(c.component.get()))c.component->setBounds(32,bottom+76,W-64,180);
         // Segment order and locks stay beside the rhythm as in the original grid.
         bottom+=290;
@@ -179,8 +188,9 @@ void InstrumentPanel::resized(){
         card("GUITAR / LANE MIXER",18,bottom,W-36,490);
         const int lw=(W-64)/12;for(int lane=0;lane<12;++lane){const auto name=juce::String(fgg::laneShortName(lane));const int x=32+lane*lw;
             put(name+" PUSH / PULL",x,bottom+72,lw-8,64);put(name+" SWING",x,bottom+160,lw-8,64);
-            put(name+" LEVEL",x,bottom+250,lw-8,142);put(name+" OCTAVE",x,bottom+416,lw-8,24);put(name+" MUTE",x,bottom+454,lw-8,24);
-            for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()==name+" LEVEL")if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get()))slider->setSliderStyle(juce::Slider::LinearVertical);
+            put(name+" VOLUME",x,bottom+250,lw-8,142);put(name+" OCTAVE",x,bottom+416,lw-8,24);put(name+" MUTE",x,bottom+454,lw-8,24);
+            const auto ink=lane<=1?Palette::accent:lane<=4?Palette::accent2:lane<=6?Palette::percussion:lane<=8?Palette::cymbals:Palette::toms;
+            for(auto& c:controls){const auto parameter=c.component->getProperties()["fgaControl"].toString();if(parameter.startsWith(name+" "))if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setColour(juce::Slider::rotarySliderFillColourId,ink);if(parameter==name+" VOLUME"){slider->setSliderStyle(juce::Slider::LinearVertical);slider->setColour(juce::Slider::trackColourId,ink);slider->setColour(juce::Slider::thumbColourId,Palette::text);slider->setColour(juce::Slider::backgroundColourId,Palette::field);}}}
         }bottom+=500;
     }
     // Less frequently used lane timing and sound parameters remain reachable in
@@ -199,6 +209,6 @@ void InstrumentPanel::paint(juce::Graphics& g){
     for(const auto& card:cards){g.setColour(Palette::panel);g.fillRoundedRectangle(card.bounds.toFloat(),6);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(card.bounds.toFloat(),6,1);g.setColour(Palette::accent);g.fillRect(card.bounds.getX()+13,card.bounds.getY()+11,2,10);auto font=FamilyTheme::font(10,true);font.setExtraKerningFactor(.08f);g.setFont(font);g.setColour(Palette::text);g.drawText(tr(card.title),card.bounds.getX()+23,card.bounds.getY()+4,card.bounds.getWidth()-32,24,juce::Justification::centredLeft);}
     if(owner.selectedTrack==3)for(const auto& card:cards)if(card.title=="GUITAR / LANE MIXER"){const int lw=(getWidth()-64)/12;for(int lane=0;lane<12;++lane){const int x=32+lane*lw;auto r=juce::Rectangle<float>((float)x-2,(float)card.bounds.getY()+32,(float)lw-4,450);g.setColour(Palette::field);g.fillRoundedRectangle(r,5);const auto ink=lane<=1?Palette::accent:lane<=4?Palette::accent2:lane<=6?Palette::percussion:lane<=8?Palette::cymbals:Palette::toms;g.setColour(ink);g.fillRoundedRectangle(r.withHeight(3).reduced(6,0),1.5f);g.setColour(Palette::text);g.setFont(FamilyTheme::font(10.5f,true));g.drawText(tr(fgg::laneShortName(lane)),r.withTrimmedTop(5).withHeight(16),juce::Justification::centred);}}
     for(const auto& c:controls){if(c.component->getWidth()==0||dynamic_cast<PianoStepGrid*>(c.component.get()))continue;auto r=c.component->getBounds();if(c.caption.startsWith("Degree ")||c.caption.startsWith("Inversion "))continue;g.setColour(Palette::dim);g.setFont(FamilyTheme::font(9,true));auto caption=c.caption;if(owner.selectedTrack==3)for(int lane=0;lane<12;++lane){auto prefix=juce::String(fgg::laneShortName(lane))+" ";if(caption.startsWith(prefix))caption=caption.substring(prefix.length());}g.drawText(tr(caption).toUpperCase(),r.getX(),r.getY()-17,r.getWidth(),15,c.knob?juce::Justification::centred:juce::Justification::centredLeft);}
-    if(owner.selectedTrack<3){auto names=chordNames(owner.project.settings);const int sw=(getWidth()-346)/8;for(size_t i=0;i<names.size();++i){g.setColour(Palette::text);g.setFont(FamilyTheme::font(14,true));g.drawText(juce::String::fromUTF8(names[i].c_str()),328+(int)i*sw,67,sw-8,22,juce::Justification::centred);}}
+    if(owner.selectedTrack<3){auto names=chordNames(owner.project.settings);const int sw=(getWidth()-346)/8;for(size_t i=0;i<8;++i){auto card=juce::Rectangle<float>((float)(326+(int)i*sw),28,(float)(sw-4),104);g.setColour(Palette::field.withAlpha(i<names.size()?1.f:.45f));g.fillRoundedRectangle(card,6);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(card,6,1);if(i>=names.size())continue;g.setColour(Palette::text);g.setFont(FamilyTheme::font(14,true));g.drawText(juce::String::fromUTF8(names[i].c_str()),328+(int)i*sw,67,sw-8,22,juce::Justification::centred);}}
 }
 }

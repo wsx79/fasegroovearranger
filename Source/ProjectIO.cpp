@@ -46,6 +46,7 @@ juce::var engineJson(const EngineOptions& e){auto o=object();
     set(o,"genreFeel",e.genreFeel);
     set(o,"bassSpace",e.bassSpace);
     {juce::Array<juce::var> values;for(auto v:e.segments)values.add(v);set(o,"segments",values);}
+    {juce::Array<juce::var> values;for(auto v:e.laneVolume)values.add(v);set(o,"laneVolume",values);}
     {juce::Array<juce::var> values;for(auto v:e.laneLevel)values.add(v);set(o,"laneLevel",values);}
     {juce::Array<juce::var> values;for(auto v:e.laneSwing)values.add(v);set(o,"laneSwing",values);}
     {juce::Array<juce::var> values;for(auto v:e.laneShift)values.add(v);set(o,"laneShift",values);}
@@ -103,6 +104,7 @@ void readEngine(const juce::var& o,EngineOptions& e){
     e.genreFeel=(bool)o.getProperty("genreFeel",e.genreFeel);
     e.bassSpace=(bool)o.getProperty("bassSpace",e.bassSpace);
     if(auto* a=o["segments"].getArray())for(size_t i=0;i<e.segments.size()&&i<(size_t)a->size();++i)e.segments[i]=(int)(*a)[(int)i];
+    if(auto* a=o["laneVolume"].getArray())for(size_t i=0;i<e.laneVolume.size()&&i<(size_t)a->size();++i)e.laneVolume[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneLevel"].getArray())for(size_t i=0;i<e.laneLevel.size()&&i<(size_t)a->size();++i)e.laneLevel[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneSwing"].getArray())for(size_t i=0;i<e.laneSwing.size()&&i<(size_t)a->size();++i)e.laneSwing[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneShift"].getArray())for(size_t i=0;i<e.laneShift.size()&&i<(size_t)a->size();++i)e.laneShift[i]=(double)(*a)[(int)i];

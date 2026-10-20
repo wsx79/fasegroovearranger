@@ -44,6 +44,7 @@ struct EngineOptions {
     int rangeLow = 24, rangeHigh = 108, midiNote = -1;
     bool octaveTop = false, realism = true, letRing = false, roomForBand = true, pushChanges = true, afterFill = true, genreFeel = true, bassSpace = true;
     std::array<int,4> segments {0,1,2,3};
+    std::array<double,12> laneVolume {1,1,1,1,1,1,1,1,1,1,1,1};
     std::array<double,12> laneLevel {1,1,1,1,1,1,1,1,1,1,1,1};
     std::array<double,12> laneSwing {1,1,1,1,1,1,1,1,1,1,1,1};
     std::array<double,12> laneShift {};

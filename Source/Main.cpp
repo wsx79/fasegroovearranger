@@ -69,6 +69,8 @@ public:
             bool ok=window->content->main.writeUiEvidence(folder);auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
             run("mix.wav",-1,false);run("mix.mp3",-1,true);
             for(int ti=0;ti<17;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
+            const auto guitarMidi=fga::midiFile(p,3);p.tracks[3].engine.laneVolume.fill(0);run("guitar-volume-zero.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;
+            p.tracks[3].engine.laneVolume.fill(1);p.tracks[3].engine.laneMute.fill(true);run("guitar-lanes-muted.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;p.tracks[3].engine.laneMute.fill(false);
             p.loop=true;p.loopStart=0;p.loopEnd=4;audio.publish(p);audio.seek(3.999);audio.play(true);
             juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;
             audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);

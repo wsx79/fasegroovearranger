@@ -33,9 +33,12 @@ public:
     bool selecting=false;
     juce::Rectangle<float> marquee;
     void fitNotes();
+    bool verifyEditing();
     float rowHeight()const{return laneView()?40.f:std::max(5.f,(getHeight()-148.f)/(highNote-lowNote+1));}
     int leftMargin()const{return laneView()?148:64;}
-    float velocityTop()const{return (float)getHeight()-96;}
+    float velocityTop()const{return ownerTrackIsDrum()?112.f:(float)getHeight()-96;}
+    float velocityHeight()const{return (float)getHeight()-velocityTop()-18;}
+    bool ownerTrackIsDrum()const;
     void editVelocity(juce::Point<float>);
     bool laneView() const;
     float noteY(const Note&) const;
@@ -104,8 +107,10 @@ private:
     juce::Label positionLabel,chordsLabel,statusLabel;
     juce::TextButton soundButton{"INSTRUMENT"},pluginEditorButton{"OPEN VST"},sampleButton{"LOAD SAMPLE"},loadPluginButton{"LOAD VST3 / AU"};
     juce::Slider gainSlider,panSlider,velocitySlider;
-    juce::ToggleButton muteButton{"MUTE"},soloButton{"SOLO"},lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
-    juce::ComboBox soundBox,gridBox,brushBox;
+    juce::TextButton muteButton{"MUTE"},soloButton{"SOLO"};
+    juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
+    juce::ComboBox soundBox,gridBox;
+    juce::TextButton brushAccent{"Accent"},brushHit{"Hit"},brushGhost{"Ghost"},brushFlam{"Flam"};
     juce::TextButton fitNotesButton{"FIT"},drawTool{"Draw"},selectTool{"Select"},eraseTool{"Erase"};
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     juce::TextButton sectionLoopButton{"LOOP SECTION"};

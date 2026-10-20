@@ -21,6 +21,13 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("INSTRUMENT PANEL"))return tr("Go back to the arrangement or open this instrument's controls.");
     if(key.equalsIgnoreCase("< ARRANGEMENT"))return tr("Go back to the arrangement or open this instrument's controls.");
 
+    if(key.endsWithIgnoreCase(" PUSH / PULL"))return tr("PUSH: ahead of the beat (-) or laid back (+), in milliseconds");
+    if(key.endsWithIgnoreCase(" SWING"))return tr("SWING: how much of the swing this lane takes (100% = as the Swing knob)");
+    if(key.endsWithIgnoreCase(" OCTAVE")||key=="Part octave")return tr("This lane up or down by octaves (the voicing keeps its shape)");
+    if(key.endsWithIgnoreCase(" VOLUME")&&key!="VOLUME")return tr("volume of the guide sound. The MIDI velocities don't change: LEVEL does that");
+    if(key=="Part level")return tr("This lane's LEVEL: its MIDI velocities (and so the clips) go up or down");
+    if(key=="Range")return controlTip("RANGE LOW");
+    if(key=="Ready progressions")return controlTip("PROGRESSION");
     if(key.equalsIgnoreCase("GROOVE"))return tr("The rhythm of both hands, grouped by genre");
     if(key.equalsIgnoreCase("REGISTER"))return tr("Moves the right hand up or down the keyboard");
     if(key.equalsIgnoreCase("STRUM"))return tr("Rolls the chord notes like a pianist instead of hitting them all together");

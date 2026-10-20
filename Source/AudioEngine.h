@@ -25,6 +25,7 @@ struct Instrument {
     std::array<int,fgd::numLanes> drumNotes{};
     std::array<float,fgd::numLanes> drumLevels{};
     std::array<float,fgg::numLanes> guitarLevels{};
+    std::array<bool,fgg::numLanes> guitarMuted{};
     std::vector<GuideGuitar::Event> guitarEvents;
     juce::AudioBuffer<float> scratch;
     juce::MidiBuffer midi;

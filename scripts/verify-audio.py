@@ -32,6 +32,8 @@ for i in range(17):
     if stem[2] > .00001: active += 1
     if i < 5: assert stem[2] > .00001, f'silent primary instrument {i}'
 assert active >= 8, f'only {active} active stems'
+assert inspect(folder / 'guitar-volume-zero.wav')[3] == 0, 'guitar guide faders must control audio without rewriting MIDI'
+assert inspect(folder / 'guitar-lanes-muted.wav')[3] == 0, 'guitar lane mute must silence stored MIDI during playback'
 silence = inspect(folder / 'silence.wav')
 assert silence[3] == 0, silence
 mp3 = (folder / 'mix.mp3').read_bytes()
