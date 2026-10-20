@@ -31,9 +31,10 @@ InlineText inlineText(const juce::String& text,float size,bool heading=false,juc
 }
 class PicturePage:public juce::Component{
 public:
-    explicit PicturePage(juce::Image image){picture.setImage(image);picture.setSize(image.getWidth(),image.getHeight());port.setViewedComponent(&picture,false);addAndMakeVisible(port);setSize(1060,760);}
+    explicit PicturePage(juce::Image image){setLookAndFeel(&theme);picture.setImage(image);picture.setSize(image.getWidth(),image.getHeight());port.setViewedComponent(&picture,false);addAndMakeVisible(port);setSize(1060,760);}
+    ~PicturePage()override{setLookAndFeel(nullptr);}
     void resized()override{port.setBounds(getLocalBounds());}
-private:juce::ImageComponent picture;juce::Viewport port;
+private:FamilyLookAndFeel theme;juce::ImageComponent picture;juce::Viewport port;
 };
 class GuideBook:public juce::Component{
 public:
@@ -120,7 +121,7 @@ public:
     }
 private:
     int getNumRows()override{return (int)book.chapters.size();}
-    void paintListBoxItem(int row,juce::Graphics& g,int width,int height,bool selected)override{if(row<0||row>=getNumRows())return;if(selected){g.setColour(Palette::accent.withAlpha(.12f));g.fillRoundedRectangle(juce::Rectangle<float>(0,1,(float)width,(float)height-2),4);g.setColour(Palette::accent);g.fillRect(0,8,3,height-16);}g.setColour(selected?Palette::text:Palette::dim);g.setFont(FamilyTheme::font(12,selected));g.drawText(book.chapters[(size_t)row].first,12,0,width-20,height,juce::Justification::centredLeft);}
+    void paintListBoxItem(int row,juce::Graphics& g,int width,int height,bool selected)override{if(row<0||row>=getNumRows())return;if(selected){g.setColour(Palette::accent.withAlpha(.12f));g.fillRoundedRectangle(juce::Rectangle<float>(0,1,(float)width,(float)height-2),4);g.setColour(Palette::accent);g.fillRect(0,8,3,height-16);}g.setColour(selected?Palette::text:Palette::dim);g.setFont(FamilyTheme::font(12,selected));g.drawFittedText(book.chapters[(size_t)row].first,12,0,width-20,height,juce::Justification::centredLeft,2,1.f);}
     void selectedRowsChanged(int row)override{if(row>=0&&row<getNumRows())port.setViewPosition(0,(int)book.blocks[(size_t)book.chapters[(size_t)row].second].area.getY()-20);}
     juce::String getTooltipForRow(int row)override{return row>=0&&row<getNumRows()?book.chapters[(size_t)row].first:juce::String();}
     bool isEnglish=false,manual=false;juce::String documentTitle;

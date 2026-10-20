@@ -11,18 +11,20 @@ This document distinguishes executed checks from outstanding platform/plugin val
 
 ## Executed in GitHub Actions
 
-[Successful Windows, macOS and Linux validation run](https://github.com/wsx79/fasegroovearranger/actions/runs/39338384737), source commit `68fec8f6d35a733cec4791609ce1a2e19d0ae898`:
+[Windows, macOS and Linux validation of the bilingual guide and standalone](https://github.com/wsx79/fasegroovearranger/actions/runs/39375342152), source commit `116e933b5274eeae4ccf9c37afc18e3776c56f04`:
 
-- All three native standalone applications compiled and passed the core, integrated MP3 and project IO tests.
-- Project IO checks cover JSON round-trip, atomic file save/load, invalid schema rejection and PPQ MIDI import.
-- Linux standalone rendered a complete mix, 17 WAV stems, MP3 and a fully muted silent mix. The test arrangement had 12 active stems and five intentionally empty ones. All 17 WAV stems aligned at 305,809 frames / 44.1 kHz; the mix RMS was 0.14934.
-- ffmpeg independently decoded the MP3 and confirmed a non-silent signal. The MPEG header confirmed 320 kbps / 44.1 kHz / stereo.
-- Manual callback simulation passed seeking, held-note chase, crossing a loop boundary and pause silence.
-- Inspected the actual native screenshot from the smoke-test artifact; adjusted control widths to keep the loop/mute/solo/lock labels readable.
-- Windows/macOS/Linux executable packages, full notices and exact corresponding-source links were produced as workflow artifacts.
+- All three native applications compiled; arranger, integrated MP3 and project IO tests passed. Project IO covers JSON round-trip, atomic saves, schema rejection and PPQ MIDI import.
+- The native guide rendered both languages, 13 chapters, 11 tables and four embedded screenshots. Automated checks passed internal chapter links, sidebar navigation, search and text zoom; actual guide and credit screenshots were inspected.
+- Offline HTML generation passed on Windows, macOS and Linux, including UTF-8 Italian accents, chapter targets and local screenshot assets. Local checks also validated stylesheet, script and language links. Browser interaction was not executed in this workspace.
+- The Linux application rendered a mix, all 17 aligned 24-bit WAV stems, MP3 and a fully muted silent mix. Twelve stems were active; five were intentionally empty. All stems aligned at 305,809 frames / 44.1 kHz; mix RMS was 0.14149 and the peak remained below the clipping threshold.
+- ffmpeg independently decoded the MP3 into non-silent PCM. The MPEG header confirmed 320 kbps / 44.1 kHz / stereo.
+- Callback simulation passed seeking, held-note chase, looping and pause silence.
+- Native screenshots and routing checks cover the arrangement, individual instrument panels, full MIDI editors, isolated drums, all guitar lanes and notes mode, the guitar mixer, and APPLY preserving the stored take.
+- A real native VST3 test instrument loaded and received MIDI/playhead data. Its editor opened and closed repeatedly. Parameter changes affected rendered audio; saved plugin state restored the original result. This validates the fixture, not arbitrary commercial instruments.
+- Windows, universal macOS and Linux packages were produced with guides, privacy, licences, font assets and exact corresponding-source links.
 
-Further changes rerun the relevant checks. The native smoke test is automated; it does not substitute for listening on a real audio device or testing the user's external plugins.
+Final packaging refreshes the four documentation screenshots and credit spacing. Subsequent changes rerun the applicable checks; the current pull request exposes the latest workflow result. Automated rendering does not replace listening through a real audio device.
 
 ## Requires target hardware and user instruments
 
-Real audio-device playback, latency/buffer behaviour, external VST3/AU loading/UI/state, compatibility with particular sound libraries, long-session editing, accessibility and signed distribution require testing on target machines. No claim is made that arbitrary third-party plugins have already been verified. Current missing DAW capabilities are listed in README.md and both guides.
+Real audio-device playback, latency/buffer behaviour, commercial VST3/AU compatibility and state restoration, long-session editing, accessibility and signed distribution require testing on target machines. No claim is made that arbitrary third-party plugins have already been verified. Current missing DAW capabilities are listed in README.md and both guides.
