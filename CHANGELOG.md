@@ -2,6 +2,7 @@
 
 ## 0.5.1 — 2026-10-21
 
+- Track Inspector header arrow collapses the side panel to a narrow restore rail, recovering horizontal track space; the arrow stays accessible while scrolling the controls.
 - Mixer header button collapses the faders into a slim bar, recovering track space; SHOW MIXER restores the previous height. Existing MIXER/F3 toggles remain available.
 - Click anywhere in an arrangement clip to place playback precisely; Play/Space starts there, and playback already running jumps immediately. Works after horizontal scrolling.
 - Arrangement and MIDI rulers retain fractional beat positions. Seeking beyond an enabled loop continues from the chosen position; seeking back into it resumes looping.

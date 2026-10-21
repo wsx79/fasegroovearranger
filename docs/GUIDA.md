@@ -91,7 +91,7 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 ### Spazio di lavoro DAW
 
-L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. Se lo spazio verticale è ridotto, scorri il pannello.
+L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La freccia **<** nell’angolo superiore destro lo richiude in una barra stretta e allarga le tracce; la freccia **>** lo riapre. Il comando resta visibile anche quando scorri i controlli. Funzionano anche **INSPECTOR / I**. Se lo spazio verticale è ridotto, scorri il pannello.
 
 Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; i canali scorrono orizzontalmente quando lo spazio non basta.
 

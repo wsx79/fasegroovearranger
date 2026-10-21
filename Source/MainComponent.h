@@ -130,7 +130,7 @@ private:
     DawMixer mixer{*this};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
     int mixerHeight=244;
-    juce::TextButton inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
+    juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;

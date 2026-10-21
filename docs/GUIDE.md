@@ -91,7 +91,7 @@ Colours follow the instruments: **amber** for piano and kick, **cyan** for bass 
 
 ### DAW workspace
 
-The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. Scroll the inspector if vertical space is limited.
+The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. The **<** arrow at its top right folds it into a narrow rail to give the tracks more width; **>** reopens it. The arrow remains visible when scrolling through the controls. **INSPECTOR / I** also works. Scroll the inspector if vertical space is limited.
 
 The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. **COLLAPSE MIXER**, at the top right of the mixer, folds the faders away to give space back to the tracks. A slim bar keeps **SHOW MIXER** available to restore the previous height. **MIXER / F3** also works. Drag the mixer header to adjust its height; channels scroll horizontally when needed.
 

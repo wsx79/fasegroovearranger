@@ -37,8 +37,9 @@ void TrackInspector::refresh(){
     section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(owner.project.sections[(size_t)owner.selectedSection].bars)+" "+tr("bars"),juce::dontSendNotification);
     gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
 }
-void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());caption(g,"TRACK INSPECTOR",{12,6,getWidth()-24,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,278,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,480,getWidth()-24,20});}
+void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());if(getWidth()<=40)return;caption(g,"TRACK INSPECTOR",{12,6,getWidth()-48,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,278,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,480,getWidth()-24,20});}
 void TrackInspector::resized(){
+    const bool collapsed=getWidth()<=40;for(auto* child:getChildren())child->setVisible(!collapsed);if(collapsed)return;
     const int w=getWidth()-24;
     name.setBounds(12,30,w,26);source.setBounds(12,60,w,24);instrument.setBounds(12,94,w,28);editor.setBounds(12,128,w,28);
     mute.setBounds(12,163,w/2-3,24);solo.setBounds(15+w/2,163,w/2-3,24);gain.setBounds(12,215,w,28);pan.setBounds(12,247,w,28);
@@ -87,6 +88,10 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     if(auto* collapse=dynamic_cast<juce::Button*>(mixer.findChildWithID("mixer-collapse"))){
         collapse->onClick();ok=ok&&!mixerVisible&&mixer.isVisible()&&mixer.getHeight()==28&&arrangementPort.getHeight()>trackAreaHeight&&!mixerToggle.getToggleState();
         if(auto output=folder.getChildFile("mixer-collapsed.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
+        const int trackAreaWidth=arrangementPort.getWidth();
+        inspectorCollapse.onClick();ok=ok&&!inspectorVisible&&inspectorPort.isVisible()&&inspectorPort.getWidth()==32&&arrangementPort.getWidth()>trackAreaWidth&&!inspectorToggle.getToggleState()&&inspectorCollapse.isVisible();
+        if(auto output=folder.getChildFile("workspace-collapsed.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
+        inspectorCollapse.onClick();ok=ok&&inspectorVisible&&inspectorPort.getWidth()==216&&arrangementPort.getWidth()==trackAreaWidth&&inspectorToggle.getToggleState();
         collapse->onClick();ok=ok&&mixerVisible&&mixer.getHeight()==expandedHeight&&mixerToggle.getToggleState()&&midiFile(project)==unchangedMidi&&audio.position()==unchangedPosition;
     }else ok=false;
     const int originalHeight=getHeight();
@@ -119,7 +124,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     arrangement.mouseDown(event(248,46,juce::ModifierKeys::shiftModifier));arrangement.mouseDrag(event(312,46,juce::ModifierKeys::shiftModifier));arrangement.mouseUp(event(312,46));ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16&&dirty;
     arrangement.mouseDoubleClick(event(232,76));ok=ok&&page==Page::editor&&pianoPort.isVisible();
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
-    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer collapse/restore recovers track space without changing MIDI/transport, audio-only fader with undo, clip select/swap/undo, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression");return ok;
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore recover track space without changing MIDI/transport, audio-only fader with undo, clip select/swap/undo, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression");return ok;
 }
 
 }

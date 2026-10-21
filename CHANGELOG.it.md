@@ -2,6 +2,7 @@
 
 ## 0.5.1 — 2026-10-21
 
+- Freccia nell’intestazione del Track Inspector per richiudere il pannello laterale in una barra stretta e recuperare larghezza per le tracce; il comando resta accessibile mentre si scorrono i controlli.
 - Pulsante ABBASSA MIXER nell’intestazione: richiude i fader in una barra sottile e recupera spazio per le tracce; RIAPRI MIXER ripristina l’altezza precedente. Restano disponibili MIXER/F3.
 - Clic in qualsiasi punto del clip per posizionare esattamente la riproduzione; Play/Spazio parte da lì, durante l’ascolto il salto è immediato. Funziona anche dopo lo scorrimento orizzontale.
 - I righelli di arrangiamento e MIDI mantengono le frazioni di battuta. Il clic oltre la fine del loop permette di ascoltare dal punto scelto; tornando nel loop il ciclo riprende.
