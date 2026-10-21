@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.5.1 — 2026-10-21
+
+- Clic in qualsiasi punto del clip per posizionare esattamente la riproduzione; Play/Spazio parte da lì, durante l’ascolto il salto è immediato. Funziona anche dopo lo scorrimento orizzontale.
+- I righelli di arrangiamento e MIDI mantengono le frazioni di battuta. Il clic oltre la fine del loop permette di ascoltare dal punto scelto; tornando nel loop il ciclo riprende.
+- Verifiche native per clic in pausa/durante l’ascolto, scorrimento, uscita/rientro nel loop e note MIDI già iniziate.
+
 ## 0.5.0 — 2026-10-21
 
 - Vista DAW con inspector laterale, mixer a 17 canali e master, livelli in dB, pan, mute/solo e indicatore di sovraccarico.

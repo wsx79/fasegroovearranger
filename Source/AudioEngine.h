@@ -82,7 +82,7 @@ private:
     int blockSize=512;
     double deviceRate=44100;
     int deviceBlock=512;
-    bool looping=false,needsReset=true,needsChase=false;
+    bool looping=false,loopBypassed=false,needsReset=true,needsChase=false;
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
     void resetAt(double beat);
     void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1);

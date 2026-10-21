@@ -62,10 +62,10 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.y<v.getY()+rulerHeight){
         if(e.x<v.getX()+headerWidth)return;
         if(e.mods.isPopupMenu()){owner.select(owner.selectedTrack,si);owner.showSectionMenu(si);return;}
-        if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(owner.project.sectionStart(si));}
+        if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         else{const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());
             if(e.mods.isShiftDown()){owner.checkpoint();loopDragging=true;loopAnchor=beat;owner.setLoopRange(beat,std::min(owner.project.length(),beat+4));}
-            else owner.audio.seek(beat);}
+            else owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         return;
     }
     const int row=rowAt(e.y);if(row<0)return;const int ti=trackAtRow(row);
@@ -86,6 +86,8 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.x<v.getX()+headerWidth&&e.x>=v.getX()+132&&e.x<v.getX()+151){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}
     if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else owner.showInstrument();return;}
     owner.select(ti,si);if(e.mods.isPopupMenu()){owner.showClipMenu(ti,si);return;}
+    owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));
+    repaint();
     clipTrack=ti;clipSource=clipTarget=si;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();grabKeyboardFocus();
 }
 int ArrangementView::rowY(int row) const {int y=rulerHeight;for(int r=0;r<row;++r)y+=trackHeight+(volumeVisible[(size_t)trackAtRow(r)]?80:0);return y;}
@@ -103,7 +105,7 @@ void ArrangementView::mouseUp(const juce::MouseEvent&){
     if(clipTrack>=0&&clipTarget>=0&&clipTarget!=clipSource){owner.checkpoint();transferClip(owner.project,clipTrack,clipSource,clipTarget,copyingClip);owner.select(clipTrack,clipTarget);owner.changed();}
     clipTrack=clipSource=clipTarget=-1;dragTrack=dragPoint=-1;loopDragging=false;repaint();
 }
-void ArrangementView::mouseMove(const juce::MouseEvent& e){const auto v=owner.arrangementPort.getViewArea();if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+trackHeight){setTooltip(tr("Click to select a clip; double-click or E to edit. Drag to swap sections on the same track; Alt-drag to copy over the destination. Undo restores the previous clips."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
+void ArrangementView::mouseMove(const juce::MouseEvent& e){const auto v=owner.arrangementPort.getViewArea();if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+trackHeight){setTooltip(tr("Click anywhere in a clip to select it and position playback; press Play to listen, or jump immediately while playing. Double-click or E to edit. Drag to swap sections on the same track; Alt-drag to copy over the destination. Undo restores the previous clips."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
 bool ArrangementView::verifyAutomation(const juce::File& folder){
     const auto saved=owner.project;const auto visibility=volumeVisible;const int track=4;const double zoom=pixelsPerBar;pixelsPerBar=24;owner.select(track,0);owner.arrangementPort.setViewPosition(0,0);
     bool ok=!volumeVisible[(size_t)track]&&!owner.project.tracks[(size_t)track].volume.enabled;
@@ -183,7 +185,7 @@ void PianoRoll::editVelocity(juce::Point<float> point){
 
 void PianoRoll::mouseDown(const juce::MouseEvent& e){
     grabKeyboardFocus();editingVelocity=false;if(e.x<owner.pianoPort.getViewArea().getX()+leftMargin())return;
-    if(e.y<40){owner.audio.seek(owner.project.sectionStart(owner.selectedSection)+std::clamp(std::floor(beat(e.x)),0.,owner.clipLength()));return;}
+    if(e.y<40){owner.audio.seek(owner.project.sectionStart(owner.selectedSection)+std::clamp(beat(e.x),0.,owner.clipLength()));return;}
     if(e.y>=velocityTop()){owner.checkpoint();editingVelocity=true;editVelocity(e.position);return;}
     if(laneView()&&e.y>=40+(owner.selectedTrack==3?12:1)*40)return;
     if(!laneView()&&e.y<48)return;
@@ -233,6 +235,9 @@ bool PianoRoll::verifyEditing(){
         mouseDown(event(at));mouseDrag(event(at.translated((float)(-4*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(-4*pixelsPerBeat),0)));
         ok=ok&&owner.clip().notes.size()==2&&std::abs(owner.clip().notes[0].start)<1e-9&&std::abs(owner.clip().notes[1].start-1)<1e-9;
     }
+    const auto notesBeforeSeek=owner.clip().notes;
+    mouseDown(event({leftMargin()+(float)(2.375*pixelsPerBeat),24}));
+    ok=ok&&std::abs(owner.audio.position()-owner.project.sectionStart(owner.selectedSection)-2.375)<1e-6&&owner.clip().notes.size()==notesBeforeSeek.size();
     owner.clip()=saved;tool=savedTool;flamBrush=savedFlam;clearSelection();owner.changed();fitNotes();return ok;
 }
 void PianoRoll::deleteSelected(){if(selected.empty())return;owner.checkpoint();auto& notes=owner.clip().notes;for(auto i=selected.rbegin();i!=selected.rend();++i)if(*i>=0&&*i<(int)notes.size())notes.erase(notes.begin()+*i);selected.clear();owner.changed();}

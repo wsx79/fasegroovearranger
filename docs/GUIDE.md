@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.5.0** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.5.1** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -95,9 +95,9 @@ The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, m
 
 The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. Drag the mixer header to adjust its height; channels scroll horizontally when needed.
 
-- **Click a clip** to select it; **double-click** or **E** opens the full MIDI editor.
+- **Click anywhere in a clip** to select it and place the cursor exactly there; press **PLAY** or **Space** to listen from that point. While playing, clicking jumps immediately. This also works after horizontal scrolling and beyond an active loop’s end; **double-click** or **E** opens the full MIDI editor.
 - **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.
-- **Click the bar ruler** to seek; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
+- **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
 - **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
 - Drop a MIDI file or personal sample on a track row to target that track.
 

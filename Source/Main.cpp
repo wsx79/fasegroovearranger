@@ -107,17 +107,27 @@ public:
             juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;
             audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             bool transport=audio.position()>=0&&audio.position()<4&&audio.isPlaying();
+            audio.seek(6.25);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            transport=transport&&audio.position()>6.25&&audio.position()<7&&audio.isPlaying();
+            audio.play(false);audio.seek(5.5);audio.play(true);
+            transport=transport&&std::abs(audio.position()-5.5)<1e-9;
+            audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            transport=transport&&audio.position()>5.5&&audio.position()<6;
+            audio.seek(3.999);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            transport=transport&&audio.position()<4&&audio.isPlaying();
             float* optionalOutputs[]{live.getWritePointer(0),nullptr};
             audio.audioDeviceIOCallbackWithContext(nullptr,0,optionalOutputs,2,512,context);
             transport=transport&&std::isfinite(live.getRMSLevel(0,0,512));
             audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
             for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
-            folder.getChildFile("transport.txt").replaceWithText(transport?"PASS seek, note chase, loop boundary and pause silence":"FAIL transport");ok=ok&&transport;
+            folder.getChildFile("transport.txt").replaceWithText(transport?"PASS precise paused/live seek, seek beyond loop, loop re-entry and pause silence":"FAIL transport");ok=ok&&transport;
             {
                 auto probe=p;probe.loop=false;for(auto& t:probe.tracks){t.mute=true;for(auto& c:t.clips)c.notes.clear();}
                 probe.tracks[0].mute=false;probe.tracks[0].gain=.5;probe.tracks[0].clips[0].notes={{0,4,69,100,0}};
-                audio.publish(probe);audio.seek(0);audio.play(true);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+                audio.publish(probe);audio.seek(2.375);audio.play(true);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+                const bool chase=audio.position()>2.375&&audio.position()<3&&live.getMagnitude(0,512)>1e-5;
+                folder.getChildFile("seek-note-chase.txt").replaceWithText(chase?"PASS playback starts inside a held note without rewinding or silence":"FAIL seek note chase");ok=ok&&chase;
                 probe.tracks[0].gain=0;audio.updateMix(probe);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
                 const bool startsSmoothly=live.getMagnitude(0,64)>0;
                 for(int block=0;block<8;++block)audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);

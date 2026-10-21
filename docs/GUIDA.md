@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.5.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.5.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -95,9 +95,9 @@ L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB,
 
 Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. Trascina l’intestazione del mixer per regolarne l’altezza; i canali scorrono orizzontalmente quando lo spazio non basta.
 
-- **Clic sul clip**: selezione; **doppio clic** o **E**: editor MIDI grande.
+- **Clic in qualsiasi punto del clip**: seleziona e posiziona il cursore esattamente lì; premi **PLAY** o **Spazio** per ascoltare da quel punto. Durante la riproduzione il clic fa saltare subito l’ascolto. Funziona anche dopo lo scorrimento orizzontale e oltre la fine di un loop attivo; **doppio clic** o **E**: editor MIDI grande.
 - **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.
-- **Clic sul righello delle battute**: sposta il cursore; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
+- **Clic sul righello delle battute**: sposta il cursore nel punto esatto, come sul righello dell’editor MIDI; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
 - **ADATTA BRANO / F**: mostra tutta la forma; **SEGUI**: scorrimento durante la riproduzione; **INSPECTOR / I** e **MIXER / F3**: mostra o nascondi i pannelli.
 - Trascina un file MIDI o un campione sulla riga della traccia desiderata: viene assegnato proprio a quella traccia.
 

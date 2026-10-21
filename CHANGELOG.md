@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.5.1 — 2026-10-21
+
+- Click anywhere in an arrangement clip to place playback precisely; Play/Space starts there, and playback already running jumps immediately. Works after horizontal scrolling.
+- Arrangement and MIDI rulers retain fractional beat positions. Seeking beyond an enabled loop continues from the chosen position; seeking back into it resumes looping.
+- Native regression checks cover paused/live seeking, scrolling, loop exit/re-entry and starting inside held MIDI notes.
+
 ## 0.5.0 — 2026-10-21
 
 - DAW workspace with side inspector, seventeen-channel mixer and master, dB faders, pan, mute/solo and master overload indicator.
