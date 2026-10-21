@@ -2,7 +2,7 @@
 
 ## 0.4.7 — 2026-10-20
 
-- Jackin’: original-library chopped hooks, more articulated Wurlitzer bass, strings off by default and alternating percussive guitar in the requested funky/disco direction (Da Funk Junkies). Other genres remain unchanged.
+- Jackin’: original-library chopped hooks, more articulated Wurlitzer bass, strings off by default and alternating percussive guitar in the requested funky/disco direction. Other genres remain unchanged.
 - Audit includes full Jackin’ song and separate drum, bass and keyboard previews; four-seed regressions and user-enabled strings checked.
 
 ## 0.4.6 — 2026-10-20

@@ -2,7 +2,7 @@
 
 ## 0.4.7 — 2026-10-20
 
-- Jackin’: hook a chops dalla libreria originale, basso Wurlitzer più articolato, archi spenti di default e chitarra ritmica a battute alterne nel riferimento funky/disco indicato (Da Funk Junkies). Gli altri generi restano invariati.
+- Jackin’: hook a chops dalla libreria originale, basso Wurlitzer più articolato, archi spenti di default e chitarra ritmica a battute alterne nel riferimento funky/disco indicato. Gli altri generi restano invariati.
 - Audit con Jackin’ completo e anteprime separate di batteria, basso e tastiera; regressioni su quattro seed e possibilità di riattivare gli archi.
 
 ## 0.4.6 — 2026-10-20

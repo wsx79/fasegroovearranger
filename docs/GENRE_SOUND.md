@@ -47,4 +47,4 @@ Riferimenti di produzione consultati, senza importare campioni, MIDI o audio:
 
 Questa è una traduzione compositiva per i motori interni, non una ricostruzione dei dischi degli artisti. L’audit esporta anche il brano Jackin’ completo e tre anteprime separate (batteria, basso e tastiera), per valutare il groove e l’interazione oltre ai controlli tecnici.
 
-Il riferimento indicato dall’utente è **Da Funk Junkies**. La [presentazione ufficiale di 3rd Room Records](https://3rdroomrecords.com/da-funk-junkies) descrive un Jackin’ intriso di disco, basso corposo e chitarre propulsive. Da qui la scelta compositiva di ottave/ghost del basso, piano tagliato e chank ritmico, anziché un organo sub con archi sovrapposti. È un orientamento di stile; non viene dichiarata una corrispondenza sonora verificata ai master dell’artista.
+Il Jackin’ usa un’impronta funky/disco con basso articolato e chitarra percussiva. Le ottave e le ghost note del basso, il piano a chops e il chank ritmico guidano le scelte compositive.
