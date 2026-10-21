@@ -54,6 +54,9 @@ public:
     bool isPlaying() const {return playing.load();}
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
+    float masterLevel() const {return masterMeter.load();}
+    bool hasClipped() const {return masterClip.load();}
+    void clearClipping(){masterClip=false;}
     juce::Result loadSample(int,const juce::File&,int root);
     void loadPlugin(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
     void useInternal(int);
@@ -71,7 +74,8 @@ private:
     juce::CriticalSection mutex;
     std::array<std::unique_ptr<Instrument>,trackCount> instruments;
     std::array<std::atomic<float>,trackCount> meters;
-    std::atomic<bool> playing{false},exporting{false};
+    std::atomic<bool> playing{false},exporting{false},masterClip{false};
+    std::atomic<float> masterMeter{0};
     std::atomic<double> currentBeat{0},tempo{122};
     double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;
     int blockSize=512;

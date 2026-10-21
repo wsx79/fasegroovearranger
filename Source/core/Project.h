@@ -89,6 +89,7 @@ struct Project {
     void insertSection(int index, SongSection section, int copyFrom = -1);
     void removeSection(int index);
     void moveSection(int from, int to);
+    void resizeSection(int index, int bars);
 };
 const char* sectionName(Section);
 std::vector<std::string> genres();
@@ -110,6 +111,8 @@ void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);
+// Section-aligned clip gestures retain the fixed instrument routing.
+bool transferClip(Project&, int track, int from, int to, bool copy);
 void tidyNotes(Clip&, double beats);
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1);

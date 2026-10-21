@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.4.7** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.5.0** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -51,11 +51,11 @@ From GitHub Actions, the artifact ZIP contains the package shown above: extract 
 2. Choose the groove: song length follows genre and phrase development, without a fixed minute target.
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
-5. Click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
+5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
 6. Return with **< ARRANGEMENT**. Click the **Piano track name** and choose a guide sound, sample or your own VST.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
-Want another take? **NEW TRACK** changes just the selected instrument; **NEW CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
+Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
 
 > Found a part you like? Open its panel and enable **LOCK TRACK** or **LOCK CLIP** before trying other takes.
 
@@ -70,7 +70,7 @@ Want another take? **NEW TRACK** changes just the selected instrument; **NEW CLI
 Every button of the interface is drawn the same way: **lit (filled) = on**, raised = off.
 **Amber** marks the main actions, **cyan** transport and automation. Piano, bass, strings, guitar
 and drums keep their family colours. Every button has its tooltip. Click a track name for its
-parameters and a clip for its notes.
+parameters and double-click a clip for its notes.
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
@@ -82,12 +82,26 @@ The top contains project commands, transport and the controls shared by everyone
 | **PROGRESSION · EDIT CHORDS** | Ready-made progressions and individual chords. HARMONY shows the current progression. |
 | **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
 | **Track name** | Opens its instrument panel, with groove, playing, sound and mixer controls. |
-| **Clip** | Opens the large MIDI editor for just that track and section. |
+| **Double-click clip / E** | Opens the large MIDI editor for just that track and section. |
 | **AUDIO · OPTIONS · GUIDE** | Output device; information, credits and privacy; the guide. |
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
 **M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to start from there. **ZOOM** changes how much of the song you see.
+
+### DAW workspace
+
+The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. Scroll the inspector if vertical space is limited.
+
+The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. Channels scroll horizontally.
+
+- **Click a clip** to select it; **double-click** or **E** opens the full MIDI editor.
+- **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.
+- **Click the bar ruler** to seek; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
+- **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
+- Drop a MIDI file or personal sample on a track row to target that track.
+
+Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Loop locators and automation follow section insertion, removal, movement and duration changes.
 
 ### Transport & tempo (top)
 
@@ -295,9 +309,9 @@ The song keeps its base groove across sections, changing performance, density an
 | Button | What changes |
 |---|---|
 | **GENERATE SONG** | New takes on all unlocked tracks, keeping the existing sections. |
-| **NEW TRACK** | The selected instrument throughout the song. |
-| **NEW SECTION** | This section across all unlocked tracks. |
-| **NEW CLIP** | Just the selected track in this section. |
+| **REGENERATE TRACK** | The selected instrument throughout the song. |
+| **REGENERATE SECTION** | This section across all unlocked tracks. |
+| **REGENERATE CLIP** | Just the selected track in this section. |
 | **NEW ARRANGEMENT** | Rebuilds the form and notes from genre, harmonic phrases and groove development. Unlock tracks and clips first. |
 
 **Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** adds a Main part after the selected section. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
@@ -351,7 +365,7 @@ Then build your song with the examples below.
 2. Start the piano with **Rhodes (FM)** and seventh or ninth chords.
 3. Listen to the main part. If it is too busy, lower piano density and click **APPLY CLIP**.
 4. Keep guitar in accompaniment and mute lanes that cover the piano.
-5. Lock the piano take you like, then try **NEW TRACK** on bass.
+5. Lock the piano take you like, then try **REGENERATE TRACK** on bass.
 
 ### Deep: fewer notes, more room
 
@@ -364,7 +378,7 @@ Then build your song with the examples below.
 
 1. Choose **Jackin'** or **Jackin' Piano**.
 2. Start with short piano gate and more swing.
-3. Strip back the break to set up the return: a **NEW CLIP** on piano may be enough.
+3. Strip back the break to set up the return: a **REGENERATE CLIP** on piano may be enough.
 4. Keep the kick recognisable and compare the return with what came before using **LOOP SECTION**.
 
 ### Funky & Disco: let guitar lead

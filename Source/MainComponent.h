@@ -8,6 +8,7 @@
 #include "FamilyOptions.h"
 #include "FamilyControls.h"
 #include "Updater.h"
+#include "DawWorkspace.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -20,6 +21,7 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
     bool verifyAutomation(const juce::File&);
     int rowY(int row) const;
     int rowAt(int y) const;
@@ -27,9 +29,13 @@ public:
     std::array<bool,trackCount> volumeVisible{};
     double pixelsPerBar=6;
 private:
+    friend class MainComponent;
     MainComponent& owner;
     int dragTrack=-1,dragPoint=-1;
-    bool bending=false;
+    bool bending=false,loopDragging=false,copyingClip=false;
+    double loopAnchor=0;
+    int clipTrack=-1,clipSource=-1,clipTarget=-1;
+    int sectionAt(float x) const;
     double originalCurve=0;
     float dragY=0;
     int pointAt(int track,juce::Point<float>) const;
@@ -92,6 +98,7 @@ public:
     AudioEngine audio;
     void checkpoint();
     void changed(bool schedule=true);
+    void mixChanged();
     void select(int track,int section);
     void showTrackMenu(int);
     void showInstrument();
@@ -106,8 +113,11 @@ public:
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();
     void showPianoTools(int);
+    void fitSong();
+    void setLoopRange(double from,double to);
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
+    bool verifyDawWorkspace(const juce::File&);
 private:
     FamilyLookAndFeel theme;
     OptionsOverlay options;
@@ -115,7 +125,11 @@ private:
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};
-    juce::Viewport arrangementPort,pianoPort,instrumentPort;
+    juce::Viewport arrangementPort,pianoPort,instrumentPort,inspectorPort;
+    TrackInspector trackInspector{*this};
+    DawMixer mixer{*this};
+    bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
+    juce::TextButton inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
@@ -181,5 +195,7 @@ private:
     friend class ArrangementView;
     friend class PianoRoll;
     friend class InstrumentPanel;
+    friend class TrackInspector;
+    friend class MixerStrip;
 };
 }

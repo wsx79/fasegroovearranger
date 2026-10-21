@@ -27,6 +27,8 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
+The DAW workspace includes a side inspector, seventeen-channel mixer and master, bar ruler and loop locators, clip selection/swap/copy, fit-to-song and playback following.
+
 ## What is implemented
 
 - The original, vendored C++ generation engines run inside the application; no Fase Groove plugin installation is required.

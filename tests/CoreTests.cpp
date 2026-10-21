@@ -52,6 +52,16 @@ int main(int argc,char** argv){try{
     volume.points={{8,.2,.4},{automated.sectionStart(1)+4,.8,-.5}};const auto oldSecond=volume.points[1].beat;automated.insertSection(1,{fga::Section::main,8,"Inserted"});check(volume.points[1].beat==oldSecond+32,"insert shifts automation");automated.removeSection(1);check(volume.points[1].beat==oldSecond,"remove shifts automation back");
     automated.moveSection(0,1);check(volume.points[0].beat==4&&volume.points[0].value==.8,"automation follows moved sections");
     fga::VolumeAutomation malformedVolume;malformedVolume.enabled=true;malformedVolume.points={{4,3,2},{-1,-2,-3},{4,.3,.5},{std::numeric_limits<double>::quiet_NaN(),1,0}};malformedVolume.normalise(8);check(malformedVolume.points.size()==2&&malformedVolume.points[0].beat==0&&malformedVolume.points[0].value==0&&malformedVolume.points[1].value==.3,"sanitize sort and merge automation points");
+    {
+        auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,8,"B"}};p.normalise();
+        p.loop=true;p.loopStart=16;p.loopEnd=48;p.tracks[4].volume.enabled=true;p.tracks[4].volume.points={{8,.5,0},{20,.8,0},{48,1,0}};
+        p.resizeSection(0,8);check(p.loopStart==32&&p.loopEnd==64,"loop follows section resize");check(p.tracks[4].volume.points[0].beat==16&&p.tracks[4].volume.points[1].beat==36,"automation scales inside resized section and shifts after it");
+        p.insertSection(0,{fga::Section::intro,4,"New"});check(p.loopStart==48&&p.loopEnd==80,"loop follows section insertion");p.removeSection(0);check(p.loopStart==32&&p.loopEnd==64,"loop follows section removal");
+        p.moveSection(1,0);check(p.loopStart==0&&p.loopEnd==32,"loop follows moved complete section including its end locator");
+        p.tracks[4].clips[0].notes={{0,.25,36,100,0}};p.tracks[4].clips[1].notes={{1,.25,36,70,0}};
+        check(fga::transferClip(p,4,0,1,false),"clip drag swap accepted");check(p.tracks[4].clips[0].notes[0].start==1&&p.tracks[4].clips[1].notes[0].start==0,"clip swap preserves both takes");
+        check(fga::transferClip(p,4,1,0,true)&&p.tracks[4].clips[0].notes==p.tracks[4].clips[1].notes,"clip copy retains source");check(!fga::transferClip(p,99,0,1,false)&&!fga::transferClip(p,4,0,99,false),"invalid clip gestures rejected");
+    }
     // Musical regression: Jackin' keeps a short, swung bass/chop pocket rather
     // than layering the same string answers and held organ over every drop.
     for(std::uint32_t seed:{1U,42U,1979U,7891U}){

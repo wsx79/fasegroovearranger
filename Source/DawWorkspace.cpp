@@ -1,0 +1,87 @@
+// Copyright (C) 2026 Fabio 'Pitch' Serra
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#include "DawWorkspace.h"
+#include "MainComponent.h"
+#include "UiText.h"
+namespace fga {
+namespace {
+juce::String text(const std::string& s){return juce::String::fromUTF8(s.c_str());}
+juce::Colour ink(int track){return track==1?Palette::accent2:track==2?Palette::strings:track>=4?Palette::cymbals:Palette::accent;}
+float db(double gain){return gain<=.001?-60.f:juce::Decibels::gainToDecibels((float)gain,-60.f);}
+double amplitude(double value){return value<=-59.99?0.:juce::Decibels::decibelsToGain(value);}
+void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10,true));g.drawText(tr(s),bounds,juce::Justification::centredLeft);}
+void slider(juce::Slider& s,double low,double high,const char* suffix){s.setRange(low,high,.1);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,60,20);s.setTextValueSuffix(suffix);s.setDoubleClickReturnValue(true,0);}
+void tip(juce::Component& c,const char* s){c.getProperties().set("fgaTip",s);}
+}
+TrackInspector::TrackInspector(MainComponent& m):owner(m){
+    for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
+    name.setFont(FamilyTheme::font(17,true));source.setFont(FamilyTheme::font(11));source.setColour(juce::Label::textColourId,Palette::dim);source.setMinimumHorizontalScale(.75f);section.setFont(FamilyTheme::font(12));
+    gain.setComponentID("track-gain");pan.setComponentID("track-pan");
+    slider(gain,-60,6.0," dB");slider(pan,-100,100,"%");
+    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;};
+    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
+    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;};
+    pan.onValueChange=[this]{if(updating)return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
+    instrument.onClick=[this]{owner.showInstrument();};editor.onClick=[this]{owner.showEditor();};
+    mute.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
+    solo.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.solo=!t.solo;owner.mixChanged();};
+    lockTrack.onClick=[this]{owner.lockButton.triggerClick();};lockClip.onClick=[this]{owner.lockClipButton.triggerClick();};
+    internal.onClick=[this]{owner.soundButton.triggerClick();};sample.onClick=[this]{owner.sampleButton.triggerClick();};plugin.onClick=[this]{owner.loadPluginButton.triggerClick();};pluginEditor.onClick=[this]{owner.pluginEditorButton.triggerClick();};
+    regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.sectionLoopButton.triggerClick();};
+    tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
+    refresh();setSize(208,626);
+}
+void TrackInspector::refresh(){
+    if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(text(t.name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
+    source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():"VST3 / AU",juce::dontSendNotification);
+    section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(owner.project.sections[(size_t)owner.selectedSection].bars)+" "+tr("bars"),juce::dontSendNotification);
+    gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
+}
+void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());caption(g,"TRACK INSPECTOR",{12,6,getWidth()-24,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,353,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,505,getWidth()-24,20});}
+void TrackInspector::resized(){const int w=getWidth()-24;name.setBounds(12,30,w,26);source.setBounds(12,60,w,24);instrument.setBounds(12,94,w,28);editor.setBounds(12,128,w,28);mute.setBounds(12,163,w/2-3,24);solo.setBounds(15+w/2,163,w/2-3,24);gain.setBounds(12,215,w,28);pan.setBounds(12,247,w,28);lockTrack.setBounds(12,286,w,26);lockClip.setBounds(12,318,w,26);internal.setBounds(12,380,w,26);sample.setBounds(12,412,w,26);plugin.setBounds(12,444,w,26);pluginEditor.setBounds(12,476,w,26);section.setBounds(12,532,w,26);regenerate.setBounds(12,566,w,26);loop.setBounds(12,598,w,26);}
+MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
+    for(auto* c:std::initializer_list<juce::Component*>{&name,&gain,&pan,&mute,&solo,&instrument,&clip})addAndMakeVisible(c);
+    name.setFont(FamilyTheme::font(11,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.65f);
+    slider(gain,-60,6," dB");gain.setSliderStyle(juce::Slider::LinearVertical);gain.setTextBoxStyle(juce::Slider::TextBoxBelow,false,78,20);slider(pan,-100,100,"%");pan.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
+    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;};
+    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpoint();if(track<0)owner.project.masterGain=amplitude(gain.getValue());else owner.project.tracks[(size_t)track].gain=amplitude(gain.getValue());owner.mixChanged();};
+    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;};
+    pan.onValueChange=[this]{if(updating||track<0)return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)track].pan=pan.getValue()/100.;owner.mixChanged();};
+    mute.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.mute=!t.mute;owner.mixChanged();};solo.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.solo=!t.solo;owner.mixChanged();};
+    instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
+    tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();
+}
+void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):text(owner.project.tracks[(size_t)track].name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,master?Palette::text:ink(track));gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(*this);repaint();}
+void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);clip.setColour(juce::TextButton::buttonOnColourId,owner.audio.hasClipped()?Palette::toms:Palette::control);repaint();}
+void MixerStrip::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(track==owner.selectedTrack?Palette::accent:Palette::panelEdge);g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(.5f),4,track==owner.selectedTrack?1.5f:1.f);auto meter=juce::Rectangle<float>((float)getWidth()-18,94,7,(float)std::max(24,getHeight()-135));g.setColour(Palette::field);g.fillRoundedRectangle(meter,2);const float level=std::clamp((db(peak)+60)/60.f,0.f,1.f);g.setColour(peak>=1?Palette::toms:peak>.7f?Palette::accent:Palette::accent2);g.fillRect(meter.removeFromBottom(meter.getHeight()*level));}
+void MixerStrip::resized(){int w=getWidth();name.setBounds(4,5,w-8,22);instrument.setBounds(6,30,w-12,22);pan.setBounds(8,55,w-16,20);mute.setBounds(6,77,(w-16)/2,20);solo.setBounds(10+(w-16)/2,77,(w-16)/2,20);clip.setBounds(8,48,w-16,24);gain.setBounds(8,99,w-32,getHeight()-106);}
+void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
+DawMixer::DawMixer(MainComponent& owner):master(owner,-1){port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);for(int row=0;row<trackCount;++row){auto strip=std::make_unique<MixerStrip>(owner,trackAtRow(row));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}}
+void DawMixer::refresh(){for(auto& s:strips)s->refresh();master.refresh();}
+void DawMixer::tick(){for(auto& s:strips)s->tick();master.tick();}
+void DawMixer::reveal(int track){const int x=rowForTrack(track)*100;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+96>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+96-port.getViewWidth(),0);}
+void DawMixer::paint(juce::Graphics& g){g.fillAll(Palette::background);caption(g,"MIXER",{8,0,120,22});caption(g,"Audio levels / MIDI velocities unchanged",{130,0,getWidth()-140,22});}
+void DawMixer::resized(){port.setBounds(0,25,getWidth()-110,getHeight()-25);const int height=std::max(160,port.getHeight()-16);channels.setSize(trackCount*100,height);for(int row=0;row<trackCount;++row)strips[(size_t)row]->setBounds(row*100,0,96,height);master.setBounds(getWidth()-104,25,104,height);}
+bool MainComponent::verifyDawWorkspace(const juce::File& folder){
+    const auto saved=project;const int track=selectedTrack,section=selectedSection;const auto zoom=arrangement.pixelsPerBar;
+    showArrangement();audio.stop();bool ok=inspectorPort.isVisible()&&mixer.isVisible()&&!arrangementPort.getBounds().intersects(inspectorPort.getBounds())&&!arrangementPort.getBounds().intersects(mixer.getBounds());
+    const auto midi=midiFile(project);const double originalGain=project.tracks[(size_t)selectedTrack].gain;
+    if(auto* fader=dynamic_cast<juce::Slider*>(trackInspector.findChildWithID("track-gain"))){
+        fader->setValue(-12,juce::sendNotificationSync);ok=ok&&std::abs(project.tracks[(size_t)selectedTrack].gain-juce::Decibels::decibelsToGain(-12.))<1e-6&&midiFile(project)==midi;
+        undo(false);ok=ok&&std::abs(project.tracks[(size_t)selectedTrack].gain-originalGain)<1e-9;
+    }else ok=false;
+    project.sections={{Section::main,4,"First"},{Section::drop,4,"Second"}};project.normalise();for(auto& t:project.tracks)for(auto& c:t.clips)c.notes.clear();
+    project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[1].notes={{1,.25,36,75,0}};
+    project.loop=false;project.loopStart=0;project.loopEnd=32;selectedTrack=4;selectedSection=0;arrangement.pixelsPerBar=32;changed();arrangementPort.setViewPosition(0,0);
+    auto event=[&](float x,float y,int mods=0){const juce::Point<float> p(x,y);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+    arrangement.mouseDown(event(232,76));arrangement.mouseUp(event(232,76));ok=ok&&page==Page::arrangement&&selectedTrack==4&&selectedSection==0;
+    arrangement.mouseDown(event(232,76));arrangement.mouseDrag(event(360,76));arrangement.mouseUp(event(360,76));ok=ok&&project.tracks[4].clips[1].notes[0].start==0&&project.tracks[4].clips[0].notes[0].start==1;
+    undo(false);ok=ok&&project.tracks[4].clips[0].notes[0].start==0&&project.tracks[4].clips[1].notes[0].start==1;
+    arrangement.mouseDown(event(280,46));arrangement.mouseUp(event(280,46));ok=ok&&std::abs(audio.position()-8)<1e-9;
+    arrangement.mouseDown(event(248,46,juce::ModifierKeys::shiftModifier));arrangement.mouseDrag(event(312,46,juce::ModifierKeys::shiftModifier));arrangement.mouseUp(event(312,46));ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16&&dirty;
+    arrangement.mouseDoubleClick(event(232,76));ok=ok&&page==Page::editor&&pianoPort.isVisible();
+    project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, audio-only fader with undo, clip select/swap/undo, ruler seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression");return ok;
+}
+
+}

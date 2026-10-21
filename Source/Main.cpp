@@ -107,7 +107,8 @@ public:
             audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             bool transport=audio.position()>=0&&audio.position()<4&&audio.isPlaying();
             audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
-            transport=transport&&live.getMagnitude(0,512)==0;
+            transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
+            for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
             folder.getChildFile("transport.txt").replaceWithText(transport?"PASS seek, note chase, loop boundary and pause silence":"FAIL transport");ok=ok&&transport;
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);

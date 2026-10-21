@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.4.7** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.5.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -51,11 +51,11 @@ Se scarichi da GitHub Actions, nello ZIP dell'artifact trovi il pacchetto indica
 2. Scegli il groove: la durata segue il genere e lo sviluppo delle frasi, senza un numero di minuti imposto.
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
-5. Clicca un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
+5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
 6. Torna con **< ARRANGIAMENTO**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
-Vuoi un'altra versione? **NUOVA TRACCIA** cambia solo lo strumento scelto; **NUOVO CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
+Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
 
 > Hai trovato una parte che ti piace? Apri il suo pannello e accendi **BLOCCA TRACCIA** o **BLOCCA CLIP** prima di provare altre varianti.
 
@@ -70,7 +70,7 @@ Vuoi un'altra versione? **NUOVA TRACCIA** cambia solo lo strumento scelto; **NUO
 Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
 in rilievo = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
 l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
-Ogni pulsante ha il suo tooltip. Clicca il nome di una traccia per i parametri, il clip per le note.
+Ogni pulsante ha il suo tooltip. Clicca il nome di una traccia per i parametri, doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
@@ -82,12 +82,26 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 | **PROGRESSIONE · MODIFICA ACCORDI** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
 | **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
 | **Nome della traccia** | Apre il pannello dello strumento, con groove, esecuzione, suono e mixer. |
-| **Clip** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
+| **Doppio clic sul clip / E** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
 | **AUDIO · OPZIONI · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
 
 I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
 
 **M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull'intestazione di una sezione porta la riproduzione al suo inizio. Lo **ZOOM** cambia quanto brano vedi.
+
+### Spazio di lavoro DAW
+
+L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. Se lo spazio verticale è ridotto, scorri il pannello.
+
+Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. I canali scorrono orizzontalmente.
+
+- **Clic sul clip**: selezione; **doppio clic** o **E**: editor MIDI grande.
+- **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.
+- **Clic sul righello delle battute**: sposta il cursore; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
+- **ADATTA BRANO / F**: mostra tutta la forma; **SEGUI**: scorrimento durante la riproduzione; **INSPECTOR / I** e **MIXER / F3**: mostra o nascondi i pannelli.
+- Trascina un file MIDI o un campione sulla riga della traccia desiderata: viene assegnato proprio a quella traccia.
+
+La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Il loop e l’automazione seguono le modifiche alla struttura: inserimento, eliminazione, spostamento e durata delle sezioni.
 
 ### Trasporto e tempo (in alto)
 
@@ -298,9 +312,9 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 | Pulsante | Cosa cambia |
 |---|---|
 | **GENERA BRANO** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
-| **NUOVA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
-| **NUOVA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
-| **NUOVO CLIP** | Soltanto la traccia selezionata in quella sezione. |
+| **RIGENERA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
+| **RIGENERA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
+| **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |
 | **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere, frasi armoniche e sviluppo del groove. Prima devi sbloccare tracce e clip. |
 
 **Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** aggiunge una parte Main dopo quella scelta. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
@@ -354,7 +368,7 @@ Poi costruisci il brano con gli esempi qui sotto.
 2. Nel piano parti da **Rhodes (FM)** e un giro con settime o none.
 3. Ascolta la parte principale. Se è troppo piena, abbassa la densità del piano e premi **APPLICA CLIP**.
 4. Lascia la chitarra in accompagnamento. Usa il suo mixer per togliere le righe che coprono il piano.
-5. Blocca la parte di piano che ti piace e prova un **NUOVA TRACCIA** sul basso.
+5. Blocca la parte di piano che ti piace e prova un **RIGENERA TRACCIA** sul basso.
 
 ### Deep: meno note, più spazio
 
@@ -367,7 +381,7 @@ Poi costruisci il brano con gli esempi qui sotto.
 
 1. Scegli **Jackin'** o **Jackin' Piano**.
 2. Parti da gate corto sul piano e un feel più swingato.
-3. Nel break togli quello che serve alla ripartenza: un **NUOVO CLIP** sul piano può bastare.
+3. Nel break togli quello che serve alla ripartenza: un **RIGENERA CLIP** sul piano può bastare.
 4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP SEZIONE**.
 
 ### Funky & Disco: la chitarra guida

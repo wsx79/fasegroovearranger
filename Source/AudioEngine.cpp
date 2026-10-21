@@ -29,7 +29,7 @@ void AudioEngine::publish(const Project& source){
     for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.schedule=std::move(schedules[ti]);i.volume=t.volume;i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.bassLowPass.setCutoffFrequency((float)(100+1400*t.engine.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);for(size_t lane=0;lane<i.guitarLevels.size();++lane){i.guitarLevels[lane]=(float)t.engine.laneVolume[lane];if(i.guitarMuted[lane]!=t.engine.laneMute[lane]){needsReset=true;needsChase=playing;}i.guitarMuted[lane]=t.engine.laneMute[lane];}juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;i.pumpRate=t.engine.pumpRate;i.pumpSource=t.engine.pumpSource;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}
     currentBeat=std::min(currentBeat.load(),length);needsReset=true;needsChase=playing;
 }
-void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length)currentBeat=looping?loopFrom:0;playing=enabled;needsReset=true;needsChase=enabled;}
+void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length)currentBeat=looping?loopFrom:0;playing=enabled;if(!enabled){masterMeter=0;for(auto& meter:meters)meter=0;}needsReset=true;needsChase=enabled;}
 void AudioEngine::updateMix(const Project& p){const juce::ScopedLock lock(mutex);tempo=p.settings.bpm;master=p.masterGain;for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=p.tracks[ti];i.volume=t.volume;i.gain=t.gain;i.pan=t.pan;i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.engine.tone;i.bassLowPass.setCutoffFrequency((float)(100+1400*t.engine.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.engine.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.engine.tone);for(size_t lane=0;lane<i.guitarLevels.size();++lane){i.guitarLevels[lane]=(float)t.engine.laneVolume[lane];if(i.guitarMuted[lane]!=t.engine.laneMute[lane]){needsReset=true;needsChase=playing;}i.guitarMuted[lane]=t.engine.laneMute[lane];}juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.engine.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.engine.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);i.pump=t.engine.pump;i.pumpRelease=t.engine.pumpRelease;i.pumpRate=t.engine.pumpRate;i.pumpSource=t.engine.pumpSource;if(ti>=4)i.drumNotes[ti-4]=t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4);}}
 void AudioEngine::stop(){play(false);seek(0);}
 void AudioEngine::seek(double beat){const juce::ScopedLock lock(mutex);currentBeat=std::clamp(beat,0.0,length);needsReset=true;needsChase=playing;}
@@ -76,7 +76,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
     if(exporting)return;
     const juce::ScopedTryLock lock(mutex);if(!lock.isLocked()||exporting)return;
     if(needsReset)resetAt(currentBeat);
-    if(!playing)return;
+    if(!playing){masterMeter=0;for(auto& meter:meters)meter=0;return;}
     int done=0;
     while(done<count&&playing){double beat=currentBeat;const bool hasLoop=looping&&loopTo-loopFrom>=1./960.;double boundary=hasLoop?loopTo:length;
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom;needsChase=true;resetAt(loopFrom);continue;}playing=false;needsReset=true;break;}
@@ -84,6 +84,8 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
         float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]+done;
         render(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
     }
+    float outputPeak=0;for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s){if(!std::isfinite(output[ch][s])){output[ch][s]=0;masterClip=true;}outputPeak=std::max(outputPeak,std::abs(output[ch][s]));}
+    masterMeter=outputPeak;if(outputPeak>=1)masterClip=true;
     // Final safety ceiling; export reports and preserves the floating-point mix before encoding.
     for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s)output[ch][s]=std::clamp(output[ch][s],-.999f,.999f);
 }

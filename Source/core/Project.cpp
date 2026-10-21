@@ -238,6 +238,8 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
     for(auto& t:tracks){auto original=t.volume.points;for(auto& point:t.volume.points)if(point.beat>=start)point.beat+=duration;
         if(copyFrom>=0&&copyFrom<(int)sections.size()){const double from=sectionStart(copyFrom),end=sectionStart(copyFrom+1);for(auto point:original)if(point.beat>=from&&point.beat<end&&point.beat-from<duration){point.beat=start+point.beat-from;t.volume.points.push_back(point);}}
     }
+    if(loopStart>=start)loopStart+=duration;
+    if(loopEnd>start)loopEnd+=duration;
     sections.insert(sections.begin()+index,std::move(section));
     for(size_t i=0;i<tracks.size();++i) tracks[i].clips.insert(tracks[i].clips.begin()+index,copies[i]);
     normalise();
@@ -246,14 +248,42 @@ void Project::removeSection(int index) {
     if(sections.size()<2||index<0||index>=(int)sections.size()) return;
     const double start=sectionStart(index),end=sectionStart(index+1);
     for(auto& t:tracks){auto& points=t.volume.points;points.erase(std::remove_if(points.begin(),points.end(),[&](const VolumePoint& p){return p.beat>=start&&p.beat<end;}),points.end());for(auto& point:points)if(point.beat>=end)point.beat-=end-start;}
+    auto shift=[&](double b){return b<=start?b:b>=end?b-(end-start):start;};
+    loopStart=shift(loopStart);loopEnd=shift(loopEnd);
     sections.erase(sections.begin()+index); for(auto& t:tracks) t.clips.erase(t.clips.begin()+index); normalise();
 }
 void Project::moveSection(int from,int to) {
     if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to) return;
     const double oldStart=sectionStart(from),oldEnd=sectionStart(from+1),destination=from<to?sectionStart(to+1)-(oldEnd-oldStart):sectionStart(to);
     for(auto& t:tracks){for(auto& point:t.volume.points){if(point.beat>=oldStart&&point.beat<oldEnd)point.beat+=destination-oldStart;else if(from<to&&point.beat>=oldEnd&&point.beat<destination+oldEnd-oldStart)point.beat-=oldEnd-oldStart;else if(from>to&&point.beat>=destination&&point.beat<oldStart)point.beat+=oldEnd-oldStart;}t.volume.normalise(length());}
+    auto moveMarker=[&](double beat,bool ending){
+        const double probe=ending?std::nextafter(beat,-INFINITY):beat;
+        if(probe>=oldStart&&probe<oldEnd)return beat+destination-oldStart;
+        if(from<to&&probe>=oldEnd&&probe<destination+oldEnd-oldStart)return beat-(oldEnd-oldStart);
+        if(from>to&&probe>=destination&&probe<oldStart)return beat+oldEnd-oldStart;
+        return beat;
+    };
+    loopStart=moveMarker(loopStart,false);loopEnd=moveMarker(loopEnd,true);
     auto s=sections[(size_t)from]; sections.erase(sections.begin()+from); sections.insert(sections.begin()+to,s);
     for(auto& t:tracks) {auto c=std::move(t.clips[(size_t)from]); t.clips.erase(t.clips.begin()+from); t.clips.insert(t.clips.begin()+to,std::move(c));}
+    normalise();
+}
+void Project::resizeSection(int index,int bars){
+    if(index<0||index>=(int)sections.size())return;
+    bars=std::clamp(bars,1,128);const double start=sectionStart(index),end=sectionStart(index+1);
+    const double duration=bars*4.,delta=duration-(end-start);
+    auto map=[&](double beat){return beat>=end?beat+delta:beat>start?start+(beat-start)*duration/(end-start):beat;};
+    for(auto& t:tracks)for(auto& point:t.volume.points)point.beat=map(point.beat);
+    loopStart=map(loopStart);loopEnd=map(loopEnd);sections[(size_t)index].bars=bars;normalise();
+}
+bool transferClip(Project& p,int track,int from,int to,bool copy){
+    if(track<0||track>=(int)p.tracks.size()||from<0||to<0||from>=(int)p.sections.size()||to>=(int)p.sections.size()||from==to)return false;
+    auto& clips=p.tracks[(size_t)track].clips;
+    if(from>=(int)clips.size()||to>=(int)clips.size())return false;
+    if(copy)clips[(size_t)to]=clips[(size_t)from];else std::swap(clips[(size_t)from],clips[(size_t)to]);
+    tidyNotes(clips[(size_t)to],p.sections[(size_t)to].bars*4.);
+    if(!copy)tidyNotes(clips[(size_t)from],p.sections[(size_t)from].bars*4.);
+    return true;
 }
 void chooseProgression(Project& p,int preset) {
     const auto& all=sgk::progressionPresets(); const auto& pr=all[(size_t)std::clamp(preset,0,(int)all.size()-1)];
