@@ -62,10 +62,10 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.y<v.getY()+rulerHeight){
         if(e.x<v.getX()+headerWidth)return;
         if(e.mods.isPopupMenu()){owner.select(owner.selectedTrack,si);owner.showSectionMenu(si);return;}
-        if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
+        if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         else{const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());
             if(e.mods.isShiftDown()){owner.checkpoint();loopDragging=true;loopAnchor=beat;owner.setLoopRange(beat,std::min(owner.project.length(),beat+4));}
-            else owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
+            else owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         return;
     }
     const int row=rowAt(e.y);if(row<0)return;const int ti=trackAtRow(row);
@@ -79,14 +79,14 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         }
         if(hit<0&&!e.mods.isAltDown()&&volume.points.size()>=16384)return;
         owner.checkpoint();dragTrack=ti;dragPoint=hit;bending=e.mods.isAltDown();dragY=e.position.y;
-        if(bending){const double beat=std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length());auto it=std::upper_bound(volume.points.begin(),volume.points.end(),beat,[](double b,const VolumePoint& p){return b<p.beat;});dragPoint=(int)(it-volume.points.begin())-1;if(dragPoint<0||dragPoint+1>=(int)volume.points.size()){dragTrack=-1;return;}originalCurve=volume.points[(size_t)dragPoint].curve;}
+        if(bending){const double beat=std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length());auto it=std::upper_bound(volume.points.begin(),volume.points.end(),beat,[](double b,const VolumePoint& p){return b<p.beat;});dragPoint=(int)(it-volume.points.begin())-1;if(dragPoint<0||dragPoint+1>=(int)volume.points.size()){dragTrack=-1;return;}originalCurve=volume.points[(size_t)dragPoint].curve;}
         else {if(volume.points.empty())volume.points={{0,1,0},{owner.project.length(),1,0}};if(dragPoint<0){const double beat=std::clamp(std::round((e.x-headerWidth)*4./pixelsPerBar),0.,owner.project.length());auto it=std::lower_bound(volume.points.begin(),volume.points.end(),beat,[](const VolumePoint& p,double b){return p.beat<b;});dragPoint=(int)(it-volume.points.begin());if(it==volume.points.end()||std::abs(it->beat-beat)>1./960.)volume.points.insert(it,{beat,1,0});}volume.enabled=true;editPoint(e.position,!e.mods.isShiftDown());}
         owner.changed(false);return;
     }
     if(e.x<v.getX()+headerWidth&&e.x>=v.getX()+132&&e.x<v.getX()+151){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}
     if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else owner.showInstrument();return;}
     owner.select(ti,si);if(e.mods.isPopupMenu()){owner.showClipMenu(ti,si);return;}
-    owner.audio.seek(std::clamp((e.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));
+    owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));
     repaint();
     clipTrack=ti;clipSource=clipTarget=si;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();grabKeyboardFocus();
 }
@@ -185,7 +185,7 @@ void PianoRoll::editVelocity(juce::Point<float> point){
 
 void PianoRoll::mouseDown(const juce::MouseEvent& e){
     grabKeyboardFocus();editingVelocity=false;if(e.x<owner.pianoPort.getViewArea().getX()+leftMargin())return;
-    if(e.y<40){owner.audio.seek(owner.project.sectionStart(owner.selectedSection)+std::clamp(beat(e.x),0.,owner.clipLength()));return;}
+    if(e.y<40){owner.audio.seek(owner.project.sectionStart(owner.selectedSection)+std::clamp(beat(e.position.x),0.,owner.clipLength()));return;}
     if(e.y>=velocityTop()){owner.checkpoint();editingVelocity=true;editVelocity(e.position);return;}
     if(laneView()&&e.y>=40+(owner.selectedTrack==3?12:1)*40)return;
     if(!laneView()&&e.y<48)return;
@@ -484,7 +484,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     ok=arrangement.verifyAutomation(folder)&&ok;
     capture("daw-workspace");ok=verifyDawWorkspace(folder)&&ok;
     juce::String layoutReport,editingReport;
-    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=problems.isEmpty()&&ok;ok=ok&&instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=ok&&pianoPort.getHeight()>400&&!arrangementPort.isVisible();if(track>=4)ok=ok&&piano.laneView();if(track==1||track==2)ok=ok&&!piano.laneView();capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=edits&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete":"FAIL editing gestures")+"\n";}
+    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=problems.isEmpty()&&ok;ok=ok&&instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=ok&&pianoPort.getHeight()>400&&!arrangementPort.isVisible();if(track>=4)ok=ok&&piano.laneView();if(track==1||track==2)ok=ok&&!piano.laneView();capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=edits&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
     folder.getChildFile("panel-layout.txt").replaceWithText(layoutReport);folder.getChildFile("midi-editing.txt").replaceWithText(editingReport);
     select(3,1);piano.guitarNotes=true;showEditor();ok=ok&&!piano.laneView();capture("guitar-notes");ok=piano.verifyEditing()&&ok;piano.guitarNotes=false;showArrangement();select(4,0);
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, apply preserves take":"FAIL interface routing");return ok;
