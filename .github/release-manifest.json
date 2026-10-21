@@ -1,0 +1,15 @@
+{
+  "tag": "v0.7.2",
+  "source_sha": "b4f08b0f2a444c761fc731ab59b4383039d7cb7b",
+  "base_sha": "004ce4255db50171a40de3f8654ea15556aba3e9",
+  "run_id": 39658838248,
+  "checksums": {
+    "FaseGrooveArranger-0.7.2-macOS-universal.tar.gz": "6664f799eeddd8829a510578617e8f52d4fbd0f9de82895d4bddb8c38d6d4fbc",
+    "FaseGrooveArranger-macOS.zip": "b03f7ec69e0f4a4e349775dbccc7ec28c42b4f4999c902ec2b902318d597a13c",
+    "FaseGrooveArranger-0.7.2-Windows-AMD64.zip": "55f60345c75bd4df5d172765a58f5cd850cbb22614877936190d34c4e2a821a6",
+    "FaseGrooveArranger-Windows-Setup.exe": "7b146c274e8774522599664b00e17e26b8ef3c2aefc6ea59b471af574eb82ef4",
+    "FaseGrooveArranger-Windows.zip": "f977613c7e5f7dbadbef79e1100af099b9acb1caa6d3364ed23025793942a835",
+    "FaseGrooveArranger-0.7.2-Linux-x86_64.tar.gz": "c48e4b1af44ae88546969287e7ffc6679a1c78cad69f1340e68e903e946dd245",
+    "FaseGrooveArranger-Linux.zip": "b95c7fe46ce04ec15c1ecaf453fcc0754cb2cd533d74a340fa3d09574770544d"
+  }
+}
