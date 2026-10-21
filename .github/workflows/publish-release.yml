@@ -1,0 +1,141 @@
+# Copyright (C) 2026 Fabio 'Pitch' Serra
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Publish verified release
+on:
+  push:
+    branches: ['release/v*']
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: publish-release
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'wsx79/fasegroovearranger'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate release manifest and successful build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import json, os, re, subprocess
+          from pathlib import Path
+          m=json.loads(Path('.github/release-manifest.json').read_text())
+          assert re.fullmatch(r'v\d+\.\d+\.\d+',m['tag'])
+          assert os.environ['GITHUB_REF_NAME']=='release/'+m['tag']
+          assert re.fullmatch(r'[0-9a-f]{40}',m['source_sha'])
+          assert isinstance(m['run_id'],int) and m['run_id']>0
+          repository=os.environ['GITHUB_REPOSITORY']
+          run=json.loads(subprocess.check_output(['gh','api',f"repos/{repository}/actions/runs/{m['run_id']}"]))
+          assert run['status']=='completed' and run['conclusion']=='success'
+          assert run['head_sha']==m['source_sha']
+          assert run['name']=='Build and test standalone'
+          main=json.loads(subprocess.check_output(['gh','api',f"repos/{repository}/git/ref/heads/main"]))['object']['sha']
+          assert main in [m['base_sha'],m['source_sha']]
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              for key,value in [('RELEASE_TAG',m['tag']),('SOURCE_SHA',m['source_sha']),('BUILD_RUN',m['run_id'])]:
+                  f.write(f'{key}={value}\n')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BUILD_RUN }}
+          pattern: FaseGrooveArranger-*
+          merge-multiple: true
+          path: release-assets
+      - name: Verify the three tested distributions
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          m=json.loads(Path('.github/release-manifest.json').read_text())
+          root=Path('release-assets')
+          files={p.name:p for p in root.iterdir() if p.is_file()}
+          assert set(files)==set(m['checksums']),list(files)
+          assert len(files)==3
+          for name,expected in m['checksums'].items():
+              assert hashlib.sha256(files[name].read_bytes()).hexdigest()==expected,name
+          (root/'SHA256SUMS.txt').write_text(''.join(f'{sha}  {name}\n' for name,sha in sorted(m['checksums'].items())))
+          (root/'SOURCE.txt').write_text(f"Source: {m['source_sha']}\nVerified build: https://github.com/wsx79/fasegroovearranger/actions/runs/{m['run_id']}\n")
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BUILD_RUN }}
+          name: Club-arrangement-evidence
+          path: sonic-evidence
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BUILD_RUN }}
+          name: Jackin-audio-evidence
+          path: jackin-evidence
+      - name: Package thirteen playable projects and original audio previews
+        run: |
+          python3 - <<'PY'
+          import hashlib,zipfile
+          from pathlib import Path
+          root=Path('release-assets'); evidence=Path('sonic-evidence')
+          with zipfile.ZipFile(root/'FaseGrooveArranger-0.7.0-esempi.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for pattern in ['preview-*.mp3','club-*.fga','club-*.mid']:
+                  files=sorted(evidence.rglob(pattern)); assert len(files)==13,(pattern,len(files))
+                  for p in files: z.write(p,p.name)
+              jackin=sorted(Path('jackin-evidence').glob('Jackin-*.mp3')); assert len(jackin)==4
+              for p in jackin: z.write(p,p.name)
+              z.write('docs/GENRE_SOUND.md','SUONI-PER-GENERE.md')
+              z.writestr('LEGGIMI.txt','Fase Groove Arranger 0.7.0 — esempi dei 13 generi\nApri un file club-N.fga nella nuova app: suoni e mix sono già configurati.\nGli MP3 sono otto battute del primo drop più coda, senza normalizzazione aggiunta.\n0 Piano House; 1 Soulful; 2 Deep; 3 Gospel; 4 Jackin; 5 Jackin Piano; 6 Garage UK; 7 Afro Latin; 8 Funky Disco; 9 90s; 10 Neo Soul; 11 Chill; 12 Dance.\n')
+          files=sorted(p for p in root.iterdir() if p.name.endswith(('.zip','.tar.gz')))
+          (root/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ env.BUILD_RUN }}
+          name: UI-review
+          path: ui-review
+      - name: Package interface screenshots and promote tested source
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,subprocess,zipfile
+          from pathlib import Path
+          m=json.loads(Path('.github/release-manifest.json').read_text());root=Path('release-assets')
+          assert 'PASS' in Path('ui-review/daw-workspace.txt').read_text()
+          assert 'PASS' in Path('ui-review/daw-navigation.txt').read_text()
+          assert Path('ui-review/track-height-resize.png').is_file()
+          assert 'PASS' in Path('ui-review/timeline-editing.txt').read_text()
+          assert 'PASS' in Path('ui-review/timeline-editing-audio.txt').read_text()
+          assert Path('ui-review/timeline-editing.png').is_file()
+          assert 'PASS' in Path('ui-review/mixer-smoothing.txt').read_text()
+          assert 'PASS' in Path('ui-review/transport.txt').read_text()
+          assert 'PASS' in Path('ui-review/seek-note-chase.txt').read_text()
+          assert 'PASS' in Path('ui-review/loop-resize-audio.txt').read_text()
+          assert 'PASS' in Path('ui-review/midi-editing.txt').read_text()
+          for report in Path('ui-review').glob('*.txt'):
+              assert 'FAIL' not in report.read_text(),report.name
+          with zipfile.ZipFile(root/'FaseGrooveArranger-0.7.0-interfaccia.zip','w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(Path('ui-review').iterdir()):z.write(p,p.name)
+          files=sorted(p for p in root.iterdir() if p.name.endswith(('.zip','.tar.gz')))
+          (root/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
+          repository='wsx79/fasegroovearranger'
+          main=json.loads(subprocess.check_output(['gh','api',f'repos/{repository}/git/ref/heads/main']))['object']['sha']
+          assert main in [m['base_sha'],m['source_sha']]
+          if main!=m['source_sha']:
+              subprocess.run(['gh','api','--method','PATCH',f'repos/{repository}/git/refs/heads/main','-f','sha='+m['source_sha'],'-F','force=false'],check=True)
+          PY
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release already exists; refusing to replace its assets."
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "Fase Groove Arranger ${RELEASE_TAG#v}" --notes-file docs/RELEASE_NOTES_0.7.0.md --draft
+          gh release upload "$RELEASE_TAG" release-assets/*
+          gh release edit "$RELEASE_TAG" --draft=false --latest=true
