@@ -8,7 +8,7 @@ class PianoStepGrid:public juce::Component,public juce::SettableTooltipClient {
 public:
     explicit PianoStepGrid(MainComponent& m):owner(m){setSize(1100,190);setTooltip(tr("Click a step to cycle rest, note, accent, ghost, push and hold. Drag a velocity fader to change dynamics."));}
     void paint(juce::Graphics& g)override{
-        auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed);auto pattern=sgk::GrooveEngine::basePattern(s);const bool bass=owner.selectedTrack==1;const auto& row=bass?pattern.leftHand:pattern.rightHand;
+        auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed);auto pattern=sgk::GrooveEngine::basePattern(s);const bool bass=owner.selectedTrack==1;const auto& row=bass?pattern.leftHand:pattern.rightHand;
         const auto& levels=bass?s.userVelLeft:s.userVelRight;
         g.fillAll(Palette::panel);const float w=(getWidth()-80)/32.f;
         g.setFont(FamilyTheme::font(11));g.setColour(Palette::dim);g.drawText(tr(bass?"BASS":owner.selectedTrack==2?"STRINGS":"PIANO"),4,25,72,30,juce::Justification::centredLeft);g.drawText(tr("VELOCITY"),4,94,72,30,juce::Justification::centredLeft);
@@ -16,7 +16,7 @@ public:
     }
     void mouseDown(const juce::MouseEvent& ev)override{
         const int i=index(ev.position.x);if(i<0)return;owner.checkpoint();auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;
-        if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,sgk::GrooveEngine::basePattern(pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed)));
+        if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,sgk::GrooveEngine::basePattern(pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed)));
         if(ev.y<70){auto& symbol=(owner.selectedTrack==1?e.userLeft:e.userRight)[(size_t)i];const std::string symbols=".xXg>=";auto pos=symbols.find(symbol);symbol=ev.mods.isRightButtonDown()?'.':symbols[(pos==std::string::npos?0:pos+1)%symbols.size()];}
         else setLevel(ev);
         owner.changed(false);repaint();

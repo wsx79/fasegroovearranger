@@ -16,6 +16,13 @@ inline void verifyRegeneration(){
         for(unsigned seed:{91U,317U,1709U,4951U,9187U,17891U}){
             fga::generate(p,fga::Scope::song,0,0,seed);
             for(int ti=0;ti<fga::trackCount;++ti)phrases[ti].insert(musicalFingerprint(p.tracks[ti].clips[0]));
+            const auto bassSettings=fga::pianoEngineSettings(p,1,p.tracks[1].clips[0].seed,p.tracks[1].clips[0].motifSeed);
+            const auto& source=sgk::bassLines()[(size_t)sgk::bassLineIndex((int)bassSettings.bass)].line;
+            check(!bassSettings.bassLineOverride.empty(),"regenerated bass has a developed figure");
+            for(size_t bar=0;bar<source.size();bar+=16){
+                size_t first=bar;while(first<bar+16&&(source[first]=='.'||source[first]=='='||source[first]=='G'))++first;
+                if(first<bar+16)check(bassSettings.bassLineOverride[first]==source[first],"bass retains its first pitched anchor in each bar, including offbeats");
+            }
             const auto take=p;fga::generate(p);
             for(int ti=0;ti<fga::trackCount;++ti)check(p.tracks[ti].clips==take.tracks[ti].clips,"new musical takes must be reproducible without a new seed");
         }

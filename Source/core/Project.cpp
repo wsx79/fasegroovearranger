@@ -83,7 +83,9 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
         const auto source=line;
         for(size_t i=1;i<line.size();++i){
             const auto choice=mix((e.riffSeed?e.riffSeed:take)+(std::uint32_t)i*7919U);
-            if(i%8==0||e.segmentLocked[(i/8)%4]||source[i]=='=')continue;
+            const auto barStart=source.begin()+(i/16)*16;
+            const bool firstTone=std::none_of(barStart,source.begin()+i,[](char c){return c!='.'&&c!='='&&c!='G';});
+            if(firstTone||i%8==0||e.segmentLocked[(i/8)%4]||source[i]=='=')continue;
             if(source[i]=='R'||source[i]=='O'||source[i]=='5'){
                 static constexpr char tones[]{'R','O','5'};
                 line[i]=tones[choice%3];
