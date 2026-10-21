@@ -130,7 +130,7 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     if(onlyTrack < -1 || onlyTrack>=trackCount)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
-    struct Guard{AudioEngine& e;~Guard(){const juce::ScopedLock lock(e.mutex);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.needsReset=true;e.exporting=false;}} guard{*this};
+    struct Guard{AudioEngine& e;~Guard(){const juce::ScopedLock lock(e.mutex);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.needsReset=true;e.exporting=false;}} guard{*this};
     publish(p);
     {const juce::ScopedLock lock(mutex);for(int ti=0;ti<trackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
         playing=false;currentBeat=0;needsChase=false;if(mp3)sampleRate=44100;

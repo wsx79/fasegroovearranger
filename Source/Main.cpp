@@ -118,10 +118,13 @@ public:
             float* optionalOutputs[]{live.getWritePointer(0),nullptr};
             audio.audioDeviceIOCallbackWithContext(nullptr,0,optionalOutputs,2,512,context);
             transport=transport&&std::isfinite(live.getRMSLevel(0,0,512));
+            audio.seek(6.25);run("seek-loop-export.wav",-1,false);audio.play(true);
+            for(int block=0;block<1024;++block)audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+            transport=transport&&audio.position()>=0&&audio.position()<4&&audio.isPlaying();
             audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
             for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
-            folder.getChildFile("transport.txt").replaceWithText(transport?"PASS precise paused/live seek, seek beyond loop, loop re-entry and pause silence":"FAIL transport");ok=ok&&transport;
+            folder.getChildFile("transport.txt").replaceWithText(transport?"PASS precise paused/live seek, seek beyond loop, loop re-entry, loop after export and pause silence":"FAIL transport");ok=ok&&transport;
             {
                 auto probe=p;probe.loop=false;for(auto& t:probe.tracks){t.mute=true;for(auto& c:t.clips)c.notes.clear();}
                 probe.tracks[0].mute=false;probe.tracks[0].gain=.5;probe.tracks[0].clips[0].notes={{0,4,69,100,0}};
