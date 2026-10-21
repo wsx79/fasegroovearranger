@@ -96,6 +96,8 @@ The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, m
 The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. **COLLAPSE MIXER**, at the top right of the mixer, folds the faders away to give space back to the tracks. A slim bar keeps **SHOW MIXER** available to restore the previous height. **MIXER / F3** also works. Drag the mixer header to adjust its height; double-click restores the default height. The chosen size is remembered; channels scroll horizontally when needed.
 
 - **Click anywhere in a clip** to select it and place the cursor exactly there; press **PLAY** or **Space** to listen from that point. While playing, clicking jumps immediately. This also works after horizontal scrolling and beyond an active loop’s end; **double-click** or **E** opens the full MIDI editor.
+- **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
+- **Right edge of a section header**: drag to resize that section on every track in whole-bar steps. Later sections, locators and automation follow the edit. **Escape** cancels the drag; **UNDO** restores a committed edit. Loop durations and source MIDI are saved in the **.fga** project.
 - **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.
 - **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
 - **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
@@ -109,7 +111,7 @@ Moving a multiple-note selection in the piano roll preserves spacing at clip and
 |---|---|
 | **⏮ ▶/❚❚ ■** | Return to the start, play / pause, stop. The space bar toggles play / pause. |
 | **TEMPO** | Sets song BPM within the selected genre’s range. Duration follows the bar count. |
-| **LOOP** | Repeats the chosen region; LOOP SECTION repeats the selected editor section. |
+| **LOOP** | Repeats the chosen region; LOOP CLIP repeats the selected editor section. |
 
 ### Progression, Harmony & Scales and Groove
 
@@ -181,7 +183,7 @@ A pitched sample starts with root MIDI 60; drums use the piece's note. **Right-c
 
 ### Piano roll and rhythm grid
 
-Click a **clip** to open the full editor. Choose which part to edit in the section menu; **LOOP SECTION** repeats it while you work. Each editor shows only its own track. A drum piece has one row.
+Double-click a **clip** to open the full editor. Choose which part to edit in the section menu; **LOOP CLIP** repeats it while you work. Each editor shows only its own track. A drum piece has one row.
 
 | Action | Result |
 |---|---|
@@ -379,7 +381,7 @@ Then build your song with the examples below.
 1. Choose **Jackin'** or **Jackin' Piano**.
 2. Start with short piano gate and more swing.
 3. Strip back the break to set up the return: a **REGENERATE CLIP** on piano may be enough.
-4. Keep the kick recognisable and compare the return with what came before using **LOOP SECTION**.
+4. Keep the kick recognisable and compare the return with what came before using **LOOP CLIP**.
 
 ### Funky & Disco: let guitar lead
 

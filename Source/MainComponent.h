@@ -23,6 +23,7 @@ public:
     void mouseMove(const juce::MouseEvent&) override;
     void mouseDoubleClick(const juce::MouseEvent&) override;
     bool verifyAutomation(const juce::File&);
+    bool keyPressed(const juce::KeyPress&) override;
     int rowY(int row) const;
     int rowAt(int y) const;
     int totalHeight() const {return rowY(trackCount);}
@@ -36,6 +37,14 @@ private:
     double loopAnchor=0;
     int clipTrack=-1,clipSource=-1,clipTarget=-1;
     int sectionAt(float x) const;
+    int clipAt(int track,float x) const;
+    int edgeAt(int track,float x) const;
+    void beginResize(int section,int track,const juce::MouseEvent&);
+    void cancelResize();
+    int resizeSectionIndex=-1,resizeTrack=-1;
+    float resizeAnchorX=0;
+    double resizeOriginalLength=0,resizeLastLength=0;
+    std::unique_ptr<Project> resizeBefore;
     double originalCurve=0;
     float dragY=0;
     int pointAt(int track,juce::Point<float>) const;
@@ -107,7 +116,7 @@ public:
     void showSectionMenu(int);
     void showClipMenu(int,int);
     Clip& clip(){return project.tracks[(size_t)selectedTrack].clips[(size_t)selectedSection];}
-    double clipLength()const{return project.sections[(size_t)selectedSection].bars*4.;}
+    double clipLength()const{return project.clipLength(selectedTrack,selectedSection);}
     void regenerate(Scope);
     bool requestClose();
     bool writeLanguageEvidence(const juce::File&);
@@ -154,7 +163,7 @@ private:
     juce::TextButton brushAccent{"Accent"},brushHit{"Hit"},brushGhost{"Ghost"},brushFlam{"Flam"};
     juce::TextButton fitNotesButton{"FIT"},drawTool{"Draw"},selectTool{"Select"},eraseTool{"Erase"};
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
-    juce::TextButton sectionLoopButton{"LOOP SECTION"};
+    juce::TextButton sectionLoopButton{"LOOP CLIP"};
     juce::TextButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
     std::vector<Project> undoStack,redoStack;

@@ -137,6 +137,17 @@ public:
                 const bool smooth=startsSmoothly&&live.getMagnitude(0,512)==0;
                 folder.getChildFile("mixer-smoothing.txt").replaceWithText(smooth?"PASS live fader ramps to silence within 10ms without changing MIDI":"FAIL live fader smoothing");ok=ok&&smooth;audio.stop();
             }
+            {
+                auto loopProbe=p;loopProbe.loop=false;loopProbe.sections={{fga::Section::main,2,"Loop"}};loopProbe.normalise();for(auto& t:loopProbe.tracks)for(auto& c:t.clips)c.notes.clear();
+                loopProbe.tracks[4].clips[0].notes={{0,.25,36,100,0}};bool loopAudio=loopProbe.resizeClipLoop(4,0,12);
+                auto result=audio.exportAudio(loopProbe,folder.getChildFile("loop-extended.wav"),4,false,[]{return false;},[](double){});loopAudio=loopAudio&&result.wasOk();
+                juce::AudioFormatManager fm;fm.registerBasicFormats();auto reader=std::unique_ptr<juce::AudioFormatReader>(fm.createReaderFor(folder.getChildFile("loop-extended.wav")));
+                if(reader){const auto expected=(juce::int64)std::ceil((12*60./loopProbe.settings.bpm+3)*reader->sampleRate);loopAudio=loopAudio&&std::abs(reader->lengthInSamples-expected)<=1;
+                    juce::AudioBuffer<float> hit(2,4096);for(double beat:{0.,8.}){reader->read(&hit,0,4096,(juce::int64)std::llround(beat*60./loopProbe.settings.bpm*reader->sampleRate),true,true);loopAudio=loopAudio&&hit.getMagnitude(0,4096)>1e-5;}}
+                else loopAudio=false;
+                const auto midi=fga::midiFile(loopProbe,4);folder.getChildFile("loop-extended.mid").replaceWithData(midi.data(),midi.size());
+                folder.getChildFile("loop-resize-audio.txt").replaceWithText(loopAudio?"PASS independently extended loop renders both repeats and includes the tail beyond the last section in WAV/MIDI":"FAIL resized loop audio/export");ok=ok&&loopAudio;
+            }
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());

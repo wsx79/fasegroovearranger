@@ -22,7 +22,11 @@ struct Clip {
     std::vector<Note> notes;
     std::uint32_t seed = 1;
     bool locked = false;
-    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked; }
+    // A zero span follows the section; explicit spans and loop periods use beats.
+    // Preserve the source across shortening so extending can recover its notes.
+    double span = 0, loopLength = 0;
+    std::vector<Note> loopSource;
+    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource; }
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
@@ -84,12 +88,15 @@ struct Project {
     bool loop = false;
     double loopStart = 0, loopEnd = 0;
     double sectionStart(int index) const;
-    double length() const { return sectionStart((int)sections.size()); }
+    double length() const;
+    double clipLength(int track, int section) const;
     void normalise();
     void insertSection(int index, SongSection section, int copyFrom = -1);
     void removeSection(int index);
     void moveSection(int from, int to);
     void resizeSection(int index, int bars);
+    bool resizeClipLoop(int track, int section, double beats);
+    bool resizeSectionLoop(int index, int bars);
 };
 const char* sectionName(Section);
 std::vector<std::string> genres();

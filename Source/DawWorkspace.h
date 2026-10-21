@@ -28,7 +28,7 @@ private:
     bool updating=false,gainGesture=false,panGesture=false;
     juce::Label name,source,section;
     juce::Slider gain,pan;
-    juce::TextButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},regenerate{"REGENERATE CLIP"},loop{"LOOP SECTION"};
+    juce::TextButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
 };
 class MixerStrip : public juce::Component {
 public:

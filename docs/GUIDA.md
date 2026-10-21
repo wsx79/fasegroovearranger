@@ -96,6 +96,8 @@ L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB,
 Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; il doppio clic ripristina quella predefinita. La dimensione scelta viene ricordata; i canali scorrono orizzontalmente quando lo spazio non basta.
 
 - **Clic in qualsiasi punto del clip**: seleziona e posiziona il cursore esattamente lì; premi **PLAY** o **Spazio** per ascoltare da quel punto. Durante la riproduzione il clic fa saltare subito l’ascolto. Funziona anche dopo lo scorrimento orizzontale e oltre la fine di un loop attivo; **doppio clic** o **E**: editor MIDI grande.
+- **Bordo destro del clip**: trascina per accorciare o estendere soltanto quel loop, a passi di un beat; **Maiusc** permette passi di un quarto di beat. Il MIDI si ripete senza cambiare velocità o dinamiche. Accorciare non cancella la sorgente: riallungando la recuperi. Puoi superare il confine della sezione; il clip esteso ha precedenza sulle parti coperte della stessa traccia, senza raddoppiare le note.
+- **Bordo destro dell’intestazione di sezione**: trascina per ridimensionarla su tutte le tracce, a passi di una battuta. Le sezioni successive, i locatori e l’automazione seguono la modifica. **Esc** annulla il trascinamento; **UNDO** ripristina la modifica completata. I loop e la loro sorgente vengono salvati nel progetto **.fga**.
 - **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.
 - **Clic sul righello delle battute**: sposta il cursore nel punto esatto, come sul righello dell’editor MIDI; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
 - **ADATTA BRANO / F**: mostra tutta la forma; **SEGUI**: scorrimento durante la riproduzione; **INSPECTOR / I** e **MIXER / F3**: mostra o nascondi i pannelli.
@@ -109,7 +111,7 @@ La selezione multipla nel piano roll mantiene le distanze fra le note anche ai b
 |---|---|
 | **⏮ ▶/❚❚ ■** | Torna all’inizio, play / pausa, stop. La barra spaziatrice fa play / pausa. |
 | **TEMPO** | Cambia i BPM dell’intero brano nel range del genere scelto. La durata in minuti segue le battute. |
-| **LOOP** | Ripete la zona impostata; LOOP SEZIONE ripete la parte scelta nell’editor. |
+| **LOOP** | Ripete la zona impostata; LOOP CLIP ripete la parte scelta nell’editor. |
 
 ### Progression, Harmony & Scales e Groove
 
@@ -183,7 +185,7 @@ Per un campione intonato, la radice iniziale è MIDI 60. Per la batteria è la n
 
 ### Piano roll e griglia ritmica
 
-Clicca un **clip**: l'editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP SEZIONE** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
+Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP CLIP** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
 
 | Azione | Risultato |
 |---|---|
@@ -382,7 +384,7 @@ Poi costruisci il brano con gli esempi qui sotto.
 1. Scegli **Jackin'** o **Jackin' Piano**.
 2. Parti da gate corto sul piano e un feel più swingato.
 3. Nel break togli quello che serve alla ripartenza: un **RIGENERA CLIP** sul piano può bastare.
-4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP SEZIONE**.
+4. Tieni la cassa riconoscibile e confronta la ripartenza con il tratto precedente usando **LOOP CLIP**.
 
 ### Funky & Disco: la chitarra guida
 

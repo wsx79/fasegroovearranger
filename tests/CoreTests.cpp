@@ -10,6 +10,26 @@ void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "ClubArrangementChecks.h"
 int main(int argc,char** argv){try{
     verifyClubEdgeCases();verifyClubSeedCases();
+    {
+        auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
+        for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
+        p.tracks[4].clips[0].notes={{0,.25,36,100,0},{8,2,36,70,0}};p.tracks[4].clips[1].notes={{1,.25,36,50,0}};p.normalise();
+        const auto original=p.tracks[4].clips[0];
+        check(p.resizeClipLoop(4,0,8),"shorten one clip");check(p.clipLength(4,0)==8&&p.sections[0].bars==4&&p.clipLength(5,0)==16,"clip duration independent of section and other tracks");
+        check(p.resizeClipLoop(4,0,24),"extend one loop");check(p.tracks[4].clips[0].notes.size()==3&&p.tracks[4].clips[0].notes[1].start==8&&p.tracks[4].clips[0].notes[1].velocity==70&&p.tracks[4].clips[0].notes[2].start==16,"loop source survives shortening, repeats without velocity or timing changes");
+        auto events=fga::events(p,4);bool hidden=false,repeated=false;for(auto e:events)if(e.velocity>0&&e.controller<0){hidden=hidden||e.beat==17;repeated=repeated||e.beat==16;}check(!hidden&&repeated,"extended loop masks covered MIDI instead of doubling notes");
+        check(p.resizeClipLoop(4,0,4)&&p.resizeClipLoop(4,0,16)&&p.tracks[4].clips[0].notes==original.notes,"non-destructive shorten and restore");
+        auto editedShort=p;check(editedShort.resizeClipLoop(4,0,4),"shortened loop for editing");editedShort.tracks[4].clips[0].notes[0].velocity=37;
+        check(editedShort.resizeClipLoop(4,0,24)&&editedShort.tracks[4].clips[0].notes[0].velocity==37&&editedShort.tracks[4].clips[0].notes[1].start==8&&editedShort.tracks[4].clips[0].notes[2].velocity==37,"editing shortened loop retains hidden source notes");
+        p.tracks[4].clips[0].notes[0].velocity=42;check(p.resizeClipLoop(4,0,24)&&p.tracks[4].clips[0].notes[2].velocity==42,"edited MIDI becomes the new loop source");
+        check(p.resizeClipLoop(4,1,24)&&p.length()==40,"clip can extend beyond last section and exports include its tail");
+        p.tracks[4].clips[1].span=0;p.normalise();check(p.resizeSectionLoop(0,6)&&p.sections[0].bars==6&&p.sectionStart(1)==24,"section edge moves every track and later markers");
+        for(int ti=0;ti<fga::trackCount;++ti)check(p.clipLength(ti,0)==24,"section resize updates all track spans");
+        check(p.tracks[4].clips[0].notes.size()==3,"section extension repeats MIDI");
+        check(p.resizeSectionLoop(0,1)&&p.resizeSectionLoop(0,6)&&p.tracks[4].clips[0].notes.size()==3,"section shrink and re-extend preserves hidden MIDI");
+        check(!p.resizeClipLoop(-1,0,16)&&!p.resizeClipLoop(0,0,std::numeric_limits<double>::quiet_NaN()),"reject invalid loop resize");
+    }
+
     {auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();auto& e=p.tracks[0].engine;e.pattern=sgk::userPatternIndex();e.userRight.fill('.');e.userLeft.fill('.');e.userRight[0]='x';e.userVelRight[0]=37;e.realism=false;e.humanize=0;e.swing=0;e.strum=0;e.fillEvery=0;e.variationEvery=0;fga::generate(p,fga::Scope::track,0);check(!p.tracks[0].clips[0].notes.empty(),"custom piano grid generates notes");auto before=p.tracks[0].clips[0].notes;e.userVelRight[0]=120;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes[0].velocity>before[0].velocity,"per-step piano velocity reaches engine");e.inversions[0]=2;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes!=before,"per-chord inversion reaches engine");e.pedalCC=true;auto events=fga::events(p,0);bool pedal=false,expression=false;for(auto event:events){pedal=pedal||event.controller==64;expression=expression||event.controller==11;}check(pedal&&expression,"pedal and expression controller events");auto original=p;fga::applyPianoIntention(p,0,1,true,true,123);check(p.settings.degrees==original.settings.degrees&&p.tracks[0].engine.userRight==original.tracks[0].engine.userRight,"DNA rhythm and harmony locks");}
     {auto p=fga::newProject(1);auto& e=p.tracks[0].engine;e.pattern=-1;e.riffSeed=123;auto a=fga::pianoEngineSettings(p,0,55);auto patternA=sgk::GrooveEngine::basePattern(a);e.riffSeed=9876;auto b=fga::pianoEngineSettings(p,0,55);auto patternB=sgk::GrooveEngine::basePattern(b);check(patternA.rightHand!=patternB.rightHand||patternA.leftHand!=patternB.leftHand,"riff seed changes the automatic genre groove");check(a.humanizeSeed==b.humanizeSeed,"riff and humanize seeds are independent");}
     for(int genre=0;genre<13;++genre){

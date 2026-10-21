@@ -16,12 +16,14 @@ constexpr int trackHeight=40,headerWidth=216,rulerHeight=60;
 }
 void ArrangementView::paint(juce::Graphics& g){
     g.fillAll(Palette::field);auto view=owner.arrangementPort.getViewArea();const auto& p=owner.project;
-    for(int row=0;row<trackCount;++row){const size_t ti=(size_t)trackAtRow(row);int y=rowY(row);const auto& t=p.tracks[ti];
+    for(int row=0;row<trackCount;++row){const size_t ti=(size_t)trackAtRow(row);int y=rowY(row);const auto& t=p.tracks[ti];double occupied=0;
         if((int)ti==owner.selectedTrack){g.setColour(colour((int)ti).withAlpha(.045f));g.fillRect(0,y,getWidth(),trackHeight);}
-        for(size_t si=0;si<p.sections.size();++si){int x=headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar);int w=(int)(p.sections[si].bars*pixelsPerBar);juce::Rectangle<int> cell(x+1,y+3,std::max(1,w-2),trackHeight-6);const auto& c=t.clips[si];bool sel=(int)ti==owner.selectedTrack&&(int)si==owner.selectedSection;
+        for(size_t si=0;si<p.sections.size();++si){const double begin=p.sectionStart((int)si),duration=p.clipLength((int)ti,(int)si),end=begin+duration,visible=std::max(begin,occupied);occupied=std::max(occupied,end);if(visible>=end)continue;int x=headerWidth+(int)(visible/4*pixelsPerBar);int w=(int)((end-visible)/4*pixelsPerBar);juce::Rectangle<int> cell(x+1,y+3,std::max(1,w-2),trackHeight-6);const auto& c=t.clips[si];bool sel=(int)ti==owner.selectedTrack&&(int)si==owner.selectedSection;
             g.setColour(colour((int)ti).withAlpha(c.notes.empty()?.035f:t.mute?.07f:sel?.24f:.12f));g.fillRoundedRectangle(cell.toFloat(),4);
             g.setColour(sel?colour((int)ti):Palette::panelEdge);g.drawRoundedRectangle(cell.toFloat(),4,sel?1.5f:.5f);
-            if(w>70){int low=127,high=0;for(auto n:c.notes){low=std::min(low,n.pitch);high=std::max(high,n.pitch);}const double total=p.sections[si].bars*4.;g.setColour(colour((int)ti).withAlpha(.65f));for(auto n:c.notes){float nx=cell.getX()+4+(float)(n.start/total*(w-12));float ny=cell.getBottom()-5-(float)((n.pitch-low)/(double)std::max(1,high-low)*16);g.fillRect(nx,ny,std::max(1.f,(float)(n.length/total*(w-12))),2.f);}}
+            if(w>12){int low=127,high=0;for(auto n:c.notes){low=std::min(low,n.pitch);high=std::max(high,n.pitch);}g.saveState();g.reduceClipRegion(cell.reduced(3));g.setColour(colour((int)ti).withAlpha(.65f));for(auto n:c.notes){float nx=headerWidth+(float)((begin+n.start)/4*pixelsPerBar);float ny=cell.getBottom()-5-(float)((n.pitch-low)/(double)std::max(1,high-low)*16);g.fillRect(nx,ny,std::max(1.f,(float)(n.length/4*pixelsPerBar)),2.f);}g.restoreState();}
+            if(c.loopLength>0&&duration>c.loopLength){g.setColour(colour((int)ti).withAlpha(.25f));for(double at=begin+c.loopLength;at<end;at+=c.loopLength)if(at>=visible)g.drawVerticalLine(headerWidth+(int)(at/4*pixelsPerBar),(float)y+7,(float)y+33);}
+            g.setColour(sel?colour((int)ti):Palette::dim.withAlpha(.45f));g.fillRoundedRectangle((float)cell.getRight()-4,(float)y+11,2,18,1);
             if(c.locked)label(g,"L",{cell.getRight()-17,y+4,14,16},10,Palette::accent);
         }g.setColour(Palette::panelEdge.withAlpha(.5f));g.drawHorizontalLine(y+trackHeight-1,0,(float)getWidth());
     }
@@ -44,7 +46,7 @@ void ArrangementView::paint(juce::Graphics& g){
         float meter=std::clamp(owner.audio.level((int)ti),0.f,1.f);g.setColour(Palette::cymbals.withAlpha(.7f));g.fillRect(x+199,y+trackHeight-5-(int)(meter*25),4,(int)(meter*25));
     }
     int y=view.getY();g.setColour(Palette::panel);g.fillRect(view.getX(),y,view.getWidth(),rulerHeight);
-    for(size_t si=0;si<p.sections.size();++si){int x=headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar);int w=(int)(p.sections[si].bars*pixelsPerBar);g.setColour((int)si==owner.selectedSection?Palette::accent.withAlpha(.17f):Palette::control);g.fillRect(x+2,y+2,w-4,28);label(g,utf(p.sections[si].name)+juce::String::fromUTF8("  ·  ")+juce::String(p.sections[si].bars)+" "+tr("bars"),{x+10,y,w-16,30},11,(int)si==owner.selectedSection?Palette::accent:Palette::text);}
+    for(size_t si=0;si<p.sections.size();++si){int x=headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar);int w=(int)(p.sections[si].bars*pixelsPerBar);g.setColour((int)si==owner.selectedSection?Palette::accent.withAlpha(.17f):Palette::control);g.fillRect(x+2,y+2,w-4,28);label(g,utf(p.sections[si].name)+juce::String::fromUTF8("  ·  ")+juce::String(p.sections[si].bars)+" "+tr("bars"),{x+10,y,w-20,30},11,(int)si==owner.selectedSection?Palette::accent:Palette::text);g.setColour(Palette::dim.withAlpha(.5f));g.fillRoundedRectangle((float)(x+w-5),(float)y+8,2,16,1);}
     if(p.loopEnd>p.loopStart){
         const float from=headerWidth+(float)(p.loopStart/4*pixelsPerBar),to=headerWidth+(float)(p.loopEnd/4*pixelsPerBar);
         g.setColour(p.loop?Palette::accent2.withAlpha(.24f):Palette::panelEdge);g.fillRect(from,(float)y+33,to-from,25.f);
@@ -62,6 +64,7 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.y<v.getY()+rulerHeight){
         if(e.x<v.getX()+headerWidth)return;
         if(e.mods.isPopupMenu()){owner.select(owner.selectedTrack,si);owner.showSectionMenu(si);return;}
+        if(e.y<v.getY()+32&&!e.mods.isPopupMenu()){const int edge=edgeAt(-1,e.position.x);if(edge>=0){owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));beginResize(edge,-1,e);return;}}
         if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         else{const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());
             if(e.mods.isShiftDown()){owner.checkpoint();loopDragging=true;loopAnchor=beat;owner.setLoopRange(beat,std::min(owner.project.length(),beat+4));}
@@ -85,10 +88,11 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     }
     if(e.x<v.getX()+headerWidth&&e.x>=v.getX()+132&&e.x<v.getX()+151){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}
     if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else owner.showInstrument();return;}
-    owner.select(ti,si);if(e.mods.isPopupMenu()){owner.showClipMenu(ti,si);return;}
+    const int edge=e.mods.isPopupMenu()?-1:edgeAt(ti,e.position.x),hit=clipAt(ti,e.position.x),clipSection=edge>=0?edge:hit>=0?hit:si;
+    owner.select(ti,clipSection);if(e.mods.isPopupMenu()){owner.showClipMenu(ti,clipSection);return;}
     owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));
-    repaint();
-    clipTrack=ti;clipSource=clipTarget=si;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();grabKeyboardFocus();
+    repaint();if(edge>=0){beginResize(edge,ti,e);return;}
+    clipTrack=ti;clipSource=clipTarget=clipSection;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();grabKeyboardFocus();
 }
 int ArrangementView::rowY(int row) const {int y=rulerHeight;for(int r=0;r<row;++r)y+=trackHeight+(volumeVisible[(size_t)trackAtRow(r)]?80:0);return y;}
 int ArrangementView::rowAt(int y) const {if(y<rulerHeight||y>=totalHeight())return -1;for(int r=0;r<trackCount;++r)if(y<rowY(r+1))return r;return -1;}
@@ -96,16 +100,43 @@ float ArrangementView::volumeY(int track,double value) const {return (float)(row
 int ArrangementView::pointAt(int track,juce::Point<float> pos) const {const auto& points=owner.project.tracks[(size_t)track].volume.points;for(size_t i=0;i<points.size();++i)if(pos.getDistanceFrom({headerWidth+(float)(points[i].beat/4*pixelsPerBar),volumeY(track,points[i].value)})<8)return (int)i;return -1;}
 void ArrangementView::editPoint(juce::Point<float> pos,bool snap){if(dragTrack<0||dragPoint<0)return;auto& points=owner.project.tracks[(size_t)dragTrack].volume.points;auto& point=points[(size_t)dragPoint];double beat=(pos.x-headerWidth)*4./pixelsPerBar;if(snap)beat=std::round(beat);const double low=dragPoint>0?points[(size_t)dragPoint-1].beat+1./960.:0,high=dragPoint+1<(int)points.size()?points[(size_t)dragPoint+1].beat-1./960.:owner.project.length();point.beat=std::clamp(beat,low,high);point.value=std::clamp((volumeY(dragTrack,0)-pos.y)/32.,0.,2.);}
 int ArrangementView::sectionAt(float x) const {int result=0;const double beat=(x-headerWidth)*4./pixelsPerBar;for(size_t i=0;i<owner.project.sections.size();++i)if(beat>=owner.project.sectionStart((int)i))result=(int)i;return result;}
-void ArrangementView::mouseDoubleClick(const juce::MouseEvent& e){const auto v=owner.arrangementPort.getViewArea();if(e.y>=v.getY()+rulerHeight&&e.x>=v.getX()+headerWidth&&rowAt(e.y)>=0){clipTrack=clipSource=clipTarget=-1;owner.showEditor();}}
+int ArrangementView::clipAt(int track,float x) const {
+    const double beat=(x-headerWidth)*4./pixelsPerBar;double occupied=0;
+    for(size_t si=0;si<owner.project.sections.size();++si){const double start=owner.project.sectionStart((int)si),end=start+owner.project.clipLength(track,(int)si),from=std::max(start,occupied);occupied=std::max(occupied,end);if(beat>=from&&beat<end)return (int)si;}return -1;
+}
+int ArrangementView::edgeAt(int track,float x) const {
+    double occupied=0;const float left=(float)(owner.arrangementPort.getViewPositionX()+headerWidth);
+    if(x<left)return -1;
+    for(size_t si=0;si<owner.project.sections.size();++si){const double start=owner.project.sectionStart((int)si),end=track<0?owner.project.sectionStart((int)si+1):start+owner.project.clipLength(track,(int)si),from=std::max(start,occupied);occupied=std::max(occupied,end);if(from>=end)continue;
+        const float edge=headerWidth+(float)(end/4*pixelsPerBar);if(edge>=left&&std::abs(x-edge)<=5)return (int)si;}return -1;
+}
+void ArrangementView::beginResize(int section,int track,const juce::MouseEvent& e){
+    owner.select(track<0?owner.selectedTrack:track,section);resizeSectionIndex=section;resizeTrack=track;resizeAnchorX=e.position.x;
+    resizeOriginalLength=resizeLastLength=track<0?owner.project.sections[(size_t)section].bars*4.:owner.project.clipLength(track,section);resizeBefore=std::make_unique<Project>(owner.project);
+    clipTrack=clipSource=clipTarget=-1;grabKeyboardFocus();
+}
+void ArrangementView::cancelResize(){if(resizeBefore){owner.project=*resizeBefore;owner.refreshControls();repaint();}resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;}
+bool ArrangementView::keyPressed(const juce::KeyPress& key){if(resizeBefore){if(key==juce::KeyPress::escapeKey)cancelResize();return true;}return owner.keyPressed(key);}
+void ArrangementView::mouseDoubleClick(const juce::MouseEvent& e){const auto v=owner.arrangementPort.getViewArea();if(e.y>=v.getY()+rulerHeight&&e.x>=v.getX()+headerWidth&&rowAt(e.y)>=0){clipTrack=clipSource=clipTarget=-1;resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;owner.showEditor();}}
 void ArrangementView::mouseDrag(const juce::MouseEvent& e){
+    if(resizeBefore){const double grid=resizeTrack<0?4.:e.mods.isShiftDown()?.25:1.;const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,512.);
+        if(duration!=resizeLastLength){auto previous=std::move(owner.project);owner.project=*resizeBefore;
+            const bool ok=resizeTrack<0?owner.project.resizeSectionLoop(resizeSectionIndex,(int)(duration/4)):owner.project.resizeClipLoop(resizeTrack,resizeSectionIndex,duration);
+            if(!ok){owner.project=std::move(previous);return;}resizeLastLength=duration;owner.refreshControls();repaint();}
+        const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);return;}
     if(loopDragging){const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());owner.setLoopRange(std::min(loopAnchor,beat),std::min(owner.project.length(),std::max(loopAnchor,beat)+4));return;}
     if(clipTrack>=0){clipTarget=sectionAt(e.position.x);const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);repaint();return;}
     if(dragTrack<0||dragPoint<0)return;auto& points=owner.project.tracks[(size_t)dragTrack].volume.points;if(dragPoint>=(int)points.size())return;if(bending)points[(size_t)dragPoint].curve=std::clamp(originalCurve+(dragY-e.position.y)/40.,-1.,1.);else editPoint(e.position,!e.mods.isShiftDown());owner.changed(false);}
 void ArrangementView::mouseUp(const juce::MouseEvent&){
+    if(resizeBefore){if(resizeLastLength!=resizeOriginalLength){auto after=std::move(owner.project);owner.project=*resizeBefore;owner.checkpoint();owner.project=std::move(after);resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;owner.changed();}else cancelResize();return;}
     if(clipTrack>=0&&clipTarget>=0&&clipTarget!=clipSource){owner.checkpoint();transferClip(owner.project,clipTrack,clipSource,clipTarget,copyingClip);owner.select(clipTrack,clipTarget);owner.changed();}
     clipTrack=clipSource=clipTarget=-1;dragTrack=dragPoint=-1;loopDragging=false;repaint();
 }
-void ArrangementView::mouseMove(const juce::MouseEvent& e){const auto v=owner.arrangementPort.getViewArea();if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+trackHeight){setTooltip(tr("Click anywhere in a clip to select it and position playback; press Play to listen, or jump immediately while playing. Double-click or E to edit. Drag to swap sections on the same track; Alt-drag to copy over the destination. Undo restores the previous clips."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
+void ArrangementView::mouseMove(const juce::MouseEvent& e){const auto view=owner.arrangementPort.getViewArea();const int hoverRow=rowAt(e.y);const bool header=e.y<view.getY()+32;
+    const bool edge=header?edgeAt(-1,e.position.x)>=0:e.y>=view.getY()+rulerHeight&&hoverRow>=0&&e.y<rowY(hoverRow)+trackHeight&&edgeAt(trackAtRow(hoverRow),e.position.x)>=0;
+    setMouseCursor(edge?juce::MouseCursor::LeftRightResizeCursor:juce::MouseCursor::NormalCursor);
+    if(edge){setTooltip(tr(header?"Drag this edge to resize the section on all tracks. MIDI repeats without stretching. Escape cancels; Undo restores.":"Drag this edge to resize only this clip loop. Shorten and extend without losing the source; Shift for quarter-beat timing. Escape cancels; Undo restores."));return;}
+    const auto v=owner.arrangementPort.getViewArea();if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+trackHeight){setTooltip(tr("Click anywhere in a clip to select it and position playback; press Play to listen, or jump immediately while playing. Double-click or E to edit. Drag to swap sections on the same track; Alt-drag to copy over the destination. Undo restores the previous clips."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
 bool ArrangementView::verifyAutomation(const juce::File& folder){
     const auto saved=owner.project;const auto visibility=volumeVisible;const int track=4;const double zoom=pixelsPerBar;pixelsPerBar=24;owner.select(track,0);owner.arrangementPort.setViewPosition(0,0);
     bool ok=!volumeVisible[(size_t)track]&&!owner.project.tracks[(size_t)track].volume.enabled;
@@ -521,7 +552,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
         if(code=='E'){showEditor();return true;}
         if(code=='I'&&page==Page::arrangement){inspectorToggle.triggerClick();return true;}
         if(code=='F'&&page==Page::arrangement){fitSong();return true;}
-        if(page==Page::arrangement&&(k==juce::KeyPress::deleteKey||k==juce::KeyPress::backspaceKey)){checkpoint();clip().notes.clear();changed();return true;}
+        if(page==Page::arrangement&&(k==juce::KeyPress::deleteKey||k==juce::KeyPress::backspaceKey)){checkpoint();clip().notes.clear();clip().loopSource.clear();clip().loopLength=0;changed();return true;}
     }
     return false;
 }

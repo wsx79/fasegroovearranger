@@ -189,6 +189,62 @@ const GenreProfile& genreProfile(int genre) {
 }
 std::vector<std::string> genres() { std::vector<std::string> out; for(auto s:sgk::grooveCategories()) out.emplace_back(s); return out; }
 double Project::sectionStart(int index) const { double p=0; for(int i=0;i<std::clamp(index,0,(int)sections.size());++i) p+=sections[(size_t)i].bars*4.0; return p; }
+double Project::clipLength(int track,int section) const {
+    if(section<0||section>=(int)sections.size())return 0;
+    if(track>=0&&track<(int)tracks.size()&&section<(int)tracks[(size_t)track].clips.size()){
+        const double span=tracks[(size_t)track].clips[(size_t)section].span;if(std::isfinite(span)&&span>0)return std::clamp(span,.25,512.);
+    }
+    return sections[(size_t)section].bars*4.;
+}
+double Project::length() const {
+    double end=sectionStart((int)sections.size());
+    for(size_t ti=0;ti<tracks.size();++ti)for(size_t si=0;si<tracks[ti].clips.size()&&si<sections.size();++si)
+        if(tracks[ti].clips[si].span>0)end=std::max(end,sectionStart((int)si)+clipLength((int)ti,(int)si));
+    return end;
+}
+namespace {
+bool repeatLoop(const std::vector<Note>& source,double period,double duration,std::vector<Note>& notes){
+    if(!std::isfinite(period)||period<=0||!std::isfinite(duration)||duration<=0)return false;
+    if(source.empty()){notes.clear();return true;}
+    const auto repeats=(size_t)std::ceil(duration/period);
+    if(!source.empty()&&repeats>2000000/source.size())return false;
+    Clip rendered;
+    for(size_t repeat=0;repeat<repeats;++repeat)for(auto n:source){n.start+=repeat*period;if(n.start<duration){n.length=std::min(n.length,duration-n.start);rendered.notes.push_back(n);}}
+    tidyNotes(rendered,duration);notes=std::move(rendered.notes);return true;
+}
+bool resizedLoop(Clip& clip,double previous,double duration){
+    std::vector<Note> expected;
+    const bool unchanged=clip.loopLength>0&&repeatLoop(clip.loopSource,clip.loopLength,previous,expected)&&expected==clip.notes;
+    if(!unchanged){
+        if(clip.loopLength>previous){
+            // Edits in a shortened view must retain the hidden part of the source.
+            std::vector<Note> source;for(auto n:clip.loopSource)if(n.start>=previous)source.push_back(n);
+            for(auto n:clip.notes){auto it=std::lower_bound(clip.loopSource.begin(),clip.loopSource.end(),n,[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+                if(it!=clip.loopSource.end()&&it->start==n.start&&it->pitch==n.pitch&&it->lane==n.lane&&n.length==std::min(it->length,previous-n.start))n.length=it->length;
+                source.push_back(n);}
+            Clip clean;clean.notes=std::move(source);tidyNotes(clean,clip.loopLength);clip.loopSource=std::move(clean.notes);
+        }else{clip.loopSource=clip.notes;clip.loopLength=previous;}
+    }
+    return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes);
+}
+}
+bool Project::resizeClipLoop(int track,int section,double beats){
+    if(track<0||track>=(int)tracks.size()||section<0||section>=(int)sections.size()||section>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beats))return false;
+    beats=std::clamp(std::round(beats*960)/960.,.25,512.);auto candidate=tracks[(size_t)track].clips[(size_t)section];
+    if(!resizedLoop(candidate,clipLength(track,section),beats))return false;
+    size_t count=candidate.notes.size()+candidate.loopSource.size();if(count>2000000)return false;
+    for(size_t ti=0;ti<tracks.size();++ti)for(size_t si=0;si<tracks[ti].clips.size();++si)if((int)ti!=track||(int)si!=section){const auto& c=tracks[ti].clips[si];count+=c.notes.size()+c.loopSource.size();if(count>2000000)return false;}
+    const double before=length();const bool wholeLoop=loopStart==0&&loopEnd==before;
+    candidate.span=std::abs(beats-sections[(size_t)section].bars*4.)<1./960.?0:beats;
+    tracks[(size_t)track].clips[(size_t)section]=std::move(candidate);if(wholeLoop)loopEnd=length();normalise();return true;
+}
+bool Project::resizeSectionLoop(int index,int bars){
+    if(index<0||index>=(int)sections.size())return false;bars=std::clamp(bars,1,128);
+    std::vector<Clip> clips;for(size_t ti=0;ti<tracks.size();++ti){if(index>=(int)tracks[ti].clips.size())return false;auto candidate=tracks[ti].clips[(size_t)index];
+        if(!resizedLoop(candidate,clipLength((int)ti,index),bars*4.))return false;candidate.span=0;clips.push_back(std::move(candidate));}
+    size_t count=0;for(size_t ti=0;ti<tracks.size();++ti)for(size_t si=0;si<tracks[ti].clips.size();++si){const auto& c=(int)si==index?clips[ti]:tracks[ti].clips[si];count+=c.notes.size()+c.loopSource.size();if(count>2000000)return false;}
+    resizeSection(index,bars);for(size_t ti=0;ti<tracks.size();++ti)tracks[ti].clips[(size_t)index]=std::move(clips[ti]);normalise();return true;
+}
 void Project::normalise() {
     auto& s=settings;
     s.genre=std::clamp(s.genre,0,12); s.key=std::clamp(s.key,0,11); s.scale=std::clamp(s.scale,0,12);
@@ -224,7 +280,9 @@ void Project::normalise() {
         for(auto* row:{&e.userVelRight,&e.userVelLeft})for(auto& v:*row)v=std::min((unsigned char)127,v);
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneVolume[i]=finite(e.laneVolume[i],1,0,2);e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
-        for(size_t k=0;k<sections.size();++k){if(i>=4)for(auto& n:t.clips[k].notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}tidyNotes(t.clips[k],sections[k].bars*4.0);}
+        for(size_t k=0;k<sections.size();++k){auto& c=t.clips[k];c.span=finite(c.span,0,0,512);if(c.span>0)c.span=std::max(.25,c.span);c.loopLength=finite(c.loopLength,0,0,512);if(c.loopLength>0)c.loopLength=std::max(.25,c.loopLength);
+            if(i>=4)for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
+            tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
     }
     masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
@@ -285,8 +343,8 @@ bool transferClip(Project& p,int track,int from,int to,bool copy){
     auto& clips=p.tracks[(size_t)track].clips;
     if(from>=(int)clips.size()||to>=(int)clips.size())return false;
     if(copy)clips[(size_t)to]=clips[(size_t)from];else std::swap(clips[(size_t)from],clips[(size_t)to]);
-    tidyNotes(clips[(size_t)to],p.sections[(size_t)to].bars*4.);
-    if(!copy)tidyNotes(clips[(size_t)from],p.sections[(size_t)from].bars*4.);
+    tidyNotes(clips[(size_t)to],p.clipLength(track,to));
+    if(!copy)tidyNotes(clips[(size_t)from],p.clipLength(track,from));
     return true;
 }
 void chooseProgression(Project& p,int preset) {
@@ -480,7 +538,8 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             auto& clip=t.clips[si]; if(clip.locked) continue;
             if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
-            const double beats=p.sections[si].bars*4.0; const auto type=p.sections[si].type;
+            clip.loopSource.clear();clip.loopLength=0;
+            const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[si].type;
             const auto& e=t.engine;
             auto ps=pianoEngineSettings(p,ti,clip.seed);
             const bool mixing=type==Section::intro||type==Section::outro;
@@ -494,7 +553,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             if(mixing){ps.fillEveryBars=0;ps.variationEvery=0;}
             if(ti<3) {
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
-                auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,p.sections[si].bars,clip.seed,-1}});
+                auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,renderBars,clip.seed,-1}});
                 if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
             } else if(ti==3) {
@@ -511,7 +570,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgg::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgg::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
                 std::rotate(gs.chords.begin(),gs.chords.begin()+chordOffset,gs.chords.begin()+s.chordCount);
                 if(mixing){gs.fillEveryBars=0;gs.variationEvery=0;}
-                auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,p.sections[si].bars,clip.seed,-1}});
+                auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,renderBars,clip.seed,-1}});
                 clip.notes=notesFrom(all,beats,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
                 // Articulation lanes are carried directly by notesFrom, in linear time.
             } else {
@@ -524,13 +583,13 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 ds.laneSwing[(size_t)(ti-4)]=(float)e.laneSwing[0];ds.laneShift[(size_t)(ti-4)]=(float)e.laneShift[0];
                 if(e.midiNote>=0)ds.notes[(size_t)(ti-4)]=e.midiNote;
                 if(mixing){ds.fillEveryBars=0;ds.variationEvery=0;ds.crashAfterFill=false;}
-                auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)rhythmType,p.sections[si].bars,ds.sectionVariation,-1}});
+                auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)rhythmType,renderBars,ds.sectionVariation,-1}});
 
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeBandRoles(clip,p,ti,(int)si);
-            shapeMixSection(clip,s.genre,ti,type,p.sections[si].bars);
+            shapeMixSection(clip,s.genre,ti,type,renderBars);
             tidyNotes(clip,beats);
         }
     }
@@ -554,16 +613,20 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
     for(size_t ti=0;ti<p.tracks.size();++ti) {
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;
         const auto& t=p.tracks[ti];
+        double occupied=0;
         for(size_t si=0;si<t.clips.size()&&si<p.sections.size();++si) {
-            const double begin=p.sectionStart((int)si),end=p.sections[si].bars*4.;
+            const double begin=p.sectionStart((int)si),end=p.clipLength((int)ti,(int)si),from=std::max(0.,occupied-begin);
+            occupied=std::max(occupied,begin+end);if(from>=end)continue;
             if(ti==0&&t.engine.pedalCC&&!t.clips[si].notes.empty()){
                 const double chord=p.settings.chordSteps*.25;
-                for(double at=0;at<end;at+=chord){out.push_back({begin+at,(int)ti,64,0,0,64});out.push_back({begin+at+.02,(int)ti,64,127,0,64});}
-                for(double at=0;at<end;at+=.25){const int expression=p.sections[si].type==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
+                for(double at=0;at<end;at+=chord){if(at<from)continue;out.push_back({begin+at,(int)ti,64,0,0,64});out.push_back({begin+at+.02,(int)ti,64,127,0,64});}
+                for(double at=0;at<end;at+=.25){if(at<from)continue;const int expression=p.sections[si].type==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
+                if(from>0){out.push_back({begin+from,(int)ti,64,0,0,64});out.push_back({begin+from,(int)ti,11,127,0,11});}
                 out.push_back({begin+end,(int)ti,64,0,0,64});out.push_back({begin+end,(int)ti,11,127,0,11});
             }
             for(const auto& n:t.clips[si].notes) {
-                out.push_back({begin+n.start,(int)ti,n.pitch,n.velocity,n.lane});
+                if(n.start>=end||n.start+n.length<=from)continue;
+                out.push_back({begin+std::max(from,n.start),(int)ti,n.pitch,n.velocity,n.lane});
                 out.push_back({begin+std::min(end,n.start+n.length),(int)ti,n.pitch,0,n.lane});
             }
         }

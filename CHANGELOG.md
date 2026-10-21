@@ -2,6 +2,7 @@
 
 ## 0.5.1 — 2026-10-21
 
+- Drag clip edges to resize individual MIDI loops or section-header edges to resize every track together. Loop source is retained when shortening, repeated without time stretching when extending, saved in .fga and editable in the full MIDI editor. Overlaps are masked on the same track; Undo and Escape are supported.
 - Resize the inspector by dragging its right edge and the mixer by dragging its header; dimensions are remembered. Double-click either resize area to restore its default size.
 - Track Inspector header arrow collapses the side panel to a narrow restore rail, recovering horizontal track space; the arrow stays accessible while scrolling the controls.
 - Mixer header button collapses the faders into a slim bar, recovering track space; SHOW MIXER restores the previous height. Existing MIXER/F3 toggles remain available.
