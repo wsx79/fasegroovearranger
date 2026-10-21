@@ -129,11 +129,14 @@ public:
     Clip& clip(){auto& clips=project.tracks[(size_t)selectedTrack].clips;const int i=clipIndex();return i>=0&&i<(int)clips.size()?clips[(size_t)i]:emptyClip;}
     const Clip& clip()const{const auto& clips=project.tracks[(size_t)selectedTrack].clips;const int i=clipIndex();return i>=0&&i<(int)clips.size()?clips[(size_t)i]:emptyClip;}
     double clipLength()const{return project.clipLength(selectedTrack,clipIndex());}
-    double clipStart()const{return clipIndex()<0?audio.position():project.clipStart(selectedTrack,clipIndex());}
+    double clipStart()const{return clipIndex()<0?timelinePosition():project.clipStart(selectedTrack,clipIndex());}
     void selectClip(int track,int clip,bool keepSelection=false);
     void timelineCommand(int command);
     void moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy);
     void ensureTimelineClip();
+    double timelinePosition()const{return editCursor>=0&&!audio.isPlaying()?editCursor:audio.position();}
+    void seekTimeline(double beat);
+    void togglePlayback();
     void regenerate(Scope);
     bool requestClose();
     bool writeLanguageEvidence(const juce::File&);
@@ -189,6 +192,7 @@ private:
     std::vector<Clip> timelineClipboard;
     Clip emptyClip;
     bool noClipSelection=false;
+    double selectionBeat=0,editCursor=-1;
     double timelineSnap=1;
     juce::TextButton timelineCut{"CUT"},timelineCopy{"COPY"},timelinePaste{"PASTE"},timelineSplit{"SPLIT"},timelineDuplicate{"DUPLICATE"},timelineDelete{"DELETE"};
     juce::ComboBox timelineGrid;
