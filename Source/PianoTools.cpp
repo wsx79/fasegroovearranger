@@ -7,7 +7,7 @@
 #include "../ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.h"
 namespace fga {
 namespace {
-sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
+sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed,m.clip().motifSeed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
 class MusicalTools:public juce::Component {
 public:
     MusicalTools(MainComponent& m,int type):owner(&m),kind(type),source(playingPattern(m)),seed((std::uint32_t)juce::Random::getSystemRandom().nextInt()){
@@ -21,7 +21,7 @@ public:
         if(type==1){title="DNA";for(int i=0;i<sgk::numIntentions;++i)a.addItem(tr(sgk::intentionName(i)),i+1);}
         if(type==2){title="MORPH";for(size_t i=0;i<sgk::groovePatterns().size();++i)a.addItem(juce::String::fromUTF8(sgk::groovePatterns()[i].name.c_str()),(int)i+1);}
         if(type==3){title="A/B";for(int i=0;i<sgk::numVoicings;++i){a.addItem(tr(sgk::voicingName(i)),i+1);b.addItem(tr(sgk::voicingName(i)),i+1);}a.setSelectedId(m.project.settings.voicing+1,juce::dontSendNotification);b.setSelectedId((m.project.settings.voicing+1)%sgk::numVoicings+1,juce::dontSendNotification);}
-        if(type==4){title="VARIANTS";variants=sgk::GrooveEngine::progressionVariants(pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed));for(size_t i=0;i<variants.size();++i)a.addItem(tr(variants[i].name),(int)i+1);}
+        if(type==4){title="VARIANTS";variants=sgk::GrooveEngine::progressionVariants(pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed,m.clip().motifSeed));for(size_t i=0;i<variants.size();++i)a.addItem(tr(variants[i].name),(int)i+1);}
         if(type==5){title="CIRCLE OF FIFTHS";circle.setFreeMode(true);circle.onPick=[this](int root,bool minor){if(!owner)return;owner->checkpoint();owner->project.settings.key=root;owner->project.settings.scale=minor?2:0;owner->changed(false);updateCircle();};circle.onMoveChord=[this](int slot,int degree,int root,bool minor){if(!owner||slot<0||slot>=owner->project.settings.chordCount)return;owner->checkpoint();auto& s=owner->project.settings;if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;}else s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);owner->changed(false);updateCircle();};updateCircle();}
         if(a.getSelectedId()==0)a.setSelectedId(1,juce::dontSendNotification);
         a.onChange=[this]{updateReport();};b.onChange=[this]{updateReport();};amount.onValueChange=[this]{updateReport();};
@@ -34,7 +34,7 @@ public:
     void paint(juce::Graphics& g)override{g.fillAll(Palette::background);drawFamilyLogo(g,{20,12,300,55});g.setColour(Palette::accent);g.setFont(FamilyTheme::font(17,true));g.drawText(tr(title),340,26,480,30,juce::Justification::centredLeft);}
     void resized()override{a.setBounds(24,92,kind==3?350:802,32);b.setBounds(430,92,396,32);amount.setBounds(24,135,802,36);keepRhythm.setBounds(24,140,340,30);keepHarmony.setBounds(430,140,370,30);report.setBounds(24,186,802,360);circle.setBounds(160,88,530,490);hearA.setBounds(24,568,100,34);hearB.setBounds(136,568,100,34);apply.setBounds(560,568,120,34);close.setBounds(696,568,130,34);}
 private:
-    void updateCircle(){if(!owner)return;auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed);std::vector<CircleOfFifths::ChordMark> chords,diatonic;std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
+    void updateCircle(){if(!owner)return;auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed,owner->clip().motifSeed);std::vector<CircleOfFifths::ChordMark> chords,diatonic;std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
         for(int i=0;i<s.progressionLength;++i){cs[(size_t)i]=sgk::GrooveEngine::chordForSlot(s,i);voiced[(size_t)i]=sgk::voiceChord(cs[(size_t)i],s.voicing,s.centre,nullptr);}
         auto scores=sgk::GrooveEngine::harmonyScores(s,cs,voiced);std::vector<float> transitions;
         for(int i=0;i<s.progressionLength;++i){const auto& chord=cs[(size_t)i];chords.push_back({chord.rootPc,chord.third==3,juce::String::fromUTF8(sgk::GrooveEngine::numeralForSlot(s,i).c_str()),scores.slot[(size_t)i]});transitions.push_back(scores.transition[(size_t)i]);}
@@ -42,7 +42,7 @@ private:
         circle.setState(s.keyRoot,s.scale==2,tr(sgk::scaleName(s.scale)),chords,transitions,-1,diatonic);
     }
     void updateReport(){if(!owner)return;juce::String text=tr("Settings apply on the next generation; the MIDI already written stays editable.")+"\n\n";
-        if(kind==3){for(auto* box:{&a,&b}){auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed);s.voicing=(sgk::Voicing)box->getSelectedItemIndex();auto v=sgk::GrooveEngine::voicingReport(s);text+=box==&a?"A: ":"B: ";text+=box->getText()+"\n"+tr("Range")+": "+juce::String(v.lowest)+" - "+juce::String(v.highest)+"\n"+tr("Average movement")+": "+juce::String(v.averageMove,2)+"\n"+tr("Biggest top leap")+": "+juce::String(v.biggestTopLeap)+"\n"+tr("Clashes")+": "+juce::String(v.clashes)+"\n\n";}}
+        if(kind==3){for(auto* box:{&a,&b}){auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed,owner->clip().motifSeed);s.voicing=(sgk::Voicing)box->getSelectedItemIndex();auto v=sgk::GrooveEngine::voicingReport(s);text+=box==&a?"A: ":"B: ";text+=box->getText()+"\n"+tr("Range")+": "+juce::String(v.lowest)+" - "+juce::String(v.highest)+"\n"+tr("Average movement")+": "+juce::String(v.averageMove,2)+"\n"+tr("Biggest top leap")+": "+juce::String(v.biggestTopLeap)+"\n"+tr("Clashes")+": "+juce::String(v.clashes)+"\n\n";}}
         else if(kind==2){auto target=sgk::groovePatterns()[(size_t)a.getSelectedItemIndex()];auto mixed=sgk::morphPatterns(source,target,amount.getValue()/100.,seed);text+=juce::String::fromUTF8(mixed.rightHand.c_str())+"\n"+juce::String::fromUTF8(mixed.leftHand.c_str());}
         else if(kind==4&&!variants.empty()){auto p=owner->project;applyCodes(p,variants[(size_t)a.getSelectedItemIndex()].codes);for(auto& name:chordNames(p.settings))text+=juce::String::fromUTF8(name.c_str())+"   ";}
         else text+=controlTip("DNA");report.setText(text,false);

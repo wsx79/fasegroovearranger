@@ -28,7 +28,9 @@ struct Clip {
     int role = -1;
     double position = 0; // Absolute beat when the track has an independent timeline.
     std::vector<Note> loopSource;
-    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
+    // Persistent musical take, separate from performance timing. Zero loads legacy motifs.
+    std::uint32_t motifSeed = 0;
+    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
@@ -130,7 +132,7 @@ void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
 // A zero seed reproduces stored clips; a nonzero seed writes another deterministic take.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
-sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed);
+sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);
 // Section-aligned clip gestures retain the fixed instrument routing.

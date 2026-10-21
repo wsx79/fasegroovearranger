@@ -37,3 +37,5 @@ No proprietary plugin binary, commercial sample library or third-party musical r
 The six-language UI dictionaries and CircleOfFifths component are adapted from those same family snapshots, under their original AGPL notices. The guitar step engine has an Arranger-specific shared harmonic-duration adapter; the 16-step default retains the plugin behaviour.
 
 Arranger 0.4.5 adds an optional centred-output constructor argument to the vendored Piano `GuideVoice`, used only by its dedicated bass track. Original callers retain keyboard spread by default. The synthesis algorithms remain the original family engines; Arranger applies its own genre presets, mix levels, musical layer scheduling and built-in bass low-pass after synthesis.
+
+Arranger 0.7.2 adds an optional `bassLineOverride` to the vendored Piano settings, renderer and resolved grid. Empty retains the original selected library figure. Arranger develops that figure for explicitly regenerated musical takes; synthesis is unchanged.

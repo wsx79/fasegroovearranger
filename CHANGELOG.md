@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.7.2 — 2026-10-21
+
+- Regeneration creates a persistent musical take for the requested song, track, section or clip, instead of mostly changing humanisation over the same riff. Track/song takes share a motif across sections and drum stems share a kit seed.
+- Develop the selected bass figure with chord-safe root/fifth/octave answers and pickups, preserving its anchors and held notes. Save/reload, duplicate and deterministic APPLY retain the take.
+- Fix RND LANE reusing the take on instrument pages. APPLY TRACK/CLIP still apply settings without rerolling; fixed presets, hand-edited grids and explicit riff seeds remain intentional constraints. Assigned instruments, mix, automation, locks and untargeted clips are preserved.
+- Add musical diversity tests across all thirteen genres, scope isolation, repeatability and project persistence checks.
+
 ## 0.7.1 — 2026-10-21
 
 - Family Windows setup: English/Italian wizard, Arranger branding, Start menu/optional desktop shortcuts and uninstall, adapted for the standalone application.

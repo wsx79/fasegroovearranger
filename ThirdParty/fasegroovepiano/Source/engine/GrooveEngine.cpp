@@ -1102,7 +1102,14 @@ GroovePattern GrooveEngine::resolvePattern (const GrooveSettings& s)
 
     // A bass line from the library has its own rhythm: show that one in the grid.
     if (isBassLine (s.bass) && (s.section == Section::main || s.section == Section::drop))
+    {
         p.leftHand = bassLineRhythm (bassLineIndex ((int) s.bass), p.length());
+        if (!s.bassLineOverride.empty())
+            for (size_t i=0;i<p.leftHand.size();++i) {
+                const char c=s.bassLineOverride[i%s.bassLineOverride.size()];
+                p.leftHand[i]=c=='.'?'.':c=='='?'=':c=='G'?'g':i%4==0?'X':'x';
+            }
+    }
 
     if (s.grooveBars == 1 && p.length() > 16)
     {
@@ -1973,7 +1980,7 @@ void GrooveEngine::collectStep (long long step, const GrooveSettings& s, const G
         // bass, and intro, outro and breakdown have no bass anyway.
         if (s.section == Section::main || s.section == Section::drop)
         {
-            collectBassLine (step, s, chords, bassLines()[(size_t) std::clamp (bassLineIndex ((int) bassMode), 0, numBassLines - 1)].line);
+            collectBassLine (step, s, chords, s.bassLineOverride.empty() ? bassLines()[(size_t) std::clamp (bassLineIndex ((int) bassMode), 0, numBassLines - 1)].line : s.bassLineOverride);
             return;
         }
         bassMode = BassMode::root;

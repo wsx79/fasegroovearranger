@@ -60,3 +60,23 @@ assert (folder / "localisation.txt").read_text().startswith("PASS"), "six langua
 assert (folder / "piano-tools.txt").read_text().startswith("PASS"), "musical tools and MIDI chord learning"
 
 assert (folder / "daw-navigation.txt").read_text().startswith("PASS"), "DAW navigation, MIDI commands and atomic undo"
+
+# Compare full-strength phrase changes with humanisation disabled and the same
+# original instrument sound. Ignore the reverb tail and PCM noise floor.
+regeneration = []
+for track in (0, 1, 3):
+    pcm = []
+    for seed in (91, 4951):
+        path = folder / f'regeneration-{seed}-{track}.wav'
+        assert inspect(path)[2] > .0001, ('silent regenerated phrase', track, seed)
+        with wave.open(str(path), 'rb') as w:
+            raw = w.readframes(w.getnframes())
+        pcm.append([int.from_bytes(raw[i:i+3], 'little', signed=True) / 8388608
+                    for i in range(0, len(raw), 6)])
+    assert len(pcm[0]) == len(pcm[1])
+    energy = sum(a*a for a in pcm[0]) + sum(b*b for b in pcm[1])
+    difference = sum((a-b)**2 for a,b in zip(*pcm)) / max(energy, 1e-12)
+    assert difference > .15, ('regeneration too similar with humanisation off', track, difference)
+    regeneration.append(f'track {track}: relative PCM difference {difference:.4f}')
+(folder / 'regeneration-audio.txt').write_text('PASS same assigned sounds, humanisation disabled; new musical takes change rendered audio\n' + '\n'.join(regeneration))
+print('PASS regenerated phrases audibly differ with the same assigned instrument sounds')

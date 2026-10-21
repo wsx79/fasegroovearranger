@@ -218,6 +218,7 @@ struct GrooveSettings
     Section section = Section::main;
     std::uint32_t riffSeed = 1;            // used when pattern == randomPatternIndex()
     float riffDensity = 0.5f;
+    std::string bassLineOverride;          // standalone arrangement take; empty keeps the selected library line
 
     std::array<int, numSegments> segmentOrder { 0, 1, 2, 3 };   // A B C D
     std::uint32_t sectionVariation = 0;    // a song section regenerated on its own (0: the groove as it is)

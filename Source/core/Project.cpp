@@ -69,12 +69,29 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
     return notes;
 }
 }
-sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t seed){
+sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t seed,std::uint32_t take){
     const auto& s=p.settings;const auto& e=p.tracks[(size_t)track].engine;auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
-    // The song keeps its motif; clip seeds change its performance/variation,
-    // not the library preset on every section boundary.
-    const auto motifSeed=mix(s.seed+(std::uint32_t)track*131U);
+    // A regenerated track/song shares its musical take across sections. Legacy
+    // projects retain the song motif until explicitly regenerated.
+    const auto motifSeed=take?take:mix(s.seed+(std::uint32_t)track*131U);
     auto ps=pianoSettings(trackSettings,e.riffSeed?e.riffSeed:motifSeed);
+    // Develop the selected bass figure without replacing its groove or its strong anchors.
+    // Root/fifth/octave substitutions stay inside the current chord; pickups never
+    // overwrite held notes. A take loops coherently through the song's sections.
+    if(track==1&&(take||e.riffSeed)&&sgk::isBassLine(ps.bass)){
+        auto line=sgk::bassLines()[(size_t)sgk::bassLineIndex((int)ps.bass)].line;
+        const auto source=line;
+        for(size_t i=1;i<line.size();++i){
+            const auto choice=mix((e.riffSeed?e.riffSeed:take)+(std::uint32_t)i*7919U);
+            if(i%8==0||e.segmentLocked[(i/8)%4]||source[i]=='=')continue;
+            if(source[i]=='R'||source[i]=='O'||source[i]=='5'){
+                static constexpr char tones[]{'R','O','5'};
+                line[i]=tones[choice%3];
+                if(i%4!=0&&source[(i+1)%source.size()]!='='&&choice%5==0)line[i]='.';
+            }else if(source[i]=='.'&&i%4==3&&source[i-1]!='='&&choice%4==0)line[i]='R';
+        }
+        ps.bassLineOverride=std::move(line);
+    }
     ps.humanizeSeed=e.humanizeSeed?e.humanizeSeed:seed;
     ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
     ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
@@ -541,12 +558,13 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,(int)si)):(int)si;
             if((scope==Scope::section&&guide!=section)||(scope==Scope::clip&&(int)si!=section))continue;
             auto& clip=t.clips[si]; if(clip.locked) continue;
+            if(seed) clip.motifSeed=mix(seed+(ti>=4?313U:(std::uint32_t)ti*131U));
             if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             clip.loopSource.clear();clip.loopLength=0;
             const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
             const auto& e=t.engine;
-            auto ps=pianoEngineSettings(p,ti,clip.seed);
+            auto ps=pianoEngineSettings(p,ti,clip.seed,clip.motifSeed);
             const bool mixing=type==Section::intro||type==Section::outro;
             // Soulful/gospel/afro lifts keep the groove rather than switching to
             // the plugin's generic accelerating snare/piano build pattern.
@@ -567,7 +585,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                     const auto& patterns=fgg::guitarPatterns();
                     for(size_t i=0;i<patterns.size();++i)if(patterns[i].name=="Chicago Chank"){gs.pattern=(int)i;break;}
                 }
-                gs.riffSeed=e.riffSeed?e.riffSeed:mix(s.seed+393U);gs.stepsPerChord=s.chordSteps;
+                gs.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+393U));gs.stepsPerChord=s.chordSteps;
                 gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
                 gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
@@ -581,7 +599,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             } else {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
-                ds.riffSeed=e.riffSeed?e.riffSeed:mix(s.seed+313U); ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
+                ds.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+313U)); ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
                 ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 ds.tempo=s.bpm; ds.bassSpace=e.bassSpace; ds.fillEveryBars=e.fillEvery; ds.variationEvery=e.variationEvery; ds.fillStyle=(fgd::FillStyle)(e.fillStyle<0?(int)fgd::FillStyle::mix:std::min(e.fillStyle,fgd::numFillStyles-1));
                 ds.velocity=e.velocity;ds.accentGroove=(float)e.accent;ds.genreFeel=e.genreFeel;ds.crashAfterFill=e.afterFill;ds.grooveBars=e.grooveBars;ds.segmentOrder=e.segments;

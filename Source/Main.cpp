@@ -155,6 +155,15 @@ public:
                 folder.getChildFile("timeline-editing-audio.txt").replaceWithText(timelineAudio?"PASS moved independent loop renders its two repeats at edited positions, leaves original position silent and preserves the guide":"FAIL independent timeline playback/export");ok=ok&&timelineAudio;
 
             }
+            {
+                const auto saved=p;p=fga::newProject(4);p.sections={{fga::Section::main,4,"Main"}};p.normalise();
+                for(auto& t:p.tracks){t.engine.humanize=0;t.engine.realism=false;}
+                for(unsigned seed:{91U,4951U}){
+                    fga::generate(p,fga::Scope::song,0,0,seed);
+                    for(int track:{0,1,3})run("regeneration-"+juce::String(seed)+"-"+juce::String(track)+".wav",track,false);
+                }
+                p=saved;
+            }
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());

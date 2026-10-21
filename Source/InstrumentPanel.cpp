@@ -83,7 +83,7 @@ InstrumentPanel::InstrumentPanel(MainComponent& m):owner(m){
     circle.onMoveChord=[this](int slot,int degree,int root,bool minor){auto& s=owner.project.settings;if(slot<0||slot>=s.chordCount)return;owner.checkpoint();if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;}else s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);owner.changed(false);updateCircle();};
 }
 void InstrumentPanel::updateCircle(){
-    auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed);
+    auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed);
     std::vector<CircleOfFifths::ChordMark> chords,diatonic;
     std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
     for(int i=0;i<s.progressionLength;++i){cs[(size_t)i]=sgk::GrooveEngine::chordForSlot(s,i);voiced[(size_t)i]=sgk::voiceChord(cs[(size_t)i],s.voicing,s.centre,nullptr);}

@@ -333,6 +333,10 @@ The song keeps its base groove across sections, changing performance, density an
 
 | Button | What changes |
 |---|---|
+**Regeneration and sound.** GENERATE SONG and REGENERATE TRACK/SECTION/CLIP create a new musical take: rhythmic figures and phrases change while the selected genre, harmony, instrument assignments and mix remain. A regenerated track keeps one motif through its sections; drum stems generated together share a kit motif. The bass develops the selected figure using chord tones, preserving its strong anchors. A steady four-on-the-floor kick or a sustained string part can correctly retain its basic pattern. Timbre changes through Sound, your sample or your assigned plugin, rather than through MIDI regeneration.
+
+A fixed GROOVE preset, hand-edited grid or explicit Riff seed constrains the result; choose Genre / automatic and Riff seed 0 for fresh automatic motifs. NEW RIFF prepares another riff; **APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take. NEW FEEL only changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores the previous result.
+
 | **GENERATE SONG** | New takes on all unlocked tracks, keeping the existing sections. |
 | **REGENERATE TRACK** | The selected instrument throughout the song. |
 | **REGENERATE SECTION** | This section across all unlocked tracks. |

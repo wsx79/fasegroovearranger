@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.7.2 — 2026-10-21
+
+- La rigenerazione crea una nuova versione musicale di brano, traccia, sezione o clip, invece di cambiare soprattutto l’umanizzazione dello stesso riff. Traccia/brano mantengono un motivo coerente tra sezioni e la batteria un seed comune.
+- Variazioni della linea di basso scelta con risposte su fondamentale/quinta/ottava e anticipi, rispettando accenti e note tenute. Salvataggio, duplicazione e APPLICA conservano la versione musicale.
+- Corretto RND LANE che riutilizzava la versione precedente nei pannelli strumenti. APPLICA TRACCIA/CLIP applica i parametri senza estrarre un nuovo riff; preset fissi, griglie manuali e seed espliciti restano vincoli voluti. Conservati strumenti assegnati, mix, automazione, blocchi e clip fuori ambito.
+- Test di diversità musicale sui tredici generi, isolamento degli ambiti, riproducibilità e salvataggio del progetto.
+
 ## 0.7.1 — 2026-10-21
 
 - Setup Windows della famiglia: wizard italiano/inglese, logo Arranger, menu Start, collegamento desktop facoltativo e disinstallazione, adattato all’app standalone.

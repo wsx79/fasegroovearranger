@@ -9,8 +9,9 @@
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "ClubArrangementChecks.h"
 #include "TimelineChecks.h"
+#include "RegenerationChecks.h"
 int main(int argc,char** argv){try{
-    verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();
+    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();

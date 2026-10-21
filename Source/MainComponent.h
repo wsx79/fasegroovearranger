@@ -147,7 +147,7 @@ public:
     double timelinePosition()const{return editCursor>=0&&!audio.isPlaying()?editCursor:audio.position();}
     void seekTimeline(double beat);
     void togglePlayback();
-    void regenerate(Scope);
+    void regenerate(Scope,bool newTake=true);
     bool requestClose();
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();
