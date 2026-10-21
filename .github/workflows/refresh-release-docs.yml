@@ -1,0 +1,66 @@
+# Copyright (C) 2026 Fabio 'Pitch' Serra
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Refresh release documentation
+on:
+  push:
+    branches: [maintenance/release-docs-0.4.7]
+permissions:
+  contents: write
+jobs:
+  documentation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download existing release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download v0.4.7 --dir release-docs
+      - name: Update documentation without changing any executable
+        run: |
+          python3 - <<'PY'
+          import hashlib,io,tarfile,zipfile
+          from pathlib import Path
+          root=Path('release-docs')
+          docs={'CHANGELOG.md':Path('CHANGELOG.md').read_bytes(),'CHANGELOG.it.md':Path('CHANGELOG.it.md').read_bytes(),'SUONI-PER-GENERE.md':Path('docs/GENRE_SOUND.md').read_bytes(),'GENRE_SOUND.md':Path('docs/GENRE_SOUND.md').read_bytes()}
+          for archive in sorted(root.iterdir()):
+              if archive.suffix=='.zip':
+                  replacement=archive.with_suffix('.updated')
+                  with zipfile.ZipFile(archive) as source,zipfile.ZipFile(replacement,'w') as target:
+                      for item in source.infolist():
+                          data=source.read(item);name=Path(item.filename).name
+                          if name in docs:
+                              assert '/Contents/' not in item.filename
+                              data=docs[name]
+                          target.writestr(item,data)
+                  with zipfile.ZipFile(archive) as before,zipfile.ZipFile(replacement) as after:
+                      assert before.namelist()==after.namelist()
+                      for name in before.namelist():
+                          if Path(name).name not in docs:assert hashlib.sha256(before.read(name)).digest()==hashlib.sha256(after.read(name)).digest()
+                  replacement.replace(archive)
+              elif archive.name.endswith('.tar.gz'):
+                  replacement=archive.with_suffix('.updated')
+                  with tarfile.open(archive,'r:gz') as source,tarfile.open(replacement,'w:gz') as target:
+                      for item in source.getmembers():
+                          if item.isfile():
+                              data=source.extractfile(item).read();name=Path(item.name).name
+                              if name in docs:
+                                  assert '/Contents/' not in item.name
+                                  data=docs[name];item.size=len(data)
+                              target.addfile(item,io.BytesIO(data))
+                          else:target.addfile(item)
+                  with tarfile.open(archive,'r:gz') as before,tarfile.open(replacement,'r:gz') as after:
+                      assert before.getnames()==after.getnames()
+                      for item in before.getmembers():
+                          if item.isfile() and Path(item.name).name not in docs:assert hashlib.sha256(before.extractfile(item).read()).digest()==hashlib.sha256(after.extractfile(item.name).read()).digest()
+                  replacement.replace(archive)
+          archives=sorted(p for p in root.iterdir() if p.name.endswith(('.zip','.tar.gz')))
+          (root/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in archives))
+          source=root/'SOURCE.txt';source.write_text(source.read_text()+'Documentation packaging refreshed from 228fdf4f1f2e0f3c001ce13610f89bd9f16a2409. Executable contents unchanged.\n')
+          print('Archive contents verified: executable bytes unchanged.')
+          PY
+      - name: Refresh release notes and documentation assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release edit v0.4.7 --notes-file docs/RELEASE_NOTES_0.4.7.md
+          gh release upload v0.4.7 release-docs/* --clobber
