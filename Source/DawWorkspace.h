@@ -53,5 +53,6 @@ private:
     juce::Component channels;
     std::vector<std::unique_ptr<MixerStrip>> strips;
     MixerStrip master;
+    juce::TextButton collapseButton{"COLLAPSE MIXER"};
 };
 }

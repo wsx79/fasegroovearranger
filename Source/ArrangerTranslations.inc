@@ -227,3 +227,7 @@
 { "Drag the mixer header to resize the mixer.", "Trascina l’intestazione del mixer per ridimensionarlo.", "Arrastra la cabecera del mezclador para cambiar su tamaño.", "Glisser l’en-tête du mixeur pour le redimensionner.", "Mischpultkopf ziehen, um die Höhe zu ändern.", "Arraste o cabeçalho do mixer para redimensioná-lo." },
 
 { "Missing instrument", "Strumento mancante", "Instrumento ausente", "Instrument manquant", "Instrument fehlt", "Instrumento ausente" },
+
+{ "COLLAPSE MIXER", "ABBASSA MIXER", "PLEGAR MEZCLADOR", "REPLIER MIXEUR", "MISCHPULT EINKLAPPEN", "RECOLHER MIXER" },
+{ "SHOW MIXER", "RIAPRI MIXER", "ABRIR MEZCLADOR", "OUVRIR MIXEUR", "MISCHPULT ÖFFNEN", "ABRIR MIXER" },
+{ "Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.", "Abbassa il mixer per dare spazio alle tracce; clicca di nuovo per riaprirlo. Scorciatoia: F3.", "Pliega el mezclador para dar espacio a las pistas; pulsa de nuevo para abrirlo. Atajo: F3.", "Replier le mixeur pour agrandir les pistes ; cliquer à nouveau pour le rouvrir. Raccourci : F3.", "Mischpult einklappen für mehr Platz für Spuren; erneut klicken zum Öffnen. Taste: F3.", "Recolha o mixer para liberar espaço para as faixas; clique novamente para abrir. Atalho: F3." },

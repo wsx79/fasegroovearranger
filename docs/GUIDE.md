@@ -87,13 +87,13 @@ The top contains project commands, transport and the controls shared by everyone
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
-**M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to start from there. **ZOOM** changes how much of the song you see.
+**M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to position playback at that point. **ZOOM** changes how much of the song you see.
 
 ### DAW workspace
 
 The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. Scroll the inspector if vertical space is limited.
 
-The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. Drag the mixer header to adjust its height; channels scroll horizontally when needed.
+The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. **COLLAPSE MIXER**, at the top right of the mixer, folds the faders away to give space back to the tracks. A slim bar keeps **SHOW MIXER** available to restore the previous height. **MIXER / F3** also works. Drag the mixer header to adjust its height; channels scroll horizontally when needed.
 
 - **Click anywhere in a clip** to select it and place the cursor exactly there; press **PLAY** or **Space** to listen from that point. While playing, clicking jumps immediately. This also works after horizontal scrolling and beyond an active loop’s end; **double-click** or **E** opens the full MIDI editor.
 - **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.

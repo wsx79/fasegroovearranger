@@ -413,7 +413,7 @@ void MainComponent::paint(juce::Graphics& g){
 void MainComponent::resized(){
     const int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
-    arrangementPort.setVisible(song);instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);mixer.setVisible(song&&mixerVisible);
+    arrangementPort.setVisible(song);instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&zoomSlider,&durationLabel,&arrangeButton})c->setVisible(song);
     automationButton.setVisible(song);
@@ -435,7 +435,7 @@ void MainComponent::resized(){
     if(song){
         x=16;place(genreBox,x,118,178);x+=188;place(durationLabel,x,118,82);x+=92;place(arrangeButton,x,118,170);x+=180;place(songButton,x,118,154);x+=164;place(trackButton,x,118,140);x+=148;place(sectionButton,x,118,154);x+=162;place(clipButton,x,118,140);x+=148;place(addSectionButton,x,118,114);
         x=16;place(progressionBox,x,159,210);x+=218;place(harmonyButton,x,159,118);x+=126;place(extensionBox,x,159,116);x+=124;place(voicingBox,x,159,116);x+=124;place(densitySlider,x,159,150);x+=158;place(swingSlider,x,159,150);x+=158;place(humanizeSlider,x,159,150);x+=158;place(zoomSlider,x,159,150);
-        const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-440)):0;
+        const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-440)):28;
         const int footer=getHeight()-31-dockHeight-38;
         const int left=inspectorVisible?240:12;
         arrangementPort.setBounds(left,202,w-left-12,std::max(60,footer-210));

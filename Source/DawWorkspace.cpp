@@ -66,19 +66,29 @@ void MixerStrip::resized(){int w=getWidth();name.setBounds(4,5,w-8,22);instrumen
     if(getHeight()<170){pan.setVisible(false);instrument.setVisible(false);mute.setBounds(6,30,(w-16)/2,20);solo.setBounds(10+(w-16)/2,30,(w-16)/2,20);clip.setBounds(8,30,w-16,22);gain.setBounds(4,56,w-8,getHeight()-63);}
     else{pan.setVisible(track>=0);instrument.setVisible(track>=0);}}
 void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
-DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize the mixer.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);for(int row=0;row<trackCount;++row){auto strip=std::make_unique<MixerStrip>(m,trackAtRow(row));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}}
+DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize the mixer.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);collapseButton.setComponentID("mixer-collapse");
+    tip(collapseButton,"Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.");
+    collapseButton.onClick=[this]{owner.mixerVisible=!owner.mixerVisible;owner.mixerToggle.setToggleState(owner.mixerVisible,juce::dontSendNotification);owner.resized();};
+    for(int row=0;row<trackCount;++row){auto strip=std::make_unique<MixerStrip>(m,trackAtRow(row));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}}
 void DawMixer::refresh(){for(auto& s:strips)s->refresh();master.refresh();}
 void DawMixer::tick(){for(auto& s:strips)s->tick();master.tick();}
 void DawMixer::reveal(int track){const int x=rowForTrack(track)*channelWidth;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+channelWidth-4>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+channelWidth-4-port.getViewWidth(),0);}
-void DawMixer::paint(juce::Graphics& g){g.fillAll(Palette::background);caption(g,"MIXER",{8,0,120,22});caption(g,"Audio levels / MIDI velocities unchanged",{130,0,getWidth()-140,22});}
-void DawMixer::resized(){port.setBounds(0,25,getWidth()-110,getHeight()-25);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/trackCount,74,100);channels.setSize(trackCount*channelWidth,height);for(int row=0;row<trackCount;++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-4,height);master.setBounds(getWidth()-104,25,104,height);}
-void DawMixer::mouseDown(const juce::MouseEvent& e){if(e.y<25){resizingMixer=true;resizeOrigin=e.getScreenY();resizeHeight=owner.mixerHeight;}}
+void DawMixer::paint(juce::Graphics& g){g.fillAll(Palette::background);caption(g,"MIXER",{8,0,120,22});caption(g,"Audio levels / MIDI velocities unchanged",{130,0,getWidth()-300,22});}
+void DawMixer::resized(){collapseButton.setBounds(getWidth()-156,1,152,22);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;port.setBounds(0,25,getWidth()-110,getHeight()-25);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/trackCount,74,100);channels.setSize(trackCount*channelWidth,height);for(int row=0;row<trackCount;++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-4,height);master.setBounds(getWidth()-104,25,104,height);}
+void DawMixer::mouseDown(const juce::MouseEvent& e){if(e.y<25&&owner.mixerVisible){resizingMixer=true;resizeOrigin=e.getScreenY();resizeHeight=owner.mixerHeight;}}
 void DawMixer::mouseDrag(const juce::MouseEvent& e){if(resizingMixer){owner.mixerHeight=std::clamp(resizeHeight+resizeOrigin-e.getScreenY(),160,std::max(160,owner.getHeight()-440));owner.resized();}}
 void DawMixer::mouseUp(const juce::MouseEvent&){if(resizingMixer)Localisation::setSetting("mixerHeight",owner.mixerHeight);resizingMixer=false;}
 
 bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     const auto saved=project;const int track=selectedTrack,section=selectedSection;const auto zoom=arrangement.pixelsPerBar;
     showArrangement();audio.stop();bool ok=inspectorPort.isVisible()&&mixer.isVisible()&&!arrangementPort.getBounds().intersects(inspectorPort.getBounds())&&!arrangementPort.getBounds().intersects(mixer.getBounds());
+    const int expandedHeight=mixer.getHeight(),trackAreaHeight=arrangementPort.getHeight();
+    const auto unchangedMidi=midiFile(project);const double unchangedPosition=audio.position();
+    if(auto* collapse=dynamic_cast<juce::Button*>(mixer.findChildWithID("mixer-collapse"))){
+        collapse->onClick();ok=ok&&!mixerVisible&&mixer.isVisible()&&mixer.getHeight()==28&&arrangementPort.getHeight()>trackAreaHeight&&!mixerToggle.getToggleState();
+        if(auto output=folder.getChildFile("mixer-collapsed.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
+        collapse->onClick();ok=ok&&mixerVisible&&mixer.getHeight()==expandedHeight&&mixerToggle.getToggleState()&&midiFile(project)==unchangedMidi&&audio.position()==unchangedPosition;
+    }else ok=false;
     const int originalHeight=getHeight();
     for(int height:{720,588}){setSize(1440,height);ok=ok&&!arrangementPort.getBounds().intersects(mixer.getBounds())&&mixer.getBottom()<=getHeight()-31;}
     setSize(1440,originalHeight);
@@ -109,7 +119,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     arrangement.mouseDown(event(248,46,juce::ModifierKeys::shiftModifier));arrangement.mouseDrag(event(312,46,juce::ModifierKeys::shiftModifier));arrangement.mouseUp(event(312,46));ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16&&dirty;
     arrangement.mouseDoubleClick(event(232,76));ok=ok&&page==Page::editor&&pianoPort.isVisible();
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
-    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, audio-only fader with undo, clip select/swap/undo, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression");return ok;
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer collapse/restore recovers track space without changing MIDI/transport, audio-only fader with undo, clip select/swap/undo, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression");return ok;
 }
 
 }

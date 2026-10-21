@@ -87,13 +87,13 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 
 I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
 
-**M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull'intestazione di una sezione porta la riproduzione al suo inizio. Lo **ZOOM** cambia quanto brano vedi.
+**M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull’intestazione di una sezione posiziona la riproduzione nel punto indicato. Lo **ZOOM** cambia quanto brano vedi.
 
 ### Spazio di lavoro DAW
 
 L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. Se lo spazio verticale è ridotto, scorri il pannello.
 
-Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. Trascina l’intestazione del mixer per regolarne l’altezza; i canali scorrono orizzontalmente quando lo spazio non basta.
+Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; i canali scorrono orizzontalmente quando lo spazio non basta.
 
 - **Clic in qualsiasi punto del clip**: seleziona e posiziona il cursore esattamente lì; premi **PLAY** o **Spazio** per ascoltare da quel punto. Durante la riproduzione il clic fa saltare subito l’ascolto. Funziona anche dopo lo scorrimento orizzontale e oltre la fine di un loop attivo; **doppio clic** o **E**: editor MIDI grande.
 - **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.
