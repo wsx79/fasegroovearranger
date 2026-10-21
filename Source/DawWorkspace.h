@@ -14,7 +14,8 @@ public:
     void mouseDoubleClick(const juce::MouseEvent&) override;
 private:
     MainComponent& owner;
-    int dragOrigin=0,initialWidth=216;
+    float dragOrigin=0;
+    int initialWidth=216;
 };
 class TrackInspector : public juce::Component {
 public:
@@ -61,7 +62,8 @@ public:
     void resized() override;
 private:
     MainComponent& owner;
-    int channelWidth=76,resizeOrigin=0,resizeHeight=0;
+    int channelWidth=76,resizeHeight=0;
+    float resizeOrigin=0;
     bool resizingMixer=false;
     juce::Viewport port;
     juce::Component channels;
