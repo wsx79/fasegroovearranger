@@ -22,6 +22,7 @@ public:
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
     void mouseDoubleClick(const juce::MouseEvent&) override;
+    void mouseWheelMove(const juce::MouseEvent&,const juce::MouseWheelDetails&) override;
     bool verifyAutomation(const juce::File&);
     bool keyPressed(const juce::KeyPress&) override;
     int rowHeight(int row) const {return trackHeights[(size_t)trackAtRow(row)];}
@@ -46,6 +47,9 @@ private:
     int clipTrack=-1,clipSource=-1,clipTarget=-1;
     double clipAnchorX=0,clipDropBeat=0;
     bool clipMoving=false;
+    bool panning=false;
+    juce::Point<int> panStart;
+    juce::Point<float> panAnchor;
     int sectionAt(float x) const;
     int clipAt(int track,float x) const;
     int edgeAt(int track,float x) const;
@@ -69,6 +73,7 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
+    void mouseWheelMove(const juce::MouseEvent&,const juce::MouseWheelDetails&) override;
     bool keyPressed(const juce::KeyPress&) override;
     void clearSelection(){selected.clear();}
     bool guitarNotes=false;
@@ -93,12 +98,17 @@ public:
     double grid=.25,pixelsPerBeat=76;
     std::set<int> selected;
     void deleteSelected();
+    bool editKeys(const juce::KeyPress&);
+    void pasteNotes();
 private:
+    friend class MainComponent;
     MainComponent& owner;
     std::vector<Note> before;
+    std::vector<Note> gestureOriginal;
     juce::Point<float> anchor;
     bool resizing=false,velocityDrag=false,editingVelocity=false;
     int hit(juce::Point<float>) const;
+    void retainSelection(const std::vector<Note>&);
     double beat(float x) const {return std::max(0.,(x-leftMargin())/pixelsPerBeat);}
     int pitch(float y) const;
 };
@@ -133,7 +143,7 @@ public:
     void selectClip(int track,int clip,bool keepSelection=false);
     void timelineCommand(int command);
     void moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy);
-    void ensureTimelineClip();
+    void ensureTimelineClip(bool addUndo=true);
     double timelinePosition()const{return editCursor>=0&&!audio.isPlaying()?editCursor:audio.position();}
     void seekTimeline(double beat);
     void togglePlayback();
@@ -143,6 +153,12 @@ public:
     void applyLanguage();
     void showPianoTools(int);
     void fitSong();
+    void zoomAt(bool editor,double factor,double viewportX);
+    void wheelNavigate(bool editor,const juce::MouseEvent&,const juce::MouseWheelDetails&);
+    void zoomSelection();
+    void loopSelection();
+    void suspendFollow();
+    bool verifyNavigation(const juce::File&);
     void setLoopRange(double from,double to);
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
@@ -195,6 +211,7 @@ private:
     double selectionBeat=0,editCursor=-1;
     double timelineSnap=1;
     juce::TextButton timelineCut{"CUT"},timelineCopy{"COPY"},timelinePaste{"PASTE"},timelineSplit{"SPLIT"},timelineDuplicate{"DUPLICATE"},timelineDelete{"DELETE"};
+    juce::TextButton zoomSelectionButton{"ZOOM SELECTION"},loopSelectionButton{"LOOP SELECTION"};
     juce::ComboBox timelineGrid;
     juce::File projectFile;
     bool dirty=false,refreshing=false;

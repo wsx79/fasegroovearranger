@@ -29,6 +29,8 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 
 The DAW workspace includes a side inspector, seventeen-channel mixer and master, bar ruler and loop locators, independent clip editing (split, cut/copy/paste, duplicate, delete, move/copy and multi-selection), fit-to-song and playback following. The section lane above the tracks is an editable guide; guide edits preserve MIDI positions.
 
+Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scrolls horizontally. Z frames the selection and Ctrl/Cmd+L loops it. The MIDI editor also supports arrow-key nudging, octave steps, cut, duplication and paste at the cursor.
+
 ## What is implemented
 
 - The original, vendored C++ generation engines run inside the application; no Fase Groove plugin installation is required.
@@ -99,7 +101,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.6.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.7.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

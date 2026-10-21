@@ -2,7 +2,7 @@
 
 The application is a native JUCE GUI executable, not a wrapper around the three plugin binaries. All three original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar step adapter adds a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
-`Project` holds musical settings, ordered sections and 17 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Track count/order is fixed in schema version 1. Section insertion/reordering/removal moves clips together. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
+`Project` holds musical settings, ordered sections and 17 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Track count/order is fixed in schema version 1. Guide insertion/reordering/removal leaves audible clip positions intact; legacy whole-arrangement transforms remain separate APIs. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
 
 Piano, bass and strings come from the Piano engine's distinct parts. Piano generation starts with an original genre-specific preset and uses its variation/intention generators. Drums and guitar use their original genre-aware random generators and arrangement renderers. Harmony is shared by scale degrees/free chord codes; guitar uses its original diatonic/code chord builders. Rich extensions outside the guitar's supported vocabulary are simplified to its supported chord colour.
 
@@ -41,3 +41,9 @@ Split clips trim crossing notes at their boundaries. Overwrite paste retains out
 Guide insertion, removal, movement and duration edits materialise aligned tracks without moving their audible content, automation or loop locators. Captured clip roles preserve the existing sustain/expression events when guide roles change. Legacy whole-arrangement section transforms remain separate core APIs.
 
 Edited projects use format 2 with `freeTimeline` and per-clip `position`, explicit `span` and captured `role`, preserving existing notes, loop archives and instrument assignments. Untouched projects retain format 1; the loader accepts both. Native UI, project IO and audio-render checks exercise these paths.
+
+## Navigation and MIDI editing (0.7.0)
+
+`DawNavigation.cpp` centralises pointer-anchored zoom and wheel routing for both viewports. The viewport anchor uses content coordinates once; viewport clamping is the only reason an anchor can shift at a canvas boundary. Ruler wheels and Ctrl/Cmd wheels zoom; horizontal gestures and Shift wheels scroll. Manual navigation disables FOLLOW until explicitly restored. Selection zoom changes view state only; selection loops use the existing undoable locators.
+
+Piano-roll shortcuts preserve relative time, pitch and lane spacing, clamping groups at boundaries. Paste normalises copied time origins, uses the in-clip cursor and rejects phrases that cannot fit. Duplicate retains the original notes and selects the copies. Drum pitches remain assigned to their tracks. Active edit gestures consume keyboard commands to protect their snapshots; note-selection clicks create no Undo entry. Empty-track clip creation during generation shares the generation checkpoint.

@@ -27,6 +27,8 @@ Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi 
 
 La vista DAW comprende inspector laterale, mixer a 17 canali con master, righello e locatori di loop, clip indipendenti con divisione al cursore, taglia/copia/incolla, duplicazione, eliminazione, spostamento e selezione multipla, adattamento dell’intero brano e scorrimento in riproduzione. La struttura in alto resta una guida modificabile: le sue modifiche conservano le posizioni MIDI.
 
+Lo zoom segue il puntatore (rotella sul righello o Ctrl/Cmd+rotella); Maiusc+rotella scorre in orizzontale. Z inquadra la selezione e Ctrl/Cmd+L la mette in loop. Nell’editor MIDI trovi anche spostamento con le frecce, passi di ottava, taglia, duplica e incolla al cursore.
+
 ## Funzioni
 
 - 17 tracce: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Basso, Piano, Archi e Chitarra. La chitarra conserva le sue 12 parti in una sola traccia.

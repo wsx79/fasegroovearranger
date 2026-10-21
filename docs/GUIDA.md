@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.6.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.7.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -108,6 +108,13 @@ Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fiss
 - Trascina un file MIDI o un campione sulla riga della traccia desiderata: viene assegnato proprio a quella traccia.
 
 La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Le modifiche alla guida conservano loop e automazione. Posizioni dei clip, sorgenti dei loop e spazi vuoti vengono salvati nel formato .fga 2; i progetti precedenti restano leggibili. Per riaprire una timeline modificata usa la versione 0.6.0 o successiva.
+
+### Navigazione e selezione
+
+- **Rotella sul righello** o **Ctrl/Cmd + rotella** sopra clip/note: zoom attorno al puntatore. **+ / −** usa il centro della vista; resta disponibile lo slider ZOOM.
+- **Rotella** scorre in verticale; **Maiusc + rotella** e i gesti orizzontali del trackpad scorrono in orizzontale. Nell’arrangiamento puoi trascinare con il **tasto centrale** sui due assi. La navigazione manuale disattiva SEGUI; riattivalo per seguire la riproduzione.
+- **ZOOM SELEZIONE / Z** inquadra i clip selezionati. Nell’editor MIDI, **Z** inquadra le note selezionate oppure tutto il clip. **ADATTA BRANO / F** torna all’intero arrangiamento.
+- **LOOP SELEZIONE / Ctrl/Cmd + L** imposta i locatori sui clip selezionati. Nell’editor usa le note selezionate oppure il clip intero. È annullabile e cambia soltanto la riproduzione.
 
 ### Trasporto e tempo (in alto)
 
@@ -203,7 +210,10 @@ Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sez
 | **QUANTIZZA** | Allinea alla griglia scelta: 1/4, 1/8, 1/16 o 1/32. |
 | **−12 / +12** | Sposta le note intonate di un'ottava. |
 | **VEL** | Cambia la dinamica della selezione; senza selezione, quella delle note nuove. |
-| **COPIA / INCOLLA** | Copia la selezione, oppure tutto il clip, e incolla mantenendo le posizioni nella sezione. |
+| **COPIA / INCOLLA, Ctrl/Cmd + C / V** | Copia le note selezionate o tutto il clip. Incolla al cursore sulla griglia interna al clip; se il cursore è altrove, parte da zero. Conserva le distanze fra le note. Se la frase non entra, allunga prima il clip. |
+| **Ctrl/Cmd + X / D** | Taglia le note selezionate / le duplica subito dopo la frase selezionata, conservando le distanze. La copia deve entrare interamente nel clip. |
+| **Sinistra / Destra** | Sposta la selezione di uno step; Maiusc usa una battuta. Ai bordi del clip il gruppo si ferma insieme. |
+| **Su / Giù** | Traspone le note intonate di un semitono; Maiusc usa un’ottava. La batteria conserva la nota assegnata. Nelle lane della chitarra sposta la selezione di una corsia. |
 
 Quantise e trasposizione lavorano sulla selezione; senza selezione, su tutto il clip. Lo **ZOOM** ingrandisce i dettagli nel tempo. **Esc** torna all'arrangiamento.
 

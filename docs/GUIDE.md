@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.6.0** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.7.0** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -108,6 +108,13 @@ The **MIXER** shows seventeen channels in musical order with a fixed master at t
 - Drop a MIDI file or personal sample on a track row to target that track.
 
 Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Guide edits preserve loop locators and automation. Clip positions, loop sources and gaps save in .fga format 2; format 1 projects still open. Reopen edited timelines with version 0.6.0 or later.
+
+### Navigation and selection
+
+- **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The existing ZOOM slider remains available.
+- **Wheel** scrolls vertically; **Shift + wheel** scrolls horizontally. Horizontal trackpad gestures also scroll horizontally. **Middle-button drag**, in the arrangement, pans both axes. Manual navigation turns FOLLOW off; enable it again to follow playback.
+- **ZOOM SELECTION / Z** frames the selected clips; in the MIDI editor, **Z** frames selected notes, or the whole clip if no notes are selected. **FIT SONG / F** restores the complete arrangement view.
+- **LOOP SELECTION / Ctrl/Cmd + L** sets both playback locators from the selected clips. In the MIDI editor it uses the selected notes, or the complete clip. This changes playback only and can be undone.
 
 ### Transport & tempo (top)
 
@@ -201,7 +208,10 @@ Double-click a **clip** to open the full editor. Choose which part to edit in th
 | **QUANTISE** | Align to the selected grid: 1/4, 1/8, 1/16 or 1/32. |
 | **−12 / +12** | Transpose pitched notes by an octave. |
 | **VEL** | Change selected-note velocity; with no selection, set it for new notes. |
-| **COPY / PASTE** | Copy selected notes, or the whole clip, and paste at the same section-relative positions. |
+| **COPY / PASTE, Ctrl/Cmd + C / V** | Copy selected notes, or the whole clip. Paste starts at the cursor on the grid inside this clip; if the cursor is elsewhere, paste starts at zero. Relative note spacing is retained. Extend the clip first if the complete phrase will not fit. |
+| **Ctrl/Cmd + X / D** | Cut selected notes / duplicate them directly after the selected phrase, preserving spacing. Duplication needs enough room inside the clip. |
+| **Left / Right** | Nudge selected notes by one grid step; Shift uses one bar. The group stops together at the clip boundary. |
+| **Up / Down** | Transpose selected pitched notes one semitone; Shift uses an octave. Drum pitch stays fixed. In guitar lane view, move the selection by one lane. |
 
 Quantise and transpose affect the selection, or the whole clip when nothing is selected. **ZOOM** opens up timing detail. **Escape** returns to the arrangement.
 

@@ -58,3 +58,5 @@ for name in ["guide-welcome-it.png", "guide-chapter-it.png", "guide-search-en.pn
 assert (folder / "localisation.txt").read_text().startswith("PASS"), "six languages, tooltips and extended piano"
 
 assert (folder / "piano-tools.txt").read_text().startswith("PASS"), "musical tools and MIDI chord learning"
+
+assert (folder / "daw-navigation.txt").read_text().startswith("PASS"), "DAW navigation, MIDI commands and atomic undo"

@@ -34,10 +34,10 @@ void MainComponent::selectClip(int track,int index,bool keepSelection){
     arrangement.selectedClips=keepSelection&&same?previous:std::set<int>{};if(index>=0)arrangement.selectedClips.insert(index);
     refreshTrack();updateSizes();piano.fitNotes();trackInspector.refresh();arrangement.repaint();piano.repaint();
 }
-void MainComponent::ensureTimelineClip(){
+void MainComponent::ensureTimelineClip(bool addUndo){
     auto& t=project.tracks[(size_t)selectedTrack];if(!noClipSelection&&(!t.freeTimeline||(clipIndex()>=0&&clipIndex()<(int)t.clips.size())))return;
     Clip c;c.span=4;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(c),arrangement.snapBeat(timelinePosition()));
-    if(placed>=0){checkpoint();project=std::move(edited);selectedClip=placed;noClipSelection=false;selectClip(selectedTrack,placed);changed();}
+    if(placed>=0){if(addUndo)checkpoint();project=std::move(edited);selectedClip=placed;noClipSelection=false;selectClip(selectedTrack,placed);changed();}
 }
 void MainComponent::timelineCommand(int command){
     if(loadingPlugin)return;
