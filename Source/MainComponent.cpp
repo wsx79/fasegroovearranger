@@ -64,7 +64,7 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.y<v.getY()+rulerHeight){
         if(e.x<v.getX()+headerWidth)return;
         if(e.mods.isPopupMenu()){owner.select(owner.selectedTrack,si);owner.showSectionMenu(si);return;}
-        if(e.y<v.getY()+32&&!e.mods.isPopupMenu()){const int edge=edgeAt(-1,e.position.x);if(edge>=0){owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));beginResize(edge,-1,e);return;}}
+        if(e.y<v.getY()+32&&!e.mods.isPopupMenu()){const int edge=edgeAt(-1,e.position.x);if(edge>=0){beginResize(edge,-1,e);return;}}
         if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));}
         else{const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());
             if(e.mods.isShiftDown()){owner.checkpoint();loopDragging=true;loopAnchor=beat;owner.setLoopRange(beat,std::min(owner.project.length(),beat+4));}
@@ -90,8 +90,9 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else owner.showInstrument();return;}
     const int edge=e.mods.isPopupMenu()?-1:edgeAt(ti,e.position.x),hit=clipAt(ti,e.position.x),clipSection=edge>=0?edge:hit>=0?hit:si;
     owner.select(ti,clipSection);if(e.mods.isPopupMenu()){owner.showClipMenu(ti,clipSection);return;}
+    if(edge>=0){beginResize(edge,ti,e);return;}
     owner.audio.seek(std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length()));
-    repaint();if(edge>=0){beginResize(edge,ti,e);return;}
+    repaint();
     clipTrack=ti;clipSource=clipTarget=clipSection;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();grabKeyboardFocus();
 }
 int ArrangementView::rowY(int row) const {int y=rulerHeight;for(int r=0;r<row;++r)y+=trackHeight+(volumeVisible[(size_t)trackAtRow(r)]?80:0);return y;}
@@ -128,7 +129,7 @@ void ArrangementView::mouseDrag(const juce::MouseEvent& e){
     if(clipTrack>=0){clipTarget=sectionAt(e.position.x);const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);repaint();return;}
     if(dragTrack<0||dragPoint<0)return;auto& points=owner.project.tracks[(size_t)dragTrack].volume.points;if(dragPoint>=(int)points.size())return;if(bending)points[(size_t)dragPoint].curve=std::clamp(originalCurve+(dragY-e.position.y)/40.,-1.,1.);else editPoint(e.position,!e.mods.isShiftDown());owner.changed(false);}
 void ArrangementView::mouseUp(const juce::MouseEvent&){
-    if(resizeBefore){if(resizeLastLength!=resizeOriginalLength){auto after=std::move(owner.project);owner.project=*resizeBefore;owner.checkpoint();owner.project=std::move(after);resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;owner.changed();}else cancelResize();return;}
+    if(resizeBefore){if(resizeLastLength!=resizeOriginalLength){auto after=std::move(owner.project);owner.project=*resizeBefore;owner.checkpoint();owner.project=std::move(after);resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;owner.changed();}else{const double beat=std::clamp((resizeAnchorX-headerWidth)*4./pixelsPerBar,0.,owner.project.length());cancelResize();owner.audio.seek(beat);}return;}
     if(clipTrack>=0&&clipTarget>=0&&clipTarget!=clipSource){owner.checkpoint();transferClip(owner.project,clipTrack,clipSource,clipTarget,copyingClip);owner.select(clipTrack,clipTarget);owner.changed();}
     clipTrack=clipSource=clipTarget=-1;dragTrack=dragPoint=-1;loopDragging=false;repaint();
 }
