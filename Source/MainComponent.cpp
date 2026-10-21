@@ -227,6 +227,12 @@ bool PianoRoll::verifyEditing(){
         if(!laneView()){const auto beforeResize=owner.clip().notes.front();at={leftMargin()+(float)((beforeResize.start+beforeResize.length)*pixelsPerBeat)-1,noteY(beforeResize)+noteHeight()/2};mouseDown(event(at));mouseDrag(event(at.translated((float)(grid*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(grid*pixelsPerBeat),0)));ok=owner.clip().notes.front().length>beforeResize.length&&ok;}
         deleteSelected();ok=owner.clip().notes.empty()&&ok;
     }
+    if(!laneView()){
+        owner.clip().notes={{1,.5,60,100,0},{2,.5,64,100,0}};selected={0,1};fitNotes();
+        auto at=juce::Point<float>(leftMargin()+(float)pixelsPerBeat+2,noteY(owner.clip().notes[0])+noteHeight()/2);
+        mouseDown(event(at));mouseDrag(event(at.translated((float)(-4*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(-4*pixelsPerBeat),0)));
+        ok=ok&&owner.clip().notes.size()==2&&std::abs(owner.clip().notes[0].start)<1e-9&&std::abs(owner.clip().notes[1].start-1)<1e-9;
+    }
     owner.clip()=saved;tool=savedTool;flamBrush=savedFlam;clearSelection();owner.changed();fitNotes();return ok;
 }
 void PianoRoll::deleteSelected(){if(selected.empty())return;owner.checkpoint();auto& notes=owner.clip().notes;for(auto i=selected.rbegin();i!=selected.rend();++i)if(*i>=0&&*i<(int)notes.size())notes.erase(notes.begin()+*i);selected.clear();owner.changed();}
@@ -238,7 +244,7 @@ public:
     void closeButtonPressed()override{setVisible(false);}
 };
 MainComponent::MainComponent(){
-    Localisation::loadSaved();if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;
+    Localisation::loadSaved();if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,540);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&backButton,&instrumentButton,&editButton,&leadButton,&arrangeButton,&guitarNotesButton,&durationLabel,&sectionSelector,&panelSections})addAndMakeVisible(c);
     instrumentPort.setViewedComponent(&instrumentPanel,false);instrumentPort.setScrollBarsShown(true,false);addAndMakeVisible(instrumentPort);
     backButton.onClick=[this]{showArrangement();};instrumentButton.onClick=[this]{showInstrument();};editButton.onClick=[this]{showEditor();};
@@ -422,7 +428,7 @@ void MainComponent::resized(){
     if(song){
         x=16;place(genreBox,x,118,178);x+=188;place(durationLabel,x,118,82);x+=92;place(arrangeButton,x,118,170);x+=180;place(songButton,x,118,154);x+=164;place(trackButton,x,118,140);x+=148;place(sectionButton,x,118,154);x+=162;place(clipButton,x,118,140);x+=148;place(addSectionButton,x,118,114);
         x=16;place(progressionBox,x,159,210);x+=218;place(harmonyButton,x,159,118);x+=126;place(extensionBox,x,159,116);x+=124;place(voicingBox,x,159,116);x+=124;place(densitySlider,x,159,150);x+=158;place(swingSlider,x,159,150);x+=158;place(humanizeSlider,x,159,150);x+=158;place(zoomSlider,x,159,150);
-        const int dockHeight=mixerVisible?std::min(252,std::max(220,getHeight()/4)):0;
+        const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-440)):0;
         const int footer=getHeight()-31-dockHeight-38;
         const int left=inspectorVisible?240:12;
         arrangementPort.setBounds(left,202,w-left-12,std::max(60,footer-210));
@@ -546,13 +552,14 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
         safe->message("Plugin pronto: "+description.name);
     });
 }
-void MainComponent::showPluginMenu(){
+void MainComponent::showPluginMenu(juce::Component* anchor){
     juce::PopupMenu menu;menu.addItem(1,"Strumento VST3 da file");
    #if JUCE_MAC
     menu.addItem(2,"Audio Units installate");
    #endif
     juce::Component::SafePointer<MainComponent> safe(this);
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&loadPluginButton),[safe](int id){
+    juce::Component::SafePointer<juce::Component> target(anchor?anchor:&loadPluginButton);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target.getComponent()),[safe,target](int id){
         if(safe==nullptr)return;
         if(id==1){int track=safe->selectedTrack;safe->chooseFile("Scegli un plugin VST3","*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[safe,track](juce::File file){if(safe!=nullptr)safe->loadPluginFile(track,file);});}
         if(id==2){
@@ -563,7 +570,7 @@ void MainComponent::showPluginMenu(){
             }}
             juce::PopupMenu units;for(int i=0;i<list->size();++i)if((*list)[i]->isInstrument)units.addItem(i+1,(*list)[i]->name+juce::String::fromUTF8(" · ")+(*list)[i]->manufacturerName);
             if(units.getNumItems()==0){safe->message("Nessuna Audio Unit strumento installata.");return;}
-            int track=safe->selectedTrack;units.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&safe->loadPluginButton),[safe,list,track](int chosen){if(safe!=nullptr&&chosen>0&&chosen<=list->size())safe->loadPluginDescription(track,*(*list)[chosen-1]);});
+            int track=safe->selectedTrack;units.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target.getComponent()),[safe,list,track](int chosen){if(safe!=nullptr&&chosen>0&&chosen<=list->size())safe->loadPluginDescription(track,*(*list)[chosen-1]);});
         }
     });
 }
@@ -574,7 +581,7 @@ void MainComponent::filesDropped(const juce::StringArray& files,int x,int y){
     juce::File file;for(const auto& path:files)if(isInterestedInFileDrag(juce::StringArray(path))){file=juce::File(path);break;}if(file==juce::File())return;
     if(file.hasFileExtension("fga")){open(file);return;}
     if(page==Page::arrangement&&arrangementPort.getBounds().contains(x,y)){
-        const auto point=arrangement.getLocalPoint(this,{x,y});const int row=arrangement.rowAt(point.y);const auto view=arrangementPort.getViewArea();
+        const auto point=arrangement.getLocalPoint(this,juce::Point<int>(x,y));const int row=arrangement.rowAt(point.y);const auto view=arrangementPort.getViewArea();
         if(row>=0&&point.y>=view.getY()+rulerHeight)select(trackAtRow(row),point.x>=view.getX()+headerWidth?arrangement.sectionAt((float)point.x):selectedSection);
     }
     if(file.hasFileExtension("mid;midi"))importFile(file);else loadSampleFile(selectedTrack,file);

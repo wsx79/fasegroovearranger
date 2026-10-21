@@ -129,6 +129,7 @@ private:
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
+    int mixerHeight=244;
     juce::TextButton inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
@@ -176,7 +177,7 @@ private:
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
     void loadPluginDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
-    void showPluginMenu();
+    void showPluginMenu(juce::Component* anchor=nullptr);
     void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>);
     void exportMenu();
     void exportFile(int type,int track);
@@ -197,5 +198,6 @@ private:
     friend class InstrumentPanel;
     friend class TrackInspector;
     friend class MixerStrip;
+    friend class DawMixer;
 };
 }

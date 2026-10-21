@@ -34,15 +34,21 @@ private:
     juce::Slider gain,pan;
     juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"};
 };
-class DawMixer : public juce::Component {
+class DawMixer : public juce::Component,public juce::SettableTooltipClient {
 public:
     explicit DawMixer(MainComponent&);
     void refresh();
     void tick();
     void reveal(int track);
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
+    MainComponent& owner;
+    int channelWidth=76,resizeOrigin=0,resizeHeight=0;
+    bool resizingMixer=false;
     juce::Viewport port;
     juce::Component channels;
     std::vector<std::unique_ptr<MixerStrip>> strips;
