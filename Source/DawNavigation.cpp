@@ -38,7 +38,7 @@ void MainComponent::wheelNavigate(bool editor,const juce::MouseEvent& e,const ju
     auto& port=editor?pianoPort:arrangementPort;const auto view=port.getViewArea();
     const double localX=e.position.x-view.getX();
     // The ruler offers direct wheel zoom; modifiers provide it over the note/clip area.
-    const bool ruler=e.position.y<view.getY()+(editor?40:rulerHeight)&&std::abs(wheel.deltaY)>std::abs(wheel.deltaX);
+    const bool ruler=!e.mods.isShiftDown()&&e.position.y<view.getY()+(editor?40:rulerHeight)&&std::abs(wheel.deltaY)>std::abs(wheel.deltaX);
     if(e.mods.isCtrlDown()||e.mods.isCommandDown()||ruler){
         const double delta=std::abs(wheel.deltaY)>0?wheel.deltaY:wheel.deltaX;
         zoomAt(editor,std::exp(std::clamp(delta*2.5,-1.,1.)),localX);return;
@@ -75,7 +75,12 @@ void MainComponent::loopSelection(){
 }
 void PianoRoll::retainSelection(const std::vector<Note>& wanted){
     selected.clear();const auto& notes=owner.clip().notes;
-    for(size_t i=0;i<notes.size();++i)for(const auto& n:wanted)if(notes[i].pitch==n.pitch&&std::abs(notes[i].start-n.start)<1./960.){selected.insert((int)i);break;}
+    std::array<std::vector<double>,128> times;
+    for(const auto& n:wanted)if(n.pitch>=0&&n.pitch<128)times[(size_t)n.pitch].push_back(n.start);
+    for(auto& starts:times)std::sort(starts.begin(),starts.end());
+    for(size_t i=0;i<notes.size();++i){const auto& n=notes[i];if(n.pitch<0||n.pitch>127)continue;
+        const auto& starts=times[(size_t)n.pitch];auto at=std::lower_bound(starts.begin(),starts.end(),n.start-1./960.);
+        if(at!=starts.end()&&std::abs(*at-n.start)<1./960.)selected.insert((int)i);}
     repaint();
 }
 void PianoRoll::pasteNotes(){
@@ -135,6 +140,8 @@ bool MainComponent::verifyNavigation(const juce::File& folder){
     followPlayhead=true;juce::MouseWheelDetails wheel{};wheel.deltaY=.2f;
     arrangement.mouseWheelMove(event(arrangement,arrangementPort.getViewPositionX()+(float)pointer,arrangementPort.getViewPositionY()+110,juce::ModifierKeys::ctrlModifier),wheel);
     stage("pointer anchored timeline wheel zoom",std::abs((arrangementPort.getViewPositionX()+pointer-headerWidth)/arrangement.pixelsPerBar-anchor)<1./arrangement.pixelsPerBar&&!followPlayhead);
+    const auto navigationUndo=undoStack.size();zoomSlider.setValue(arrangement.pixelsPerBar*1.1,juce::sendNotificationSync);
+    stage("zoom slider leaves undo untouched",undoStack.size()==navigationUndo);
     const int x=arrangementPort.getViewPositionX();wheel.deltaY=-.2f;
     arrangement.mouseWheelMove(event(arrangement,(float)x+430,arrangementPort.getViewPositionY()+110,juce::ModifierKeys::shiftModifier),wheel);
     stage("horizontal wheel scroll",arrangementPort.getViewPositionX()>x);
@@ -156,7 +163,7 @@ bool MainComponent::verifyNavigation(const juce::File& folder){
     stage("duplicate notes selects complete copy",clip().notes.size()==4&&piano.selected.size()==2&&clip().notes[2].start==1.5&&clip().notes[3].start==2.5);
     piano.keyPressed(juce::KeyPress('X',juce::ModifierKeys::commandModifier,0));
     stage("cut selected MIDI only",clip().notes.size()==2&&clipboard.size()==2);
-    seekTimeline(8);pasteButton.onClick();
+    seekTimeline(8);piano.keyPressed(juce::KeyPress('V',juce::ModifierKeys::commandModifier,0));
     stage("paste relative phrase at cursor",clip().notes.size()==4&&clip().notes[2].start==8&&clip().notes[3].start==9&&piano.selected.size()==2);
     loopSelection();stage("loop selected MIDI",project.loop&&project.loopStart==8&&project.loopEnd==9.5);
     const auto notes=clip().notes;
@@ -173,7 +180,8 @@ bool MainComponent::verifyNavigation(const juce::File& folder){
     stage("cancel active clip gesture",!arrangement.clipMoving&&arrangement.clipTrack<0);
     // Creation plus generation is one user operation, including on a previously empty track.
     project.tracks[4].freeTimeline=true;project.tracks[4].clips.clear();noClipSelection=true;selectedClip=-1;seekTimeline(4);const auto empty=project;
-    regenerate(Scope::clip);undo(false);stage("one undo for generate into an empty track",project.tracks[4].clips.empty()&&project.tracks[4].freeTimeline==empty.tracks[4].freeTimeline);
+    regenerate(Scope::clip);stage("generate empty track at the chosen cursor",project.tracks[4].clips.size()==1&&project.clipStart(4,0)==4&&timelinePosition()==4);
+    undo(false);stage("one undo for generate into an empty track",project.tracks[4].clips.empty()&&project.tracks[4].freeTimeline==empty.tracks[4].freeTimeline);
     project=saved;clipboard=board;editCursor=-1;arrangement.pixelsPerBar=oldZoom;piano.pixelsPerBeat=oldPianoZoom;
     selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();select(track,section);showArrangement();changed();
     undoStack=savedUndo;redoStack=savedRedo;dirty=savedDirty;refreshControls();

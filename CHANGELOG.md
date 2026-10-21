@@ -5,7 +5,7 @@
 - Pointer-anchored wheel zoom in the arrangement and MIDI editors, keyboard zoom, horizontal/vertical scrolling and arrangement middle-button panning.
 - Selection zoom and loop commands; manual navigation suspends playback following.
 - MIDI note nudging, octave steps, cut, adjacent duplication and cursor-based paste with phrase boundary checks and Undo.
-- Protect clip gestures from conflicting shortcuts; avoid empty Undo steps for note selection and duplicate history entries when generating into an empty track.
+- Protect clip gestures from conflicting shortcuts; avoid empty Undo steps for note selection and duplicate history entries when generating into an empty track; retain the cursor for generation.
 - Updated six-language tooltips, native checks and IT/EN Markdown guides.
 
 ## 0.6.0 — 2026-10-21

@@ -74,3 +74,7 @@ Real audio-device playback, latency/buffer behaviour, commercial VST3/AU compati
 - Core checks passed user-grid generation, step velocity changes, per-chord inversion, controller scheduling and DNA rhythm/harmony locks, in addition to all thirteen genre suites. Project IO covers the additional persistent parameters.
 - Independent SMF validation passed the 18-track song, isolated kick and piano/controller fixture. The latter preserves note pairs and contains CC64/CC11, with pedal and expression reset at the end.
 - Guide refreshes and final packaging rerun the same platform checks. Real MIDI-device callbacks and commercial-plugin interpretation of CC64/CC11 still need testing with the user's hardware and instruments.
+
+## DAW navigation and MIDI selection workflows (0.7.0)
+
+The native `daw-navigation.txt` report checks pointer anchoring in scrolled timeline/MIDI views, horizontal wheel routing, selection zoom/loop and locator Undo, MIDI group boundary nudges, octave steps, cut/duplicate/cursor paste, rejection of partial phrases, drum isolation, gesture shortcut protection and one-step Undo when generating at an empty-track cursor. Navigation must preserve project JSON/MIDI and leave edit history intact. Existing native layout, persistence, transport/chase, automation, host and full-song audio checks remain required.
