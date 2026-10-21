@@ -249,7 +249,7 @@ public:
     void closeButtonPressed()override{setVisible(false);}
 };
 MainComponent::MainComponent(){
-    Localisation::loadSaved();if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,540);
+    Localisation::loadSaved();if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,4096);inspectorWidth=std::clamp(Localisation::setting("inspectorWidth","216").getIntValue(),184,480);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&backButton,&instrumentButton,&editButton,&leadButton,&arrangeButton,&guitarNotesButton,&durationLabel,&sectionSelector,&panelSections})addAndMakeVisible(c);
     instrumentPort.setViewedComponent(&instrumentPanel,false);instrumentPort.setScrollBarsShown(true,false);addAndMakeVisible(instrumentPort);
     backButton.onClick=[this]{showArrangement();};instrumentButton.onClick=[this]{showInstrument();};editButton.onClick=[this]{showEditor();};
@@ -266,7 +266,7 @@ MainComponent::MainComponent(){
     addAndMakeVisible(chordEditButton);chordEditButton.onClick=[this]{showChordMenu();};
     inspectorPort.setViewedComponent(&trackInspector,false);inspectorPort.setScrollBarsShown(true,false);addAndMakeVisible(inspectorPort);addAndMakeVisible(mixer);
     for(auto* button:{&inspectorToggle,&mixerToggle,&followButton}){addAndMakeVisible(button);button->setClickingTogglesState(true);}
-    addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
+    addAndMakeVisible(inspectorResizer);addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
     inspectorCollapse.getProperties().set("fgaTip","Collapse the track inspector to make room for tracks; click the arrow again to restore it. Shortcut: I.");
     inspectorCollapse.onClick=[this]{inspectorVisible=!inspectorVisible;inspectorToggle.setToggleState(inspectorVisible,juce::dontSendNotification);resized();};
     addAndMakeVisible(fitSongButton);inspectorToggle.setToggleState(true,juce::dontSendNotification);mixerToggle.setToggleState(true,juce::dontSendNotification);
@@ -416,7 +416,7 @@ void MainComponent::paint(juce::Graphics& g){
 void MainComponent::resized(){
     const int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
-    arrangementPort.setVisible(song);instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song);inspectorCollapse.setVisible(song);mixer.setVisible(song);
+    arrangementPort.setVisible(song);instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song);inspectorCollapse.setVisible(song);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&zoomSlider,&durationLabel,&arrangeButton})c->setVisible(song);
     automationButton.setVisible(song);
@@ -440,11 +440,13 @@ void MainComponent::resized(){
         x=16;place(progressionBox,x,159,210);x+=218;place(harmonyButton,x,159,118);x+=126;place(extensionBox,x,159,116);x+=124;place(voicingBox,x,159,116);x+=124;place(densitySlider,x,159,150);x+=158;place(swingSlider,x,159,150);x+=158;place(humanizeSlider,x,159,150);x+=158;place(zoomSlider,x,159,150);
         const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-440)):28;
         const int footer=getHeight()-31-dockHeight-38;
-        const int left=inspectorVisible?240:56;
+        inspectorWidth=std::clamp(inspectorWidth,184,std::max(184,std::min(480,w/3)));
+        const int left=inspectorVisible?inspectorWidth+24:56;
         arrangementPort.setBounds(left,202,w-left-12,std::max(60,footer-210));
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
-        inspectorPort.setBounds(12,202,inspectorVisible?216:32,std::max(60,footer-202));trackInspector.setSize(inspectorVisible?200:32,inspectorVisible?634:inspectorPort.getHeight());
-        inspectorCollapse.setBounds(inspectorVisible?184:16,206,24,22);inspectorCollapse.setButtonText(inspectorVisible?"<":">");inspectorCollapse.toFront(false);
+        inspectorPort.setBounds(12,202,inspectorVisible?inspectorWidth:32,std::max(60,footer-202));trackInspector.setSize(inspectorVisible?inspectorWidth-16:32,inspectorVisible?634:inspectorPort.getHeight());
+        inspectorCollapse.setBounds(inspectorVisible?inspectorWidth-32:16,206,24,22);inspectorCollapse.setButtonText(inspectorVisible?"<":">");inspectorCollapse.toFront(false);
+        inspectorResizer.setBounds(12+inspectorWidth,202,8,std::max(60,footer-202));inspectorResizer.toFront(false);
         mixer.setBounds(12,footer+36,w-24,dockHeight);
         place(chordsLabel,18,footer,w-650,28);
         int fx=w-626;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&inspectorToggle,112},{&mixerToggle,90},{&fitSongButton,112},{&followButton,96},{&automationButton,160}}){place(*item.first,fx,footer,item.second);fx+=item.second+6;}

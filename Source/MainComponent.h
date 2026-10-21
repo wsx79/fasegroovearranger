@@ -128,8 +128,9 @@ private:
     juce::Viewport arrangementPort,pianoPort,instrumentPort,inspectorPort;
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
+    InspectorResizer inspectorResizer{*this};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
-    int mixerHeight=244;
+    int mixerHeight=244,inspectorWidth=216;
     juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
@@ -197,6 +198,7 @@ private:
     friend class PianoRoll;
     friend class InstrumentPanel;
     friend class TrackInspector;
+    friend class InspectorResizer;
     friend class MixerStrip;
     friend class DawMixer;
 };

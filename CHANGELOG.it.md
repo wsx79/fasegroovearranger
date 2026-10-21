@@ -2,6 +2,7 @@
 
 ## 0.5.1 — 2026-10-21
 
+- Inspector ridimensionabile trascinando il bordo destro; mixer ridimensionabile trascinando l’intestazione. Le dimensioni vengono ricordate; doppio clic sulle rispettive aree ripristina quelle predefinite.
 - Freccia nell’intestazione del Track Inspector per richiudere il pannello laterale in una barra stretta e recuperare larghezza per le tracce; il comando resta accessibile mentre si scorrono i controlli.
 - Pulsante ABBASSA MIXER nell’intestazione: richiude i fader in una barra sottile e recupera spazio per le tracce; RIAPRI MIXER ripristina l’altezza precedente. Restano disponibili MIXER/F3.
 - Clic in qualsiasi punto del clip per posizionare esattamente la riproduzione; Play/Spazio parte da lì, durante l’ascolto il salto è immediato. Funziona anche dopo lo scorrimento orizzontale.

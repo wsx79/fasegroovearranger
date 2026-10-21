@@ -4,6 +4,18 @@
 #include "FamilyTheme.h"
 namespace fga {
 class MainComponent;
+class InspectorResizer : public juce::Component,public juce::SettableTooltipClient {
+public:
+    explicit InspectorResizer(MainComponent&);
+    void paint(juce::Graphics&) override;
+    void mouseDown(const juce::MouseEvent&) override;
+    void mouseDrag(const juce::MouseEvent&) override;
+    void mouseUp(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
+private:
+    MainComponent& owner;
+    int dragOrigin=0,initialWidth=216;
+};
 class TrackInspector : public juce::Component {
 public:
     explicit TrackInspector(MainComponent&);
@@ -43,6 +55,8 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
+    void mouseDoubleClick(const juce::MouseEvent&) override;
+    void mouseMove(const juce::MouseEvent&) override;
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
