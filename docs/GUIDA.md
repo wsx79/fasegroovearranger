@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.7.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.8.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -198,6 +198,12 @@ Da **OPZIONI → IMPOSTAZIONI → Lingua** scegli italiano, inglese, spagnolo, f
 | **CARICA CAMPIONE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. |
 | **CARICA VST3 / AU** | Uno strumento installato sul tuo computer. Scegli il bundle `.vst3`; su macOS puoi scegliere anche un'Audio Unit installata. |
 | **APRI VST** | L'interfaccia dello strumento che hai caricato. |
+
+**Catalogo dei plugin.** Apri **OPZIONI → IMPOSTAZIONI → PLUGIN…** per vedere le cartelle standard, aggiungere o rimuovere cartelle VST3 personali e avviare una scansione. Sono incluse le sottocartelle; percorsi sovrapposti non duplicano gli strumenti. Windows cerca nelle cartelle Common Files/VST3 di sistema e Programs/Common/VST3 dell’utente; macOS nelle cartelle Audio/Plug-Ins/VST3 di sistema e dell’utente; Linux in `~/.vst3`, `/usr/lib/vst3` e `/usr/local/lib/vst3`. Su macOS compaiono anche le Audio Units registrate dal sistema operativo: installa i bundle `.component` nelle cartelle Components standard tramite l’installer del produttore.
+
+La prima scansione parte automaticamente. A ogni avvio successivo vengono ricontrollate in background le cartelle standard e personali; il catalogo salvato è disponibile subito da **CARICA VST3 / AU**, diviso per produttore. Il nome indica il formato quando sono presenti più versioni. I bundle VST3 nuovi o aggiornati vengono verificati di nuovo; quelli invariati usano il catalogo. I plugin rimossi spariscono dalla lista, mentre le assegnazioni nei progetti restano ricollegabili. **APRI FILE VST3…** permette ancora la scelta diretta di un bundle.
+
+La verifica dei plugin avviene in un processo separato, con un limite di tempo. I controlli falliti o interrotti vengono saltati e conteggiati; **RIPROVA ERRORI** li verifica nuovamente. **ANNULLA** interrompe la scansione in corso. La scansione conserva tracce, MIDI e assegnazioni degli strumenti. Catalogo e preferenze delle cartelle sono locali al tuo account. Durante l’ascolto i plugin nativi continuano a girare nel processo dell’app; l’isolamento riguarda la ricerca.
 
 **GAIN, PAN, MUTE e SOLO** appartengono alla traccia. **TIMBRO, RIVERBERO, CHORUS e PUMP** cambiano soltanto il suono guida; per il suono del tuo VST usa i suoi comandi. I parametri di groove continuano a scrivere il MIDI che gli arriva.
 

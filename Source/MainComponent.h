@@ -9,6 +9,7 @@
 #include "FamilyControls.h"
 #include "Updater.h"
 #include "DawWorkspace.h"
+#include "PluginSettings.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -125,6 +126,7 @@ public:
     Project project;
     int selectedTrack=0,selectedSection=0,selectedClip=-1;
     AudioEngine audio;
+    PluginCatalog pluginCatalog;
     void checkpoint();
     void changed(bool schedule=true);
     void mixChanged();
@@ -167,6 +169,7 @@ public:
 private:
     FamilyLookAndFeel theme;
     OptionsOverlay options;
+    PluginSettings pluginSettings{pluginCatalog};
     UpdateOverlay updateOverlay;
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;

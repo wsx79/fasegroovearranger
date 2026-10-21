@@ -406,6 +406,8 @@ MainComponent::MainComponent(){
     options.onLanguageChanged=[this]{applyLanguage();};
     options.onScaleChosen=[this](float scale){if(onScaleChosen)onScaleChosen(scale);};
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
+    addChildComponent(pluginSettings);
+    options.onPluginSettings=[this]{pluginSettings.show();};
     options.onAudioSettings=[this]{showAudioSettings();};
     options.onDocument=[this](int id){if(id==0)showGuide(Localisation::current()!=Localisation::Language::italian);if(id==1){const bool it=Localisation::current()==Localisation::Language::italian;showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==2)showDocument(tr("Licences and attributions"),juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));};
     options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);options.checkUpdatesButton.setButtonText(tr("CHECKING..."));updater.start(true);};
@@ -452,7 +454,7 @@ void MainComponent::changed(bool schedule){project.normalise();dirty=true;audio.
 void MainComponent::applyLanguage(){
     if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
     refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();
-    options.refreshText();updateOverlay.refreshText();repaint();
+    options.refreshText();pluginSettings.refreshText();updateOverlay.refreshText();repaint();
 }
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);repaint();}
 void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();panelSections.clear(juce::dontSendNotification);for(auto name:instrumentPanel.sectionNames())panelSections.addItem(name,panelSections.getNumItems()+1);panelSections.setTextWhenNothingSelected("ADVANCED");resized();instrumentPort.setViewPosition(0,0);repaint();}
@@ -548,7 +550,7 @@ void MainComponent::resized(){
     }
     chordsLabel.setVisible(song);
     if(song){trackButton.setButtonText("REGENERATE TRACK");sectionButton.setButtonText("REGENERATE SECTION");clipButton.setButtonText("REGENERATE CLIP");}
-    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();translateControls(*this);
+    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);pluginSettings.setBounds(getLocalBounds());if(pluginSettings.isVisible())pluginSettings.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();translateControls(*this);
 }
 bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     const auto saved=Localisation::current();const auto originalJson=juce::JSON::toString(projectJson(project),false,17);bool ok=true;static const char* codes[]{"en","it","es","fr","de","pt"};static const char* expected[]{"NEW TRACK","NUOVA TRACCIA","NUEVA PISTA","NOUVELLE PISTE","NEUE SPUR","NOVA FAIXA"};
@@ -565,7 +567,8 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     folder.getChildFile("localisation.txt").replaceWithText(ok?"PASS six interface languages, live translation, extended piano sections and control tooltips":"FAIL localisation or extended controls");showArrangement();return ok;
 }
 bool MainComponent::writeUiEvidence(const juce::File& folder){
-    bool ok=writeLanguageEvidence(folder)&&writeHelpEvidence(folder);auto capture=[&](const juce::String& name){auto screenshot=createComponentSnapshot(getLocalBounds());if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(screenshot,*out)&&ok;}else ok=false;};
+    bool ok=writeLanguageEvidence(folder)&&writeHelpEvidence(folder);pluginSettings.show();ok=pluginSettings.verifyLayout()&&ok;pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=createComponentSnapshot(getLocalBounds());if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(screenshot,*out)&&ok;}else ok=false;};
+    pluginSettings.show();capture("plugin-settings");pluginSettings.setVisible(false);
     select(0,1);showInstrument();capture("piano-family-extended");const auto take=clip().seed;regenerate(Scope::clip);ok=ok&&clip().seed!=take&&clip().motifSeed!=0;const auto generated=clip();if(clipButton.onClick)clipButton.onClick();ok=ok&&clip()==generated;
     showArrangement();fitSong();ok=ok&&arrangementPort.isVisible()&&!pianoPort.isVisible()&&headerWidth+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth();capture("interface");
     ok=arrangement.verifyAutomation(folder)&&ok;
@@ -584,6 +587,7 @@ void MainComponent::timerCallback(){
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
+    if(pluginSettings.isVisible()){if(k==juce::KeyPress::escapeKey)pluginSettings.setVisible(false);return true;}
     if(k==juce::KeyPress::escapeKey){if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
     if(k==juce::KeyPress::spaceKey){togglePlayback();return true;}
     if(k==juce::KeyPress::homeKey){seekTimeline(0);return true;}
@@ -655,25 +659,22 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
     });
 }
 void MainComponent::showPluginMenu(juce::Component* anchor){
-    juce::PopupMenu menu;menu.addItem(1,"Strumento VST3 da file");
-   #if JUCE_MAC
-    menu.addItem(2,"Audio Units installate");
-   #endif
-    juce::Component::SafePointer<MainComponent> safe(this);
-    juce::Component::SafePointer<juce::Component> target(anchor?anchor:&loadPluginButton);
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target.getComponent()),[safe,target](int id){
-        if(safe==nullptr)return;
-        if(id==1){int track=safe->selectedTrack;safe->chooseFile("Scegli un plugin VST3","*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[safe,track](juce::File file){if(safe!=nullptr)safe->loadPluginFile(track,file);});}
-        if(id==2){
-            auto list=std::make_shared<juce::OwnedArray<juce::PluginDescription>>();
-            for(int i=0;i<safe->audio.formats.getNumFormats();++i){auto* format=safe->audio.formats.getFormat(i);if(format->getName().containsIgnoreCase("AudioUnit")){
-                auto ids=format->searchPathsForPlugins(juce::FileSearchPath(),false,true);
-                for(auto key:ids)format->findAllTypesForFile(*list,key);
-            }}
-            juce::PopupMenu units;for(int i=0;i<list->size();++i)if((*list)[i]->isInstrument)units.addItem(i+1,(*list)[i]->name+juce::String::fromUTF8(" · ")+(*list)[i]->manufacturerName);
-            if(units.getNumItems()==0){safe->message("Nessuna Audio Unit strumento installata.");return;}
-            int track=safe->selectedTrack;units.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(target.getComponent()),[safe,list,track](int chosen){if(safe!=nullptr&&chosen>0&&chosen<=list->size())safe->loadPluginDescription(track,*(*list)[chosen-1]);});
-        }
+    const auto state=pluginCatalog.state();const auto plugins=state.plugins;
+    juce::PopupMenu menu;menu.addSectionHeader(tr("Instruments by manufacturer"));
+    for(int i=0;i<plugins.size();){
+        const auto manufacturer=plugins[i].manufacturerName;juce::PopupMenu group;
+        do{group.addItem(100+i,plugins[i].name+" ["+plugins[i].pluginFormatName+"]");++i;}while(i<plugins.size()&&plugins[i].manufacturerName.equalsIgnoreCase(manufacturer));
+        menu.addSubMenu(manufacturer.isEmpty()?tr("Unknown manufacturer"):manufacturer,group);
+    }
+    if(plugins.isEmpty())menu.addItem(0,tr(state.scanning?"Scanning plugins...":"No instruments found"),false);
+    else if(state.scanning)menu.addItem(0,tr("Scanning plugins..."),false);
+    menu.addSeparator();menu.addItem(1,tr("Open VST3 file..."));menu.addItem(2,tr("PLUGIN SETTINGS"));menu.addItem(3,tr("SCAN NOW"),!state.scanning);
+    juce::Component::SafePointer<MainComponent> safe(this);const int track=selectedTrack;
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(anchor?anchor:&loadPluginButton),[safe,plugins,track](int id){
+        if(!safe)return;
+        if(id>=100&&id-100<plugins.size()){safe->loadPluginDescription(track,plugins[id-100]);return;}
+        if(id==1)safe->chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[safe,track](juce::File file){if(safe)safe->loadPluginFile(track,file);});
+        if(id==2)safe->pluginSettings.show();if(id==3)safe->pluginCatalog.scan();
     });
 }
 void MainComponent::importFile(const juce::File& f){auto imported=clip();const double duration=clipIndex()<0?4.:clipLength();auto r=importMidi(f,imported,duration);if(r.failed()){message(r.getErrorMessage(),true);return;}if(clipIndex()<0){imported.span=duration;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(imported),arrangement.snapBeat(timelinePosition()));if(placed<0)return;checkpoint();project=std::move(edited);selectClip(selectedTrack,placed);}else{checkpoint();clip()=std::move(imported);}piano.clearSelection();changed();message("MIDI importato nel clip selezionato.");}

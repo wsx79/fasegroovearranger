@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.7.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.8.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -196,6 +196,12 @@ It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**,
 | **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. |
 | **LOAD VST3 / AU** | An instrument installed on your computer. Choose the `.vst3` bundle; macOS also lists installed Audio Units. |
 | **OPEN VST** | The loaded instrument's own interface. |
+
+**Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, add or remove personal VST3 folders, and scan now. Subfolders are included and overlapping paths do not duplicate instruments. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
+
+The first launch scans automatically. Every later launch checks the same standard and personal folders in the background; the saved catalogue is immediately available from **LOAD VST3 / AU**, grouped by manufacturer. Names show the format when both versions are installed. New or updated VST3 bundles are inspected again; unchanged bundles reuse the catalogue. Removed plugins disappear from the list, while project assignments remain available for relinking. **OPEN VST3 FILE…** still lets you choose a bundle directly.
+
+Plugin inspection runs in a separate process, with a timeout. Failed or interrupted checks are skipped and counted; **RETRY FAILED** checks them again. **CANCEL** stops the current scan. Scanning does not change tracks, MIDI or instrument assignments. The catalogue and folder preferences are local to your user account. Instrument playback continues to use native plugins in the app process; only discovery is isolated.
 
 **GAIN, PAN, MUTE and SOLO** belong to the track. **TONE, REVERB, CHORUS and PUMP** change only the guide sound; use your VST's controls for its sound. The groove controls still write the MIDI sent to it.
 

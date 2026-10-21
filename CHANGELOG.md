@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.8.0 — 2026-10-21
+
+- Persistent instrument catalogue grouped by manufacturer, ready immediately from the plugin selector. VST3 system/user defaults plus configurable personal folders; recursive discovery and path deduplication.
+- Automatic first-launch and startup scans in the background. Cache unchanged VST3 bundles, detect updates/removals, and retain project assignments. Registered Audio Units remain available on macOS.
+- Inspect plugin binaries in a child process with timeout and persistent failed/interrupted-scan quarantine. Settings include folder management, scan, cancel and retry controls in all six interface languages.
+- Native integration checks for nested/overlapping paths, saved catalogue, unchanged-plugin reuse, updates, quarantine/retry and removal/rediscovery. Preserve the family settings layout, theme and existing manual loading.
+
 ## 0.7.2 — 2026-10-21
 
 - Regeneration creates a persistent musical take for the requested song, track, section or clip, instead of mostly changing humanisation over the same riff. Track/song takes share a motif across sections and drum stems share a kit seed.

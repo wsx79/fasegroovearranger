@@ -13,7 +13,7 @@ public:
     std::function<void (bool)> onTipsChanged;
     std::function<void()> onCheckUpdates, onLanguageChanged;
     std::function<void(int)> onDocument;
-    std::function<void()> onAudioSettings;
+    std::function<void()> onAudioSettings,onPluginSettings;
     bool verifyLayout() const;
 
     juce::TextButton checkUpdatesButton;
@@ -33,7 +33,7 @@ private:
     juce::Image artist;
     juce::TextButton settingsTab, aboutTab, closeButton;
     juce::TextButton sourceButton, kofiButton, paypalButton, spotifyButton;
-    juce::TextButton audioButton, guideButton, privacyButton, licencesButton;
+    juce::TextButton pluginButton, audioButton, guideButton, privacyButton, licencesButton;
     juce::Label languageLabel, sizeLabel;
     juce::ComboBox languageBox, sizeBox;
     juce::ToggleButton tipsToggle, updatesToggle;

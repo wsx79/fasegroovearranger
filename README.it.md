@@ -36,7 +36,7 @@ Lo zoom segue il puntatore (rotella sul righello o Ctrl/Cmd+rotella); Maiusc+rot
 - Generazione di brano, traccia, sezione o singolo clip; blocchi di generazione, annulla/ripeti e MIDI salvato nel progetto.
 - Pannelli strumenti e piano roll grande separati: ogni batteria mostra solo lo strumento scelto, la chitarra tutte le sue parti. Il piano mantiene i controlli estesi, DNA, Morph, Voicing Coach, Varianti e circolo delle quinte.
 - Disegno, spostamento, durata e dinamica delle note, selezione multipla, quantizzazione, trasposizione e copia/incolla. Importazione MIDI PPQ.
-- Suoni guida originali, campioni personali e uno strumento VST3 per traccia; Audio Units su macOS. Editor e stato del plugin salvati nel progetto.
+- Suoni guida originali, campioni personali e uno strumento VST3 per traccia; Audio Units su macOS. Editor e stato del plugin salvati nel progetto. Catalogo per produttore, ricerca ricorsiva a ogni avvio nelle cartelle standard e personali, verifica in processi separati. Percorsi in OPZIONI → IMPOSTAZIONI → PLUGIN.
 - Progetti `.fga`, salvataggio atomico e autosave locale; volume, pan, mute, solo, meter e loop di brano o sezione.
 - Export MIDI multitraccia o separato, WAV stereo 24 bit e MP3 stereo 320 kbps, mix completo o singoli stem. L'encoder MP3 è incluso.
 - Sei lingue e tooltip, pannello OPZIONI con IMPOSTAZIONI / INFO, dimensione interfaccia e verifica aggiornamenti GitHub disattivabile.
@@ -73,7 +73,7 @@ Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_B
 - [Architettura e provenienza](docs/ARCHITECTURE.md) · [Confronto UI famiglia](docs/FAMILY_ALIGNMENT.md)
 - [Licenze di terze parti](THIRD_PARTY_NOTICES.md) · [Verifiche](docs/VALIDATION.md)
 
-Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, automazioni di parametri diversi dal volume traccia, audio warping, catene effetti, bus/send, registrazione dei controller MIDI, compensazione della latenza dei plugin e scansione isolata non sono implementati. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
+Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, automazioni di parametri diversi dal volume traccia, audio warping, catene effetti, bus/send, registrazione dei controller MIDI, compensazione della latenza dei plugin non sono implementati. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
 
 I suoni guida sono sintetizzati, non librerie commerciali campionate. Per la produzione finale puoi usare i tuoi strumenti. WAV è senza perdita; MP3 aggiunge il ritardo/padding del codec.
 
