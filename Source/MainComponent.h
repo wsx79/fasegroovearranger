@@ -30,6 +30,8 @@ public:
     int totalHeight() const {return rowY(trackCount);}
     std::array<bool,trackCount> volumeVisible{};
     double pixelsPerBar=6;
+    std::set<int> selectedClips;
+    double snapBeat(double beat,bool bypass=false) const;
 private:
     friend class MainComponent;
     MainComponent& owner;
@@ -42,6 +44,8 @@ private:
     bool bending=false,loopDragging=false,copyingClip=false;
     double loopAnchor=0;
     int clipTrack=-1,clipSource=-1,clipTarget=-1;
+    double clipAnchorX=0,clipDropBeat=0;
+    bool clipMoving=false;
     int sectionAt(float x) const;
     int clipAt(int track,float x) const;
     int edgeAt(int track,float x) const;
@@ -109,7 +113,7 @@ public:
     void filesDropped(const juce::StringArray&,int,int) override;
     std::function<void(float)> onScaleChosen;
     Project project;
-    int selectedTrack=0,selectedSection=0;
+    int selectedTrack=0,selectedSection=0,selectedClip=-1;
     AudioEngine audio;
     void checkpoint();
     void changed(bool schedule=true);
@@ -121,8 +125,15 @@ public:
     void showArrangement();
     void showSectionMenu(int);
     void showClipMenu(int,int);
-    Clip& clip(){return project.tracks[(size_t)selectedTrack].clips[(size_t)selectedSection];}
-    double clipLength()const{return project.clipLength(selectedTrack,selectedSection);}
+    int clipIndex() const {if(noClipSelection)return -1;return project.tracks[(size_t)selectedTrack].freeTimeline?selectedClip:selectedSection;}
+    Clip& clip(){auto& clips=project.tracks[(size_t)selectedTrack].clips;const int i=clipIndex();return i>=0&&i<(int)clips.size()?clips[(size_t)i]:emptyClip;}
+    const Clip& clip()const{const auto& clips=project.tracks[(size_t)selectedTrack].clips;const int i=clipIndex();return i>=0&&i<(int)clips.size()?clips[(size_t)i]:emptyClip;}
+    double clipLength()const{return project.clipLength(selectedTrack,clipIndex());}
+    double clipStart()const{return clipIndex()<0?audio.position():project.clipStart(selectedTrack,clipIndex());}
+    void selectClip(int track,int clip,bool keepSelection=false);
+    void timelineCommand(int command);
+    void moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy);
+    void ensureTimelineClip();
     void regenerate(Scope);
     bool requestClose();
     bool writeLanguageEvidence(const juce::File&);
@@ -133,6 +144,7 @@ public:
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
     bool verifyDawWorkspace(const juce::File&);
+    bool verifyTimelineEditing(const juce::File&);
 private:
     FamilyLookAndFeel theme;
     OptionsOverlay options;
@@ -174,6 +186,12 @@ private:
     juce::Label inspectorLabel,editorLabel;
     std::vector<Project> undoStack,redoStack;
     std::vector<Note> clipboard;
+    std::vector<Clip> timelineClipboard;
+    Clip emptyClip;
+    bool noClipSelection=false;
+    double timelineSnap=1;
+    juce::TextButton timelineCut{"CUT"},timelineCopy{"COPY"},timelinePaste{"PASTE"},timelineSplit{"SPLIT"},timelineDuplicate{"DUPLICATE"},timelineDelete{"DELETE"};
+    juce::ComboBox timelineGrid;
     juce::File projectFile;
     bool dirty=false,refreshing=false;
     int loadingPlugin=0;

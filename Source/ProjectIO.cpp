@@ -114,7 +114,7 @@ void readEngine(const juce::var& o,EngineOptions& e){
 
 }
 juce::var projectJson(const Project& p){
-    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",1);set(o,"name",p.name);
+    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
@@ -125,18 +125,18 @@ juce::var projectJson(const Project& p){
     juce::Array<juce::var> sections,tracks;
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
-        set(a,"engine",engineJson(t.engine));
+        set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
         auto volume=object();set(volume,"enabled",t.volume.enabled);juce::Array<juce::var> points;
         for(const auto& p:t.volume.points){juce::Array<juce::var> point;point.add(p.beat);point.add(p.value);point.add(p.curve);points.add(point);}
         set(volume,"points",points);set(a,"volumeAutomation",volume);
         set(a,"instrument",t.instrument);set(a,"instrumentPath",t.instrumentPath);set(a,"instrumentId",t.instrumentId);set(a,"instrumentState",t.instrumentState);
-        juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);set(b,"locked",clip.locked);if(clip.span>0)set(b,"span",clip.span);
+        juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);set(b,"locked",clip.locked);if(t.freeTimeline){set(b,"position",clip.position);set(b,"role",clip.role);}if(clip.span>0)set(b,"span",clip.span);
             if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);}juce::Array<juce::var> notes;
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
     }set(o,"tracks",tracks);return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
-    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||(int)o["version"]!=1)return juce::Result::fail("Formato progetto non supportato.");
+    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
     if(!sections||sections->isEmpty()||sections->size()>64||!tracks||tracks->size()!=trackCount)return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (17 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
@@ -161,10 +161,12 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
         }
         t.instrument=str(a,"instrument","internal");if(t.instrument!="internal"&&t.instrument!="sample"&&t.instrument!="plugin")return juce::Result::fail("Tipo strumento non valido.");
         t.instrumentPath=str(a,"instrumentPath");t.instrumentId=str(a,"instrumentId");t.instrumentState=str(a,"instrumentState");
-        auto* clips=a["clips"].getArray();if(!clips||clips->size()!=sections->size())return juce::Result::fail("Clip e sezioni non corrispondono.");
+        t.freeTimeline=(int)o["version"]>=2&&(bool)a.getProperty("freeTimeline",false);
+        auto* clips=a["clips"].getArray();if(!clips||(t.freeTimeline?clips->size()>4096:clips->size()!=sections->size()))return juce::Result::fail("Clip e sezioni non corrispondono.");
         for(const auto& b:*clips){Clip c;c.seed=(std::uint32_t)(juce::int64)b.getProperty("seed",1);c.locked=(bool)b["locked"];auto* notes=b["notes"].getArray();if(!notes)return juce::Result::fail("Note mancanti.");
             noteCount+=(size_t)notes->size();if(noteCount>2000000)return juce::Result::fail("Progetto troppo grande (massimo 2 milioni di note).");
             for(const auto& n:*notes){if(!n.isArray()||n.size()<4)return juce::Result::fail("Evento MIDI non valido.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Tempo MIDI non valido.");c.notes.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}
+            if(t.freeTimeline){const auto pos=b["position"],span=b["span"];if(!(pos.isDouble()||pos.isInt()||pos.isInt64())||!(span.isDouble()||span.isInt()||span.isInt64())||!std::isfinite((double)pos)||!std::isfinite((double)span)||(double)pos<0||(double)pos>131072||(double)span<1./960.||(double)span>512)return juce::Result::fail("Invalid timeline clip position or duration.");c.position=(double)pos;c.role=(int)num(b,"role",-1);}
             c.span=num(b,"span",0);c.loopLength=num(b,"loopLength",0);if(!std::isfinite(c.span)||!std::isfinite(c.loopLength))return juce::Result::fail("Invalid loop duration.");
             if(b.hasProperty("loopSource")){auto* source=b["loopSource"].getArray();if(!source)return juce::Result::fail("Invalid loop source.");noteCount+=(size_t)source->size();if(noteCount>2000000)return juce::Result::fail("Project loop source is too large.");
                 for(const auto& n:*source){if(!n.isArray()||n.size()<4)return juce::Result::fail("Invalid loop MIDI event.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Invalid loop MIDI time.");c.loopSource.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}}

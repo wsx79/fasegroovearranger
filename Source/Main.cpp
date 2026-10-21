@@ -147,6 +147,13 @@ public:
                 else loopAudio=false;
                 const auto midi=fga::midiFile(loopProbe,4);folder.getChildFile("loop-extended.mid").replaceWithData(midi.data(),midi.size());
                 folder.getChildFile("loop-resize-audio.txt").replaceWithText(loopAudio?"PASS independently extended loop renders both repeats and includes the tail beyond the last section in WAV/MIDI":"FAIL resized loop audio/export");ok=ok&&loopAudio;
+                const int moved=loopProbe.moveClip(4,0,4,16,false);bool timelineAudio=moved>=0&&loopProbe.sections[0].bars==2;
+                auto freeResult=audio.exportAudio(loopProbe,folder.getChildFile("timeline-edited.wav"),4,false,[]{return false;},[](double){});timelineAudio=timelineAudio&&freeResult.wasOk();
+                auto freeReader=std::unique_ptr<juce::AudioFormatReader>(fm.createReaderFor(folder.getChildFile("timeline-edited.wav")));
+                if(freeReader){juce::AudioBuffer<float> window(2,4096);for(double beat:{16.,24.}){freeReader->read(&window,0,4096,(juce::int64)std::llround(beat*60./loopProbe.settings.bpm*freeReader->sampleRate),true,true);timelineAudio=timelineAudio&&window.getMagnitude(0,4096)>1e-5;}freeReader->read(&window,0,4096,0,true,true);timelineAudio=timelineAudio&&window.getMagnitude(0,4096)<1e-7;}else timelineAudio=false;
+                int hits=0;for(auto event:fga::events(loopProbe,4))if(event.controller<0&&event.velocity>0){timelineAudio=timelineAudio&&(event.beat==16||event.beat==24);++hits;}timelineAudio=timelineAudio&&hits==2;
+                folder.getChildFile("timeline-editing-audio.txt").replaceWithText(timelineAudio?"PASS moved independent loop renders its two repeats at edited positions, leaves original position silent and preserves the guide":"FAIL independent timeline playback/export");ok=ok&&timelineAudio;
+
             }
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);

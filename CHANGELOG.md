@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.6.0 — 2026-10-21
+
+- Independent timeline clips: move/copy between tracks, split at cursor, cut/copy/paste, duplicate, delete and multi-selection on a track, with a snap grid and Undo.
+- The Intro/Main/Break/Build-up/Drop/Outro lane is now an editable guide. Dragging guide edges or inserting/removing/reordering guide sections preserves clip positions and automation.
+- Independent clips retain their full instrument MIDI editors, loop resizing, generation controls and WAV/MP3/MIDI export. Edited projects use .fga format 2; format 1 remains readable.
+
 ## 0.5.2 — 2026-10-21
 
 - Resize each track vertically from the lower edge of its header. Independent saved heights, default reset by double-click, Escape cancellation and aligned automation lanes. MIDI and playback position are unchanged.

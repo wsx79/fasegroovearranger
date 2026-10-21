@@ -25,8 +25,10 @@ struct Clip {
     // A zero span follows the section; explicit spans and loop periods use beats.
     // Preserve the source across shortening so extending can recover its notes.
     double span = 0, loopLength = 0;
+    int role = -1;
+    double position = 0; // Absolute beat when the track has an independent timeline.
     std::vector<Note> loopSource;
-    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource; }
+    bool operator==(const Clip& o) const { return notes == o.notes && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
@@ -65,6 +67,7 @@ struct Track {
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
     VolumeAutomation volume;
     EngineOptions engine;
+    bool freeTimeline = false;
     std::vector<Clip> clips;
 };
 struct Settings {
@@ -90,6 +93,18 @@ struct Project {
     double sectionStart(int index) const;
     double length() const;
     double clipLength(int track, int section) const;
+    double clipStart(int track, int clip) const;
+    int sectionAtBeat(double beat) const;
+    int clipAtBeat(int track, double beat) const;
+    int detachTrack(int track, int selected = -1);
+    int splitClip(int track, int clip, double beat);
+    int placeClip(int track, Clip clip, double beat);
+    int moveClip(int track, int clip, int targetTrack, double beat, bool copy);
+    bool deleteClip(int track, int clip);
+    void resizeGuide(int section, int bars);
+    void insertGuide(int section, SongSection);
+    void removeGuide(int section);
+    void moveGuide(int from, int to);
     void normalise();
     void insertSection(int index, SongSection section, int copyFrom = -1);
     void removeSection(int index);

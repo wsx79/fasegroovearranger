@@ -1,0 +1,86 @@
+// Copyright (C) 2026 Fabio 'Pitch' Serra
+// SPDX-License-Identifier: AGPL-3.0-or-later
+#include "MainComponent.h"
+#include "UiText.h"
+namespace fga {
+namespace {
+std::vector<Clip> chosenClips(const Project& project,int track,const std::set<int>& indices){
+    auto visible=project;visible.detachTrack(track);std::vector<Clip> chosen;
+    for(int index:indices)if(index>=0&&index<(int)project.tracks[(size_t)track].clips.size()){
+        const double end=project.clipStart(track,index)+project.clipLength(track,index);const int mapped=visible.clipAtBeat(track,end-1./1920.);
+        if(mapped>=0){const auto& c=visible.tracks[(size_t)track].clips[(size_t)mapped];if(chosen.empty()||chosen.back().position!=c.position)chosen.push_back(c);}}
+    return chosen;
+}
+}
+void MainComponent::moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy){
+    auto indices=arrangement.selectedClips;indices.insert(anchor);auto chosen=chosenClips(project,sourceTrack,indices);if(chosen.empty())return;
+    const double delta=std::clamp(beat-project.clipStart(sourceTrack,anchor),-chosen.front().position,131072.-chosen.back().position);
+    const double sourceEnd=project.clipStart(sourceTrack,anchor)+project.clipLength(sourceTrack,anchor);double focus=chosen.front().position+delta;
+    for(const auto& c:chosen)if(sourceEnd>c.position&&sourceEnd<=c.position+c.span+1./1920.)focus=c.position+delta;
+    auto edited=project;if(!copy){edited.detachTrack(sourceTrack);for(const auto& c:chosen){const int index=edited.clipAtBeat(sourceTrack,c.position+1./1920.);if(index>=0)edited.deleteClip(sourceTrack,index);}}
+    std::vector<double> starts;for(auto c:chosen){const double at=c.position+delta;starts.push_back(at);if(edited.placeClip(targetTrack,std::move(c),at)<0){message("Clip edit exceeds the project limits.",true);return;}}
+    checkpoint();project=std::move(edited);selectClip(targetTrack,project.clipAtBeat(targetTrack,focus+1./1920.));arrangement.selectedClips.clear();for(double at:starts){const int index=project.clipAtBeat(targetTrack,at+1./1920.);if(index>=0)arrangement.selectedClips.insert(index);}changed();
+}
+void MainComponent::selectClip(int track,int index,bool keepSelection){
+    track=std::clamp(track,0,trackCount-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
+    const int guide=index>=0?project.sectionAtBeat(project.clipStart(track,index)):project.sectionAtBeat(audio.position());
+    select(track,guide);selectedClip=index;noClipSelection=index<0;
+    arrangement.selectedClips=keepSelection&&same?previous:std::set<int>{};if(index>=0)arrangement.selectedClips.insert(index);
+    refreshTrack();updateSizes();piano.fitNotes();trackInspector.refresh();arrangement.repaint();piano.repaint();
+}
+void MainComponent::ensureTimelineClip(){
+    auto& t=project.tracks[(size_t)selectedTrack];if(!noClipSelection&&(!t.freeTimeline||(clipIndex()>=0&&clipIndex()<(int)t.clips.size())))return;
+    Clip c;c.span=4;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(c),arrangement.snapBeat(audio.position()));
+    if(placed>=0){checkpoint();project=std::move(edited);selectedClip=placed;noClipSelection=false;changed();}
+}
+void MainComponent::timelineCommand(int command){
+    if(loadingPlugin)return;
+    auto indices=arrangement.selectedClips;if(indices.empty()&&clipIndex()>=0)indices.insert(clipIndex());
+    auto chosen=chosenClips(project,selectedTrack,indices);
+    if(command==1||command==2){if(chosen.empty())return;timelineClipboard=chosen;const double origin=chosen.front().position;for(auto& c:timelineClipboard)c.position-=origin;if(command==2){message("Clips copied. Paste places them at the playback cursor.");return;}}
+    if(command==3&&timelineClipboard.empty())return;
+    if(command!=3&&command!=8&&chosen.empty())return;
+    auto edited=project;int selected=-1;double selectedBeat=audio.position();
+    if(command==1||command==6){edited.detachTrack(selectedTrack);for(const auto& c:chosen){const int index=edited.clipAtBeat(selectedTrack,c.position+1./1920.);if(index>=0)edited.deleteClip(selectedTrack,index);}}
+    if(command==4){const double beat=arrangement.snapBeat(audio.position());if(std::none_of(chosen.begin(),chosen.end(),[beat](const Clip& c){return beat>c.position&&beat<c.position+c.span;}))return;const int index=edited.clipAtBeat(selectedTrack,beat);if(index<0)return;selected=edited.splitClip(selectedTrack,index,beat);if(selected<0)return;selectedBeat=beat;}
+    if(command==3||command==5||command==8){std::vector<Clip> copies=command==3?timelineClipboard:chosen;double destination=arrangement.snapBeat(audio.position());
+        if(command==5){destination=0;for(const auto& c:chosen)destination=std::max(destination,c.position+c.span);const double origin=copies.front().position;for(auto& c:copies)c.position-=origin;}
+        if(command==8){Clip c;c.span=4;copies={c};}
+        for(auto c:copies){const double at=destination+c.position;const int placed=edited.placeClip(selectedTrack,std::move(c),at);if(placed<0){message("Clip edit exceeds the project limits.",true);return;}if(selected<0){selected=placed;selectedBeat=at;}}
+        selected=edited.clipAtBeat(selectedTrack,selectedBeat+1./1920.);
+    }
+    checkpoint();project=std::move(edited);arrangement.selectedClips.clear();selectedClip=-1;noClipSelection=true;
+    if(selected>=0)selectClip(selectedTrack,selected);else{refreshTrack();updateSizes();trackInspector.refresh();}piano.clearSelection();changed();arrangement.grabKeyboardFocus();
+    message("Timeline edited. Undo restores the previous clips.");
+}
+bool MainComponent::verifyTimelineEditing(const juce::File& folder){
+    const auto saved=project;const int savedTrack=selectedTrack,savedSection=selectedSection;const auto savedZoom=arrangement.pixelsPerBar;const auto board=timelineClipboard;
+    audio.stop();project.sections={{Section::main,4,"Main"},{Section::breakdown,4,"Break"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(2,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0},{4,.25,36,90,0},{8,.25,36,80,0},{12,.25,36,70,0}};
+    arrangement.pixelsPerBar=64;selectedClip=-1;arrangement.selectedClips.clear();showArrangement();selectClip(4,0);changed();arrangementPort.setViewPosition(0,0);bool ok=true;juce::String failed;
+    auto stage=[&](const char* label){if(!ok&&failed.isEmpty())failed=label;};
+    audio.seek(4);timelineSplit.onClick();ok=ok&&project.tracks[4].clips.size()==3&&selectedClip==1&&clipStart()==4&&clipLength()==12;
+    audio.seek(8);keyPressed(juce::KeyPress('E',juce::ModifierKeys::commandModifier,0));ok=ok&&project.tracks[4].clips.size()==4&&selectedClip==2&&clipStart()==8&&clipLength()==8;stage("split button and shortcut");
+    const auto splitState=project;selectClip(4,0);arrangement.selectedClips={0,1};
+    auto groupEvent=[&](float x){const juce::Point<float> p(x,76);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+    arrangement.mouseDown(groupEvent(232));arrangement.mouseDrag(groupEvent(360));arrangement.mouseUp(groupEvent(360));ok=ok&&project.clipAtBeat(4,0)<0&&project.clipAtBeat(4,4)<0&&project.clipAtBeat(4,8)>=0&&project.clipAtBeat(4,12)>=0&&arrangement.selectedClips.size()==2;stage("selected clip group movement");project=splitState;selectClip(4,2);changed();
+    timelineCopy.onClick();audio.seek(40);timelinePaste.onClick();ok=ok&&selectedClip==4&&clipStart()==40&&clipLength()==8&&clip().notes.size()==2&&project.sections[0].bars==4;stage("copy paste at cursor beyond guide");
+    showEditor();ok=ok&&page==Page::editor&&piano.verifyEditing()&&selectedClip==4&&clipStart()==40;showArrangement();stage("full MIDI editor for independent clip index beyond guide count");
+    timelineCut.onClick();ok=ok&&project.clipAtBeat(4,40)<0;audio.seek(48);timelinePaste.onClick();ok=ok&&clipStart()==48&&clipLength()==8;
+    timelineDuplicate.onClick();ok=ok&&clipStart()==56&&project.clipAtBeat(4,48)>=0;stage("cut paste and adjacent duplicate");
+    Project loaded;ok=ok&&projectFromJson(projectJson(project),loaded).wasOk()&&loaded.tracks[4].freeTimeline&&loaded.tracks[4].clips==project.tracks[4].clips;stage("independent clip project round trip");
+    auto event=[&](float x,float y,int mods=0){const juce::Point<float> p(x,y);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+    arrangement.pixelsPerBar=16;updateSizes();arrangementPort.setViewPosition(0,0);
+    arrangement.mouseDown(event(442,76));arrangement.mouseDrag(event(458,116));arrangement.mouseUp(event(458,116));
+    ok=ok&&selectedTrack==5&&clipStart()==60&&project.clipAtBeat(4,56)<0&&clip().notes[0].pitch==38&&clip().notes[0].lane==1;stage("cross-track drag and destination drum mapping");
+    undo(false);ok=ok&&project.clipAtBeat(4,56)>=0&&project.clipAtBeat(5,60)<0&&!project.tracks[5].freeTimeline;stage("undo cross-track drag");
+    const auto beforeGuide=project.tracks[4].clips;const double guidePlay=audio.position();arrangement.mouseDown(event(278,16));arrangement.mouseDrag(event(310,16));arrangement.mouseUp(event(310,16));
+    ok=ok&&project.sections[0].bars==6&&project.tracks[4].clips==beforeGuide&&audio.position()==guidePlay;stage("guide edge drag leaves clips and playhead unchanged");
+    selectClip(4,project.clipAtBeat(4,48));arrangement.pixelsPerBar=32;updateSizes();arrangementPort.setViewPosition(0,0);
+    if(auto out=folder.getChildFile("timeline-editing.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out)&&ok;}else ok=false;
+    keyPressed(juce::KeyPress('A',juce::ModifierKeys::commandModifier,0));timelineDelete.onClick();ok=ok&&project.tracks[4].clips.empty();project.normalise();ok=ok&&project.tracks[4].clips.empty();stage("select all and delete all blocks without resurrecting placeholders");
+    showEditor();ok=ok&&clipIndex()>=0&&clipLength()==4&&clip().notes.empty();stage("create editable empty clip on an empty track");
+    project=saved;selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();timelineClipboard=board;arrangement.pixelsPerBar=savedZoom;select(savedTrack,savedSection);showArrangement();changed();undoStack.clear();redoStack.clear();refreshControls();
+    folder.getChildFile("timeline-editing.txt").replaceWithText(ok?"PASS clip split, copy/cut/paste, duplicate/delete, cross-track drag, drum remapping, Undo, editable guide, independent MIDI editor, project round trip and empty-track editing":"FAIL timeline editing: "+failed);return ok;
+}
+
+}

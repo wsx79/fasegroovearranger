@@ -7,7 +7,7 @@
 #include "../ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.h"
 namespace fga {
 namespace {
-sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.project.tracks[(size_t)m.selectedTrack].clips[(size_t)m.selectedSection].seed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
+sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
 class MusicalTools:public juce::Component {
 public:
     MusicalTools(MainComponent& m,int type):owner(&m),kind(type),source(playingPattern(m)),seed((std::uint32_t)juce::Random::getSystemRandom().nextInt()){
@@ -54,7 +54,7 @@ private:
         if(kind==3)p.settings.voicing=chosenVoice>=0?chosenVoice:a.getSelectedItemIndex();if(kind==4&&!variants.empty())applyCodes(p,variants[(size_t)a.getSelectedItemIndex()].codes);
         owner->changed(false);owner->showInstrument();updateReport();
     }
-    void audition(int voicing){if(!owner||owner->project.tracks[(size_t)owner->selectedTrack].locked||owner->clip().locked)return;chosenVoice=voicing;hearA.setToggleState(voicing==a.getSelectedItemIndex(),juce::dontSendNotification);hearB.setToggleState(voicing==b.getSelectedItemIndex(),juce::dontSendNotification);owner->checkpoint();owner->project.settings.voicing=voicing;generate(owner->project,Scope::clip,owner->selectedTrack,owner->selectedSection);owner->changed();owner->showInstrument();owner->audio.seek(owner->project.sectionStart(owner->selectedSection));owner->audio.play(true);}
+    void audition(int voicing){if(!owner||owner->project.tracks[(size_t)owner->selectedTrack].locked||owner->clip().locked)return;owner->ensureTimelineClip();chosenVoice=voicing;hearA.setToggleState(voicing==a.getSelectedItemIndex(),juce::dontSendNotification);hearB.setToggleState(voicing==b.getSelectedItemIndex(),juce::dontSendNotification);owner->checkpoint();owner->project.settings.voicing=voicing;generate(owner->project,Scope::clip,owner->selectedTrack,owner->clipIndex());owner->changed();owner->showInstrument();owner->audio.seek(owner->clipStart());owner->audio.play(true);}
     juce::Component::SafePointer<MainComponent> owner;int kind;int chosenVoice=-1;sgk::GroovePattern source;std::uint32_t seed;FamilyLookAndFeel theme;juce::String title;juce::ComboBox a,b;juce::Slider amount;juce::ToggleButton keepRhythm,keepHarmony;juce::TextButton apply,hearA,hearB,close;juce::TextEditor report;CircleOfFifths circle;std::vector<sgk::GrooveEngine::ProgressionVariant> variants;
 };
 class LearnChords:public juce::Component,private juce::MidiInputCallback {

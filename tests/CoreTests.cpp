@@ -8,8 +8,9 @@
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "ClubArrangementChecks.h"
+#include "TimelineChecks.h"
 int main(int argc,char** argv){try{
-    verifyClubEdgeCases();verifyClubSeedCases();
+    verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();

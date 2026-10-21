@@ -1,0 +1,21 @@
+// Copyright (C) 2026 Fabio 'Pitch' Serra
+// SPDX-License-Identifier: AGPL-3.0-or-later
+void verifyTimelineEditing(){
+    using namespace fga;
+    auto fixture=[](){auto p=newProject();p.sections={{Section::main,4,"Main"},{Section::breakdown,4,"Break"}};p.normalise();for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();p.tracks[0].clips[0].notes={{2,8,60,100,0},{12,1,64,80,0}};p.tracks[4].clips[0].notes={{0,.25,36,90,0},{8,.25,36,60,0}};return p;};
+    auto signature=[](const Project& p,int track){std::vector<std::array<double,5>> out;for(auto e:events(p,track))out.push_back({e.beat,(double)e.pitch,(double)e.velocity,(double)e.lane,(double)e.controller});return out;};
+    auto p=fixture();const auto other=p.tracks[4].clips;check(p.splitClip(0,0,6)==1,"split clip inside a held note");
+    check(p.tracks[0].freeTimeline&&p.tracks[0].clips.size()==3&&p.clipLength(0,0)==6&&p.clipStart(0,1)==6&&p.clipLength(0,1)==10,"split creates independently positioned clips without changing guide");
+    check(p.tracks[0].clips[0].notes[0].length==4&&p.tracks[0].clips[1].notes[0].start==0&&p.tracks[0].clips[1].notes[0].length==4&&p.tracks[4].clips==other,"held note trimmed at split, other tracks untouched");
+    const auto before=signature(p,0);const double pos=p.clipStart(0,1);p.resizeGuide(0,8);check(p.sections[0].bars==8&&p.sectionStart(1)==32&&p.clipStart(0,1)==pos&&signature(p,0)==before,"guide resize preserves independent clip audio timing");
+    p.insertGuide(1,{Section::buildup,4,"Lift"});p.moveGuide(0,2);p.removeGuide(1);check(signature(p,0)==before,"guide insert reorder delete preserve MIDI notes");
+    auto moving=fixture();const auto original=moving.tracks[0].clips[0].notes;const int moved=moving.moveClip(0,0,0,40,false);check(moved>=0&&moving.clipStart(0,moved)==40&&moving.tracks[0].clips[(size_t)moved].notes==original&&moving.clipAtBeat(0,2)<0,"move clip beyond song leaves a gap without swapping");check(moving.length()==56,"export includes moved clip past guide end");
+    const auto copied=moving.moveClip(0,moved,1,4,true);check(copied>=0&&moving.tracks[1].freeTimeline&&moving.clipAtBeat(0,42)>=0,"copy between tracks preserves source and instrument routing");
+    auto overwrite=fixture();Clip insert;insert.span=4;insert.notes={{0,1,72,77,0}};check(overwrite.placeClip(0,insert,6)>=0,"paste into middle of existing clip");check(overwrite.tracks[0].clips.size()==4&&overwrite.clipAtBeat(0,5)>=0&&overwrite.clipAtBeat(0,6)>=0&&overwrite.clipAtBeat(0,11)>=0,"overwrite paste preserves both outside fragments");
+    bool overlap=false;double end=0;for(auto& c:overwrite.tracks[0].clips){overlap=overlap||c.position<end;end=c.position+c.span;}check(!overlap,"overwrite never doubles overlapping MIDI");
+    const int pasted=overwrite.clipAtBeat(0,6);check(overwrite.resizeClipLoop(0,pasted,8),"loop extension after split and paste");check(overwrite.tracks[0].clips[(size_t)overwrite.clipAtBeat(0,6)].notes.size()==2,"independent clip repeats MIDI on extension");
+    while(!overwrite.tracks[0].clips.empty())check(overwrite.deleteClip(0,0),"delete last clip");overwrite.normalise();check(overwrite.tracks[0].clips.empty()&&events(overwrite,0).empty(),"empty edited track remains empty after normalise");
+    auto pedal=fixture();pedal.sections[0].type=Section::buildup;pedal.tracks[0].engine.pedalCC=true;auto ccBefore=signature(pedal,0);pedal.resizeGuide(0,8);pedal.sections[0].type=Section::outro;check(signature(pedal,0)==ccBefore,"guide edits preserve sustain and expression controllers too");
+    auto generated=fixture();generated.splitClip(0,0,4);generated.splitClip(0,1,8);generated.splitClip(0,2,12);generate(generated,Scope::clip,0,3,42);check(!generated.tracks[0].clips[3].notes.empty()&&generated.clipStart(0,3)==12&&generated.clipLength(0,3)==4,"regenerate split clip with index beyond guide count keeps its position and length");
+    auto invalid=fixture();check(invalid.splitClip(0,0,0)<0&&invalid.moveClip(0,0,99,4,false)<0&&!invalid.deleteClip(-1,0),"invalid edits rejected");
+}

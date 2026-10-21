@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.5.2** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.6.0** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -99,8 +99,10 @@ The **MIXER** shows seventeen channels in musical order with a fixed master at t
 
 - **Click anywhere in a clip** to select it and place the cursor exactly there; press **PLAY** or **Space** to listen from that point. While playing, clicking jumps immediately. This also works after horizontal scrolling and beyond an active loop’s end; **double-click** or **E** opens the full MIDI editor.
 - **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
-- **Right edge of a section header**: drag to resize that section on every track in whole-bar steps. Later sections, locators and automation follow the edit. **Escape** cancels the drag; **UNDO** restores a committed edit. Loop durations and source MIDI are saved in the **.fga** project.
-- **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.
+- **Right edge of a section header**: resize the guide in whole bars. Intro, Main, Break and the following guide labels move; clips, locators and volume automation stay at their musical times. Right-click the header to rename it, change its role, insert, duplicate, reorder or delete a guide section. **Escape** cancels a drag; **UNDO** restores it.
+- **Drag a clip** to move it along the timeline or onto another track; **Alt-drag** copies it. The original position becomes a gap when moving. Destination overlaps are replaced while outside fragments are retained. The target track keeps its sound; drum MIDI maps to its lane. **Shift-click** selects more clips on the same track; **Ctrl/Cmd+A** selects all its clips.
+- **CUT / COPY / PASTE / SPLIT / DUPLICATE / DELETE**, above the timeline, also appear in the right-click menu. Paste uses the playback cursor. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
+- **SNAP** chooses bars, beats, half/quarter beats or free timing. Hold **Shift during a drag** for free timing. Right-click empty track space for **Create empty MIDI clip**. Double-click a clip to edit its notes in the original full instrument editor.
 - **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
 - **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
 - Drop a MIDI file or personal sample on a track row to target that track.

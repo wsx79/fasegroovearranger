@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.6.0 — 2026-10-21
+
+- Clip indipendenti nella timeline: spostamento/copia tra tracce, divisione al cursore, taglia/copia/incolla, duplicazione, eliminazione e selezione multipla sulla stessa traccia, con griglia e Undo.
+- La corsia Intro/Main/Break/Build-up/Drop/Outro diventa una guida modificabile: bordi, inserimento, rimozione e riordino lasciano al loro posto clip e automazione.
+- I clip indipendenti conservano editor MIDI completi, ridimensionamento dei loop, controlli dei motori ed export WAV/MP3/MIDI. I progetti modificati usano il formato .fga 2; il formato 1 resta leggibile.
+
 ## 0.5.2 — 2026-10-21
 
 - Ogni traccia è ridimensionabile in altezza dal bordo inferiore del nome. Altezze indipendenti e salvate, doppio clic per ripristinare, Esc per annullare e corsie di automazione allineate. MIDI e posizione di riproduzione restano invariati.

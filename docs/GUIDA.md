@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.5.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.6.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -99,13 +99,15 @@ Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fiss
 
 - **Clic in qualsiasi punto del clip**: seleziona e posiziona il cursore esattamente lì; premi **PLAY** o **Spazio** per ascoltare da quel punto. Durante la riproduzione il clic fa saltare subito l’ascolto. Funziona anche dopo lo scorrimento orizzontale e oltre la fine di un loop attivo; **doppio clic** o **E**: editor MIDI grande.
 - **Bordo destro del clip**: trascina per accorciare o estendere soltanto quel loop, a passi di un beat; **Maiusc** permette passi di un quarto di beat. Il MIDI si ripete senza cambiare velocità o dinamiche. Accorciare non cancella la sorgente: riallungando la recuperi. Puoi superare il confine della sezione; il clip esteso ha precedenza sulle parti coperte della stessa traccia, senza raddoppiare le note.
-- **Bordo destro dell’intestazione di sezione**: trascina per ridimensionarla su tutte le tracce, a passi di una battuta. Le sezioni successive, i locatori e l’automazione seguono la modifica. **Esc** annulla il trascinamento; **UNDO** ripristina la modifica completata. I loop e la loro sorgente vengono salvati nel progetto **.fga**.
-- **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.
+- **Bordo destro dell’intestazione di sezione**: ridimensiona la guida a passi di una battuta. Si spostano Intro, Main, Break e le etichette successive; clip, locatori e automazione volume restano nelle loro posizioni musicali. Il tasto destro permette di rinominare, cambiare funzione, inserire, duplicare, riordinare o eliminare una sezione della guida. **Esc** annulla; **UNDO** ripristina.
+- **Trascina un clip** per spostarlo lungo la timeline o su un’altra traccia; **Alt-trascina** lo copia. Lo spostamento lascia uno spazio vuoto nella posizione originale. Le sovrapposizioni a destinazione vengono sostituite conservando i frammenti esterni. La traccia di destinazione mantiene il proprio suono; il MIDI della batteria viene adattato alla sua corsia. **Maiusc-clic** seleziona altri clip sulla stessa traccia; **Ctrl/Cmd+A** li seleziona tutti.
+- **TAGLIA / COPIA / INCOLLA / DIVIDI / DUPLICA / ELIMINA**, sopra la timeline, sono disponibili anche con il tasto destro. Incolla usa il cursore di riproduzione. Dividi taglia il clip selezionato al cursore; Duplica mette le copie dopo l’intervallo selezionato. Elimina lascia uno spazio vuoto. Scorciatoie: **Ctrl/Cmd+X / C / V**, **S o Ctrl/Cmd+E**, **Ctrl/Cmd+D**, **Canc / Backspace**.
+- **GRIGLIA** permette battute, beat, mezzi/quarti di beat o tempi liberi. Tieni **Maiusc durante il trascinamento** per spostare liberamente. Tasto destro nello spazio vuoto per **Crea clip MIDI vuoto**. Doppio clic sul clip per modificare le note nell’editor completo dello strumento originale.
 - **Clic sul righello delle battute**: sposta il cursore nel punto esatto, come sul righello dell’editor MIDI; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
 - **ADATTA BRANO / F**: mostra tutta la forma; **SEGUI**: scorrimento durante la riproduzione; **INSPECTOR / I** e **MIXER / F3**: mostra o nascondi i pannelli.
 - Trascina un file MIDI o un campione sulla riga della traccia desiderata: viene assegnato proprio a quella traccia.
 
-La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Il loop e l’automazione seguono le modifiche alla struttura: inserimento, eliminazione, spostamento e durata delle sezioni.
+La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Le modifiche alla guida conservano loop e automazione. Posizioni dei clip, sorgenti dei loop e spazi vuoti vengono salvati nel formato .fga 2; i progetti precedenti restano leggibili. Per riaprire una timeline modificata usa la versione 0.6.0 o successiva.
 
 ### Trasporto e tempo (in alto)
 
