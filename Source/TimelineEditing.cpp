@@ -31,7 +31,7 @@ void MainComponent::selectClip(int track,int index,bool keepSelection){
 void MainComponent::ensureTimelineClip(){
     auto& t=project.tracks[(size_t)selectedTrack];if(!noClipSelection&&(!t.freeTimeline||(clipIndex()>=0&&clipIndex()<(int)t.clips.size())))return;
     Clip c;c.span=4;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(c),arrangement.snapBeat(audio.position()));
-    if(placed>=0){checkpoint();project=std::move(edited);selectedClip=placed;noClipSelection=false;changed();}
+    if(placed>=0){checkpoint();project=std::move(edited);selectedClip=placed;noClipSelection=false;selectClip(selectedTrack,placed);changed();}
 }
 void MainComponent::timelineCommand(int command){
     if(loadingPlugin)return;
