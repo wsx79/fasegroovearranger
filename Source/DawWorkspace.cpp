@@ -41,7 +41,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
 void TrackInspector::refresh(){
     if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(text(t.name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
     source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():owner.audio.plugin(owner.selectedTrack)?owner.audio.plugin(owner.selectedTrack)->getName():tr("Missing instrument"),juce::dontSendNotification);
-    section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(owner.project.sections[(size_t)owner.selectedSection].bars)+" "+tr("bars"),juce::dontSendNotification);
+    const double bars=owner.clipLength()/4.;section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);
     gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
 }
 void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());if(getWidth()<=40)return;caption(g,"TRACK INSPECTOR",{12,6,getWidth()-48,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,278,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,480,getWidth()-24,20});}
@@ -154,6 +154,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     ok=ok&&project.clipLength(4,0)==8&&project.clipLength(5,0)==16&&project.sections[0].bars==4;
     arrangement.mouseDown(event(278,76));arrangement.mouseDrag(event(406,76));arrangement.mouseUp(event(406,76));
     ok=ok&&project.clipLength(4,0)==24&&project.tracks[4].clips[0].notes.size()==2&&project.tracks[4].clips[0].notes[1].start==16;
+    if(auto output=folder.getChildFile("clip-loop-resize.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
     Project loaded;ok=ok&&projectFromJson(projectJson(project),loaded).wasOk()&&loaded.tracks[4].clips[0]==project.tracks[4].clips[0]&&events(loaded,4).size()==events(project,4).size();
     undo(false);ok=ok&&project.clipLength(4,0)==8;undo(false);ok=ok&&project.clipLength(4,0)==16&&project.tracks[4].clips[0].notes.size()==1;
     arrangement.mouseDown(event(342,16));arrangement.mouseDrag(event(406,16));arrangement.mouseUp(event(406,16));
