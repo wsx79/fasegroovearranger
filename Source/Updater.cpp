@@ -473,9 +473,6 @@ InstallKind testing::installKindFor(const juce::File& bundle)
     // Detect setup copies, including custom folders, before considering writable portable copies.
     if(bundle.getSiblingFile("FaseGrooveArranger.install.ini").existsAsFile()
        &&bundle.getSiblingFile("unins000.exe").existsAsFile())return InstallKind::installer;
-    for (auto location : { juce::File::globalApplicationsDirectory, juce::File::globalApplicationsDirectoryX86 })
-        if (bundle.isAChildOf (juce::File::getSpecialLocation (location)))
-            return InstallKind::installer;
    #endif
     return bundle.exists() && bundle.getParentDirectory().hasWriteAccess() ? InstallKind::portable : InstallKind::manual;
 }
@@ -488,9 +485,8 @@ bool isStandaloneApp()
 namespace
 {
     /** The delayed launcher receives a positional argument; paths never become shell code. */
-    bool relaunchLater()
+    bool relaunchLater(const juce::File& app)
     {
-        const auto app = runningBundle();
        #if JUCE_WINDOWS
         const auto helper=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("FaseGrooveArranger-relaunch", ".ps1",false);
         if(!helper.replaceWithText("param([int]$OwnerPid,[string]$App)\nWait-Process -Id $OwnerPid -ErrorAction SilentlyContinue\nStart-Process -FilePath $App\nRemove-Item -LiteralPath $PSCommandPath\n"))return false;
@@ -513,6 +509,9 @@ InstallReport install (const Result& result)
     InstallReport report;
 
     if(!testing::verifyDownload(result.file,result.digest))return report;
+    // Linux resolves /proc/self/exe to the renamed/deleted old image after a swap.
+    // Capture the destination now so relaunch always opens the new executable.
+    const auto app=runningBundle();
     if (result.kind == InstallKind::installer && result.file.existsAsFile())
     {
         // Same setup, no wizard: it keeps the folders and parts you chose last time and asks to
@@ -520,7 +519,8 @@ InstallReport install (const Result& result)
         // when it is done (RELAUNCH), and the app quits so its files can be replaced.
         const bool standalone = isStandaloneApp();
         report.installerStarted = report.done
-            = result.file.startAsProcess (standalone ? "/SILENT /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1" : "/SILENT /NORESTART");
+            = result.file.startAsProcess ((standalone ? juce::String("/SILENT /NORESTART /CLOSEAPPLICATIONS /RELAUNCH=1") : juce::String("/SILENT /NORESTART"))
+                                         + " /DIR=\"" + app.getParentDirectory().getFullPathName() + "\"");
         report.relaunching = report.done && standalone;
         if(!report.done)result.file.revealToUser();
         return report;
@@ -535,7 +535,7 @@ InstallReport install (const Result& result)
             for (const auto& t : targets)
                 report.updated.add (t.getFullPathName());
             report.done = true;
-            report.relaunching = isStandaloneApp() && relaunchLater();
+            report.relaunching = isStandaloneApp() && relaunchLater(app);
             return report;
         }
     }
