@@ -33,6 +33,9 @@ public:
     void initialise(const juce::String&)override{
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
         auto args=getCommandLineParameterArray();
+       #if JUCE_MAC
+        if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
+       #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){
             setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;
         }
