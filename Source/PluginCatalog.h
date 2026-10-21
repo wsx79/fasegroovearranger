@@ -8,7 +8,7 @@ namespace fga {
 class PluginCatalog : private juce::Thread {
 public:
     struct State { juce::Array<juce::PluginDescription> plugins; juce::String current; int checked=0,total=0,failed=0; bool scanning=false; };
-    explicit PluginCatalog(juce::File storage=defaultStorage());
+    explicit PluginCatalog(juce::File storage=defaultStorage(),bool includeStandard=true);
     ~PluginCatalog() override;
     static juce::File defaultStorage();
     static juce::FileSearchPath standardFolders();
@@ -23,6 +23,7 @@ public:
 private:
     struct Record { juce::String format,id,stamp,status; juce::int64 validatedAt=0; juce::Array<juce::PluginDescription> plugins; };
     juce::File directory;
+    const bool includeStandardPaths;
     mutable juce::CriticalSection mutex;
     juce::StringArray custom;
     juce::Array<Record> records;

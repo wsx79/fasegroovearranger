@@ -34,7 +34,7 @@ juce::FileSearchPath PluginCatalog::standardFolders(){
    #endif
     paths.removeRedundantPaths();return paths;
 }
-PluginCatalog::PluginCatalog(juce::File storage):Thread("Plugin catalogue"),directory(std::move(storage)){read();}
+PluginCatalog::PluginCatalog(juce::File storage,bool includeStandard):Thread("Plugin catalogue"),directory(std::move(storage)),includeStandardPaths(includeStandard){read();}
 PluginCatalog::~PluginCatalog(){signalThreadShouldExit();stopThread(5000);}
 juce::StringArray PluginCatalog::folders()const{const juce::ScopedLock lock(mutex);return custom;}
 PluginCatalog::State PluginCatalog::state()const{const juce::ScopedLock lock(mutex);return progress;}
@@ -59,7 +59,7 @@ void PluginCatalog::read(){
 }
 void PluginCatalog::writeCache(){
     juce::XmlElement xml("PLUGIN_CATALOG");xml.setAttribute("version",1);
-    for(const auto& r:records){auto* e=xml.createNewChildElement("ENTRY");e->setAttribute("format",r.format);e->setAttribute("id",r.id);e->setAttribute("stamp",r.stamp);e->setAttribute("status",r.status);e->setAttribute("validatedAt",r.validatedAt);for(const auto& d:r.plugins)e->addChildElement(d.createXml().release());}
+    for(const auto& r:records){auto* e=xml.createNewChildElement("ENTRY");e->setAttribute("format",r.format);e->setAttribute("id",r.id);e->setAttribute("stamp",r.stamp);e->setAttribute("status",r.status);e->setAttribute("validatedAt",juce::String(r.validatedAt));for(const auto& d:r.plugins)e->addChildElement(d.createXml().release());}
     atomicXml(directory.getChildFile("Catalog.xml"),xml);
 }
 void PluginCatalog::refreshPlugins(){
@@ -79,7 +79,7 @@ juce::String PluginCatalog::fingerprint(const juce::String& id){
     stamps.sort(false);const auto data=stamps.joinIntoString("\n");return juce::SHA256(data.toRawUTF8(),(size_t)data.getNumBytesAsUTF8()).toHexString();
 }
 void PluginCatalog::run(){
-    auto paths=standardFolders();for(const auto& p:folders())paths.add(juce::File(p));paths.removeRedundantPaths();
+    auto paths=includeStandardPaths?standardFolders():juce::FileSearchPath();for(const auto& p:folders())paths.add(juce::File(p));paths.removeRedundantPaths();
     std::map<juce::String,Record> discovered;std::set<juce::String> visited;
     std::vector<juce::File> pending;for(int i=0;i<paths.getNumPaths();++i)pending.push_back(paths[i]);
     while(!pending.empty()&&!threadShouldExit()){
@@ -92,7 +92,7 @@ void PluginCatalog::run(){
     }
    #if JUCE_MAC
     juce::AudioPluginFormatManager formats;formats.addDefaultFormats();
-    for(int i=0;i<formats.getNumFormats();++i){auto* format=formats.getFormat(i);if(format->getName()=="AudioUnit")for(auto id:format->searchPathsForPlugins({},true,true)){Record r;r.format=format->getName();r.id=id;discovered.emplace(r.format+":"+id,r);}}
+    for(int i=0;includeStandardPaths&&i<formats.getNumFormats();++i){auto* format=formats.getFormat(i);if(format->getName()=="AudioUnit")for(auto id:format->searchPathsForPlugins({},true,true)){Record r;r.format=format->getName();r.id=id;discovered.emplace(r.format+":"+id,r);}}
    #endif
     if(threadShouldExit()){const juce::ScopedLock lock(mutex);progress.scanning=false;return;}
     juce::Array<Record> previous;{const juce::ScopedLock lock(mutex);previous=records;records.clear();for(const auto& old:previous)if(discovered.count(old.format+":"+pathKey(old.id)))records.add(old);refreshPlugins();progress.total=(int)discovered.size();}
@@ -129,12 +129,12 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
     const auto library=root.getChildFile("Custom plugins with spaces"),nested=library.getChildFile("Maker/Nested");nested.createDirectory();
     const auto target=nested.getChildFile(probe.getFileName());
     auto copy=[&]{return probe.isDirectory()?probe.copyDirectoryTo(target):probe.copyFileTo(target);};
-    bool ok=copy();const auto invalid=nested.getChildFile("Invalid.vst3");invalid.replaceWithText("invalid plugin fixture");
+    bool ok=standardFolders().getNumPaths()>=2&&copy();const auto invalid=nested.getChildFile("Invalid.vst3");invalid.replaceWithText("invalid plugin fixture");
     auto wait=[](PluginCatalog& c){const auto end=juce::Time::getMillisecondCounterHiRes()+120000.;while(c.isThreadRunning()&&juce::Time::getMillisecondCounterHiRes()<end)juce::Thread::sleep(20);return !c.isThreadRunning()&&!c.state().scanning;};
     auto validation=[&](const juce::File& store,const juce::String& id){auto xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));if(xml)for(auto* e:xml->getChildIterator())if(e->getStringAttribute("id")==id)return e->getStringAttribute("validatedAt");return juce::String();};
     const auto store=root.getChildFile("Cache");
     {
-        PluginCatalog catalog(store);ok=catalog.addFolder(library)&&catalog.addFolder(nested)&&!catalog.addFolder(library)&&ok;
+        PluginCatalog catalog(store,false);ok=catalog.addFolder(library)&&catalog.addFolder(nested)&&!catalog.addFolder(library)&&ok;
         ok=catalog.scan()&&wait(catalog)&&ok;auto state=catalog.state();int count=0;for(const auto& d:state.plugins)if(belongs(d,target.getFullPathName())){++count;ok=d.isInstrument&&!d.manufacturerName.isEmpty()&&ok;}ok=count==1&&state.failed>=1&&ok;
         const auto validTime=validation(store,target.getFullPathName()),badTime=validation(store,invalid.getFullPathName());
         ok=catalog.scan()&&wait(catalog)&&ok;ok=validTime==validation(store,target.getFullPathName())&&badTime==validation(store,invalid.getFullPathName())&&ok;
@@ -144,7 +144,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
     }
     {
         auto xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));if(xml){for(auto* e:xml->getChildIterator())if(e->getStringAttribute("id")==invalid.getFullPathName())e->setAttribute("status","pending");atomicXml(store.getChildFile("Catalog.xml"),*xml);}else ok=false;
-        PluginCatalog restored(store);ok=restored.folders().size()==2&&!restored.state().scanning&&restored.state().failed>=1&&ok;
+        PluginCatalog restored(store,false);ok=restored.folders().size()==2&&!restored.state().scanning&&restored.state().failed>=1&&ok;
         bool found=false;for(const auto& d:restored.state().plugins)found=found||belongs(d,target.getFullPathName());ok=found&&ok;
         target.deleteRecursively();ok=restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=!belongs(d,target.getFullPathName())&&ok;
         ok=copy()&&restored.scan()&&wait(restored)&&ok;found=false;for(const auto& d:restored.state().plugins)found=found||belongs(d,target.getFullPathName());ok=found&&ok;
