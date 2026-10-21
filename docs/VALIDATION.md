@@ -1,5 +1,17 @@
 # Validation record
 
+## DAW workspace and regressions (0.5.0)
+
+[Native interface validation](https://github.com/wsx79/fasegroovearranger/actions/runs/39558741208), source `4a403992e831ec5ad99577daf49741ff7e818e8f`:
+
+- Windows, universal macOS and Linux builds passed their engine, MP3 and project IO suites. The Linux app passed actual component gestures for clip selection/swap/undo, ruler seeking, loop dragging, full MIDI editing, audio-only fader changes and undo, plus compact workspace layout.
+- Native callback checks passed live fader ramping, pause silence/meters, seek/chase and loop boundaries. The final packaging refresh also checks disabled audio-output pointers and assigns newly loaded drum samples using their MIDI mapping.
+- Original instrument panels, family theme and Inter font files remain byte-identical. Six-language refresh preserves the musical JSON; tooltip and extended piano checks pass. Native screenshots from this run populate both source manuals and the embedded guide images.
+- All thirteen generated MIDI songs are byte-identical to the 0.4.7 baseline in local comparison. New core regressions cover whole-song and section loops, section-relative automation resizing and section-aligned clip swap/copy.
+- Host-fixture state restoration and independent WAV/MP3/stem checks passed. Final distribution rebuilds repeat native checks and the complete thirteen-genre audio audit; release `SOURCE.txt` identifies the exact packaged source and successful run.
+
+This verifies the tested processors and UI gestures. Real hardware and arbitrary commercial instruments still require testing on their target systems.
+
 ## Family alignment, 0.4.1
 
 [Windows, universal macOS and Linux validation](https://github.com/wsx79/fasegroovearranger/actions/runs/39393262535), source `8d9d10d1cf2dd3f32e3e2c6baeeff56ec510a3c9`, passed all four jobs, including native smoke and VST3 integration. The four manual screenshots now come directly from that native build. The following update-overlay and embedded-image refresh is checked by its own subsequent workflow, linked in the pull request.

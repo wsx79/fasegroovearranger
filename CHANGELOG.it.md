@@ -9,6 +9,8 @@
 
 - Transizioni di 10 ms su volume e pan durante la riproduzione, per evitare salti bruschi quando si muovono i fader.
 
+- Gestione delle uscite audio disattivate senza accessi a puntatori nulli; i campioni di batteria usano la mappatura MIDI della traccia come nota radice iniziale.
+
 ## 0.4.7 — 2026-10-20
 
 - Jackin’: hook a chops dalla libreria originale, basso Wurlitzer più articolato, archi spenti di default e chitarra ritmica a battute alterne nel riferimento funky/disco indicato. Gli altri generi restano invariati.

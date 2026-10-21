@@ -73,7 +73,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         i.midi.clear();i.guitarEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0;
-        if(audible){for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume.valueAt(beat+s/samplesPerBeat);for(int ch=0;ch<std::min(2,channels);++ch){auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
+        if(audible){for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume.valueAt(beat+s/samplesPerBeat);for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
         }meters[(size_t)ti]=meter;
     }
 }
@@ -89,7 +89,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
     while(done<count&&playing){double beat=currentBeat;const bool hasLoop=looping&&loopTo-loopFrom>=1./960.;double boundary=hasLoop?loopTo:length;
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom;needsChase=true;resetAt(loopFrom);continue;}playing=false;needsReset=true;break;}
         const int remain=std::max(1,(int)std::ceil((boundary-beat)*sampleRate*60./tempo.load()));int n=std::min({count-done,blockSize,remain});
-        float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]+done;
+        float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;
         render(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
     }
     float outputPeak=0;for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s){if(!std::isfinite(output[ch][s])){output[ch][s]=0;masterClip=true;}outputPeak=std::max(outputPeak,std::abs(output[ch][s]));}

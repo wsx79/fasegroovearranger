@@ -23,3 +23,11 @@ The UI reuses the original six-language family dictionaries, the circle of fifth
 Opt-in MIDI chord learning uses a selected device callback and restores its enabled state when closed. Pedal/expression controllers are scheduled to hosted instruments and SMF export, with sustain-aware seek chase. Guide-sound pump can follow a tempo subdivision or the kick MIDI schedule; it does not expose an external audio-sidechain bus. Musical tools prepare settings; explicit APPLY preserves the editable MIDI workflow.
 
 Track volume envelopes use optional schema-v1 `volumeAutomation` fields (`enabled`, musical-beat/value/outgoing-curve points). `VolumeAutomation::valueAt` is a bounded monotonic quadratic interpolation, held at the edges; disabled envelopes return unity. The audio graph evaluates the same gain per sample in playback and offline export, after each instrument and its guide effects, before track pan/master. No automation CC is injected into MIDI. UI lane visibility is independent of bypass and defaults to hidden. Section operations remap points in musical time; MIDI regeneration preserves them.
+
+## DAW workspace (0.5.0)
+
+`DawWorkspace.h/.cpp` owns the side track inspector and the seventeen mixer strips plus master. The mixer can resize vertically and reveals the selected channel. Its controls use the existing project gain/pan/mute/solo and sound assignments; `mixChanged()` updates audio without normalising all MIDI notes for every fader movement.
+
+`ArrangementView` keeps the track header and section/bar rulers visible while scrolling. Single clicks select clips, double clicks open the full editor, and drags swap or copy section-aligned clips on the same instrument. Shift-drag sets the persisted loop range. Track IDs and the `.fga` schema are unchanged.
+
+Section operations in `Project` transform loop locators and volume automation together with the musical structure. Whole-song loops remain whole-song loops after reordering. `AudioEngine` smooths live gain/pan targets, reports master peaks before the safety ceiling, clears pause meters and accepts disabled output-channel buffers.

@@ -9,6 +9,8 @@
 
 - Smooth live volume/pan transitions over 10 ms to avoid abrupt gain steps while moving faders.
 
+- Handle disabled audio outputs without null-pointer access; newly assigned drum samples use the track MIDI mapping as their initial root note.
+
 ## 0.4.7 — 2026-10-20
 
 - Jackin’: original-library chopped hooks, more articulated Wurlitzer bass, strings off by default and alternating percussive guitar in the requested funky/disco direction. Other genres remain unchanged.

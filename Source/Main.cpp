@@ -3,6 +3,7 @@
 #include "MainComponent.h"
 #include "Localisation.h"
 #include "ArrangementAudit.h"
+#include <cmath>
 namespace {
 class ScaledContent:public juce::Component {
 public:
@@ -106,6 +107,9 @@ public:
             juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;
             audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             bool transport=audio.position()>=0&&audio.position()<4&&audio.isPlaying();
+            float* optionalOutputs[]{live.getWritePointer(0),nullptr};
+            audio.audioDeviceIOCallbackWithContext(nullptr,0,optionalOutputs,2,512,context);
+            transport=transport&&std::isfinite(live.getRMSLevel(0,0,512));
             audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
             for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
