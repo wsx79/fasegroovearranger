@@ -666,8 +666,8 @@ void MainComponent::showPluginMenu(juce::Component* anchor){
         do{group.addItem(100+i,plugins[i].name+" ["+plugins[i].pluginFormatName+"]");++i;}while(i<plugins.size()&&plugins[i].manufacturerName.equalsIgnoreCase(manufacturer));
         menu.addSubMenu(manufacturer.isEmpty()?tr("Unknown manufacturer"):manufacturer,group);
     }
-    if(plugins.isEmpty())menu.addItem(0,tr(state.scanning?"Scanning plugins...":"No instruments found"),false);
-    else if(state.scanning)menu.addItem(0,tr("Scanning plugins..."),false);
+    if(plugins.isEmpty())menu.addItem(5,tr(state.scanning?"Scanning plugins...":"No instruments found"),false);
+    else if(state.scanning)menu.addItem(5,tr("Scanning plugins..."),false);
     menu.addSeparator();menu.addItem(1,tr("Open VST3 file..."));menu.addItem(2,tr("PLUGIN SETTINGS"));menu.addItem(3,tr("SCAN NOW"),!state.scanning);
     juce::Component::SafePointer<MainComponent> safe(this);const int track=selectedTrack;
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(anchor?anchor:&loadPluginButton),[safe,plugins,track](int id){

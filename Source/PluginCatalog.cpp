@@ -15,6 +15,10 @@ juce::String pathKey(juce::String p) {
     return p;
    #endif
 }
+bool belongs(const juce::PluginDescription& d,const juce::String& identifier){
+    if(d.fileOrIdentifier==identifier)return true;
+    return d.pluginFormatName=="VST3"&&juce::File::isAbsolutePath(identifier)&&juce::File::isAbsolutePath(d.fileOrIdentifier)&&juce::File(d.fileOrIdentifier).isAChildOf(juce::File(identifier));
+}
 void atomicXml(const juce::File& file,const juce::XmlElement& xml){
     file.getParentDirectory().createDirectory();juce::TemporaryFile temp(file);
     if(xml.writeTo(temp.getFile()))temp.overwriteTargetFileWithTemporary();
@@ -106,7 +110,7 @@ void PluginCatalog::run(){
             if(child.start(args,0)){const double deadline=juce::Time::getMillisecondCounterHiRes()+60000.;while(!threadShouldExit()&&juce::Time::getMillisecondCounterHiRes()<deadline){if(child.waitForProcessToFinish(50)){finished=true;break;}}if(!finished)child.kill();}
             r.status="failed";r.validatedAt=juce::Time::currentTimeMillis();
             if(finished&&child.getExitCode()==0)if(auto xml=juce::XmlDocument::parse(output))if(xml->hasTagName("PLUGIN_SCAN")){
-                r.status="ok";for(auto* e:xml->getChildIterator()){juce::PluginDescription d;if(d.loadFromXml(*e)&&d.isInstrument&&d.pluginFormatName==r.format&&d.fileOrIdentifier==r.id)r.plugins.add(d);}
+                r.status="ok";for(auto* e:xml->getChildIterator()){juce::PluginDescription d;if(d.loadFromXml(*e)&&d.isInstrument&&d.pluginFormatName==r.format&&belongs(d,r.id))r.plugins.add(d);}
             }
             output.deleteFile();{const juce::ScopedLock lock(mutex);storeRecord(r);}
         }else{const juce::ScopedLock lock(mutex);storeRecord(r);}
@@ -131,7 +135,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
     const auto store=root.getChildFile("Cache");
     {
         PluginCatalog catalog(store);ok=catalog.addFolder(library)&&catalog.addFolder(nested)&&!catalog.addFolder(library)&&ok;
-        ok=catalog.scan()&&wait(catalog)&&ok;auto state=catalog.state();int count=0;for(const auto& d:state.plugins)if(d.fileOrIdentifier==target.getFullPathName()){++count;ok=d.isInstrument&&!d.manufacturerName.isEmpty()&&ok;}ok=count==1&&state.failed>=1&&ok;
+        ok=catalog.scan()&&wait(catalog)&&ok;auto state=catalog.state();int count=0;for(const auto& d:state.plugins)if(belongs(d,target.getFullPathName())){++count;ok=d.isInstrument&&!d.manufacturerName.isEmpty()&&ok;}ok=count==1&&state.failed>=1&&ok;
         const auto validTime=validation(store,target.getFullPathName()),badTime=validation(store,invalid.getFullPathName());
         ok=catalog.scan()&&wait(catalog)&&ok;ok=validTime==validation(store,target.getFullPathName())&&badTime==validation(store,invalid.getFullPathName())&&ok;
         ok=catalog.scan(true)&&wait(catalog)&&ok;ok=badTime!=validation(store,invalid.getFullPathName())&&ok;
@@ -141,10 +145,10 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
     {
         auto xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));if(xml){for(auto* e:xml->getChildIterator())if(e->getStringAttribute("id")==invalid.getFullPathName())e->setAttribute("status","pending");atomicXml(store.getChildFile("Catalog.xml"),*xml);}else ok=false;
         PluginCatalog restored(store);ok=restored.folders().size()==2&&!restored.state().scanning&&restored.state().failed>=1&&ok;
-        bool found=false;for(const auto& d:restored.state().plugins)found=found||d.fileOrIdentifier==target.getFullPathName();ok=found&&ok;
-        target.deleteRecursively();ok=restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=d.fileOrIdentifier!=target.getFullPathName()&&ok;
-        ok=copy()&&restored.scan()&&wait(restored)&&ok;found=false;for(const auto& d:restored.state().plugins)found=found||d.fileOrIdentifier==target.getFullPathName();ok=found&&ok;
-        ok=restored.removeFolder(1)&&restored.removeFolder(0)&&restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=d.fileOrIdentifier!=target.getFullPathName()&&ok;
+        bool found=false;for(const auto& d:restored.state().plugins)found=found||belongs(d,target.getFullPathName());ok=found&&ok;
+        target.deleteRecursively();ok=restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=!belongs(d,target.getFullPathName())&&ok;
+        ok=copy()&&restored.scan()&&wait(restored)&&ok;found=false;for(const auto& d:restored.state().plugins)found=found||belongs(d,target.getFullPathName());ok=found&&ok;
+        ok=restored.removeFolder(1)&&restored.removeFolder(0)&&restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=!belongs(d,target.getFullPathName())&&ok;
     }
     evidence.getChildFile("plugin-catalog.txt").replaceWithText(ok?"PASS isolated native VST3 discovery, nested and overlapping custom folders, instrument/manufacturer metadata, immediate persisted catalogue, unchanged-plugin cache, update detection, failed-plugin quarantine/retry, interrupted-scan recovery, removal and rediscovery":"FAIL plugin catalogue integration");
     root.deleteRecursively();return ok;
