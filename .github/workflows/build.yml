@@ -46,6 +46,13 @@ jobs:
       - name: Verify rendered audio
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Linux' && always()
+        with:
+          name: UI-review
+          path: |
+            ${{ runner.temp }}/arranger-smoke/*.png
+            ${{ runner.temp }}/arranger-smoke/*.txt
       - name: Native VST3 instrument integration
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: |

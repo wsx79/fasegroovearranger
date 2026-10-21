@@ -232,6 +232,7 @@ void Project::normalise() {
 void Project::insertSection(int index,SongSection section,int copyFrom) {
     if(sections.size()>=64) return;
     index=std::clamp(index,0,(int)sections.size());
+    const bool wholeSong=loopStart==0&&loopEnd==length();
     std::vector<Clip> copies;
     for(auto& t:tracks) copies.push_back(copyFrom>=0&&copyFrom<(int)t.clips.size()?t.clips[(size_t)copyFrom]:Clip{});
     const double start=sectionStart(index),duration=std::clamp(section.bars,1,128)*4.;
@@ -242,6 +243,7 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
     if(loopEnd>start)loopEnd+=duration;
     sections.insert(sections.begin()+index,std::move(section));
     for(size_t i=0;i<tracks.size();++i) tracks[i].clips.insert(tracks[i].clips.begin()+index,copies[i]);
+    if(wholeSong){loopStart=0;loopEnd=length();}
     normalise();
 }
 void Project::removeSection(int index) {
@@ -254,6 +256,7 @@ void Project::removeSection(int index) {
 }
 void Project::moveSection(int from,int to) {
     if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to) return;
+    const bool wholeSong=loopStart==0&&loopEnd==length();
     const double oldStart=sectionStart(from),oldEnd=sectionStart(from+1),destination=from<to?sectionStart(to+1)-(oldEnd-oldStart):sectionStart(to);
     for(auto& t:tracks){for(auto& point:t.volume.points){if(point.beat>=oldStart&&point.beat<oldEnd)point.beat+=destination-oldStart;else if(from<to&&point.beat>=oldEnd&&point.beat<destination+oldEnd-oldStart)point.beat-=oldEnd-oldStart;else if(from>to&&point.beat>=destination&&point.beat<oldStart)point.beat+=oldEnd-oldStart;}t.volume.normalise(length());}
     auto moveMarker=[&](double beat,bool ending){
@@ -266,6 +269,7 @@ void Project::moveSection(int from,int to) {
     loopStart=moveMarker(loopStart,false);loopEnd=moveMarker(loopEnd,true);
     auto s=sections[(size_t)from]; sections.erase(sections.begin()+from); sections.insert(sections.begin()+to,s);
     for(auto& t:tracks) {auto c=std::move(t.clips[(size_t)from]); t.clips.erase(t.clips.begin()+from); t.clips.insert(t.clips.begin()+to,std::move(c));}
+    if(wholeSong){loopStart=0;loopEnd=length();}
     normalise();
 }
 void Project::resizeSection(int index,int bars){

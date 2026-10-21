@@ -7,6 +7,8 @@
 - Correzioni: loop persistente e aggiornato con le sezioni; automazione spostata/scalata correttamente al cambio di durata; meter azzerati in pausa; movimenti delle selezioni MIDI limitati come gruppo; drop di file sulla traccia di destinazione; Save As fallito conserva il percorso attivo; cronologia separata fra progetti; modifiche da tastiera ai cursori annullabili.
 - I fader aggiornano il mix senza riordinare o rigenerare l’intero MIDI a ogni movimento. Guide IT/EN, tooltip e sei lingue aggiornati; tema, font e pannelli originali invariati.
 
+- Transizioni di 10 ms su volume e pan durante la riproduzione, per evitare salti bruschi quando si muovono i fader.
+
 ## 0.4.7 — 2026-10-20
 
 - Jackin’: hook a chops dalla libreria originale, basso Wurlitzer più articolato, archi spenti di default e chitarra ritmica a battute alterne nel riferimento funky/disco indicato. Gli altri generi restano invariati.

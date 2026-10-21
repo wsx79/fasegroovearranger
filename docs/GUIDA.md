@@ -93,7 +93,7 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. Se lo spazio verticale è ridotto, scorri il pannello.
 
-Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. I canali scorrono orizzontalmente.
+Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fisso a destra. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. Trascina l’intestazione del mixer per regolarne l’altezza; i canali scorrono orizzontalmente quando lo spazio non basta.
 
 - **Clic sul clip**: selezione; **doppio clic** o **E**: editor MIDI grande.
 - **Trascina un clip** su un’altra sezione della stessa traccia: scambia i due clip; **Alt-trascina**: copia sostituendo la destinazione. Undo ripristina entrambi. Se le durate differiscono, le note sono limitate alla sezione di destinazione.

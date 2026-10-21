@@ -93,7 +93,7 @@ Colours follow the instruments: **amber** for piano and kick, **cyan** for bass 
 
 The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. Scroll the inspector if vertical space is limited.
 
-The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. Channels scroll horizontally.
+The **MIXER** shows seventeen channels in musical order with a fixed master at the right. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. Drag the mixer header to adjust its height; channels scroll horizontally when needed.
 
 - **Click a clip** to select it; **double-click** or **E** opens the full MIDI editor.
 - **Drag a clip** to another section on the same track to swap both clips; **Alt-drag** copies over the destination. Undo restores both. Notes are trimmed to the destination section when lengths differ.

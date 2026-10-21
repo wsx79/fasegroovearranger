@@ -62,6 +62,7 @@ int main(int argc,char** argv){try{
         check(fga::transferClip(p,4,0,1,false),"clip drag swap accepted");check(p.tracks[4].clips[0].notes[0].start==1&&p.tracks[4].clips[1].notes[0].start==0,"clip swap preserves both takes");
         check(fga::transferClip(p,4,1,0,true)&&p.tracks[4].clips[0].notes==p.tracks[4].clips[1].notes,"clip copy retains source");check(!fga::transferClip(p,99,0,1,false)&&!fga::transferClip(p,4,0,99,false),"invalid clip gestures rejected");
     }
+    {auto p=fga::newProject();p.loop=true;p.loopStart=0;p.loopEnd=p.length();p.moveSection(0,2);check(p.loop&&p.loopStart==0&&p.loopEnd==p.length(),"whole-song loop survives section reorder");p.insertSection(0,{fga::Section::intro,4,"Inserted"});check(p.loop&&p.loopStart==0&&p.loopEnd==p.length(),"whole-song loop includes inserted sections");}
     // Musical regression: Jackin' keeps a short, swung bass/chop pocket rather
     // than layering the same string answers and held organ over every drop.
     for(std::uint32_t seed:{1U,42U,1979U,7891U}){

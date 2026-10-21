@@ -33,12 +33,20 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
 }
 void TrackInspector::refresh(){
     if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(text(t.name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
-    source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():"VST3 / AU",juce::dontSendNotification);
+    source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():owner.audio.plugin(owner.selectedTrack)?owner.audio.plugin(owner.selectedTrack)->getName():tr("Missing instrument"),juce::dontSendNotification);
     section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(owner.project.sections[(size_t)owner.selectedSection].bars)+" "+tr("bars"),juce::dontSendNotification);
     gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
 }
-void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());caption(g,"TRACK INSPECTOR",{12,6,getWidth()-24,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,353,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,505,getWidth()-24,20});}
-void TrackInspector::resized(){const int w=getWidth()-24;name.setBounds(12,30,w,26);source.setBounds(12,60,w,24);instrument.setBounds(12,94,w,28);editor.setBounds(12,128,w,28);mute.setBounds(12,163,w/2-3,24);solo.setBounds(15+w/2,163,w/2-3,24);gain.setBounds(12,215,w,28);pan.setBounds(12,247,w,28);lockTrack.setBounds(12,286,w,26);lockClip.setBounds(12,318,w,26);internal.setBounds(12,380,w,26);sample.setBounds(12,412,w,26);plugin.setBounds(12,444,w,26);pluginEditor.setBounds(12,476,w,26);section.setBounds(12,532,w,26);regenerate.setBounds(12,566,w,26);loop.setBounds(12,598,w,26);}
+void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());caption(g,"TRACK INSPECTOR",{12,6,getWidth()-24,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,278,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,480,getWidth()-24,20});}
+void TrackInspector::resized(){
+    const int w=getWidth()-24;
+    name.setBounds(12,30,w,26);source.setBounds(12,60,w,24);instrument.setBounds(12,94,w,28);editor.setBounds(12,128,w,28);
+    mute.setBounds(12,163,w/2-3,24);solo.setBounds(15+w/2,163,w/2-3,24);gain.setBounds(12,215,w,28);pan.setBounds(12,247,w,28);
+    internal.setBounds(12,304,w,26);sample.setBounds(12,334,w,26);plugin.setBounds(12,364,w,26);pluginEditor.setBounds(12,394,w,26);
+    lockTrack.setBounds(12,436,w/2-3,26);lockClip.setBounds(15+w/2,436,w/2-3,26);
+    section.setBounds(12,504,w,26);regenerate.setBounds(12,538,w,26);loop.setBounds(12,570,w,26);
+}
+
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&gain,&pan,&mute,&solo,&instrument,&clip})addAndMakeVisible(c);
     name.setInterceptsMouseClicks(false,false);name.setFont(FamilyTheme::font(11,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.65f);
@@ -71,6 +79,9 @@ void DawMixer::mouseUp(const juce::MouseEvent&){if(resizingMixer)Localisation::s
 bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     const auto saved=project;const int track=selectedTrack,section=selectedSection;const auto zoom=arrangement.pixelsPerBar;
     showArrangement();audio.stop();bool ok=inspectorPort.isVisible()&&mixer.isVisible()&&!arrangementPort.getBounds().intersects(inspectorPort.getBounds())&&!arrangementPort.getBounds().intersects(mixer.getBounds());
+    const int originalHeight=getHeight();
+    for(int height:{720,588}){setSize(1440,height);ok=ok&&!arrangementPort.getBounds().intersects(mixer.getBounds())&&mixer.getBottom()<=getHeight()-31;}
+    setSize(1440,originalHeight);
     const auto midi=midiFile(project);const double originalGain=project.tracks[(size_t)selectedTrack].gain;
     if(auto* fader=dynamic_cast<juce::Slider*>(trackInspector.findChildWithID("track-gain"))){
         fader->setValue(-12,juce::sendNotificationSync);ok=ok&&std::abs(project.tracks[(size_t)selectedTrack].gain-juce::Decibels::decibelsToGain(-12.))<1e-6&&midiFile(project)==midi;

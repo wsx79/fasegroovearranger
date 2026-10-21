@@ -35,6 +35,7 @@ struct Instrument {
     VolumeAutomation volume;
     std::vector<float> volumeGains;
     double gain=.75,pan=0;
+    juce::SmoothedValue<float> leftGain,rightGain;
     bool mute=false,solo=false;
     int mode=0; // 0 original guide, 1 user sampler, 2 user plugin, 3 missing instrument (silence)
     std::size_t cursor=0;

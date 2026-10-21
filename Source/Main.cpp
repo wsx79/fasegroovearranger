@@ -110,6 +110,16 @@ public:
             transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
             for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
             folder.getChildFile("transport.txt").replaceWithText(transport?"PASS seek, note chase, loop boundary and pause silence":"FAIL transport");ok=ok&&transport;
+            {
+                auto probe=p;probe.loop=false;for(auto& t:probe.tracks){t.mute=true;for(auto& c:t.clips)c.notes.clear();}
+                probe.tracks[0].mute=false;probe.tracks[0].gain=.5;probe.tracks[0].clips[0].notes={{0,4,69,100,0}};
+                audio.publish(probe);audio.seek(0);audio.play(true);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+                probe.tracks[0].gain=0;audio.updateMix(probe);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+                const bool startsSmoothly=live.getMagnitude(0,64)>0;
+                for(int block=0;block<8;++block)audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
+                const bool smooth=startsSmoothly&&live.getMagnitude(0,512)==0;
+                folder.getChildFile("mixer-smoothing.txt").replaceWithText(smooth?"PASS live fader ramps to silence within 10ms without changing MIDI":"FAIL live fader smoothing");ok=ok&&smooth;audio.stop();
+            }
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());

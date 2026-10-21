@@ -15,7 +15,7 @@ class MainComponent;
 bool verifyPianoTools(MainComponent&,const juce::File&);
 class ArrangementView : public juce::Component, public juce::SettableTooltipClient {
 public:
-    explicit ArrangementView(MainComponent& m):owner(m){}
+    explicit ArrangementView(MainComponent& m):owner(m){setWantsKeyboardFocus(true);}
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
