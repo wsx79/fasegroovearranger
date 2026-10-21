@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.5.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
+Questa guida descrive la **v0.5.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
 dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
 
 ### Installazione manuale (zip / tar.gz, tutti i sistemi)
@@ -86,6 +86,8 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 | **AUDIO · OPZIONI · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
 
 I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
+
+Trascina il **bordo inferiore del nome di una traccia** per cambiarne l’altezza in modo indipendente (40–240 pixel). Le altre tracce conservano la propria altezza; le durate MIDI restano invariate. Il doppio clic sul bordo ripristina l’altezza iniziale; **Esc** annulla il trascinamento. Le altezze vengono ricordate tra le sessioni.
 
 **M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull’intestazione di una sezione posiziona la riproduzione nel punto indicato. Lo **ZOOM** cambia quanto brano vedi.
 

@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.5.1** of Fase Groove Arranger. Download the package for your system from
+This guide covers **v0.5.2** of Fase Groove Arranger. Download the package for your system from
 the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
 
 ### Manual installation (zip / tar.gz, all systems)
@@ -86,6 +86,8 @@ The top contains project commands, transport and the controls shared by everyone
 | **AUDIO · OPTIONS · GUIDE** | Output device; information, credits and privacy; the guide. |
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
+
+Drag the **lower edge of a track header** to change that track’s height independently (40–240 pixels). Other tracks keep their heights; MIDI durations stay unchanged. Double-click the edge to restore the default height; **Escape** cancels a drag. Heights are remembered between sessions.
 
 **M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to position playback at that point. **ZOOM** changes how much of the song you see.
 

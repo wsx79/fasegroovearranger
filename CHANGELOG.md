@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.5.2 — 2026-10-21
+
+- Resize each track vertically from the lower edge of its header. Independent saved heights, default reset by double-click, Escape cancellation and aligned automation lanes. MIDI and playback position are unchanged.
+
 ## 0.5.1 — 2026-10-21
 
 - Drag clip edges to resize individual MIDI loops or section-header edges to resize every track together. Loop source is retained when shortening, repeated without time stretching when extending, saved in .fga and editable in the full MIDI editor. Overlaps are masked on the same track; Undo and Escape are supported.

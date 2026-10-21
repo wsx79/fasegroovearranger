@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.5.2 — 2026-10-21
+
+- Ogni traccia è ridimensionabile in altezza dal bordo inferiore del nome. Altezze indipendenti e salvate, doppio clic per ripristinare, Esc per annullare e corsie di automazione allineate. MIDI e posizione di riproduzione restano invariati.
+
 ## 0.5.1 — 2026-10-21
 
 - Trascina il bordo del clip per ridimensionare il singolo loop MIDI, oppure il bordo dell’intestazione per l’intera sezione su tutte le tracce. La sorgente si conserva accorciando e si ripete riallungando, senza stirare le note; salvata in .fga e modificabile nel piano roll. Le parti coperte della stessa traccia non raddoppiano le note. Supportati Undo ed Esc.

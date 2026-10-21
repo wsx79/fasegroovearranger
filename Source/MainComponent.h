@@ -15,7 +15,7 @@ class MainComponent;
 bool verifyPianoTools(MainComponent&,const juce::File&);
 class ArrangementView : public juce::Component, public juce::SettableTooltipClient {
 public:
-    explicit ArrangementView(MainComponent& m):owner(m){setWantsKeyboardFocus(true);}
+    explicit ArrangementView(MainComponent&);
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
@@ -24,6 +24,7 @@ public:
     void mouseDoubleClick(const juce::MouseEvent&) override;
     bool verifyAutomation(const juce::File&);
     bool keyPressed(const juce::KeyPress&) override;
+    int rowHeight(int row) const {return trackHeights[(size_t)trackAtRow(row)];}
     int rowY(int row) const;
     int rowAt(int y) const;
     int totalHeight() const {return rowY(trackCount);}
@@ -32,6 +33,11 @@ public:
 private:
     friend class MainComponent;
     MainComponent& owner;
+    std::array<int,trackCount> trackHeights{};
+    int heightTrack=-1,heightBefore=40;
+    float heightAnchorY=0;
+    int heightEdgeAt(const juce::MouseEvent&) const;
+    void saveTrackHeights();
     int dragTrack=-1,dragPoint=-1;
     bool bending=false,loopDragging=false,copyingClip=false;
     double loopAnchor=0;
