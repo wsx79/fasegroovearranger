@@ -46,17 +46,17 @@ void MainComponent::timelineCommand(int command){
     if(command==1||command==2){if(chosen.empty())return;timelineClipboard=chosen;const double origin=chosen.front().position;for(auto& c:timelineClipboard)c.position-=origin;if(command==2){message("Clips copied. Paste places them at the playback cursor.");return;}}
     if(command==3&&timelineClipboard.empty())return;
     if(command!=3&&command!=8&&chosen.empty())return;
-    auto edited=project;int selected=-1;double selectedBeat=timelinePosition();
+    auto edited=project;int selected=-1;double selectedBeat=timelinePosition();std::vector<double> placedStarts;
     if(command==1||command==6){edited.detachTrack(selectedTrack);for(const auto& c:chosen){const int index=edited.clipAtBeat(selectedTrack,c.position+1./1920.);if(index>=0)edited.deleteClip(selectedTrack,index);}}
     if(command==4){const double beat=arrangement.snapBeat(timelinePosition());if(std::none_of(chosen.begin(),chosen.end(),[beat](const Clip& c){return beat>c.position&&beat<c.position+c.span;}))return;const int index=edited.clipAtBeat(selectedTrack,beat);if(index<0)return;selected=edited.splitClip(selectedTrack,index,beat);if(selected<0)return;selectedBeat=beat;}
     if(command==3||command==5||command==8){std::vector<Clip> copies=command==3?timelineClipboard:chosen;double destination=arrangement.snapBeat(timelinePosition());
         if(command==5){destination=0;for(const auto& c:chosen)destination=std::max(destination,c.position+c.span);const double origin=copies.front().position;for(auto& c:copies)c.position-=origin;}
         if(command==8){Clip c;c.span=4;copies={c};}
-        for(auto c:copies){const double at=destination+c.position;const int placed=edited.placeClip(selectedTrack,std::move(c),at);if(placed<0){message("Clip edit exceeds the project limits.",true);return;}if(selected<0){selected=placed;selectedBeat=at;}}
+        for(auto c:copies){const double at=destination+c.position;const int placed=edited.placeClip(selectedTrack,std::move(c),at);placedStarts.push_back(at);if(placed<0){message("Clip edit exceeds the project limits.",true);return;}if(selected<0){selected=placed;selectedBeat=at;}}
         selected=edited.clipAtBeat(selectedTrack,selectedBeat+1./1920.);
     }
     checkpoint();project=std::move(edited);arrangement.selectedClips.clear();selectedClip=-1;noClipSelection=true;
-    if(selected>=0)selectClip(selectedTrack,selected);else{refreshTrack();updateSizes();trackInspector.refresh();}piano.clearSelection();changed();arrangement.grabKeyboardFocus();
+    if(selected>=0){selectClip(selectedTrack,selected);for(double at:placedStarts){const int index=project.clipAtBeat(selectedTrack,at+1./1920.);if(index>=0)arrangement.selectedClips.insert(index);}}else{refreshTrack();updateSizes();trackInspector.refresh();}piano.clearSelection();changed();arrangement.grabKeyboardFocus();
     message("Timeline edited. Undo restores the previous clips.");
 }
 bool MainComponent::verifyTimelineEditing(const juce::File& folder){
@@ -67,6 +67,9 @@ bool MainComponent::verifyTimelineEditing(const juce::File& folder){
     seekTimeline(4);timelineSplit.onClick();ok=ok&&project.tracks[4].clips.size()==3&&selectedClip==1&&clipStart()==4&&clipLength()==12;
     seekTimeline(8);keyPressed(juce::KeyPress('E',juce::ModifierKeys::commandModifier,0));ok=ok&&project.tracks[4].clips.size()==4&&selectedClip==2&&clipStart()==8&&clipLength()==8;stage("split button and shortcut");
     const auto splitState=project;selectClip(4,0);arrangement.selectedClips={0,1};
+    timelineCopy.onClick();seekTimeline(24);timelinePaste.onClick();ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,24)>=0&&project.clipAtBeat(4,28)>=0;stage("paste retains complete clip group selection");
+    timelineDuplicate.onClick();ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,32)>=0&&project.clipAtBeat(4,36)>=0;stage("repeat duplicate works on the full pasted group");
+    project=splitState;selectClip(4,0);arrangement.selectedClips={0,1};changed();
     auto groupEvent=[&](float x){const juce::Point<float> p(x,76);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
     arrangement.mouseDown(groupEvent(232));arrangement.mouseDrag(groupEvent(360));arrangement.mouseUp(groupEvent(360));ok=ok&&project.clipAtBeat(4,0)<0&&project.clipAtBeat(4,4)<0&&project.clipAtBeat(4,8)>=0&&project.clipAtBeat(4,12)>=0&&arrangement.selectedClips.size()==2;stage("selected clip group movement");project=splitState;selectClip(4,2);changed();
     timelineCopy.onClick();arrangement.mouseDown(groupEvent(856));arrangement.mouseUp(groupEvent(856));ok=ok&&timelinePosition()==40&&audio.position()==32;togglePlayback();ok=ok&&!audio.isPlaying()&&timelinePosition()==40;timelinePaste.onClick();ok=ok&&selectedClip==4&&clipStart()==40&&clipLength()==8&&clip().notes.size()==2&&project.sections[0].bars==4;stage("copy paste at cursor beyond guide");togglePlayback();ok=ok&&audio.isPlaying()&&std::abs(audio.position()-40)<.1;togglePlayback();stage("play starts from the pasted clip cursor");

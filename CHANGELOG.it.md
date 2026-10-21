@@ -6,6 +6,7 @@
 - Zoom e loop della selezione; la navigazione manuale sospende SEGUI.
 - Note MIDI: spostamento con frecce, passi di ottava, taglia, duplicazione e incolla al cursore con controllo dei bordi della frase e Undo.
 - Scorciatoie protette durante i trascinamenti; eliminati i passi Undo vuoti della selezione note e la doppia voce nella generazione su una traccia vuota; la generazione conserva il cursore.
+- I gruppi incollati o duplicati nella timeline restano interamente selezionati per le modifiche successive.
 - Tooltip in sei lingue, verifiche native e guide Markdown IT/EN aggiornati.
 
 ## 0.6.0 — 2026-10-21

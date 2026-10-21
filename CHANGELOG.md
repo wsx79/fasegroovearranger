@@ -6,6 +6,7 @@
 - Selection zoom and loop commands; manual navigation suspends playback following.
 - MIDI note nudging, octave steps, cut, adjacent duplication and cursor-based paste with phrase boundary checks and Undo.
 - Protect clip gestures from conflicting shortcuts; avoid empty Undo steps for note selection and duplicate history entries when generating into an empty track; retain the cursor for generation.
+- Keep pasted and duplicated timeline groups fully selected for subsequent edits.
 - Updated six-language tooltips, native checks and IT/EN Markdown guides.
 
 ## 0.6.0 — 2026-10-21
