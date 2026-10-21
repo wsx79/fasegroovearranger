@@ -1,6 +1,6 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.4.1 · 20 ottobre 2026
+Versione 0.7.1 · 21 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
@@ -25,7 +25,7 @@ Puoi eliminare i progetti/esportazioni dal file manager e cancellare l'autosave 
 - Plugin nativi: il caricamento di VST3/AU esegue codice del plugin nel processo dell'app. Plugin e relativi servizi possono avere rete, file e licenze proprie, fuori dal controllo dell'arranger.
 - Browser: usato soltanto per collegamenti esterni scelti dall'utente.
 
-Non sono richiesti amministratore, rubrica, calendario, posizione, camera o accesso cloud. I permessi effettivamente mostrati dal sistema possono variare in base al packaging, al dispositivo audio e agli strumenti caricati.
+L’app non richiede amministratore, rubrica, calendario, posizione, camera o accesso cloud. Solo il setup Windows richiede i permessi di amministratore per installare o aggiornare in Program Files. I permessi effettivamente mostrati dal sistema possono variare in base al packaging, al dispositivo audio e agli strumenti caricati.
 
 Questa informativa descrive il comportamento del codice dell'arranger. Non sostituisce le informative dei plugin o dei siti esterni. Per richieste sul progetto usa il repository; evita di inserire dati privati nelle issue pubbliche.
 
@@ -35,4 +35,8 @@ Lingua e attivazione dei tooltip sono preferenze locali salvate sul computer. LE
 
 ## Aggiornamenti GitHub
 
-Come nelle altre app della famiglia, la verifica delle release GitHub è attiva per impostazione iniziale e si disattiva in OPZIONI → IMPOSTAZIONI. CHECK NOW avvia una verifica manuale. Viene interrogato solo `api.github.com/repos/wsx79/fasegroovearranger/releases/latest`; GitHub riceve i normali dati di connessione (IP e user-agent), senza progetti, MIDI, campioni o stato dei plugin. Il download si apre nel browser solo premendo il pulsante. Non sono installati aggiornamenti automaticamente. Lingua, dimensione, tooltip, modalità di modifica del circolo, preferenza aggiornamenti ed eventuale versione ignorata sono salvati nel file locale delle impostazioni. Su Linux la verifica usa il comando `curl`, come nelle app originali; se manca, la verifica fallisce senza impedire il lavoro offline.
+Come nelle altre app della famiglia, verifica e download automatici sono attivi inizialmente e si disattivano in OPZIONI → IMPOSTAZIONI. VERIFICA ORA avvia una verifica manuale. L’updater richiede i metadati pubblici delle release, il changelog italiano da raw.githubusercontent.com quando opportuno e il pacchetto corretto tramite i download/CDN GitHub. GitHub riceve i normali dati di connessione (IP e user-agent); non vengono caricati progetti, MIDI, campioni, stato dei plugin o percorsi locali.
+
+I pacchetti vengono scaricati e preparati in `Downloads/Fase Groove Arranger updates`, oppure in Documents se Downloads non esiste. Lo SHA-256 viene verificato con i metadati della release. Serve INSTALLA ORA prima di eseguire setup o sostituzione portatile. Il setup può richiedere i permessi di amministratore Windows; la copia portatile richiede accesso in scrittura alla cartella dell’app. Se la sostituzione fallisce vengono ripristinati i file precedenti; nelle cartelle protette resta l’installazione manuale. Un helper temporaneo locale può riaprire l’app dopo la chiusura. Progetti, campioni, esportazioni, autosave e preferenze non vengono sostituiti dall’updater o cancellati dalla disinstallazione. I download degli aggiornamenti si eliminano dal file manager quando non servono più.
+
+Lingua, dimensione, tooltip, modalità del circolo, preferenza aggiornamenti e versione ignorata rimangono nelle impostazioni locali. La rete su Linux usa curl di sistema; se manca, il lavoro musicale offline resta disponibile.

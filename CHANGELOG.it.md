@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.7.1 — 2026-10-21
+
+- Setup Windows della famiglia: wizard italiano/inglese, logo Arranger, menu Start, collegamento desktop facoltativo e disinstallazione, adattato all’app standalone.
+- Aggiornamenti come nelle altre app: download del pacchetto corretto, INSTALLA ORA / PIÙ TARDI / IGNORA, setup silenzioso, sostituzione portatile con ripristino e riapertura automatica.
+- ZIP stabili per Windows/macOS/Linux accanto agli archivi con versione; progetti, campioni e preferenze conservati. Verifica SHA-256 GitHub prima dell’installazione.
+- Prove native di integrità/ripristino, installazione/upgrade/disinstallazione Windows reali e documentazione di installazione/privacy IT/EN aggiornata.
+
 ## 0.7.0 — 2026-10-21
 
 - Zoom con rotella centrato sul puntatore in arrangiamento ed editor MIDI, zoom da tastiera, scorrimento sui due assi e trascinamento con il tasto centrale nell’arrangiamento.

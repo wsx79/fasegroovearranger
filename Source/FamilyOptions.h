@@ -46,6 +46,7 @@ public:
     void show (const Updater::Result&);
     void refreshText();
     bool verifyLayout()const;
+    std::function<void(const Updater::Result&)> onInstall;
     void paint (juce::Graphics&) override;
     void resized() override;
 

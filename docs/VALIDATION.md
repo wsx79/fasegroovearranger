@@ -24,7 +24,7 @@ This verifies the tested processors and UI gestures. Real hardware and arbitrary
 - Native audio checks passed 12 active and five intentionally empty stems, aligned at 305,809 frames / 44.1 kHz; mix RMS 0.14136. Muting and guitar part faders silenced audio while retaining stored MIDI; MP3 was independently decoded by ffmpeg.
 - The real test VST3 loaded, received MIDI/playhead data, opened/closed its editor and restored its saved state. It is a fixture, not validation of arbitrary commercial instruments.
 - Bilingual native manuals passed 13 chapters, tables, four screenshots, navigation, search and zoom. Source guides remain Markdown; the invented separate HTML export has been removed.
-- Updater version comparison is checked offline; live release availability, networking and browser download depend on GitHub and the target device. Portable updates require user installation, and no project data is uploaded.
+- Updater versions, platform asset selection, checksums, staging and rollback are checked offline. Live release availability/downloads depend on GitHub and the target device. Installation requires INSTALL NOW and local write/setup permissions; no project data is uploaded.
 
 See [FAMILY_ALIGNMENT.md](FAMILY_ALIGNMENT.md) for pinned reference revisions, the original UI differences and necessary standalone adaptations. Historical records below describe earlier revisions and formats, not the current distribution.
 
@@ -78,3 +78,7 @@ Real audio-device playback, latency/buffer behaviour, commercial VST3/AU compati
 ## DAW navigation and MIDI selection workflows (0.7.0)
 
 The native `daw-navigation.txt` report checks pointer anchoring in scrolled timeline/MIDI views, horizontal wheel routing, selection zoom/loop and locator Undo, MIDI group boundary nudges, octave steps, cut/duplicate/cursor paste, rejection of partial phrases, drum isolation, gesture shortcut protection and one-step Undo when generating at an empty-track cursor. Navigation must preserve project JSON/MIDI and leave edit history intact. Existing native layout, persistence, transport/chase, automation, host and full-song audio checks remain required.
+
+## Family installers and upgrades (0.7.1)
+
+`family_updater` tests both changelog formats, platform/repository asset routing, corrupt download rejection, archive traversal rejection, staging, complete swaps and rollback at each transaction step. Windows also checks custom setup-folder detection. `scripts/test-installer.ps1` installs the actual setup, upgrades a simulated older binary, verifies the exact tested executable and bundled guides/source, then uninstalls while preserving a user-created project. `tests/test-packaging.py` verifies legacy and stable update layouts. Live UAC prompts, protected folders and user-specific security policies still depend on the target computer.

@@ -20,6 +20,7 @@ jobs:
       - run: cmake --build build -j2
       - run: ctest --test-dir build --output-on-failure
       - run: mkdir -p build/midi && build/fga_core_tests build/midi && python3 scripts/verify-midi.py build/midi
+      - run: python3 tests/test-packaging.py
   standalone:
     strategy:
       fail-fast: false
@@ -75,11 +76,54 @@ jobs:
         with:
           name: Jackin-audio-evidence
           path: ${{ runner.temp }}/club-audit/Jackin-*.mp3
+      - name: Sign macOS app as in the family
+        if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
+        env:
+          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          app="build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger.app"
+          if [ -z "$MACOS_CERTIFICATE" ]; then
+            codesign --force --deep --sign - "$app"
+          else
+            keychain="$RUNNER_TEMP/signing.keychain-db"
+            echo "$MACOS_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+            security create-keychain -p ci "$keychain"
+            security set-keychain-settings -lut 21600 "$keychain"
+            security unlock-keychain -p ci "$keychain"
+            security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain"
+            security set-key-partition-list -S apple-tool:,apple: -s -k ci "$keychain"
+            security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+            codesign --force --deep --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$app"
+            ditto -c -k --keepParent "$app" "$RUNNER_TEMP/notarize.zip"
+            xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+            xcrun stapler staple "$app"
+          fi
+          codesign --verify --deep --strict "$app"
       - name: Package native distribution with source and licence notices
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         env:
           FGA_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python scripts/package.py
+      - name: Windows installer (Inno Setup)
+        if: runner.os == 'Windows' && !cancelled() && steps.nativebuild.outcome == 'success'
+        shell: pwsh
+        run: |
+          python -m pip install Pillow
+          python installer/windows/make-assets.py
+          $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(FaseGrooveArranger VERSION ([0-9.]+)').Matches[0].Groups[1].Value
+          $package = (Get-ChildItem dist -Directory | Where-Object { $_.Name -match '^FaseGrooveArranger-.*-Windows-' }).FullName
+          if (-not $package) { throw 'Tested native package is missing' }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DAppVersion=$version" "/DPackageDir=$package" "/DRepoDir=$env:GITHUB_WORKSPACE" installer/windows/FaseGrooveArranger.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./scripts/test-installer.ps1
+          Copy-Item installer-output/FaseGrooveArranger-Windows-Setup.exe dist/
       - uses: actions/upload-artifact@v4
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         with:
@@ -87,6 +131,7 @@ jobs:
           path: |
             dist/*.zip
             dist/*.tar.gz
+            dist/*.exe
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Linux' && always()

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.7.0 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.7.1 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -66,7 +66,7 @@ if(FGA_BUILD_APP)
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1
         JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:FaseGrooveArranger,JUCE_PRODUCT_NAME>"
         JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}")
-    target_link_libraries(FaseGrooveArranger PRIVATE fga_core fga_mp3 ArrangerResources juce::juce_audio_utils juce::juce_dsp
+    target_link_libraries(FaseGrooveArranger PRIVATE fga_core fga_mp3 ArrangerResources juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
     if(FGA_BUILD_TESTS)
         juce_add_console_app(fga_io_tests PRODUCT_NAME "Arranger project tests")
@@ -74,6 +74,12 @@ if(FGA_BUILD_APP)
         target_link_libraries(fga_io_tests PRIVATE fga_core juce::juce_audio_basics juce::juce_core)
         target_compile_definitions(fga_io_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
         add_test(NAME project_io COMMAND fga_io_tests)
+        juce_add_console_app(fga_update_tests PRODUCT_NAME "Arranger update tests")
+        target_sources(fga_update_tests PRIVATE tests/UpdaterTests.cpp Source/Updater.cpp Source/Localisation.cpp)
+        target_include_directories(fga_update_tests PRIVATE Source)
+        target_link_libraries(fga_update_tests PRIVATE juce::juce_events juce::juce_data_structures juce::juce_cryptography)
+        target_compile_definitions(fga_update_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}")
+        add_test(NAME family_updater COMMAND fga_update_tests)
     endif()
     if(FGA_BUILD_HOST_TEST_PLUGIN)
         juce_add_plugin(ArrangerHostProbe PRODUCT_NAME "Arranger Host Probe" COMPANY_NAME "FS Pitch"

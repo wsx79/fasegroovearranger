@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.7.1 — 2026-10-21
+
+- Family Windows setup: English/Italian wizard, Arranger branding, Start menu/optional desktop shortcuts and uninstall, adapted for the standalone application.
+- Family update flow: download the matching package, INSTALL NOW / LATER / SKIP, silent setup upgrades, transactional portable replacement and automatic reopen.
+- Stable Windows/macOS/Linux update ZIPs alongside versioned archives; preserve projects, samples and preferences. Verify GitHub asset SHA-256 before installation.
+- Native updater rollback/integrity checks, real Windows install/upgrade/uninstall tests and updated IT/EN installation/privacy documentation.
+
 ## 0.7.0 — 2026-10-21
 
 - Pointer-anchored wheel zoom in the arrangement and MIDI editors, keyboard zoom, horizontal/vertical scrolling and arrangement middle-button panning.

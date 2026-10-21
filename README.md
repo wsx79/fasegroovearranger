@@ -69,7 +69,7 @@ On Ubuntu/Debian install the native development dependencies first:
 sudo apt-get install build-essential cmake libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
 ```
 
-Download the published packages from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): Windows `.zip`; macOS/Linux `.tar.gz`. Extract the archive to use the portable application. The Unix archives preserve executable permissions. macOS binaries are universal (Apple Silicon + Intel); Windows bundles its C/C++ runtime statically. Packages are unsigned; signing/notarisation and installers are not configured. GitHub Actions also provides development builds in the workflow's **Artifacts** panel; extract the distribution archive inside an artifact.
+Download from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** uses the same English/Italian installer as the family, with Start menu shortcuts and uninstall. Portable family ZIPs are available for Windows, universal macOS and Linux, plus the existing versioned archives. **OPTIONS → SETTINGS → CHECK NOW** downloads the matching update; **INSTALL NOW** runs the setup or replaces a writable portable copy and reopens the app. Projects and preferences remain. Versions 0.7.0 and earlier need one manual installation. See the [installation/update guide](docs/GUIDE.md#1-installation). Windows setup is unsigned; macOS uses the family's ad-hoc/optional Developer ID signing flow. Development packages are also in Actions → Artifacts.
 
 Distribution targets: Windows 10+, macOS 11+ and Ubuntu 24.04-compatible Linux systems. Build from source for other Linux distributions. Actual external plugins may require a newer OS.
 
@@ -101,7 +101,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.7.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.7.1** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

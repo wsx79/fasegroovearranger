@@ -10,3 +10,6 @@ __pycache__/
 *.mp3
 *.mid
 *.user
+installer-output/
+installer/windows/*.ico
+installer/windows/*.bmp

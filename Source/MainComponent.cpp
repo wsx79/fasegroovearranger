@@ -409,6 +409,16 @@ MainComponent::MainComponent(){
     options.onAudioSettings=[this]{showAudioSettings();};
     options.onDocument=[this](int id){if(id==0)showGuide(Localisation::current()!=Localisation::Language::italian);if(id==1){const bool it=Localisation::current()==Localisation::Language::italian;showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==2)showDocument(tr("Licences and attributions"),juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));};
     options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);options.checkUpdatesButton.setButtonText(tr("CHECKING..."));updater.start(true);};
+    updateOverlay.onInstall=[this](const Updater::Result& result){
+        if(loadingPlugin){message(tr("Wait for the instrument to finish loading."),true);return;}
+        if(!requestClose())return;
+        const auto report=Updater::install(result);
+        if(!report.done){message(tr("The files could not be replaced automatically: the download is shown, copy it as the first time."),true);return;}
+        updateOverlay.setVisible(false);
+        if(report.relaunching){juce::MessageManager::callAsync([]{if(auto* app=juce::JUCEApplicationBase::getInstance())app->quit();});}
+        else message(tr("Updated. Close and reopen the app to use the new version."));
+    };
+    Updater::cleanupAfterUpdate();
     updater.onResult=[this](const Updater::Result& result,bool manual){
         options.checkUpdatesButton.setEnabled(true);options.refreshText();
         if(result.status==Updater::Result::Status::ready){updateOverlay.show(result);
@@ -417,7 +427,7 @@ MainComponent::MainComponent(){
             message(text);juce::AlertWindow::showMessageBoxAsync(juce::MessageBoxIconType::InfoIcon,JUCE_APPLICATION_NAME_STRING,text);
         }
     };
-    if(Updater::autoCheckEnabled()&&!juce::JUCEApplication::getCommandLineParameters().contains("smoke-test"))updater.start(false);
+    if(Updater::autoCheckEnabled()&&Updater::firstAutoCheckThisSession()&&!juce::JUCEApplication::getCommandLineParameters().contains("smoke-test"))updater.start(false);
     for(auto* s:{&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&gainSlider,&panSlider}){
         auto callback=s->onValueChange;
         s->onDragStart=[this,s]{s->getProperties().set("fgaGesture",true);checkpoint();};

@@ -24,20 +24,29 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.7.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema
-dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest) ed estrailo.
+Questa guida descrive la **v0.7.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
-### Installazione manuale (zip / tar.gz, tutti i sistemi)
+### Installer Windows (consigliato)
 
-Scarica il pacchetto del tuo sistema e scompattalo. L'app funziona da sola: **non devi installare una DAW o i tre plugin Fase Groove**.
+Apri **FaseGrooveArranger-Windows-Setup.exe**, scegli italiano o inglese e segui lo stesso wizard delle altre app Fase Groove. Installa l’app standalone, le guide, privacy/licenze e i collegamenti nel menu Start; il collegamento sul desktop è facoltativo. Arranger contiene già i tre motori: non servono i plugin Fase Groove o un’altra DAW. Solo il setup richiede i permessi di amministratore. Disinstalla dalle impostazioni di Windows: progetti, esportazioni e preferenze locali restano.
 
-| Sistema | Pacchetto | Avvio |
+### Installazione manuale (tutti i sistemi)
+
+| Sistema | Pacchetto famiglia | Avvio |
 |---|---|---|
-| Windows | `.zip` | Apri la cartella estratta e avvia `Fase Groove Arranger.exe`. |
-| macOS | `.tar.gz` | Estrai l'archivio e apri `Fase Groove Arranger.app`. Il pacchetto è universale, Intel e Apple Silicon. |
-| Linux | `.tar.gz` | Estrai l'archivio e avvia `Fase Groove Arranger`. Conserva i permessi di esecuzione. |
+| Windows 10/11 x64 | `FaseGrooveArranger-Windows.zip` | Estrai e avvia `Standalone/Fase Groove Arranger.exe`. |
+| macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Estrai, copia l’app da Standalone in Applicazioni e aprila. |
+| Linux | `FaseGrooveArranger-Linux.zip` | Estrai e avvia `Standalone/Fase Groove Arranger`. Conserva i permessi di esecuzione. |
 
-Se scarichi da GitHub Actions, nello ZIP dell'artifact trovi il pacchetto indicato nella tabella: estrai anche quello. Questi pacchetti sono portatili; non hanno installer o firma di distribuzione.
+Restano disponibili anche lo ZIP Windows e i tar.gz macOS/Linux con versione nel nome. Da Actions estrai prima lo ZIP dell’artifact e poi il pacchetto contenuto. Il setup Windows non è firmato. macOS usa la procedura della famiglia: firma ad hoc iniziale, Developer ID/notarizzazione se configurati. Possono comparire gli avvisi di sicurezza del sistema, come nelle altre app.
+
+### Aggiornamenti, come nella famiglia Fase Groove
+
+**OPZIONI → IMPOSTAZIONI → VERIFICA ORA** cerca e scarica il pacchetto corretto. La verifica con download automatico è attiva inizialmente; puoi disattivarla qui per lavorare offline. La schermata della famiglia mostra versione scaricata e novità, con **INSTALLA ORA / PIÙ TARDI / IGNORA QUESTA VERSIONE**.
+
+Salva il progetto prima di **INSTALLA ORA**. Le copie Windows installate eseguono di nuovo il setup in modo silenzioso e si riaprono, mantenendo cartella e preferenze. Le copie portatili scrivibili sostituiscono questa app sul posto e si riaprono; se la sostituzione fallisce vengono ripristinati i file precedenti. In una cartella protetta viene mostrato il download da installare manualmente. Prima dell’installazione viene verificato lo SHA-256 dell’allegato GitHub. Non viene installato nulla senza premere INSTALLA ORA; per i progetti non salvati resta la normale conferma di chiusura.
+
+Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, oppure in Documents se Downloads non esiste. Progetti, campioni, esportazioni e autosave non vengono sostituiti. **0.7.0 e precedenti:** installa questa release una volta manualmente; il vecchio pulsante DOWNLOAD apre la pagina release. Dalle versioni successive funziona l’aggiornamento integrato. Su Linux verifica e download usano `curl` di sistema.
 
 **Al primo avvio:** premi **AUDIO**, scegli l'uscita che usi per ascoltare e un buffer adatto al tuo dispositivo. L'app usa l'uscita audio; non apre il microfono.
 

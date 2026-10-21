@@ -62,7 +62,7 @@ cmake --build build --config Release -j2
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Scarica i pacchetti pubblicati da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): `.zip` Windows e `.tar.gz` macOS/Linux. Estrai l'archivio per usare l'applicazione. I pacchetti sono portatili e non firmati; macOS include Intel e Apple Silicon. Le [build GitHub Actions](https://github.com/wsx79/fasegroovearranger/actions) offrono anche artifact di sviluppo: in quel caso estrai anche l'archivio contenuto nell'artifact. Requisiti: Windows 10+, macOS 11+, Linux compatibile con Ubuntu 24.04. Dipendenze Linux e dettagli tecnici nel [README inglese](README.md#build-and-run).
+Scarica da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** usa lo stesso installer italiano/inglese della famiglia, con menu Start e disinstallazione. Ci sono gli ZIP portatili per Windows, macOS universale e Linux, oltre agli archivi con versione. **OPZIONI → IMPOSTAZIONI → VERIFICA ORA** scarica l’aggiornamento; **INSTALLA ORA** esegue il setup o sostituisce la copia portatile scrivibile e riapre l’app. Progetti e preferenze restano. La 0.7.0 e le precedenti richiedono una prima installazione manuale. Dettagli nella [guida](docs/GUIDA.md#1-installazione). Il setup Windows non è firmato; macOS usa la firma ad hoc/Developer ID opzionale della famiglia. Build di sviluppo anche in Actions → Artifacts.
 
 Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_BUILD_APP=OFF`.
 

@@ -52,3 +52,37 @@ else:
         executables = [f for f in check.getmembers() if f.isfile() and f.mode & 0o111]
         assert executables, 'Executable permissions missing from distribution'
 print(f'Packaged {archive.name}: {archive.stat().st_size:,} bytes')
+
+# Stable family asset names are used by the in-app updater. Keep the versioned
+# portable archives too, so existing manual installations retain their workflow.
+update_stage = dist / f'update-{system}'
+if update_stage.exists():
+    shutil.rmtree(update_stage)
+(update_stage / 'Standalone').mkdir(parents=True)
+app_name = 'Fase Groove Arranger' + ('.app' if system == 'macOS' else '.exe' if system == 'Windows' else '')
+source_app = native / app_name
+if source_app.is_dir():
+    shutil.copytree(source_app, update_stage / 'Standalone' / app_name, symlinks=True)
+else:
+    shutil.copy2(source_app, update_stage / 'Standalone' / app_name)
+for path in stage.iterdir():
+    if path.name == app_name:
+        continue
+    if path.is_dir():
+        shutil.copytree(path, update_stage / path.name, symlinks=True)
+    else:
+        shutil.copy2(path, update_stage / path.name)
+stable = dist / f'FaseGrooveArranger-{system}.zip'
+if stable.exists():
+    stable.unlink()
+if system == 'macOS':
+    subprocess.run(['/usr/bin/ditto', '-c', '-k', '--sequesterRsrc', str(update_stage), str(stable)], check=True)
+else:
+    with zipfile.ZipFile(stable, 'w', zipfile.ZIP_DEFLATED) as out:
+        for path in sorted(update_stage.rglob('*')):
+            if path.is_file():
+                out.write(path, path.relative_to(update_stage))
+with zipfile.ZipFile(stable) as check:
+    assert f'Standalone/{app_name}' + ('/Contents/Info.plist' if system == 'macOS' else '') in check.namelist()
+    assert 'SOURCE.txt' in check.namelist() and 'docs/GUIDE.md' in check.namelist()
+print(f'Packaged family update {stable.name}: {stable.stat().st_size:,} bytes')

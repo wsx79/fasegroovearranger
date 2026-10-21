@@ -1,6 +1,6 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.4.1 · 20 October 2026
+Version 0.7.1 · 21 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 
@@ -12,7 +12,7 @@ The app reads selected projects, MIDI files, samples and plugins. It writes sele
 
 You can delete projects, exports and autosaves with your file manager. Removing a portable executable does not delete those documents. Undo history is kept in memory and ends when the process closes.
 
-Permissions are limited to audio output, access to chosen files and local application data, loading native instrument code, and opening requested browser links. The application opens no microphone/audio input and does not record the room. It requires no administrator account, camera, location, contacts, calendar or cloud account. System prompts can depend on packaging, audio devices and third-party plugins.
+Permissions are limited to audio output, access to chosen files and local application data, loading native instrument code, and opening requested browser links. The application opens no microphone/audio input and does not record the room. The running app requires no administrator account, camera, location, contacts, calendar or cloud account. The optional Windows setup requests administrator access to install or upgrade in Program Files; the app itself runs with the normal user account. System prompts can depend on packaging, audio devices and third-party plugins.
 
 This notice describes the arranger's source code, not the behaviour of external plugins or websites. For project requests use the repository, keeping private data out of public issues.
 
@@ -22,4 +22,8 @@ Language and tooltip preferences are saved locally on this computer. LEARN reads
 
 ## GitHub updates
 
-As in the other family apps, GitHub release checking is enabled initially and can be disabled in OPTIONS → SETTINGS. CHECK NOW starts a manual check. Only `api.github.com/repos/wsx79/fasegroovearranger/releases/latest` is queried; GitHub receives ordinary connection data (IP and user-agent), without projects, MIDI, samples or plugin state. Downloads open in the browser only after clicking the button. No update is installed automatically. Language, size, tooltips, circle editing mode, update preference and any skipped version are stored in the local settings file. Linux checking uses the `curl` command, as in the original apps; if unavailable, checking fails without preventing offline work.
+As in the family apps, automatic release checking/downloading is enabled initially and can be disabled in OPTIONS → SETTINGS. CHECK NOW performs a manual check. The updater requests the public GitHub release metadata, the Italian changelog from raw.githubusercontent.com when appropriate, and the matching release package through GitHub's download/CDN services. GitHub receives ordinary connection data (IP and user-agent); no project, MIDI, sample, plugin state or local file path is uploaded.
+
+Packages are downloaded and prepared under `Downloads/Fase Groove Arranger updates`, or Documents if Downloads is unavailable. SHA-256 is verified against release metadata. INSTALL NOW is required before the Windows setup or portable replacement runs. The setup may request Windows administrator permission; portable replacement needs write access to the app folder. If replacement fails, old files are restored; protected folders fall back to manual installation. A local temporary helper may reopen the app after it closes. Projects, samples, exports, autosaves and preferences are not replaced by the updater or deleted by uninstalling. Delete update downloads with your file manager when no longer needed.
+
+Language, size, tooltips, circle mode, update preference and skipped version are stored locally. Linux networking uses system curl; if it is missing, offline music work remains available.

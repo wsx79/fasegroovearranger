@@ -353,13 +353,12 @@ UpdateOverlay::UpdateOverlay()
 
     installButton.onClick = [this]
     {
-        juce::URL("https://github.com/wsx79/fasegroovearranger/releases/latest").launchInDefaultBrowser();
-        setVisible (false);
+        if(onInstall)onInstall(result);
     };
     laterButton.onClick = [this] { setVisible (false); };
     skipButton.onClick = [this]
     {
-        Localisation::setSetting("skippedVersion",result.version);
+        Updater::skipVersion(result.version);
         setVisible (false);
     };
     refreshText();
@@ -377,7 +376,7 @@ void UpdateOverlay::show (const Updater::Result& r)
 
 void UpdateOverlay::refreshText()
 {
-    installButton.setButtonText (tr ("DOWNLOAD"));
+    installButton.setButtonText (tr ("INSTALL NOW"));
     laterButton.setButtonText (tr ("LATER"));
     skipButton.setButtonText (tr ("SKIP THIS VERSION"));
     repaint();
@@ -413,17 +412,21 @@ void UpdateOverlay::paint (juce::Graphics& g)
     auto r = c.reduced (28.0f, 22.0f);
     g.setColour (Palette::accent);
     g.setFont (FamilyTheme::font (22.0f, true));
-    g.drawText (tr ("New version") + " " + result.version + " " + tr ("available"), r.removeFromTop (30.0f), juce::Justification::centredLeft);
+    g.drawText (tr ("New version") + " " + result.version + " " + tr ("downloaded"), r.removeFromTop (30.0f), juce::Justification::centredLeft);
     g.setColour (Palette::dim);
     g.setFont (FamilyTheme::font (13.0f));
     g.drawText (tr ("You have") + " " + juce::String (JUCE_APPLICATION_VERSION_STRING) + ". " + tr ("What's new:"),
                 r.removeFromTop (26.0f), juce::Justification::centredLeft);
 
-    const char* how = "DOWNLOAD opens the GitHub release page. Choose the package for your system.";
+    const char* how = result.kind==Updater::InstallKind::installer
+        ? "INSTALL NOW updates the app with the setup and reopens it. Your projects and preferences stay."
+        : result.kind==Updater::InstallKind::portable
+        ? "INSTALL NOW replaces this copy and reopens it. Save your project first."
+        : "INSTALL NOW shows the downloaded package. Replace the app in its current folder.";
     auto bottom = c.reduced (28.0f, 22.0f).removeFromBottom (34.0f + 44.0f).removeFromTop (44.0f);
     g.drawFittedText (tr (how), bottom.toNearestInt(), juce::Justification::centredLeft, 2);
     g.setFont (FamilyTheme::font (11.0f));
-    g.drawText ("github.com/wsx79/fasegroovearranger/releases", r.removeFromTop (20.0f), juce::Justification::centredLeft);
+    g.drawText (result.file.getFullPathName(), r.removeFromTop (20.0f), juce::Justification::centredLeft);
 }
 
 bool UpdateOverlay::verifyLayout()const{

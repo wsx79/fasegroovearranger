@@ -1,0 +1,23 @@
+﻿Fase Groove Arranger è installato!
+
+APP STANDALONE
+- Avviala dal menu Start e scegli l'uscita audio in AUDIO.
+- I tre motori Fase Groove sono inclusi. Non servono altre DAW o plugin Fase Groove.
+
+PRIMI PASSI
+1. Scegli genere, tonalità e giro, poi premi NUOVO ARRANGIAMENTO.
+2. Premi PLAY. Clicca il nome della traccia per i controlli o fai doppio clic su un clip per il MIDI.
+3. SALVA il progetto ed ESPORTA il mix o le singole tracce in WAV, MP3 o MIDI.
+
+AGGIORNAMENTI
+OPZIONI -> IMPOSTAZIONI -> VERIFICA ORA cerca e scarica la nuova versione.
+Salva il progetto, poi scegli INSTALLA ORA. Il setup mantiene cartella e preferenze.
+La disinstallazione non rimuove progetti, campioni, esportazioni o autosave.
+
+Guida: https://github.com/wsx79/fasegroovearranger/blob/main/docs/GUIDA.md
+
+Fase Groove Arranger è gratuito e open source. Puoi supportarlo:
+Ko-fi: https://ko-fi.com/fabios1979 - PayPal: https://paypal.me/fabios79
+Ascolta la mia musica: https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP
+
+Grazie! - Fabio 'Pitch' Serra

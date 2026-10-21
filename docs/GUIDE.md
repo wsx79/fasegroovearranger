@@ -24,20 +24,29 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.7.0** of Fase Groove Arranger. Download the package for your system from
-the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest) and extract it.
+This guide covers **v0.7.1** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
-### Manual installation (zip / tar.gz, all systems)
+### Windows installer (recommended)
 
-Download your platform package and extract it. The app works on its own: **you do not need a DAW or the three Fase Groove plugins installed**.
+Open **FaseGrooveArranger-Windows-Setup.exe**, choose English or Italian and follow the same setup wizard as the other Fase Groove apps. It installs the standalone app, guides, privacy/licence notices and Start menu shortcuts; the desktop shortcut is optional. Arranger includes all three engines, so no Fase Groove plugins or other DAW are required. Windows asks for administrator access for the setup only. Uninstall from Windows Settings; projects, exports and local preferences remain.
 
-| System | Package | Start |
+### Manual installation (all systems)
+
+| System | Family package | Start |
 |---|---|---|
-| Windows | `.zip` | Open the extracted folder and run `Fase Groove Arranger.exe`. |
-| macOS | `.tar.gz` | Extract and open `Fase Groove Arranger.app`. The package is universal: Intel and Apple Silicon. |
-| Linux | `.tar.gz` | Extract and run `Fase Groove Arranger`. Keep the executable permissions. |
+| Windows 10/11 x64 | `FaseGrooveArranger-Windows.zip` | Extract and run `Standalone/Fase Groove Arranger.exe`. |
+| macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Extract, copy the app from Standalone to Applications and open it. |
+| Linux | `FaseGrooveArranger-Linux.zip` | Extract and run `Standalone/Fase Groove Arranger`. Preserve executable permissions. |
 
-From GitHub Actions, the artifact ZIP contains the package shown above: extract that too. These packages are portable and have no installer or distribution signature.
+The versioned Windows ZIP and macOS/Linux tar.gz packages are still provided. From Actions, extract the artifact ZIP first, then the package inside. Windows setup is unsigned. macOS follows the family signing workflow: ad-hoc signing by default, Developer ID/notarisation when configured. System security prompts may therefore appear, as with the other apps.
+
+### Updates, as in the Fase Groove family
+
+**OPTIONS → SETTINGS → CHECK NOW** checks and downloads the matching package. Automatic checking/downloading is enabled initially; switch it off there to work offline. The family update card shows the downloaded version and release notes, with **INSTALL NOW / LATER / SKIP THIS VERSION**.
+
+Save your project before **INSTALL NOW**. Installed Windows copies run the same setup silently and reopen afterward, preserving the installation folder and preferences. Writable portable copies replace this app in place and reopen; a failed replacement restores the previous files. In a protected folder, the download is shown so you can install it manually. The download is verified against the GitHub release asset's SHA-256 before installation. Nothing is installed without pressing INSTALL NOW; unsaved projects still use the application's normal close confirmation.
+
+Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Documents if Downloads is unavailable. Projects, samples, exports and autosaves are not replaced by upgrades. **0.7.0 and earlier:** install this release once manually; their DOWNLOAD button opens the release page. Later versions use the integrated installer/update workflow. On Linux, the network check/download uses system `curl`.
 
 **First launch:** open **AUDIO**, choose your output and a buffer suited to the device. The app uses audio output; it does not open the microphone.
 
