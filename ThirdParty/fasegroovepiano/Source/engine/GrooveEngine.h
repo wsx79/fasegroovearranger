@@ -426,6 +426,7 @@ private:
     std::array<GroovePattern, 3> cachedEvolution;   // the groove's evolution: + ghosts, + variation, + fill
     std::array<GroovePattern, 2> cachedTakes;       // realism: two other takes of the groove over a phrase
     int cachedBass = -1;
+    std::string cachedBassLineOverride;
     bool cachedRealism = false;
     int cachedBars = 2, cachedMovement = 1;
     int cachedIndex = -1;

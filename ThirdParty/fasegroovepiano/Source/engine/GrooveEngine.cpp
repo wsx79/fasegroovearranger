@@ -1147,7 +1147,7 @@ const GroovePattern& GrooveEngine::patternFor (const GrooveSettings& s)
         || s.section != cachedSection || s.segmentOrder != cachedOrder
         || s.userRight != cachedUserRight || s.userLeft != cachedUserLeft || s.grooveBars != cachedBars
         || s.movement != cachedMovement || s.sectionVariation != cachedSectionVariation || cachedPattern.rightHand.empty()
-        || (int) s.bass != cachedBass || s.realism != cachedRealism)   // a library bass line shows its own rhythm
+        || (int) s.bass != cachedBass || s.bassLineOverride != cachedBassLineOverride || s.realism != cachedRealism)   // a library bass line shows its own rhythm
     {
         cachedPattern = resolvePattern (s);
         cachedVariation = makeVariation (cachedPattern, s.riffSeed * 17u + (std::uint32_t) s.pattern);
@@ -1162,6 +1162,7 @@ const GroovePattern& GrooveEngine::patternFor (const GrooveSettings& s)
             cachedTakes[k] = s.realism ? makeVariation (cachedPattern, s.riffSeed * 53u + (std::uint32_t) s.pattern + k * 7919u)
                                        : GroovePattern {};
         cachedBass = (int) s.bass;
+        cachedBassLineOverride = s.bassLineOverride;
         cachedRealism = s.realism;
         cachedBars = s.grooveBars;
         cachedMovement = s.movement;
