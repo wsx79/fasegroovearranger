@@ -25,7 +25,7 @@ Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi 
 
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
-La vista DAW comprende inspector laterale, mixer a 17 canali con master, righello e locatori di loop, selezione e scambio/copia dei clip, adattamento dell’intero brano e scorrimento in riproduzione.
+La vista DAW comprende inspector laterale, mixer a 17 canali con master, righello e locatori di loop, clip indipendenti con divisione al cursore, taglia/copia/incolla, duplicazione, eliminazione, spostamento e selezione multipla, adattamento dell’intero brano e scorrimento in riproduzione. La struttura in alto resta una guida modificabile: le sue modifiche conservano le posizioni MIDI.
 
 ## Funzioni
 

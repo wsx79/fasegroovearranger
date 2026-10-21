@@ -27,7 +27,7 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
-The DAW workspace includes a side inspector, seventeen-channel mixer and master, bar ruler and loop locators, clip selection/swap/copy, fit-to-song and playback following.
+The DAW workspace includes a side inspector, seventeen-channel mixer and master, bar ruler and loop locators, independent clip editing (split, cut/copy/paste, duplicate, delete, move/copy and multi-selection), fit-to-song and playback following. The section lane above the tracks is an editable guide; guide edits preserve MIDI positions.
 
 ## What is implemented
 

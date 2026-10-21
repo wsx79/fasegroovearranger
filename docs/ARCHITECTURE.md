@@ -31,3 +31,13 @@ Track volume envelopes use optional schema-v1 `volumeAutomation` fields (`enable
 `ArrangementView` keeps the track header and section/bar rulers visible while scrolling. Single clicks select clips, double clicks open the full editor, and drags swap or copy section-aligned clips on the same instrument. Shift-drag sets the persisted loop range. Track IDs and the `.fga` schema are unchanged.
 
 Section operations in `Project` transform loop locators and volume automation together with the musical structure. Whole-song loops remain whole-song loops after reordering. `AudioEngine` smooths live gain/pan targets, reports master peaks before the safety ceiling, clears pause meters and accepts disabled output-channel buffers.
+
+## Independent timeline and arrangement guide (0.6.0)
+
+`core/Timeline.cpp` adds absolute clip positions on individually edited tracks. Untouched tracks retain the legacy section-aligned representation; editing materialises their audible clip ranges and sets `Track::freeTimeline`. A free timeline may contain zero to 4096 clips, including gaps and clips beyond the guide. `clipStart`, `clipLength` and `clipAtBeat` are the common geometry for playback, export, drawing and hit testing.
+
+Split clips trim crossing notes at their boundaries. Overwrite paste retains outside fragments. Manual editing ignores generation locks; regeneration respects them. Selected clip indices are independent of the selected guide section. Generation uses the guide at each clip position; section regeneration splits independent clips at guide boundaries before replacing that section.
+
+Guide insertion, removal, movement and duration edits materialise aligned tracks without moving their audible content, automation or loop locators. Captured clip roles preserve the existing sustain/expression events when guide roles change. Legacy whole-arrangement section transforms remain separate core APIs.
+
+Edited projects use format 2 with `freeTimeline` and per-clip `position`, explicit `span` and captured `role`, preserving existing notes, loop archives and instrument assignments. Untouched projects retain format 1; the loader accepts both. Native UI, project IO and audio-render checks exercise these paths.

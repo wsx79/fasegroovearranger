@@ -107,7 +107,7 @@ The **MIXER** shows seventeen channels in musical order with a fixed master at t
 - **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
 - Drop a MIDI file or personal sample on a track row to target that track.
 
-Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Loop locators and automation follow section insertion, removal, movement and duration changes.
+Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Guide edits preserve loop locators and automation. Clip positions, loop sources and gaps save in .fga format 2; format 1 projects still open. Reopen edited timelines with version 0.6.0 or later.
 
 ### Transport & tempo (top)
 
