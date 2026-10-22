@@ -336,41 +336,6 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     return p;
 }
 
-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre)
-{
-    // The genre's own idea of this lane first, from a few grooves...
-    for (std::uint32_t attempt = 0; attempt < 12; ++attempt)
-    {
-        const auto groove = makeRandomPattern (seed * 31u + attempt * 7919u + (std::uint32_t) lane, density, genre);
-        const auto& line = groove[lane];
-        if (hits (line))
-            return line;
-    }
-
-    // ...otherwise a light part that fits any house groove.
-    Random r (seed + 99u);
-    static const char* cells[numLanes][3] {
-        { "X... .... X... ....", "X... ..x. ..x. x...", "X... ..x. X... x.x." },        // down strum
-        { ".... ..x. .... ..x.", "..x. ..x. ..x. ..x.", ".x.x ...x .x.. .x.x" },        // up strum
-        { "..X. .... ..X. ....", "..X. ..X. ..X. ..X.", "X..X ..X. .X.. X.X." },        // stab
-        { "..x. ..x. ..x. ..x.", "..xx ..x. ..xx ..x.", "x.xx .x.x x.xx .x.x" },        // chank
-        { "g... g... g... g...", ".g.g .g.g .g.g .g.g", "gggg gggg gggg gggg" },        // scratch
-        { ".... .... .... ..X.", "...X .... .... ..x.", "...X .... ..x. ..X." },        // slide
-        { "X... .... .... ....", "X... .... .... ....", "X... .... X... ...." },        // swell
-        { "x... x... x... x...", "x.x. x.x. x.x. x.x.", "x.xx x.xx x.xx x.xx" },        // arpeggio
-        { ".... .... .... x.x.", ".... ..x. .... .x.x", "..x. .x.. .xxx x..." },        // lick
-        { "x... .... x... ....", "x..x ..x. x..x ..x.", "X.x. x.x. X.x. x.x." },        // octaves
-        { "X... .... X... ....", "X... ..X. ..X. X...", "X.x. X.x. X.x. X.x." },        // power chord
-        { "X... .... .... ....", "X... .... X... ....", "X... .... X..x ...." },        // root
-    };
-    const int choice = std::clamp ((int) (density * 2.99f) + (r.chance (0.3f) ? (r.chance (0.5f) ? -1 : 1) : 0), 0, 2);
-    auto line = compact (cells[(int) lane][choice]);
-    line += line;
-    if (density > 0.5f && lane != Lane::swell && lane != Lane::root)
-        line[(size_t) (16 + r.pick ({ 11, 13, 14, 15 }))] = 'g';
-    return line;
-}
-
 GuitarPattern makeVariation (const GuitarPattern& source, std::uint32_t seed)
 {
     Random r (seed * 2654435761u + 17u);
@@ -509,15 +474,6 @@ int fillStartStep (FillStyle style) noexcept
         case FillStyle::mix:
         default:                   return 12;
     }
-}
-
-const std::vector<ArrangementPart>& defaultArrangement()
-{
-    static const std::vector<ArrangementPart> parts {
-        { Section::intro, 8 }, { Section::main, 16 }, { Section::breakdown, 8 },
-        { Section::buildup, 4 }, { Section::drop, 16 }, { Section::outro, 8 },
-    };
-    return parts;
 }
 
 } // namespace fgg

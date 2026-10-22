@@ -167,9 +167,9 @@ public:
             {
                 const auto saved=p;p=fga::newProject(4);p.sections={{fga::Section::main,4,"Main"}};p.normalise();
                 for(auto& t:p.tracks){t.engine.humanize=0;t.engine.realism=false;}
-                for(unsigned seed:{91U,4951U}){
-                    fga::generate(p,fga::Scope::song,0,0,seed);
-                    for(int track:{0,1,3})run("regeneration-"+juce::String(seed)+"-"+juce::String(track)+".wav",track,false);
+                for(unsigned seed:{91U,4951U})for(int track:{0,1,3}){
+                    fga::generate(p,fga::Scope::track,track,0,seed);
+                    run("regeneration-"+juce::String(seed)+"-"+juce::String(track)+".wav",track,false);
                 }
                 p=saved;
             }

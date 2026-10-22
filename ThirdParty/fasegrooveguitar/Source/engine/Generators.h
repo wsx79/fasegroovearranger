@@ -33,10 +33,6 @@ bool sectionAllowsFills (Section section) noexcept;
     seed. density 0..1 goes from a few chords to busy 16th strumming. Same seed = same groove. */
 GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
 
-/** A new two-bar line for one lane only, in the style of a genre (density as above). Never empty:
-    a lane the genre rarely uses gets a light, fitting part. Same seed = same line. */
-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
-
 /** A variation of a groove for the turnaround bar: a slide into the next bar, a scratch run,
     an up-strum pick-up, a lick. Same seed = same variation. */
 GuitarPattern makeVariation (const GuitarPattern& source, std::uint32_t seed);
@@ -72,9 +68,6 @@ struct ArrangementPart
     std::uint32_t variation = 0;   // its own version of the groove (0: the groove as it is)
     int endFill = -1;              // fill on its last bar: -1 as set in the Song panel, -2 none, else a fill style
 };
-
-/** Intro 8 | Main 16 | Break 8 | Build-up 4 | Drop 16 | Outro 8 */
-const std::vector<ArrangementPart>& defaultArrangement();
 
 } // namespace fgg
 

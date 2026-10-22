@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
+#include <algorithm>
 #include <cmath>
 namespace fga {
 namespace {
@@ -34,22 +35,26 @@ int Project::splitClip(int track,int index,double beat){
     if(track<0||track>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beat))return -1;
     const double start=clipStart(track,index),end=start+clipLength(track,index);beat=std::round(beat*960)/960.;
     if(beat-start<tick||end-beat<tick)return -1;
-    index=detachTrack(track,index);if(index<0)return -1;auto& t=tracks[(size_t)track];const auto original=t.clips[(size_t)index];
-    const auto left=slice(original,0,beat-original.position,original.position),right=slice(original,beat-original.position,original.position+original.span-beat,beat);
-    if(t.clips.size()>=4096)return -1;t.clips[(size_t)index]=left;t.clips.insert(t.clips.begin()+index+1,right);return index+1;
+    Project edited=*this;index=edited.detachTrack(track,index);if(index<0)return -1;auto& t=edited.tracks[(size_t)track];
+    if(t.clips.size()>=4096)return -1;const auto original=t.clips[(size_t)index];
+    t.clips[(size_t)index]=slice(original,0,beat-original.position,original.position);
+    t.clips.insert(t.clips.begin()+index+1,slice(original,beat-original.position,original.position+original.span-beat,beat));
+    *this=std::move(edited);return index+1;
 }
 int Project::placeClip(int track,Clip clip,double beat){
     if(track<0||track>=(int)tracks.size()||!std::isfinite(beat)||!std::isfinite(clip.span)||clip.span<tick||clip.span>512)return -1;
-    beat=std::clamp(std::round(beat*960)/960.,0.,131072.);detachTrack(track);auto& t=tracks[(size_t)track];const double end=beat+clip.span;
+    beat=std::clamp(std::round(beat*960)/960.,0.,131072.);
+    Project edited=*this;edited.detachTrack(track);auto& t=edited.tracks[(size_t)track];const double end=beat+clip.span;
     std::vector<Clip> keep;size_t notes=clip.notes.size()+clip.loopSource.size();
     for(const auto& old:t.clips){const double tail=old.position+old.span;if(tail<=beat||old.position>=end)keep.push_back(old);else{
         if(beat-old.position>=tick)keep.push_back(slice(old,0,beat-old.position,old.position));
         if(tail-end>=tick)keep.push_back(slice(old,end-old.position,tail-end,end));}}
     if(keep.size()>=4096)return -1;
     for(const auto& c:keep)notes+=c.notes.size()+c.loopSource.size();
-    for(size_t i=0;i<tracks.size();++i)if((int)i!=track)for(const auto& c:tracks[i].clips)notes+=c.notes.size()+c.loopSource.size();
+    for(size_t i=0;i<edited.tracks.size();++i)if((int)i!=track)for(const auto& c:edited.tracks[i].clips)notes+=c.notes.size()+c.loopSource.size();
     if(notes>2000000)return -1;
-    clip.position=beat;tidyNotes(clip,clip.span);keep.push_back(std::move(clip));t.clips=std::move(keep);sortClips(t);normalise();return clipAtBeat(track,beat);
+    clip.position=beat;tidyNotes(clip,clip.span);keep.push_back(std::move(clip));t.clips=std::move(keep);sortClips(t);edited.normalise();
+    const int placed=edited.clipAtBeat(track,beat);*this=std::move(edited);return placed;
 }
 int Project::moveClip(int track,int index,int targetTrack,double beat,bool copy){
     if(track<0||track>=(int)tracks.size()||targetTrack<0||targetTrack>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beat))return -1;
@@ -62,6 +67,19 @@ bool Project::deleteClip(int track,int index){
 }
 void Project::resizeGuide(int index,int bars){if(index<0||index>=(int)sections.size())return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);sections[(size_t)index].bars=std::clamp(bars,1,128);normalise();}
 void Project::insertGuide(int index,SongSection guide){if(sections.size()>=64)return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);index=std::clamp(index,0,(int)sections.size());sections.insert(sections.begin()+index,std::move(guide));normalise();}
+bool Project::duplicateSection(int index){
+    if(index<0||index>=(int)sections.size()||sections.size()>=64)return false;
+    auto copy=sections[(size_t)index];if(copy.name.size()<60)copy.name+=" 2";
+    const bool free=std::any_of(tracks.begin(),tracks.end(),[](const Track& t){return t.freeTimeline;});
+    if(!free){insertSection(index+1,std::move(copy),index);return true;}
+    Project edited=*this;const double start=edited.sectionStart(index),end=edited.sectionStart(index+1),duration=end-start;
+    struct Held{int track;Clip clip;};std::vector<Held> copies;
+    for(int ti=0;ti<(int)edited.tracks.size();++ti){auto& t=edited.tracks[(size_t)ti];if(!t.freeTimeline)continue;for(const auto& c:t.clips){const double from=std::max(c.position,start),to=std::min(c.position+c.span,end);if(to-from<tick)continue;copies.push_back({ti,slice(c,from-c.position,to-from,end+(from-start))});}}
+    edited.insertSection(index+1,copy,index);
+    for(auto& t:edited.tracks)if(t.freeTimeline)for(auto& c:t.clips)if(c.position>=end-tick)c.position+=duration;
+    for(auto& item:copies){const double at=item.clip.position;if(edited.placeClip(item.track,std::move(item.clip),at)<0)return false;}
+    *this=std::move(edited);return true;
+}
 void Project::removeGuide(int index){if(sections.size()<2||index<0||index>=(int)sections.size())return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);sections.erase(sections.begin()+index);normalise();}
 void Project::moveGuide(int from,int to){if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to)return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);auto guide=sections[(size_t)from];sections.erase(sections.begin()+from);sections.insert(sections.begin()+to,guide);normalise();}
 }

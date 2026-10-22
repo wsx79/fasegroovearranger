@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.8.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.9.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -339,7 +339,7 @@ The song keeps its base groove across sections, changing performance, density an
 
 ### Change only what you need
 
-**Regeneration and sound.** **GENERATE SONG** draws a different key, chord progression and bass figure from the selected genre, together with new piano and guitar patterns. Genre, tempo, arrangement, assigned instruments and mix remain. If a locked track or clip contains harmonic notes (piano, bass, strings or guitar), the shared key and progression stay unchanged so those notes remain compatible; unlock the harmonic parts to draw new harmony. Locked drum parts do not prevent harmonic changes.
+**Regeneration and sound.** **GENERATE SONG** draws a different key, chord progression and bass figure, a new tempo inside the genre range, density and swing within the style, and new section lengths in 8-bar phrases. Section order and types stay. Genre, assigned instruments and mix remain. Locked tracks or clips freeze the form. If a locked track or clip contains harmonic notes (piano, bass, strings or guitar), the shared key and progression also stay unchanged; unlock those parts to draw new harmony. Locked drum parts do not prevent harmonic changes.
 
 **REGENERATE TRACK/SECTION/CLIP** changes the selected musical parts within the current key and progression. Regeneration switches targeted tracks to automatic genre patterns and clears fixed Riff seed overrides, including when a factory preset or hand-edited grid was selected. Locked piano/bass grid segments are retained. These pattern settings belong to the track; notes outside the selected scope stay intact. A track keeps one motif across its sections, and drum stems generated together share one kit motif. Bass variations change rhythm as well as chord tones; sustained holds and the first pitched anchor in each bar remain.
 
@@ -347,7 +347,7 @@ The song keeps its base groove across sections, changing performance, density an
 
 | Button | What changes |
 |---|---|
-| **GENERATE SONG** | New key, progression, bass figure and patterns on unlocked tracks, keeping the existing sections. Locked harmonic notes preserve harmony. |
+| **GENERATE SONG** | New key, tempo, progression, bass figure, 8-bar section lengths and patterns. Locks freeze the form; locked harmonic notes keep the harmony. |
 | **REGENERATE TRACK** | The selected instrument throughout the song. |
 | **REGENERATE SECTION** | This section across all unlocked tracks. |
 | **REGENERATE CLIP** | Just the selected track in this section. |

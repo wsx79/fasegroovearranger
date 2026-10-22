@@ -420,42 +420,6 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     return p;
 }
 
-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre)
-{
-    // The genre's own idea of this drum first, from a few beats...
-    for (std::uint32_t attempt = 0; attempt < 12; ++attempt)
-    {
-        const auto beat = makeRandomPattern (seed * 31u + attempt * 7919u + (std::uint32_t) lane, density, genre);
-        const auto& line = beat[lane];
-        if (std::any_of (line.begin(), line.end(), isHit))
-            return line;
-    }
-
-    // ...otherwise a light part that fits any house groove.
-    Random r (seed + 99u);
-    static const char* cells[numLanes][3] {
-        { "X... X... X... X...", "X... ..x. X... ....", "X... X... X... X..x" },        // kick
-        { ".... X... .... X...", ".... X..g .... X...", "...g X... ..g. X..." },        // snare
-        { ".... X... .... X...", ".... X... .... X..x", ".... f... .... X..." },        // clap
-        { "...x ..x. ...x ....", "..x. ...x .x.. ..x.", "x..x ..x. ..x. x..." },        // rim
-        { "xg.g xg.g xg.g xg.g", "x.x. x.x. x.x. x.x.", "xx.x xx.x xx.x xx.x" },        // closed hat
-        { "..x. ..x. ..x. ..x.", ".... ..x. .... ..x.", "..X. ..X. ..X. ..X." },        // open hat
-        { "x.x. x.x. x.x. x.x.", "x.X. x.X. x.X. x.X.", "x... x... x... x..." },        // ride
-        { "xgxg xgxg xgxg xgxg", "gxXx gxXx gxXx gxXx", "g.x. g.x. g.x. g.x." },        // shaker
-        { ".... x... .... x...", "..x. X.x. ..x. X.x.", "g.X. g.X. g.X. g.X." },        // tambourine
-        { "..x. .x.. x.x. ..x.", ".... ..x. .... x.x.", "x..x ..x. x..x ..x." },        // conga
-        { "..x. ..x. ..x. ..x.", "x..x ..x. ..x. x...", ".... .... ..x. ...." },        // cowbell
-        { ".... .... .... ..x.", "..x. .x.. ..x. x.x.", ".... .... .... XxXx" },        // tom
-        { "X... .... .... ....", "X... .... .... ....", "X... .... .... ...." },        // crash
-    };
-    const int choice = std::clamp ((int) (density * 2.99f) + (r.chance (0.3f) ? (r.chance (0.5f) ? -1 : 1) : 0), 0, 2);
-    auto line = compact (cells[(int) lane][choice]);
-    line += lane == Lane::crash ? std::string (16, '.') : line;
-    if (density > 0.5f && lane != Lane::kick && lane != Lane::crash)
-        line[(size_t) (16 + r.pick ({ 11, 13, 14, 15 }))] = 'g';
-    return line;
-}
-
 DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
 {
     Random r (seed * 2654435761u + 17u);
@@ -601,15 +565,6 @@ int fillStartStep (FillStyle style) noexcept
         case FillStyle::mix:
         default:                   return 12;
     }
-}
-
-const std::vector<ArrangementPart>& defaultArrangement()
-{
-    static const std::vector<ArrangementPart> parts {
-        { Section::intro, 8 }, { Section::main, 16 }, { Section::breakdown, 8 },
-        { Section::buildup, 4 }, { Section::drop, 16 }, { Section::outro, 8 },
-    };
-    return parts;
 }
 
 } // namespace fgd

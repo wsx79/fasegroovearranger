@@ -194,7 +194,7 @@ void InstrumentPanel::rebuild(){
         choice("Part octave",{"-2","-1","0","+1","+2"},e.laneOctave[(size_t)guitarLane]+2,[lane=guitarLane](auto& o,int v){o.laneOctave[(size_t)lane]=v-2;});
         toggle("Part mute",e.laneMute[(size_t)guitarLane],[lane=guitarLane](auto& o,bool v){o.laneMute[(size_t)lane]=v;});
         auto chords=std::make_unique<ChordSummary>(owner,[this]{owner.showChordMenu();},[this]{
-            owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());owner.changed(false);
+            owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(owner.project);owner.changed();
             juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});
         });chords->getProperties().set("fgaControl","Chord summary");addAndMakeVisible(*chords);controls.push_back({std::move(chords),{},false});
     }
@@ -203,7 +203,7 @@ void InstrumentPanel::rebuild(){
     if(track<3){
         juce::StringArray presets;for(const auto& p:sgk::progressionPresets())presets.add(juce::String(p.category)+" / "+p.name);
         sharedChoice("Ready progressions",presets,-1,[this](int v){chooseProgression(owner.project,v);updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
-        action("RANDOM CHORDS",[this]{owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());owner.changed(false);updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
+        action("RANDOM CHORDS",[this]{owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(owner.project);owner.changed();updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
         juce::StringArray lengths;for(int i=1;i<=8;++i)lengths.add(juce::String(i));
         sharedChoice("Length",lengths,owner.project.settings.chordCount-1,[this](int v){owner.project.settings.chordCount=v+1;juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
         sharedChoice("Each chord",{"1/2 bar","1 bar","2 bars","4 bars"},owner.project.settings.chordSteps==8?0:owner.project.settings.chordSteps==16?1:owner.project.settings.chordSteps==32?2:3,[this](int v){owner.project.settings.chordSteps=8<<v;});
