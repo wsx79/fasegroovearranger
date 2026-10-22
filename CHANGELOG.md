@@ -4,6 +4,7 @@
 
 - Jackin' House drums stay a jack groove on Generate Song, regenerate, random, variations and sections: four-on-the-floor kick, clap or snare on 2 and 4, open hat on the offbeats, swung 16ths around 56–62%, and a syncopated shaker. Tempo stays in 120–127. The beat does not turn into two-step, broken beat or garage.
 - Song regenerate no longer pushes Jackin' up to 130 BPM or a triplet shuffle. Cowbell and tom keep playing through the phrase.
+- Piano figures are the classic house riffs again, as in FaseGroove Piano 0.29.0. Genre no longer picks the piano rhythm, variation, fill, accent or progression. Regenerating piano or string stabs writes a different figure each time. A saved genre still opens and is ignored by the piano. Guitar LEAD keeps the four-bar piano roll. Guitar and drum genres are unchanged.
 
 ## 0.12.0 — 2026-10-22
 

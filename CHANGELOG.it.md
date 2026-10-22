@@ -4,6 +4,7 @@
 
 - La batteria Jackin' House resta un jack su Genera brano, rigenera, casuale, variazioni e sezioni: cassa in 4/4, clap o rullante su 2 e 4, charleston aperto in levare, sedicesimi shuffle circa 56–62% e shaker sincopato. Il tempo resta fra 120 e 127. Il beat non diventa two-step, broken o garage.
 - Rigenerare il brano non porta più il Jackin' a 130 BPM né a uno shuffle terzinato. Cowbell e tom restano nel fraseggio.
+- Le figure di piano tornano ai riff house classici, come in FaseGroove Piano 0.29.0. Il genere non sceglie più ritmo, variazione, fill, accento o progressione del piano. Rigenerare piano o stabs d'archi scrive ogni volta una figura diversa. Un genere salvato si apre ancora e il piano lo ignora. CHITARRA SOLISTA tiene il piano roll di quattro battute. Generi di chitarra e batteria invariati.
 
 ## 0.12.0 — 2026-10-22
 

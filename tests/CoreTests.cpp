@@ -73,7 +73,34 @@ int main(int argc,char** argv){try{
     }
 
     {auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();auto& e=p.tracks[0].engine;e.pattern=sgk::userPatternIndex();e.userRight.fill('.');e.userLeft.fill('.');e.userRight[0]='x';e.userVelRight[0]=37;e.realism=false;e.humanize=0;e.swing=0;e.strum=0;e.fillEvery=0;e.variationEvery=0;fga::generate(p,fga::Scope::track,0);check(!p.tracks[0].clips[0].notes.empty(),"custom piano grid generates notes");auto before=p.tracks[0].clips[0].notes;e.userVelRight[0]=120;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes[0].velocity>before[0].velocity,"per-step piano velocity reaches engine");e.inversions[0]=2;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes!=before,"per-chord inversion reaches engine");e.pedalCC=true;auto events=fga::events(p,0);bool pedal=false,expression=false;for(auto event:events){pedal=pedal||event.controller==64;expression=expression||event.controller==11;}check(pedal&&expression,"pedal and expression controller events");auto original=p;fga::applyPianoIntention(p,0,1,true,true,123);check(p.settings.degrees==original.settings.degrees&&p.tracks[0].engine.userRight==original.tracks[0].engine.userRight,"DNA rhythm and harmony locks");}
-    {auto p=fga::newProject(1);auto& e=p.tracks[0].engine;e.pattern=-1;e.riffSeed=123;auto a=fga::pianoEngineSettings(p,0,55);auto patternA=sgk::GrooveEngine::basePattern(a);e.riffSeed=9876;auto b=fga::pianoEngineSettings(p,0,55);auto patternB=sgk::GrooveEngine::basePattern(b);check(patternA.rightHand!=patternB.rightHand||patternA.leftHand!=patternB.leftHand,"riff seed changes the automatic genre groove");check(a.humanizeSeed==b.humanizeSeed,"riff and humanize seeds are independent");}
+    {auto p=fga::newProject(1);auto& e=p.tracks[0].engine;e.pattern=-1;e.riffSeed=123;auto a=fga::pianoEngineSettings(p,0,55);auto patternA=sgk::GrooveEngine::basePattern(a);e.riffSeed=9876;auto b=fga::pianoEngineSettings(p,0,55);auto patternB=sgk::GrooveEngine::basePattern(b);check(patternA.rightHand!=patternB.rightHand||patternA.leftHand!=patternB.leftHand,"riff seed changes the automatic piano figure");check(a.humanizeSeed==b.humanizeSeed,"riff and humanize seeds are independent");}
+    {
+        auto attacks=[&](const fga::Clip& clip){std::string mask(32,'.');for(const auto& n:clip.notes){const int step=(int)std::lround(n.start*4.0);if(step>=0&&step<32)mask[(size_t)step]='x';}return mask;};
+        auto hitsDiffer=[&](const std::string& a,const std::string& b){int d=0;const auto n=std::min(a.size(),b.size());for(size_t i=0;i<n;++i)d+=a[i]!=b[i];return d;};
+        for(int genre:{0,4,8,11}){
+            std::set<std::string> figures,piano,stabs;std::string firstFigure,firstPiano,firstStabs;int farFigure=0,farPiano=0,farStabs=0;
+            for(unsigned seed:{11u,29u,47u,83u,149u,211u}){
+                auto song=fga::newProject(genre);song.sections={{fga::Section::main,8,"Main"}};song.settings.stringsMode=(int)sgk::StringsMode::stabs;song.settings.humanize=0;song.settings.swing=0;song.normalise();
+                for(int ti:{0,2}){auto& eng=song.tracks[(size_t)ti].engine;eng.realism=false;eng.humanize=0;eng.swing=0;eng.fillEvery=0;eng.variationEvery=0;eng.evolveBars=0;eng.movement=0;eng.pattern=-1;}
+                fga::generate(song,fga::Scope::song,0,0,seed);
+                const auto figure=sgk::GrooveEngine::basePattern(fga::pianoEngineSettings(song,0,song.tracks[0].clips[0].seed,song.tracks[0].clips[0].motifSeed)).rightHand;
+                const auto pianoMask=attacks(song.tracks[0].clips[0]);const auto stabMask=attacks(song.tracks[2].clips[0]);
+                if(figures.empty()){firstFigure=figure;firstPiano=pianoMask;firstStabs=stabMask;}
+                else{farFigure=std::max(farFigure,hitsDiffer(firstFigure,figure));farPiano=std::max(farPiano,hitsDiffer(firstPiano,pianoMask));farStabs=std::max(farStabs,hitsDiffer(firstStabs,stabMask));}
+                figures.insert(figure);piano.insert(pianoMask);stabs.insert(stabMask);
+            }
+            check(figures.size()>=5&&farFigure>=4,"regenerating piano writes a clearly different classic figure");
+            check(piano.size()>=4&&farPiano>=4,"regenerated piano onsets differ by more than a ghost");
+            check(stabs.size()>=4&&farStabs>=4&&stabs.count(std::string(32,'.'))==0,"regenerated string stabs follow a clearly different figure");
+        }
+        std::string reference;
+        for(int genre:{0,3,4,8,11}){
+            auto song=fga::newProject(genre);song.settings.density=.55;song.tracks[0].engine.pattern=-1;song.tracks[0].engine.riffSeed=4242;song.tracks[0].engine.density=.55;
+            const auto figure=sgk::GrooveEngine::basePattern(fga::pianoEngineSettings(song,0,1));
+            if(reference.empty())reference=figure.rightHand+figure.leftHand;
+            check(figure.rightHand+figure.leftHand==reference,"the same piano seed ignores the song genre");
+        }
+    }
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;verifyClubProject(p,genre,argc>1?argv[1]:"");
         {auto form=p;form.settings.songMinutes=20;fga::arrangeSong(form);check(form.length()==p.length(),"legacy minutes do not constrain musical form");auto slow=p;slow.settings.bpm=80;fga::arrangeSong(slow);check(slow.length()==p.length(),"tempo does not stretch a musical form to minutes");auto developing=p;developing.tracks[0].engine.grooveBars=4;fga::arrangeSong(developing);check(developing.length()>p.length(),"longer groove develops over more complete phrases");}
