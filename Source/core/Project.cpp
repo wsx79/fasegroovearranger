@@ -25,7 +25,8 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     p.bass=(sgk::BassMode)s.bassMode; p.strings=(sgk::StringsMode)s.stringsMode;
     p.realism=true; p.variationEvery=4; p.fillEveryBars=4; p.fillStyle=sgk::FillStyle::mix;
     p.humanizeSeed=seed; p.riffSeed=seed; p.strum=.15f;
-    // The piano's random riff is genre-neutral. Start from its actual genre library,
+    // Automatic grooves start from the genre library. Random-riff mode uses that
+    // genre's own figures; house-family genres keep the classic piano-house riff.
     // then apply the original variation and intention engines to that vocabulary.
     std::vector<int> candidates;
     const auto& patterns=sgk::groovePatterns();
@@ -110,6 +111,7 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
     ps.fillEveryBars=e.fillEvery;ps.fillStyle=(sgk::FillStyle)(e.fillStyle<0?(int)sgk::FillStyle::mix:std::min(e.fillStyle,sgk::numFillStyles-1));ps.variationEvery=e.variationEvery;
     ps.stepsPerChord=s.chordSteps;ps.inversions=e.inversions;ps.velocityOrder=e.velocityOrder;
+    ps.styleGenre=std::clamp(s.genre,0,(int)sgk::grooveCategories().size()-1);
     if(e.humanizeSeed)ps.humanizeSeed=e.humanizeSeed;
     if(e.riffSeed)ps.riffSeed=e.riffSeed;
     if(e.pattern>=0&&e.pattern<=sgk::userPatternIndex())ps.pattern=e.pattern;
@@ -385,7 +387,7 @@ void chooseProgression(Project& p,int preset) {
     for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void randomiseHarmony(Project& p,std::uint32_t seed) {
-    auto degrees=sgk::randomProgression(seed,4,p.settings.scale); p.settings.chordCount=4; p.settings.freeChords.fill(-1);
+    auto degrees=sgk::randomProgression(seed,4,p.settings.scale,p.settings.genre); p.settings.chordCount=4; p.settings.freeChords.fill(-1);
     std::copy(degrees.begin(),degrees.end(),p.settings.degrees.begin());
 }
 void applyGenre(Project& p,int genre) {
@@ -598,7 +600,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
         ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin());};
     if(mix(seed)%3!=0){
         int length=4;const auto roll=mix(seed+53U)%5;if(roll==0)length=8;else if(roll==1)length=3;
-        const auto degrees=sgk::randomProgression(seed,length,s.scale);
+        const auto degrees=sgk::randomProgression(seed,length,s.scale,s.genre);
         if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
         if(!differs())s=before;
     }

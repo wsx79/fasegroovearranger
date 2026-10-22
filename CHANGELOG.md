@@ -1,7 +1,8 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.10.0 — 2026-10-22
 
+- Piano random riffs, variations, breaks and build-ups stay in the song genre. Mix fills, accents and random progressions follow gospel, jackin', garage, afro, funky, neo soul and chill. House-family grooves keep their figures. The song genre drives this; the panel does not add a second genre menu.
 - Engine panels no longer repeat the section menu or the track volume fader, and the piano panel no longer saves standalone `.fgapreset` files. Tempo, key, transport and export stay on the arranger. Stored parameters are unchanged.
 - Guitar random grooves, turnarounds, section templates and mix fills stay inside the genre. Random patterns use that genre's voicing and lick; presets stay on the classic shapes. A slide on the downbeat is no longer dropped, and humanize no longer revoices every hit of the fourth bar.
 - Drum fills, turnarounds and hat accents follow the genre. Garage, neo soul and chill keep their kick and hats in sections, and chill no longer gains a 16th shaker. A riff-seed change refreshes preset turnarounds, and Jackin' Piano no longer takes the Jackin' snare flam.
