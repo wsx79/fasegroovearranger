@@ -10,6 +10,7 @@
 #include "Updater.h"
 #include "DawWorkspace.h"
 #include "PluginSettings.h"
+#include "PluginBrowser.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -170,6 +171,7 @@ private:
     FamilyLookAndFeel theme;
     OptionsOverlay options;
     PluginSettings pluginSettings{pluginCatalog};
+    PluginBrowser pluginBrowser{pluginCatalog};
     UpdateOverlay updateOverlay;
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
@@ -235,6 +237,9 @@ private:
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
     void loadPluginDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
+    void loadEffectFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
+    void loadEffectDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
+    void chooseBrowserRow(const PluginCatalog::BrowserRow&);
     void showPluginMenu(juce::Component* anchor=nullptr);
     void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>);
     void exportMenu();

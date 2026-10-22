@@ -16,7 +16,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("OPEN"))return tr("Open a local .fga project.");
     if(key.equalsIgnoreCase("EXPORT"))return tr("Export the mix or separate tracks as MIDI, WAV or MP3.");
     if(key.equalsIgnoreCase("LOAD SAMPLE"))return tr("Choose a personal audio sample for this track.");
-    if(key.equalsIgnoreCase("LOAD VST3 / AU"))return tr("Load an installed instrument; OPEN VST shows its own controls.");
+    if(key.equalsIgnoreCase("LOAD VST3 / AU"))return tr("Open the plugin browser: FaseGroove engines first, then instruments and effects by manufacturer.");
     if(key.equalsIgnoreCase("OPEN VST"))return tr("Load an installed instrument; OPEN VST shows its own controls.");
     if(key.equalsIgnoreCase("COPY"))return tr("Copy or paste MIDI notes in the selected clip.");
     if(key.equalsIgnoreCase("PASTE"))return tr("Copy or paste MIDI notes in the selected clip.");

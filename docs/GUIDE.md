@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.10.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.11.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -196,12 +196,12 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 |---|---|
 | **BUILT-IN** | Return to the guide sound. Piano and bass have seven keyboard tones; strings, four guitars and four drum kits have their own sounds. |
 | **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. |
-| **LOAD VST3 / AU** | An instrument installed on your computer. Choose the `.vst3` bundle; macOS also lists installed Audio Units. |
-| **OPEN VST** | The loaded instrument's own interface. |
+| **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or one insert effect. |
+| **OPEN VST** | The loaded instrument's own interface. When an effect is also loaded, choose instrument or effect. |
 
-**Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, add or remove personal VST3 folders, and scan now. Subfolders are included and overlapping paths do not duplicate instruments. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
+**Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, choose one personal folder, and rescan. Subfolders are included. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
 
-The first launch scans automatically. Every later launch checks the same standard and personal folders in the background; the saved catalogue is immediately available from **LOAD VST3 / AU**, grouped by manufacturer. Names show the format when both versions are installed. New or updated VST3 bundles are inspected again; unchanged bundles reuse the catalogue. Removed plugins disappear from the list, while project assignments remain available for relinking. **OPEN VST3 FILE…** still lets you choose a bundle directly.
+The first launch scans automatically. Every later launch checks the same standard folders and the one custom folder in the background; the saved KnownPluginList is immediately available from **LOAD VST3 / AU**. Names show Instrument or Effect and the format. New or updated VST3 bundles are inspected again; unchanged bundles reuse the catalogue. Removed plugins disappear from the list, while project assignments remain available for relinking. **OPEN VST3 FILE…** still lets you choose a bundle directly.
 
 Plugin inspection runs in a separate process, with a timeout. Failed or interrupted checks are skipped and counted; **RETRY FAILED** checks them again. **CANCEL** stops the current scan. Scanning does not change tracks, MIDI or instrument assignments. The catalogue and folder preferences are local to your user account. Instrument playback continues to use native plugins in the app process; only discovery is isolated.
 

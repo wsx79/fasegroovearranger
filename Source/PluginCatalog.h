@@ -3,19 +3,33 @@
 #pragma once
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <atomic>
+#include <vector>
 namespace fga {
 // Discovery never loads plugin code in the workstation process.
 class PluginCatalog : private juce::Thread {
 public:
     struct State { juce::Array<juce::PluginDescription> plugins; juce::String current; int checked=0,total=0,failed=0; bool scanning=false; };
+    // Rows for the groove-style browser: FaseGroove engines first, then one manufacturer.
+    struct BrowserRow {
+        enum class Kind { engine, plugin, noEffect };
+        Kind kind = Kind::plugin;
+        int engine = -1, plugin = -1;
+        bool instrument = false;
+        juce::String name, detail, format, key, manufacturer;
+    };
     explicit PluginCatalog(juce::File storage=defaultStorage(),bool includeStandard=true);
     ~PluginCatalog() override;
     static juce::File defaultStorage();
     static juce::FileSearchPath standardFolders();
-    juce::StringArray folders() const;
-    bool addFolder(const juce::File&);
-    bool removeFolder(int);
+    juce::File customFolder() const;
+    // One personal folder. An empty file clears it. A repeat of the same path does nothing.
+    bool setCustomFolder(const juce::File&);
     bool scan(bool retryFailures=false);
+    static juce::String pluginKey(const juce::PluginDescription&);
+    // "FaseGroove" is always first. Other names are manufacturers.
+    static juce::StringArray pluginCategories(const juce::Array<juce::PluginDescription>&);
+    // category selects a group. A query searches every group. pinned keeps that order (favourites or recent).
+    static std::vector<BrowserRow> browserRows(const juce::Array<juce::PluginDescription>&,const juce::String& category,const juce::String& query,const juce::StringArray& pinned);
     State state() const;
     void cancel(){signalThreadShouldExit();}
     static int scanOne(const juce::String& format,const juce::String& identifier,const juce::File& output);
@@ -33,6 +47,7 @@ private:
     void read();
     void writeFolders();
     void writeCache();
+    void writeKnownList();
     void refreshPlugins();
     juce::String fingerprint(const juce::String&);
 };
