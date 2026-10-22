@@ -86,7 +86,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("REGENERATE TRACK"))return tr("Try another take of this track, keeping the rest of the song.");
     if(key.equalsIgnoreCase("REGENERATE CLIP")||key.equalsIgnoreCase("REGENERATE SECTION"))return tr("Generate new notes only in the selected part; locked parts stay.");
     if(key.equalsIgnoreCase("NEW SECTION"))return tr("Generate new notes only in the selected part; locked parts stay.");
-    if(key.equalsIgnoreCase("GENERATE SONG"))return tr("Create a new key, progression and genre patterns. Locked harmonic parts keep the current harmony.");
+    if(key.equalsIgnoreCase("GENERATE SONG"))return tr("Create a new key, tempo, length, progression and patterns. Locked harmonic parts keep the harmony; locked parts keep their notes.");
     if(key.equalsIgnoreCase("AUDIO"))return tr("Choose the audio output and buffer size.");
     if(key.equalsIgnoreCase("Pedal & Expression CC"))return tr("Pedal sustains notes between chord changes; expression rises in build-ups. Included in VST playback and MIDI export.");
     if(key.equalsIgnoreCase("Riff seed"))return tr("Zero follows the stored clip seed; another value gives a repeatable feel or riff.");

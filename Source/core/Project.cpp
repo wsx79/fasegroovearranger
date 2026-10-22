@@ -556,8 +556,52 @@ void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
 }
 }
 namespace {
+void varySongFeel(Project& p,std::uint32_t seed) {
+    auto& s=p.settings;const auto& profile=genreProfile(s.genre);
+    const int current=(int)std::lround(s.bpm),span=profile.maxBpm-profile.minBpm;
+    if(span>0){int pick=profile.minBpm+(int)(mix(seed+1301U)%(unsigned)span);if(pick>=current)++pick;s.bpm=pick;}
+    double density=0.35+(mix(seed+1700U)%46)/100.0;
+    if(std::abs(density-s.density)<0.02)density=s.density<0.55?0.72:0.38;
+    s.density=density;
+    static const double offsets[]{-0.12,-0.06,0.06,0.12,0.18};
+    const double base=fgd::genreSwing(s.genre);const int which=(int)(mix(seed+1901U)%5);
+    for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],0.0,1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
+}
+void varyForm(Project& p,std::uint32_t seed) {
+    const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
+    const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;});
+    if(locked||free||p.sections.empty())return;
+    std::vector<int> next;int before=0,after=0;
+    for(size_t i=0;i<p.sections.size();++i){
+        const auto type=p.sections[i].type;
+        const int io[]{16,24,32},bb[]{8,16},body[]{8,16,24,32,48};
+        const int* choices=body;int count=5;
+        if(type==Section::intro||type==Section::outro){choices=io;count=3;}
+        else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
+        const int pick=choices[mix(seed+(std::uint32_t)i*97U)%(unsigned)count];
+        next.push_back(pick);before+=p.sections[i].bars;after+=pick;
+    }
+    if(after==before){
+        const auto type=p.sections.back().type;
+        const int io[]{16,24,32},bb[]{8,16},body[]{8,16,24,32,48};
+        const int* choices=body;int count=5;
+        if(type==Section::intro||type==Section::outro){choices=io;count=3;}
+        else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
+        for(int k=0;k<count;++k)if(choices[k]!=next.back()){next.back()=choices[k];break;}
+    }
+    for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)p.resizeSection((int)i,next[i]);
+}
 void newSongHarmony(Project& p,std::uint32_t seed) {
-    auto& s=p.settings;
+    auto& s=p.settings;const auto before=s;
+    auto differs=[&]{return s.scale!=before.scale||s.chordCount!=before.chordCount
+        ||!std::equal(s.degrees.begin(),s.degrees.begin()+s.chordCount,before.degrees.begin())
+        ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin());};
+    if(mix(seed)%3!=0){
+        int length=4;const auto roll=mix(seed+53U)%5;if(roll==0)length=8;else if(roll==1)length=3;
+        const auto degrees=sgk::randomProgression(seed,length,s.scale);
+        if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
+        if(!differs())s=before;
+    }
     // Curated alternatives retain each style's harmonic vocabulary.
     static const std::vector<int> progressions[]{
         {4,8,27,33,19,12}, {2,3,4,8,19,29,12}, {0,1,6,7,20,27},
@@ -566,14 +610,13 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
         {4,6,8,27,28,33}, {2,3,19,24,29,12}, {0,6,7,10,20,27},
         {4,6,9,17,27,28}
     };
-    const auto before=s;
+    if(!differs()){
     const auto& choices=progressions[s.genre];
     const auto first=mix(seed+701U)%choices.size();
     for(size_t i=0;i<choices.size();++i) {
         chooseProgression(p,choices[(first+i)%choices.size()]);
-        if(s.scale!=before.scale||s.chordCount!=before.chordCount
-           ||!std::equal(s.degrees.begin(),s.degrees.begin()+s.chordCount,before.degrees.begin())
-           ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin()))break;
+        if(differs())break;
+    }
     }
     // Exclude the current key: a new take must audibly move its tonal centre.
     s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
@@ -600,6 +643,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             return std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked)newSongHarmony(p,seed);
+        varySongFeel(p,seed);varyForm(p,seed);
     }
     const auto& s=p.settings;
     const auto& profile=genreProfile(s.genre);
@@ -625,6 +669,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                     setPianoPattern(e,target);
                 }else e.pattern=-1;
                 e.riffSeed=0;
+                if(scope==Scope::song)e.density=-1;
                 prepared=true;
             }
             if(seed) clip.motifSeed=mix(seed+(ti>=4?313U:(std::uint32_t)ti*131U));
