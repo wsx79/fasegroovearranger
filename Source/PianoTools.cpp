@@ -8,15 +8,6 @@
 namespace fga {
 namespace {
 sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed,m.clip().motifSeed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
-bool rhythmHit(char c){return c=='X'||c=='x'||c=='g'||c=='>'||c=='u'||c=='U'||c=='d'||c=='D';}
-std::string attackMask(const std::string& line){std::string out(line.size(),'.');for(size_t i=0;i<line.size();++i)if(rhythmHit(line[i]))out[i]='x';return out;}
-void nudgeAttack(std::string& line){
-    bool nudged=false;
-    for(int i=0;i+1<(int)line.size()&&!nudged;++i)if(rhythmHit(line[(size_t)i])!=rhythmHit(line[(size_t)i+1])){std::swap(line[(size_t)i],line[(size_t)i+1]);nudged=true;}
-    if(!nudged)for(size_t i=0;i<line.size()&&!nudged;++i)if(!rhythmHit(line[i])){line[i]='x';nudged=true;}
-    if(!nudged)for(size_t i=0;i<line.size();++i)if(rhythmHit(line[i])){line[i]='.';break;}
-    sgk::repairHolds(line);
-}
 class MusicalTools:public juce::Component {
 public:
     MusicalTools(MainComponent& m,int type):owner(&m),kind(type),source(playingPattern(m)),seed((std::uint32_t)juce::Random::getSystemRandom().nextInt()){
@@ -88,30 +79,7 @@ bool verifyPianoTools(MainComponent& owner,const juce::File& folder){
     folder.getChildFile("piano-tools.txt").replaceWithText(ok?"PASS original DNA/Morph/Voicing Coach/Chord Variants/Circle rendered; MIDI Learn recognises I and vi":"FAIL piano musical tools or MIDI Learn");
     return ok;
 }
-void MainComponent::randomPianoMaterial(bool velocities,bool bass,bool bothHands){
-    auto& e=project.tracks[(size_t)selectedTrack].engine;
-    if(!velocities){bool any=false;for(bool locked:e.segmentLocked)any=any||!locked;if(!any)return;}
-    checkpoint();
-    auto source=playingPattern(*this);
-    const float density=(float)(e.density<0?project.settings.density:e.density);
-    if(!velocities){
-        const auto beforeRight=attackMask(source.rightHand),beforeLeft=attackMask(source.leftHand);
-        sgk::GroovePattern target=source;
-        for(int attempt=0;attempt<8;++attempt){
-            target=sgk::makeRandomPattern((std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000}),density,project.settings.genre);
-            for(int i=0;i<4;++i)if(e.segmentLocked[(size_t)i])sgk::copySegment(target,source,i);
-            if(!bothHands){if(bass)target.rightHand=source.rightHand;else target.leftHand=source.leftHand;}
-            sgk::repairHolds(target.rightHand);sgk::repairHolds(target.leftHand);
-            const bool moved=bothHands?(attackMask(target.rightHand)!=beforeRight):(bass?attackMask(target.leftHand)!=beforeLeft:attackMask(target.rightHand)!=beforeRight);
-            if(moved||attempt==7)break;
-        }
-        if(bothHands){if(attackMask(target.rightHand)==beforeRight)nudgeAttack(target.rightHand);}
-        else if(bass){if(attackMask(target.leftHand)==beforeLeft)nudgeAttack(target.leftHand);}
-        else if(attackMask(target.rightHand)==beforeRight)nudgeAttack(target.rightHand);
-        e.segments={0,1,2,3};setPianoPattern(e,target);
-    }else {if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,source);auto& row=selectedTrack==1?e.userVelLeft:e.userVelRight;for(size_t i=0;i<32;++i)if(!e.segmentLocked[i/8])row[i]=(unsigned char)juce::Random::getSystemRandom().nextInt({45,128});}
-    changed(false);
-}
+void MainComponent::randomPianoMaterial(bool velocities,bool bass){checkpoint();auto& e=project.tracks[(size_t)selectedTrack].engine;auto source=playingPattern(*this);auto target=sgk::makeRandomPattern((std::uint32_t)juce::Random::getSystemRandom().nextInt(),(float)(e.density<0?project.settings.density:e.density),project.settings.genre);if(!velocities){for(int i=0;i<4;++i)if(e.segmentLocked[(size_t)i])sgk::copySegment(target,source,i);if(bass)target.rightHand=source.rightHand;else target.leftHand=source.leftHand;e.segments={0,1,2,3};setPianoPattern(e,target);}else {if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,source);auto& row=selectedTrack==1?e.userVelLeft:e.userVelRight;for(size_t i=0;i<32;++i)if(!e.segmentLocked[i/8])row[i]=(unsigned char)juce::Random::getSystemRandom().nextInt({45,128});}changed(false);}
 void MainComponent::showPianoTools(int type){
     if(musicalToolWindow){const bool toggleLearn=type==8&&musicalToolKind==8;musicalToolWindow->closeButtonPressed();musicalToolWindow=nullptr;if(toggleLearn)return;}
     musicalToolKind=type;
