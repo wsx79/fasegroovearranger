@@ -285,15 +285,15 @@ namespace
     {
         switch (genre)
         {
-            case pianoHouse:  return { 0.55f, 0.05f, 0.35f, 0.5f,  0.1f,  0.25f, 0.15f, 0.25f, 0.1f, Lane::conga };
-            case soulful:     return { 0.3f,  0.3f,  0.3f,  0.55f, 0.35f, 0.6f,  0.3f,  0.3f,  0.15f, Lane::conga };
-            case deep:        return { 0.15f, 0.0f,  0.3f,  0.4f,  0.0f,  0.55f, 0.3f,  0.3f,  0.0f, Lane::rim };
+            case pianoHouse:  return { 0.95f, 0.05f, 0.35f, 0.5f,  0.1f,  0.25f, 0.15f, 0.25f, 0.1f, Lane::conga };
+            case soulful:     return { 0.95f, 0.3f,  0.3f,  0.55f, 0.35f, 0.6f,  0.3f,  0.3f,  0.15f, Lane::conga };
+            case deep:        return { 0.95f, 0.0f,  0.3f,  0.4f,  0.0f,  0.55f, 0.3f,  0.3f,  0.0f, Lane::rim };
             case gospel:      return { 0.5f,  0.1f,  0.2f,  0.1f,  0.85f, 0.2f,  0.1f,  0.35f, 0.8f, Lane::conga };
-            case jackin:      return { 0.1f,  0.0f,  0.5f,  0.2f,  0.05f, 0.5f,  0.3f,  0.55f, 0.7f,  Lane::cowbell };
+            case jackin:      return { 0.0f,  0.0f,  0.5f,  0.2f,  0.05f, 0.7f,  0.45f, 0.55f, 0.7f,  Lane::cowbell };
             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
             case garage:      return { 0.0f,  0.85f, 0.15f, 0.15f, 0.0f,  0.55f, 0.2f,  0.2f,  0.85f, Lane::rim };
             case afro:        return { 0.35f, 0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.15f, 0.0f, Lane::conga };
-            case funky:       return { 0.55f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
+            case funky:       return { 0.95f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
             case nineties:    return { 0.8f,  0.05f, 0.2f,  0.2f,  0.35f, 0.1f,  0.05f, 0.25f, 0.6f, Lane::conga };
             case neoSoul:     return { 0.0f,  0.15f, 0.15f, 0.25f, 0.0f,  0.2f,  0.05f, 0.1f,  0.7f, Lane::rim };
             case chill:       return { 0.05f, 0.0f,  0.25f, 0.55f, 0.05f, 0.15f, 0.05f, 0.05f, 0.15f, Lane::rim };
@@ -336,7 +336,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
 
     // ---- Kick (always on the grid) and backbeat ----
     const bool garageBeat = genre == garage, brokenBeat = genre == neoSoul, chillBeat = genre == chill;
-    if (garageBeat && r.chance (0.65f))
+    if (garageBeat && r.chance (0.92f))
         setBar (Lane::kick, pickOf ({ "X... .... ..x. ....", "X... .... ..X. ...x", "X... ...x ..x. ...." }));
     else if (brokenBeat)
         setLoop (Lane::kick, pickOf ({ "X... .... ..x. .... X... ...x ..x. ....", "X... ..x. .x.. .... X... ..x. ...x ..x.",
@@ -354,16 +354,17 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     const char* clapCell = halfTime ? ".... .... X... ...." : r.chance (style.clapVariation * more) ? pickCell (r, clapCells) : ".... X... .... X...";
     if (brokenBeat || garageBeat)
         setBar (Lane::snare, halfTime ? ".... .... X... ...." : pickOf ({ ".... X... .... X...", ".... X..g .... X...", ".... X... ...g X..." }));
-    else if (genre == deep && r.chance (0.35f))
-        setBar (Lane::rim, ".... x... .... x...");
     else if (chillBeat)
         setBar (r.chance (0.5f) ? Lane::rim : Lane::clap, halfTime ? ".... .... x... ...." : ".... x... .... x...");
     else
     {
         setBar (Lane::clap, clapCell);
         if (genre == deep)
+        {
             soften (p[Lane::clap]);
-        if (genre == jackin && r.chance (style.snare))
+            setBar (Lane::rim, ".... x... .... x...");   // the rim with the clap, not instead of it
+        }
+        else if (genre == jackin && r.chance (style.snare))
         {
             // The 909 snare under the jack clap: soft on the beats or loud swung pick-ups,
             // and bar 2 turns round into the next loop.
@@ -378,11 +379,17 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     }
 
     // ---- ONE hat line ----
-    const bool openOffbeat = ! garageBeat && ! brokenBeat && r.chance (style.openOffbeat);
+    const bool openOffbeat = genre != jackin && ! garageBeat && ! brokenBeat && r.chance (style.openOffbeat);
     if (garageBeat)
         setBar (Lane::closedHat, pickOf ({ "x.xx x.xx x.xx x.xx", "..xx ..xx ..xx ..xx", "x.xx x.x. x.xx x.x." }));
     else if (brokenBeat)
         setBar (Lane::closedHat, pickOf ({ "x.xg x.xg x.xg x.xg", "x.x. x.xx x.x. x.x.", "x.xx x.x. x.xx x.x." }));
+    else if (genre == jackin)
+    {
+        // Offbeat open hat, and swung 16ths in the closed hat (they sit off the offbeat).
+        setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
+        setBar (Lane::closedHat, pickOf ({ "x..g x..g x..g x..g", "x..g ..xg x..g ..xg", "x.xg x..g x.xg x..x" }));
+    }
     else if (openOffbeat)
     {
         setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
@@ -395,7 +402,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         setBar (Lane::closedHat, r.chance (style.busyHats * more) ? pickCell (r, busyHatCells) : pickCell (r, hatCells));
 
     // A single open hat accent (with a closed hat line only).
-    if (! openOffbeat && r.chance (style.openAccent * more))
+    if (! openOffbeat && genre != jackin && r.chance (style.openAccent * more))
     {
         const auto accent = compact (pickCell (r, openAccentCells));
         for (int i = 0; i < 16; ++i)

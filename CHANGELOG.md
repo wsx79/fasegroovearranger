@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.13.0 — 2026-10-22
+
+- Drum grooves follow the song genre. Open hats, garage kicks, the deep rim and jackin' hats come from that style. Jackin' shuffle is 62%. The jack pocket stays: four-on-the-floor, clap or snare on 2 and 4, offbeat open hat, swung closed-hat accent and shaker.
+- Guitar grooves draw both bars from the genre's own rhythm: offbeat stabs, short dance stabs, gospel eighths, laid-back space, and funk or jackin' sixteenths. A speaking accent remains in every bar.
+- Piano riffs follow the song genre again. There is no new genre menu. House, '90s piano house and dance stabs keep the classic figures. The other styles each have their own riffs, and a new seed still writes a different one. Gospel chord dice walk by step. NEW RIFF keeps the genre's voicing and colour. String stabs are rewritten with the new riff. Guitar LEAD still uses the four-bar piano roll. Locked grid segments stay.
+
 ## 0.12.1 — 2026-10-22
 
 - Jackin' House drums stay a jack groove on Generate Song, regenerate, random, variations and sections: four-on-the-floor kick, clap or snare on 2 and 4, open hat on the offbeats, swung 16ths around 56–62%, and a syncopated shaker. Tempo stays in 120–127. The beat does not turn into two-step, broken beat or garage.

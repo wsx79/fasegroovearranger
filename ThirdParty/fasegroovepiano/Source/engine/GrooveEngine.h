@@ -196,6 +196,7 @@ struct GrooveSettings
     Section section = Section::main;
     std::uint32_t riffSeed = 1;            // used when pattern == randomPatternIndex()
     float riffDensity = 0.5f;
+    int riffGenre = -1;                    // groove genre for a random riff; -1 keeps the classic figure
     std::string bassLineOverride;          // standalone arrangement take; empty keeps the selected library line
 
     std::array<int, numSegments> segmentOrder { 0, 1, 2, 3 };   // A B C D
@@ -396,6 +397,7 @@ private:
     int cachedIndex = -1;
     std::uint32_t cachedSeed = 0;
     float cachedDensity = -1.0f;
+    int cachedRiffGenre = -2;
     Section cachedSection = Section::main;
     std::uint32_t cachedSectionVariation = 0;
     std::array<int, numSegments> cachedOrder {};

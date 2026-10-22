@@ -5,10 +5,12 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <set>
 #include <stdexcept>
 #include <limits>
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
+#include "../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 namespace {
 int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
@@ -46,12 +48,103 @@ void verifyGuitarAudibility(){
     }
     check(accent>=85&&weak<=accent-8&&ghost<=weak-8,"guitar accent stays above a weak 16th and a ghost stays quieter");
 }
+int countHits(const std::string& line){int n=0;for(char c:line)n+=fgg::isHit(c)?1:0;return n;}
+bool barsDiffer(const fgg::GuitarPattern& p){for(const auto& line:p.lanes)if(line.size()>=32&&line.compare(0,16,line,16,16)!=0)return true;return false;}
+bool hasSymbol(const fgg::GuitarPattern& p,char symbol,int lane=-1){for(int l=0;l<fgg::numLanes;++l){if(lane>=0&&l!=lane)continue;if(p.lanes[(size_t)l].find(symbol)!=std::string::npos)return true;}return false;}
+int countOns(const std::vector<fgg::NoteEvent>& events){int n=0;for(const auto& e:events)n+=e.isNoteOn()?1:0;return n;}
+void verifyGenreIdentity(){
+    auto barOf=[](const fgg::GuitarPattern& p,int bar){std::string s;for(const auto& line:p.lanes){s+=line.size()>=(size_t)(bar*16+16)?line.substr((size_t)bar*16,16):line;s+='|';}return s;};
+    auto gridOf=[](const fgg::GuitarPattern& p){std::string s;for(const auto& line:p.lanes){s+=line;s+='|';}return s;};
+    auto hitsOn=[](const std::string& line,int pred){int n=0;for(int i=0;i<(int)line.size();++i)if(fgg::isHit(line[(size_t)i])&&(pred<0||i%4==pred))++n;return n;};
+    for(int genre=0;genre<13;++genre){
+        const bool extended=[&]{
+            const auto chords=fgg::progressionChords(fgg::genreProgression(genre),0);
+            const auto voiced=fgg::voiceChord(fgg::tonesOf(chords[0]),nullptr,true,fgg::guitarColourFor(genre));
+            const auto& shape=voiced.stab.empty()?voiced.full:voiced.stab;
+            for(int i=0;i<shape.size();++i){const int iv=((shape[i]-chords[0].root)%12+12)%12;if(iv==1||iv==2||iv==6||iv==9||iv==10||iv==11)return true;}
+            return false;
+        }();
+        if(genre==1||genre==2||genre==3||genre==10||genre==11)check(extended,"extended guitar colour belongs to soulful, deep, gospel, neo-soul and chill");
+        for(float density:{(genre==8?0.68f:genre==4?0.22f:0.35f),0.5f}){
+            std::set<std::string> grids,bar1s,bar2s;int differ=0,regen=0,faithful=0;
+            for(std::uint32_t seed=1;seed<=20;++seed){
+                const auto p=fgg::makeRandomPattern(seed,density,genre);
+                grids.insert(gridOf(p));bar1s.insert(barOf(p,0));bar2s.insert(barOf(p,1));
+                differ+=barsDiffer(p)?1:0;
+                regen+=gridOf(p)!=gridOf(fgg::makeSectionVariation(p,seed*97u+11u))?1:0;
+                const int stab=countHits(p[fgg::Lane::stab]);
+                const int stabOff=hitsOn(p[fgg::Lane::stab],2);
+                int odd=0,total=0;for(const auto& line:p.lanes)for(size_t i=0;i<line.size();++i){total+=fgg::isHit(line[i])?1:0;odd+=fgg::isHit(line[i])&&i%2==1?1:0;}
+                const bool accent=hasSymbol(p,'X');
+                const bool skip=[&]{std::string any(32,'.');for(int l=0;l<fgg::numLanes;++l)if(l!=(int)fgg::Lane::scratch)for(int i=0;i<32&&i<(int)p.lanes[(size_t)l].size();++i)if(fgg::isHit(p.lanes[(size_t)l][(size_t)i]))any[(size_t)i]='x';int gaps=0;for(int bar=0;bar<2;++bar){int prev=-4;for(int i=0;i<16;++i)if(any[(size_t)(bar*16+i)]!='.'){if(i-prev>=3)++gaps;prev=i;}}return gaps>=2;}();
+                bool ok=false;
+                switch(genre){
+                    case 0: case 5: case 9: ok=stab>=3&&stabOff*100>=stab*70&&countHits(p[fgg::Lane::power])==0;break;
+                    case 4: case 8: ok=(countHits(p[fgg::Lane::chank])>0||countHits(p[fgg::Lane::scratch])>0)&&odd>0&&accent;break;
+                    case 6: ok=skip&&total<=20;break;
+                    case 1: case 2: ok=total<=18&&extended;break;
+                    case 7: ok=countHits(p[fgg::Lane::arp])+countHits(p[fgg::Lane::chank])>0&&odd+hitsOn(p[fgg::Lane::arp],2)+hitsOn(p[fgg::Lane::chank],2)>0;break;
+                    case 10: case 11: ok=countHits(p[fgg::Lane::lick])>0&&total<=22&&extended;break;
+                    case 12: ok=stab>=3&&countHits(p[fgg::Lane::power])==0&&countHits(p[fgg::Lane::scratch])==0&&odd==0;break;
+                    case 3: ok=odd==0&&countHits(p[fgg::Lane::strumDown])+countHits(p[fgg::Lane::strumUp])>=4&&countHits(p[fgg::Lane::scratch])==0&&extended;break;
+                    default: ok=true;break;
+                }
+                faithful+=ok?1:0;
+                fgg::GuitarSettings s;s.pattern=fgg::randomPatternIndex();s.riffSeed=seed;s.density=density;s.randomGenre=genre;s.swing=fgg::genreSwing(genre);s.fillEveryBars=0;s.variationEvery=0;s.humanize=.2f;s.accentGroove=.85f;
+                check(countOns(fgg::GrooveEngine::renderClip(s,8.0))>0,"genre guitar groove plays");
+            }
+            check(differ==20,"each genre's two guitar bars answer each other");
+            check((int)grids.size()>=17&&(int)bar1s.size()>=16&&(int)bar2s.size()>=16,"a genre draws many guitar rhythms");
+            check(regen>=17,"regenerating a guitar section leaves the genre and changes the bar");
+            check(faithful>=16,"random guitar stays on that genre's rhythm");
+        }
+    }
+    check(std::abs(fgd::genreSwing(4)-0.72f)<1e-4f,"jackin shuffle is 62 percent");
+    for(int genre=0;genre<13;++genre){
+        std::set<std::string> beats;
+        for(std::uint32_t seed=1;seed<=16;++seed){
+            const auto a=fgd::makeRandomPattern(seed,.55f,genre);
+            const auto b=fgd::makeRandomPattern(seed,.55f,genre);
+            check(a.lanes==b.lanes,"a drum seed stays put");
+            std::string grid;for(const auto& line:a.lanes)grid+=line;
+            beats.insert(grid);
+            if(genre==4){
+                const auto& open=a[fgd::Lane::openHat];const auto& closed=a[fgd::Lane::closedHat];
+                bool off=true,accent=true;
+                for(int i=0;i<(int)open.size();++i){if(i%4==2)off=off&&open[(size_t)i]=='x';if(i%4==3)accent=accent&&(closed[(size_t)i]=='x'||closed[(size_t)i]=='X'||closed[(size_t)i]=='f');}
+                check(off&&accent,"jackin keeps the offbeat open hat and the swung closed accent");
+            }
+        }
+        check((int)beats.size()>=8,"each drum genre draws more than a couple of beats");
+    }
+    check(fgd::makeRandomPattern(9,.5f,0).lanes!=fgd::makeRandomPattern(9,.5f,4).lanes,"house and jackin drums are not the same beat");
+    const auto classic=sgk::makeRandomPattern(4242,.55f);
+    for(int genre:{0,9,12})check(sgk::makeRandomPattern(4242,.55f,genre).rightHand==classic.rightHand,"house-family piano keeps the classic figure");
+    std::set<std::string> hands;
+    for(int genre:{1,2,3,4,5,6,7,8,10,11}){
+        const auto figure=sgk::makeRandomPattern(4242,.55f,genre);
+        check(figure.rightHand!=classic.rightHand,"a non-house piano genre keeps its own riff");
+        hands.insert(figure.rightHand);
+        std::set<std::string> many;
+        for(std::uint32_t seed:{11u,29u,47u,83u,149u,211u,307u,401u})many.insert(sgk::makeRandomPattern(seed,.55f,genre).rightHand);
+        check((int)many.size()>=5,"one piano genre still draws many riffs");
+    }
+    check((int)hands.size()>=8,"piano genres do not share one riff");
+    const auto gospel=sgk::randomProgression(17,8,1,3),plain=sgk::randomProgression(17,8,1);
+    check(gospel!=plain&&gospel.size()==8,"gospel walks through the next chord");
+    check(sgk::randomProgression(17,4,1,4)==sgk::randomProgression(17,4,1),"other genres keep the classic progression dice");
+    auto stabs=fga::newProject(1);stabs.sections={{fga::Section::main,8,"Main"}};stabs.settings.stringsMode=(int)sgk::StringsMode::stabs;stabs.settings.humanize=0;stabs.settings.swing=0;stabs.normalise();
+    for(int ti:{0,2}){auto& eng=stabs.tracks[(size_t)ti].engine;eng.realism=false;eng.humanize=0;eng.swing=0;eng.fillEvery=0;eng.variationEvery=0;eng.evolveBars=0;eng.movement=0;eng.pattern=-1;}
+    fga::generate(stabs,fga::Scope::song,0,0,11);const auto firstStrings=stabs.tracks[2].clips[0].notes;
+    fga::generate(stabs,fga::Scope::track,2,0,83);
+    check(!stabs.tracks[2].clips[0].notes.empty()&&stabs.tracks[2].clips[0].notes!=firstStrings,"a new riff still rewrites the string stabs");
+}
 }
 #include "ClubArrangementChecks.h"
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
 int main(int argc,char** argv){try{
-    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();
+    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
@@ -93,13 +186,22 @@ int main(int argc,char** argv){try{
             check(piano.size()>=4&&farPiano>=4,"regenerated piano onsets differ by more than a ghost");
             check(stabs.size()>=4&&farStabs>=4&&stabs.count(std::string(32,'.'))==0,"regenerated string stabs follow a clearly different figure");
         }
-        std::string reference;
-        for(int genre:{0,3,4,8,11}){
+        std::string house;
+        for(int genre:{0,9,12}){
             auto song=fga::newProject(genre);song.settings.density=.55;song.tracks[0].engine.pattern=-1;song.tracks[0].engine.riffSeed=4242;song.tracks[0].engine.density=.55;
             const auto figure=sgk::GrooveEngine::basePattern(fga::pianoEngineSettings(song,0,1));
-            if(reference.empty())reference=figure.rightHand+figure.leftHand;
-            check(figure.rightHand+figure.leftHand==reference,"the same piano seed ignores the song genre");
+            if(house.empty())house=figure.rightHand+figure.leftHand;
+            check(figure.rightHand+figure.leftHand==house,"house, nineties and dance keep one classic piano figure");
         }
+        std::set<std::string> others;
+        for(int genre:{1,3,4,8,11}){
+            auto song=fga::newProject(genre);song.settings.density=.55;song.tracks[0].engine.pattern=-1;song.tracks[0].engine.riffSeed=4242;song.tracks[0].engine.density=.55;
+            const auto figure=sgk::GrooveEngine::basePattern(fga::pianoEngineSettings(song,0,1));
+            const auto hand=figure.rightHand+figure.leftHand;
+            check(hand!=house,"the song genre writes the piano figure outside the house family");
+            others.insert(hand);
+        }
+        check((int)others.size()>=4,"soulful, gospel, jackin, funk and chill piano riffs stay apart");
     }
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;verifyClubProject(p,genre,argc>1?argv[1]:"");
@@ -261,7 +363,7 @@ int main(int argc,char** argv){try{
         };
         auto tempo=[&](const fga::Project& p,const char* what){
             check(p.settings.bpm>=120&&p.settings.bpm<=127,what);
-            check(p.settings.swing>=0.36&&p.settings.swing<=0.72,what);
+            check(p.settings.swing>=0.36&&p.settings.swing<=0.72f,what);
         };
         for(std::uint32_t seed=1;seed<=12;++seed){
             auto song=fga::newProject(4);

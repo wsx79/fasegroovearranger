@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.13.0 — 2026-10-22
+
+- I groove di batteria seguono il genere del brano. Charleston aperti, cassa garage, rim deep e hat jackin' escono da quello stile. Lo shuffle Jackin' è al 62%. Il jack resta: cassa in 4/4, clap o rullante su 2 e 4, charleston aperto in levare, accento di charleston chiuso in shuffle e shaker.
+- I groove di chitarra pescano le due battute dal ritmo del genere: stab in levare, stab dance corte, ottavi gospel, spazio rilassato, sedicesimi funky o jackin'. In ogni battuta resta un accento che si sente.
+- I riff di piano seguono di nuovo il genere del brano. Non c'è un nuovo menu genere. House, piano house anni '90 e dance stab tengono le figure classiche. Gli altri stili hanno riff propri, e un seed nuovo scrive ancora una figura diversa. Il dado degli accordi gospel cammina di grado. NUOVO RIFF tiene voicing e colore del genere. Gli stab degli archi si riscrivono col riff nuovo. CHITARRA SOLISTA usa ancora il piano roll di quattro battute. I segmenti bloccati della griglia restano.
+
 ## 0.12.1 — 2026-10-22
 
 - La batteria Jackin' House resta un jack su Genera brano, rigenera, casuale, variazioni e sezioni: cassa in 4/4, clap o rullante su 2 e 4, charleston aperto in levare, sedicesimi shuffle circa 56–62% e shaker sincopato. Il tempo resta fra 120 e 127. Il beat non diventa two-step, broken o garage.

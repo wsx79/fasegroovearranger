@@ -25,10 +25,11 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     p.bass=(sgk::BassMode)s.bassMode; p.strings=(sgk::StringsMode)s.stringsMode;
     p.realism=true; p.variationEvery=4; p.fillEveryBars=4; p.fillStyle=sgk::FillStyle::mix;
     p.humanizeSeed=seed; p.riffSeed=seed; p.strum=.15f;
-    // Automatic piano is a classic house figure. The song genre does not choose it.
-    // A saved library preset or hand-edited grid still replaces this below.
+    // The groove's genre writes the figure. House, '90s house and dance stabs stay on the
+    // classic loops. A saved library preset or hand-edited grid still replaces this below.
     const float density=(float)std::clamp(s.density,0.0,1.0);
-    auto pattern=sgk::makeRandomPattern(seed,density);
+    p.riffGenre=s.genre;
+    auto pattern=sgk::makeRandomPattern(seed,density,s.genre);
     if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
     if(s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
     sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
@@ -368,7 +369,7 @@ void chooseProgression(Project& p,int preset) {
     for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void randomiseHarmony(Project& p,std::uint32_t seed) {
-    auto degrees=sgk::randomProgression(seed,4,p.settings.scale); p.settings.chordCount=4; p.settings.freeChords.fill(-1);
+    auto degrees=sgk::randomProgression(seed,4,p.settings.scale,p.settings.genre); p.settings.chordCount=4; p.settings.freeChords.fill(-1);
     std::copy(degrees.begin(),degrees.end(),p.settings.degrees.begin());
 }
 void applyGenre(Project& p,int genre) {
@@ -597,7 +598,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
         ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin());};
     if(mix(seed)%3!=0){
         int length=4;const auto roll=mix(seed+53U)%5;if(roll==0)length=8;else if(roll==1)length=3;
-        const auto degrees=sgk::randomProgression(seed,length,s.scale);
+        const auto degrees=sgk::randomProgression(seed,length,s.scale,s.genre);
         if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
         if(!differs())s=before;
     }
