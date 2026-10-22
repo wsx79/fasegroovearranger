@@ -477,7 +477,23 @@ void MainComponent::updateSizes(){automationButton.setToggleState(arrangement.vo
 void MainComponent::undo(bool redo){if(loadingPlugin)return;auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;auto before=project;dest.push_back(project);project=std::move(source.back());source.pop_back();project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);selectedClip=project.clipAtBeat(selectedTrack,audio.position());selectionBeat=audio.position();noClipSelection=false;arrangement.selectedClips.clear();
     bool instrumentsChanged=false;for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].instrument!=before.tracks[i].instrument||project.tracks[i].instrumentPath!=before.tracks[i].instrumentPath||project.tracks[i].instrumentId!=before.tracks[i].instrumentId||project.tracks[i].sampleRoot!=before.tracks[i].sampleRoot)instrumentsChanged=true;
     if(instrumentsChanged)restoreInstruments();piano.clearSelection();changed();if(page==Page::instrument)instrumentPanel.rebuild();}
-void MainComponent::regenerate(Scope scope,bool newTake){if(loadingPlugin)return;const double cursor=timelinePosition();checkpoint();audio.stop();seekTimeline(cursor);auto seed=newTake?(std::uint32_t)juce::Random::getSystemRandom().nextInt():0u;if(newTake&&seed==0)seed=1;if(scope==Scope::clip)ensureTimelineClip(false);generate(project,scope,selectedTrack,scope==Scope::clip?clipIndex():selectedSection,seed);arrangement.selectedClips.clear();piano.clearSelection();changed();message(juce::String::fromUTF8("Nuova generazione pronta · blocchi rispettati · UNDO per tornare indietro."));}
+void MainComponent::regenerate(Scope scope,bool newTake){
+    if(loadingPlugin)return;
+    const double cursor=timelinePosition();const auto oldKey=project.settings.key;
+    checkpoint();audio.stop();seekTimeline(cursor);
+    auto seed=newTake?(std::uint32_t)juce::Random::getSystemRandom().nextInt():0u;
+    if(newTake&&seed==0)seed=1;
+    if(scope==Scope::clip)ensureTimelineClip(false);
+    generate(project,scope,selectedTrack,scope==Scope::clip?clipIndex():selectedSection,seed);
+    arrangement.selectedClips.clear();piano.clearSelection();changed();
+    if(newTake&&scope==Scope::song&&page==Page::instrument) {
+        juce::Component::SafePointer<MainComponent> safe(this);
+        juce::MessageManager::callAsync([safe]{if(safe&&safe->page==Page::instrument)safe->instrumentPanel.rebuild();});
+    }
+    if(newTake&&scope==Scope::song)
+        message(tr(project.settings.key!=oldKey?"New key, progression and patterns ready. Undo restores the previous song.":"New patterns ready. Locked harmonic parts keep the key and progression. Unlock them for a new harmony."));
+    else message(juce::String::fromUTF8("Nuova generazione pronta · blocchi rispettati · UNDO per tornare indietro."));
+}
 void MainComponent::modifySelected(std::function<void(Clip&)> action){checkpoint();if(piano.selected.empty())action(clip());else{Clip part;for(int i:piano.selected)if(i>=0&&i<(int)clip().notes.size())part.notes.push_back(clip().notes[(size_t)i]);action(part);size_t k=0;for(int i:piano.selected)if(i>=0&&i<(int)clip().notes.size())clip().notes[(size_t)i]=part.notes[k++];}tidyNotes(clip(),clipLength());piano.clearSelection();changed();}
 void MainComponent::paint(juce::Graphics& g){
     g.fillAll(Palette::background);drawFamilyLogo(g,{20,18,238,46});

@@ -331,13 +331,15 @@ The song keeps its base groove across sections, changing performance, density an
 
 ### Change only what you need
 
+**Regeneration and sound.** **GENERATE SONG** draws a different key, chord progression and bass figure from the selected genre, together with new piano and guitar patterns. Genre, tempo, arrangement, assigned instruments and mix remain. If a locked track or clip contains harmonic notes (piano, bass, strings or guitar), the shared key and progression stay unchanged so those notes remain compatible; unlock the harmonic parts to draw new harmony. Locked drum parts do not prevent harmonic changes.
+
+**REGENERATE TRACK/SECTION/CLIP** changes the selected musical parts within the current key and progression. Regeneration switches targeted tracks to automatic genre patterns and clears fixed Riff seed overrides, including when a factory preset or hand-edited grid was selected. Locked piano/bass grid segments are retained. These pattern settings belong to the track; notes outside the selected scope stay intact. A track keeps one motif across its sections, and drum stems generated together share one kit motif. Bass variations change rhythm as well as chord tones; sustained holds and the first pitched anchor in each bar remain.
+
+**APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take or harmony. Use APPLY to render a chosen preset, edited grid or explicit Riff seed. NEW RIFF prepares another riff; NEW FEEL changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores notes, harmony and pattern settings. Timbre is controlled by Sound, your sample or your assigned plugin.
+
 | Button | What changes |
 |---|---|
-**Regeneration and sound.** GENERATE SONG and REGENERATE TRACK/SECTION/CLIP create a new musical take: rhythmic figures and phrases change while the selected genre, harmony, instrument assignments and mix remain. A regenerated track keeps one motif through its sections; drum stems generated together share a kit motif. The bass develops the selected figure using chord tones, preserving its strong anchors. A steady four-on-the-floor kick or a sustained string part can correctly retain its basic pattern. Timbre changes through Sound, your sample or your assigned plugin, rather than through MIDI regeneration.
-
-A fixed GROOVE preset, hand-edited grid or explicit Riff seed constrains the result; choose Genre / automatic and Riff seed 0 for fresh automatic motifs. NEW RIFF prepares another riff; **APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take. NEW FEEL only changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores the previous result.
-
-| **GENERATE SONG** | New takes on all unlocked tracks, keeping the existing sections. |
+| **GENERATE SONG** | New key, progression, bass figure and patterns on unlocked tracks, keeping the existing sections. Locked harmonic notes preserve harmony. |
 | **REGENERATE TRACK** | The selected instrument throughout the song. |
 | **REGENERATE SECTION** | This section across all unlocked tracks. |
 | **REGENERATE CLIP** | Just the selected track in this section. |

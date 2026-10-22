@@ -334,13 +334,15 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 
 ### Cambiare solo quello che serve
 
+**Rigenerazione e suono.** **GENERA BRANO** estrae una tonalità diversa, un’altra progressione e una nuova figura di basso del genere selezionato, insieme a nuovi pattern di piano e chitarra. Restano genere, tempo, struttura, strumenti assegnati e mix. Se una traccia o un clip bloccato contiene note armoniche (piano, basso, archi o chitarra), tonalità e progressione comuni restano invariate per mantenere compatibili quelle note: sblocca le parti armoniche per ottenere una nuova armonia. I blocchi della batteria non impediscono il cambio armonico.
+
+**RIGENERA TRACCIA/SEZIONE/CLIP** cambia le parti selezionate nella tonalità e progressione attuali. La rigenerazione passa ai pattern automatici del genere e azzera i Riff seed fissi delle tracce interessate, anche se era selezionato un preset o una griglia manuale. I segmenti bloccati della griglia piano/basso restano. Questi parametri del pattern appartengono alla traccia; le note fuori dall’ambito selezionato restano intatte. Una traccia mantiene un motivo coerente fra le sezioni e le parti di batteria generate insieme condividono il motivo del kit. Le variazioni di basso cambiano ritmo e note dell’accordo, rispettando le note tenute e il primo attacco intonato di ogni battuta.
+
+**APPLICA TRACCIA / APPLICA CLIP** scrive i parametri correnti senza estrarre un’altra versione o armonia. Usa APPLICA per scrivere un preset scelto, una griglia modificata o un Riff seed esplicito. NUOVO RIFF prepara un altro riff; NUOVO FEEL cambia l’umanizzazione. **RND LANE** estrae una nuova parte di batteria. Il `.fga` conserva le versioni musicali; ANNULLA ripristina note, armonia e parametri dei pattern. Il timbro si cambia da Suono, dal campione o dal plugin assegnato.
+
 | Pulsante | Cosa cambia |
 |---|---|
-**Rigenerazione e suono.** GENERA BRANO e RIGENERA TRACCIA/SEZIONE/CLIP creano una nuova versione musicale: cambiano figure ritmiche e frasi, mantenendo genere, armonia, strumenti assegnati e mix. Una traccia rigenerata mantiene un motivo coerente tra le sezioni; le parti di batteria generate insieme condividono il motivo del kit. Il basso sviluppa la figura scelta con note dell’accordo, rispettandone gli accenti principali. Una cassa regolare in quattro o una parte di archi tenuti possono correttamente conservare lo schema di base. Il timbro si cambia da Suono, dal campione o dal plugin assegnato, attraverso i rispettivi controlli.
-
-Un preset GROOVE fisso, una griglia manuale o un Riff seed esplicito vincola il risultato; scegli Genere / automatico e Riff seed 0 per nuovi motivi automatici. NUOVO RIFF prepara un altro riff; **APPLICA TRACCIA / APPLICA CLIP** scrive i parametri correnti senza estrarre un’altra versione. NUOVO FEEL cambia solo l’umanizzazione. **RND LANE** estrae una nuova versione della parte di batteria. Il `.fga` conserva le versioni musicali; ANNULLA ripristina il risultato precedente.
-
-| **GENERA BRANO** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
+| **GENERA BRANO** | Nuova tonalità, progressione, figura di basso e pattern sulle tracce sbloccate, conservando le sezioni. Le note armoniche bloccate conservano l’armonia. |
 | **RIGENERA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
 | **RIGENERA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
 | **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |

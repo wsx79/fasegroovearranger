@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato — 2026-10-22
+
+- GENERA BRANO sceglie tonalità, progressione del genere e figura di basso diverse. Le note armoniche bloccate mantengono l’armonia attuale; la rigenerazione parziale resta nell’armonia del brano.
+- La rigenerazione lascia preset e Riff seed fissi, combina frasi pianistiche del genere, varia il ritmo del basso e crea nuovi pattern di chitarra Jackin’. APPLICA conserva parametri espliciti e versioni salvate; restano blocchi, strumenti, mix e note fuori ambito.
+- Test dei ritmi di piano/basso/chitarra senza humanizzazione sui tredici generi, inclusi preset e seed fissi; aggiornati messaggi e guide IT/EN.
+
 ## 0.7.2 — 2026-10-21
 
 - La rigenerazione crea una nuova versione musicale di brano, traccia, sezione o clip, invece di cambiare soprattutto l’umanizzazione dello stesso riff. Traccia/brano mantengono un motivo coerente tra sezioni e la batteria un seed comune.

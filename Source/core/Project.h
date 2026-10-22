@@ -130,7 +130,9 @@ void arrangeSong(Project&);
 void chooseProgression(Project&, int preset);
 void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
-// A zero seed reproduces stored clips; a nonzero seed writes another deterministic take.
+// A zero seed applies settings to stored takes. A nonzero seed draws new genre
+// patterns, releasing fixed pattern/riff overrides on targeted tracks. Song scope
+// also changes key/progression/bass figure unless harmonic notes are locked.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
