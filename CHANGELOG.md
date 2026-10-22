@@ -5,6 +5,7 @@
 - Plugin browser in the same style as the FaseGroove groove browser: manufacturers on the left, plugins on the right, search, favourites and recents. FaseGroove engines are the first group. A click loads the plugin; double-click or Enter closes the browser.
 - Startup scan covers the default VST3 folders and one custom folder, including subfolders. The known-plugin list is saved as JUCE KnownPluginList XML. Unchanged files are not inspected again. Failed scans stay quarantined. RESCAN and RETRY FAILED stay in plugin settings.
 - Each track can load one VST3/AU instrument and one insert effect. The project stores both plugins and their state.
+- Random guitar grooves stay audible. Every bar keeps a speaking accent, plain 16ths cannot fall through the accent curve, and humanize cannot silence a hit. Ghosts stay quieter. Funky, jackin' and jackin' piano intros are no longer only a ghost scratch.
 
 ## 0.10.0 — 2026-10-22
 

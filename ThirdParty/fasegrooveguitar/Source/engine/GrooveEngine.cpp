@@ -457,11 +457,19 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
 
     auto velocityFor = [&] (int lane, double level, int salt)
     {
-        double v = s.velocity * level * (double) s.levels[(size_t) lane] * laneLevel (lane) * sectionVelocityScale (s.section);
-        if (s.section == Section::buildup)   // crescendo through the build-up
-            v *= 0.65 + 0.45 * (double) pos / (double) std::max (1, len - 1);
+        const double sectionGain = sectionVelocityScale (s.section)
+            * (s.section == Section::buildup ? 0.65 + 0.45 * (double) pos / (double) std::max (1, len - 1) : 1.0);
+        const double laneGain = (double) s.levels[(size_t) lane] * laneLevel (lane);
+        double v = s.velocity * level * laneGain * sectionGain;
         v += human * 12.0 * (noise (step, seedSalt + salt + 7) - 0.5) * 2.0;
-        return std::clamp ((int) std::lround (v), 1, 127);
+        // Floor follows the Velocity knob, the lane and the section. A speaking hit cannot be
+        // pulled to nothing by Humanize; a ghost (level under 0.55) still sits well below it.
+        int floorVel = 1;
+        if (level >= 0.85)
+            floorVel = (int) std::lround (s.velocity * laneGain * sectionGain * 0.80);
+        else if (level >= 0.55)
+            floorVel = (int) std::lround (s.velocity * laneGain * sectionGain * 0.48);
+        return std::clamp ((int) std::lround (v), std::clamp (floorVel, 1, 127), 127);
     };
 
     auto timeFor = [&] (int lane, int salt)
@@ -513,9 +521,13 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
         else if (followsAccentGroove (lane) && symbol != 'g' && ! groove.active)
         {
             // The accent groove: written accents stay on top, the rest follows the beat.
+            // The profile bottoms at 0.45, which used to leave a plain 16th near half level:
+            // a groove made only of those 16ths was silent. The floor keeps a plain hit
+            // speaking; the "&" (profile 1) stays the loudest, and ghosts never come here.
             const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
             const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4));
-            level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
+            const double curved = std::max (shape, 0.72);
+            level *= symbol == 'X' ? std::max (curved, 0.9) : curved * (1.0 + 0.25 * a);
         }
 
         const bool chordHit = isChordLane (lane);
