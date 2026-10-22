@@ -520,7 +520,15 @@ int mixEntry(int genre,int track,int bars) {
         entry=drums[lane];
         if(genre==7&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
     }
-    return std::clamp(((entry*bars/32+7)/8)*8,0,bars);
+    int at=std::clamp(((entry*bars/32+7)/8)*8,0,bars);
+    // Strings scheduled on the final bar never sound: a 32-bar cue scaled onto
+    // a shorter intro lands on the last bar and the whole part is removed.
+    // Keep at least eight bars, and half of a longer intro or outro.
+    if(track==2&&bars>=8&&at>bars-8){
+        const int keep=std::min(bars,std::max(8,(bars/2/8)*8));
+        at=bars-keep;
+    }
+    return at;
 }
 void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
@@ -529,7 +537,9 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():fgd::userPatternIndex();
     if(e.pattern==user)return;
     auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
-        if(track==2&&sec.type==Section::main)return genre==8?phrase>=4:genre==11?phrase<6:phrase>=6;
+        // Strings follow the harmony for the whole verse and chorus. Gating them
+        // to the last two bars of a phrase removed every chord that did not
+        // start in that window, so most songs never grew a string part.
         if(track==3&&!p.settings.guitarLead){
             if(genre==4)return phrase%2==1; // percussive guitar answers the chopped keys
             if(genre==7)return phrase%4>=2; // percussion/guitar answers
@@ -680,6 +690,10 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             clip.loopSource.clear();clip.loopLength=0;
             const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
             const auto& e=t.engine;
+            // An explicit strings regenerate must write notes. Jackin' stays off
+            // for a factory song, but asking again on this track turns a pad on.
+            const bool stringsRequest=ti==2&&seed!=0&&scope!=Scope::song&&(scope==Scope::section||ti==track);
+            if(stringsRequest&&p.settings.stringsMode==0)p.settings.stringsMode=(int)sgk::StringsMode::pad;
             auto ps=pianoEngineSettings(p,ti,clip.seed,clip.motifSeed);
             const bool mixing=type==Section::intro||type==Section::outro;
             // Soulful/gospel/afro lifts keep the groove rather than switching to
@@ -695,6 +709,13 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,renderBars,clip.seed,-1}});
                 if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
+                // Answer stabs need a piano rest. A break holds one chord, so they
+                // would otherwise stay silent. A pad still follows that harmony.
+                if(ti==2&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){
+                    auto held=ps;held.strings=sgk::StringsMode::pad;
+                    auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,renderBars,clip.seed,-1}});
+                    clip.notes=notesFrom(bed,beats,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
+                }
             } else if(ti==3) {
                 fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre;
                 if(s.genre==4&&e.pattern<0&&!clip.motifSeed){
@@ -729,6 +750,12 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeBandRoles(clip,p,ti,guide);
             shapeMixSection(clip,s.genre,ti,type,renderBars);
+            if(ti==2&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){
+                auto held=ps;held.strings=sgk::StringsMode::pad;
+                auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,renderBars,clip.seed,-1}});
+                clip.notes=notesFrom(bed,beats,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
+                shapeMixSection(clip,s.genre,ti,type,renderBars);
+            }
             tidyNotes(clip,beats);
         }
     }

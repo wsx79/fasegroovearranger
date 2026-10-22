@@ -149,6 +149,53 @@ int main(int argc,char** argv){try{
         auto custom=jack;custom.settings.stringsMode=1;fga::generate(custom,fga::Scope::track,2);
         check(!custom.tracks[2].clips[(size_t)chorus].notes.empty(),"strings can still be enabled by the musician");
     }
+    {
+        auto countStrings=[&](const fga::Project& p){int n=0;for(const auto& c:p.tracks[2].clips)n+=(int)c.notes.size();return n;};
+        auto findSection=[&](const fga::Project& p,fga::Section type){for(int i=0;i<(int)p.sections.size();++i)if(p.sections[(size_t)i].type==type)return i;return -1;};
+        auto chordFollows=[&](const fga::Clip& clip){
+            std::array<int,128> first{},next{};int n0=0,n1=0;
+            for(auto n:clip.notes){if(n.start<0.05){first[(size_t)n.pitch]=1;++n0;}if(std::abs(n.start-4.)<0.05){next[(size_t)n.pitch]=1;++n1;}}
+            if(n0<2||n1<2)return false;
+            for(int pitch=0;pitch<128;++pitch)if(first[(size_t)pitch]!=next[(size_t)pitch])return true;
+            return false;
+        };
+        for(int genre=0;genre<13;++genre){
+            auto song=fga::newProject(genre);
+            check(song.tracks[2].instrument=="internal"&&song.tracks[2].kind==2&&!song.tracks[2].mute,"strings track stays the internal strings instrument");
+            if(genre==4){
+                check(song.settings.stringsMode==0&&countStrings(song)==0,"Jackin factory song does not invent a string bed");
+                auto again=song;fga::generate(again,fga::Scope::song,0,0,9001);
+                check(again.settings.stringsMode==0&&countStrings(again)==0,"song regenerate keeps the Jackin strings rest");
+                auto locked=song;locked.tracks[2].locked=true;fga::generate(locked,fga::Scope::track,2,0,17);
+                check(locked.settings.stringsMode==0&&countStrings(locked)==0,"a locked strings track is not filled or restyled");
+                auto held=song;const int drop=findSection(held,fga::Section::drop);held.tracks[2].clips[(size_t)drop].locked=true;
+                fga::generate(held,fga::Scope::track,2,0,19);
+                check(held.tracks[2].clips[(size_t)drop].notes.empty()&&!held.tracks[2].clips[(size_t)findSection(held,fga::Section::main)].notes.empty(),"a locked strings clip stays empty while the rest of the track is written");
+                fga::generate(song,fga::Scope::track,2,0,21);
+                check(song.settings.stringsMode==(int)sgk::StringsMode::pad,"regenerating silent strings turns on a harmony pad");
+                for(size_t i=0;i<song.sections.size();++i)check(!song.tracks[2].clips[i].notes.empty(),"strings track regenerate writes every unlocked section");
+                check(chordFollows(song.tracks[2].clips[(size_t)findSection(song,fga::Section::drop)]),"regenerated Jackin strings follow the next chord");
+                auto section=fga::newProject(4);const int mainIndex=findSection(section,fga::Section::main);
+                fga::generate(section,fga::Scope::section,0,mainIndex,23);
+                check(section.settings.stringsMode==(int)sgk::StringsMode::pad&&!section.tracks[2].clips[(size_t)mainIndex].notes.empty(),"section regenerate writes strings even when another track is selected");
+                auto clipSong=fga::newProject(4);const int clipDrop=findSection(clipSong,fga::Section::drop);
+                fga::generate(clipSong,fga::Scope::clip,2,clipDrop,29);
+                check(!clipSong.tracks[2].clips[(size_t)clipDrop].notes.empty()&&clipSong.tracks[2].clips[(size_t)findSection(clipSong,fga::Section::intro)].notes.empty(),"clip regenerate writes only the chosen strings clip");
+                continue;
+            }
+            check(song.settings.stringsMode!=0,"genres that use strings leave the style on");
+            for(size_t i=0;i<song.sections.size();++i)if(song.sections[i].bars>=8)check(!song.tracks[2].clips[i].notes.empty(),"strings sound in every section of eight bars or more");
+            const int drop=findSection(song,fga::Section::drop);
+            const auto& bed=song.tracks[2].clips[(size_t)drop];
+            const bool holds=song.settings.stringsMode==(int)sgk::StringsMode::pad||song.settings.stringsMode==(int)sgk::StringsMode::highPad||song.settings.stringsMode==(int)sgk::StringsMode::widePad||song.settings.stringsMode==(int)sgk::StringsMode::discoOctaves;
+            if(holds)check(chordFollows(bed),"string pads follow the harmony into the next chord");
+            else{int low=127,high=0;for(auto n:bed.notes){low=std::min(low,n.pitch);high=std::max(high,n.pitch);}check((int)bed.notes.size()>=8&&low>=36&&high<=96,"rhythmic strings stay in the ensemble register");}
+            auto chords=song;fga::randomiseHarmony(chords,4242);fga::generate(chords);
+            check(chords.settings.stringsMode==song.settings.stringsMode&&countStrings(chords)>0,"new chords keep the strings style and rewrite the part");
+            auto take=song;fga::generate(take,fga::Scope::song,0,0,5150);
+            check(take.settings.stringsMode!=0&&countStrings(take)>0,"song regenerate keeps a strings part where the genre uses one");
+        }
+    }
     std::set<std::string> palettes;
     for(int g=0;g<13;++g){auto styled=fga::newProject(g);std::ostringstream signature;for(int t:{0,1,3,4})signature<<styled.tracks[(size_t)t].sound<<":"<<styled.tracks[(size_t)t].engine.tone<<":";palettes.insert(signature.str());check(styled.tracks[1].pan==0&&styled.tracks[1].engine.reverb==0&&styled.tracks[1].engine.chorus==0,"dry centred default bass");check(styled.tracks[4].gain*.95>styled.tracks[8].gain*.28&&styled.tracks[4].gain*.95<3*styled.tracks[8].gain*.28,"drum balance includes original engine lane calibration");}
     check(palettes.size()==13,"thirteen distinct sound palettes, not one default kit/keyboard");

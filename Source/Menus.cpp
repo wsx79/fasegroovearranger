@@ -58,7 +58,7 @@ void MainComponent::showClipMenu(int track,int index){
 }
 void MainComponent::showGuide(bool english){juce::DialogWindow::LaunchOptions o;o.dialogTitle=english?"Fase Groove Arranger / User guide":"Fase Groove Arranger / Guida";o.dialogBackgroundColour=Palette::background;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createGuidePage(english).release());o.launchAsync();}
 bool MainComponent::writeHelpEvidence(const juce::File& folder){
-    bool ok=Updater::isNewer("v0.4.2","0.4.1")&&!Updater::isNewer("0.4.1","0.4.1")&&!Updater::isNewer("v0.3.9","0.4.1")&&Updater::isNewer("0.10.0","0.9.9")&&Updater::isNewer("0.11.0","0.10.0");
+    bool ok=Updater::isNewer("v0.4.2","0.4.1")&&!Updater::isNewer("0.4.1","0.4.1")&&!Updater::isNewer("v0.3.9","0.4.1")&&Updater::isNewer("0.10.0","0.9.9")&&Updater::isNewer("0.11.0","0.10.0")&&Updater::isNewer("0.12.0","0.11.0");
     for(bool about:{true,false}){
         options.show(about,1.f);auto image=createComponentSnapshot(getLocalBounds());
         if(auto out=folder.getChildFile(about?"credits.png":"settings.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*out)&&ok;}else ok=false;
