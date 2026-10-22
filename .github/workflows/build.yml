@@ -2,10 +2,16 @@ name: Build and test standalone
 on:
   push:
     branches: [main]
+    tags: ["v*"]
     paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
   pull_request:
     paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing tag to publish, for example v0.12.1. Empty does not publish."
+        required: false
+        type: string
 permissions:
   contents: read
 concurrency:
@@ -129,3 +135,42 @@ jobs:
         with:
           name: Arranger-validation-${{ runner.os }}
           path: ${{ runner.temp }}/plugin-catalog/plugin-catalog.txt
+
+  release:
+    name: Publish release
+    needs: standalone
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: FaseGrooveArranger-*
+          path: packages
+          merge-multiple: true
+      - name: Release notes from the changelog
+        run: .github/scripts/release-notes.sh "${{ inputs.release_tag || github.ref_name }}" > release-notes.md
+      - name: Publish only the four distribution packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          test -f packages/FaseGrooveArranger-Linux.zip
+          test -f packages/FaseGrooveArranger-macOS.zip
+          test -f packages/FaseGrooveArranger-Windows.zip
+          test -f packages/FaseGrooveArranger-Windows-Setup.exe
+          extras=$(find packages -type f ! -name 'FaseGrooveArranger-Linux.zip' ! -name 'FaseGrooveArranger-macOS.zip' ! -name 'FaseGrooveArranger-Windows.zip' ! -name 'FaseGrooveArranger-Windows-Setup.exe' -print)
+          if [ -n "$extras" ]; then echo "$extras" >&2; exit 1; fi
+          gh release create "$TAG" --target "${{ github.sha }}" --title "Fase Groove Arranger ${TAG#v}" --notes-file release-notes.md \
+            packages/FaseGrooveArranger-Linux.zip \
+            packages/FaseGrooveArranger-macOS.zip \
+            packages/FaseGrooveArranger-Windows.zip \
+            packages/FaseGrooveArranger-Windows-Setup.exe || \
+          gh release upload "$TAG" --clobber \
+            packages/FaseGrooveArranger-Linux.zip \
+            packages/FaseGrooveArranger-macOS.zip \
+            packages/FaseGrooveArranger-Windows.zip \
+            packages/FaseGrooveArranger-Windows-Setup.exe
