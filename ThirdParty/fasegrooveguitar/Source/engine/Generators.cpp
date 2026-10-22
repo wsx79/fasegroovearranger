@@ -56,6 +56,28 @@ namespace
 
     void clearLine (std::string& line) { std::fill (line.begin(), line.end(), '.'); }
     bool hits (const std::string& line) { return std::any_of (line.begin(), line.end(), isHit); }
+
+    /** A plain hit the accent groove will not bury: not a scratch, not a ghost, and not a
+        weak 16th of an up-strum, chank or picked line. */
+    bool hasSpeakingHit (const GuitarPattern& p)
+    {
+        for (int l = 0; l < numLanes; ++l)
+        {
+            if (l == (int) Lane::scratch)
+                continue;
+            const bool accent = l == (int) Lane::strumUp || l == (int) Lane::chank || l == (int) Lane::arp;
+            const auto& line = p.lanes[(size_t) l];
+            for (int i = 0; i < (int) line.size(); ++i)
+            {
+                const char c = line[(size_t) i];
+                if (c != 'X' && c != 'x' && c != 'f')
+                    continue;
+                if (! accent || i % 4 == 0 || i % 4 == 2)
+                    return true;
+            }
+        }
+        return false;
+    }
 }
 
 //==============================================================================
@@ -124,6 +146,11 @@ GuitarPattern applySection (const GuitarPattern& source, Section section)
                 if (! hits (p[Lane::scratch]))
                     for (int i = 0; i < len; i += 4)
                         p[Lane::scratch][(size_t) i] = 'g';
+                // A scratch of ghosts, or up-strums only on the weak 16ths, sits under the
+                // accent curve and can vanish. One chank on the "&" gives the intro a voice.
+                if (! hasSpeakingHit (p))
+                    for (int bar = 0; bar < len / 16; ++bar)
+                        p[Lane::chank][(size_t) (bar * 16 + 2)] = 'x';
             }
             else if (genre == dance)
             {
@@ -406,6 +433,74 @@ namespace
             if ((line[i] == 'x' || line[i] == 'g') && i % 16 != 0 && r.chance (drop))
                 line[i] = '.';
     }
+
+    /** Every groove needs one accent a player can hear. Ghosts stay ghosts. A plain hit on a
+        weak 16th of an accent lane is promoted only when the bar has nothing stronger, so the
+        "&" and the downbeat stay louder than the 16ths around them. */
+    void ensureAudiblePeak (GuitarPattern& p, int genre)
+    {
+        for (int l = 0; l < numLanes; ++l)
+            if (l != (int) Lane::scratch)
+                for (char c : p.lanes[(size_t) l])
+                    if (c == 'X')
+                        return;
+
+        auto scoreOf = [] (int lane, int step)
+        {
+            const bool accent = lane == (int) Lane::strumUp || lane == (int) Lane::chank || lane == (int) Lane::arp;
+            const int cls = step % 4;
+            int score = accent ? (cls == 0 || cls == 2 ? 40 : 15) : 70;
+            if (lane == (int) Lane::strumDown || lane == (int) Lane::stab || lane == (int) Lane::power
+                || lane == (int) Lane::root || lane == (int) Lane::octave)
+                score += 10;
+            if (lane == (int) Lane::swell)
+                score -= 15;
+            if (cls == 0)
+                score += 8;
+            else if (cls == 2)
+                score += 5;
+            return score;
+        };
+
+        bool promoted = false;
+        const int bars = std::max (1, (int) p.lanes[0].size() / 16);
+        for (int bar = 0; bar < bars; ++bar)
+        {
+            int bestLane = -1, bestStep = -1, bestScore = -1;
+            for (int l = 0; l < numLanes; ++l)
+            {
+                if (l == (int) Lane::scratch)
+                    continue;
+                const auto& line = p.lanes[(size_t) l];
+                for (int i = bar * 16; i < bar * 16 + 16 && i < (int) line.size(); ++i)
+                {
+                    const char c = line[(size_t) i];
+                    if (c != 'x' && c != 'f')
+                        continue;
+                    const int score = scoreOf (l, i);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        bestLane = l;
+                        bestStep = i;
+                    }
+                }
+            }
+            if (bestLane >= 0)
+            {
+                p.lanes[(size_t) bestLane][(size_t) bestStep] = 'X';
+                promoted = true;
+            }
+        }
+        if (promoted)
+            return;
+
+        const Lane lane = genre == dance ? Lane::power : genre == gospel ? Lane::strumDown : Lane::stab;
+        if (! p[lane].empty())
+            p[lane][0] = 'X';
+        if ((int) p[lane].size() > 16 && p[lane][16] == '.')
+            p[lane][16] = 'x';
+    }
 }
 
 GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
@@ -526,6 +621,7 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         if (p[lane][16] == '.')
             p[lane][16] = 'x';
     }
+    ensureAudiblePeak (p, genre);
     normalisePattern (p, randomBeatLength);
     return p;
 }

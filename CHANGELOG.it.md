@@ -5,6 +5,7 @@
 - Browser dei plugin nello stesso stile del browser dei groove FaseGroove: produttori a sinistra, plugin a destra, ricerca, preferiti e recenti. I motori FaseGroove sono il primo gruppo. Un clic carica il plugin; doppio clic o Invio chiude il browser.
 - All’avvio la scansione copre le cartelle VST3 predefinite e una cartella personale, anche nelle sottocartelle. L’elenco noto è salvato come XML KnownPluginList di JUCE. I file invariati non vengono riletti. Le scansioni fallite restano in quarantena. RESCAN e RIPROVA ERRORI restano nelle impostazioni plugin.
 - Ogni traccia può caricare uno strumento VST3/AU e un effetto in insert. Il progetto salva entrambi i plugin e il loro stato.
+- I groove casuali di chitarra restano udibili. Ogni battuta tiene un accento che si sente, i sedicesimi semplici non scendono sotto la curva degli accenti e l’umanizzazione non azzera un colpo. I ghost restano più bassi. Le intro funky, jackin' e jackin' piano non sono più solo uno scratch fantasma.
 
 ## 0.10.0 — 2026-10-22
 

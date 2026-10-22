@@ -1,17 +1,57 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/core/Project.h"
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <limits>
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
+#include "../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
+namespace {
+int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
+bool guitarHas(const fgg::GuitarPattern& p,char symbol,int lane=-1){for(int l=0;l<fgg::numLanes;++l){if(lane>=0&&l!=lane)continue;if(p.lanes[(size_t)l].find(symbol)!=std::string::npos)return true;}return false;}
+fgg::GuitarSettings guitarOnly(std::initializer_list<std::pair<fgg::Lane,const char*>> lines){
+    fgg::GuitarSettings s;s.swing=0;s.humanize=0;s.accentGroove=0;s.fillEveryBars=0;s.variationEvery=0;s.strumAfterFill=false;s.pattern=fgg::userPatternIndex();
+    for(auto& lane:s.user)lane.fill('.');
+    for(const auto& [lane,steps]:lines){std::string line;for(const char* c=steps;*c;++c)if(*c!=' ')line+=*c;for(int i=0;i<fgg::userPatternLength;++i)s.user[(size_t)lane][(size_t)i]=line[(size_t)(i%(int)line.size())];}
+    return s;
+}
+void verifyGuitarAudibility(){
+    auto base=[]{fgg::GuitarSettings s;s.pattern=fgg::randomPatternIndex();s.humanize=.3f;s.accentGroove=.85f;s.velocity=100;s.roomForBand=true;s.fillEveryBars=0;s.variationEvery=0;s.strumAfterFill=false;return s;};
+    for(int genre=0;genre<13;++genre)for(float density:{0.f,.22f,.35f,.5f,.68f,1.f})for(std::uint32_t seed=1;seed<=60;++seed){
+        const auto pattern=fgg::makeRandomPattern(seed,density,genre);
+        check(guitarHas(pattern,'X'),"random guitar groove keeps an accent");
+        bool speaking=false;for(int l=0;l<fgg::numLanes;++l)if(l!=(int)fgg::Lane::scratch&&guitarHas(pattern,'X',l))speaking=true;
+        check(speaking,"guitar accent is not only a scratch");
+        auto s=base();s.riffSeed=seed;s.density=density;s.randomGenre=genre;s.swing=fgg::genreSwing(genre);
+        const auto events=fgg::GrooveEngine::renderClip(s,8);
+        check(!events.empty()&&guitarMaxOn(events)>=74,"generated guitar groove stays audible");
+    }
+    for(const auto& bad:std::initializer_list<std::array<double,3>>{{0,57,0},{4,14,0},{4,14,.35},{4,14,1}}){
+        auto s=base();s.randomGenre=(int)bad[0];s.riffSeed=(std::uint32_t)bad[1];s.density=(float)bad[2];
+        check(guitarMaxOn(fgg::GrooveEngine::renderClip(s,8))>=84,"formerly silent guitar seeds stay audible");
+    }
+    for(int genre:{4,5,8})for(std::uint32_t seed=1;seed<=24;++seed){
+        auto s=base();s.riffSeed=seed;s.density=.35f;s.randomGenre=genre;s.section=fgg::Section::intro;
+        check(guitarMaxOn(fgg::GrooveEngine::renderClip(s,8))>=68,"funky and jackin intros are more than a ghost scratch");
+    }
+    auto s=guitarOnly({{fgg::Lane::chank,"X.x. .x.x X.x. .x.x"},{fgg::Lane::scratch,"g... g... g... g..."}});
+    s.accentGroove=.85f;s.velocity=100;s.humanize=0;int accent=0,weak=127,ghost=127;
+    for(const auto& e:fgg::GrooveEngine::renderClip(s,4)){
+        if(!e.isNoteOn())continue;const int step=(int)std::llround(e.ppq/fgg::stepLength);
+        if(e.lane==(int)fgg::Lane::scratch)ghost=std::min(ghost,e.velocity);else if(step%4==0)accent=std::max(accent,e.velocity);else if(step%4==1)weak=std::min(weak,e.velocity);
+    }
+    check(accent>=85&&weak<=accent-8&&ghost<=weak-8,"guitar accent stays above a weak 16th and a ghost stays quieter");
+}
+}
 #include "ClubArrangementChecks.h"
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
 int main(int argc,char** argv){try{
-    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();
+    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
