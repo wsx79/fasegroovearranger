@@ -1071,7 +1071,8 @@ GroovePattern GrooveEngine::basePattern (const GrooveSettings& s)
     }
 
     if (s.pattern == randomPatternIndex())
-        return makeRandomPattern (s.riffSeed, s.riffDensity);
+        return s.riffGenre >= 0 ? makeRandomPattern (s.riffSeed, s.riffDensity, s.riffGenre)
+                                : makeRandomPattern (s.riffSeed, s.riffDensity);
 
     const auto& patterns = groovePatterns();
     return patterns[(size_t) std::clamp (s.pattern, 0, (int) patterns.size() - 1)];
@@ -1141,6 +1142,7 @@ int GrooveEngine::patternLength (const GrooveSettings& s) noexcept
 const GroovePattern& GrooveEngine::patternFor (const GrooveSettings& s)
 {
     if (s.pattern != cachedIndex || s.riffSeed != cachedSeed || s.riffDensity != cachedDensity
+        || s.riffGenre != cachedRiffGenre
         || s.section != cachedSection || s.segmentOrder != cachedOrder
         || s.userRight != cachedUserRight || s.userLeft != cachedUserLeft || s.grooveBars != cachedBars
         || s.movement != cachedMovement || s.sectionVariation != cachedSectionVariation || cachedPattern.rightHand.empty()
@@ -1166,6 +1168,7 @@ const GroovePattern& GrooveEngine::patternFor (const GrooveSettings& s)
         cachedIndex = s.pattern;
         cachedSeed = s.riffSeed;
         cachedDensity = s.riffDensity;
+        cachedRiffGenre = s.riffGenre;
         cachedSection = s.section;
         cachedSectionVariation = s.sectionVariation;
         cachedOrder = s.segmentOrder;

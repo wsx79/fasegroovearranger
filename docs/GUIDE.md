@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.12.1** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.13.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -341,7 +341,7 @@ The song keeps its base groove across sections, changing performance, density an
 
 **Regeneration and sound.** **GENERATE SONG** draws a different key, chord progression and bass figure, a new tempo inside the genre range, density and swing within the style, and new section lengths in 8-bar phrases. Section order and types stay. Genre, assigned instruments and mix remain. Locked tracks or clips freeze the form. If a locked track or clip contains harmonic notes (piano, bass, strings or guitar), the shared key and progression also stay unchanged; unlock those parts to draw new harmony. Locked drum parts do not prevent harmonic changes.
 
-**REGENERATE TRACK/SECTION/CLIP** changes the selected musical parts within the current key and progression. Regeneration switches targeted tracks to automatic patterns and clears fixed Riff seed overrides, including when a factory preset or hand-edited grid was selected. Piano and string stabs draw a new classic figure each time; guitar and drums stay in the song genre. Locked piano/bass grid segments are retained. These pattern settings belong to the track; notes outside the selected scope stay intact. A track keeps one motif across its sections, and drum stems generated together share one kit motif. Bass variations change rhythm as well as chord tones; sustained holds and the first pitched anchor in each bar remain.
+**REGENERATE TRACK/SECTION/CLIP** changes the selected musical parts within the current key and progression. Regeneration switches targeted tracks to automatic patterns and clears fixed Riff seed overrides, including when a factory preset or hand-edited grid was selected. Piano figures follow the song genre: house, '90s piano house and dance stabs keep the classic loops, and every other style draws its own riff. String stabs are rewritten with that new figure. Guitar and drums stay in the song genre, each on its own rhythm. Locked piano/bass grid segments are retained. These pattern settings belong to the track; notes outside the selected scope stay intact. A track keeps one motif across its sections, and drum stems generated together share one kit motif. Bass variations change rhythm as well as chord tones; sustained holds and the first pitched anchor in each bar remain.
 
 **APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take or harmony. Use APPLY to render a chosen preset, edited grid or explicit Riff seed. NEW RIFF prepares another riff; NEW FEEL changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores notes, harmony and pattern settings. Timbre is controlled by Sound, your sample or your assigned plugin.
 

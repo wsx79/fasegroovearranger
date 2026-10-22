@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.12.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.13.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -344,7 +344,7 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 
 **Rigenerazione e suono.** **GENERA BRANO** estrae una tonalità diversa, un’altra progressione e una nuova figura di basso, un tempo dentro l’intervallo del genere, densità e swing dello stile, e nuove durate di sezione in frasi da otto battute. Restano ordine e tipo delle sezioni, il genere, gli strumenti assegnati e il mix. Tracce o clip bloccati congelano la forma. Se una traccia o un clip bloccato contiene note armoniche (piano, basso, archi o chitarra), restano anche tonalità e progressione: sblocca quelle parti per una nuova armonia. I blocchi della batteria non impediscono il cambio armonico.
 
-**RIGENERA TRACCIA/SEZIONE/CLIP** cambia le parti selezionate nella tonalità e progressione attuali. La rigenerazione passa ai pattern automatici e azzera i Riff seed fissi delle tracce interessate, anche se era selezionato un preset o una griglia manuale. Piano e stabs d'archi pescano ogni volta una figura classica; chitarra e batteria restano nel genere del brano. I segmenti bloccati della griglia piano/basso restano. Questi parametri del pattern appartengono alla traccia; le note fuori dall’ambito selezionato restano intatte. Una traccia mantiene un motivo coerente fra le sezioni e le parti di batteria generate insieme condividono il motivo del kit. Le variazioni di basso cambiano ritmo e note dell’accordo, rispettando le note tenute e il primo attacco intonato di ogni battuta.
+**RIGENERA TRACCIA/SEZIONE/CLIP** cambia le parti selezionate nella tonalità e progressione attuali. La rigenerazione passa ai pattern automatici e azzera i Riff seed fissi delle tracce interessate, anche se era selezionato un preset o una griglia manuale. Le figure di piano seguono il genere del brano: house, piano house anni '90 e dance stab tengono i loop classici, e ogni altro stile pesca il proprio riff. Gli stab degli archi si riscrivono con quella figura. Chitarra e batteria restano nel genere del brano, ognuna col proprio ritmo. I segmenti bloccati della griglia piano/basso restano. Questi parametri del pattern appartengono alla traccia; le note fuori dall’ambito selezionato restano intatte. Una traccia mantiene un motivo coerente fra le sezioni e le parti di batteria generate insieme condividono il motivo del kit. Le variazioni di basso cambiano ritmo e note dell’accordo, rispettando le note tenute e il primo attacco intonato di ogni battuta.
 
 **APPLICA TRACCIA / APPLICA CLIP** scrive i parametri correnti senza estrarre un’altra versione o armonia. Usa APPLICA per scrivere un preset scelto, una griglia modificata o un Riff seed esplicito. NUOVO RIFF prepara un altro riff; NUOVO FEEL cambia l’umanizzazione. **RND LANE** estrae una nuova parte di batteria. Il `.fga` conserva le versioni musicali; ANNULLA ripristina note, armonia e parametri dei pattern. Il timbro si cambia da Suono, dal campione o dal plugin assegnato.
 

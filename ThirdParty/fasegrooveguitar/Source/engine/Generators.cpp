@@ -294,7 +294,6 @@ namespace
         { "X.x. X.x. X.x. X.x.", 8 }, { "X... ..X. ..X. X...", 8 }, { "..X. ..X. ..X. ..X.", 6 }, { "X..X ..X. X..X ..X.", 5 } };
     const Cell octaveCells[] { { "X.x. x.x. X.x. x.x.", 8 }, { "x..x ..x. x..x ..x.", 6 }, { "X.xx x.xx X.xx x.xx", 4 } };
     const Cell rootCells[]   { { "X... .... X... ....", 10 }, { "X... .... X..x ....", 6 }, { "X... X... X... X...", 5 }, { "X... .... ..x. ....", 4 } };
-    const Cell lickCells[]   { { ".... .... .... x.x.", 6 }, { ".... ..x. .... .x.x", 5 }, { "..x. .x.. .... ....", 4 }, { ".... .... .xxx x...", 3 } };
     // Funk: the pick goes down on the even 16ths and up on the odd ones, and stays there.
     const Cell funkDown[] {
         { "X.x. ..x. X.x. ..x.", 8 }, { "X... x.x. ..x. x...", 6 }, { "X.x. X... ..x. x.x.", 6 }, { "X... ..x. X... x.x.", 5 },
@@ -304,20 +303,37 @@ namespace
     const Cell funkChank[] {
         { "..x. ..x. ..x. ..x.", 8 }, { "..xx ..x. ..xx ..x.", 5 }, { "..x. .xx. ..x. ..x.", 4 } };
     // Dance: power chords on the downbeats.
-    const Cell dancePower[] {
-        { "X... X... X... X...", 8 }, { "X... .... X... X...", 5 }, { "X... X... .... X...", 4 }, { ".... X... X... X...", 3 } };
-    const Cell gospelUp[] { { "..x. ..x. ..x. ..x.", 8 }, { ".... ..x. .... ..x.", 5 }, { "..x. .... ..x. ..x.", 4 } };
     const Cell gospelRoot[] { { "X... .... X... ....", 6 }, { "X... .... .... ....", 4 }, { "X... X... .... X...", 3 } };
+    // 16th chank: the "&" is the accent, the 16ths around it are the scratch of the left hand.
+    const Cell jackChank[] {
+        { "..x. ..xx ..x. .xx.", 6 }, { "x.xx ..x. x.xx ..x.", 5 }, { "..xx ..x. ..xx .x.x", 5 }, { ".x.x ..xx .x.x ..x.", 4 },
+        { "..x. .xx. ..xx ..x.", 4 }, { "x..x ..xx x..x .xx.", 4 }, { "..xx .x.x ..x. ..xx", 3 }, { ".xx. ..x. .xx. ..xx", 3 } };
+    const Cell funkScratch[] {
+        { ".g.g .g.g .g.g .g.g", 5 }, { "g.g. g.g. g.g. g.g.", 4 }, { ".g.g g.g. .g.g g..g", 4 }, { "g... g.g. g... g.g.", 3 },
+        { ".gg. .g.g .gg. .g.g", 3 }, { "g.g. .g.g g.g. .gg.", 3 } };
+    const Cell garageSkips[] {
+        { "X... .... ..x. ....", 6 }, { "X... ..x. .... ....", 5 }, { ".... ..X. .... ..x.", 5 }, { "X... .... .... ..x.", 4 },
+        { ".... .... ..X. ....", 4 }, { "X... .... ..x. ..x.", 3 }, { "X... ..x. .... ..x.", 3 }, { ".... ..x. X... ....", 3 },
+        { "X... .... ..X. ....", 3 }, { "..x. .... .... ..X.", 2 } };
+    const Cell swellCells[] {
+        { "X... .... .... ....", 6 }, { "X... .... X... ....", 4 }, { ".... .... X... ....", 3 }, { "X... .... .... X...", 3 } };
     // Afro: tumbao and partido alto, not a straight 16th arp.
     const Cell afroCells[] {
-        { "x..x ..x. ..x. .x..", 8 }, { ".x.x ..x. x.x. ..x.", 7 }, { "x.x. ..x. ..x. x...", 5 }, { "..x. x..x ..x. .x.x", 4 } };
+        { "x..x ..x. ..x. .x..", 8 }, { ".x.x ..x. x.x. ..x.", 7 }, { "x.x. ..x. ..x. x...", 5 }, { "..x. x..x ..x. .x.x", 4 },
+        { "x..x ..x. x..x ..x.", 4 }, { "..x. ..x. x... ..x.", 3 }, { "x... ..x. ..x. x..x", 3 }, { ".x.. x..x ..x. .x..", 3 },
+        { "x..x .x.. ..x. x...", 3 }, { "..x. x... ..x. .x.x", 2 } };
     const Cell afroRoot[] { { "x..x ..x. ..x. x...", 6 }, { "X... ..x. ..x. ....", 4 }, { "x... ..x. x... ..x.", 3 } };
     // Neo-soul and pads: space, not a grid filled in.
     const Cell neoCells[] {
         { "X... .... ..x. ....", 8 }, { ".... ..X. .... ....", 6 }, { "X... .... .... ..x.", 5 }, { "..x. .... .... ....", 4 },
         { "x... ..x. .... ....", 3 } };
     const Cell sparseArp[] {
-        { "x... ..x. .... .x..", 6 }, { "x... .... x... ....", 5 }, { "x... ..x. ..x. ....", 4 }, { ".... ..x. .... ..x.", 3 } };
+        { "x... ..x. .... .x..", 6 }, { "x... .... x... ....", 5 }, { "x... ..x. ..x. ....", 4 }, { ".... ..x. .... ..x.", 3 },
+        { "x... .... ..x. ....", 4 }, { ".... ..x. .... ....", 3 }, { "x... ..x. .... ....", 3 }, { ".... .... ..x. ....", 3 },
+        { "..x. .... ..x. ....", 2 }, { "x... .... .... ..x.", 2 } };
+    const Cell lickCellsExtra[] {
+        { ".... .... .... x.x.", 5 }, { ".... ..x. .... .x.x", 4 }, { "..x. .x.. .... ....", 3 }, { ".... .... .xxx x...", 3 },
+        { ".... .... ..x. .x..", 3 }, { ".... .x.. .... x...", 2 }, { ".... .... x... .x.x", 2 }, { "..x. .... .... .xx.", 2 } };
 
     template <size_t N>
     const char* pickCell (Random& r, const Cell (&cells)[N])
@@ -329,6 +345,142 @@ namespace
             if ((x -= c.weight) < 0)
                 return c.steps;
         return cells[0].steps;
+    }
+
+    /** Bar 1 and bar 2 each take a cell. The second draw is repeated until it is a real answer. */
+    template <size_t N>
+    void paintTwoBars (GuitarPattern& p, Lane lane, Random& r, const Cell (&cells)[N])
+    {
+        const auto first = compact (pickCell (r, cells));
+        std::string second = first;
+        for (int n = 0; n < 8 && second == first; ++n)
+            second = compact (pickCell (r, cells));
+        auto put = [&] (const std::string& cell, int bar)
+        {
+            for (int i = 0; i < 16 && i < (int) cell.size(); ++i)
+                p[lane][(size_t) (bar * 16 + i)] = cell[(size_t) i];
+        };
+        put (first, 0);
+        put (second, 1);
+    }
+
+    /** Offbeat stabs: each "&" is an accent, a plain stab or a rest, and the two bars are drawn apart. */
+    void paintOffbeatStabs (GuitarPattern& p, Random& r)
+    {
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int placed = 0;
+            for (int q = 0; q < 4; ++q)
+            {
+                const int roll = (int) (r.next() % 100);
+                if (roll >= 12)
+                {
+                    p[Lane::stab][(size_t) (bar * 16 + 2 + 4 * q)] = roll < 56 ? 'x' : 'X';
+                    ++placed;
+                }
+                if (r.next() % 100 < 35)
+                    p[Lane::root][(size_t) (bar * 16 + 4 * q)] = 'X';
+            }
+            if (placed == 0)
+                p[Lane::stab][(size_t) (bar * 16 + 2)] = 'X';
+        }
+    }
+
+    /** Short dance stabs on the 8ths (downbeat and "&"), never a 16th and never a held power chord. */
+    void paintDanceStabs (GuitarPattern& p, Random& r)
+    {
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int placed = 0;
+            for (int q = 0; q < 4; ++q)
+            {
+                const int down = (int) (r.next() % 100);
+                const int off = (int) (r.next() % 100);
+                if (down < 42)
+                {
+                    p[Lane::stab][(size_t) (bar * 16 + 4 * q)] = down < 18 ? 'x' : 'X';
+                    ++placed;
+                }
+                if (off < 78)
+                {
+                    p[Lane::stab][(size_t) (bar * 16 + 4 * q + 2)] = off < 28 ? 'x' : 'X';
+                    ++placed;
+                }
+            }
+            if (placed < 2)
+                p[Lane::stab][(size_t) (bar * 16 + 2)] = 'X';
+        }
+    }
+
+    /** Gospel: down-strum on the beat, up-strum on the "&", 8ths only, each bar its own holes. */
+    void paintGospelStrum (GuitarPattern& p, Random& r)
+    {
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int placed = 0;
+            for (int eighth = 0; eighth < 8; ++eighth)
+            {
+                const int step = bar * 16 + eighth * 2;
+                const int roll = (int) (r.next() % 100);
+                if (roll < 20)
+                    continue;
+                const bool down = eighth % 2 == 0;
+                p[down ? Lane::strumDown : Lane::strumUp][(size_t) step] = (down && roll > 55) ? 'X' : 'x';
+                ++placed;
+            }
+            if (placed < 3)
+            {
+                p[Lane::strumDown][(size_t) (bar * 16)] = 'X';
+                p[Lane::strumUp][(size_t) (bar * 16 + 2)] = 'x';
+                p[Lane::strumDown][(size_t) (bar * 16 + 8)] = 'X';
+            }
+        }
+    }
+
+    /** A few notes on the 8ths, behind the beat of a busy grid. The two bars are not copies. */
+    void paintLaidBack (GuitarPattern& p, Random& r, Lane lane)
+    {
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int placed = 0;
+            for (int eighth = 0; eighth < 8; ++eighth)
+            {
+                const int roll = (int) (r.next() % 100);
+                if (roll < 70)
+                    continue;
+                p[lane][(size_t) (bar * 16 + eighth * 2)] = roll > 88 ? 'X' : 'x';
+                ++placed;
+            }
+            if (placed == 0)
+                p[lane][(size_t) (bar * 16)] = 'X';
+        }
+    }
+
+    /** One plain hit rests in each bar, so two clicks that drew the same cell still differ. */
+    void omitOnePerBar (GuitarPattern& p, Random& r)
+    {
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int lanes[48], steps[48], n = 0;
+            for (int l = 0; l < numLanes; ++l)
+            {
+                if (l == (int) Lane::scratch || l == (int) Lane::root || l == (int) Lane::lick)
+                    continue;
+                const auto& line = p.lanes[(size_t) l];
+                for (int i = bar * 16 + 1; i < bar * 16 + 16 && i < (int) line.size() && n < 48; ++i)
+                    if (isHit (line[(size_t) i]))
+                    {
+                        lanes[n] = l;
+                        steps[n] = i;
+                        ++n;
+                    }
+            }
+            if (n >= 3)
+            {
+                const int k = (int) (r.next() % (std::uint32_t) n);
+                p.lanes[(size_t) lanes[k]][(size_t) steps[k]] = '.';
+            }
+        }
     }
 
     /** The main part a genre's guitarist plays, and how likely each one is. */
@@ -347,19 +499,19 @@ namespace
         //                        funk stab chank arp swell power oct strum8 2step
         switch (genre)
         {
-            case pianoHouse:  return { { 1, 8, 2, 0, 0, 0, 0, 2, 0 }, 0.35f, 0.3f, 0.15f };
-            case soulful:     return { { 5, 2, 4, 2, 0, 0, 0, 3, 0 }, 0.45f, 0.4f, 0.25f };
-            case deep:        return { { 0, 1, 0, 3, 6, 0, 0, 0, 1 }, 0.05f, 0.25f, 0.15f };
-            case gospel:      return { { 0, 0, 0, 0, 0, 0, 0, 1, 0 }, 0.0f,  0.5f, 0.0f };
-            case jackin:      return { { 1, 6, 6, 0, 0, 0, 1, 0, 0 }, 0.65f, 0.2f, 0.1f };
-            case jackinPiano: return { { 1, 8, 2, 0, 0, 1, 0, 2, 0 }, 0.35f, 0.3f, 0.05f };
-            case garage:      return { { 0, 2, 2, 0, 1, 0, 0, 0, 7 }, 0.3f,  0.2f, 0.1f };
-            case afro:        return { { 0, 0, 2, 8, 0, 0, 0, 0, 0 }, 0.1f,  0.6f, 0.15f };
-            case funky:       return { { 12, 0, 2, 0, 0, 0, 0, 0, 0 }, 0.75f, 0.35f, 0.2f };
-            case nineties:    return { { 0, 5, 1, 0, 0, 3, 1, 5, 0 }, 0.15f, 0.45f, 0.05f };
-            case neoSoul:     return { { 0, 1, 0, 3, 2, 0, 0, 0, 6 }, 0.05f, 0.25f, 0.7f };
-            case chill:       return { { 0, 0, 0, 3, 7, 0, 0, 0, 0 }, 0.0f,  0.15f, 0.35f };
-            case dance:       return { { 0, 0, 0, 0, 0, 1, 0, 0, 0 }, 0.0f,  0.4f, 0.0f };
+            case pianoHouse:  return { { 0, 14, 1, 0, 0, 0, 0, 0, 0 }, 0.2f,  0.25f, 0.05f };
+            case soulful:     return { { 0, 2, 0, 4, 6, 0, 0, 0, 1 }, 0.05f, 0.3f,  0.3f };
+            case deep:        return { { 0, 1, 0, 4, 7, 0, 0, 0, 1 }, 0.0f,  0.2f,  0.1f };
+            case gospel:      return { { 0, 0, 0, 0, 0, 0, 0, 1, 0 }, 0.0f,  0.45f, 0.0f };
+            case jackin:      return { { 4, 0, 8, 0, 0, 0, 0, 0, 0 }, 0.95f, 0.15f, 0.05f };
+            case jackinPiano: return { { 0, 14, 0, 0, 0, 0, 0, 0, 0 }, 0.15f, 0.25f, 0.0f };
+            case garage:      return { { 0, 0, 1, 0, 1, 0, 0, 0, 10 }, 0.25f, 0.2f,  0.1f };
+            case afro:        return { { 0, 0, 2, 10, 0, 0, 0, 0, 0 }, 0.08f, 0.55f, 0.12f };
+            case funky:       return { { 4, 0, 8, 0, 0, 0, 0, 0, 0 }, 0.95f, 0.3f,  0.12f };
+            case nineties:    return { { 0, 12, 0, 0, 0, 0, 0, 0, 0 }, 0.1f,  0.3f,  0.0f };
+            case neoSoul:     return { { 0, 2, 0, 3, 2, 0, 0, 0, 5 }, 0.0f,  0.2f,  0.95f };
+            case chill:       return { { 0, 0, 0, 4, 7, 0, 0, 0, 0 }, 0.0f,  0.12f, 0.9f };
+            case dance:       return { { 0, 12, 0, 0, 0, 0, 0, 0, 0 }, 0.0f,  0.0f,  0.0f };
             default:          return { { 2, 4, 3, 2, 1, 1, 1, 2, 1 }, 0.3f,  0.3f, 0.2f };
         }
     }
@@ -533,83 +685,170 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         if ((x -= style.weights[role]) < 0)
             break;
 
+    const bool houseStab = genre == pianoHouse || genre == jackinPiano || genre == nineties;
+    const bool sparseGenre = genre == soulful || genre == deep || genre == neoSoul || genre == chill;
     bool scratchSuits = true;
     switch ((Role) role)
     {
         case funk16:
-            setBar (Lane::strumDown, genre == funky ? pickCell (r, funkDown) : pickCell (r, downCells));
-            setBar (Lane::strumUp, genre == funky ? pickCell (r, funkUp) : pickCell (r, upCells));
+            if (genre == funky)
+            {
+                paintTwoBars (p, Lane::strumDown, r, funkDown);
+                paintTwoBars (p, Lane::strumUp, r, funkUp);
+            }
+            else
+            {
+                paintTwoBars (p, Lane::strumDown, r, downCells);
+                paintTwoBars (p, Lane::strumUp, r, upCells);
+            }
             break;
         case offStab:
-            setBar (Lane::stab, genre == neoSoul ? pickCell (r, neoCells) : pickCell (r, stabCells));
+            if (genre == dance)
+                paintDanceStabs (p, r);
+            else if (houseStab)
+                paintOffbeatStabs (p, r);
+            else if (genre == neoSoul)
+                paintLaidBack (p, r, Lane::stab);
+            else if (sparseGenre)
+                paintTwoBars (p, Lane::stab, r, neoCells);
+            else
+                paintTwoBars (p, Lane::stab, r, stabCells);
             break;
         case chankLine:
-            setBar (Lane::chank, genre == funky ? pickCell (r, funkChank) : genre == afro ? pickCell (r, afroCells) : pickCell (r, chankCells));
-            if (genre != funky && genre != afro && r.chance (0.3f * more))
+            if (genre == funky || genre == jackin)
+                paintTwoBars (p, Lane::chank, r, jackChank);
+            else if (genre == afro)
+                paintTwoBars (p, Lane::chank, r, afroCells);
+            else
+                paintTwoBars (p, Lane::chank, r, chankCells);
+            if (genre != funky && genre != jackin && genre != afro && r.chance (0.3f * more))
                 setBar (Lane::stab, "X... .... .... ....");
             break;
         case arpPick:
-            setBar (Lane::arp, genre == afro ? pickCell (r, afroCells)
-                              : (genre == neoSoul || genre == deep || genre == chill) ? pickCell (r, sparseArp)
-                              : pickCell (r, arpCells));
+            if (genre == afro)
+                paintTwoBars (p, Lane::arp, r, afroCells);
+            else if (genre == neoSoul)
+                paintLaidBack (p, r, Lane::arp);
+            else if (sparseGenre)
+                paintTwoBars (p, Lane::arp, r, sparseArp);
+            else
+                paintTwoBars (p, Lane::arp, r, arpCells);
             if (genre != afro && r.chance (0.5f))
-                setBar (Lane::swell, "X... .... .... ....");
+                paintTwoBars (p, Lane::swell, r, swellCells);
             scratchSuits = false;
             break;
         case swellPad:
-            setBar (Lane::swell, "X... .... .... ....");
-            setBar (r.chance (0.5f) ? Lane::chank : Lane::arp,
-                    (genre == deep || genre == chill || genre == neoSoul) ? pickCell (r, sparseArp)
-                                                                          : (r.chance (0.5f) ? ".... ..x. .... ..x." : ".... .... x.x. x.x."));
+            paintTwoBars (p, Lane::swell, r, swellCells);
+            if (genre == neoSoul)
+                paintLaidBack (p, r, r.chance (0.5f) ? Lane::arp : Lane::stab);
+            else if (sparseGenre)
+                paintTwoBars (p, r.chance (0.5f) ? Lane::arp : Lane::stab, r, sparseArp);
+            else
+                setBar (r.chance (0.5f) ? Lane::chank : Lane::arp,
+                        r.chance (0.5f) ? ".... ..x. .... ..x." : ".... .... x.x. x.x.");
             scratchSuits = false;
             break;
         case powerDrive:
-            setBar (Lane::power, genre == dance ? pickCell (r, dancePower) : pickCell (r, powerCells));
+            paintTwoBars (p, Lane::power, r, powerCells);
             scratchSuits = false;
             break;
         case octaveDisco:
-            setBar (Lane::octave, pickCell (r, octaveCells));
+            paintTwoBars (p, Lane::octave, r, octaveCells);
             break;
         case strum8:
-            setBar (Lane::strumDown, pickCell (r, eighthDownCells));
-            setBar (Lane::strumUp, genre == gospel ? pickCell (r, gospelUp) : pickCell (r, eighthUpCells));
+            if (genre == gospel)
+                paintGospelStrum (p, r);
+            else
+            {
+                paintTwoBars (p, Lane::strumDown, r, eighthDownCells);
+                paintTwoBars (p, Lane::strumUp, r, eighthUpCells);
+            }
             break;
         case twoStep:
         default:
-            setBar (Lane::stab, (genre == neoSoul || genre == garage) ? pickCell (r, neoCells) : pickCell (r, twoStepCells));
+            if (genre == garage)
+                paintTwoBars (p, Lane::stab, r, garageSkips);
+            else if (genre == neoSoul)
+                paintLaidBack (p, r, Lane::stab);
+            else if (sparseGenre)
+                paintTwoBars (p, Lane::stab, r, neoCells);
+            else
+                paintTwoBars (p, Lane::stab, r, twoStepCells);
             break;
     }
     for (auto& line : p.lanes)
         thin (line, r, density);
 
     // ---- The muted scratch between the hits, the root, a lick ----
-    if (scratchSuits && r.chance (style.scratch * more))
-        setBar (Lane::scratch, density > 0.6f ? "gggg gggg gggg gggg" : r.chance (0.5f) ? ".g.g .g.g .g.g .g.g" : "g... g... g... g.g.");
-    if (role != powerDrive && role != octaveDisco && r.chance (style.root * more))
-        setBar (Lane::root, genre == afro ? pickCell (r, afroRoot)
-                            : genre == gospel ? pickCell (r, gospelRoot) : pickCell (r, rootCells));
-    if (style.lick > 0.0f && r.chance (style.lick * more))
+    const bool scratchSure = style.scratch >= 0.8f;
+    if (scratchSuits && (scratchSure || r.chance (style.scratch * more)))
     {
-        const auto lick = compact (pickCell (r, lickCells));
+        if (genre == funky || genre == jackin)
+            paintTwoBars (p, Lane::scratch, r, funkScratch);
+        else
+            setBar (Lane::scratch, density > 0.6f ? "gggg gggg gggg gggg" : r.chance (0.5f) ? ".g.g .g.g .g.g .g.g" : "g... g... g... g.g.");
+    }
+    if (role != powerDrive && role != octaveDisco && genre != dance && ! houseStab && r.chance (style.root * more))
+    {
+        if (genre == afro)
+            paintTwoBars (p, Lane::root, r, afroRoot);
+        else if (genre == gospel)
+            paintTwoBars (p, Lane::root, r, gospelRoot);
+        else
+            paintTwoBars (p, Lane::root, r, rootCells);
+    }
+    const float lickChance = style.lick >= 0.7f ? style.lick : style.lick * more;
+    if (style.lick > 0.0f && r.chance (lickChance))
+    {
+        const auto lick = compact (pickCell (r, lickCellsExtra));
         for (int i = 0; i < 16; ++i)
             if (lick[(size_t) i] != '.')
                 p[Lane::lick][(size_t) (16 + i)] = lick[(size_t) i];
     }
 
-    // A pickup on the last 8th, and a 16th answer only where the genre already plays 16ths.
-    const bool sixteenths = genre == funky || genre == jackin || genre == soulful || genre == pianoHouse;
+    // A pickup on the last 8th. A 16th answer only in the genres that already play 16ths.
     if (genre == gospel && r.chance (0.45f))
         p[Lane::strumUp][30] = 'x';
     else if (genre == dance && r.chance (0.35f))
-        p[Lane::power][28] = 'X';
-    else if (genre != deep && genre != chill && r.chance (0.3f + 0.4f * density))
-        switch (r.nextInt (style.scratch >= 0.25f ? 3 : 2))
-        {
-            case 0:  p[Lane::slide][30] = 'x'; break;
-            case 1:  if (p[Lane::strumUp][sixteenths ? 31 : 30] == '.') p[Lane::strumUp][sixteenths ? 31 : 30] = 'x'; break;
-            default: p[Lane::scratch][28] = p[Lane::scratch][29] = 'x'; break;
-        }
+        p[Lane::stab][28] = 'X';
+    else if (genre == funky || genre == jackin || genre == afro)
+        if (r.chance (0.3f + 0.4f * density))
+            switch (r.nextInt (3))
+            {
+                case 0:  p[Lane::slide][30] = 'x'; break;
+                case 1:  if (p[Lane::strumUp][genre == afro ? 30 : 31] == '.') p[Lane::strumUp][genre == afro ? 30 : 31] = 'x'; break;
+                default: p[Lane::scratch][28] = p[Lane::scratch][29] = 'x'; break;
+            }
 
+    const bool procedural = houseStab || genre == dance || genre == gospel || genre == neoSoul;
+    if (! procedural)
+    {
+        omitOnePerBar (p, r);
+        // Flip one accent in each bar so two draws of the same cell are not the same click.
+        for (int bar = 0; bar < 2; ++bar)
+        {
+            int lanes[48], steps[48], n = 0;
+            for (int l = 0; l < numLanes; ++l)
+            {
+                if (l == (int) Lane::scratch || l == (int) Lane::lick)
+                    continue;
+                auto& line = p.lanes[(size_t) l];
+                for (int i = bar * 16; i < bar * 16 + 16 && i < (int) line.size() && n < 48; ++i)
+                    if (line[(size_t) i] == 'x' || line[(size_t) i] == 'X')
+                    {
+                        lanes[n] = l;
+                        steps[n] = i;
+                        ++n;
+                    }
+            }
+            if (n > 0)
+            {
+                const int k = (int) (r.next() % (std::uint32_t) n);
+                auto& symbol = p.lanes[(size_t) lanes[k]][(size_t) steps[k]];
+                symbol = symbol == 'X' ? 'x' : 'X';
+            }
+        }
+    }
     varySecondBar (p, r);
     int kept = 0;
     for (const auto& line : p.lanes)
