@@ -1031,9 +1031,6 @@ bool GrooveEngine::anyNoteSounding() const noexcept
 
 int GrooveEngine::loopLengthInSteps (const GrooveSettings& s) noexcept
 {
-    if (s.playsEditedLoop())
-        return std::clamp ((int) std::lround (s.editedLoopLength * 4.0 / 16.0) * 16, 16, 64 * 16);
-
     const int patternLength = GrooveEngine::patternLength (s);
     const int progression = std::clamp (s.progressionLength, 1, maxProgressionLength) * std::max (1, s.stepsPerChord);
 
@@ -1438,11 +1435,6 @@ void GrooveEngine::bassRoots (const GrooveSettings& s, const std::array<Chord, m
         out[(size_t) i] = out[(size_t) len - 1];
 }
 
-const char* bassFeelName (int feel) noexcept
-{
-    static const char* const names[numBassFeels] { "Classic", "Sub (voice-led)", "Sub + sidechain gaps" };
-    return names[mod (feel, numBassFeels)];
-}
 
 void GrooveEngine::voiceProgression (const GrooveSettings& s,
                                      std::array<Chord, maxProgressionLength>& chords,
@@ -2496,11 +2488,7 @@ void GrooveEngine::collectStrings (long long step, const GrooveSettings& s, doub
     if (mode == StringsMode::off)
         return;
     if (stringsFollowPiano (mode))
-    {
-        if (! s.playsEditedLoop())
-            return;   // played in collectStep, with the piano's hits
-        mode = StringsMode::pad;
-    }
+        return;   // played in collectStep, with the piano's hits
 
     const int spc = std::max (1, s.stepsPerChord);
     const double t = (double) step * stepLength;
@@ -2631,13 +2619,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GrooveSettings&
 
     // The strings' pad starts with each chord; starting (or turning them on) in the middle of a
     // chord, it comes in at once for the rest of it.
-    // A loop edited by hand carries its own string notes (edited in the piano roll); one edited
-    // before the strings were switched on gets them generated.
-    const bool loopHasStrings = s.playsEditedLoop()
-        && std::any_of (s.editedLoop->begin(), s.editedLoop->end(), [] (const LoopNote& n) { return n.part == Part::strings; });
-    if (s.strings != StringsMode::off && ! loopHasStrings
-        && (stringsHold (s.strings) || (stringsFollowPiano (s.strings) && s.playsEditedLoop()))
-        && stringsUntil < startPpq - 1.0e-6)
+    if (s.strings != StringsMode::off && stringsHold (s.strings) && stringsUntil < startPpq - 1.0e-6)
     {
         const int spc = std::max (1, s.stepsPerChord);
         const auto now = (long long) std::floor (startPpq / stepLength + 1.0e-9);
@@ -2652,31 +2634,11 @@ void GrooveEngine::render (double startPpq, double endPpq, const GrooveSettings&
             }
     }
 
-    if (s.playsEditedLoop())
+    const auto& pattern = patternFor (s);
+    for (auto step = firstStep; step <= lastStep; ++step)
     {
-        // The loop edited in the piano roll (already carried over to the current settings),
-        // repeated; Velocity and bass off still apply to it.
-        const double length = s.editedLoopLength;
-        const double scale = s.velocity / 118.0 * sectionVelocityScale (s.section);
-        for (auto k = (long long) std::floor (startPpq / length) - 1; k <= (long long) std::floor (endPpq / length); ++k)
-            for (const auto& n : *s.editedLoop)
-                if ((n.part != Part::bass || s.bass != BassMode::off)   // bass off (PIANO only) silences the edited bass too
-                    && (n.part != Part::strings || s.strings != StringsMode::off))
-                    pending.push_back ({ (double) k * length + n.start, n.note,
-                                         std::clamp ((int) std::lround (n.velocity * scale), 1, 127),
-                                         std::max (0.02, n.length), false, n.part });
-        if (! loopHasStrings)
-            for (auto step = firstStep; step <= lastStep; ++step)
-                collectStrings (step, s, startPpq, endPpq);
-    }
-    else
-    {
-        const auto& pattern = patternFor (s);
-        for (auto step = firstStep; step <= lastStep; ++step)
-        {
-            collectStep (step, s, pattern, cachedVariation, chords, voiced);
-            collectStrings (step, s, startPpq, endPpq);
-        }
+        collectStep (step, s, pattern, cachedVariation, chords, voiced);
+        collectStrings (step, s, startPpq, endPpq);
     }
 
     pending.erase (std::remove_if (pending.begin(), pending.end(),
@@ -2752,170 +2714,4 @@ void GrooveEngine::allNotesOff (double ppq, std::vector<NoteEvent>& out)
 }
 
 
-//==============================================================================
-std::string stabBassLine (const GroovePattern& pattern)
-{
-    const int n = (int) pattern.rightHand.size();
-    auto rhStabAt = [&] (int i)
-    {
-        const char r = pattern.rightHand[(size_t) ((i % n + n) % n)];
-        return isHit (r) && r != 'g';
-    };
-    std::string line = pattern.leftHand;
-    for (int i = 0; i < n && i < (int) line.size(); ++i)
-    {
-        const char r = pattern.rightHand[(size_t) i];
-        const bool ownHit = isHit (pattern.leftHand[(size_t) i]) && ! rhStabAt (i) && ! rhStabAt (i - 1) && ! rhStabAt (i + 1);
-        // The left hand doesn't strike again on a fast chop (a stab right after another one):
-        // only accents and pushes get the bass there, so busy riffs don't turn into a muddy bass.
-        const bool chop = rhStabAt (i) && rhStabAt (i - 1) && ! (r == 'X' || r == 'U' || r == 'D' || r == '>');
-        if (chop)
-            line[(size_t) i] = '.';
-        else if (rhStabAt (i))
-            line[(size_t) i] = r == '>' ? '>' : (r == 'X' || r == 'U' || r == 'D') ? 'X' : (r == 'u' || r == 'd') ? 'x' : r;
-        else if (isHit (line[(size_t) i]) && ! ownHit)
-            line[(size_t) i] = '.';
-    }
-    return line;
-}
-
-//==============================================================================
-std::vector<LoopNote> carryEdits (const std::vector<LoopNote>& base, const std::vector<LoopNote>& edited, double baseLength,
-                                  const std::vector<LoopNote>& now, double nowLength)
-{
-    // The instrument a note belongs to (a fill is the piano's right hand).
-    auto lane = [] (Part p) { return p == Part::fill ? Part::chords : p; };
-    auto same = [] (const LoopNote& a, const LoopNote& b)
-    {
-        return std::abs (a.start - b.start) < 1.0e-6 && std::abs (a.length - b.length) < 1.0e-6
-               && a.note == b.note && a.velocity == b.velocity && a.part == b.part;
-    };
-    if (std::abs (baseLength - nowLength) < 1.0e-6 && base.size() == now.size()
-        && std::equal (base.begin(), base.end(), now.begin(), same))
-        return edited;   // nothing changed
-
-    constexpr double together = 0.03, nearby = 0.12;   // beats
-
-    // Place of a note in its chord: 0 = lowest note of that part struck at that moment.
-    auto rankIn = [&] (const std::vector<LoopNote>& notes, size_t i)
-    {
-        int rank = 0;
-        for (size_t j = 0; j < notes.size(); ++j)
-            if (j != i && notes[j].part == notes[i].part && std::abs (notes[j].start - notes[i].start) < together
-                && (notes[j].note < notes[i].note || (notes[j].note == notes[i].note && j < i)))
-                ++rank;
-        return rank;
-    };
-
-    std::vector<const LoopNote*> editOf (base.size(), nullptr);
-    std::vector<const LoopNote*> added;
-    for (const auto& e : edited)
-    {
-        if (e.origin >= 0 && e.origin < (int) base.size() && editOf[(size_t) e.origin] == nullptr)
-            editOf[(size_t) e.origin] = &e;
-        else
-            added.push_back (&e);
-    }
-
-    std::vector<int> baseRank (base.size());
-    for (size_t i = 0; i < base.size(); ++i)
-        baseRank[i] = rankIn (base, i);
-    std::vector<int> nowRank (now.size());
-    for (size_t j = 0; j < now.size(); ++j)
-        nowRank[j] = rankIn (now, j);
-
-    std::vector<LoopNote> result;
-    const double loop = std::max (0.25, baseLength);
-    const int repeats = std::max (1, (int) std::ceil (nowLength / loop - 1.0e-6));
-
-    for (int r = 0; r < repeats; ++r)
-    {
-        const double offset = r * loop;
-        std::vector<int> match (base.size(), -1);
-        std::vector<char> used (now.size(), 0), removed (now.size(), 0);
-
-        // Each generated note of before, found again now: same part, nearest moment, same rank.
-        for (size_t i = 0; i < base.size(); ++i)
-        {
-            int best = -1;
-            double bestDistance = nearby;
-            for (size_t j = 0; j < now.size(); ++j)
-            {
-                if (used[j] || now[j].part != base[i].part || nowRank[j] != baseRank[i])
-                    continue;
-                const double d = std::abs (now[j].start - (offset + base[i].start));
-                if (d < bestDistance) { bestDistance = d; best = (int) j; }
-            }
-            if (best >= 0)
-            {
-                match[i] = best;
-                used[(size_t) best] = 1;
-            }
-        }
-
-        std::vector<char> carried (now.size(), 0);
-        for (size_t i = 0; i < base.size(); ++i)
-        {
-            const int m = match[i];
-            if (m < 0)
-                continue;
-            const auto* e = editOf[i];
-            if (e == nullptr)
-            {
-                removed[(size_t) m] = 1;   // deleted by hand: stays deleted
-                continue;
-            }
-            const auto& b = base[i];
-            const bool untouched = std::abs (e->start - b.start) < 1.0e-6 && std::abs (e->length - b.length) < 1.0e-6
-                                   && e->note == b.note && e->velocity == b.velocity;
-            if (untouched)
-                continue;   // the new note as it is
-            auto n = now[(size_t) m];
-            n.start = std::clamp (n.start + (e->start - b.start), 0.0, nowLength - 0.001);
-            n.note = std::clamp (n.note + (e->note - b.note), 0, 127);
-            n.length = std::max (0.02, n.length * (e->length / std::max (0.001, b.length)));
-            n.velocity = std::clamp (n.velocity + (e->velocity - b.velocity), 1, 127);
-            n.origin = m;
-            result.push_back (n);
-            carried[(size_t) m] = 1;
-        }
-
-        for (size_t j = 0; j < now.size(); ++j)
-            if (now[j].start >= offset - 1.0e-9 && now[j].start < offset + loop - 1.0e-9 && ! removed[j] && ! carried[j])
-            {
-                auto n = now[j];
-                n.origin = (int) j;
-                result.push_back (n);
-            }
-
-        // Notes added by hand: they move with the chord around them (the nearest generated note).
-        for (const auto* e : added)
-        {
-            if (offset + e->start >= nowLength)
-                continue;
-            int shift = 0;
-            double bestDistance = 1.0e9;
-            for (size_t i = 0; i < base.size(); ++i)
-            {
-                if (match[i] < 0 || lane (base[i].part) != lane (e->part))
-                    continue;
-                const double d = std::abs (base[i].start - e->start) * 24.0 + std::abs (base[i].note - e->note);
-                if (d < bestDistance) { bestDistance = d; shift = now[(size_t) match[i]].note - base[i].note; }
-            }
-            auto n = *e;
-            n.start = offset + e->start;
-            n.note = std::clamp (e->note + shift, 0, 127);
-            n.origin = -1;
-            result.push_back (n);
-        }
-    }
-
-    std::sort (result.begin(), result.end(), [] (const LoopNote& a, const LoopNote& b)
-    {
-        return std::tie (a.start, a.note, a.part) < std::tie (b.start, b.note, b.part);
-    });
-    return result;
-}
-
 } // namespace sgk
-

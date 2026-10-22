@@ -28,28 +28,6 @@ int defaultNote (int lane) noexcept
     return lane >= 0 && lane < numLanes ? notes[lane] : 36;
 }
 
-const char* noteMapName (int map) noexcept
-{
-    static const char* names[] { "General MIDI", "Drum rack (16 pads, C1-D#2)", "MPC pads (bank A)", "One note per drum from C1" };
-    return map >= 0 && map < numNoteMaps ? names[map] : "";
-}
-
-int noteMapNote (int map, int lane) noexcept
-{
-    // Lanes: kick, snare, clap, rim, closed hat, open hat, ride, shaker, tambourine, conga, cowbell, tom, crash.
-    static const int rack[] { 36, 38, 39, 37, 42, 46, 51, 44, 40, 47, 48, 43, 49 };   // every drum on one of the 16 pads
-    static const int mpc[]  { 36, 38, 40, 37, 42, 46, 51, 82, 44, 48, 47, 45, 49 };   // the MPC's default pads
-    if (lane < 0 || lane >= numLanes)
-        return 36;
-    switch (map)
-    {
-        case 1:  return rack[lane];
-        case 2:  return mpc[lane];
-        case 3:  return 36 + lane;
-        default: return defaultNote (lane);
-    }
-}
-
 int laneForGeneralMidiNote (int note) noexcept
 {
     switch (note)
@@ -71,20 +49,6 @@ int laneForGeneralMidiNote (int note) noexcept
         case 49: case 52: case 55: case 57:   return (int) Lane::crash;
         default:                              return -1;
     }
-}
-
-const char* generalMidiDrumName (int note) noexcept
-{
-    static const char* names[] {
-        "Acoustic Bass Drum", "Bass Drum 1", "Side Stick", "Acoustic Snare", "Hand Clap", "Electric Snare",
-        "Low Floor Tom", "Closed Hi-Hat", "High Floor Tom", "Pedal Hi-Hat", "Low Tom", "Open Hi-Hat",
-        "Low-Mid Tom", "Hi-Mid Tom", "Crash Cymbal 1", "High Tom", "Ride Cymbal 1", "Chinese Cymbal",
-        "Ride Bell", "Tambourine", "Splash Cymbal", "Cowbell", "Crash Cymbal 2", "Vibraslap",
-        "Ride Cymbal 2", "Hi Bongo", "Low Bongo", "Mute Hi Conga", "Open Hi Conga", "Low Conga",
-        "High Timbale", "Low Timbale", "High Agogo", "Low Agogo", "Cabasa", "Maracas",
-        "Short Whistle", "Long Whistle", "Short Guiro", "Long Guiro", "Claves", "Hi Wood Block",
-        "Low Wood Block", "Mute Cuica", "Open Cuica", "Mute Triangle", "Open Triangle", "Shaker" };
-    return note >= 35 && note <= 82 ? names[note - 35] : "";
 }
 
 //==============================================================================

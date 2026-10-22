@@ -832,14 +832,5 @@ std::vector<int> randomProgression (std::uint32_t seed, int length, int scale)
     return out;
 }
 
-const std::vector<ArrangementPart>& defaultArrangement()
-{
-    static const std::vector<ArrangementPart> parts {
-        { Section::intro, 8 }, { Section::main, 16 }, { Section::breakdown, 8 },
-        { Section::buildup, 4 }, { Section::drop, 16 }, { Section::outro, 8 },
-    };
-    return parts;
-}
-
 } // namespace sgk
 

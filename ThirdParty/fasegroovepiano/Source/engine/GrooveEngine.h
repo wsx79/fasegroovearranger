@@ -10,7 +10,6 @@
 #include "Theory.h"
 
 #include <array>
-#include <memory>
 #include <string>
 #include <vector>
 
@@ -157,27 +156,6 @@ const char* humanizeStyleName (int) noexcept;
 
 enum class Part { chords = 0, bass = 1, fill = 2, strings = 3 };   // fill: the right hand during a fill (exported on its own track)
 
-/** A note of a loop edited by hand in the piano roll (times in beats from the loop start). */
-struct LoopNote
-{
-    double start = 0.0, length = 0.25;
-    int note = 60, velocity = 100;
-    Part part = Part::chords;
-    int origin = -1;   // the generated note it comes from (index), -1 = added by hand
-};
-
-/** Carries the edits made by hand on a loop over to the loop generated now (other chords,
-    voicing, key, groove...): every generated note of `base` that was deleted, moved, lengthened
-    or played softer in `edited` is found again in `now` (same part, same moment, same place in
-    the chord) and changed the same way; notes added by hand follow the harmony; new generated
-    notes stay. The result's `origin`s point into `now`. */
-/** The rhythm the "Piano stabs" bass plays for a groove (a root under every chord stab, plus the
-    bass's own hits that don't crowd a stab), written as a left-hand line. */
-std::string stabBassLine (const GroovePattern&);
-
-std::vector<LoopNote> carryEdits (const std::vector<LoopNote>& base, const std::vector<LoopNote>& edited, double baseLength,
-                                  const std::vector<LoopNote>& now, double nowLength);
-
 struct GrooveSettings
 {
     int keyRoot = 9;                       // A
@@ -227,16 +205,6 @@ struct GrooveSettings
     long long forcedFillBar = -1;          // a song section's own fill, on its last bar...
     int forcedFillStyle = -1;              // ...in this style (-2: no fill there)
 
-    // Notes edited one by one in the piano roll: when set they replace the generated notes in the
-    // main groove and the drop (the other song sections keep being generated).
-    std::shared_ptr<const std::vector<LoopNote>> editedLoop;
-    double editedLoopLength = 0.0;         // in beats
-    bool playsEditedLoop() const noexcept
-    {
-        return editedLoop != nullptr && ! editedLoop->empty() && editedLoopLength > 0.0
-               && (section == Section::main || section == Section::drop);
-    }
-
     // Used when pattern == userPatternIndex(): the hand-edited grid.
     std::array<char, userPatternLength> userRight {};
     std::array<char, userPatternLength> userLeft {};
@@ -254,10 +222,6 @@ struct GrooveSettings
     // varied over a phrase (another take now and then, a few hits left out, a top note that answers).
     bool realism = false;
 };
-
-constexpr int numBassFeels = 3;
-const char* bassFeelName (int feel) noexcept;
-
 
 struct NoteEvent
 {
