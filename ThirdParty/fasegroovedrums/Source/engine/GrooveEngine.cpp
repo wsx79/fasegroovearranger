@@ -129,14 +129,59 @@ namespace
 
     int lcm (int a, int b) noexcept { return a / std::gcd (a, b) * b; }
 
-    /** The level a hat (or shaker, tambourine, ride) has at each 16th of the beat, as house
-        drummers and drum machines play it: the offbeat 8th sings, everything else is less than
-        half as loud, the 16th just after the beat the softest. Percussion has a gentler curve. */
-    double accentProfile (int lane, int stepInBeat) noexcept
+    /** The level a hat (or shaker, tambourine, ride) has at each 16th of the beat.
+        House: the offbeat 8th sings. Jackin' and garage: the swung 16th. Afro: almost even.
+        Neo soul: the downbeat, with a softer hat. Chill: a gentle curve. An unknown genre
+        (a hand-written grid) stays on the house curve. Percussion is gentler, and flatter in afro. */
+    double accentProfile (int lane, int stepInBeat, int genre) noexcept
     {
+        const int s = stepInBeat & 3;
+        const bool perc = lane == (int) Lane::conga || lane == (int) Lane::cowbell;
+        if (perc)
+        {
+            if (genre == 7)
+            {
+                static constexpr double flat[] { 0.9, 0.82, 0.95, 0.88 };
+                return flat[s];
+            }
+            static constexpr double percussion[] { 0.82, 0.55, 1.0, 0.8 };
+            return percussion[s];
+        }
+        if (genre == 4 || genre == 6)
+        {
+            static constexpr double swung[] { 0.55, 0.3, 0.62, 1.0 };
+            return swung[s];
+        }
+        if (genre == 10)
+        {
+            static constexpr double back[] { 0.85, 0.35, 0.5, 0.4 };
+            return back[s];
+        }
+        if (genre == 11)
+        {
+            static constexpr double gentle[] { 0.7, 0.55, 0.85, 0.6 };
+            return gentle[s];
+        }
+        if (genre == 7)
+        {
+            static constexpr double even[] { 0.75, 0.7, 0.82, 0.72 };
+            return even[s];
+        }
         static constexpr double hats[] { 0.45, 0.28, 1.0, 0.4 };
-        static constexpr double percussion[] { 0.82, 0.55, 1.0, 0.8 };
-        return (lane == (int) Lane::conga || lane == (int) Lane::cowbell ? percussion : hats)[stepInBeat & 3];
+        return hats[s];
+    }
+
+    /** Genre of a settings block: the random genre, the preset's category, or -1 for a user grid. */
+    int settingsGenre (const DrumSettings& s) noexcept
+    {
+        if (s.pattern == userPatternIndex())
+            return -1;
+        if (s.pattern == randomPatternIndex())
+            return s.randomGenre;
+        const auto& presets = drumPatterns();
+        if (s.pattern < 0 || s.pattern >= (int) presets.size())
+            return -1;
+        return categoryIndex (presets[(size_t) s.pattern].category);
     }
 
     /** Whether a drum keeps playing the groove under a fill. */
@@ -250,12 +295,55 @@ int GrooveEngine::loopLengthInSteps (const DrumSettings& s) noexcept
     return steps;
 }
 
-FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar) noexcept
+int GrooveEngine::previewStepVelocity (const DrumSettings& s, int lane, int step, char symbol) noexcept
+{
+    if (lane < 0 || lane >= numLanes || ! isHit (symbol))
+        return 0;
+
+    const int stepInBar = ((step % 16) + 16) % 16;
+    double level = symbol == 'g' ? ghostLevel (lane) : symbolLevel (symbol);
+    const auto& groove = s.grooveTemplate;
+    if (groove.active && lane != (int) Lane::kick)
+        level *= std::clamp ((double) groove.level[(size_t) stepInBar], 0.2, 1.6);
+    else if (followsAccentGroove (lane) && symbol != 'g' && ! groove.active)
+    {
+        const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
+        const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4, settingsGenre (s)));
+        level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
+    }
+    else if (lane == (int) Lane::openHat && symbol == 'x' && ! groove.active)
+        level *= stepInBar % 4 == 2 ? 1.0 : 1.0 - 0.15 * std::clamp ((double) s.accentGroove, 0.0, 1.0);
+
+    level *= (double) s.levels[(size_t) lane] * sectionVelocityScale (s.section);
+    return std::clamp ((int) std::lround ((double) s.velocity * level), 1, 127);
+}
+
+FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar, int genre) noexcept
 {
     if (style != FillStyle::mix)
         return style;
 
     // Mix: a different fill now and then, always the same one on the same bar.
+    // House keeps the original list. Garage, afro, neo soul and chill pick from their own.
+    auto pick = [bar] (const FillStyle* choices, size_t n)
+    {
+        return choices[(size_t) (noise (bar, 4242) * (double) n) % n];
+    };
+    if (genre == 6 || genre == 10)
+    {
+        static constexpr FillStyle choices[] { FillStyle::rimShuffle, FillStyle::snareRoll, FillStyle::clapBuild, FillStyle::hatLift };
+        return pick (choices, std::size (choices));
+    }
+    if (genre == 7)
+    {
+        static constexpr FillStyle choices[] { FillStyle::congaRun, FillStyle::percBreak, FillStyle::rimShuffle, FillStyle::clapBuild };
+        return pick (choices, std::size (choices));
+    }
+    if (genre == 11)
+    {
+        static constexpr FillStyle choices[] { FillStyle::hatLift, FillStyle::dropOut, FillStyle::rimShuffle, FillStyle::percBreak };
+        return pick (choices, std::size (choices));
+    }
     static constexpr FillStyle choices[] { FillStyle::snareRoll, FillStyle::tomRun, FillStyle::clapBuild, FillStyle::hatLift,
                                            FillStyle::snareRoll, FillStyle::congaRun, FillStyle::kickBuild, FillStyle::rimShuffle };
     return choices[(size_t) (noise (bar, 4242) * (double) std::size (choices)) % std::size (choices)];
@@ -265,9 +353,12 @@ bool GrooveEngine::samePattern (const DrumSettings& a, const DrumSettings& b) no
 {
     const bool usesSeed = a.pattern == randomPatternIndex();
     const bool usesUser = a.pattern == userPatternIndex();
+    // riffSeed feeds every turnaround (prepare), not only the random beat. Leaving it out
+    // kept a stale variation on the audio thread after the seed changed, so playback and export differed.
     return a.pattern == b.pattern && a.section == b.section && a.segmentOrder == b.segmentOrder
         && a.sectionVariation == b.sectionVariation && a.grooveBars == b.grooveBars
-        && (! usesSeed || (a.riffSeed == b.riffSeed && a.density == b.density && a.randomGenre == b.randomGenre))
+        && a.riffSeed == b.riffSeed
+        && (! usesSeed || (a.density == b.density && a.randomGenre == b.randomGenre))
         && (! usesUser || a.user == b.user);
 }
 
@@ -343,8 +434,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
     };
     const bool fillBar = isFillBar (bar);
     const FillStyle style = (s.forcedFillBar >= 0 && bar == s.forcedFillBar && s.forcedFillStyle >= 0)
-                                ? effectiveFillStyle ((FillStyle) std::clamp (s.forcedFillStyle, 0, numFillStyles - 1), bar)
-                                : effectiveFillStyle (s.fillStyle, bar);
+                                ? effectiveFillStyle ((FillStyle) std::clamp (s.forcedFillStyle, 0, numFillStyles - 1), bar, resolved.genre)
+                                : effectiveFillStyle (s.fillStyle, bar, resolved.genre);
     // The custom fill takes over from its first written step.
     int fillStart = fillStartStep (style);
     std::array<bool, numLanes> customLanes {};
@@ -396,7 +487,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         return std::clamp ((int) std::lround (v), 1, 127);
     };
 
-    const bool jackin = pattern.category.rfind ("Jackin", 0) == 0;
+    // Exact genre: "Jackin' Piano" also begins with "Jackin" and must not grow a 909 turnaround.
+    const bool jackin = pattern.category == "Jackin'";
     const bool hasSnare = std::any_of (pattern.lanes[(size_t) Lane::snare].begin(), pattern.lanes[(size_t) Lane::snare].end(), isHit);
     // Jackin': the clap lands a hair before the 909 snare under it, so the two flam.
     const double jackFlam = jackin && hasSnare ? -0.006 * tempo / 60.0 : 0.0;
@@ -468,7 +560,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         {
             // The accent groove: written accents stay on top, the rest follows the beat.
             const double a = std::clamp ((double) s.accentGroove, 0.0, 1.0);
-            const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4));
+            const double shape = 1.0 - a * (1.0 - accentProfile (lane, stepInBar % 4, resolved.genre));
             level *= symbol == 'X' ? std::max (shape, 0.9) : shape * (1.0 + 0.25 * a);
         }
         else if (lane == (int) Lane::openHat && symbol == 'x' && ! groove.active)

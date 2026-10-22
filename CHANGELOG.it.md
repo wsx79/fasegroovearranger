@@ -2,6 +2,7 @@
 
 ## Non pubblicato
 
+- Fill, turnaround e accenti dei piatti seguono il genere. Garage, neo soul e chill tengono kick e hat nelle sezioni, e il chill non aggiunge più uno shaker in sedicesimi. Un riff seed nuovo aggiorna i turnaround dei preset, e Jackin' Piano non prende più il flam di Jackin'.
 - I fill del piano non leggono più una scala vuota, e il comping con la chitarra solista chiude le note ancora aperte a fine clip.
 
 ## 0.9.0 — 2026-10-22
