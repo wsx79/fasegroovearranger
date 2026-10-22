@@ -269,6 +269,9 @@ std::vector<sgk::NoteEvent> PianoComping::comping (const std::vector<sgk::NoteEv
             clean.push_back ({ e.ppq, e.note, 0, soundingPart[n] });
         }
     }
+    for (int n = 0; n < 128; ++n)
+        if (held[(size_t) n] > 0)
+            clean.push_back ({ length, n, 0, soundingPart[(size_t) n] });
     return clean;
 }
 

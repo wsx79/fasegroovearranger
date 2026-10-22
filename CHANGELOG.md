@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Piano fills no longer index an empty scale run, and guitar-lead comping closes notes still ringing at the clip end.
+
 ## 0.9.0 — 2026-10-22
 
 - GENERATE SONG also draws a new tempo inside the genre, density and swing within the style, and new 8-bar section lengths. Section order stays. Locks freeze the form; locked harmonic notes keep the key and progression.

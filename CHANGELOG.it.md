@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato
+
+- I fill del piano non leggono più una scala vuota, e il comping con la chitarra solista chiude le note ancora aperte a fine clip.
+
 ## 0.9.0 — 2026-10-22
 
 - GENERA BRANO estrae anche un tempo nel genere, densità e swing dello stile, e nuove durate di sezione da otto battute. L’ordine delle sezioni resta. I blocchi congelano la forma; le note armoniche bloccate tengono tonalità e progressione.
