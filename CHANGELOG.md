@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.12.0 — 2026-10-22
+
+- Strings play a harmony part in every genre that uses them. Pads and chord lines follow the progression through the verse, chorus and break, and they enter during the intro and outro instead of being removed from the arrangement.
+- Regenerating the strings track, a section or a clip always writes notes. Jackin' still starts without a string bed; regenerating the strings track adds a pad. A locked track or clip is left as it is, and the part is saved with the song.
+
 ## 0.11.0 — 2026-10-22
 
 - Plugin browser in the same style as the FaseGroove groove browser: manufacturers on the left, plugins on the right, search, favourites and recents. FaseGroove engines are the first group. A click loads the plugin; double-click or Enter closes the browser.

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.12.0 — 2026-10-22
+
+- Gli archi suonano una parte sull'armonia in ogni genere che li prevede. Pad e linee di accordi seguono la progressione in strofa, ritornello e break, ed entrano in intro e outro invece di essere tolti dall'arrangiamento.
+- Rigenerare la traccia archi, una sezione o un clip scrive sempre delle note. Il Jackin' nasce ancora senza un tappeto di archi; rigenerare la traccia archi aggiunge un pad. Una traccia o un clip bloccati restano com'erano, e la parte si salva con il brano.
+
 ## 0.11.0 — 2026-10-22
 
 - Browser dei plugin nello stesso stile del browser dei groove FaseGroove: produttori a sinistra, plugin a destra, ricerca, preferiti e recenti. I motori FaseGroove sono il primo gruppo. Un clic carica il plugin; doppio clic o Invio chiude il browser.
