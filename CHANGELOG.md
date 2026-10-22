@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased — 2026-10-22
+
+- GENERATE SONG chooses a different key, genre progression and bass figure. Locked harmonic notes retain the current harmony; partial regeneration stays in the song's harmony.
+- Regeneration releases fixed groove/riff overrides, combines genre piano phrases, develops bass rhythm and draws fresh Jackin’ guitar patterns. APPLY preserves explicit settings and stored takes; locks, assignments, mix and untargeted notes remain.
+- Regression checks compare piano/bass/guitar rhythms with feel disabled across all thirteen genres, including fixed presets and seeds; update generation feedback and IT/EN guides.
+
+- Align distribution with Piano/Guitar/Drums: one platform ZIP plus Windows setup, a clean explicit runtime payload, linked guide resources and required licences. Consolidate CI diagnostics into one separate validation artifact.
+- Track header clicks select without opening the engine; an amber gear beside Solo opens configuration. Add GUITAR LEADS to the main arrangement toolbar, preserving locks and Undo.
+- Hide piano editing controls ignored by independent bass/string modes, guide controls ignored by samples/plugins, and duplicate routing/drum controls. Mode and sound changes refresh the available panel controls.
+
 ## 0.8.0 — 2026-10-21
 
 - Persistent instrument catalogue grouped by manufacturer, ready immediately from the plugin selector. VST3 system/user defaults plus configurable personal folders; recursive discovery and path deduplication.

@@ -40,6 +40,15 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     }
     p.pattern=candidates.empty()?0:candidates[seed%candidates.size()];
     auto pattern=sgk::makeVariation(patterns[(size_t)p.pattern],seed);
+    // Build another phrase from the same genre vocabulary, rather than only
+    // decorating the last bar of one factory groove.
+    if(!candidates.empty()) {
+        const auto& answer=patterns[(size_t)candidates[mix(seed+41U)%candidates.size()]];
+        for(int segment=1;segment<4;++segment)
+            if(mix(seed+(std::uint32_t)segment*173U)%2)
+                sgk::copySegment(pattern,answer,segment);
+        sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
+    }
     if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
     if(s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
     p.pattern=sgk::userPatternIndex();
@@ -89,8 +98,8 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
             if(source[i]=='R'||source[i]=='O'||source[i]=='5'){
                 static constexpr char tones[]{'R','O','5'};
                 line[i]=tones[choice%3];
-                if(i%4!=0&&source[(i+1)%source.size()]!='='&&choice%5==0)line[i]='.';
-            }else if(source[i]=='.'&&i%4==3&&source[i-1]!='='&&choice%4==0)line[i]='R';
+                if(i%4!=0&&source[(i+1)%source.size()]!='='&&choice%3==0)line[i]='.';
+            }else if(source[i]=='.'&&source[i-1]!='='&&source[(i+1)%source.size()]!='='&&choice%4==0)line[i]=(choice&8)?'R':'5';
         }
         ps.bassLineOverride=std::move(line);
     }
@@ -546,20 +555,78 @@ void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
     }
 }
 }
+namespace {
+void newSongHarmony(Project& p,std::uint32_t seed) {
+    auto& s=p.settings;
+    // Curated alternatives retain each style's harmonic vocabulary.
+    static const std::vector<int> progressions[]{
+        {4,8,27,33,19,12}, {2,3,4,8,19,29,12}, {0,1,6,7,20,27},
+        {2,8,19,22,24,12}, {17,18,28,30,31,37}, {17,28,30,31,33,37},
+        {9,17,18,27,28,31}, {0,9,16,20,21,28}, {9,21,32,33,4,12},
+        {4,6,8,27,28,33}, {2,3,19,24,29,12}, {0,6,7,10,20,27},
+        {4,6,9,17,27,28}
+    };
+    const auto before=s;
+    const auto& choices=progressions[s.genre];
+    const auto first=mix(seed+701U)%choices.size();
+    for(size_t i=0;i<choices.size();++i) {
+        chooseProgression(p,choices[(first+i)%choices.size()]);
+        if(s.scale!=before.scale||s.chordCount!=before.chordCount
+           ||!std::equal(s.degrees.begin(),s.degrees.begin()+s.chordCount,before.degrees.begin())
+           ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin()))break;
+    }
+    // Exclude the current key: a new take must audibly move its tonal centre.
+    s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
+    static const std::vector<int> bassLines[]{
+        {8,12,13}, {10,11,23}, {7,16,17}, {10,11,23}, {13,14,22},
+        {8,12,13,14}, {9,18,19}, {15,9,14}, {0,1,2,3,20,21,22},
+        {8,12,13}, {4,5,10,23}, {7,16,17}, {8,12,13,14}
+    };
+    const auto& bass=bassLines[s.genre];
+    auto at=mix(seed+1103U)%bass.size();
+    if(sgk::bassModeForLine(bass[at])==s.bassMode)at=(at+1)%bass.size();
+    s.bassMode=sgk::bassModeForLine(bass[at]);
+}
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();
     if(track<0||track>=trackCount||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
     if(scope==Scope::section){const double start=p.sectionStart(section),end=p.sectionStart(section+1);for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(!t.freeTimeline||t.locked)continue;for(double boundary:{start,end}){const int at=p.clipAtBeat(ti,boundary);if(at>=0&&!t.clips[(size_t)at].locked&&p.clipStart(ti,at)<boundary)p.splitClip(ti,at,boundary);}}}
-    if(seed&&scope==Scope::song)p.settings.seed=seed;
+    const auto previousSongSeed=p.settings.seed;
+    if(seed&&scope==Scope::song) {
+        p.settings.seed=seed;
+        // Existing locked harmonic notes cannot follow a new global key/chord cycle.
+        const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.begin()+4,[](const Track& t){
+            return std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
+        });
+        if(!harmonyLocked)newSongHarmony(p,seed);
+    }
     const auto& s=p.settings;
     const auto& profile=genreProfile(s.genre);
     for(int ti=0;ti<trackCount;++ti) {
         auto& t=p.tracks[(size_t)ti];
         if(t.locked||((scope==Scope::track||scope==Scope::clip)&&ti!=track)) continue;
+        bool prepared=false;
         for(size_t si=0;si<t.clips.size();++si) {
             const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,(int)si)):(int)si;
             if((scope==Scope::section&&guide!=section)||(scope==Scope::clip&&(int)si!=section))continue;
             auto& clip=t.clips[si]; if(clip.locked) continue;
+            if(seed&&!prepared) {
+                // Explicit regeneration leaves fixed presets and seed overrides behind.
+                // APPLY (zero seed) continues to render the chosen settings exactly.
+                auto& e=t.engine;
+                if(ti<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})) {
+                    const auto previousMotif=clip.motifSeed?clip.motifSeed:mix(previousSongSeed+(std::uint32_t)ti*131U);
+                    const auto source=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,ti,clip.seed,previousMotif));
+                    auto settings=s;if(e.density>=0)settings.density=e.density;
+                    auto target=sgk::GrooveEngine::basePattern(pianoSettings(settings,mix(seed+(std::uint32_t)ti*131U)));
+                    for(int segment=0;segment<4;++segment)if(e.segmentLocked[(size_t)segment])sgk::copySegment(target,source,segment);
+                    sgk::repairHolds(target.rightHand);sgk::repairHolds(target.leftHand);
+                    setPianoPattern(e,target);
+                }else e.pattern=-1;
+                e.riffSeed=0;
+                prepared=true;
+            }
             if(seed) clip.motifSeed=mix(seed+(ti>=4?313U:(std::uint32_t)ti*131U));
             if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
@@ -583,7 +650,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
             } else if(ti==3) {
                 fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=s.genre;
-                if(s.genre==4&&e.pattern<0){
+                if(s.genre==4&&e.pattern<0&&!clip.motifSeed){
                     const auto& patterns=fgg::guitarPatterns();
                     for(size_t i=0;i<patterns.size();++i)if(patterns[i].name=="Chicago Chank"){gs.pattern=(int)i;break;}
                 }

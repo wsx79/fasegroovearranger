@@ -38,7 +38,7 @@ Open **FaseGrooveArranger-Windows-Setup.exe**, choose English or Italian and fol
 | macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Extract, copy the app from Standalone to Applications and open it. |
 | Linux | `FaseGrooveArranger-Linux.zip` | Extract and run `Standalone/Fase Groove Arranger`. Preserve executable permissions. |
 
-The versioned Windows ZIP and macOS/Linux tar.gz packages are still provided. From Actions, extract the artifact ZIP first, then the package inside. Windows setup is unsigned. macOS follows the family signing workflow: ad-hoc signing by default, Developer ID/notarisation when configured. System security prompts may therefore appear, as with the other apps.
+Builds follow the family layout: one ZIP per platform and the Windows setup, without duplicate versioned archives. Guides, licences and source information are included; validation evidence is kept in a separate Actions artifact. From Actions, extract the artifact ZIP first, then the package inside. Windows setup is unsigned. macOS follows the family signing workflow: ad-hoc signing by default, Developer ID/notarisation when configured. System security prompts may therefore appear, as with the other apps.
 
 ### Updates, as in the Fase Groove family
 
@@ -61,7 +61,7 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
-6. Return with **< ARRANGEMENT**. Click the **Piano track name** and choose a guide sound, sample or your own VST.
+6. Return with **< ARRANGEMENT**. Select the **Piano track**, click its amber gear beside Solo and choose a guide sound, sample or your own VST.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
 Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
@@ -188,6 +188,8 @@ It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**,
 
 **OPTIONS → SETTINGS → Language** selects English, Italian, Spanish, French, German or Portuguese. Control tooltips can be toggled in the same panel. Both preferences stay on this computer; complete manuals are available in Italian and English.
 
+Panels show only controls used by the selected mode: named bass lines and independent string pads hide the piano rhythm grid and its editing tools. Selecting a bass mode or string stabs that follow the grid restores those tools. Tone and guide effects appear only with the built-in instrument; gain, pan, mute, solo and routing stay in the track toolbar.
+
 #### Guide sound, sample or VST
 
 | Button | What you choose |
@@ -251,7 +253,7 @@ Click a lane to add a gesture on that bar's chord. Its notes select and move tog
 
 ### Who carries the progression?
 
-In the guitar panel or editor, **SOLISTA** changes the roles. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
+**GUITAR LEADS** in the main arrangement toolbar changes the roles without opening the engine. The guitar panel and editor offer the same switch. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
 
 <p align="center"><img src="images/guide_mixer.png" alt="The guitar mixer" width="900"></p>
 
@@ -337,13 +339,15 @@ The song keeps its base groove across sections, changing performance, density an
 
 ### Change only what you need
 
+**Regeneration and sound.** **GENERATE SONG** draws a different key, chord progression and bass figure from the selected genre, together with new piano and guitar patterns. Genre, tempo, arrangement, assigned instruments and mix remain. If a locked track or clip contains harmonic notes (piano, bass, strings or guitar), the shared key and progression stay unchanged so those notes remain compatible; unlock the harmonic parts to draw new harmony. Locked drum parts do not prevent harmonic changes.
+
+**REGENERATE TRACK/SECTION/CLIP** changes the selected musical parts within the current key and progression. Regeneration switches targeted tracks to automatic genre patterns and clears fixed Riff seed overrides, including when a factory preset or hand-edited grid was selected. Locked piano/bass grid segments are retained. These pattern settings belong to the track; notes outside the selected scope stay intact. A track keeps one motif across its sections, and drum stems generated together share one kit motif. Bass variations change rhythm as well as chord tones; sustained holds and the first pitched anchor in each bar remain.
+
+**APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take or harmony. Use APPLY to render a chosen preset, edited grid or explicit Riff seed. NEW RIFF prepares another riff; NEW FEEL changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores notes, harmony and pattern settings. Timbre is controlled by Sound, your sample or your assigned plugin.
+
 | Button | What changes |
 |---|---|
-**Regeneration and sound.** GENERATE SONG and REGENERATE TRACK/SECTION/CLIP create a new musical take: rhythmic figures and phrases change while the selected genre, harmony, instrument assignments and mix remain. A regenerated track keeps one motif through its sections; drum stems generated together share a kit motif. The bass develops the selected figure using chord tones, preserving its strong anchors. A steady four-on-the-floor kick or a sustained string part can correctly retain its basic pattern. Timbre changes through Sound, your sample or your assigned plugin, rather than through MIDI regeneration.
-
-A fixed GROOVE preset, hand-edited grid or explicit Riff seed constrains the result; choose Genre / automatic and Riff seed 0 for fresh automatic motifs. NEW RIFF prepares another riff; **APPLY TRACK / APPLY CLIP** writes the current parameters without drawing another take. NEW FEEL only changes humanisation. **RND LANE** draws a new drum-lane take. Saved `.fga` projects retain musical takes; UNDO restores the previous result.
-
-| **GENERATE SONG** | New takes on all unlocked tracks, keeping the existing sections. |
+| **GENERATE SONG** | New key, progression, bass figure and patterns on unlocked tracks, keeping the existing sections. Locked harmonic notes preserve harmony. |
 | **REGENERATE TRACK** | The selected instrument throughout the song. |
 | **REGENERATE SECTION** | This section across all unlocked tracks. |
 | **REGENERATE CLIP** | Just the selected track in this section. |

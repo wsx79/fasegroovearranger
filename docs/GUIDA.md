@@ -38,7 +38,7 @@ Apri **FaseGrooveArranger-Windows-Setup.exe**, scegli italiano o inglese e segui
 | macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Estrai, copia l’app da Standalone in Applicazioni e aprila. |
 | Linux | `FaseGrooveArranger-Linux.zip` | Estrai e avvia `Standalone/Fase Groove Arranger`. Conserva i permessi di esecuzione. |
 
-Restano disponibili anche lo ZIP Windows e i tar.gz macOS/Linux con versione nel nome. Da Actions estrai prima lo ZIP dell’artifact e poi il pacchetto contenuto. Il setup Windows non è firmato. macOS usa la procedura della famiglia: firma ad hoc iniziale, Developer ID/notarizzazione se configurati. Possono comparire gli avvisi di sicurezza del sistema, come nelle altre app.
+Le build seguono la famiglia: uno ZIP per piattaforma e il setup Windows, senza archivi con versione duplicati. Sono incluse guide, licenze e informazioni sui sorgenti; le prove di validazione restano in un artifact Actions separato. Da Actions estrai prima lo ZIP dell’artifact e poi il pacchetto contenuto. Il setup Windows non è firmato. macOS usa la procedura della famiglia: firma ad hoc iniziale, Developer ID/notarizzazione se configurati. Possono comparire gli avvisi di sicurezza del sistema, come nelle altre app.
 
 ### Aggiornamenti, come nella famiglia Fase Groove
 
@@ -61,7 +61,7 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGIAMENTO**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
+6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano**, apri l’ingranaggio ambra accanto a Solo e scegli un suono, un campione o il tuo VST.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
 Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
@@ -79,7 +79,7 @@ Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **
 Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
 in rilievo = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
 l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
-Ogni pulsante ha il suo tooltip. Clicca il nome di una traccia per i parametri, doppio clic sul clip per le note.
+Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio ambra accanto a Solo apre i parametri. Doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
@@ -190,6 +190,8 @@ Da **MODIFICA ACCORDI → Ogni accordo** imposti la durata armonica condivisa: m
 
 Da **OPZIONI → IMPOSTAZIONI → Lingua** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso pannello. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
 
+I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di basso nominate e i pad di archi indipendenti nascondono griglia e strumenti ritmici del piano. Scegliendo un basso o gli stabs degli archi che seguono la griglia, gli strumenti tornano disponibili. Tono ed effetti guida compaiono solo con lo strumento interno; gain, pan, mute, solo e assegnazione del suono restano nella barra della traccia.
+
 #### Suono guida, campione o VST
 
 | Pulsante | Cosa scegli |
@@ -253,7 +255,7 @@ Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue 
 
 #### Chi porta avanti il giro?
 
-Nel pannello o nell'editor della chitarra, **SOLISTA** cambia i ruoli. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
+**CHITARRA SOLISTA** nella barra principale cambia i ruoli senza aprire il motore. Lo stesso comando resta nel pannello e nell’editor della chitarra. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
 
 <p align="center"><img src="images/guide_mixer.png" alt="Il mixer della chitarra" width="900"></p>
 
@@ -310,7 +312,7 @@ Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e compr
 
 ## 5. Usare gli strumenti in tempo reale
 
-Arranger ospita direttamente gli strumenti: apri il **nome della traccia**, scegli
+Arranger ospita direttamente gli strumenti: seleziona la traccia, apri l’**ingranaggio ambra**, scegli
 **BUILT-IN**, **CARICA CAMPIONE** oppure **CARICA VST3 / AU**, quindi premi **APRI VST** per
 i controlli del tuo strumento. Premi **▶** per ascoltare le note del progetto.
 
@@ -340,13 +342,15 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 
 ### Cambiare solo quello che serve
 
+**Rigenerazione e suono.** **GENERA BRANO** estrae una tonalità diversa, un’altra progressione e una nuova figura di basso del genere selezionato, insieme a nuovi pattern di piano e chitarra. Restano genere, tempo, struttura, strumenti assegnati e mix. Se una traccia o un clip bloccato contiene note armoniche (piano, basso, archi o chitarra), tonalità e progressione comuni restano invariate per mantenere compatibili quelle note: sblocca le parti armoniche per ottenere una nuova armonia. I blocchi della batteria non impediscono il cambio armonico.
+
+**RIGENERA TRACCIA/SEZIONE/CLIP** cambia le parti selezionate nella tonalità e progressione attuali. La rigenerazione passa ai pattern automatici del genere e azzera i Riff seed fissi delle tracce interessate, anche se era selezionato un preset o una griglia manuale. I segmenti bloccati della griglia piano/basso restano. Questi parametri del pattern appartengono alla traccia; le note fuori dall’ambito selezionato restano intatte. Una traccia mantiene un motivo coerente fra le sezioni e le parti di batteria generate insieme condividono il motivo del kit. Le variazioni di basso cambiano ritmo e note dell’accordo, rispettando le note tenute e il primo attacco intonato di ogni battuta.
+
+**APPLICA TRACCIA / APPLICA CLIP** scrive i parametri correnti senza estrarre un’altra versione o armonia. Usa APPLICA per scrivere un preset scelto, una griglia modificata o un Riff seed esplicito. NUOVO RIFF prepara un altro riff; NUOVO FEEL cambia l’umanizzazione. **RND LANE** estrae una nuova parte di batteria. Il `.fga` conserva le versioni musicali; ANNULLA ripristina note, armonia e parametri dei pattern. Il timbro si cambia da Suono, dal campione o dal plugin assegnato.
+
 | Pulsante | Cosa cambia |
 |---|---|
-**Rigenerazione e suono.** GENERA BRANO e RIGENERA TRACCIA/SEZIONE/CLIP creano una nuova versione musicale: cambiano figure ritmiche e frasi, mantenendo genere, armonia, strumenti assegnati e mix. Una traccia rigenerata mantiene un motivo coerente tra le sezioni; le parti di batteria generate insieme condividono il motivo del kit. Il basso sviluppa la figura scelta con note dell’accordo, rispettandone gli accenti principali. Una cassa regolare in quattro o una parte di archi tenuti possono correttamente conservare lo schema di base. Il timbro si cambia da Suono, dal campione o dal plugin assegnato, attraverso i rispettivi controlli.
-
-Un preset GROOVE fisso, una griglia manuale o un Riff seed esplicito vincola il risultato; scegli Genere / automatico e Riff seed 0 per nuovi motivi automatici. NUOVO RIFF prepara un altro riff; **APPLICA TRACCIA / APPLICA CLIP** scrive i parametri correnti senza estrarre un’altra versione. NUOVO FEEL cambia solo l’umanizzazione. **RND LANE** estrae una nuova versione della parte di batteria. Il `.fga` conserva le versioni musicali; ANNULLA ripristina il risultato precedente.
-
-| **GENERA BRANO** | Nuove varianti su tutte le tracce sbloccate, conservando le sezioni attuali. |
+| **GENERA BRANO** | Nuova tonalità, progressione, figura di basso e pattern sulle tracce sbloccate, conservando le sezioni. Le note armoniche bloccate conservano l’armonia. |
 | **RIGENERA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
 | **RIGENERA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
 | **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |
@@ -422,7 +426,7 @@ Poi costruisci il brano con gli esempi qui sotto.
 ### Funky & Disco: la chitarra guida
 
 1. Scegli **Funky & Disco** e genera il brano.
-2. Apri la chitarra e attiva **SOLISTA**.
+2. Attiva **CHITARRA SOLISTA** nella schermata principale.
 3. Ascolta DOWN, UP, CHANK e OCTAVE nel contesto; riduci quelle che si sovrappongono troppo.
 4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
 5. Controlla intro e outro: la prima e l’ultima frase ritmica lasciano spazio al mixaggio; gli strumenti entrano ed escono dentro la struttura del brano.

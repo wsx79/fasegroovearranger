@@ -58,7 +58,11 @@ it.UserGuide=Guida di utilizzo
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
 [Files]
-Source: "{#PackageDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PackageDir}\Standalone\Fase Groove Arranger.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PackageDir}\*"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#PackageDir}\docs\*"; DestDir: "{app}\docs"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PackageDir}\Resources\*"; DestDir: "{app}\Resources"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "{#PackageDir}\ThirdParty\*"; DestDir: "{app}\ThirdParty"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "FaseGrooveArranger.ico"; DestDir: "{app}"; Flags: ignoreversion
 Source: "FaseGrooveArranger.install.ini"; DestDir: "{app}"; Flags: ignoreversion
 

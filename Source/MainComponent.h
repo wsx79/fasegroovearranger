@@ -184,7 +184,7 @@ private:
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
-    juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"SOLISTA"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
+    juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     juce::TextButton automationButton{"AUTOMATION"};
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;

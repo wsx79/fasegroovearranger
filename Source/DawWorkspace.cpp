@@ -130,6 +130,21 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[1].notes={{1,.25,36,75,0}};
     project.loop=false;project.loopStart=0;project.loopEnd=32;selectedTrack=4;selectedSection=0;arrangement.pixelsPerBar=32;changed();arrangementPort.setViewPosition(0,0);
     auto event=[&](float x,float y,int mods=0){const juce::Point<float> p(x,y);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+    // Header selection must not enter the engine. Only its gear opens it.
+    select(0,0);arrangementPort.setViewPosition(0,0);const auto headerMidi=midiFile(project);const auto headerPosition=audio.position();
+    arrangement.mouseDown(event(78,76));arrangement.mouseUp(event(78,76));
+    ok=ok&&page==Page::arrangement&&selectedTrack==4&&midiFile(project)==headerMidi&&audio.position()==headerPosition;stage("header selection without engine or playback changes");
+    arrangement.mouseDown(event(180,76));arrangement.mouseUp(event(180,76));
+    ok=ok&&page==Page::arrangement&&project.tracks[4].solo;stage("header Solo without opening the engine");undo(false);
+    arrangement.mouseDown(event(202,76));arrangement.mouseUp(event(202,76));
+    ok=ok&&page==Page::instrument&&selectedTrack==4;stage("explicit header engine gear");showArrangement();
+    const auto beforeLead=project;const auto oldLead=project.settings.guitarLead;
+    ok=ok&&leadButton.isVisible()&&!leadButton.getBounds().intersects(loopSelectionButton.getBounds());
+    if(leadButton.onClick)leadButton.onClick();
+    ok=ok&&page==Page::arrangement&&project.settings.guitarLead!=oldLead;
+    undo(false);ok=ok&&project.settings.guitarLead==oldLead;
+    for(int ti=0;ti<trackCount;++ti)ok=ok&&project.tracks[(size_t)ti].clips==beforeLead.tracks[(size_t)ti].clips;
+    stage("header selection, explicit engine gear and main guitar lead toggle with undo");
     arrangement.mouseDown(event(232,76));arrangement.mouseUp(event(232,76));ok=ok&&page==Page::arrangement&&selectedTrack==4&&selectedSection==0&&std::abs(audio.position()-2)<1e-9&&!audio.isPlaying();
     arrangement.mouseDown(event(232,76));arrangement.mouseDrag(event(360,76));arrangement.mouseUp(event(360,76));ok=ok&&project.tracks[4].freeTimeline&&project.tracks[4].clips.size()==1&&project.clipStart(4,0)==16&&project.tracks[4].clips[0].notes[0].start==0;
     undo(false);ok=ok&&project.tracks[4].clips[0].notes[0].start==0&&project.tracks[4].clips[1].notes[0].start==1;

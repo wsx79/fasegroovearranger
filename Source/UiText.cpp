@@ -75,7 +75,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("EDIT MIDI"))return tr("Open the full MIDI editor for the selected clip.");
     if(key.equalsIgnoreCase("SAVE"))return tr("Save the song and all instrument settings in a project.");
     if(key.equalsIgnoreCase("SAVE AS"))return tr("Save the song and all instrument settings in a project.");
-    if(key.equalsIgnoreCase("SOLISTA"))return tr("Enable the guitar soloist and the piano accompaniment.");
+    if(key.equalsIgnoreCase("SOLISTA")||key.equalsIgnoreCase("GUITAR LEADS"))return tr("Enable the guitar soloist and the piano accompaniment.");
     if(key.equalsIgnoreCase("LOCK TRACK"))return tr("Lock this part against regeneration; manual note editing remains available.");
     if(key.equalsIgnoreCase("LOCK CLIP"))return tr("Lock this part against regeneration; manual note editing remains available.");
     if(key.equalsIgnoreCase("PLAY"))return tr("Start or pause playback.");
@@ -86,7 +86,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("REGENERATE TRACK"))return tr("Try another take of this track, keeping the rest of the song.");
     if(key.equalsIgnoreCase("REGENERATE CLIP")||key.equalsIgnoreCase("REGENERATE SECTION"))return tr("Generate new notes only in the selected part; locked parts stay.");
     if(key.equalsIgnoreCase("NEW SECTION"))return tr("Generate new notes only in the selected part; locked parts stay.");
-    if(key.equalsIgnoreCase("GENERATE SONG"))return tr("Generate new notes only in the selected part; locked parts stay.");
+    if(key.equalsIgnoreCase("GENERATE SONG"))return tr("Create a new key, progression and genre patterns. Locked harmonic parts keep the current harmony.");
     if(key.equalsIgnoreCase("AUDIO"))return tr("Choose the audio output and buffer size.");
     if(key.equalsIgnoreCase("Pedal & Expression CC"))return tr("Pedal sustains notes between chord changes; expression rises in build-ups. Included in VST playback and MIDI export.");
     if(key.equalsIgnoreCase("Riff seed"))return tr("Zero follows the stored clip seed; another value gives a repeatable feel or riff.");
