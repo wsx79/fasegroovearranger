@@ -88,6 +88,9 @@ DrumPattern applySection (const DrumPattern& source, Section section)
     DrumPattern p = source;
     const int len = p.length();
     auto any = [&p] (Lane l) { return std::any_of (p[l].begin(), p[l].end(), isHit); };
+    // Two-step, broken beat and chill keep the kick and the hats they arrived with.
+    const int genre = categoryIndex (source.category);
+    const bool keepFeel = genre == garage || genre == neoSoul || genre == chill;
 
     switch (section)
     {
@@ -104,7 +107,7 @@ DrumPattern applySection (const DrumPattern& source, Section section)
                     p.lanes[(size_t) l].assign ((size_t) len, '.');
             }
 
-            if (! any (Lane::kick))
+            if (! any (Lane::kick) && ! keepFeel)
                 for (int i = 0; i < len; i += 4)
                     p[Lane::kick][(size_t) i] = 'x';
             break;
@@ -126,7 +129,9 @@ DrumPattern applySection (const DrumPattern& source, Section section)
 
         case Section::buildup:
         {
-            // Kick on every beat, a snare roll that doubles up (quarters, 8ths, 16ths), 8th hats.
+            // A snare roll that doubles up (quarters, 8ths, 16ths). House puts the kick on every
+            // beat and hats on the 8ths; two-step, broken and chill keep their own kick and hats.
+            const std::string keptKick = p[Lane::kick], keptClosed = p[Lane::closedHat], keptOpen = p[Lane::openHat];
             for (auto& line : p.lanes)
                 line.assign ((size_t) len, '.');
 
@@ -136,26 +141,32 @@ DrumPattern applySection (const DrumPattern& source, Section section)
                 const int every = at < 0.5 && len > 16 ? 4 : at < 0.75 ? 2 : 1;
                 if (i % every == 0)
                     p[Lane::snare][(size_t) i] = i % 4 == 0 ? 'X' : 'x';
-                if (i % 4 == 0)
+                if (! keepFeel && i % 4 == 0)
                     p[Lane::kick][(size_t) i] = 'X';
-                if (i % 2 == 0)
+                if (! keepFeel && i % 2 == 0)
                     p[Lane::closedHat][(size_t) i] = 'x';
+            }
+            if (keepFeel)
+            {
+                p[Lane::kick] = keptKick;
+                p[Lane::closedHat] = keptClosed;
+                p[Lane::openHat] = keptOpen;
             }
             break;
         }
 
         case Section::drop:
         {
-            // The full groove, lifted: the open hat on every offbeat when no open hat plays, and
-            // a 16th shaker when neither shaker nor tambourine does (the engine adds a crash
-            // every 8 bars).
-            if (! any (Lane::openHat))
+            // House is lifted: the open hat on every offbeat when no open hat plays, and a 16th
+            // shaker when neither shaker nor tambourine does (the engine adds a crash every 8
+            // bars). Two-step, broken and chill stay on the feel they came in with.
+            if (! keepFeel && ! any (Lane::openHat))
                 for (int i = 2; i < len; i += 4)
                 {
                     p[Lane::openHat][(size_t) i] = 'x';
                     p[Lane::closedHat][(size_t) i] = '.';
                 }
-            if (! any (Lane::shaker) && ! any (Lane::tambourine))
+            if (! keepFeel && ! any (Lane::shaker) && ! any (Lane::tambourine))
                 p[Lane::shaker].assign ((size_t) len, 'x');
             break;
         }
@@ -242,9 +253,12 @@ namespace
             case gospel:      return { 0.5f,  0.1f,  0.2f,  0.1f,  0.85f, 0.2f,  0.1f,  0.35f, 0.8f, Lane::conga };
             case jackin:      return { 0.1f,  0.0f,  0.5f,  0.2f,  0.05f, 0.5f,  0.3f,  0.55f, 0.7f,  Lane::cowbell };
             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
+            case garage:      return { 0.0f,  0.85f, 0.15f, 0.15f, 0.0f,  0.55f, 0.2f,  0.2f,  0.85f, Lane::rim };
             case afro:        return { 0.35f, 0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.15f, 0.0f, Lane::conga };
             case funky:       return { 0.55f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
             case nineties:    return { 0.8f,  0.05f, 0.2f,  0.2f,  0.35f, 0.1f,  0.05f, 0.25f, 0.6f, Lane::conga };
+            case neoSoul:     return { 0.0f,  0.15f, 0.15f, 0.25f, 0.0f,  0.2f,  0.05f, 0.1f,  0.7f, Lane::rim };
+            case chill:       return { 0.05f, 0.0f,  0.25f, 0.55f, 0.05f, 0.15f, 0.05f, 0.05f, 0.15f, Lane::rim };
             case dance:       return { 0.85f, 0.0f,  0.1f,  0.0f,  0.2f,  0.0f,  0.0f,  0.1f,  0.6f, Lane::conga };
             default:          return { 0.2f,  0.0f,  0.2f,  0.4f,  0.0f,  0.3f,  0.1f,  0.2f,  0.2f, Lane::rim };
         }
@@ -368,7 +382,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
                 odd += isHit (p.lanes[(size_t) l][(size_t) i]) ? 1 : 0;
         return odd;
     };
-    if (! brokenBeat && ! garageBeat && genre != dance && sixteenths() < 8 && r.chance (0.55f + 0.45f * density))
+    if (! brokenBeat && ! garageBeat && ! chillBeat && genre != dance && sixteenths() < 8 && r.chance (0.55f + 0.45f * density))
         setBar (genre == gospel || genre == funky || genre == nineties ? Lane::tambourine : Lane::shaker,
                 genre == soulful ? "xxxx xxxx xxxx xxxx" : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
 
@@ -431,11 +445,21 @@ DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
     const int bar = len - 16;   // the last bar plays the turnaround
     auto at = [&p, bar] (Lane lane, int step) -> char& { return p[lane][(size_t) (bar + step)]; };
     const bool fourFloor = at (Lane::kick, 0) != '.' && at (Lane::kick, 4) != '.' && at (Lane::kick, 8) != '.' && at (Lane::kick, 12) != '.';
+    const int genre = categoryIndex (p.category);
 
-    const int moves = 1 + r.nextInt (2);
-    for (int m = 0; m < moves; ++m)
+    // Chill often leaves the bar alone, and never piles on a second idea.
+    if (genre == chill)
     {
-        switch (r.nextInt (5))
+        if (r.chance (0.4f))
+            return p;
+        at (Lane::openHat, 14) = 'x';
+        at (Lane::closedHat, 14) = '.';
+        return p;
+    }
+
+    auto houseMove = [&] (int which)
+    {
+        switch (which)
         {
             case 0:   // open hat lift into the next bar
                 at (Lane::openHat, 14) = 'X';
@@ -458,6 +482,47 @@ DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
             default:  // a tom at the very end
                 at (Lane::tom, 15) = 'x';
                 break;
+        }
+    };
+
+    // House (and an unnamed grid) keeps the original five moves and the same dice.
+    const int table = genre == garage ? 1 : genre == afro ? 2 : genre == neoSoul ? 3 : 0;
+    const int choices = table == 0 ? 5 : 4;
+    const int moves = 1 + r.nextInt (2);
+    for (int m = 0; m < moves; ++m)
+    {
+        const int which = r.nextInt (choices);
+        if (table == 0)
+            houseMove (which);
+        else if (table == 1)   // garage: a ghost into the one. No tom, no open-hat lift.
+        {
+            switch (which)
+            {
+                case 0:  at (Lane::snare, 15) = 'g'; break;
+                case 1:  at (Lane::rim, 15) = 'x'; break;
+                case 2:  at (Lane::snare, 14) = 'g'; at (Lane::snare, 15) = 'x'; break;
+                default: at (Lane::closedHat, 15) = 'g'; break;
+            }
+        }
+        else if (table == 2)   // afro: the congas answer. No tom, no open hat.
+        {
+            switch (which)
+            {
+                case 0:  at (Lane::conga, 15) = 'x'; break;
+                case 1:  at (Lane::conga, 14) = 'g'; at (Lane::conga, 15) = 'x'; break;
+                case 2:  at (Lane::shaker, 15) = 'g'; break;
+                default: at (Lane::rim, 14) = 'x'; break;
+            }
+        }
+        else                    // neo soul: a late snare. No kick pick-up on the broken kick.
+        {
+            switch (which)
+            {
+                case 0:  at (Lane::snare, 14) = 'g'; at (Lane::snare, 15) = 'x'; break;
+                case 1:  at (Lane::snare, 15) = 'g'; break;
+                case 2:  at (Lane::rim, 14) = 'g'; break;
+                default: at (Lane::closedHat, 15) = 'g'; break;
+            }
         }
     }
     return p;
