@@ -64,7 +64,7 @@ int main(int argc,char** argv){try{
     }
     fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25&&c.notes[0].length==.5,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
     fga::Clip held;held.notes={{.13,.5,60,80,0}};fga::quantise(held,.25,0);check(held.notes[0].start==.13,"quantise strength zero keeps the note");
-    fga::Clip edge;edge.notes={{3.9,.2,60,90,0}};fga::quantise(edge,1,1,4);fga::tidyNotes(edge,4);check(edge.notes.size()==1&&edge.notes[0].start<4,"quantise stays inside the clip");
+    fga::Clip inside;inside.notes={{3.9,.2,60,90,0}};fga::quantise(inside,1,1,4);fga::tidyNotes(inside,4);check(inside.notes.size()==1&&inside.notes[0].start<4,"quantise stays inside the clip");
     fga::Clip plain;plain.notes={{1,.5,60,80,0}};auto untouched=plain;fga::humanize(plain,0,99,4);check(plain.notes==untouched.notes,"humanize zero is a no-op");
     fga::humanize(plain,1,99,4);check(plain.notes[0].velocity>=1&&plain.notes[0].velocity<=127&&plain.notes[0].start>=0&&plain.notes[0].start+plain.notes[0].length<=4,"humanize stays inside the clip");
     auto repeated=untouched;fga::humanize(repeated,1,99,4);check(repeated.notes==plain.notes&&repeated.notes!=untouched.notes,"humanize repeats from the seed and changes the note");
