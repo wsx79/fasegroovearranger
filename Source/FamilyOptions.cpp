@@ -72,11 +72,13 @@ OptionsOverlay::OptionsOverlay() : artist (Branding::artistLogo())
     checkUpdatesButton.onClick = [this] { if (onCheckUpdates != nullptr) onCheckUpdates(); };
     addChildComponent (checkUpdatesButton);
 
+    pluginButton.onClick=[this]{if(onPluginSettings)onPluginSettings();};
+    pluginButton.setTooltip(tr("Choose plugin folders and scan installed instruments."));
     audioButton.onClick = [this] { if (onAudioSettings) onAudioSettings(); };
     guideButton.onClick = [this] { if (onDocument) onDocument(0); };
     privacyButton.onClick = [this] { if (onDocument) onDocument(1); };
     licencesButton.onClick = [this] { if (onDocument) onDocument(2); };
-    for (auto* b : { &audioButton, &guideButton, &privacyButton, &licencesButton }) addChildComponent(b);
+    for (auto* b : { &pluginButton, &audioButton, &guideButton, &privacyButton, &licencesButton }) addChildComponent(b);
     refreshText();
     selectTab (false);
 }
@@ -101,6 +103,7 @@ void OptionsOverlay::show (bool about, float currentScale)
 
 void OptionsOverlay::refreshText()
 {
+    pluginButton.setButtonText(tr("PLUGINS..."));pluginButton.setTooltip(tr("Choose plugin folders and scan installed instruments."));
     audioButton.setButtonText(tr("Audio/MIDI Settings"));
     guideButton.setButtonText(tr("GUIDE"));
     privacyButton.setButtonText(tr("Privacy and permissions"));
@@ -129,7 +132,7 @@ void OptionsOverlay::selectTab (bool about)
     aboutTab.setToggleState (about, juce::dontSendNotification);
 
     for (auto* c : std::initializer_list<juce::Component*> { &languageLabel, &languageBox, &sizeLabel, &sizeBox, &tipsToggle,
-                                                             &updatesToggle, &checkUpdatesButton, &audioButton, &guideButton, &privacyButton, &licencesButton })
+                                                             &updatesToggle, &checkUpdatesButton, &pluginButton, &audioButton, &guideButton, &privacyButton, &licencesButton })
         c->setVisible (! about);
 
     auto showLink = [about] (juce::Component& b, const char* url) { b.setVisible (about && juce::String (url).isNotEmpty()); };
@@ -179,6 +182,7 @@ void OptionsOverlay::resized()
     audioButton.setBounds(extra.removeFromLeft(260));
     extra.removeFromLeft(8);
     guideButton.setBounds(extra.removeFromLeft(130));
+    extra.removeFromLeft(8);pluginButton.setBounds(extra.removeFromLeft(86));
     settings.removeFromTop(8);
     extra = settings.removeFromTop(28);
     privacyButton.setBounds(extra.removeFromLeft(260));

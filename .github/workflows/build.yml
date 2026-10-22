@@ -35,7 +35,7 @@ jobs:
       - name: Validate family resources and Markdown guides
         run: python scripts/verify-family.py
       - name: Configure
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=${{ runner.os == 'Linux' && 'ON' || 'OFF' }}
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=ON
       - name: Build
         id: nativebuild
         run: cmake --build build --config Release -j2
@@ -52,6 +52,9 @@ jobs:
         run: |
           xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --host-smoke-test "build/ArrangerHostProbe_artefacts/Release/VST3/Arranger Host Probe.vst3" "$RUNNER_TEMP/arranger-smoke"
           python3 scripts/verify-host.py "$RUNNER_TEMP/arranger-smoke"
+      - name: Recursive isolated plugin catalogue integration
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        run: python scripts/test-plugin-catalog.py
       - name: Complete club arrangements and independent audio audit
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: |
@@ -120,3 +123,9 @@ jobs:
           path: |
             ${{ runner.temp }}/arranger-smoke/
             ${{ runner.temp }}/club-audit/
+            ${{ runner.temp }}/plugin-catalog/plugin-catalog.txt
+      - uses: actions/upload-artifact@v4
+        if: runner.os != 'Linux' && failure()
+        with:
+          name: Arranger-validation-${{ runner.os }}
+          path: ${{ runner.temp }}/plugin-catalog/plugin-catalog.txt

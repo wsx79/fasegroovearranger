@@ -10,6 +10,13 @@
 - Il clic sul nome seleziona la traccia; l’ingranaggio ambra accanto a Solo apre il motore. CHITARRA SOLISTA disponibile nella barra principale, con blocchi e ANNULLA.
 - Rimossi i comandi pianistici ignorati dalle modalità indipendenti di basso/archi, i controlli guida inutili con campioni/plugin e i doppioni di routing/batteria. Le modalità e il suono assegnato aggiornano i controlli disponibili.
 
+## 0.8.0 — 2026-10-21
+
+- Catalogo degli strumenti salvato e diviso per produttore, disponibile subito dal selettore dei plugin. Cartelle VST3 standard di sistema/utente e percorsi personali configurabili; ricerca ricorsiva senza duplicati.
+- Scansione automatica al primo avvio e a ogni avvio successivo, in background. I VST3 invariati usano la cache; rilevati aggiornamenti e rimozioni, conservate le assegnazioni dei progetti. Audio Units registrate disponibili su macOS.
+- Verifica dei binari in un processo separato, con limite di tempo e quarantena persistente dei controlli falliti/interrotti. Gestione cartelle, scansione, annullamento e riprova nelle sei lingue dell’interfaccia.
+- Test nativi per sottocartelle e percorsi sovrapposti, catalogo salvato, cache, aggiornamenti, quarantena/riprova, rimozione e nuova scoperta. Conservati stile famiglia, disposizione delle impostazioni e caricamento manuale.
+
 ## 0.7.2 — 2026-10-21
 
 - La rigenerazione crea una nuova versione musicale di brano, traccia, sezione o clip, invece di cambiare soprattutto l’umanizzazione dello stesso riff. Traccia/brano mantengono un motivo coerente tra sezioni e la batteria un seed comune.
