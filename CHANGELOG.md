@@ -4,7 +4,6 @@
 
 - Jackin' House drums stay a jack groove on Generate Song, regenerate, random, variations and sections: four-on-the-floor kick, clap or snare on 2 and 4, open hat on the offbeats, swung 16ths around 56–62%, and a syncopated shaker. Tempo stays in 120–127. The beat does not turn into two-step, broken beat or garage.
 - Song regenerate no longer pushes Jackin' up to 130 BPM or a triplet shuffle. Cowbell and tom keep playing through the phrase.
-- Piano regenerate, NEW RIFF and RND draw a new figure in every genre. Gospel, jackin', garage, afro, funky, neo soul and chill no longer alternate only two patterns. A genre change rebuilds a cached riff.
 
 ## 0.12.0 — 2026-10-22
 

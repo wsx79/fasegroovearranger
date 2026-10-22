@@ -163,7 +163,7 @@ public:
     void suspendFollow();
     bool verifyNavigation(const juce::File&);
     void setLoopRange(double from,double to);
-    void randomPianoMaterial(bool velocities,bool bass,bool bothHands=false);
+    void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
     bool verifyDawWorkspace(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);

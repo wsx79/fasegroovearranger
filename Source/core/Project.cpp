@@ -25,16 +25,33 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     p.bass=(sgk::BassMode)s.bassMode; p.strings=(sgk::StringsMode)s.stringsMode;
     p.realism=true; p.variationEvery=4; p.fillEveryBars=4; p.fillStyle=sgk::FillStyle::mix;
     p.humanizeSeed=seed; p.riffSeed=seed; p.strum=.15f;
-    // Gospel, jackin', garage, afro, funky, neo soul and chill take a figure
-    // from that genre's cells. House-family genres keep the classic loop riffs.
-    // A preset chosen on the track still replaces this automatic figure.
-    auto pattern=sgk::makeRandomPattern(seed,(float)std::clamp(s.density,0.0,1.0),s.genre);
-    const bool houseFamily=s.genre==0||s.genre==1||s.genre==2||s.genre==9||s.genre==12;
-    if(houseFamily&&s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
-    if(houseFamily&&s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
-    sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
-    if(pattern.rightHand.empty())pattern.rightHand="x...";
-    if(pattern.leftHand.empty())pattern.leftHand="x...";
+    // Automatic grooves start from the genre library. Random-riff mode uses that
+    // genre's own figures; house-family genres keep the classic piano-house riff.
+    // then apply the original variation and intention engines to that vocabulary.
+    std::vector<int> candidates;
+    const auto& patterns=sgk::groovePatterns();
+    const auto category=sgk::grooveCategories()[(size_t)s.genre];
+    for(size_t i=0;i<patterns.size();++i) if(patterns[i].category==category) {
+        // Jackin' is built around a chopped two-bar hook. Keep automatic
+        // selection out of held organ/warehouse phrases; explicit presets and
+        // hand-edited patterns below still take precedence.
+        if(s.genre==4 && patterns[i].name!="Disco Jack Chops" && patterns[i].name!="Jack Chops"
+                     && patterns[i].name!="Chicago Stab Jack" && patterns[i].name!="Jack Stab Skips")continue;
+        candidates.push_back((int)i);
+    }
+    p.pattern=candidates.empty()?0:candidates[seed%candidates.size()];
+    auto pattern=sgk::makeVariation(patterns[(size_t)p.pattern],seed);
+    // Build another phrase from the same genre vocabulary, rather than only
+    // decorating the last bar of one factory groove.
+    if(!candidates.empty()) {
+        const auto& answer=patterns[(size_t)candidates[mix(seed+41U)%candidates.size()]];
+        for(int segment=1;segment<4;++segment)
+            if(mix(seed+(std::uint32_t)segment*173U)%2)
+                sgk::copySegment(pattern,answer,segment);
+        sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
+    }
+    if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
+    if(s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
     p.pattern=sgk::userPatternIndex();
     for(int i=0;i<sgk::userPatternLength;++i) {
         p.userRight[(size_t)i]=pattern.rightHand[(size_t)i%pattern.rightHand.size()];
