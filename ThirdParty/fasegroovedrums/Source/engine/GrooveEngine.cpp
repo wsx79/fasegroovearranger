@@ -528,8 +528,10 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
             return false;
         if (symbol == 'g')
             return true;
+        // Ghosts on the "e" come and go. The swung "a" is the accent (jackin'
+        // and garage) and stays put, the same way a written 'X' does.
         if (followsAccentGroove (lane) && stepInBar % 2 == 1)
-            return true;
+            return stepInBar % 4 != 3;
         return (lane == (int) Lane::clap || lane == (int) Lane::snare || lane == (int) Lane::rim) && stepInBar % 4 != 0;
     };
     auto lifeNoise = [&] (int lane, int salt) { return noise (phraseBar * 16 + stepInBar, seedSalt + lane * 101 + salt + phrase * 977); };
@@ -593,7 +595,9 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
     };
 
     // The song: the main part starts lighter (no hand percussion for its first eight bars).
-    const bool lightStart = s.section == Section::main && s.sectionBars >= 16 && sectionBar >= 0 && sectionBar < 8;
+    // Jackin' keeps the cowbell and the tom from bar one. Other genres still
+    // start the main part without hand percussion.
+    const bool lightStart = ! jackin && s.section == Section::main && s.sectionBars >= 16 && sectionBar >= 0 && sectionBar < 8;
     // The build-up's last two beats: no kick, so the drop hits harder.
     const bool dropGap = s.section == Section::buildup && s.sectionBars > 0 && sectionStep >= s.sectionBars * 16 - 8;
 

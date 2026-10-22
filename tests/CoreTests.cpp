@@ -196,6 +196,78 @@ int main(int argc,char** argv){try{
             check(take.settings.stringsMode!=0&&countStrings(take)>0,"song regenerate keeps a strings part where the genre uses one");
         }
     }
+    {
+        auto findSection=[&](const fga::Project& p,fga::Section type){for(int i=0;i<(int)p.sections.size();++i)if(p.sections[(size_t)i].type==type)return i;return -1;};
+        auto near=[&](const fga::Clip& clip,double beat,double tol){int vel=0;for(auto n:clip.notes)if(std::abs(n.start-beat)<=tol)vel=std::max(vel,n.velocity);return vel;};
+        auto jackBody=[&](const fga::Project& p,int section,const char* what){
+            check(section>=0&&p.sections[(size_t)section].bars>=4,what);
+            const auto& kick=p.tracks[4].clips[(size_t)section];
+            const auto& snare=p.tracks[5].clips[(size_t)section];
+            const auto& clap=p.tracks[6].clips[(size_t)section];
+            const auto& closed=p.tracks[8].clips[(size_t)section];
+            const auto& open=p.tracks[9].clips[(size_t)section];
+            const auto& shaker=p.tracks[11].clips[(size_t)section];
+            const auto& tom=p.tracks[15].clips[(size_t)section];
+            int openOff=0,odd=0,perc=0,back=0;double swing=0;int swung=0,aVel=0,aN=0,eVel=0,eN=0;
+            for(int beat=0;beat<16;++beat){
+                check(near(kick,beat,0.04)>=40,what);
+                if(beat%4==1||beat%4==3){const int hit=std::max(near(clap,beat,0.06),near(snare,beat,0.06));check(hit>=70,what);back+=hit>=70;}
+                const bool two=near(kick,beat-beat%4,0.04)>=40&&near(kick,beat-beat%4+1,0.04)<40&&near(kick,beat-beat%4+2.5,0.08)>=40;
+                check(!two,what);
+            }
+            auto scan=[&](const fga::Clip& clip,int lane){
+                for(auto n:clip.notes){
+                    if(n.start<0||n.start>=16)continue;
+                    const int step=(int)std::lround(n.start/0.25);
+                    if(lane==5&&step%4==2&&n.velocity>=40)++openOff;
+                    if((lane==4||lane==7)&&step%2==1&&n.velocity>=45){swing+=std::fmod(n.start,0.5)/0.5*100;++swung;++odd;}
+                    if((lane==7||lane==11)&&step%2==1&&n.velocity>=28)++perc;
+                    if(lane==4&&step%4==3){aVel+=n.velocity;++aN;}
+                    if(lane==4&&step%4==1){eVel+=n.velocity;++eN;}
+                }
+            };
+            scan(closed,4);scan(open,5);scan(shaker,7);scan(tom,11);
+            check(openOff>=12&&odd>=8&&perc>=4&&back==8,what);
+            check(swung>=8&&swing/swung>=56&&swing/swung<=63,what);
+            check(aN>=8&&aVel/aN>=70,what);
+            if(eN>0)check(aVel/aN>eVel/eN+15,what);
+        };
+        auto tempo=[&](const fga::Project& p,const char* what){
+            check(p.settings.bpm>=120&&p.settings.bpm<=127,what);
+            check(p.settings.swing>=0.36&&p.settings.swing<=0.72,what);
+        };
+        for(std::uint32_t seed=1;seed<=12;++seed){
+            auto song=fga::newProject(4);
+            tempo(song,"Jackin factory tempo and shuffle stay in house range");
+            jackBody(song,findSection(song,fga::Section::main),"Jackin factory main is a jack groove");
+            jackBody(song,findSection(song,fga::Section::drop),"Jackin factory drop is a jack groove");
+            jackBody(song,findSection(song,fga::Section::buildup),"Jackin factory lift keeps the jack groove");
+            jackBody(song,findSection(song,fga::Section::outro),"Jackin factory outro starts on the jack groove");
+            check(song.tracks[4].clips[(size_t)findSection(song,fga::Section::breakdown)].notes.empty(),"Jackin break has no kick and no two-step");
+            fga::generate(song,fga::Scope::song,0,0,seed);
+            tempo(song,"Jackin song regenerate stays at 120-127 and a 56-62% shuffle");
+            jackBody(song,findSection(song,fga::Section::main),"regenerated Jackin main keeps the jack groove");
+            jackBody(song,findSection(song,fga::Section::drop),"regenerated Jackin drop keeps the jack groove");
+            jackBody(song,findSection(song,fga::Section::buildup),"regenerated Jackin lift does not become a garage roll");
+            if(seed==1){
+                auto section=fga::newProject(4);const int main=findSection(section,fga::Section::main);
+                fga::generate(section,fga::Scope::section,4,main,501);
+                jackBody(section,main,"section regenerate rewrites the jack groove");
+                auto clip=fga::newProject(4);const int clipMain=findSection(clip,fga::Section::main);
+                const auto kick=clip.tracks[4].clips[(size_t)clipMain].notes;
+                fga::generate(clip,fga::Scope::clip,8,clipMain,77);
+                check(clip.tracks[4].clips[(size_t)clipMain].notes==kick,"regenerating the hat leaves the kick clip in place");
+                int swung=0;for(auto n:clip.tracks[8].clips[(size_t)clipMain].notes){if(n.start>=16)continue;const int step=(int)std::lround(n.start/0.25);if(step%4==3&&n.velocity>=70)++swung;}
+                check(swung>=8,"regenerating the closed hat keeps the swung accent");
+                auto locked=fga::newProject(4);const int drop=findSection(locked,fga::Section::drop);
+                const auto frozen=locked.tracks[4].clips[(size_t)drop].notes;
+                locked.tracks[4].clips[(size_t)drop].locked=true;
+                fga::generate(locked,fga::Scope::track,4,0,64);
+                check(locked.tracks[4].clips[(size_t)drop].notes==frozen,"a locked Jackin kick clip is not rewritten");
+                jackBody(locked,findSection(locked,fga::Section::main),"regenerating the kick track keeps a four-on-the-floor main");
+            }
+        }
+    }
     std::set<std::string> palettes;
     for(int g=0;g<13;++g){auto styled=fga::newProject(g);std::ostringstream signature;for(int t:{0,1,3,4})signature<<styled.tracks[(size_t)t].sound<<":"<<styled.tracks[(size_t)t].engine.tone<<":";palettes.insert(signature.str());check(styled.tracks[1].pan==0&&styled.tracks[1].engine.reverb==0&&styled.tracks[1].engine.chorus==0,"dry centred default bass");check(styled.tracks[4].gain*.95>styled.tracks[8].gain*.28&&styled.tracks[4].gain*.95<3*styled.tracks[8].gain*.28,"drum balance includes original engine lane calibration");}
     check(palettes.size()==13,"thirteen distinct sound palettes, not one default kit/keyboard");
