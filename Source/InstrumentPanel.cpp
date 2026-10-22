@@ -232,7 +232,7 @@ void InstrumentPanel::rebuild(){
         return false;
     }),controls.end());
     headings.erase(std::remove_if(headings.begin(),headings.end(),[&](const auto& h){
-        return track<3&&!grid&&(h.first=="PHRASES / FILLS"||h.first=="Musical tools"||(track==2&&h.first=="PERFORMANCE"));
+        return track<3&&!grid&&(h.first=="PHRASES / FILLS"||h.first=="Musical tools"||h.first=="PERFORMANCE");
     }),headings.end());
     for(auto& h:headings) {
         if(track<3&&!grid&&h.first=="RHYTHM / VELOCITY")h.first="PRESETS";
@@ -299,6 +299,11 @@ void InstrumentPanel::resized(){
         put("FILL EVERY",gx+14,y+150,(gw-38)*2/5,28);put("FILL STYLE",gx+24+(gw-38)*2/5,y+150,(gw-38)*3/5,28);
         put("NEW FEEL",gx+gw-92,y+186,78,20);put("HUMANIZE STYLE",gx+gw-228,y+186,130,20);
         int k=0;const int feelCount=track==0?5:!grid&&track==1?3:4;for(const auto* n:{"SWING","GATE","VELOCITY","HUMANIZE","DENSITY"}){if(track!=0&&juce::String(n)=="GATE")continue;if(!grid&&juce::String(n)=="DENSITY")continue;const int kw=(gw-24)/feelCount;put(n,gx+12+k++*kw,y+218,kw,112);}
+        if(track==1&&!grid) {
+            const int half=(gw-38)/2;
+            put("Riff seed",gx+14,y+130,half,48);put("Humanize seed",gx+24+half,y+130,half,48);
+            for(auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();if(name=="Riff seed"||name=="Humanize seed")if(auto* value=dynamic_cast<juce::Slider*>(c.component.get())){value->setSliderStyle(juce::Slider::IncDecButtons);value->setTextBoxStyle(juce::Slider::TextBoxLeft,false,half-36,24);}}
+        }
         if(track==2&&!grid){put("Section",gx+14,y+46,gw-28);put("VELOCITY",gx+14,y+100,gw-28,72);}
         const int sx=W-sw-4;put("Sound",sx,y+46,224);int kx=0;
         for(const auto* n:{"TONE","REVERB","VOLUME"})put(n,sx+(kx++)*74,y+112,70,72);
@@ -335,7 +340,7 @@ void InstrumentPanel::resized(){
         for(auto& c:controls)if(dynamic_cast<PianoStepGrid*>(c.component.get()))c.component->setBounds(32,bottom+76,W-64,180);
         // Segment order and locks stay beside the rhythm as in the original grid.
         bottom+=grid?290:78;
-        if(grid||track==1) {
+        if(grid) {
         card("PERFORMANCE",18,bottom,W-36,124);
         for(int i=0;i<4;++i){const int x=32+i*164;put("SEGMENT "+juce::String("ABCD").substring(i,i+1),x,bottom+46,72,24);put("Velocity order "+juce::String("ABCD").substring(i,i+1),x+80,bottom+46,72,24);put("Lock "+juce::String("ABCD").substring(i,i+1),x,bottom+80,150,24);}
         put("Riff seed",grid?704:32,bottom+45,110,50);put("Humanize seed",grid?824:154,bottom+45,110,50);put("EVOLVE",944,bottom+45,100,50);put("Realism",grid?1052:282,bottom+42,grid?W-1090:150,24);put("Pedal & Expression CC",1052,bottom+78,W-1090,24);
