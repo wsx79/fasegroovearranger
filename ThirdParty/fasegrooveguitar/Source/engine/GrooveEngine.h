@@ -153,8 +153,9 @@ public:
     static std::vector<NoteEvent> renderArrangement (const GuitarSettings& s, const std::vector<ArrangementPart>& parts,
                                                      std::vector<Marker>* markers = nullptr);
 
-    /** The fill style a bar plays ("Mix" picks one per bar). */
-    static FillStyle effectiveFillStyle (FillStyle style, long long bar) noexcept;
+    /** The fill style a bar plays ("Mix" picks one per bar). `genre` (a grooveCategories()
+        index, -1 for the old house mix) weights the mix toward that style. */
+    static FillStyle effectiveFillStyle (FillStyle style, long long bar, int genre = -1) noexcept;
 
     /** The chord tones of a bar: the chord of its slot, or the one held on the MIDI input. */
     static ChordTones chordAt (const GuitarSettings& s, long long bar) noexcept;
@@ -185,9 +186,11 @@ private:
     std::array<Chord, maxChords> voicedChords {};
     int voicedCount = -1;
     bool voicedBand = false;
+    int voicedColour = -1;
     ChordTones liveVoiced { 0, 0 };
     ChordVoicing liveVoicing {};
     bool liveBand = false;
+    int liveColour = -1;
     std::vector<PendingOn> pending;
     std::vector<int> scratch;
 

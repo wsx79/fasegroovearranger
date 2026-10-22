@@ -100,19 +100,31 @@ struct ChordVoicing
     NoteList stabAlt;   // the stab with another note on top (a bar of the phrase answers)
 };
 
+/** How a genre voices a chord. `classic` is the preset sound (a full shape, 3rd and 7th in).
+    `shell` is a 3- or 4-note drop-2 (neo-soul, gospel). `triad` leaves the 7ths and 9ths out
+    (house, dance). `funkGrip` is three strings, small and high (funk, jackin'). */
+enum class GuitarColour { classic = 0, shell, triad, funkGrip };
+constexpr int numGuitarColours = 4;
+/** The voicing a genre (grooveCategories() index) uses for a random groove. Presets stay classic. */
+GuitarColour guitarColourFor (int genre) noexcept;
+/** Lick phrase of a genre: 0 is the preset contour. */
+int lickContourFor (int genre) noexcept;
+
 /** The shapes of a chord. With `previous` (the chord before), the hand moves as little as it
     can: the shapes slide along the neck and keep the notes the two chords share. With
     `roomForBand` the strum leaves the low strings to the bass and the stabs sit higher, above
-    a piano's left hand. */
-ChordVoicing voiceChord (const ChordTones& chord, const ChordVoicing* previous = nullptr, bool roomForBand = false);
+    a piano's left hand. `colour` defaults to the preset voicing. */
+ChordVoicing voiceChord (const ChordTones& chord, const ChordVoicing* previous = nullptr, bool roomForBand = false,
+                         GuitarColour colour = GuitarColour::classic);
 
 /** The MIDI notes a lane plays over a chord, lowest first, from its shapes (between E2 = 40 and
     E6 = 88): a down strum the full chord, an up strum its top four strings, a stab three high
     strings, a chank two, octaves two notes an octave apart... An arpeggio and a lick play one
     note, chosen by the step (0..15) in the bar. `octave` moves it all up or down (folded back
-    into the guitar's range). `alternative`: the stab with its other top note. */
+    into the guitar's range). `alternative`: the stab with its other top note. `contour` picks
+    the lick phrase (0: the preset line). */
 void laneNotes (Lane lane, const ChordTones& chord, const ChordVoicing& voicing, int stepInBar, int octave,
-                NoteList& out, bool roomForBand = false, bool alternative = false) noexcept;
+                NoteList& out, bool roomForBand = false, bool alternative = false, int contour = 0) noexcept;
 
 /** The same, from the chord's own shapes (no chord before it). */
 std::vector<int> laneNotes (Lane lane, const ChordTones& chord, int stepInBar, int octave = 0);
@@ -219,4 +231,3 @@ constexpr int randomBeatLength = 32;    // a random groove: two bars
 void fitPattern (GuitarPattern&, int length);
 
 } // namespace fgg
-

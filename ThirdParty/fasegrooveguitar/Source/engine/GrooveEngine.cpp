@@ -225,37 +225,41 @@ const ChordVoicing& GrooveEngine::voicingAt (const GuitarSettings& s, long long 
     if (s.useLiveChord && s.liveChord.mask != 0)
     {
         // The chord held on the MIDI input: its shapes move from the last chord held.
-        if (! (s.liveChord == liveVoiced) || liveBand != s.roomForBand)
+        const auto colour = s.pattern == randomPatternIndex() ? guitarColourFor (s.randomGenre) : GuitarColour::classic;
+        if (! (s.liveChord == liveVoiced) || liveBand != s.roomForBand || liveColour != (int) colour)
         {
-            const bool near = liveVoiced.mask != 0 && liveBand == s.roomForBand;
-            const auto v = voiceChord (s.liveChord, near ? &liveVoicing : nullptr, s.roomForBand);
+            const bool near = liveVoiced.mask != 0 && liveBand == s.roomForBand && liveColour == (int) colour;
+            const auto v = voiceChord (s.liveChord, near ? &liveVoicing : nullptr, s.roomForBand, colour);
             liveVoicing = v;
             liveVoiced = s.liveChord;
             liveBand = s.roomForBand;
+            liveColour = (int) colour;
         }
         return liveVoicing;
     }
 
     const int n = std::clamp (s.numChords, 1, maxChords);
     const int period = chordPeriod (s);
-    bool same = n == voicedCount && voicedBand == s.roomForBand;
+    const auto colour = s.pattern == randomPatternIndex() ? guitarColourFor (s.randomGenre) : GuitarColour::classic;
+    bool same = n == voicedCount && voicedBand == s.roomForBand && voicedColour == (int) colour;
     for (int i = 0; i < n && same; ++i)
         same = s.chords[(size_t) i] == voicedChords[(size_t) i];
     if (! same)
     {
         // Round the progression twice: the first chord's shapes then come from the last one's,
         // so the loop joins up as smoothly as the rest.
-        slotVoicings[0] = voiceChord (tonesOf (s.chords[0]), nullptr, s.roomForBand);
+        slotVoicings[0] = voiceChord (tonesOf (s.chords[0]), nullptr, s.roomForBand, colour);
         if (period > 1)
             for (int pass = 0; pass < 2; ++pass)
                 for (int i = pass == 0 ? 1 : 0; i < period; ++i)
                 {
-                    const auto v = voiceChord (tonesOf (s.chords[(size_t) i]), &slotVoicings[(size_t) mod (i - 1, period)], s.roomForBand);
+                    const auto v = voiceChord (tonesOf (s.chords[(size_t) i]), &slotVoicings[(size_t) mod (i - 1, period)], s.roomForBand, colour);
                     slotVoicings[(size_t) i] = v;
                 }
         voicedChords = s.chords;
         voicedCount = n;
         voicedBand = s.roomForBand;
+        voicedColour = (int) colour;
     }
     return slotVoicings[(size_t) (mod (bar, n) % period)];
 }
@@ -320,15 +324,36 @@ int GrooveEngine::loopLengthInSteps (const GuitarSettings& s) noexcept
     return steps;
 }
 
-FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar) noexcept
+FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar, int genre) noexcept
 {
     if (style != FillStyle::mix)
         return style;
 
     // Mix: a different fill now and then, always the same one on the same bar.
-    static constexpr FillStyle choices[] { FillStyle::strumBuild, FillStyle::slideUp, FillStyle::scratchBuild, FillStyle::chankLift,
-                                           FillStyle::strumBuild, FillStyle::lickRun, FillStyle::stabStutter, FillStyle::octaveRun };
-    return choices[(size_t) (noise (bar, 4242) * (double) std::size (choices)) % std::size (choices)];
+    // The list is the weight: a style named twice is twice as likely.
+    static constexpr FillStyle house[] { FillStyle::strumBuild, FillStyle::slideUp, FillStyle::scratchBuild, FillStyle::chankLift,
+                                         FillStyle::strumBuild, FillStyle::lickRun, FillStyle::stabStutter, FillStyle::octaveRun };
+    static constexpr FillStyle funk[]  { FillStyle::scratchBuild, FillStyle::chankLift, FillStyle::scratchBuild, FillStyle::stabStutter,
+                                         FillStyle::chankLift, FillStyle::slideUp };
+    static constexpr FillStyle gospel[] { FillStyle::strumBuild, FillStyle::strumBuild, FillStyle::swellOut, FillStyle::octaveRun };
+    static constexpr FillStyle dance[] { FillStyle::strumBuild, FillStyle::octaveRun, FillStyle::stabStutter, FillStyle::dropOut,
+                                         FillStyle::strumBuild, FillStyle::octaveRun };
+    static constexpr FillStyle afro[]  { FillStyle::arpRun, FillStyle::bassWalk, FillStyle::chankLift, FillStyle::arpRun, FillStyle::bassWalk };
+    static constexpr FillStyle neo[]   { FillStyle::lickRun, FillStyle::swellOut, FillStyle::arpRun, FillStyle::lickRun, FillStyle::swellOut };
+    static constexpr FillStyle pad[]   { FillStyle::swellOut, FillStyle::arpRun, FillStyle::dropOut, FillStyle::swellOut };
+    const FillStyle* choices = house;
+    size_t n = std::size (house);
+    switch (genre)
+    {
+        case 4: case 8:  choices = funk;   n = std::size (funk); break;     // jackin', funky
+        case 3:          choices = gospel; n = std::size (gospel); break;
+        case 12:         choices = dance;  n = std::size (dance); break;
+        case 7:          choices = afro;   n = std::size (afro); break;
+        case 10: case 11: choices = neo;   n = std::size (neo); break;      // neo-soul, chill
+        case 2:          choices = pad;    n = std::size (pad); break;      // deep
+        default: break;
+    }
+    return choices[(size_t) (noise (bar, 4242) * (double) n) % n];
 }
 
 const GuitarPattern& GrooveEngine::patternFor (const GuitarSettings& s)
@@ -392,9 +417,10 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
         return s.fillEveryBars > 0 && sectionAllowsFills (s.section) && mod (b, s.fillEveryBars) == s.fillEveryBars - 1;
     };
     const bool fillBar = isFillBar (bar);
+    const int fillGenre = categoryIndex (normal.category) >= 0 ? categoryIndex (normal.category) : s.randomGenre;
     const FillStyle style = (s.forcedFillBar >= 0 && bar == s.forcedFillBar && s.forcedFillStyle >= 0)
-                                ? effectiveFillStyle ((FillStyle) std::clamp (s.forcedFillStyle, 0, numFillStyles - 1), bar)
-                                : effectiveFillStyle (s.fillStyle, bar);
+                                ? effectiveFillStyle ((FillStyle) std::clamp (s.forcedFillStyle, 0, numFillStyles - 1), bar, fillGenre)
+                                : effectiveFillStyle (s.fillStyle, bar, fillGenre);
     // The custom fill takes over from its first written step.
     int fillStart = fillStartStep (style);
     std::array<bool, numLanes> customLanes {};
@@ -496,11 +522,14 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
         // A chord hit on the last 8th of a bar plays the chord coming next (the push).
         const bool push = s.pushChanges && chordHit && mod(step,std::max(1,s.stepsPerChord)) >= std::max(1,s.stepsPerChord)-2 && symbol != 'g' && ! (nextChord == chord);
         // Now and then (with Humanize) the last bar of the phrase answers with another top note.
+        // The chance follows Humanize; a step keeps its choice for the whole phrase.
         const bool answer = human > 0.0 && phraseBar == 3
-                         && (lane == (int) Lane::stab || lane == (int) Lane::slide || lane == (int) Lane::chank);
+                         && (lane == (int) Lane::stab || lane == (int) Lane::slide || lane == (int) Lane::chank)
+                         && lifeNoise (lane, 1) < 0.55 * human;
         NoteList notes;
+        const int contour = s.pattern == randomPatternIndex() ? lickContourFor (s.randomGenre) : 0;
         laneNotes ((Lane) lane, push ? nextChord : chord, push ? nextVoicing : voicing, stepInBar, s.octaves[(size_t) lane],
-                   notes, s.roomForBand, answer);
+                   notes, s.roomForBand, answer, contour);
         for (auto& n : notes)
             n += transpose;
         if (symbol == 'g' && lane == (int) Lane::strumDown && notes.size() > 4)
@@ -559,7 +588,10 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
             const double overlap = 20.0 * beatsPerMs;
             for (int i = 0; i < notes.size(); ++i)
             {
-                pending.push_back ({ t - 0.09 + gap * (double) i, notes[i] - 1, velocityFor (lane, 0.6 * level, salt + 5), 0.09 + overlap, lane, i == 0 });
+                // A slide on the downbeat used to start before the clip and get dropped.
+                const double target = t + gap * (double) i;
+                const double start = step >= 0 ? std::max (0.0, target - 0.09) : target - 0.09;
+                pending.push_back ({ start, notes[i] - 1, velocityFor (lane, 0.6 * level, salt + 5), target - start + overlap, lane, i == 0 });
                 pending.back().articulation = articulation;
                 pending.back().grace = true;
             }
