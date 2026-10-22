@@ -43,7 +43,7 @@ Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scro
 - Separate instrument panels and large MIDI editors, isolated drum lanes, all guitar lanes together, original guitar-soloist/piano-comping logic, and per-instrument generation settings.
 - Editable piano roll: draw, move, resize, delete, change velocity, select multiple notes, quantise, transpose and copy/paste. Import standard PPQ MIDI into a selected clip.
 - Native audio playback, seeking and song/section loops; per-track gain, pan, mute, solo and meters; master level.
-- Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3 instrument per track (Audio Units also on macOS). Plugin editor and state persistence.
+- Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3 instrument per track (Audio Units also on macOS). Plugin editor and state persistence. Instruments are catalogued by manufacturer, with recursive standard/custom folder discovery at startup and isolated scan workers. Configure folders in OPTIONS → SETTINGS → PLUGINS.
 - Project files (`.fga`), atomic saves, periodic local autosave and missing-instrument relinking.
 - Multitrack MIDI and individual MIDI files; stereo 24-bit WAV and 320 kbps stereo MP3, for a mix, one track or all 17 stems. **The MP3 encoder is bundled.**
 - Six original interface languages (English, Italian, Spanish, French, German and Portuguese), translated control tooltips with a saved on/off preference, and extended piano controls including step dynamics, inversions, independent riff/feel seeds and sustain/expression MIDI controllers.
@@ -101,7 +101,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.7.2** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording, plugin delay compensation and sandboxed plugin scanning are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.8.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, automation of parameters other than track volume, audio warping, effect chains, buses/sends, MIDI controller recording and plugin delay compensation are not implemented. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

@@ -29,10 +29,19 @@ class Application:public juce::JUCEApplication {
 public:
     const juce::String getApplicationName()override{return "Fase Groove Arranger";}
     const juce::String getApplicationVersion()override{return JUCE_APPLICATION_VERSION_STRING;}
-    bool moreThanOneInstanceAllowed()override{return false;}
+    bool moreThanOneInstanceAllowed()override{return getCommandLineParameterArray().contains("--scan-plugin")||getCommandLineParameterArray().contains("--plugin-catalog-test");}
     void initialise(const juce::String&)override{
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
         auto args=getCommandLineParameterArray();
+       #if JUCE_MAC
+        if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
+       #endif
+        if(args.size()==4&&args[0]=="--scan-plugin"){
+            setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;
+        }
+        if(args.size()==3&&args[0]=="--plugin-catalog-test"){
+            const bool ok=fga::PluginCatalog::verify(juce::File(args[1]),juce::File(args[2]));setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==2&&args[0]=="--club-audit"){
             const bool ok=fga::writeClubAudioAudit(juce::File(args[1]));
             setApplicationReturnValue(ok?0:1);quit();return;
@@ -169,7 +178,7 @@ public:
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());
             setApplicationReturnValue(ok?0:1);quit();return;
         }
-        window=std::make_unique<Window>();
+        window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
     }
     void shutdown()override{window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
