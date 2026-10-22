@@ -182,7 +182,7 @@ Piano uses the extended editor’s adjacent panels: Harmony & Scales, Circle of 
 
 It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**, sustain/expression CC64/CC11, A–D order and locks, a 32-step rhythm grid and individual velocity faders. Click a step to cycle rest, note, accent, ghost, push or hold. Drag a fader for velocity; double-click restores automatic dynamics. **RND PIANO** changes rhythm while respecting locked segments; **RND VELOCITY** changes dynamics only.
 
-**DNA**, **MORPH**, **A/B**, **VARIANTS** and the **CIRCLE OF FIFTHS** use the original musical tools. Results prepare settings: APPLY TRACK / APPLY CLIP writes the notes. A and B also audition a clip with two voicings; UNDO reverses the trial. PRESETS saves and loads track settings in `.fgapreset` files. IMPORT MIDI estimates chords and rhythm; check the result before regenerating. **LEARN** accepts a chord when all keys are released, after you choose a MIDI input.
+**DNA**, **MORPH**, **A/B**, **VARIANTS** and the **CIRCLE OF FIFTHS** use the original musical tools. Results prepare settings: APPLY TRACK / APPLY CLIP writes the notes. A and B also audition a clip with two voicings; UNDO reverses the trial. IMPORT MIDI estimates chords and rhythm; check the result before regenerating. **LEARN** accepts a chord when all keys are released, after you choose a MIDI input.
 
 **EDIT CHORDS → Each chord** sets the shared harmonic duration: half, one, two or four bars. Guide-sound pump provides rate, release and **Tempo / Kick MIDI** source. Kick MIDI follows notes in the Kick track; it is not an external audio input.
 

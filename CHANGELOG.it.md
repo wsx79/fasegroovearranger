@@ -2,6 +2,7 @@
 
 ## Non pubblicato
 
+- I pannelli motore non ripetono più il menu sezione né il volume di traccia, e il piano non salva più i preset standalone `.fgapreset`. Tempo, tonalità, trasporto ed export restano nell’arranger. I parametri salvati non cambiano.
 - I groove casuali di chitarra, i turnaround, le sezioni e i fill Mix restano nello stile. Solo il pattern casuale usa voicing e lick del genere; i preset restano sulle forme classiche. Uno slide sul battere non viene più tagliato, e l’umanizzazione non riveste più ogni colpo della quarta battuta.
 - Fill, turnaround e accenti dei piatti seguono il genere. Garage, neo soul e chill tengono kick e hat nelle sezioni, e il chill non aggiunge più uno shaker in sedicesimi. Un riff seed nuovo aggiorna i turnaround dei preset, e Jackin' Piano non prende più il flam di Jackin'.
 - I fill del piano non leggono più una scala vuota, e il comping con la chitarra solista chiude le note ancora aperte a fine clip.
