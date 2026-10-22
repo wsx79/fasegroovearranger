@@ -191,7 +191,7 @@ void InstrumentPanel::rebuild(){
         });chords->getProperties().set("fgaControl","Chord summary");addAndMakeVisible(*chords);controls.push_back({std::move(chords),{},false});
     }
     if(track>=3)action("NEW FEEL",[this]{apply([](auto& o){o.humanizeSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});});});
-    action("NEW RIFF",[this]{const auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;if(owner.selectedTrack<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;}))owner.randomPianoMaterial(false,owner.selectedTrack==1);else apply([](auto& o){o.riffSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});o.pattern=-1;});juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
+    action("NEW RIFF",[this]{const int track=owner.selectedTrack;if(track<3)owner.randomPianoMaterial(false,false,true);else apply([](auto& o){o.riffSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});o.pattern=-1;});juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});
     if(track<3){
         juce::StringArray presets;for(const auto& p:sgk::progressionPresets())presets.add(juce::String(p.category)+" / "+p.name);
         sharedChoice("Ready progressions",presets,-1,[this](int v){chooseProgression(owner.project,v);updateCircle();juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self)self->rebuild();});});

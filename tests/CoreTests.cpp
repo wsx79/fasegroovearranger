@@ -74,6 +74,23 @@ int main(int argc,char** argv){try{
 
     {auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();auto& e=p.tracks[0].engine;e.pattern=sgk::userPatternIndex();e.userRight.fill('.');e.userLeft.fill('.');e.userRight[0]='x';e.userVelRight[0]=37;e.realism=false;e.humanize=0;e.swing=0;e.strum=0;e.fillEvery=0;e.variationEvery=0;fga::generate(p,fga::Scope::track,0);check(!p.tracks[0].clips[0].notes.empty(),"custom piano grid generates notes");auto before=p.tracks[0].clips[0].notes;e.userVelRight[0]=120;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes[0].velocity>before[0].velocity,"per-step piano velocity reaches engine");e.inversions[0]=2;fga::generate(p,fga::Scope::track,0);check(p.tracks[0].clips[0].notes!=before,"per-chord inversion reaches engine");e.pedalCC=true;auto events=fga::events(p,0);bool pedal=false,expression=false;for(auto event:events){pedal=pedal||event.controller==64;expression=expression||event.controller==11;}check(pedal&&expression,"pedal and expression controller events");auto original=p;fga::applyPianoIntention(p,0,1,true,true,123);check(p.settings.degrees==original.settings.degrees&&p.tracks[0].engine.userRight==original.tracks[0].engine.userRight,"DNA rhythm and harmony locks");}
     {auto p=fga::newProject(1);auto& e=p.tracks[0].engine;e.pattern=-1;e.riffSeed=123;auto a=fga::pianoEngineSettings(p,0,55);auto patternA=sgk::GrooveEngine::basePattern(a);e.riffSeed=9876;auto b=fga::pianoEngineSettings(p,0,55);auto patternB=sgk::GrooveEngine::basePattern(b);check(patternA.rightHand!=patternB.rightHand||patternA.leftHand!=patternB.leftHand,"riff seed changes the automatic genre groove");check(a.humanizeSeed==b.humanizeSeed,"riff and humanize seeds are independent");}
+    {
+        auto attacks=[](const std::string& line){std::string out(line.size(),'.');for(size_t i=0;i<line.size();++i)if(line[i]=='X'||line[i]=='x'||line[i]=='g'||line[i]=='>'||line[i]=='u'||line[i]=='U'||line[i]=='d'||line[i]=='D')out[i]='x';return out;};
+        for(int genre=0;genre<13;++genre){
+            std::set<std::string> figures;
+            for(std::uint32_t seed=1;seed<=12;++seed)figures.insert(attacks(sgk::makeRandomPattern(seed,.55f,genre).rightHand));
+            check((int)figures.size()>=3,"each genre rolls more than two piano figures");
+            auto song=fga::newProject(genre);song.sections={{fga::Section::main,4,"Main"}};song.normalise();
+            std::set<std::vector<std::pair<int,int>>> rhythms;
+            for(std::uint32_t seed:{3u,19u,41u,77u}){auto q=song;fga::generate(q,fga::Scope::track,0,0,seed);rhythms.insert(rhythmFingerprint(q.tracks[0].clips[0]));}
+            check((int)rhythms.size()>=3,"regenerate changes the piano figure in every genre");
+        }
+        sgk::GrooveEngine live;sgk::GrooveSettings jack;jack.pattern=sgk::randomPatternIndex();jack.riffSeed=5;jack.riffDensity=.55f;jack.styleGenre=4;jack.humanize=0;jack.swing=0;jack.bass=sgk::BassMode::off;jack.strings=sgk::StringsMode::off;jack.fillEveryBars=0;jack.variationEvery=0;
+        auto garage=jack;garage.styleGenre=6;
+        std::vector<sgk::NoteEvent> first,second;live.render(0,4,jack,first);live.render(4,8,garage,second);
+        auto steps=[&](const std::vector<sgk::NoteEvent>& ev,double origin){std::set<int> at;for(const auto& e:ev)if(e.isNoteOn()&&e.part==sgk::Part::chords)at.insert((int)std::lround((e.ppq-origin)*4));return at;};
+        check(steps(first,0)!=steps(second,4),"a genre change rebuilds the cached piano riff");
+    }
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;verifyClubProject(p,genre,argc>1?argv[1]:"");
         {auto form=p;form.settings.songMinutes=20;fga::arrangeSong(form);check(form.length()==p.length(),"legacy minutes do not constrain musical form");auto slow=p;slow.settings.bpm=80;fga::arrangeSong(slow);check(slow.length()==p.length(),"tempo does not stretch a musical form to minutes");auto developing=p;developing.tracks[0].engine.grooveBars=4;fga::arrangeSong(developing);check(developing.length()>p.length(),"longer groove develops over more complete phrases");}
