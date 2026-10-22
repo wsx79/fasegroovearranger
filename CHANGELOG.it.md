@@ -1,7 +1,10 @@
 # Novità — Fase Groove Arranger
 
-## Non pubblicato — 2026-10-22
+## 0.9.0 — 2026-10-22
 
+- GENERA BRANO estrae anche un tempo nel genere, densità e swing dello stile, e nuove durate di sezione da otto battute. L’ordine delle sezioni resta. I blocchi congelano la forma; le note armoniche bloccate tengono tonalità e progressione.
+- NUOVI ACCORDI scrive l’armonia nelle tracce sbloccate. La quantizzazione tiene attacchi e finali dentro il clip. Swing, densità e umanizzazione aggiornano subito l’arrangiamento. Taglia e incolla non staccano più la timeline se la modifica non entra.
+- Duplica una sezione della guida con le note. Umanizza le note dal menu del clip o con il tasto H. Rimossi helper dei motori che l’arranger non chiamava.
 - GENERA BRANO sceglie tonalità, progressione del genere e figura di basso diverse. Le note armoniche bloccate mantengono l’armonia attuale; la rigenerazione parziale resta nell’armonia del brano.
 - La rigenerazione lascia preset e Riff seed fissi, combina frasi pianistiche del genere, varia il ritmo del basso e crea nuovi pattern di chitarra Jackin’. APPLICA conserva parametri espliciti e versioni salvate; restano blocchi, strumenti, mix e note fuori ambito.
 - Test dei ritmi di piano/basso/chitarra senza humanizzazione sui tredici generi, inclusi preset e seed fissi; aggiornati messaggi e guide IT/EN.

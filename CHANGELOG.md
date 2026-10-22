@@ -1,7 +1,10 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased — 2026-10-22
+## 0.9.0 — 2026-10-22
 
+- GENERATE SONG also draws a new tempo inside the genre, density and swing within the style, and new 8-bar section lengths. Section order stays. Locks freeze the form; locked harmonic notes keep the key and progression.
+- NEW CHORDS / RANDOM CHORDS write the new harmony into unlocked tracks. Quantise keeps note starts and ends inside the clip. Swing, density and humanize update the arrangement immediately. Split and paste no longer detach a timeline when the edit cannot fit.
+- Duplicate a guide section with its notes. Humanize selected notes from the clip menu or the H key. Remove unused engine helpers that the arranger never called.
 - GENERATE SONG chooses a different key, genre progression and bass figure. Locked harmonic notes retain the current harmony; partial regeneration stays in the song's harmony.
 - Regeneration releases fixed groove/riff overrides, combines genre piano phrases, develops bass rhythm and draws fresh Jackin’ guitar patterns. APPLY preserves explicit settings and stored takes; locks, assignments, mix and untargeted notes remain.
 - Regression checks compare piano/bass/guitar rhythms with feel disabled across all thirteen genres, including fixed presets and seeds; update generation feedback and IT/EN guides.
