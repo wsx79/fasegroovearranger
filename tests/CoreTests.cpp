@@ -65,6 +65,10 @@ int main(int argc,char** argv){try{
     fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25&&c.notes[0].length==.5,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
     fga::Clip held;held.notes={{.13,.5,60,80,0}};fga::quantise(held,.25,0);check(held.notes[0].start==.13,"quantise strength zero keeps the note");
     fga::Clip edge;edge.notes={{3.9,.2,60,90,0}};fga::quantise(edge,1,1,4);fga::tidyNotes(edge,4);check(edge.notes.size()==1&&edge.notes[0].start<4,"quantise stays inside the clip");
+    fga::Clip plain;plain.notes={{1,.5,60,80,0}};auto untouched=plain;fga::humanize(plain,0,99,4);check(plain.notes==untouched.notes,"humanize zero is a no-op");
+    fga::humanize(plain,1,99,4);check(plain.notes[0].velocity>=1&&plain.notes[0].velocity<=127&&plain.notes[0].start>=0&&plain.notes[0].start+plain.notes[0].length<=4,"humanize stays inside the clip");
+    auto repeated=untouched;fga::humanize(repeated,1,99,4);check(repeated.notes==plain.notes&&repeated.notes!=untouched.notes,"humanize repeats from the seed and changes the note");
+    {auto song=fga::newProject(1);song.sections={{fga::Section::main,4,"A"},{fga::Section::main,4,"B"}};song.normalise();song.tracks[0].clips[0].notes={{0,1,60,100,0}};song.tracks[0].clips[1].notes={{1,1,62,90,0}};check(song.duplicateSection(0),"duplicate section");check((int)song.sections.size()==3&&song.tracks[0].clips[1].notes[0].pitch==60&&song.tracks[0].clips[2].notes[0].pitch==62&&song.sectionStart(2)==32,"duplicate copies notes and shifts the next section");}
     c.notes.push_back({std::numeric_limits<double>::quiet_NaN(),1,60,90,0});fga::tidyNotes(c,1);check(c.notes.size()==2,"invalid input sanitised");
     auto edge=fga::newProject();edge.loop=true;edge.loopStart=0;edge.loopEnd=.00000001;edge.normalise();check(!edge.loop,"sub-tick loop disabled");
     auto automated=fga::newProject();const auto dryMidi=fga::midiFile(automated);auto& volume=automated.tracks[4].volume;

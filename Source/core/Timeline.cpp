@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
+#include <algorithm>
 #include <cmath>
 namespace fga {
 namespace {
@@ -66,6 +67,19 @@ bool Project::deleteClip(int track,int index){
 }
 void Project::resizeGuide(int index,int bars){if(index<0||index>=(int)sections.size())return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);sections[(size_t)index].bars=std::clamp(bars,1,128);normalise();}
 void Project::insertGuide(int index,SongSection guide){if(sections.size()>=64)return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);index=std::clamp(index,0,(int)sections.size());sections.insert(sections.begin()+index,std::move(guide));normalise();}
+bool Project::duplicateSection(int index){
+    if(index<0||index>=(int)sections.size()||sections.size()>=64)return false;
+    auto copy=sections[(size_t)index];if(copy.name.size()<60)copy.name+=" 2";
+    const bool free=std::any_of(tracks.begin(),tracks.end(),[](const Track& t){return t.freeTimeline;});
+    if(!free){insertSection(index+1,std::move(copy),index);return true;}
+    Project edited=*this;const double start=edited.sectionStart(index),end=edited.sectionStart(index+1),duration=end-start;
+    struct Held{int track;Clip clip;};std::vector<Held> copies;
+    for(int ti=0;ti<(int)edited.tracks.size();++ti){auto& t=edited.tracks[(size_t)ti];if(!t.freeTimeline)continue;for(const auto& c:t.clips){const double from=std::max(c.position,start),to=std::min(c.position+c.span,end);if(to-from<tick)continue;copies.push_back({ti,slice(c,from-c.position,to-from,end+(from-start))});}}
+    edited.insertSection(index+1,copy,index);
+    for(auto& t:edited.tracks)if(t.freeTimeline)for(auto& c:t.clips)if(c.position>=end-tick)c.position+=duration;
+    for(auto& item:copies){const double at=item.clip.position;if(edited.placeClip(item.track,std::move(item.clip),at)<0)return false;}
+    *this=std::move(edited);return true;
+}
 void Project::removeGuide(int index){if(sections.size()<2||index<0||index>=(int)sections.size())return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);sections.erase(sections.begin()+index);normalise();}
 void Project::moveGuide(int from,int to){if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to)return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);auto guide=sections[(size_t)from];sections.erase(sections.begin()+from);sections.insert(sections.begin()+to,guide);normalise();}
 }

@@ -652,6 +652,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
         if(code=='Z'&&(page==Page::arrangement||page==Page::editor)){zoomSelection();return true;}
         if((code=='+'||code=='='||code=='-')&&(page==Page::arrangement||page==Page::editor)){auto& port=page==Page::editor?pianoPort:arrangementPort;zoomAt(page==Page::editor,code=='-'?.8:1.25,port.getWidth()*.5);return true;}
         if(code=='F'&&page==Page::arrangement){fitSong();return true;}
+        if(code=='H'&&(page==Page::arrangement||page==Page::editor)){checkpoint();humanize(clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),clipLength());tidyNotes(clip(),clipLength());piano.clearSelection();changed();return true;}
         if(page==Page::arrangement&&(k==juce::KeyPress::deleteKey||k==juce::KeyPress::backspaceKey)){timelineCommand(6);return true;}
     }
     return false;
