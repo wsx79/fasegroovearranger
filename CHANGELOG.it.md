@@ -1,7 +1,8 @@
 # Novità — Fase Groove Arranger
 
-## Non pubblicato
+## 0.10.0 — 2026-10-22
 
+- I riff casuali, le variazioni, i break e i build-up del piano restano nel genere del brano. Fill Mix, accenti e progressioni casuali seguono gospel, jackin', garage, afro, funky, neo soul e chill. I groove della famiglia house tengono le figure esistenti. Li guida il genere del brano: il pannello non aggiunge un secondo menu genere.
 - I pannelli motore non ripetono più il menu sezione né il volume di traccia, e il piano non salva più i preset standalone `.fgapreset`. Tempo, tonalità, trasporto ed export restano nell’arranger. I parametri salvati non cambiano.
 - I groove casuali di chitarra, i turnaround, le sezioni e i fill Mix restano nello stile. Solo il pattern casuale usa voicing e lick del genere; i preset restano sulle forme classiche. Uno slide sul battere non viene più tagliato, e l’umanizzazione non riveste più ogni colpo della quarta battuta.
 - Fill, turnaround e accenti dei piatti seguono il genere. Garage, neo soul e chill tengono kick e hat nelle sezioni, e il chill non aggiunge più uno shaker in sedicesimi. Un riff seed nuovo aggiorna i turnaround dei preset, e Jackin' Piano non prende più il flam di Jackin'.
