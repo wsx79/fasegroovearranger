@@ -45,7 +45,7 @@ Lo zoom segue il puntatore (rotella sul righello o Ctrl/Cmd+rotella); Maiusc+rot
 ## Primo brano
 
 1. Scegli genere, tonalità, giro e groove, poi **NUOVO ARRANGIAMENTO**.
-2. Clicca il nome della traccia per i parametri dello strumento, oppure un clip per il piano roll.
+2. Clicca il nome per selezionare la traccia; l’ingranaggio ambra accanto a Solo apre i parametri dello strumento. Doppio clic sul clip per il piano roll.
 3. Usa **NUOVA TRACCIA**, **NUOVA SEZIONE** o **NUOVO CLIP** per un'altra take. Blocca ciò che vuoi conservare.
 4. Scegli un suono guida, un campione o **CARICA VST3 / AU**. **APRI VST** apre i suoi controlli.
 5. Salva il progetto `.fga`, poi usa **ESPORTA** per MIDI, WAV o MP3.
@@ -62,7 +62,7 @@ cmake --build build --config Release -j2
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Scarica da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** usa lo stesso installer italiano/inglese della famiglia, con menu Start e disinstallazione. Ci sono gli ZIP portatili per Windows, macOS universale e Linux, oltre agli archivi con versione. **OPZIONI → IMPOSTAZIONI → VERIFICA ORA** scarica l’aggiornamento; **INSTALLA ORA** esegue il setup o sostituisce la copia portatile scrivibile e riapre l’app. Progetti e preferenze restano. La 0.7.0 e le precedenti richiedono una prima installazione manuale. Dettagli nella [guida](docs/GUIDA.md#1-installazione). Il setup Windows non è firmato; macOS usa la firma ad hoc/Developer ID opzionale della famiglia. Build di sviluppo anche in Actions → Artifacts.
+Scarica da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** usa lo stesso installer italiano/inglese della famiglia, con menu Start e disinstallazione. Ci sono gli ZIP portatili per Windows, macOS universale e Linux, uno ZIP per piattaforma. **OPZIONI → IMPOSTAZIONI → VERIFICA ORA** scarica l’aggiornamento; **INSTALLA ORA** esegue il setup o sostituisce la copia portatile scrivibile e riapre l’app. Progetti e preferenze restano. La 0.7.0 e le precedenti richiedono una prima installazione manuale. Dettagli nella [guida](docs/GUIDA.md#1-installazione). Il setup Windows non è firmato; macOS usa la firma ad hoc/Developer ID opzionale della famiglia. Build di sviluppo anche in Actions → Artifacts.
 
 Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_BUILD_APP=OFF`.
 

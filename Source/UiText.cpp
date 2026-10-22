@@ -75,7 +75,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("EDIT MIDI"))return tr("Open the full MIDI editor for the selected clip.");
     if(key.equalsIgnoreCase("SAVE"))return tr("Save the song and all instrument settings in a project.");
     if(key.equalsIgnoreCase("SAVE AS"))return tr("Save the song and all instrument settings in a project.");
-    if(key.equalsIgnoreCase("SOLISTA"))return tr("Enable the guitar soloist and the piano accompaniment.");
+    if(key.equalsIgnoreCase("SOLISTA")||key.equalsIgnoreCase("GUITAR LEADS"))return tr("Enable the guitar soloist and the piano accompaniment.");
     if(key.equalsIgnoreCase("LOCK TRACK"))return tr("Lock this part against regeneration; manual note editing remains available.");
     if(key.equalsIgnoreCase("LOCK CLIP"))return tr("Lock this part against regeneration; manual note editing remains available.");
     if(key.equalsIgnoreCase("PLAY"))return tr("Start or pause playback.");

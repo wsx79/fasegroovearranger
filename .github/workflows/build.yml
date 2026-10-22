@@ -47,13 +47,6 @@ jobs:
       - name: Verify rendered audio
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: python3 scripts/verify-audio.py "$RUNNER_TEMP/arranger-smoke"
-      - uses: actions/upload-artifact@v4
-        if: runner.os == 'Linux' && always()
-        with:
-          name: UI-review
-          path: |
-            ${{ runner.temp }}/arranger-smoke/*.png
-            ${{ runner.temp }}/arranger-smoke/*.txt
       - name: Native VST3 instrument integration
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: |
@@ -64,18 +57,6 @@ jobs:
         run: |
           xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --club-audit "$RUNNER_TEMP/club-audit"
           python3 scripts/verify-club-audio.py "$RUNNER_TEMP/club-audit"
-      - uses: actions/upload-artifact@v4
-        if: runner.os == 'Linux' && always()
-        with:
-          name: Club-arrangement-evidence
-          path: |
-            ${{ runner.temp }}/club-audit/
-            !${{ runner.temp }}/club-audit/Jackin-*.mp3
-      - uses: actions/upload-artifact@v4
-        if: runner.os == 'Linux' && always()
-        with:
-          name: Jackin-audio-evidence
-          path: ${{ runner.temp }}/club-audit/Jackin-*.mp3
       - name: Sign macOS app as in the family
         if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
         env:
@@ -116,7 +97,7 @@ jobs:
           python -m pip install Pillow
           python installer/windows/make-assets.py
           $version = (Select-String -Path CMakeLists.txt -Pattern 'project\(FaseGrooveArranger VERSION ([0-9.]+)').Matches[0].Groups[1].Value
-          $package = (Get-ChildItem dist -Directory | Where-Object { $_.Name -match '^FaseGrooveArranger-.*-Windows-' }).FullName
+          $package = (Resolve-Path dist/package).Path
           if (-not $package) { throw 'Tested native package is missing' }
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
           if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
@@ -129,12 +110,13 @@ jobs:
         with:
           name: FaseGrooveArranger-${{ runner.os }}
           path: |
-            dist/*.zip
-            dist/*.tar.gz
-            dist/*.exe
+            dist/FaseGrooveArranger-${{ runner.os }}.zip
+            dist/FaseGrooveArranger-Windows-Setup.exe
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: runner.os == 'Linux' && always()
         with:
-          name: Smoke-test-evidence
-          path: ${{ runner.temp }}/arranger-smoke/
+          name: Arranger-validation
+          path: |
+            ${{ runner.temp }}/arranger-smoke/
+            ${{ runner.temp }}/club-audit/

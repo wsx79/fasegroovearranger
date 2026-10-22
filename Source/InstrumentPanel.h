@@ -16,6 +16,7 @@ public:
     int sectionPosition(const juce::String& name)const{for(size_t i=0;i<headings.size()&&i<headingY.size();++i)if(headings[i].first==name)return headingY[i];return 0;}
     juce::StringArray sectionNames()const{juce::StringArray names;for(const auto& h:headings)names.add(h.first);return names;}
 
+    juce::StringArray controlNames()const{juce::StringArray names;for(const auto& c:controls)names.add(c.component->getProperties()["fgaControl"].toString());return names;}
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
@@ -28,6 +29,7 @@ private:
     std::vector<Card> cards;
     CircleOfFifths circle;
     int guitarLane=0;
+    bool builtGrid=true,builtInternal=true,rebuildPending=false;
     void updateCircle();
     void heading(const juce::String&);
     void knob(const juce::String&,double,double,double,double,std::function<void(EngineOptions&,double)>,const juce::String& suffix={});

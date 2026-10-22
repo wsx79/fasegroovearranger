@@ -38,7 +38,7 @@ Open **FaseGrooveArranger-Windows-Setup.exe**, choose English or Italian and fol
 | macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Extract, copy the app from Standalone to Applications and open it. |
 | Linux | `FaseGrooveArranger-Linux.zip` | Extract and run `Standalone/Fase Groove Arranger`. Preserve executable permissions. |
 
-The versioned Windows ZIP and macOS/Linux tar.gz packages are still provided. From Actions, extract the artifact ZIP first, then the package inside. Windows setup is unsigned. macOS follows the family signing workflow: ad-hoc signing by default, Developer ID/notarisation when configured. System security prompts may therefore appear, as with the other apps.
+Builds follow the family layout: one ZIP per platform and the Windows setup, without duplicate versioned archives. Guides, licences and source information are included; validation evidence is kept in a separate Actions artifact. From Actions, extract the artifact ZIP first, then the package inside. Windows setup is unsigned. macOS follows the family signing workflow: ad-hoc signing by default, Developer ID/notarisation when configured. System security prompts may therefore appear, as with the other apps.
 
 ### Updates, as in the Fase Groove family
 
@@ -61,7 +61,7 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
-6. Return with **< ARRANGEMENT**. Click the **Piano track name** and choose a guide sound, sample or your own VST.
+6. Return with **< ARRANGEMENT**. Select the **Piano track**, click its amber gear beside Solo and choose a guide sound, sample or your own VST.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
 Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
@@ -188,6 +188,8 @@ It includes **per-chord inversions**, independent riff/feel seeds, **NEW FEEL**,
 
 **OPTIONS → SETTINGS → Language** selects English, Italian, Spanish, French, German or Portuguese. Control tooltips can be toggled in the same panel. Both preferences stay on this computer; complete manuals are available in Italian and English.
 
+Panels show only controls used by the selected mode: named bass lines and independent string pads hide the piano rhythm grid and its editing tools. Selecting a bass mode or string stabs that follow the grid restores those tools. Tone and guide effects appear only with the built-in instrument; gain, pan, mute, solo and routing stay in the track toolbar.
+
 #### Guide sound, sample or VST
 
 | Button | What you choose |
@@ -245,7 +247,7 @@ Click a lane to add a gesture on that bar's chord. Its notes select and move tog
 
 ### Who carries the progression?
 
-In the guitar panel or editor, **SOLISTA** changes the roles. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
+**GUITAR LEADS** in the main arrangement toolbar changes the roles without opening the engine. The guitar panel and editor offer the same switch. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
 
 <p align="center"><img src="images/guide_mixer.png" alt="The guitar mixer" width="900"></p>
 

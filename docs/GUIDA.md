@@ -38,7 +38,7 @@ Apri **FaseGrooveArranger-Windows-Setup.exe**, scegli italiano o inglese e segui
 | macOS 11+, Intel + Apple Silicon | `FaseGrooveArranger-macOS.zip` | Estrai, copia l’app da Standalone in Applicazioni e aprila. |
 | Linux | `FaseGrooveArranger-Linux.zip` | Estrai e avvia `Standalone/Fase Groove Arranger`. Conserva i permessi di esecuzione. |
 
-Restano disponibili anche lo ZIP Windows e i tar.gz macOS/Linux con versione nel nome. Da Actions estrai prima lo ZIP dell’artifact e poi il pacchetto contenuto. Il setup Windows non è firmato. macOS usa la procedura della famiglia: firma ad hoc iniziale, Developer ID/notarizzazione se configurati. Possono comparire gli avvisi di sicurezza del sistema, come nelle altre app.
+Le build seguono la famiglia: uno ZIP per piattaforma e il setup Windows, senza archivi con versione duplicati. Sono incluse guide, licenze e informazioni sui sorgenti; le prove di validazione restano in un artifact Actions separato. Da Actions estrai prima lo ZIP dell’artifact e poi il pacchetto contenuto. Il setup Windows non è firmato. macOS usa la procedura della famiglia: firma ad hoc iniziale, Developer ID/notarizzazione se configurati. Possono comparire gli avvisi di sicurezza del sistema, come nelle altre app.
 
 ### Aggiornamenti, come nella famiglia Fase Groove
 
@@ -61,7 +61,7 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGIAMENTO**. Clicca il **nome Piano** e scegli un suono, un campione o il tuo VST.
+6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano**, apri l’ingranaggio ambra accanto a Solo e scegli un suono, un campione o il tuo VST.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
 Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
@@ -79,7 +79,7 @@ Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **
 Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
 in rilievo = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
 l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
-Ogni pulsante ha il suo tooltip. Clicca il nome di una traccia per i parametri, doppio clic sul clip per le note.
+Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio ambra accanto a Solo apre i parametri. Doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
@@ -190,6 +190,8 @@ Da **MODIFICA ACCORDI → Ogni accordo** imposti la durata armonica condivisa: m
 
 Da **OPZIONI → IMPOSTAZIONI → Lingua** scegli italiano, inglese, spagnolo, francese, tedesco o portoghese. I suggerimenti dei controlli si attivano e disattivano nello stesso pannello. Entrambe le preferenze restano sul computer; i manuali completi sono disponibili in italiano e inglese.
 
+I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di basso nominate e i pad di archi indipendenti nascondono griglia e strumenti ritmici del piano. Scegliendo un basso o gli stabs degli archi che seguono la griglia, gli strumenti tornano disponibili. Tono ed effetti guida compaiono solo con lo strumento interno; gain, pan, mute, solo e assegnazione del suono restano nella barra della traccia.
+
 #### Suono guida, campione o VST
 
 | Pulsante | Cosa scegli |
@@ -247,7 +249,7 @@ Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue 
 
 #### Chi porta avanti il giro?
 
-Nel pannello o nell'editor della chitarra, **SOLISTA** cambia i ruoli. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
+**CHITARRA SOLISTA** nella barra principale cambia i ruoli senza aprire il motore. Lo stesso comando resta nel pannello e nell’editor della chitarra. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
 
 <p align="center"><img src="images/guide_mixer.png" alt="Il mixer della chitarra" width="900"></p>
 
@@ -304,7 +306,7 @@ Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e compr
 
 ## 5. Usare gli strumenti in tempo reale
 
-Arranger ospita direttamente gli strumenti: apri il **nome della traccia**, scegli
+Arranger ospita direttamente gli strumenti: seleziona la traccia, apri l’**ingranaggio ambra**, scegli
 **BUILT-IN**, **CARICA CAMPIONE** oppure **CARICA VST3 / AU**, quindi premi **APRI VST** per
 i controlli del tuo strumento. Premi **▶** per ascoltare le note del progetto.
 
@@ -418,7 +420,7 @@ Poi costruisci il brano con gli esempi qui sotto.
 ### Funky & Disco: la chitarra guida
 
 1. Scegli **Funky & Disco** e genera il brano.
-2. Apri la chitarra e attiva **SOLISTA**.
+2. Attiva **CHITARRA SOLISTA** nella schermata principale.
 3. Ascolta DOWN, UP, CHANK e OCTAVE nel contesto; riduci quelle che si sovrappongono troppo.
 4. Prova gli archi nel ritornello e lascia più vuoto il giro precedente.
 5. Controlla intro e outro: la prima e l’ultima frase ritmica lasciano spazio al mixaggio; gli strumenti entrano ed escono dentro la struttura del brano.

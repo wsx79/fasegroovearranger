@@ -69,7 +69,7 @@ On Ubuntu/Debian install the native development dependencies first:
 sudo apt-get install build-essential cmake libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
 ```
 
-Download from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** uses the same English/Italian installer as the family, with Start menu shortcuts and uninstall. Portable family ZIPs are available for Windows, universal macOS and Linux, plus the existing versioned archives. **OPTIONS → SETTINGS → CHECK NOW** downloads the matching update; **INSTALL NOW** runs the setup or replaces a writable portable copy and reopens the app. Projects and preferences remain. Versions 0.7.0 and earlier need one manual installation. See the [installation/update guide](docs/GUIDE.md#1-installation). Windows setup is unsigned; macOS uses the family's ad-hoc/optional Developer ID signing flow. Development packages are also in Actions → Artifacts.
+Download from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** uses the same English/Italian installer as the family, with Start menu shortcuts and uninstall. Portable family ZIPs are available for Windows, universal macOS and Linux, with one ZIP per platform. **OPTIONS → SETTINGS → CHECK NOW** downloads the matching update; **INSTALL NOW** runs the setup or replaces a writable portable copy and reopens the app. Projects and preferences remain. Versions 0.7.0 and earlier need one manual installation. See the [installation/update guide](docs/GUIDE.md#1-installation). Windows setup is unsigned; macOS uses the family's ad-hoc/optional Developer ID signing flow. Development packages are also in Actions → Artifacts.
 
 Distribution targets: Windows 10+, macOS 11+ and Ubuntu 24.04-compatible Linux systems. Build from source for other Linux distributions. Actual external plugins may require a newer OS.
 
@@ -86,7 +86,7 @@ Without CMake, `bash scripts/test-core.sh` runs the arranging tests with g++.
 ## First song
 
 1. Choose a genre, key, progression and groove. Click **NEW ARRANGEMENT**.
-2. Click a track name for its instrument panel, or a clip for its large MIDI editor. Escape returns to the arrangement.
+2. Click a track name to select it; the amber gear beside Solo opens its instrument panel. Double-click a clip for its large MIDI editor. Escape returns to the arrangement.
 3. Use **NEW TRACK**, **NEW SECTION** or **NEW CLIP** to try another take. Lock parts you want to keep.
 4. Assign an internal sound, **LOAD SAMPLE**, or **LOAD VST3 / AU**. Use **OPEN VST** for the plugin's own controls.
 5. Save a `.fga` project, then use **EXPORT** for MIDI, WAV or MP3.

@@ -6,6 +6,10 @@
 - La rigenerazione lascia preset e Riff seed fissi, combina frasi pianistiche del genere, varia il ritmo del basso e crea nuovi pattern di chitarra Jackin’. APPLICA conserva parametri espliciti e versioni salvate; restano blocchi, strumenti, mix e note fuori ambito.
 - Test dei ritmi di piano/basso/chitarra senza humanizzazione sui tredici generi, inclusi preset e seed fissi; aggiornati messaggi e guide IT/EN.
 
+- Distribuzione come Piano/Guitar/Drums: uno ZIP per piattaforma e setup Windows, solo file di esecuzione, guide con risorse collegate e licenze. Prove CI raccolte in un solo artifact separato.
+- Il clic sul nome seleziona la traccia; l’ingranaggio ambra accanto a Solo apre il motore. CHITARRA SOLISTA disponibile nella barra principale, con blocchi e ANNULLA.
+- Rimossi i comandi pianistici ignorati dalle modalità indipendenti di basso/archi, i controlli guida inutili con campioni/plugin e i doppioni di routing/batteria. Le modalità e il suono assegnato aggiornano i controlli disponibili.
+
 ## 0.7.2 — 2026-10-21
 
 - La rigenerazione crea una nuova versione musicale di brano, traccia, sezione o clip, invece di cambiare soprattutto l’umanizzazione dello stesso riff. Traccia/brano mantengono un motivo coerente tra sezioni e la batteria un seed comune.
