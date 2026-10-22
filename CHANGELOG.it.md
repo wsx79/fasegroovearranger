@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.11.0 — 2026-10-22
+
+- Browser dei plugin nello stesso stile del browser dei groove FaseGroove: produttori a sinistra, plugin a destra, ricerca, preferiti e recenti. I motori FaseGroove sono il primo gruppo. Un clic carica il plugin; doppio clic o Invio chiude il browser.
+- All’avvio la scansione copre le cartelle VST3 predefinite e una cartella personale, anche nelle sottocartelle. L’elenco noto è salvato come XML KnownPluginList di JUCE. I file invariati non vengono riletti. Le scansioni fallite restano in quarantena. RESCAN e RIPROVA ERRORI restano nelle impostazioni plugin.
+- Ogni traccia può caricare uno strumento VST3/AU e un effetto in insert. Il progetto salva entrambi i plugin e il loro stato.
+
 ## 0.10.0 — 2026-10-22
 
 - I riff casuali, le variazioni, i break e i build-up del piano restano nel genere del brano. Fill Mix, accenti e progressioni casuali seguono gospel, jackin', garage, afro, funky, neo soul e chill. I groove della famiglia house tengono le figure esistenti. Li guida il genere del brano: il pannello non aggiunge un secondo menu genere.

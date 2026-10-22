@@ -67,6 +67,7 @@ struct Track {
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
+    std::string effectPath, effectId, effectState;
     VolumeAutomation volume;
     EngineOptions engine;
     bool freeTimeline = false;

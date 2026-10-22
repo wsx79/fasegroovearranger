@@ -4,25 +4,22 @@
 #include "FamilyTheme.h"
 #include "PluginCatalog.h"
 namespace fga {
-class PluginSettings : public juce::Component,private juce::Timer,private juce::ListBoxModel {
+class PluginSettings : public juce::Component, private juce::Timer {
 public:
     explicit PluginSettings(PluginCatalog&);
     void show();
     void refreshText();
-    void paint(juce::Graphics&)override;
-    void resized()override;
-    bool verifyLayout()const;
+    void paint(juce::Graphics&) override;
+    void resized() override;
+    bool verifyLayout() const;
 private:
     PluginCatalog& catalog;
-    juce::TextButton close,add,remove,rescan,retry,cancel;
-    juce::Label title,standardLabel,customLabel,status,hint;
+    juce::TextButton close,choose,clear,rescan,retry,cancel;
+    juce::Label title,standardLabel,customLabel,folderPath,status,hint;
     juce::TextEditor standard;
-    juce::ListBox list;
     std::unique_ptr<juce::FileChooser> chooser;
-    juce::StringArray folders;
-    juce::Rectangle<int> card()const{return getLocalBounds().withSizeKeepingCentre(620,620);}
-    void timerCallback()override;
-    int getNumRows()override{return folders.size();}
-    void paintListBoxItem(int,juce::Graphics&,int,int,bool)override;
+    juce::Rectangle<int> card() const { return getLocalBounds().withSizeKeepingCentre(620,560); }
+    void timerCallback() override;
+    void showFolder();
 };
 }

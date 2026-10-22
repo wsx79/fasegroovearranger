@@ -11,7 +11,7 @@ juce::Colour colour(int t){if(t==0||t==3)return Palette::accent;if(t==1)return P
 juce::Colour guitarColour(int lane){return lane<=1?Palette::accent:lane<=4?Palette::accent2:lane<=6?Palette::percussion:lane<=8?Palette::cymbals:Palette::toms;}
 juce::String utf(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void label(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size=12,juce::Colour c=Palette::text){g.setColour(c);g.setFont(FamilyTheme::font(size));g.drawText(tr(s),r,juce::Justification::centredLeft);}
-juce::String instrumentName(const Track& t){return t.instrument=="internal"?"Fase Groove engine":t.instrument=="sample"?juce::File(utf(t.instrumentPath)).getFileName():"VST / AU: "+(juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)).getFileName():utf(t.instrumentPath));}
+juce::String instrumentName(const Track& t){auto name=t.instrument=="internal"?juce::String("Fase Groove engine"):t.instrument=="sample"?juce::File(utf(t.instrumentPath)).getFileName():"VST / AU: "+(juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)).getFileName():utf(t.instrumentPath));if(!t.effectPath.empty())name+=" + "+(juce::File::isAbsolutePath(utf(t.effectPath))?juce::File(utf(t.effectPath)).getFileName():utf(t.effectPath));return name;}
 constexpr int trackHeight=40,headerWidth=216,rulerHeight=60;
 }
 ArrangementView::ArrangementView(MainComponent& m):owner(m){
@@ -396,7 +396,7 @@ MainComponent::MainComponent(){
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{if(loadingPlugin)return;checkpoint();closePluginEditor();audio.useInternal(selectedTrack);auto& t=project.tracks[(size_t)selectedTrack];t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);};
     sampleButton.onClick=[this]{if(loadingPlugin)return;int track=selectedTrack;chooseFile("Campione personale","*.wav;*.aif;*.aiff;*.flac;*.ogg",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this,track](juce::File file){loadSampleFile(track,file);});};
     loadPluginButton.onClick=[this]{showPluginMenu();};
-    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;if(auto* p=audio.plugin(selectedTrack)){pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*p);}else message("Nessun plugin caricato su questa traccia.");};
+    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;auto* inst=audio.plugin(selectedTrack);auto* fx=audio.effectPlugin(selectedTrack);if(!inst&&!fx){message("Nessun plugin caricato su questa traccia.");return;}if(inst&&fx){juce::PopupMenu menu;menu.addItem(1,tr("OPEN INSTRUMENT"));menu.addItem(2,tr("OPEN EFFECT"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe](int id){if(!safe||id==0)return;auto* p=id==2?safe->audio.effectPlugin(safe->selectedTrack):safe->audio.plugin(safe->selectedTrack);if(!p)return;safe->pluginWindow.reset();safe->pluginWindow=std::make_unique<PluginWindow>(*p);});return;}pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*(inst?inst:fx));};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
     importButton.onClick=[this]{chooseFile("Importa note nella sezione selezionata","*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
     addSectionButton.onClick=[this]{checkpoint();project.insertGuide(selectedSection+1,{Section::main,8,"Main"});selectedSection++;changed();};
@@ -414,7 +414,11 @@ MainComponent::MainComponent(){
     options.onLanguageChanged=[this]{applyLanguage();};
     options.onScaleChosen=[this](float scale){if(onScaleChosen)onScaleChosen(scale);};
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
-    addChildComponent(pluginSettings);
+    addChildComponent(pluginSettings);addChildComponent(pluginBrowser);
+    pluginBrowser.onChoose=[this](const PluginCatalog::BrowserRow& row){chooseBrowserRow(row);};
+    pluginBrowser.onRescan=[this]{pluginCatalog.scan();};
+    pluginBrowser.onSettings=[this]{pluginSettings.show();};
+    pluginBrowser.onOpenFile=[this]{const int track=selectedTrack;chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[this,track](juce::File file){loadPluginFile(track,file);});};
     options.onPluginSettings=[this]{pluginSettings.show();};
     options.onAudioSettings=[this]{showAudioSettings();};
     options.onDocument=[this](int id){if(id==0)showGuide(Localisation::current()!=Localisation::Language::italian);if(id==1){const bool it=Localisation::current()==Localisation::Language::italian;showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==2)showDocument(tr("Licences and attributions"),juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));};
@@ -462,7 +466,7 @@ void MainComponent::changed(bool schedule){project.normalise();dirty=true;audio.
 void MainComponent::applyLanguage(){
     if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
     refreshControls();if(page==Page::instrument)instrumentPanel.rebuild();
-    options.refreshText();pluginSettings.refreshText();updateOverlay.refreshText();repaint();
+    options.refreshText();pluginSettings.refreshText();pluginBrowser.refreshText();updateOverlay.refreshText();repaint();
 }
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);repaint();}
 void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebuild();panelSections.clear(juce::dontSendNotification);for(auto name:instrumentPanel.sectionNames())panelSections.addItem(name,panelSections.getNumItems()+1);panelSections.setTextWhenNothingSelected("ADVANCED");resized();instrumentPort.setViewPosition(0,0);repaint();}
@@ -481,11 +485,11 @@ void MainComponent::refreshTrack(){
     if(project.tracks[(size_t)selectedTrack].freeTimeline&&(selectedClip<0||selectedClip>=(int)project.tracks[(size_t)selectedTrack].clips.size())){selectedClip=-1;emptyClip=Clip{};}
     refreshing=true;const auto& t=project.tracks[(size_t)selectedTrack];gainSlider.setValue(juce::Decibels::gainToDecibels(t.gain,-60.),juce::dontSendNotification);panSlider.setValue(t.pan*100,juce::dontSendNotification);muteButton.setToggleState(t.mute,juce::dontSendNotification);soloButton.setToggleState(t.solo,juce::dontSendNotification);lockButton.setToggleState(t.locked,juce::dontSendNotification);lockClipButton.setToggleState(clip().locked,juce::dontSendNotification);
     soundBox.clear(juce::dontSendNotification);int count=selectedTrack==2?1:selectedTrack<2?7:4;for(int i=0;i<count;++i)soundBox.addItem(selectedTrack==2?"String ensemble":selectedTrack<2?guideSoundName(i):selectedTrack==3?GuideGuitar::toneName(i):GuideDrums::kitName(i),i+1);soundBox.setSelectedId(std::min(t.sound+1,count),juce::dontSendNotification);soundBox.setEnabled(t.instrument=="internal"&&selectedTrack!=2);
-    inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+instrumentName(t),juce::dontSendNotification);editorLabel.setText(tr(selectedTrack>=4?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&audio.plugin(selectedTrack)!=nullptr);sampleButton.setEnabled(!loadingPlugin);refreshing=false;trackInspector.refresh();mixer.refresh();
+    inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+instrumentName(t),juce::dontSendNotification);editorLabel.setText(tr(selectedTrack>=4?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&(audio.plugin(selectedTrack)!=nullptr||audio.effectPlugin(selectedTrack)!=nullptr));sampleButton.setEnabled(!loadingPlugin);refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
 void MainComponent::undo(bool redo){if(loadingPlugin)return;auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;auto before=project;dest.push_back(project);project=std::move(source.back());source.pop_back();project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);selectedClip=project.clipAtBeat(selectedTrack,audio.position());selectionBeat=audio.position();noClipSelection=false;arrangement.selectedClips.clear();
-    bool instrumentsChanged=false;for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].instrument!=before.tracks[i].instrument||project.tracks[i].instrumentPath!=before.tracks[i].instrumentPath||project.tracks[i].instrumentId!=before.tracks[i].instrumentId||project.tracks[i].sampleRoot!=before.tracks[i].sampleRoot)instrumentsChanged=true;
+    bool instrumentsChanged=false;for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].instrument!=before.tracks[i].instrument||project.tracks[i].instrumentPath!=before.tracks[i].instrumentPath||project.tracks[i].instrumentId!=before.tracks[i].instrumentId||project.tracks[i].sampleRoot!=before.tracks[i].sampleRoot||project.tracks[i].effectPath!=before.tracks[i].effectPath||project.tracks[i].effectId!=before.tracks[i].effectId)instrumentsChanged=true;
     if(instrumentsChanged)restoreInstruments();piano.clearSelection();changed();if(page==Page::instrument)instrumentPanel.rebuild();}
 void MainComponent::regenerate(Scope scope,bool newTake){
     if(loadingPlugin)return;
@@ -574,7 +578,7 @@ void MainComponent::resized(){
     }
     chordsLabel.setVisible(song);
     if(song){trackButton.setButtonText("REGENERATE TRACK");sectionButton.setButtonText("REGENERATE SECTION");clipButton.setButtonText("REGENERATE CLIP");}
-    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);pluginSettings.setBounds(getLocalBounds());if(pluginSettings.isVisible())pluginSettings.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();translateControls(*this);
+    place(statusLabel,18,getHeight()-29,w-36,25);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);pluginSettings.setBounds(getLocalBounds());if(pluginSettings.isVisible())pluginSettings.toFront(false);pluginBrowser.setBounds(getLocalBounds());if(pluginBrowser.isVisible())pluginBrowser.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();translateControls(*this);
 }
 bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     const auto saved=Localisation::current();const auto originalJson=juce::JSON::toString(projectJson(project),false,17);bool ok=true;static const char* codes[]{"en","it","es","fr","de","pt"};static const char* expected[]{"NEW TRACK","NUOVA TRACCIA","NUEVA PISTA","NOUVELLE PISTE","NEUE SPUR","NOVA FAIXA"};
@@ -591,32 +595,37 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     folder.getChildFile("localisation.txt").replaceWithText(ok?"PASS six interface languages, live translation, extended piano sections and control tooltips":"FAIL localisation or extended controls");showArrangement();return ok;
 }
 bool MainComponent::writeUiEvidence(const juce::File& folder){
-    bool ok=writeLanguageEvidence(folder)&&writeHelpEvidence(folder);pluginSettings.show();ok=pluginSettings.verifyLayout()&&ok;pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=createComponentSnapshot(getLocalBounds());if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(screenshot,*out)&&ok;}else ok=false;};
+    juce::String fail;
+    auto mark=[&](const char* step,bool value){if(!value&&fail.isEmpty())fail=step;return value;};
+    bool ok=mark("language",writeLanguageEvidence(folder)&&writeHelpEvidence(folder));pluginSettings.show();ok=mark("plugin-settings",pluginSettings.verifyLayout())&&ok;pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=createComponentSnapshot(getLocalBounds());bool wrote=false;if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;wrote=png.writeImageToStream(screenshot,*out);}ok=mark(name=="plugin-browser"?"png-browser":name=="plugin-settings"?"png-settings":"png",wrote)&&ok;};
     // Context-dependent panels must not expose controls ignored by the renderer.
     {
         const auto savedProject=project;
+        auto expect=[&](const char* step,bool value,const juce::StringArray& names){if(!value&&fail.isEmpty())fail=juce::String(step)+": "+names.joinIntoString(" | ");ok=value&&ok;};
         select(1,1);project.settings.bassMode=sgk::bassModeForLine(8);showInstrument();
-        auto names=instrumentPanel.controlNames();ok=ok&&!names.contains("RND BASS")&&!names.contains("GROOVE")&&!names.contains("A/B")&&names.contains("BASS LINE");
-        project.settings.bassMode=(int)sgk::BassMode::root;showInstrument();names=instrumentPanel.controlNames();ok=ok&&names.contains("RND BASS")&&names.contains("GROOVE");
-        select(2,1);project.settings.stringsMode=(int)sgk::StringsMode::pad;showInstrument();names=instrumentPanel.controlNames();ok=ok&&!names.contains("RND PIANO")&&!names.contains("NEW FEEL")&&names.contains("STRINGS STYLE");
-        project.settings.stringsMode=(int)sgk::StringsMode::stabs;showInstrument();names=instrumentPanel.controlNames();ok=ok&&names.contains("RND PIANO")&&names.contains("GROOVE");
-        select(4,1);showInstrument();names=instrumentPanel.controlNames();ok=ok&&!names.contains("LEVEL")&&!names.contains("Drum volume")&&!names.contains("Mute")&&names.contains("MIDI NOTE")&&names.contains("VELOCITY")&&!names.contains("Crash after fill")&&names.contains("Bass space");
-        select(5,1);showInstrument();names=instrumentPanel.controlNames();ok=ok&&!names.contains("Bass space")&&!names.contains("Crash after fill");
-        select(16,1);showInstrument();names=instrumentPanel.controlNames();ok=ok&&names.contains("Crash after fill")&&!names.contains("Bass space");
+        auto names=instrumentPanel.controlNames();expect("bass-line",!names.contains("RND BASS")&&!names.contains("GROOVE")&&!names.contains("A/B")&&names.contains("BASS LINE"),names);
+        project.settings.bassMode=(int)sgk::BassMode::root;showInstrument();names=instrumentPanel.controlNames();expect("bass-root",names.contains("RND BASS")&&names.contains("GROOVE"),names);
+        select(2,1);project.settings.stringsMode=(int)sgk::StringsMode::pad;showInstrument();names=instrumentPanel.controlNames();expect("strings-pad",!names.contains("RND PIANO")&&!names.contains("NEW FEEL")&&names.contains("STRINGS STYLE"),names);
+        project.settings.stringsMode=(int)sgk::StringsMode::stabs;showInstrument();names=instrumentPanel.controlNames();expect("strings-stabs",names.contains("RND PIANO")&&names.contains("GROOVE"),names);
+        select(4,1);showInstrument();names=instrumentPanel.controlNames();expect("kick",!names.contains("LEVEL")&&!names.contains("Drum volume")&&!names.contains("Mute")&&names.contains("MIDI NOTE")&&names.contains("VELOCITY")&&!names.contains("Crash after fill")&&names.contains("Bass space"),names);
+        select(5,1);showInstrument();names=instrumentPanel.controlNames();expect("snare",!names.contains("Bass space")&&!names.contains("Crash after fill"),names);
+        select(16,1);showInstrument();names=instrumentPanel.controlNames();expect("crash",names.contains("Crash after fill")&&!names.contains("Bass space"),names);
         select(4,1);
-        project.tracks[4].instrument="sample";showInstrument();names=instrumentPanel.controlNames();ok=ok&&!names.contains("TONE")&&!names.contains("REVERB")&&names.contains("VOLUME");
+        // Track gain stays on the arranger strip. A sample hides the guide tone and reverb.
+        project.tracks[4].instrument="sample";showInstrument();names=instrumentPanel.controlNames();expect("sample",!names.contains("TONE")&&!names.contains("REVERB")&&!names.contains("VOLUME"),names);
         project=savedProject;changed();
     }
     pluginSettings.show();capture("plugin-settings");pluginSettings.setVisible(false);
-    select(0,1);showInstrument();capture("piano-family-extended");const auto take=clip().seed;regenerate(Scope::clip);ok=ok&&clip().seed!=take&&clip().motifSeed!=0;const auto generated=clip();if(clipButton.onClick)clipButton.onClick();ok=ok&&clip()==generated;
-    showArrangement();fitSong();ok=ok&&arrangementPort.isVisible()&&!pianoPort.isVisible()&&headerWidth+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth();capture("interface");
-    ok=arrangement.verifyAutomation(folder)&&ok;
-    capture("daw-workspace");ok=verifyDawWorkspace(folder)&&ok;ok=verifyTimelineEditing(folder)&&ok;ok=verifyNavigation(folder)&&ok;
+    pluginBrowser.show(0,juce::String("fg")+"\x1f"+"0");ok=mark("plugin-browser",pluginBrowser.verifyLayout())&&ok;capture("plugin-browser");pluginBrowser.setVisible(false);
+    select(0,1);showInstrument();capture("piano-family-extended");const auto take=clip().seed;regenerate(Scope::clip);ok=mark("regenerate",clip().seed!=take&&clip().motifSeed!=0)&&ok;const auto generated=clip();if(clipButton.onClick)clipButton.onClick();ok=mark("apply-clip",clip()==generated)&&ok;
+    showArrangement();fitSong();ok=mark("fit-song",arrangementPort.isVisible()&&!pianoPort.isVisible()&&headerWidth+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth())&&ok;capture("interface");
+    ok=mark("automation",arrangement.verifyAutomation(folder))&&ok;
+    capture("daw-workspace");ok=mark("daw-workspace",verifyDawWorkspace(folder))&&ok;ok=mark("timeline",verifyTimelineEditing(folder))&&ok;ok=mark("navigation",verifyNavigation(folder))&&ok;
     juce::String layoutReport,editingReport;
-    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=problems.isEmpty()&&ok;ok=ok&&instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=ok&&pianoPort.getHeight()>400&&!arrangementPort.isVisible();if(track>=4)ok=ok&&piano.laneView();if(track==1||track==2)ok=ok&&!piano.laneView();capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=edits&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
+    for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(track>=4)ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
     folder.getChildFile("panel-layout.txt").replaceWithText(layoutReport);folder.getChildFile("midi-editing.txt").replaceWithText(editingReport);
-    select(3,1);piano.guitarNotes=true;showEditor();ok=ok&&!piano.laneView();capture("guitar-notes");ok=piano.verifyEditing()&&ok;piano.guitarNotes=false;showArrangement();select(4,0);
-    folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing");return ok;
+    select(3,1);piano.guitarNotes=true;showEditor();ok=mark("guitar-lanes",!piano.laneView())&&ok;capture("guitar-notes");ok=mark("guitar-notes",piano.verifyEditing())&&ok;piano.guitarNotes=false;showArrangement();select(4,0);
+    folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 }
 void MainComponent::timerCallback(){
     const double beat=timelinePosition();positionLabel.setText(juce::String((int)beat/4+1).paddedLeft('0',3)+" : "+juce::String((int)beat%4+1)+"   /   "+juce::String((int)project.length()/4),juce::dontSendNotification);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);mixer.tick();
@@ -627,6 +636,7 @@ void MainComponent::timerCallback(){
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
     if(pluginSettings.isVisible()){if(k==juce::KeyPress::escapeKey)pluginSettings.setVisible(false);return true;}
+    if(pluginBrowser.isVisible()){if(k==juce::KeyPress::escapeKey)pluginBrowser.setVisible(false);return true;}
     if(k==juce::KeyPress::escapeKey){if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
     if(k==juce::KeyPress::spaceKey){togglePlayback();return true;}
     if(k==juce::KeyPress::homeKey){seekTimeline(0);return true;}
@@ -662,7 +672,7 @@ bool MainComponent::requestClose(){if(!dirty)return true;return juce::AlertWindo
 void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback){chooser=std::make_unique<juce::FileChooser>(tr(title),projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),filter);juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback](const juce::FileChooser& fc){auto f=fc.getResult();if(safe!=nullptr&&f!=juce::File())callback(f);});}
 void MainComponent::save(bool as){if(loadingPlugin){message("Attendi il caricamento dello strumento.");return;}audio.capturePluginStates(project);if(as||projectFile==juce::File()){chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[this](juce::File file){const auto target=file.withFileExtension("fga");auto next=project;next.name=target.getFileNameWithoutExtension().toStdString();auto r=saveProject(next,target);if(r.wasOk()){projectFile=target;project.name=next.name;dirty=false;message("Progetto salvato: "+projectFile.getFullPathName());repaint();}else message(r.getErrorMessage(),true);});}else{auto r=saveProject(project,projectFile);if(r.wasOk()){dirty=false;message("Progetto salvato.");repaint();}else message(r.getErrorMessage(),true);}}
 void MainComponent::open(const juce::File& file){if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}if(!requestClose())return;Project next;auto r=loadProject(file,next);if(r.failed()){message(r.getErrorMessage(),true);return;}audio.stop();undoStack.clear();redoStack.clear();project=std::move(next);editCursor=-1;projectFile=file;selectedTrack=selectedSection=0;dirty=false;piano.clearSelection();audio.publish(project);refreshControls();restoreInstruments();select(4,0);showArrangement();message("Progetto aperto. I file audio e i plugin restano esterni al progetto.");repaint();}
-void MainComponent::restoreInstruments(){pluginWindow.reset();for(int i=0;i<trackCount;++i){audio.useInternal(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,juce::File(utf(t.instrumentPath)),t.sampleRoot);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));}audio.publish(project);}
+void MainComponent::restoreInstruments(){pluginWindow.reset();for(int i=0;i<trackCount;++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,juce::File(utf(t.instrumentPath)),t.sampleRoot);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));if(!t.effectPath.empty()||!t.effectId.empty())loadEffectFile(i,juce::File::isAbsolutePath(utf(t.effectPath))?juce::File(utf(t.effectPath)):juce::File(),utf(t.effectId),utf(t.effectState));}audio.publish(project);}
 void MainComponent::loadSampleFile(int track,const juce::File& file){pluginWindow.reset();checkpoint();auto& t=project.tracks[(size_t)track];int root=track>=4?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;auto r=audio.loadSample(track,file,root);if(r.failed()){message(r.getErrorMessage(),true);return;}t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);message(juce::String::fromUTF8("Campione caricato · nota radice ")+juce::String(root)+" (tasto destro sulla traccia per cambiarla).");}
 void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
     if(id.isNotEmpty())audio.markMissing(track);
@@ -676,13 +686,45 @@ void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::
     if(!file.exists()){message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
     juce::OwnedArray<juce::PluginDescription> found;
     for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
-    juce::PluginDescription* selected=nullptr;
-    for(auto* d:found)if((id.isEmpty()&&selected==nullptr)||d->createIdentifierString()==id)selected=d;
+    juce::PluginDescription* selected=nullptr,*effect=nullptr;
+    for(auto* d:found){if(d->createIdentifierString()==id)selected=d;if(d->isInstrument&&selected==nullptr)selected=d;if(!d->isInstrument&&effect==nullptr)effect=d;}
+    if(selected==nullptr)selected=effect;
     if(!selected){message("Nessuno strumento compatibile trovato. Scegli il bundle VST3.",true);return;}
     loadPluginDescription(track,*selected,state,id.isNotEmpty());
 }
+void MainComponent::loadEffectFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
+    if(id.isNotEmpty())if(auto xml=juce::XmlDocument::parse(id)){juce::PluginDescription description;if(description.loadFromXml(*xml)){if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.",true);return;}loadEffectDescription(track,description,state,true);return;}}
+    if(!file.exists()){message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+    juce::OwnedArray<juce::PluginDescription> found;for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
+    juce::PluginDescription* selected=nullptr;for(auto* d:found)if(!d->isInstrument){selected=d;break;}if(selected==nullptr&&!found.isEmpty())selected=found.getFirst();
+    if(!selected){message("Nessuno strumento compatibile trovato. Scegli il bundle VST3.",true);return;}
+    loadEffectDescription(track,*selected,state,id.isNotEmpty());
+}
+void MainComponent::loadEffectDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring){
+    pluginWindow.reset();if(!restoring)checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);
+    juce::Component::SafePointer<MainComponent> safe(this);
+    audio.loadEffect(track,description,[safe,track,description,state,restoring](juce::Result r){
+        if(safe==nullptr)return;
+        --safe->loadingPlugin;safe->loadPluginButton.setEnabled(safe->loadingPlugin==0);
+        if(r.failed()){safe->message(r.getErrorMessage(),true);return;}
+        auto& t=safe->project.tracks[(size_t)track];t.effectPath=description.fileOrIdentifier.toStdString();
+        if(auto xml=description.createXml())t.effectId=xml->toString().toStdString();
+        t.effectState=state.toStdString();
+        if(state.isNotEmpty())safe->audio.restoreEffectState(track,state);
+        if(restoring)safe->refreshTrack();else safe->changed(false);
+        safe->message(tr("Effect ready:")+" "+description.name);
+    });
+}
+void MainComponent::chooseBrowserRow(const PluginCatalog::BrowserRow& row){
+    if(loadingPlugin){message(tr("Wait for the instrument to finish loading."));return;}
+    const int track=selectedTrack;auto& t=project.tracks[(size_t)track];
+    if(row.kind==PluginCatalog::BrowserRow::Kind::noEffect){checkpoint();closePluginEditor();audio.clearEffect(track);t.effectPath.clear();t.effectId.clear();t.effectState.clear();changed(false);message(tr("Effect removed."));return;}
+    if(row.kind==PluginCatalog::BrowserRow::Kind::engine){const int family=t.kind>=4?4:t.kind;if(row.engine!=family){message(tr("This track keeps its own FaseGroove engine."),true);return;}checkpoint();closePluginEditor();audio.useInternal(track);t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);message(tr("Built-in engine restored."));return;}
+    const auto plugins=pluginCatalog.state().plugins;if(!juce::isPositiveAndBelow(row.plugin,plugins.size()))return;
+    loadPluginDescription(track,plugins.getReference(row.plugin));
+}
 void MainComponent::loadPluginDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring){
-    if(!description.isInstrument){message("Scegli uno strumento: questo slot riceve MIDI e produce audio.",true);return;}
+    if(!description.isInstrument){loadEffectDescription(track,description,state,restoring);return;}
     pluginWindow.reset();if(!restoring)checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);
     juce::Component::SafePointer<MainComponent> safe(this);
     audio.loadPlugin(track,description,[safe,track,description,state,restoring](juce::Result r){
@@ -698,24 +740,12 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
         safe->message("Plugin pronto: "+description.name);
     });
 }
-void MainComponent::showPluginMenu(juce::Component* anchor){
-    const auto state=pluginCatalog.state();const auto plugins=state.plugins;
-    juce::PopupMenu menu;menu.addSectionHeader(tr("Instruments by manufacturer"));
-    for(int i=0;i<plugins.size();){
-        const auto manufacturer=plugins[i].manufacturerName;juce::PopupMenu group;
-        do{group.addItem(100+i,plugins[i].name+" ["+plugins[i].pluginFormatName+"]");++i;}while(i<plugins.size()&&plugins[i].manufacturerName.equalsIgnoreCase(manufacturer));
-        menu.addSubMenu(manufacturer.isEmpty()?tr("Unknown manufacturer"):manufacturer,group);
-    }
-    if(plugins.isEmpty())menu.addItem(5,tr(state.scanning?"Scanning plugins...":"No instruments found"),false);
-    else if(state.scanning)menu.addItem(5,tr("Scanning plugins..."),false);
-    menu.addSeparator();menu.addItem(1,tr("Open VST3 file..."));menu.addItem(2,tr("PLUGIN SETTINGS"));menu.addItem(3,tr("SCAN NOW"),!state.scanning);
-    juce::Component::SafePointer<MainComponent> safe(this);const int track=selectedTrack;
-    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(anchor?anchor:&loadPluginButton),[safe,plugins,track](int id){
-        if(!safe)return;
-        if(id>=100&&id-100<plugins.size()){safe->loadPluginDescription(track,plugins[id-100]);return;}
-        if(id==1)safe->chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[safe,track](juce::File file){if(safe)safe->loadPluginFile(track,file);});
-        if(id==2)safe->pluginSettings.show();if(id==3)safe->pluginCatalog.scan();
-    });
+void MainComponent::showPluginMenu(juce::Component*){
+    if(loadingPlugin){message(tr("Wait for the instrument to finish loading."));return;}
+    const auto& t=project.tracks[(size_t)selectedTrack];const int family=t.kind>=4?4:t.kind;juce::String key;
+    if(t.instrument=="plugin")if(auto xml=juce::XmlDocument::parse(utf(t.instrumentId))){juce::PluginDescription description;if(description.loadFromXml(*xml))key=PluginCatalog::pluginKey(description);}
+    if(key.isEmpty())key="fg\x1f"+juce::String(family);
+    pluginBrowser.show(family,key);
 }
 void MainComponent::importFile(const juce::File& f){auto imported=clip();const double duration=clipIndex()<0?4.:clipLength();auto r=importMidi(f,imported,duration);if(r.failed()){message(r.getErrorMessage(),true);return;}if(clipIndex()<0){imported.span=duration;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(imported),arrangement.snapBeat(timelinePosition()));if(placed<0)return;checkpoint();project=std::move(edited);selectClip(selectedTrack,placed);}else{checkpoint();clip()=std::move(imported);}piano.clearSelection();changed();message("MIDI importato nel clip selezionato.");}
 

@@ -29,8 +29,8 @@ struct Instrument {
     std::array<bool,fgg::numLanes> guitarMuted{};
     std::vector<GuideGuitar::Event> guitarEvents;
     juce::AudioBuffer<float> scratch;
-    juce::MidiBuffer midi;
-    std::unique_ptr<juce::AudioPluginInstance> plugin;
+    juce::MidiBuffer midi,effectMidi;
+    std::unique_ptr<juce::AudioPluginInstance> plugin,effect;
     std::vector<TimedEvent> schedule;
     VolumeAutomation volume;
     std::vector<float> volumeGains;
@@ -60,10 +60,14 @@ public:
     void clearClipping(){masterClip=false;}
     juce::Result loadSample(int,const juce::File&,int root);
     void loadPlugin(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
+    void loadEffect(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
+    void clearEffect(int);
     void useInternal(int);
     juce::AudioPluginInstance* plugin(int);
+    juce::AudioPluginInstance* effectPlugin(int);
     void capturePluginStates(Project&);
     void restorePluginState(int,const juce::String&);
+    void restoreEffectState(int,const juce::String&);
     // Same processing graph for playback and export. Export temporarily owns the engine.
     juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr);
     void markMissing(int);
