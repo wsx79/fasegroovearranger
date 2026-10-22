@@ -234,6 +234,7 @@ namespace
         const NoteList* previous;
         int avoidTop;
         unsigned essentials;
+        unsigned penalise = 0;   // chord tones a coloured voicing would rather leave out
 
         std::array<int, 6> fret {}, pitch {};
         int windowLow = 1;
@@ -311,6 +312,10 @@ namespace
                     score += toneWeight (i);
             score -= 1.5 * (spec.strings - popCount (covered));
             score -= 0.35 * std::abs (top - spec.targetTop);
+            if (penalise != 0)
+                for (int i = 0; i < 12; ++i)
+                    if (((penalise >> (unsigned) i) & 1u) && ((covered >> (unsigned) i) & 1u))
+                        score -= 14.0;
             if (fretted > 0)
                 score -= 0.3 * (double) (lowFret + highFret) * 0.5;
 
@@ -338,13 +343,14 @@ namespace
         }
     };
 
-    NoteList bestShape (const ChordTones& c, std::initializer_list<ShapeSpec> specs, const NoteList* previous, int avoidTop = -1)
+    NoteList bestShape (const ChordTones& c, std::initializer_list<ShapeSpec> specs, const NoteList* previous, int avoidTop = -1,
+                        unsigned dropEssentials = 0, unsigned penalise = 0)
     {
         NoteList best;
         double bestScore = -1.0e18;
         for (const auto& spec : specs)
         {
-            ShapeSearch search { c, spec, previous, avoidTop, essentialTones (c) };
+            ShapeSearch search { c, spec, previous, avoidTop, essentialTones (c) & ~dropEssentials, penalise };
             search.run();
             if (! search.best.empty() && search.bestScore > bestScore)
             {
@@ -389,10 +395,65 @@ namespace
             for (auto& n : notes)
                 n -= 12;
     }
+
+    ChordVoicing voiceColoured (const ChordTones& c, const ChordVoicing* previous, bool roomForBand, GuitarColour colour)
+    {
+        ChordVoicing v;
+        const int low = roomForBand ? 48 : 40;
+        const unsigned extensions = (1u << 1) | (1u << 2) | (1u << 6) | (1u << 9) | (1u << 10) | (1u << 11);
+        const NoteList* prevFull = previous != nullptr ? &previous->full : nullptr;
+        const NoteList* prevStab = previous != nullptr ? &previous->stab : nullptr;
+        const NoteList* prevFour = previous != nullptr ? &previous->four : nullptr;
+        const int stabLow = roomForBand ? 60 : 55, stabTop = roomForBand ? 74 : 70;
+
+        if (colour == GuitarColour::triad)
+        {
+            v.full = bestShape (c, { { 1, 3, true, 1, low, 76, 64, 3.0 }, { 2, 3, true, 1, low, 78, 67, 2.5 },
+                                     { 0, 3, true, 1, low, 74, 62, 2.0 } }, prevFull, -1, extensions, extensions);
+            v.stab = bestShape (c, { { 3, 3, false, 2, stabLow, 79, stabTop, 0.0 }, { 2, 3, false, 2, stabLow, 79, stabTop, 0.0 } },
+                                prevStab, -1, extensions, extensions);
+            v.four = bestShape (c, { { 2, 3, false, 1, roomForBand ? 55 : 50, 79, stabTop, 0.0 },
+                                     { 1, 3, false, 1, roomForBand ? 55 : 50, 79, stabTop, 0.0 } },
+                                prevFour, -1, extensions, extensions);
+        }
+        else if (colour == GuitarColour::funkGrip)
+        {
+            v.full = bestShape (c, { { 2, 3, true, 1, std::max (low, 48), 74, 64, 3.0 },
+                                     { 3, 3, false, 1, 55, 78, 67, 2.5 },
+                                     { 1, 3, true, 1, std::max (low, 45), 72, 62, 2.0 } }, prevFull);
+            v.stab = bestShape (c, { { 4, 2, false, 1, 60, 84, 72, 2.0 }, { 3, 3, false, 1, 57, 80, 69, 1.5 } }, prevStab);
+            v.four = bestShape (c, { { 3, 3, false, 1, 55, 80, 69, 1.0 }, { 2, 3, false, 1, 50, 76, 64, 1.0 } }, prevFour);
+        }
+        else
+        {
+            // Shell and drop-2: three or four strings, the 3rd and the 7th, the 5th left out when it can be.
+            v.full = bestShape (c, { { 1, 4, true, 1, low, 76, 67, 2.5 }, { 2, 4, false, 1, std::max (low, 45), 79, 69, 2.5 },
+                                     { 1, 3, true, 1, low, 74, 64, 2.0 } }, prevFull);
+            v.stab = bestShape (c, { { 3, 3, false, 2, stabLow, 82, stabTop + 2, 0.0 }, { 2, 3, false, 2, stabLow, 79, stabTop, 0.0 } }, prevStab);
+            v.four = bestShape (c, { { 2, 4, false, 1, roomForBand ? 55 : 50, 79, stabTop + 1, 0.0 },
+                                     { 1, 3, true, 1, low, 76, 67, 1.0 } }, prevFour);
+        }
+
+        if (v.full.empty())
+            v.full = bestShape (c, { { 2, 4, true, 1, low, 79, 66, 3.0 }, { 1, 3, true, 1, low, 76, 64, 2.0 } }, prevFull);
+        if (v.stab.empty())
+            v.stab = bestShape (c, { { 3, 3, false, 2, stabLow, 79, stabTop, 0.0 } }, prevStab);
+        v.stabAlt = bestShape (c, { { 3, 3, false, 2, stabLow, 79, stabTop + 2, 0.0 }, { 2, 3, false, 2, stabLow, 79, stabTop, 0.0 } },
+                               &v.stab, v.stab.empty() ? -1 : v.stab.back(),
+                               colour == GuitarColour::triad ? extensions : 0, colour == GuitarColour::triad ? extensions : 0);
+        if (v.stabAlt.empty())
+            v.stabAlt = v.stab;
+        if (v.four.empty())
+            v.four = v.stab;
+        return v;
+    }
 }
 
-ChordVoicing voiceChord (const ChordTones& c, const ChordVoicing* previous, bool roomForBand)
+ChordVoicing voiceChord (const ChordTones& c, const ChordVoicing* previous, bool roomForBand, GuitarColour colour)
 {
+    if (colour != GuitarColour::classic)
+        return voiceColoured (c, previous, roomForBand, colour);
+
     ChordVoicing v;
     const int low = roomForBand ? 48 : 40;
     // The strummed chord: six strings with the root on the low E, five from the A, four from the D.
@@ -416,7 +477,7 @@ ChordVoicing voiceChord (const ChordTones& c, const ChordVoicing* previous, bool
 }
 
 void laneNotes (Lane lane, const ChordTones& chord, const ChordVoicing& v, int stepInBar, int octave,
-                NoteList& out, bool roomForBand, bool alternative) noexcept
+                NoteList& out, bool roomForBand, bool alternative, int contour) noexcept
 {
     out.clear();
     const int step = ((stepInBar % 16) + 16) % 16;
@@ -449,12 +510,20 @@ void laneNotes (Lane lane, const ChordTones& chord, const ChordVoicing& v, int s
                 out.add (v.four[std::min (v.four.size() - 1, order[step % 6])]);
             break;
         }
-        case Lane::lick:      // a phrase on the pentatonic that rises and falls over the bar
+        case Lane::lick:      // a phrase on the pentatonic. 0 is the preset line; the others follow a style.
         {
-            static constexpr int contour[] { 0, 2, 3, 4, 3, 2, 0, 1, 2, 4, 5, 4, 3, 2, 1, 0 };
+            static constexpr int contours[][16] {
+                { 0, 2, 3, 4, 3, 2, 0, 1, 2, 4, 5, 4, 3, 2, 1, 0 },   // preset
+                { 0, 0, 2, 2, 4, 4, 3, 3, 5, 5, 4, 4, 2, 2, 1, 0 },   // gospel, on the 8ths
+                { 0, 1, 0, 2, 1, 0, 3, 1, 0, 2, 1, 0, 2, 1, 0, 1 },   // funk, short and on the 16ths
+                { 0, 0, 1, 0, 3, 2, 0, 4, 1, 0, 2, 0, 3, 1, 0, 2 },   // neo-soul, sparse
+                { 0, 2, 0, 3, 1, 0, 2, 4, 0, 3, 1, 2, 0, 4, 2, 1 },   // afro
+                { 4, 4, 4, 4, 2, 2, 2, 2, 4, 4, 3, 3, 2, 2, 1, 0 },   // dance, held
+            };
+            const int id = std::clamp (contour, 0, (int) std::size (contours) - 1);
             const auto scale = licks (chord);
             if (! scale.empty())
-                out.add (scale[std::min (scale.size() - 1, contour[step] + 2)]);
+                out.add (scale[std::min (scale.size() - 1, contours[id][step] + 2)]);
             break;
         }
         case Lane::octave:
@@ -772,6 +841,12 @@ const std::vector<Progression>& progressions()
         { "Minor Circle Five  i - iv - VII - III - VI", "Circle of 5ths", 2, { 0, 3, 6, 2, 5 }, {  } },
         { "Half Circle  ii - V - I", "Circle of 5ths", 0, { 1, 4, 0 }, {  } },
         { "Reverse Circle  I - V - ii - vi", "Circle of 5ths", 0, { 0, 4, 1, 5 }, {  } },
+        // Dance stabs: minor vamps a power chord can sit on. Appended, so older indexes stay put.
+        { "Power Minor  i - VII - VI - VII", "Dance stabs", 2, { 0, 6, 5, 6 }, {  } },
+        { "Club Stab  i - VI - VII - i", "Dance stabs", 2, { 0, 5, 6, 0 }, {  } },
+        { "One Chord Drive  i", "Dance stabs", 2, { 0, 0, 0, 0 }, {  } },
+        { "Drop Lift  i - iv - VII - i", "Dance stabs", 2, { 0, 3, 6, 0 }, {  } },
+        { "Minor Power  i - VII - i - VI", "Dance stabs", 2, { 0, 6, 0, 5 }, {  } },
     };
     return list;
 }
@@ -780,7 +855,7 @@ const std::vector<const char*>& progressionCategories()
 {
     static const std::vector<const char*> categories { "Soulful & Gospel", "Deep house", "Jackin' & funky", "Disco & '90s", "Garage & UK",
                                                        "Afro & Latin", "Neo soul & jazz", "Circle of 5ths", "Modal & exotic",
-                                                       "Chromatic & borrowed" };
+                                                       "Chromatic & borrowed", "Dance stabs" };
     return categories;
 }
 
@@ -1039,10 +1114,35 @@ float genreSwing (int category) noexcept
 
 const char* genreProgressionCategory (int category) noexcept
 {
+    // Funky stays in the funk list (not Italo / '90s pop). Dance stabs stay on minor power vamps.
     static const char* categories[] { "Soulful & Gospel", "Soulful & Gospel", "Deep house", "Soulful & Gospel", "Jackin' & funky",
-                                      "Jackin' & funky", "Garage & UK", "Afro & Latin", "Disco & '90s", "Disco & '90s",
-                                      "Neo soul & jazz", "Deep house", "Disco & '90s" };
+                                      "Jackin' & funky", "Garage & UK", "Afro & Latin", "Jackin' & funky", "Disco & '90s",
+                                      "Neo soul & jazz", "Deep house", "Dance stabs" };
     return categories[std::clamp (category, 0, 12)];
+}
+
+GuitarColour guitarColourFor (int genre) noexcept
+{
+    switch (genre)
+    {
+        case 3: case 10:                 return GuitarColour::shell;      // gospel, neo-soul
+        case 0: case 5: case 9: case 12: return GuitarColour::triad;       // piano house, jackin' piano, '90s, dance
+        case 4: case 8:                  return GuitarColour::funkGrip;   // jackin', funky
+        default:                         return GuitarColour::classic;
+    }
+}
+
+int lickContourFor (int genre) noexcept
+{
+    switch (genre)
+    {
+        case 3:          return 1;   // gospel
+        case 4: case 8:  return 2;   // jackin', funky
+        case 10: case 11: return 3;  // neo-soul, chill
+        case 7:          return 4;   // afro
+        case 12:         return 5;   // dance
+        default:         return 0;
+    }
 }
 
 int genreProgression (int category) noexcept
@@ -1062,4 +1162,3 @@ int userPatternIndex() noexcept
 }
 
 } // namespace fgg
-

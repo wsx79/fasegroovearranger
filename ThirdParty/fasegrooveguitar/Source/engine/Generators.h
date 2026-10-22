@@ -20,8 +20,9 @@ enum class Section { main = 0, intro, breakdown, buildup, drop, outro };
 constexpr int numSections = 6;
 const char* sectionName (int section) noexcept;
 
-/** Rewrites a groove for a song section: chanks and scratches in the intro / outro, a held
-    swell in the break, a scratch building up, the full groove in the main part and the drop. */
+/** Rewrites a groove for a song section. The lanes kept depend on the pattern's genre:
+    funk keeps the scratch, gospel a soft strum, dance the power chords, pads the swell.
+    House still keeps chanks, scratches, up-strums and picking. */
 GuitarPattern applySection (const GuitarPattern& source, Section section);
 
 /** Loudness of a section. */
@@ -33,8 +34,9 @@ bool sectionAllowsFills (Section section) noexcept;
     seed. density 0..1 goes from a few chords to busy 16th strumming. Same seed = same groove. */
 GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
 
-/** A variation of a groove for the turnaround bar: a slide into the next bar, a scratch run,
-    an up-strum pick-up, a lick. Same seed = same variation. */
+/** A variation of a groove for the turnaround bar. New hits stay on the groove's grid
+    (8ths or 16ths) and a lick or a scratch is added only when that genre plays one.
+    Same seed = same variation. */
 GuitarPattern makeVariation (const GuitarPattern& source, std::uint32_t seed);
 
 /** A song section's own version of a groove: the same main chords, with the scratches, the
