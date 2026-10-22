@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.12.1 — 2026-10-22
+
+- Jackin' House drums stay a jack groove on Generate Song, regenerate, random, variations and sections: four-on-the-floor kick, clap or snare on 2 and 4, open hat on the offbeats, swung 16ths around 56–62%, and a syncopated shaker. Tempo stays in 120–127. The beat does not turn into two-step, broken beat or garage.
+- Song regenerate no longer pushes Jackin' up to 130 BPM or a triplet shuffle. Cowbell and tom keep playing through the phrase.
+
 ## 0.12.0 — 2026-10-22
 
 - Strings play a harmony part in every genre that uses them. Pads and chord lines follow the progression through the verse, chorus and break, and they enter during the intro and outro instead of being removed from the arrangement.

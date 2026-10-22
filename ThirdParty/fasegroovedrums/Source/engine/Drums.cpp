@@ -376,9 +376,9 @@ int categoryIndex (const std::string& category) noexcept
 
 float genreSwing (int category) noexcept
 {
-    // In 16th shuffle: 0.3 is a drum machine's 55%, 0.6 its 60%, 0.8 its 63%. Chicago swings the
-    // most; soulful and disco play almost straight.
-    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.8f, 0.6f, 0.75f, 0.35f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f };
+    // In 16th shuffle: 0.3 is a drum machine's 55%, 0.6 its 60%, 0.7 its 62%, 0.8 its 63%.
+    // Jackin' house sits on that 62% shuffle. Garage is a heavier shuffle on top of its own kick.
+    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.7f, 0.6f, 0.75f, 0.35f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f };
     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
 }
 

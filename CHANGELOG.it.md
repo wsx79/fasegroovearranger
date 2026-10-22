@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.12.1 — 2026-10-22
+
+- La batteria Jackin' House resta un jack su Genera brano, rigenera, casuale, variazioni e sezioni: cassa in 4/4, clap o rullante su 2 e 4, charleston aperto in levare, sedicesimi shuffle circa 56–62% e shaker sincopato. Il tempo resta fra 120 e 127. Il beat non diventa two-step, broken o garage.
+- Rigenerare il brano non porta più il Jackin' a 130 BPM né a uno shuffle terzinato. Cowbell e tom restano nel fraseggio.
+
 ## 0.12.0 — 2026-10-22
 
 - Gli archi suonano una parte sull'armonia in ogni genere che li prevede. Pad e linee di accordi seguono la progressione in strofa, ritornello e break, ed entrano in intro e outro invece di essere tolti dall'arrangiamento.

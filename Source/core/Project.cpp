@@ -205,7 +205,7 @@ const GenreProfile& genreProfile(int genre) {
         {118,125,122,32,false}, // Soulful: a musical lift, not a rave roll
         {115,125,120,32,false}, // Deep: gradual development
         {118,125,123,16,false}, // Gospel: soulful-house working range
-        {124,130,126,32,false}, // Jackin': short percussive turnarounds
+        {120,127,125,32,false}, // Jackin': 120–127, shuffle not speed garage
         {124,130,126,32,true},  // Jackin' Piano
         {130,135,132,32,true},  // Garage / UK
         {115,125,122,32,false}, // Afro / Latin: percussion-led lift
@@ -548,7 +548,10 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         }
         // Different percussion layers announce phrases; never gate the kick,
         // backbeat or closed hat. These are compositional rests, not audio mute.
-        if(track==10||track==12||track==14||track==15)return genre==7?phrase>=2:phrase>=4;
+        if(track==10||track==12||track==14||track==15){
+            if(genre==4&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
+            return genre==7?phrase>=2:phrase>=4;
+        }
         return true;
     };
     auto& notes=clip.notes;notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return !active(n.start);}),notes.end());
@@ -577,7 +580,10 @@ void varySongFeel(Project& p,std::uint32_t seed) {
     s.density=density;
     static const double offsets[]{-0.12,-0.06,0.06,0.12,0.18};
     const double base=fgd::genreSwing(s.genre);const int which=(int)(mix(seed+1901U)%5);
-    for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],0.0,1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
+    // Jackin' house shuffle stays near 56–62% (swing 0.36–0.72). A hotter offset
+    // lands on the triplet and the beat starts to feel like garage.
+    const bool jackinHouse=s.genre==4;
+    for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
 }
 void varyForm(Project& p,std::uint32_t seed) {
     const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
@@ -744,7 +750,6 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
                 if(e.midiNote>=0)ds.notes[(size_t)(ti-4)]=e.midiNote;
                 if(mixing){ds.fillEveryBars=0;ds.variationEvery=0;ds.crashAfterFill=false;}
                 auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)rhythmType,renderBars,ds.sectionVariation,-1}});
-
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}

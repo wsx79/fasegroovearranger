@@ -55,6 +55,39 @@ namespace
 
     // The genres, in grooveCategories() order.
     enum Genre { pianoHouse = 0, soulful, deep, gospel, jackin, jackinPiano, garage, afro, funky, nineties, neoSoul, chill, dance };
+
+    /** Jackin' house after the dice, a section variation or a preset: open hat on every
+        offbeat, a loud closed hat on the swung "a" (the accent curve makes that 16th the
+        punch), and a syncopated shaker when that layer is thin. Kick and backbeat stay. */
+    void reinforceJackinHouse (DrumPattern& p)
+    {
+        const int len = p.length();
+        for (int i = 0; i < len; ++i)
+        {
+            if (i % 4 == 2)
+            {
+                p[Lane::openHat][(size_t) i] = 'x';
+                p[Lane::closedHat][(size_t) i] = '.';
+            }
+            else if (i % 4 == 3)
+            {
+                // The swung accent is a closed hat. An open hat on the same step
+                // would choke it, so the shuffle never reached the MIDI.
+                if (p[Lane::closedHat][(size_t) i] != 'X' && p[Lane::closedHat][(size_t) i] != 'f')
+                    p[Lane::closedHat][(size_t) i] = 'x';
+                p[Lane::openHat][(size_t) i] = '.';
+            }
+        }
+        int odd = 0;
+        for (int i = 1; i < len; i += 2)
+            odd += isHit (p[Lane::shaker][(size_t) i]) ? 1 : 0;
+        if (odd < 8)
+        {
+            static const char steps[] = "g.xx..x.g.xx..xg";
+            for (int i = 0; i < len; ++i)
+                p[Lane::shaker][(size_t) i] = steps[i % 16];
+        }
+    }
 }
 
 //==============================================================================
@@ -175,6 +208,11 @@ DrumPattern applySection (const DrumPattern& source, Section section)
         default:
             break;
     }
+
+    // Main and drop keep the jack even when a section variation moved the hats.
+    // Breakdown and the snare-roll build stay as the section wrote them.
+    if ((section == Section::main || section == Section::drop) && genre == jackin)
+        reinforceJackinHouse (p);
 
     if (section != Section::main)
         p.name = source.name + " / " + sectionName ((int) section);
@@ -429,6 +467,9 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             if (p[Lane::snare][(size_t) at] == '.')
                 p[Lane::snare][(size_t) at] = 'g';
     }
+
+    if (genre == jackin)
+        reinforceJackinHouse (p);
 
     normalisePattern (p, randomBeatLength);
     return p;

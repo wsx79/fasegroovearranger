@@ -19,7 +19,7 @@ Le durate e le soglie implementate sotto sono scelte di Arranger basate su quest
 | Soulful | 118–125 | 122 | Strofa, risposta, break e ritornello; lift musicale |
 | Deep | 115–125 | 120 | Groove ipnotico, atmosfera, evoluzione e ritorno |
 | Gospel | 118–125 | 123 | Strofa/risposta e ripresa corale; famiglia soulful |
-| Jackin' | 124–130 | 126 | Break brevi, workout percussivo e ripartenze |
+| Jackin' | 120–127 | 125 | 4/4, clap su 2 e 4, shuffle ~62%, open hat in levare |
 | Jackin' Piano | 124–130 | 126 | Jack pianistico, taglio breve, build e variazione |
 | Garage & UK | 130–135 | 132 | Shuffle/two-step, break di basso e più drop |
 | Afro & Latin | 115–125 | 122 | Intro percussiva, call/response e ritorno organico |
