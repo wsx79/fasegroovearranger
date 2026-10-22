@@ -109,6 +109,7 @@ struct Project {
     void moveGuide(int from, int to);
     void normalise();
     void insertSection(int index, SongSection section, int copyFrom = -1);
+    bool duplicateSection(int index);
     void removeSection(int index);
     void moveSection(int from, int to);
     void resizeSection(int index, int bars);
@@ -132,7 +133,7 @@ void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
 // A zero seed applies settings to stored takes. A nonzero seed draws new genre
 // patterns, releasing fixed pattern/riff overrides on targeted tracks. Song scope
-// also changes key/progression/bass figure unless harmonic notes are locked.
+// also changes key, tempo, feel and 8-bar section lengths unless notes are locked.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
@@ -141,7 +142,8 @@ void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool k
 bool transferClip(Project&, int track, int from, int to, bool copy);
 void tidyNotes(Clip&, double beats);
 void transpose(Clip&, int semitones);
-void quantise(Clip&, double grid, double strength = 1);
+void quantise(Clip&, double grid, double strength = 1, double limit = 0);
+void humanize(Clip&, double amount, std::uint32_t seed, double beats);
 struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; };
 std::vector<TimedEvent> events(const Project&, int onlyTrack = -1);
 // Standard MIDI File type 1, 960 PPQ, tempo, time/key signatures and section markers.

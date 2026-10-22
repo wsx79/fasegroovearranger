@@ -363,7 +363,7 @@ MainComponent::MainComponent(){
     const auto& progressions=sgk::progressionPresets();for(size_t i=0;i<progressions.size();++i)progressionBox.addItem(progressions[i].name,(int)i+1);progressionBox.setTextWhenNothingSelected("PROGRESSION");
     for(int i=0;i<sgk::numBassModes;++i)bassBox.addItem(sgk::bassModeName(i),i+1);for(int i=0;i<sgk::numStringsModes;++i)stringsBox.addItem(sgk::stringsModeName(i),i+1);
     gridBox.addItem("1/4",1);gridBox.addItem("1/8",2);gridBox.addItem("1/16",3);gridBox.addItem("1/32",4);gridBox.setSelectedId(3);
-    auto setting=[this](std::function<void()> fn){if(refreshing)return;checkpoint();fn();project.normalise();changed(false);message("Impostazioni aggiornate. GENERATE per applicarle al MIDI; il MIDI esistente resta modificabile.");};
+    auto setting=[this](std::function<void()> fn){if(refreshing)return;checkpoint();fn();project.normalise();changed(false);message("Settings updated. REGENERATE applies them to MIDI. GENERATE SONG draws a new song.");};
     genreBox.onChange=[this,setting]{setting([this]{applyGenre(project,genreBox.getSelectedItemIndex());});message("Genre ready: NEW ARRANGEMENT builds its form from the groove; GENERATE SONG keeps existing sections.");};
     keyBox.onChange=[this,setting]{setting([this]{project.settings.key=keyBox.getSelectedItemIndex();});};
     scaleBox.onChange=[this,setting]{setting([this]{project.settings.scale=scaleBox.getSelectedItemIndex();});};
@@ -373,9 +373,9 @@ MainComponent::MainComponent(){
     bassBox.onChange=[this,setting]{setting([this]{project.settings.bassMode=bassBox.getSelectedItemIndex();});};
     stringsBox.onChange=[this,setting]{setting([this]{project.settings.stringsMode=stringsBox.getSelectedItemIndex();});};
     tempoSlider.onValueChange=[this]{if(!refreshing){project.settings.bpm=tempoSlider.getValue();changed(false);}};
-    swingSlider.onValueChange=[this]{if(!refreshing){project.settings.swing=swingSlider.getValue()/100.;dirty=true;}};
-    densitySlider.onValueChange=[this]{if(!refreshing){project.settings.density=densitySlider.getValue()/100.;dirty=true;}};
-    humanizeSlider.onValueChange=[this]{if(!refreshing){project.settings.humanize=humanizeSlider.getValue()/100.;dirty=true;}};
+    swingSlider.onValueChange=[this]{if(!refreshing){project.settings.swing=swingSlider.getValue()/100.;changed(false);}};
+    densitySlider.onValueChange=[this]{if(!refreshing){project.settings.density=densitySlider.getValue()/100.;changed(false);}};
+    humanizeSlider.onValueChange=[this]{if(!refreshing){project.settings.humanize=humanizeSlider.getValue()/100.;changed(false);}};
     masterSlider.onValueChange=[this]{if(!refreshing){project.masterGain=masterSlider.getValue()<=-59.99?0.:juce::Decibels::decibelsToGain(masterSlider.getValue());mixChanged();}};
     zoomSlider.onDragStart=nullptr;zoomSlider.onValueChange=[this]{const bool editor=page==Page::editor;auto& port=editor?pianoPort:arrangementPort;const double scale=editor?piano.pixelsPerBeat:arrangement.pixelsPerBar;zoomAt(editor,zoomSlider.getValue()/scale,port.getWidth()*.5);};zoomSlider.setValue(6,juce::sendNotificationSync);
     gainSlider.onValueChange=[this]{if(!refreshing){project.tracks[(size_t)selectedTrack].gain=gainSlider.getValue()<=-59.99?0.:juce::Decibels::decibelsToGain(gainSlider.getValue());mixChanged();}};
@@ -387,9 +387,9 @@ MainComponent::MainComponent(){
     loopButton.onClick=[this]{checkpoint();if(project.loopEnd-project.loopStart<1./960.){project.loopStart=0;project.loopEnd=project.length();}project.loop=loopButton.getToggleState();changed(false);};
     sectionLoopButton.onClick=[this]{checkpoint();setLoopRange(clipStart(),clipStart()+clipLength());};
     songButton.onClick=[this]{regenerate(Scope::song);};trackButton.onClick=[this]{regenerate(Scope::track,page!=Page::instrument);};sectionButton.onClick=[this]{regenerate(Scope::section);};clipButton.onClick=[this]{regenerate(Scope::clip,page!=Page::instrument);};
-    harmonyButton.onClick=[this]{checkpoint();randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());changed(false);message("Nuova armonia pronta: GENERATE SONG per applicarla a tutte le tracce sbloccate.");};
+    harmonyButton.onClick=[this]{checkpoint();randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(project);changed();message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");};
     undoButton.onClick=[this]{undo(false);};redoButton.onClick=[this]{undo(true);};
-    quantiseButton.onClick=[this]{modifySelected([this](Clip& c){quantise(c,piano.grid);});};transposeUp.onClick=[this]{modifySelected([](Clip& c){transpose(c,12);});};transposeDown.onClick=[this]{modifySelected([](Clip& c){transpose(c,-12);});};deleteNotes.onClick=[this]{piano.deleteSelected();};
+    quantiseButton.onClick=[this]{modifySelected([this](Clip& c){quantise(c,piano.grid,1,clipLength());});};transposeUp.onClick=[this]{modifySelected([](Clip& c){transpose(c,12);});};transposeDown.onClick=[this]{modifySelected([](Clip& c){transpose(c,-12);});};deleteNotes.onClick=[this]{piano.deleteSelected();};
     gridBox.onChange=[this]{piano.grid=std::pow(.5,gridBox.getSelectedItemIndex());piano.repaint();};
     copyButton.onClick=[this]{clipboard.clear();for(size_t i=0;i<clip().notes.size();++i)if(piano.selected.empty()||piano.selected.count((int)i))clipboard.push_back(clip().notes[i]);message("Notes copied. Paste inserts at the cursor inside the clip.");};
     pasteButton.onClick=[this]{piano.pasteNotes();};

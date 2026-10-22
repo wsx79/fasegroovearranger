@@ -34,22 +34,26 @@ int Project::splitClip(int track,int index,double beat){
     if(track<0||track>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beat))return -1;
     const double start=clipStart(track,index),end=start+clipLength(track,index);beat=std::round(beat*960)/960.;
     if(beat-start<tick||end-beat<tick)return -1;
-    index=detachTrack(track,index);if(index<0)return -1;auto& t=tracks[(size_t)track];const auto original=t.clips[(size_t)index];
-    const auto left=slice(original,0,beat-original.position,original.position),right=slice(original,beat-original.position,original.position+original.span-beat,beat);
-    if(t.clips.size()>=4096)return -1;t.clips[(size_t)index]=left;t.clips.insert(t.clips.begin()+index+1,right);return index+1;
+    Project edited=*this;index=edited.detachTrack(track,index);if(index<0)return -1;auto& t=edited.tracks[(size_t)track];
+    if(t.clips.size()>=4096)return -1;const auto original=t.clips[(size_t)index];
+    t.clips[(size_t)index]=slice(original,0,beat-original.position,original.position);
+    t.clips.insert(t.clips.begin()+index+1,slice(original,beat-original.position,original.position+original.span-beat,beat));
+    *this=std::move(edited);return index+1;
 }
 int Project::placeClip(int track,Clip clip,double beat){
     if(track<0||track>=(int)tracks.size()||!std::isfinite(beat)||!std::isfinite(clip.span)||clip.span<tick||clip.span>512)return -1;
-    beat=std::clamp(std::round(beat*960)/960.,0.,131072.);detachTrack(track);auto& t=tracks[(size_t)track];const double end=beat+clip.span;
+    beat=std::clamp(std::round(beat*960)/960.,0.,131072.);
+    Project edited=*this;edited.detachTrack(track);auto& t=edited.tracks[(size_t)track];const double end=beat+clip.span;
     std::vector<Clip> keep;size_t notes=clip.notes.size()+clip.loopSource.size();
     for(const auto& old:t.clips){const double tail=old.position+old.span;if(tail<=beat||old.position>=end)keep.push_back(old);else{
         if(beat-old.position>=tick)keep.push_back(slice(old,0,beat-old.position,old.position));
         if(tail-end>=tick)keep.push_back(slice(old,end-old.position,tail-end,end));}}
     if(keep.size()>=4096)return -1;
     for(const auto& c:keep)notes+=c.notes.size()+c.loopSource.size();
-    for(size_t i=0;i<tracks.size();++i)if((int)i!=track)for(const auto& c:tracks[i].clips)notes+=c.notes.size()+c.loopSource.size();
+    for(size_t i=0;i<edited.tracks.size();++i)if((int)i!=track)for(const auto& c:edited.tracks[i].clips)notes+=c.notes.size()+c.loopSource.size();
     if(notes>2000000)return -1;
-    clip.position=beat;tidyNotes(clip,clip.span);keep.push_back(std::move(clip));t.clips=std::move(keep);sortClips(t);normalise();return clipAtBeat(track,beat);
+    clip.position=beat;tidyNotes(clip,clip.span);keep.push_back(std::move(clip));t.clips=std::move(keep);sortClips(t);edited.normalise();
+    const int placed=edited.clipAtBeat(track,beat);*this=std::move(edited);return placed;
 }
 int Project::moveClip(int track,int index,int targetTrack,double beat,bool copy){
     if(track<0||track>=(int)tracks.size()||targetTrack<0||targetTrack>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beat))return -1;

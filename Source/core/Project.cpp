@@ -699,7 +699,36 @@ void tidyNotes(Clip& c,double beats) {
     c.notes=std::move(clean);
 }
 void transpose(Clip& c,int semitones) {for(auto& n:c.notes)n.pitch=std::clamp(n.pitch+semitones,0,127);}
-void quantise(Clip& c,double grid,double strength) {if(!std::isfinite(grid)||grid<=0)return;strength=std::clamp(strength,0.0,1.0);for(auto& n:c.notes)n.start+=(std::round(n.start/grid)*grid-n.start)*strength;}
+void quantise(Clip& c,double grid,double strength,double limit) {
+    if(!std::isfinite(grid)||grid<=0)return;
+    strength=std::clamp(strength,0.0,1.0);
+    const bool bounded=std::isfinite(limit)&&limit>0;constexpr double tick=1./960.;
+    for(auto& n:c.notes){
+        if(!std::isfinite(n.start)||!std::isfinite(n.length))continue;
+        const double end=n.start+n.length;
+        n.start+=(std::round(n.start/grid)*grid-n.start)*strength;
+        double newEnd=end+(std::round(end/grid)*grid-end)*strength;
+        if(newEnd<n.start+tick)newEnd=n.start+tick;
+        n.length=newEnd-n.start;
+        if(bounded){
+            if(n.start<0)n.start=0;
+            if(n.start>limit-tick)n.start=std::max(0.0,std::floor((limit-tick)/grid)*grid);
+            if(n.start+n.length>limit)n.length=std::max(tick,limit-n.start);
+        }
+    }
+}
+void humanize(Clip& c,double amount,std::uint32_t seed,double beats) {
+    if(!std::isfinite(amount)||amount<=0||!std::isfinite(beats)||beats<=0)return;
+    amount=std::clamp(amount,0.0,1.0);constexpr double tick=1./960.;
+    for(size_t i=0;i<c.notes.size();++i){
+        auto& n=c.notes[i];if(!std::isfinite(n.start)||!std::isfinite(n.length))continue;
+        const auto h=mix(seed+(std::uint32_t)i*977u+(std::uint32_t)n.pitch*13u);
+        const double u=(h&65535)/65535.0;
+        n.start=std::clamp(n.start+(u*2-1)*amount*0.04,0.0,std::max(0.0,beats-tick));
+        n.velocity=std::clamp(n.velocity+(int)std::lround((((int)((h>>16)&255)-128)/128.0)*amount*18),1,127);
+        if(n.start+n.length>beats)n.length=std::max(tick,beats-n.start);
+    }
+}
 std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
     std::vector<TimedEvent> out;
     for(size_t ti=0;ti<p.tracks.size();++ti) {

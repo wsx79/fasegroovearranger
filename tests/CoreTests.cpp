@@ -62,7 +62,9 @@ int main(int argc,char** argv){try{
         if(argc>1&&genre==1){auto pedal=original;pedal.tracks[0].engine.pedalCC=true;auto cc=fga::midiFile(pedal,0);std::ofstream ccFile(std::string(argv[1])+"/test-piano-cc.mid",std::ios::binary);ccFile.write((const char*)cc.data(),(std::streamsize)cc.size());std::ofstream f(std::string(argv[1])+"/test-song.mid",std::ios::binary);f.write((const char*)midi.data(),(std::streamsize)midi.size());std::ofstream g(std::string(argv[1])+"/test-kick.mid",std::ios::binary);g.write((const char*)stem.data(),(std::streamsize)stem.size());}
         std::cout<<"PASS "<<fga::genres()[(size_t)genre]<<" / "<<(int)(p.length()*60/p.settings.bpm)/60<<":"<<(int)(p.length()*60/p.settings.bpm)%60<<" / "<<p.length()/4<<" bars\n";
     }
-    fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
+    fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25&&c.notes[0].length==.5,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
+    fga::Clip held;held.notes={{.13,.5,60,80,0}};fga::quantise(held,.25,0);check(held.notes[0].start==.13,"quantise strength zero keeps the note");
+    fga::Clip edge;edge.notes={{3.9,.2,60,90,0}};fga::quantise(edge,1,1,4);fga::tidyNotes(edge,4);check(edge.notes.size()==1&&edge.notes[0].start<4,"quantise stays inside the clip");
     c.notes.push_back({std::numeric_limits<double>::quiet_NaN(),1,60,90,0});fga::tidyNotes(c,1);check(c.notes.size()==2,"invalid input sanitised");
     auto edge=fga::newProject();edge.loop=true;edge.loopStart=0;edge.loopEnd=.00000001;edge.normalise();check(!edge.loop,"sub-tick loop disabled");
     auto automated=fga::newProject();const auto dryMidi=fga::midiFile(automated);auto& volume=automated.tracks[4].volume;
