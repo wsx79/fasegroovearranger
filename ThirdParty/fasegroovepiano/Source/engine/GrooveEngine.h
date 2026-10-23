@@ -172,6 +172,7 @@ struct GrooveSettings
     // Per slot: noFreeChord, or freeChordCode() to play that chord instead of the scale degree.
     std::array<int, maxProgressionLength> freeChords { -1, -1, -1, -1, -1, -1, -1, -1 };
     int stepsPerChord = 16;                // 8 = half bar, 16 = 1 bar ...
+    bool separateBass = false;             // Arranger: bass on its own track, never cuts or steals a piano note
 
     int pattern = 0;
     float swing = 0.25f;                   // 0 = straight, 1 = full triplet shuffle
@@ -368,8 +369,10 @@ private:
     // Per note (0..127), and again for the strings (128..255): they have their own channel, so a
     // string note can hold under the same piano note. Bass and piano share channel 1 by default, so
     // they share a note: struck together, it belongs to the bass (the bass line never loses a note).
-    static constexpr int numTracked = 256;
-    static int trackIndex (int note, Part part) noexcept { return note + (part == Part::strings ? 128 : 0); }
+    // Arranger: with separateBass the bass is tracked apart (256..383), since it plays on its own track.
+    static constexpr int numTracked = 384;
+    static int trackIndex (int note, Part part, bool separateBass = false) noexcept
+    { return note + (part == Part::strings ? 128 : (separateBass && part == Part::bass ? 256 : 0)); }
     std::array<double, numTracked> offTime {};    // < 0 when the note is not sounding
     std::array<Part, numTracked> partOf {};
     double stringsUntil = -1.0;                   // when the strings' current pad ends

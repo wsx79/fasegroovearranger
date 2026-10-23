@@ -118,6 +118,9 @@ class MainComponent : public juce::Component,private juce::Timer,public juce::Fi
 public:
     MainComponent();
     ~MainComponent() override;
+    // Opens the first .fga in a command line (double-click, file association, second instance).
+    bool openFromCommandLine(const juce::String& commandLine);
+    static juce::File projectInCommandLine(const juce::String& commandLine);
     void paint(juce::Graphics&) override;
     void resized() override;
     bool keyPressed(const juce::KeyPress&) override;
@@ -150,6 +153,7 @@ public:
     double timelinePosition()const{return editCursor>=0&&!audio.isPlaying()?editCursor:audio.position();}
     void seekTimeline(double beat);
     void togglePlayback();
+    void toggleMetronome();
     void regenerate(Scope,bool newTake=true);
     bool requestClose();
     bool writeLanguageEvidence(const juce::File&);

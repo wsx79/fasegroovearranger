@@ -14,7 +14,17 @@ namespace
     /** Small, fast and repeatable (same seed = same beat on every computer). */
     struct Random
     {
-        explicit Random (std::uint32_t seed) noexcept : state (seed * 0x9E3779B97F4A7C15ULL + 0x632BE59BD9B4E019ULL) {}
+        // The seed is hashed into the starting state. (It used to be a plain multiple of the
+        // step, so seed n + 1 replayed seed n's draws shifted by one: neighbouring seeds, and the
+        // lanes of a lane die, gave near copies.)
+        explicit Random (std::uint32_t seed) noexcept : state (mix ((std::uint64_t) seed ^ 0x632BE59BD9B4E019ULL)) {}
+
+        static std::uint64_t mix (std::uint64_t z) noexcept
+        {
+            z = (z ^ (z >> 33)) * 0xFF51AFD7ED558CCDULL;
+            z = (z ^ (z >> 33)) * 0xC4CEB9FE1A85EC53ULL;
+            return z ^ (z >> 33);
+        }
 
         std::uint32_t next() noexcept
         {
@@ -335,6 +345,10 @@ namespace
         { ".... .... .... x.x.", 5 }, { ".... ..x. .... .x.x", 4 }, { "..x. .x.. .... ....", 3 }, { ".... .... .xxx x...", 3 },
         { ".... .... ..x. .x..", 3 }, { ".... .x.. .... x...", 2 }, { ".... .... x... .x.x", 2 }, { "..x. .... .... .xx.", 2 } };
 
+    // Gospel answers: on the 8ths only, as the strumming hand plays them.
+    const Cell gospelLicks[] {
+        { ".... .... x.x. x.x.", 5 }, { ".... ..x. .... x.x.", 4 }, { "..x. x... .... ..x.", 3 }, { ".... .... ..x. x.x.", 3 } };
+
     template <size_t N>
     const char* pickCell (Random& r, const Cell (&cells)[N])
     {
@@ -364,9 +378,13 @@ namespace
         put (second, 1);
     }
 
-    /** Offbeat stabs: each "&" is an accent, a plain stab or a rest, and the two bars are drawn apart. */
-    void paintOffbeatStabs (GuitarPattern& p, Random& r)
+    /** Offbeat stabs: each "&" is an accent, a plain stab or a rest, and the two bars are drawn apart.
+        Jackin' piano bounces: now and then a stab lands on the last 16th before a beat. '90s piano
+        house sometimes has octaves on the beats under the stabs instead of the low root. */
+    void paintOffbeatStabs (GuitarPattern& p, Random& r, int genre)
     {
+        const bool bounce = genre == jackinPiano;
+        const bool octaves = genre == nineties && r.chance (0.45f);
         for (int bar = 0; bar < 2; ++bar)
         {
             int placed = 0;
@@ -378,11 +396,18 @@ namespace
                     p[Lane::stab][(size_t) (bar * 16 + 2 + 4 * q)] = roll < 56 ? 'x' : 'X';
                     ++placed;
                 }
-                if (r.next() % 100 < 35)
+                if (octaves)
+                {
+                    if (q == 0 || r.chance (0.7f))
+                        p[Lane::octave][(size_t) (bar * 16 + 4 * q)] = q == 0 ? 'X' : 'x';
+                }
+                else if (r.next() % 100 < 35)
                     p[Lane::root][(size_t) (bar * 16 + 4 * q)] = 'X';
             }
             if (placed == 0)
                 p[Lane::stab][(size_t) (bar * 16 + 2)] = 'X';
+            if (bounce && r.chance (0.6f))
+                p[Lane::stab][(size_t) (bar * 16 + r.pick ({ 3, 7, 11 }))] = 'x';   // pushes into the next beat
         }
     }
 
@@ -502,12 +527,12 @@ namespace
             case pianoHouse:  return { { 0, 14, 1, 0, 0, 0, 0, 0, 0 }, 0.2f,  0.25f, 0.05f };
             case soulful:     return { { 0, 2, 0, 4, 6, 0, 0, 0, 1 }, 0.05f, 0.3f,  0.3f };
             case deep:        return { { 0, 1, 0, 4, 7, 0, 0, 0, 1 }, 0.0f,  0.2f,  0.1f };
-            case gospel:      return { { 0, 0, 0, 0, 0, 0, 0, 1, 0 }, 0.0f,  0.45f, 0.0f };
-            case jackin:      return { { 4, 0, 8, 0, 0, 0, 0, 0, 0 }, 0.95f, 0.15f, 0.05f };
+            case gospel:      return { { 0, 0, 0, 0, 0, 0, 0, 1, 0 }, 0.0f,  0.45f, 0.3f };
+            case jackin:      return { { 4, 0, 8, 0, 0, 0, 2, 0, 0 }, 0.95f, 0.15f, 0.05f };
             case jackinPiano: return { { 0, 14, 0, 0, 0, 0, 0, 0, 0 }, 0.15f, 0.25f, 0.0f };
             case garage:      return { { 0, 0, 1, 0, 1, 0, 0, 0, 10 }, 0.25f, 0.2f,  0.1f };
             case afro:        return { { 0, 0, 2, 10, 0, 0, 0, 0, 0 }, 0.08f, 0.55f, 0.12f };
-            case funky:       return { { 4, 0, 8, 0, 0, 0, 0, 0, 0 }, 0.95f, 0.3f,  0.12f };
+            case funky:       return { { 7, 0, 6, 0, 0, 0, 3, 0, 0 }, 0.95f, 0.3f,  0.12f };
             case nineties:    return { { 0, 12, 0, 0, 0, 0, 0, 0, 0 }, 0.1f,  0.3f,  0.0f };
             case neoSoul:     return { { 0, 2, 0, 3, 2, 0, 0, 0, 5 }, 0.0f,  0.2f,  0.95f };
             case chill:       return { { 0, 0, 0, 4, 7, 0, 0, 0, 0 }, 0.0f,  0.12f, 0.9f };
@@ -706,7 +731,7 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             if (genre == dance)
                 paintDanceStabs (p, r);
             else if (houseStab)
-                paintOffbeatStabs (p, r);
+                paintOffbeatStabs (p, r, genre);
             else if (genre == neoSoul)
                 paintLaidBack (p, r, Lane::stab);
             else if (sparseGenre)
@@ -786,7 +811,13 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         if (genre == funky || genre == jackin)
             paintTwoBars (p, Lane::scratch, r, funkScratch);
         else
-            setBar (Lane::scratch, density > 0.6f ? "gggg gggg gggg gggg" : r.chance (0.5f) ? ".g.g .g.g .g.g .g.g" : "g... g... g... g.g.");
+        {
+            // A busy groove does not always scratch every 16th: often the hand leaves holes.
+            if (density > 0.6f && r.chance (0.6f))
+                paintTwoBars (p, Lane::scratch, r, funkScratch);
+            else
+                setBar (Lane::scratch, density > 0.6f ? "gggg gggg gggg gggg" : r.chance (0.5f) ? ".g.g .g.g .g.g .g.g" : "g... g... g... g.g.");
+        }
     }
     if (role != powerDrive && role != octaveDisco && genre != dance && ! houseStab && r.chance (style.root * more))
     {
@@ -800,11 +831,17 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     const float lickChance = style.lick >= 0.7f ? style.lick : style.lick * more;
     if (style.lick > 0.0f && r.chance (lickChance))
     {
-        const auto lick = compact (pickCell (r, lickCellsExtra));
+        const auto lick = compact (genre == gospel ? pickCell (r, gospelLicks) : pickCell (r, lickCellsExtra));
         for (int i = 0; i < 16; ++i)
             if (lick[(size_t) i] != '.')
                 p[Lane::lick][(size_t) (16 + i)] = lick[(size_t) i];
     }
+
+    // Dance: now and then octaves on the beats the stabs leave free (the chord on the "&").
+    if (genre == dance && r.chance (0.4f))
+        for (int i = 0; i < randomBeatLength; i += 4)
+            if (! isHit (p[Lane::stab][(size_t) i]) && (i % 16 == 0 || r.chance (0.7f)))
+                p[Lane::octave][(size_t) i] = i % 16 == 0 ? 'X' : 'x';
 
     // A pickup on the last 8th. A 16th answer only in the genres that already play 16ths.
     if (genre == gospel && r.chance (0.45f))
@@ -850,6 +887,27 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         }
     }
     varySecondBar (p, r);
+    if (sparseGenre && r.chance (0.5f))
+    {
+        // Soul, deep and neo-soul players anticipate: one chord on a beat (not the bar's first)
+        // comes a 16th early, so the space between the hits is not always on the quarter.
+        int lanes[16], steps[16], n = 0;
+        for (auto lane : { Lane::stab, Lane::arp, Lane::chank, Lane::strumDown })
+            for (int i = 4; i < randomBeatLength && n < 16; i += 4)
+                if (i % 16 != 0 && isHit (p[lane][(size_t) i]) && p[lane][(size_t) (i - 1)] == '.')
+                {
+                    lanes[n] = (int) lane;
+                    steps[n] = i;
+                    ++n;
+                }
+        if (n > 0)
+        {
+            const int k = r.nextInt (n);
+            auto& line = p.lanes[(size_t) lanes[k]];
+            line[(size_t) (steps[k] - 1)] = line[(size_t) steps[k]];
+            line[(size_t) steps[k]] = '.';
+        }
+    }
     int kept = 0;
     for (const auto& line : p.lanes)
         kept += (int) std::count_if (line.begin(), line.end(), isHit);

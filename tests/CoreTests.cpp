@@ -143,8 +143,28 @@ void verifyGenreIdentity(){
 #include "ClubArrangementChecks.h"
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
+// Engine integration: the vendored generators' seed and genre fixes are live, and the
+// arranger's note extraction never leaves millisecond stubs or flams in pitched tracks.
+void verifyEngineIntegration(){
+    for(int genre=0;genre<13;++genre){
+        int same=0;for(std::uint32_t seed=1;seed<=40;++seed){
+            const auto a=fgg::makeRandomPattern(seed,.6f,genre),b=fgg::makeRandomPattern(seed+1,.6f,genre);
+            bool equal=true;for(int l=0;l<fgg::numLanes;++l)equal=equal&&a.lanes[(size_t)l]==b.lanes[(size_t)l];same+=equal?1:0;}
+        check(same<=2,"neighbouring guitar seeds give distinct grooves");
+    }
+    for(int genre:{1,2,3,4,5,6,7,8,10,11}){
+        int same=0;for(std::uint32_t seed=1;seed<=24;++seed){const auto a=sgk::makeRandomPattern(seed,.6f,genre),b=sgk::makeRandomPattern(seed+64,.6f,genre);same+=a.rightHand==b.rightHand&&a.leftHand==b.leftHand?1:0;}
+        check(same<=2,"piano genre riffs do not repeat every 64 seeds");
+    }
+    for(int genre=0;genre<13;++genre)for(std::uint32_t seed:{3U,77U}){
+        auto p=fga::newProject(genre);fga::generate(p,fga::Scope::song,0,0,seed);
+        for(int ti=0;ti<4;++ti)for(size_t ci=0;ci<p.tracks[(size_t)ti].clips.size();++ci){const auto& notes=p.tracks[(size_t)ti].clips[ci].notes;
+            for(const auto& n:notes)check(n.length>=1./128.,"no millisecond note stubs in piano, bass, strings or guitar");
+            if(ti==3)for(size_t k=1;k<notes.size();++k)for(size_t j=k;j-->0&&notes[k].start-notes[j].start<1./32.;)check(notes[j].pitch!=notes[k].pitch,"a guitar unison is one attack, not a flam");}
+    }
+}
 int main(int argc,char** argv){try{
-    verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
+    verifyEngineIntegration();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();

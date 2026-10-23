@@ -43,22 +43,42 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     return p;
 }
 template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>& stream, double beats, Filter filter) {
-    std::array<int,128> active; active.fill(-1);
-    std::vector<Note> notes;notes.reserve(stream.size()/2);
+    // Note-offs pair per engine voice (piano part, guitar/drum lane): the same pitch in two
+    // voices (a fill over a held chord) must not let one voice's note-off cut the other's
+    // note to a millisecond stub. tidyNotes() then coalesces overlaps for the one MIDI channel.
+    constexpr bool laned=std::is_same_v<E,fgg::NoteEvent>||std::is_same_v<E,fgd::NoteEvent>;
+    constexpr int voices=32;
+    constexpr double stub=1./32.;
+    std::array<int,128*voices> active; active.fill(-1);
+    std::array<int,128> latest; latest.fill(-1);
+    std::vector<Note> notes;notes.reserve(stream.size()/2);std::vector<char> closed;closed.reserve(stream.size()/2);
+    auto close=[&](int index,double length){auto& n=notes[(size_t)index];n.length=closed[(size_t)index]?std::max(n.length,length):length;closed[(size_t)index]=1;};
     for(const auto& e:stream) {
         if(!filter(e)||e.note<0||e.note>127) continue;
-        auto& index=active[(size_t)e.note];
+        int voice=0;if constexpr(laned)voice=e.lane;else voice=(int)e.part;
+        auto& index=active[(size_t)e.note*voices+(size_t)std::clamp(voice,0,voices-1)];
         if(e.isNoteOn()) {
-            if(index>=0) notes[(size_t)index].length=std::max(.001,e.ppq-notes[(size_t)index].start);
+            // A unison inside a strum (another string or lane, the chord and a fill) lands a few ms
+            // after the first one: one attack, not a flam or a millisecond stub. Drum flams stay.
+            if constexpr(!std::is_same_v<E,fgd::NoteEvent>){const int last=latest[(size_t)e.note];
+                if(last>=0&&e.ppq>=notes[(size_t)last].start&&e.ppq-notes[(size_t)last].start<stub){
+                    auto& n=notes[(size_t)last];n.velocity=std::max(n.velocity,std::clamp(e.velocity,1,127));
+                    if(index>=0&&index!=last)close(index,std::max(.001,e.ppq-notes[(size_t)index].start));
+                    index=last;continue;}}   // its note-off now ends the merged note
+            if(index>=0) close(index,std::max(.001,e.ppq-notes[(size_t)index].start));
             const double start=std::clamp(e.ppq,0.0,beats);
             if(start>=beats) {index=-1;continue;}
-            int lane=0;if constexpr(std::is_same_v<E,fgg::NoteEvent>||std::is_same_v<E,fgd::NoteEvent>)lane=e.lane;
-            notes.push_back({start,.25,e.note,std::clamp(e.velocity,1,127),lane}); index=(int)notes.size()-1;
+            int lane=0;if constexpr(laned)lane=e.lane;
+            notes.push_back({start,.25,e.note,std::clamp(e.velocity,1,127),lane});closed.push_back(0);index=(int)notes.size()-1;latest[(size_t)e.note]=index;
         } else if(index>=0) {
-            notes[(size_t)index].length=std::max(.001,std::min(beats,e.ppq)-notes[(size_t)index].start); index=-1;
+            // A note humanised a hair before the section end belongs to the next bar: clipped
+            // there it would only be a millisecond click, so it is dropped.
+            const auto& n=notes[(size_t)index];
+            close(index,e.ppq>=beats-1e-9&&n.start>beats-stub?-1.:std::max(.001,std::min(beats,e.ppq)-n.start)); index=-1;
         }
     }
-    for(int i:active) if(i>=0) notes[(size_t)i].length=std::max(.001,beats-notes[(size_t)i].start);
+    for(int i:active) if(i>=0&&!closed[(size_t)i]) {auto& n=notes[(size_t)i];n.length=n.start>beats-stub?-1.:std::max(.001,beats-n.start);closed[(size_t)i]=1;}
+    notes.erase(std::remove_if(notes.begin(),notes.end(),[](const Note& n){return n.length<0;}),notes.end());
     return notes;
 }
 }
@@ -94,6 +114,8 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
     ps.fillEveryBars=e.fillEvery;ps.fillStyle=(sgk::FillStyle)(e.fillStyle<0?(int)sgk::FillStyle::mix:std::min(e.fillStyle,sgk::numFillStyles-1));ps.variationEvery=e.variationEvery;
     ps.stepsPerChord=s.chordSteps;ps.inversions=e.inversions;ps.velocityOrder=e.velocityOrder;
+    // Piano and bass are separate tracks: a shared pitch must not cut or steal the other's note.
+    ps.separateBass=true;
     if(e.humanizeSeed)ps.humanizeSeed=e.humanizeSeed;
     if(e.riffSeed)ps.riffSeed=e.riffSeed;
     if(e.pattern>=0&&e.pattern<=sgk::userPatternIndex())ps.pattern=e.pattern;
@@ -545,9 +567,13 @@ void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
     const double cutoff=bars*4.-entrance;
     auto& notes=clip.notes;
     notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){
-        return type==Section::intro?n.start<entrance:n.start>cutoff-1./960.;
+        // A hit humanised a hair early belongs to the bar after the boundary: kept at an
+        // entrance (on the phrase line), dropped at an outro cut (it would be a stub).
+        constexpr double early=1./32.;
+        return type==Section::intro?n.start<entrance-early:n.start>cutoff-early;
     }),notes.end());
     for(auto& n:notes){
+        if(type==Section::intro&&n.start<entrance){n.length=std::max(1./960.,n.length-(entrance-n.start));n.start=entrance;}
         if(type==Section::outro)n.length=std::min(n.length,cutoff-n.start);
     }
 }

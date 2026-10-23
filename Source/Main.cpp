@@ -179,7 +179,10 @@ public:
             setApplicationReturnValue(ok?0:1);quit();return;
         }
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
+        window->content->main.openFromCommandLine(getCommandLineParameters());
     }
+    // Single instance: a double-clicked .fga arrives here (and as a macOS open-document event).
+    void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}}
     void shutdown()override{window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
 private:FamilyLookAndFeel theme;std::unique_ptr<Window> window;

@@ -236,7 +236,7 @@ GrooveEngine::GrooveEngine()
 {
     offTime.fill (-1.0);
     laneOf.fill (0);
-    pending.reserve (512);
+    pending.reserve (2048);   // a big offline block of rolls and flams at a fast tempo: never grown on the audio thread
     scratch.reserve (128);
 }
 
@@ -646,7 +646,9 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         }
         // Jackin': at the end of the phrase the 909 snare (or the clap, with no snare) turns the
         // beat round with loud swung 16ths into the next bar.
+        // (Not where the section has taken the backbeat out: intro, break, build-up, outro.)
         if (symbol == '.' && human > 0.0 && ! inFill && phraseBar == 3 && stepInBar >= 13 && jackin
+            && sectionAllowsFills (s.section)
             && lane == (hasSnare ? (int) Lane::snare : (int) Lane::clap) && lifeNoise (lane, 57) < 0.55)
             symbol = stepInBar == 14 ? 'g' : 'x';
         add (lane, symbol, s.notes[(size_t) lane], 1.0, false, roll);

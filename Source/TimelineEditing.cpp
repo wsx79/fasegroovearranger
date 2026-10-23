@@ -27,6 +27,8 @@ void MainComponent::seekTimeline(double beat){
 void MainComponent::togglePlayback(){
     if(!audio.isPlaying()&&editCursor>=0){if(editCursor>project.length())return;audio.seek(editCursor);}editCursor=-1;audio.play(!audio.isPlaying());
 }
+// Live click on every beat (accented bar); never part of an export.
+void MainComponent::toggleMetronome(){audio.setMetronome(!audio.metronomeOn());message(audio.metronomeOn()?"Metronome on.":"Metronome off.");}
 void MainComponent::selectClip(int track,int index,bool keepSelection){
     track=std::clamp(track,0,trackCount-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
     const int guide=index>=0?project.sectionAtBeat(project.clipStart(track,index)):project.sectionAtBeat(timelinePosition());

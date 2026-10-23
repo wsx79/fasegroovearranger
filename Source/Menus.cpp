@@ -21,6 +21,18 @@ public:
 private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();
 };
 }
+juce::File MainComponent::projectInCommandLine(const juce::String& commandLine){
+    {const auto whole=commandLine.trim().unquoted();if(whole.endsWithIgnoreCase(".fga")&&juce::File::isAbsolutePath(whole)&&juce::File(whole).existsAsFile())return juce::File(whole);} // unquoted path with spaces
+    for(auto token:juce::StringArray::fromTokens(commandLine,true)){token=token.unquoted().trim();
+        if(!token.endsWithIgnoreCase(".fga"))continue;
+        if(juce::File::isAbsolutePath(token)&&juce::File(token).existsAsFile())return juce::File(token);
+        const auto relative=juce::File::getCurrentWorkingDirectory().getChildFile(token);if(relative.existsAsFile())return relative;}
+    return {};
+}
+bool MainComponent::openFromCommandLine(const juce::String& commandLine){
+    const auto file=projectInCommandLine(commandLine);if(file==juce::File())return false;
+    open(file);return projectFile==file;
+}
 void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(juce::String::fromUTF8("Progressione · un accordo per battuta"));
     auto names=chordNames(project.settings);
@@ -80,8 +92,10 @@ void MainComponent::showAbout(){
     options.show(false,scale);
 }
 void MainComponent::showAudioSettings(){
-    juce::PopupMenu menu;menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton),[safe](int id){if(safe==nullptr)return;if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,0,0,2,false,false,true,false);selector->setSize(680,500);o.content.setOwned(selector);o.launchAsync();}
-        if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else safe->open(folder.getChildFile("autosave.fga"));}
+    juce::PopupMenu menu;menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));menu.addSeparator();menu.addItem(5,tr("Metronome (C)"),true,audio.metronomeOn());juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton),[safe](int id){if(safe==nullptr)return;if(id==5){safe->toggleMetronome();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,0,0,2,false,false,true,false);selector->setSize(680,500);o.content.setOwned(selector);o.launchAsync();}
+        if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else{const auto autosave=folder.getChildFile("autosave.fga");safe->open(autosave);
+            // A recovered song is unsaved work: SAVE must ask where to keep it, never overwrite the autosave slot.
+            if(safe!=nullptr&&safe->projectFile==autosave){safe->projectFile=juce::File();safe->dirty=true;safe->repaint();}}}
     });
 }
 void MainComponent::exportMenu(){

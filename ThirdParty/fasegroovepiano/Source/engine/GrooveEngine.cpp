@@ -1232,7 +1232,7 @@ std::vector<NoteEvent> GrooveEngine::renderLoopClip (const GrooveSettings& s, do
     std::array<bool, numTracked> isOpen {};
     for (const auto& e : all)
     {
-        const auto k = (size_t) trackIndex (e.note, e.part);
+        const auto k = (size_t) trackIndex (e.note, e.part, s.separateBass);
         if (e.isNoteOn())
         {
             if (e.ppq >= lengthInBeats)
@@ -2683,7 +2683,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GrooveSettings&
     {
         flushOffsUpTo (p.ppq, true, out);
 
-        const auto k = (size_t) trackIndex (p.note, p.part);
+        const auto k = (size_t) trackIndex (p.note, p.part, s.separateBass);
         auto& off = offTime[k];
 
         if (off >= 0.0)

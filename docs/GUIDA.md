@@ -281,6 +281,9 @@ Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO �
 | **Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y** | Ripeti. |
 | **Ctrl/Cmd + A**, nell'editor | Seleziona le note del clip. |
 | **Delete / Backspace**, nell'editor | Elimina la selezione. |
+| **Home** | Cursore all'inizio. |
+| **L** | Loop sì / no. **Ctrl/Cmd + L** mette in loop la selezione. |
+| **C** | Metronomo sì / no (solo in ascolto, mai nell'export). |
 
 Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca passano tra i risultati; **A− / A+** cambia la dimensione del testo. Clicca una schermata per aprirla più grande.
 

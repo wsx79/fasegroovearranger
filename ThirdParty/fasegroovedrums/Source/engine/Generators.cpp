@@ -233,9 +233,11 @@ namespace
         { "..xx x.x. ..x. ..x.", 3 } };
     const Cell jackHatCells[] {
         { "..x. ..xg ..x. ..x.", 6 }, { "..x. .gx. ..x. .gxx", 5 }, { "g.x. g.x. g.x. g.xg", 4 }, { "..xg ..x. ..xg ..x.", 4 },
-        { "x.xg x.x. x.xg x.xx", 3 }, { "..x. x.xg ..x. x.x.", 3 }, { "..x. ..x. ..x. ..x.", 2 } };
+        { "x.xg x.x. x.xg x.xx", 3 }, { "..x. x.xg ..x. x.x.", 3 } };
     const Cell busyHatCells[] { { "xxxx xxxx xxxx xxxx", 3 }, { "x.xx x.xx x.xx x.xx", 1 }, { ".xxx .xxx .xxx .xxx", 1 } };
     const Cell underOpenHatCells[] { { "x... x... x... x...", 3 }, { "xx.x .x.x xx.x .x.x", 2 }, { "x..x x..x x..x x..x", 1 } };   // never on the offbeat
+    const Cell moreUnderOpenHatCells[] { { "x..x x... x..x x..x", 2 }, { "...x ...x ...x ...x", 2 }, { "x... x..x x... x.xx", 1 },
+                                         { ".x.. .x.. .x.. .x.x", 1 } };
     const Cell openAccentCells[] {
         { ".... .... .... .x..", 18 }, { ".x.. .... .... ....", 8 }, { ".... .... .... ...x", 7 }, { ".x.. .... .... .x..", 6 },
         { "...x ...x ...x ...x", 5 } };
@@ -287,7 +289,7 @@ namespace
         {
             case pianoHouse:  return { 0.95f, 0.05f, 0.35f, 0.5f,  0.1f,  0.25f, 0.15f, 0.25f, 0.1f, Lane::conga };
             case soulful:     return { 0.95f, 0.3f,  0.3f,  0.55f, 0.35f, 0.6f,  0.3f,  0.3f,  0.15f, Lane::conga };
-            case deep:        return { 0.95f, 0.0f,  0.3f,  0.4f,  0.0f,  0.55f, 0.3f,  0.3f,  0.0f, Lane::rim };
+            case deep:        return { 0.6f,  0.0f,  0.3f,  0.4f,  0.0f,  0.55f, 0.3f,  0.3f,  0.0f, Lane::rim };
             case gospel:      return { 0.5f,  0.1f,  0.2f,  0.1f,  0.85f, 0.2f,  0.1f,  0.35f, 0.8f, Lane::conga };
             case jackin:      return { 0.0f,  0.0f,  0.5f,  0.2f,  0.05f, 0.7f,  0.45f, 0.55f, 0.7f,  Lane::cowbell };
             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
@@ -297,7 +299,7 @@ namespace
             case nineties:    return { 0.8f,  0.05f, 0.2f,  0.2f,  0.35f, 0.1f,  0.05f, 0.25f, 0.6f, Lane::conga };
             case neoSoul:     return { 0.0f,  0.15f, 0.15f, 0.25f, 0.0f,  0.2f,  0.05f, 0.1f,  0.7f, Lane::rim };
             case chill:       return { 0.05f, 0.0f,  0.25f, 0.55f, 0.05f, 0.15f, 0.05f, 0.05f, 0.15f, Lane::rim };
-            case dance:       return { 0.85f, 0.0f,  0.1f,  0.0f,  0.2f,  0.0f,  0.0f,  0.1f,  0.6f, Lane::conga };
+            case dance:       return { 0.85f, 0.0f,  0.1f,  0.0f,  0.3f,  0.15f, 0.0f,  0.2f,  0.6f, Lane::conga };
             default:          return { 0.2f,  0.0f,  0.2f,  0.4f,  0.0f,  0.3f,  0.1f,  0.2f,  0.2f, Lane::rim };
         }
     }
@@ -309,6 +311,9 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     // (mostly on the offbeat), and only a few other layers, each from the patterns that groove
     // in house music. Fewer layers at low density. Bar 2 repeats bar 1 with a small answer at its end.
     Random r (seed);
+    // A second die for the choices added later: where the first one takes the same path, a seed
+    // still makes the beat it always made.
+    Random extra (seed * 0x85EBCA6Bu + 0xC2B2AE35u);
     density = std::clamp (density, 0.0f, 1.0f);
     genre = std::clamp (genre, 0, (int) grooveCategories().size() - 1);
     const auto style = styleOf (genre);
@@ -339,21 +344,47 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     if (garageBeat && r.chance (0.92f))
         setBar (Lane::kick, pickOf ({ "X... .... ..x. ....", "X... .... ..X. ...x", "X... ...x ..x. ...." }));
     else if (brokenBeat)
+    {
         setLoop (Lane::kick, pickOf ({ "X... .... ..x. .... X... ...x ..x. ....", "X... ..x. .x.. .... X... ..x. ...x ..x.",
                                       "X... ...x ..x. .... X... .... ..x. .x.." }));
+        if (extra.chance (0.45f))
+        {
+            static const char* moreKicks[] { "X... .... .x.x .... X..x .... ..x. ....", "X..x .... ..x. ...x X... ..x. .... .x..",
+                                        "X... ..x. .... ..x. X... .x.. ..x. ...." };
+            setLoop (Lane::kick, extra.pick (moreKicks));
+        }
+    }
     else if (chillBeat && r.chance (0.4f))
         setBar (Lane::kick, "X... .... ..x. ....");
     else
         setBar (Lane::kick, genre == deep || chillBeat ? "x... x... x... x..." : "X... X... X... X...");
     if (genre != deep && ! chillBeat && ! brokenBeat && ! garageBeat && r.chance (0.15f * more))
-        p[Lane::kick][30] = 'x';                                  // a kick pick-up into the next loop
+    {
+        switch (extra.nextInt (genre == jackin ? 3 : 4))          // a kick pick-up into the next loop
+        {
+            case 0:  p[Lane::kick][31] = 'x'; break;
+            case 3:  p[Lane::kick][14] = p[Lane::kick][30] = 'x'; break;   // at the end of each bar (the jack stays steady)
+            default: p[Lane::kick][30] = 'x'; break;
+        }
+    }
     else if (genre == jackin && r.chance (0.35f))
         p[Lane::kick][31] = 'g';                                  // a ghost kick into the next loop (on the grid)
 
     const bool halfTime = chillBeat && p[Lane::kick][4] == '.';
     const char* clapCell = halfTime ? ".... .... X... ...." : r.chance (style.clapVariation * more) ? pickCell (r, clapCells) : ".... X... .... X...";
     if (brokenBeat || garageBeat)
-        setBar (Lane::snare, halfTime ? ".... .... X... ...." : pickOf ({ ".... X... .... X...", ".... X..g .... X...", ".... X... ...g X..." }));
+    {
+        if (halfTime)
+            setBar (Lane::snare, ".... .... X... ....");
+        else
+            setBar (Lane::snare, pickOf ({ ".... X... .... X...", ".... X..g .... X...", ".... X... ...g X..." }));
+        if (brokenBeat && ! halfTime && extra.chance (0.45f))   // ghosts around it, now and then a late or pushed one
+        {
+            static const char* moreSnares[] { ".... X..g .... X... .... X..g ..g. X...", ".... X... ...g X... .... X... .... f...",
+                                        ".... X... .... .X.. .... X... ..g. X...", "..g. X... .g.. X... ..g. X... .... X..g" };
+            setLoop (Lane::snare, extra.pick (moreSnares));
+        }
+    }
     else if (chillBeat)
         setBar (r.chance (0.5f) ? Lane::rim : Lane::clap, halfTime ? ".... .... x... ...." : ".... x... .... x...");
     else
@@ -383,21 +414,43 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     if (garageBeat)
         setBar (Lane::closedHat, pickOf ({ "x.xx x.xx x.xx x.xx", "..xx ..xx ..xx ..xx", "x.xx x.x. x.xx x.x." }));
     else if (brokenBeat)
+    {
         setBar (Lane::closedHat, pickOf ({ "x.xg x.xg x.xg x.xg", "x.x. x.xx x.x. x.x.", "x.xx x.x. x.xx x.x." }));
-    else if (genre == jackin)
+        if (const int other = extra.nextInt (10); other < 2)   // the ride instead of the hats
+        {
+            p[Lane::closedHat].assign ((size_t) randomBeatLength, '.');
+            setBar (Lane::ride, other == 0 ? "x.x. x.xg x.x. x.x." : "x..x x.x. x..x x.x.");
+        }
+        else if (other < 5)
+            setBar (Lane::closedHat, other == 2 ? "xgx. xgxg xgx. xgx." : other == 3 ? "x.xg ..xg x.xg ..x." : "x..g x.xg x..g x.x.");
+    }
+    else if (genre == jackin && extra.chance (0.7f))
     {
         // Offbeat open hat, and swung 16ths in the closed hat (they sit off the offbeat).
         setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
         setBar (Lane::closedHat, pickOf ({ "x..g x..g x..g x..g", "x..g ..xg x..g ..xg", "x.xg x..g x.xg x..x" }));
+        if (extra.chance (0.35f))
+            setBar (Lane::closedHat, extra.chance (0.5f) ? "...g x..g ...g x..x" : "x..x x..g x..x x..g");
     }
     else if (openOffbeat)
     {
         setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
         if (r.chance (0.6f * more))
+        {
             setBar (Lane::closedHat, pickCell (r, underOpenHatCells));
+            if (extra.chance (0.35f))
+                setBar (Lane::closedHat, pickCell (extra, moreUnderOpenHatCells));
+        }
     }
     else if (genre == jackin)
+    {
         setBar (Lane::closedHat, pickCell (r, jackHatCells));   // the offbeat with ghosts and pick-ups around it
+        const auto accent = compact (pickOf ({ ".... .... .... .x..", ".... .... .... ...x", ".x.. .... .... .x.." }));
+        for (int i = 0; i < 16; ++i)
+            if (accent[(size_t) i] == 'x')
+                for (int at : { i, i + 16 })
+                    p[Lane::openHat][(size_t) at] = 'x', p[Lane::closedHat][(size_t) at] = '.';
+    }
     else
         setBar (Lane::closedHat, r.chance (style.busyHats * more) ? pickCell (r, busyHatCells) : pickCell (r, hatCells));
 
@@ -411,11 +464,21 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
                     p[Lane::openHat][(size_t) at] = 'x', p[Lane::closedHat][(size_t) at] = '.';
     }
 
+    // Dance: a closed hat line under the open one most of the time, even in a bare beat.
+    if (genre == dance && openOffbeat && ! std::any_of (p[Lane::closedHat].begin(), p[Lane::closedHat].end(), isHit)
+        && extra.chance (0.6f))
+        setBar (Lane::closedHat, extra.chance (0.5f) ? pickCell (extra, underOpenHatCells) : pickCell (extra, moreUnderOpenHatCells));
+
     // ---- Shaker or tambourine ----
     if (r.chance (style.tambourine * more))
         setBar (Lane::tambourine, r.chance (0.3f) ? ".... x... .... x..." : pickCell (r, shakerCells));
     else if (r.chance (style.shaker * more))
         setBar (Lane::shaker, pickCell (r, shakerCells));
+
+    // Dance: the tambourine rides with the hats more as the density goes up.
+    if (genre == dance && ! std::any_of (p[Lane::tambourine].begin(), p[Lane::tambourine].end(), isHit)
+        && extra.chance (0.2f + 0.5f * density))
+        setBar (Lane::tambourine, extra.pick ({ "..x. ..x. ..x. ..x.", "x.x. x.x. x.x. x.x.", ".... x... .... x...", "..xx ..x. ..xx ..x." }));
 
     // ---- A soft 16th layer, where the swing and the accents make the groove (most house beats
     //      have one: shaker, tambourine or soft hats between the offbeats) ----
@@ -466,6 +529,12 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         for (int at : { 3, 11, 19, 27 })
             if (p[Lane::rim][(size_t) at] == '.')
                 p[Lane::rim][(size_t) at] = 'g';
+    }
+    else if (genre == dance && std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit) && extra.chance (0.35f))
+    {
+        // The snare's 16th pick-up into the next loop (the clap keeps the backbeat).
+        for (int at : { 29, 30, 31 })
+            p[Lane::snare][(size_t) at] = 'x';
     }
     else if (garageBeat && accent.chance (0.6f))
     {
@@ -583,13 +652,14 @@ DrumPattern makeSectionVariation (const DrumPattern& source, std::uint32_t seed)
     const int len = p.length();
     auto hits = [] (const std::string& line) { return std::any_of (line.begin(), line.end(), isHit); };
 
-    // The closed hats: a few 16th ghosts added or taken away.
+    // The closed hats: a few 16th ghosts added or taken away (on the in-between 16ths only: the
+    // beats and the offbeat 8ths, the line's backbone, stay as they are).
     auto& hats = p[Lane::closedHat];
     if (hits (hats))
         for (int n = 2 + r.nextInt (3); n > 0; --n)
         {
             const int i = r.nextInt (len);
-            if (p[Lane::openHat][(size_t) i] == '.' && i % 4 != 0)
+            if (p[Lane::openHat][(size_t) i] == '.' && i % 2 != 0)
                 hats[(size_t) i] = hats[(size_t) i] == '.' ? 'g' : '.';
         }
 

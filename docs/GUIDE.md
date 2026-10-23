@@ -279,6 +279,9 @@ An autosave is written once a minute when work has changed. **AUDIO → restore 
 | **Ctrl/Cmd + Shift + Z / Ctrl/Cmd + Y** | Redo. |
 | **Ctrl/Cmd + A**, in the editor | Select the clip's notes. |
 | **Delete / Backspace**, in the editor | Delete the selection. |
+| **Home** | Playhead to the start. |
+| **L** | Loop on / off. **Ctrl/Cmd + L** loops the selection. |
+| **C** | Metronome on / off (live only, never exported). |
 
 In this guide, **Ctrl/Cmd + F** focuses search. The arrows beside search move between results; **A− / A+** changes text size. Click a screenshot to open it larger.
 

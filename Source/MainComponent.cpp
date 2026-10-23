@@ -460,7 +460,8 @@ void MainComponent::fitSong(){
 void MainComponent::setLoopRange(double from,double to){
     project.loopStart=std::clamp(std::min(from,to),0.,project.length());project.loopEnd=std::clamp(std::max(from,to),project.loopStart,project.length());project.loop=project.loopEnd-project.loopStart>=1./960.;changed(false);
 }
-void MainComponent::checkpoint(){undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
+// Plugin states are part of the snapshot, so undoing an instrument change brings back its sound.
+void MainComponent::checkpoint(){if(!loadingPlugin)audio.capturePluginStates(project);undoStack.push_back(project);if(undoStack.size()>40)undoStack.erase(undoStack.begin());redoStack.clear();}
 void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshControls();arrangement.repaint();mixer.repaint();repaint();}
 void MainComponent::changed(bool schedule){project.normalise();dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaint();}
 void MainComponent::applyLanguage(){
@@ -488,13 +489,16 @@ void MainComponent::refreshTrack(){
     inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+instrumentName(t),juce::dontSendNotification);editorLabel.setText(tr(selectedTrack>=4?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&(audio.plugin(selectedTrack)!=nullptr||audio.effectPlugin(selectedTrack)!=nullptr));sampleButton.setEnabled(!loadingPlugin);refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
-void MainComponent::undo(bool redo){if(loadingPlugin)return;auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;auto before=project;dest.push_back(project);project=std::move(source.back());source.pop_back();project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);selectedClip=project.clipAtBeat(selectedTrack,audio.position());selectionBeat=audio.position();noClipSelection=false;arrangement.selectedClips.clear();
+void MainComponent::undo(bool redo){if(loadingPlugin)return;auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;audio.capturePluginStates(project);auto before=project;dest.push_back(project);project=std::move(source.back());source.pop_back();project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);selectedClip=project.clipAtBeat(selectedTrack,audio.position());selectionBeat=audio.position();noClipSelection=false;arrangement.selectedClips.clear();
     bool instrumentsChanged=false;for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].instrument!=before.tracks[i].instrument||project.tracks[i].instrumentPath!=before.tracks[i].instrumentPath||project.tracks[i].instrumentId!=before.tracks[i].instrumentId||project.tracks[i].sampleRoot!=before.tracks[i].sampleRoot||project.tracks[i].effectPath!=before.tracks[i].effectPath||project.tracks[i].effectId!=before.tracks[i].effectId)instrumentsChanged=true;
-    if(instrumentsChanged)restoreInstruments();piano.clearSelection();changed();if(page==Page::instrument)instrumentPanel.rebuild();}
+    // Same instruments: bring each plugin back to the sound it had in that snapshot.
+    if(instrumentsChanged)restoreInstruments();else for(size_t i=0;i<project.tracks.size();++i){const auto& t=project.tracks[i];if(t.instrument=="plugin"&&!t.instrumentState.empty()&&t.instrumentState!=before.tracks[i].instrumentState)audio.restorePluginState((int)i,juce::String::fromUTF8(t.instrumentState.c_str()));if(!t.effectState.empty()&&t.effectState!=before.tracks[i].effectState)audio.restoreEffectState((int)i,juce::String::fromUTF8(t.effectState.c_str()));}
+    piano.clearSelection();changed();if(page==Page::instrument)instrumentPanel.rebuild();}
 void MainComponent::regenerate(Scope scope,bool newTake){
     if(loadingPlugin)return;
-    const double cursor=timelinePosition();const auto oldKey=project.settings.key;
-    checkpoint();audio.stop();seekTimeline(cursor);
+    const auto oldKey=project.settings.key;
+    // Playback keeps running: the engine swaps in the new notes and restrikes only what changed.
+    checkpoint();
     auto seed=newTake?(std::uint32_t)juce::Random::getSystemRandom().nextInt():0u;
     if(newTake&&seed==0)seed=1;
     if(scope==Scope::clip)ensureTimelineClip(false);
@@ -630,7 +634,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
 void MainComponent::timerCallback(){
     const double beat=timelinePosition();positionLabel.setText(juce::String((int)beat/4+1).paddedLeft('0',3)+" : "+juce::String((int)beat%4+1)+"   /   "+juce::String((int)project.length()/4),juce::dontSendNotification);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);mixer.tick();
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
-    arrangement.repaint();piano.repaint();if(page==Page::instrument)instrumentPanel.repaint();
+    arrangement.repaint();piano.repaint();if(page==Page::instrument)instrumentPanel.repaint();audio.collectGarbage();
     if(++ticks%1200==0&&dirty&&!loadingPlugin){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
@@ -662,13 +666,24 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
         if(code=='Z'&&(page==Page::arrangement||page==Page::editor)){zoomSelection();return true;}
         if((code=='+'||code=='='||code=='-')&&(page==Page::arrangement||page==Page::editor)){auto& port=page==Page::editor?pianoPort:arrangementPort;zoomAt(page==Page::editor,code=='-'?.8:1.25,port.getWidth()*.5);return true;}
         if(code=='F'&&page==Page::arrangement){fitSong();return true;}
+        if(code=='C'){toggleMetronome();return true;}
+        if(code=='L'){loopButton.triggerClick();return true;}
         if(code=='H'&&(page==Page::arrangement||page==Page::editor)){checkpoint();humanize(clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),clipLength());tidyNotes(clip(),clipLength());piano.clearSelection();changed();return true;}
         if(page==Page::arrangement&&(k==juce::KeyPress::deleteKey||k==juce::KeyPress::backspaceKey)){timelineCommand(6);return true;}
     }
     return false;
 }
 
-bool MainComponent::requestClose(){if(!dirty)return true;return juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon,"Modifiche non salvate","Il progetto contiene modifiche. Scartarle?\nUsa SAVE per conservarle prima di chiudere.","Scarta","Annulla");}
+// Save / Discard / Cancel, as in any DAW. An untitled project opens SAVE AS and keeps the
+// current song open: close again once it is saved.
+bool MainComponent::requestClose(){if(!dirty)return true;
+    const int choice=juce::AlertWindow::showYesNoCancelBox(juce::MessageBoxIconType::QuestionIcon,tr("Unsaved changes"),tr("The project has unsaved changes. Save them before closing?"),tr("SAVE"),tr("Discard"),tr("Cancel"));
+    if(choice==2)return true;
+    if(choice!=1)return false;
+    if(loadingPlugin||projectFile==juce::File()){save(true);return false;}
+    audio.capturePluginStates(project);const auto r=saveProject(project,projectFile);
+    if(r.failed()){message(r.getErrorMessage(),true);return false;}
+    dirty=false;return true;}
 void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback){chooser=std::make_unique<juce::FileChooser>(tr(title),projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),filter);juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback](const juce::FileChooser& fc){auto f=fc.getResult();if(safe!=nullptr&&f!=juce::File())callback(f);});}
 void MainComponent::save(bool as){if(loadingPlugin){message("Attendi il caricamento dello strumento.");return;}audio.capturePluginStates(project);if(as||projectFile==juce::File()){chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[this](juce::File file){const auto target=file.withFileExtension("fga");auto next=project;next.name=target.getFileNameWithoutExtension().toStdString();auto r=saveProject(next,target);if(r.wasOk()){projectFile=target;project.name=next.name;dirty=false;message("Progetto salvato: "+projectFile.getFullPathName());repaint();}else message(r.getErrorMessage(),true);});}else{auto r=saveProject(project,projectFile);if(r.wasOk()){dirty=false;message("Progetto salvato.");repaint();}else message(r.getErrorMessage(),true);}}
 void MainComponent::open(const juce::File& file){if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}if(!requestClose())return;Project next;auto r=loadProject(file,next);if(r.failed()){message(r.getErrorMessage(),true);return;}audio.stop();undoStack.clear();redoStack.clear();project=std::move(next);editCursor=-1;projectFile=file;selectedTrack=selectedSection=0;dirty=false;piano.clearSelection();audio.publish(project);refreshControls();restoreInstruments();select(4,0);showArrangement();message("Progetto aperto. I file audio e i plugin restano esterni al progetto.");repaint();}

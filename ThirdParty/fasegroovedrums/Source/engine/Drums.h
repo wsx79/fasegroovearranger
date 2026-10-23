@@ -27,6 +27,12 @@ const char* laneShortName (int lane) noexcept;   // "KICK", "C.HAT" ... (the gri
 /** General MIDI drum note of a lane (kick 36, snare 38, clap 39 ...). */
 int defaultNote (int lane) noexcept;
 
+/** Ready-made note maps for common drum samplers: General MIDI, a 16-pad drum rack (C1 to D#2),
+    MPC pads (bank A) and one note per drum from C1. */
+constexpr int numNoteMaps = 4;
+const char* noteMapName (int map) noexcept;
+int noteMapNote (int map, int lane) noexcept;
+
 /** The lane a MIDI note plays in the default (General MIDI) mapping, or -1. Covers the GM
     neighbours too (e.g. 35 = kick, 40 = snare, 44 = closed hat, 41..50 = toms). */
 int laneForGeneralMidiNote (int note) noexcept;

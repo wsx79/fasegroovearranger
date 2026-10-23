@@ -28,6 +28,28 @@ int defaultNote (int lane) noexcept
     return lane >= 0 && lane < numLanes ? notes[lane] : 36;
 }
 
+const char* noteMapName (int map) noexcept
+{
+    static const char* names[] { "General MIDI", "Drum rack (16 pads, C1-D#2)", "MPC pads (bank A)", "One note per drum from C1" };
+    return map >= 0 && map < numNoteMaps ? names[map] : "";
+}
+
+int noteMapNote (int map, int lane) noexcept
+{
+    // Lanes: kick, snare, clap, rim, closed hat, open hat, ride, shaker, tambourine, conga, cowbell, tom, crash.
+    static const int rack[] { 36, 38, 39, 37, 42, 46, 51, 44, 40, 47, 48, 43, 49 };   // every drum on one of the 16 pads
+    static const int mpc[]  { 36, 38, 40, 37, 42, 46, 51, 82, 44, 48, 47, 45, 49 };   // the MPC's default pads
+    if (lane < 0 || lane >= numLanes)
+        return 36;
+    switch (map)
+    {
+        case 1:  return rack[lane];
+        case 2:  return mpc[lane];
+        case 3:  return 36 + lane;
+        default: return defaultNote (lane);
+    }
+}
+
 int laneForGeneralMidiNote (int note) noexcept
 {
     switch (note)
