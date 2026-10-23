@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.14.1 — 2026-10-23
+
+- Corretto il build Windows del browser campioni.
+
 ## 0.14.0 — 2026-10-23
 
 - Browser campioni (BROWSER, tasto B): le tue cartelle di campioni e i preferiti, salvati; si riapre nell'ultima cartella. Percorso, avanti/indietro/su, ricerca, filtro per tipo, ordinamento per nome, data, dimensione o durata, informazioni sul file, ascolto con autopreview opzionale, caricamento con doppio clic, Invio, LOAD o trascinando su una traccia. Le cartelle si scansionano in background.

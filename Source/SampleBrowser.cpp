@@ -245,7 +245,7 @@ void SampleBrowser::navigate(const juce::File& f,bool remember){
         juce::MessageManager::callAsync([safe,gen,listing]{if(safe!=nullptr&&safe->shared->generation.load()==gen)safe->listingArrived(std::move(*listing));});
         // Audio headers (duration, rate, channels) for the list, the info line and length sorting.
         juce::AudioFormatManager formats;formats.registerBasicFormats();auto last=juce::Time::getMillisecondCounter();bool pending=false;
-        auto post=[&]{pending=false;last=juce::Time::getMillisecondCounter();juce::MessageManager::callAsync([safe,gen]{if(safe!=nullptr&&safe->shared->generation.load()==gen)safe->infoArrived();});};
+        auto post=[&pending,&last,safe,gen]{pending=false;last=juce::Time::getMillisecondCounter();juce::MessageManager::callAsync([safe,gen]{if(safe!=nullptr&&safe->shared->generation.load()==gen)safe->infoArrived();});};
         for(const auto& e:items){
             if(state->generation.load()!=gen)return;
             samples::AudioInfo known;if(e.folder||!samples::isSupportedAudio(e.file)||state->cache.get(e,known))continue;

@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.14.1 — 2026-10-23
+
+- Fix Windows build of sample browser.
+
 ## 0.14.0 — 2026-10-23
 
 - Sample browser (BROWSER, key B): your sample folders and favourites, saved; it reopens at the last folder. Breadcrumb, back/forward/up, search, type filter, sort by name, date, size or length, file info, preview with optional auto-preview, load by double-click, Enter, LOAD or by dragging onto a track. Folders scan in the background.
