@@ -28,6 +28,11 @@ int ArrangementView::heightEdgeAt(const juce::MouseEvent& e) const {
 }
 void ArrangementView::paint(juce::Graphics& g){
     g.fillAll(Palette::field);auto view=owner.arrangementPort.getViewArea();const auto& p=owner.project;
+    // Readable grid: alternate track shading, bar lines (stronger every 4 shown) and section edges.
+    {for(int row=1;row<trackCount;row+=2){g.setColour(Palette::panel.withAlpha(.32f));g.fillRect(headerWidth,rowY(row),getWidth()-headerWidth,rowHeight(row));}
+        const int interval=pixelsPerBar<12?16:pixelsPerBar<30?8:pixelsPerBar<60?4:1;const int first=std::max(0,(int)(view.getX()/pixelsPerBar)/interval*interval);const float bottom=(float)totalHeight();
+        for(int bar=first;;bar+=interval){const int x=headerWidth+(int)(bar*pixelsPerBar);if(x>view.getRight()||x>getWidth())break;g.setColour(Palette::panelEdge.withAlpha(bar%(interval*4)==0?.6f:.3f));g.drawVerticalLine(x,(float)rulerHeight,bottom);}
+        g.setColour(Palette::panelEdge.brighter(.25f));for(size_t si=1;si<p.sections.size();++si)g.drawVerticalLine(headerWidth+(int)(p.sectionStart((int)si)/4*pixelsPerBar),(float)rulerHeight,bottom);}
     for(int row=0;row<trackCount;++row){const size_t ti=(size_t)trackAtRow(row);int y=rowY(row);const auto& t=p.tracks[ti];double occupied=0;
         if((int)ti==owner.selectedTrack){g.setColour(colour((int)ti).withAlpha(.045f));g.fillRect(0,y,getWidth(),rowHeight(row));}
         for(size_t si=0;si<t.clips.size();++si){const double begin=p.clipStart((int)ti,(int)si),duration=p.clipLength((int)ti,(int)si),end=begin+duration,visible=std::max(begin,occupied);occupied=std::max(occupied,end);if(visible>=end)continue;int x=headerWidth+(int)(visible/4*pixelsPerBar);int w=(int)((end-visible)/4*pixelsPerBar);juce::Rectangle<int> cell(x+1,y+3,std::max(1,w-2),rowHeight(row)-6);if(cell.getRight()<=view.getX()+headerWidth||cell.getX()>=view.getRight())continue;const auto& c=t.clips[si];bool sel=(int)ti==owner.selectedTrack&&(owner.arrangement.selectedClips.count((int)si)>0||(int)si==owner.clipIndex());
@@ -51,13 +56,15 @@ void ArrangementView::paint(juce::Graphics& g){
         for(const auto& point:volume.points){const float x=headerWidth+(float)(point.beat/4*pixelsPerBar),y=volumeY(ti,point.value);if(x<view.getX()+headerWidth||x>view.getRight())continue;g.fillEllipse(x-4,y-4,8,8);}
     }
     // Track headers stay visible while the song scrolls horizontally.
-    for(int row=0;row<trackCount;++row){const size_t ti=(size_t)trackAtRow(row);int y=rowY(row);const auto& t=p.tracks[ti];int x=view.getX();g.setColour((int)ti==owner.selectedTrack?Palette::control:Palette::panel);g.fillRect(x,y,headerWidth,rowHeight(row)-1);g.setColour(colour((int)ti));g.fillRect(x+8,y+8,3,20);label(g,juce::String(row+1).paddedLeft('0',2),{x+18,y+2,26,30},10,Palette::dim);label(g,utf(t.name),{x+48,y+1,82,22},12);label(g,t.locked?"LOCK":t.instrument=="internal"?"INTERNAL":t.instrument=="sample"?"SAMPLE":"VST / AU",{x+48,y+20,104,13},8,Palette::dim);
-        label(g,"A",{x+132,y+5,17,24},11,p.tracks[ti].volume.enabled?Palette::accent2:volumeVisible[ti]?Palette::text:Palette::dim);
-        label(g,"M",{x+153,y+5,17,24},11,t.mute?Palette::toms:Palette::dim);label(g,"S",{x+174,y+5,17,24},11,t.solo?Palette::accent:Palette::dim);
-        auto config=juce::Rectangle<float>((float)x+194,(float)y+6,19,24);
-        g.setColour(Palette::accent.withAlpha(.18f));g.fillRoundedRectangle(config,4);
-        g.setColour(Palette::accent.withAlpha(.7f));g.drawRoundedRectangle(config.reduced(.5f),4,1);
-        IconButton::drawIcon(g,IconButton::Icon::gear,config.reduced(3,5),Palette::accent);
+    for(int row=0;row<trackCount;++row){const size_t ti=(size_t)trackAtRow(row);int y=rowY(row);const auto& t=p.tracks[ti];int x=view.getX();g.setColour((int)ti==owner.selectedTrack?Palette::control:Palette::panel);g.fillRect(x,y,headerWidth,rowHeight(row)-1);g.setColour(colour((int)ti));g.fillRect(x+8,y+8,3,20);label(g,juce::String(row+1).paddedLeft('0',2),{x+18,y+2,26,30},10,Palette::dim);g.setColour((int)ti==owner.selectedTrack?Palette::text:Palette::text.withAlpha(.88f));g.setFont(FamilyTheme::font(11.5f,true));g.drawFittedText(Localisation::upper(utf(t.name)),{x+48,y+1,82,22},juce::Justification::centredLeft,1,.8f);label(g,t.locked?"LOCK":t.instrument=="internal"?"INTERNAL":t.instrument=="sample"?"SAMPLE":"VST / AU",{x+48,y+20,104,13},8,Palette::dim);
+        // A / M / S read as small switches: filled when on, outlined when off.
+        auto pill=[&](const char* text,int px,bool on,juce::Colour c){const juce::Rectangle<float> r((float)px,(float)y+8,17,18);g.setColour(on?c.withAlpha(.24f):Palette::field.withAlpha(.6f));g.fillRoundedRectangle(r,3);g.setColour(on?c:Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(r.reduced(.5f),3,1);
+            g.setColour(on?c:Palette::dim);g.setFont(FamilyTheme::font(10.f,true));g.drawText(text,r,juce::Justification::centred);};
+        pill("A",x+132,p.tracks[ti].volume.enabled||volumeVisible[ti],p.tracks[ti].volume.enabled?Palette::accent2:Palette::text);pill("M",x+153,t.mute,Palette::toms);pill("S",x+174,t.solo,Palette::accent);
+        auto config=juce::Rectangle<float>((float)x+194,(float)y+6,19,24);const bool current=(int)ti==owner.selectedTrack;
+        g.setColour(current?Palette::accent.withAlpha(.18f):Palette::field.withAlpha(.6f));g.fillRoundedRectangle(config,4);
+        g.setColour(current?Palette::accent.withAlpha(.7f):Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(config.reduced(.5f),4,1);
+        IconButton::drawIcon(g,IconButton::Icon::gear,config.reduced(3,5),current?Palette::accent:Palette::dim);
         if(volumeVisible[ti]){g.setColour(Palette::panel);g.fillRect(x,y+rowHeight(row),headerWidth,80);label(g,"VOLUME AUTOMATION",{x+16,y+rowHeight(row),190,20},10,Palette::dim);label(g,t.volume.enabled?"ON":"BYPASS",{x+16,y+rowHeight(row)+24,88,24},11,t.volume.enabled?Palette::accent2:Palette::dim);label(g,"0 / 100 / 200%",{x+16,y+rowHeight(row)+51,184,20},9,Palette::dim);}
         g.setColour(Palette::panelEdge);g.fillRoundedRectangle((float)x+88,(float)(y+rowHeight(row)-4),40,2,1);
         float meter=std::clamp(owner.audio.level((int)ti),0.f,1.f);g.setColour(Palette::cymbals.withAlpha(.7f));g.fillRect(x+212,y+rowHeight(row)-5-(int)(meter*25),2,(int)(meter*25));
@@ -73,7 +80,10 @@ void ArrangementView::paint(juce::Graphics& g){
     const int first=std::max(0,(int)(view.getX()/pixelsPerBar)/interval*interval);
     for(int bar=first;bar<=(getWidth()-headerWidth)/pixelsPerBar;bar+=interval){const int x=headerWidth+(int)(bar*pixelsPerBar);if(x>view.getRight())break;g.setColour(Palette::panelEdge);g.drawVerticalLine(x,(float)y+34,(float)y+60);label(g,juce::String(bar+1),{x+4,y+33,44,24},10,Palette::dim);}
     g.setColour(Palette::panel);g.fillRect(view.getX(),y,headerWidth,rulerHeight);label(g,"INSTRUMENT / TRACK",{view.getX()+16,y+12,190,32},10,Palette::dim);
-    const float playX=headerWidth+(float)(owner.timelinePosition()/4*pixelsPerBar);if(playX>view.getX()+headerWidth&&playX<view.getRight()){g.setColour(Palette::accent2);g.fillRect(playX,(float)y+32,1.5f,(float)view.getHeight()-32);}
+    if(dropTrack>=0){const int row=rowForTrack(dropTrack);const juce::Rectangle<float> target((float)view.getX()+1,(float)rowY(row)+1,(float)view.getWidth()-2,(float)rowHeight(row)-2);
+        g.setColour(Palette::accent2.withAlpha(.12f));g.fillRect(target);g.setColour(Palette::accent2);g.drawRect(target,1.5f);}
+    const float playX=headerWidth+(float)(owner.timelinePosition()/4*pixelsPerBar);if(playX>view.getX()+headerWidth&&playX<view.getRight()){g.setColour(Palette::accent2);g.fillRect(playX,(float)y+32,1.5f,(float)view.getHeight()-32);
+        juce::Path head;head.addTriangle(playX-5,(float)y+32,playX+6.5f,(float)y+32,playX+.75f,(float)y+39);g.fillPath(head);}
     if(clipMoving&&clipTrack>=0&&clipTarget>=0){auto indices=selectedClips;indices.insert(clipSource);double delta=clipDropBeat-p.clipStart(clipTrack,clipSource);for(int index:indices)delta=std::max(delta,-p.clipStart(clipTrack,index));g.setColour(Palette::accent2);for(int index:indices){if(index<0||index>=(int)p.tracks[(size_t)clipTrack].clips.size())continue;const float x=headerWidth+(float)((p.clipStart(clipTrack,index)+delta)/4*pixelsPerBar);g.drawRoundedRectangle({x+2,(float)rowY(rowForTrack(clipTarget))+3,std::max(2.f,(float)(p.clipLength(clipTrack,index)/4*pixelsPerBar)-4),(float)rowHeight(rowForTrack(clipTarget))-6},4,2.f);}}
 
 }
@@ -315,10 +325,7 @@ public:
 };
 MainComponent::MainComponent(){
     Localisation::loadSaved();for(int track=0;track<trackCount;++track){const auto key="trackHeight"+juce::String(track);arrangement.trackHeights[(size_t)track]=std::clamp(Localisation::setting(key.toRawUTF8(),"40").getIntValue(),40,240);}if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,4096);inspectorWidth=std::clamp(Localisation::setting("inspectorWidth","216").getIntValue(),184,480);
-    for(auto* button:{&timelineCut,&timelineCopy,&timelinePaste,&timelineSplit,&timelineDuplicate,&timelineDelete})addAndMakeVisible(*button);
     addAndMakeVisible(timelineGrid);timelineGrid.addItemList({"SNAP: 1 bar","SNAP: 1 beat","SNAP: 1/2 beat","SNAP: 1/4 beat","SNAP: OFF"},1);timelineGrid.setSelectedId(2);timelineGrid.onChange=[this]{const double grids[]{4,1,.5,.25,0};timelineSnap=grids[std::clamp(timelineGrid.getSelectedItemIndex(),0,4)];};
-    timelineCut.getProperties().set("fgaTip","Cut selected clips to the clipboard; Ctrl/Cmd+X.");timelineCopy.getProperties().set("fgaTip","Copy selected clips; Ctrl/Cmd+C. Shift-click selects more clips on this track.");timelinePaste.getProperties().set("fgaTip","Paste clips at the playback cursor; Ctrl/Cmd+V. Outside fragments are preserved; Undo restores the edit.");timelineSplit.getProperties().set("fgaTip","Split the selected clip at the playback cursor; S or Ctrl/Cmd+E.");timelineDuplicate.getProperties().set("fgaTip","Duplicate selected clips immediately after their end; Ctrl/Cmd+D.");timelineDelete.getProperties().set("fgaTip","Delete selected clips and leave a gap; Delete or Backspace.");timelineGrid.getProperties().set("fgaTip","Snap clip movement and split/paste positions to this grid. Hold Shift during a drag for free timing.");
-    timelineCut.onClick=[this]{timelineCommand(1);};timelineCopy.onClick=[this]{timelineCommand(2);};timelinePaste.onClick=[this]{timelineCommand(3);};timelineSplit.onClick=[this]{timelineCommand(4);};timelineDuplicate.onClick=[this]{timelineCommand(5);};timelineDelete.onClick=[this]{timelineCommand(6);};
     for(juce::Component* c:std::initializer_list<juce::Component*>{&backButton,&instrumentButton,&editButton,&leadButton,&arrangeButton,&guitarNotesButton,&durationLabel,&sectionSelector,&panelSections})addAndMakeVisible(c);
     instrumentPort.setViewedComponent(&instrumentPanel,false);instrumentPort.setScrollBarsShown(true,false);addAndMakeVisible(instrumentPort);
     backButton.onClick=[this]{showArrangement();};instrumentButton.onClick=[this]{showInstrument();};editButton.onClick=[this]{showEditor();};
@@ -343,6 +350,17 @@ MainComponent::MainComponent(){
     mixerToggle.onClick=[this]{mixerVisible=mixerToggle.getToggleState();resized();};
     followButton.onClick=[this]{followPlayhead=followButton.getToggleState();};
     fitSongButton.onClick=[this]{fitSong();};
+    // Sample browser docked on the right of the arrangement (B).
+    addAndMakeVisible(browserToggle);browserToggle.setClickingTogglesState(true);browserToggle.onClick=[this]{showSampleBrowser(browserToggle.getToggleState());};
+    browserToggle.getProperties().set("fgaTip","Show the sample browser: your sample folders, preview and drag onto a track. Shortcut: B.");
+    addChildComponent(sampleBrowser);
+    sampleBrowser.onLoad=[this](const juce::File& file){if(loadingPlugin){message(tr("Wait for the instrument to finish loading."),true);return;}loadSampleFile(selectedTrack,file);};
+    sampleBrowser.onMessage=[this](const juce::String& text,bool error){message(text,error);};
+    sampleBrowser.targetName=[this]{return utf(project.tracks[(size_t)selectedTrack].name);};
+    browserVisible=Localisation::setting("sampleBrowserVisible","0")=="1";browserToggle.setToggleState(browserVisible,juce::dontSendNotification);
+    addAndMakeVisible(metronomeButton);metronomeButton.onClick=[this]{toggleMetronome();};
+    metronomeButton.getProperties().set("fgaTip","Metronome while playing (never exported). Shortcut: C.");
+    positionLabel.setFont(FamilyTheme::font(13.f,true));positionLabel.setColour(juce::Label::textColourId,Palette::accent2);positionLabel.setJustificationType(juce::Justification::centredLeft);
     for(auto* b:{&zoomSelectionButton,&loopSelectionButton})addAndMakeVisible(b);
     zoomSelectionButton.onClick=[this]{zoomSelection();};loopSelectionButton.onClick=[this]{loopSelection();};
     zoomSelectionButton.getProperties().set("fgaTip","Zoom to the selected clips or notes. Shortcut: Z.");
@@ -474,7 +492,7 @@ void MainComponent::showInstrument(){page=Page::instrument;instrumentPanel.rebui
 void MainComponent::showEditor(){ensureTimelineClip();page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
 void MainComponent::select(int track,int section){const int previousTrack=selectedTrack,previousSection=selectedSection;selectedTrack=std::clamp(track,0,16);selectedSection=std::clamp(section,0,(int)project.sections.size()-1);if(previousTrack!=selectedTrack||previousSection!=selectedSection){noClipSelection=false;selectedClip=project.clipAtBeat(selectedTrack,project.sectionStart(selectedSection));selectionBeat=project.sectionStart(selectedSection)+1./1920.;arrangement.selectedClips.clear();}piano.clearSelection();sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);refreshTrack();updateSizes();piano.fitNotes();pianoPort.setViewPosition(0,0);trackInspector.refresh();mixer.refresh();mixer.reveal(selectedTrack);
     if(page==Page::arrangement){const auto v=arrangementPort.getViewArea();const int y=arrangement.rowY(rowForTrack(selectedTrack));if(y<v.getY()+rulerHeight)arrangementPort.setViewPosition(v.getX(),std::max(0,y-rulerHeight));else if(y+arrangement.rowHeight(rowForTrack(selectedTrack))>v.getBottom())arrangementPort.setViewPosition(v.getX(),y+arrangement.rowHeight(rowForTrack(selectedTrack))-v.getHeight());}
-    arrangement.repaint();piano.repaint();}
+    sampleBrowser.refreshTarget();arrangement.repaint();piano.repaint();}
 void MainComponent::refreshControls(){
     refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(tempo.minBpm,tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);leadButton.setButtonText("GUITAR LEADS");sectionSelector.clear(juce::dontSendNotification);for(size_t i=0;i<project.sections.size();++i)sectionSelector.addItem(utf(project.sections[i].name),((int)i)+1);sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
     tempoSlider.setValue(s.bpm,juce::dontSendNotification);swingSlider.setValue(s.swing*100,juce::dontSendNotification);densitySlider.setValue(s.density*100,juce::dontSendNotification);humanizeSlider.setValue(s.humanize*100,juce::dontSendNotification);masterSlider.setValue(juce::Decibels::gainToDecibels(project.masterGain,-60.),juce::dontSendNotification);loopButton.setToggleState(project.loop,juce::dontSendNotification);
@@ -519,7 +537,7 @@ void MainComponent::paint(juce::Graphics& g){
     auto panel=[&](juce::Rectangle<int> r){g.setColour(Palette::panel);g.fillRoundedRectangle(r.toFloat(),8);g.setColour(Palette::panelEdge);g.drawRoundedRectangle(r.toFloat().reduced(.5f),8,1);};
     panel({624,18,390,68});panel({1024,18,getWidth()-1044,68});
     g.setColour(Palette::accent);g.fillRoundedRectangle(636,27,3,12,1);
-    label(g,"TRANSPORT & TEMPO",{645,23,146,20},11.5f);
+    label(g,"TRANSPORT",{645,23,82,20},11.5f);
     const double seconds=project.length()*60/project.settings.bpm;
     label(g,utf(project.name)+(dirty?" *":"")+" / "+juce::String((int)seconds/60)+":"+juce::String((int)seconds%60).paddedLeft('0',2),{1036,23,getWidth()-1060,20},13);
     for(int y:{110,192,getHeight()-31}){g.setColour(Palette::panelEdge);g.fillRect(20,y,getWidth()-40,1);}
@@ -530,7 +548,9 @@ void MainComponent::resized(){
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
     arrangementPort.setVisible(song);instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song);inspectorCollapse.setVisible(song);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&zoomSlider,&durationLabel,&arrangeButton})c->setVisible(song);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&durationLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
+    zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
+    sampleBrowser.setVisible(song&&browserVisible);
     automationButton.setVisible(song);
     bassBox.setVisible(false);stringsBox.setVisible(false); // instrument-owned styles live in their panels
     for(juce::Component* c:std::initializer_list<juce::Component*>{&soundButton,&soundBox,&sampleButton,&loadPluginButton,&pluginEditorButton,&gainSlider,&panSlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&inspectorLabel})c->setVisible(engine);
@@ -545,26 +565,34 @@ void MainComponent::resized(){
     for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&newButton,46},{&openButton,54},{&saveButton,54},{&saveAsButton,70},{&undoButton,30},{&redoButton,30}}){place(*item.first,x,22,item.second,26);x+=item.second+4;}
     undoButton.setConnectedEdges(juce::Button::ConnectedOnRight);redoButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     x=282;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&exportButton,74},{&settingsButton,70},{&aboutButton,100},{&helpButton,70}}){place(*item.first,x,60,item.second,26);x+=item.second+4;}
-    place(rewindButton,636,48,34,30);place(playButton,670,48,40,30);place(stopButton,710,48,34,30);place(tempoSlider,756,48,154,30);place(loopButton,912,48,94,30);place(positionLabel,796,23,210,18);
-    place(keyBox,1036,48,64,30);place(scaleBox,1108,48,154,30);place(masterSlider,1270,48,w-1310,30);place(chordEditButton,w-150,88,132,22);
-    for(auto* button:{&timelineCut,&timelineCopy,&timelinePaste,&timelineSplit,&timelineDuplicate,&timelineDelete,&zoomSelectionButton,&loopSelectionButton})button->setVisible(song);timelineGrid.setVisible(song);
+    // Transport: position counter, loop and click on the title row; buttons and tempo below.
+    place(positionLabel,730,22,122,22);place(loopButton,858,22,70,22);place(metronomeButton,932,22,74,22);
+    place(rewindButton,636,48,34,30);place(playButton,670,48,40,30);place(stopButton,710,48,34,30);place(tempoSlider,756,48,250,30);
+    place(keyBox,1036,48,64,30);place(scaleBox,1108,48,154,30);place(masterSlider,1270,48,w-1310,30);
+    for(auto* button:{&zoomSelectionButton,&loopSelectionButton})button->setVisible(song);timelineGrid.setVisible(song);
     if(song){
         x=16;place(genreBox,x,118,178);x+=188;place(durationLabel,x,118,82);x+=92;place(arrangeButton,x,118,170);x+=180;place(songButton,x,118,154);x+=164;place(trackButton,x,118,140);x+=148;place(sectionButton,x,118,154);x+=162;place(clipButton,x,118,140);x+=148;place(addSectionButton,x,118,114);
-        x=16;place(progressionBox,x,159,210);x+=218;place(harmonyButton,x,159,118);x+=126;place(extensionBox,x,159,116);x+=124;place(voicingBox,x,159,116);x+=124;place(densitySlider,x,159,150);x+=158;place(swingSlider,x,159,150);x+=158;place(humanizeSlider,x,159,150);x+=158;place(zoomSlider,x,159,150);
-        x=16;for(auto* button:{&timelineCut,&timelineCopy,&timelinePaste,&timelineSplit,&timelineDuplicate,&timelineDelete}){const int width=button==&timelineDuplicate?108:78;place(*button,x,199,width,26);x+=width+6;}place(timelineGrid,x+12,199,170,26);place(zoomSelectionButton,x+194,199,154,26);place(loopSelectionButton,x+354,199,154,26);place(leadButton,1074,199,220,26);
+        // Harmony row: progression, chords and the global feel controls.
+        x=16;place(progressionBox,x,159,210);x+=218;place(harmonyButton,x,159,118);x+=126;place(chordEditButton,x,159,118);x+=126;place(extensionBox,x,159,116);x+=124;place(voicingBox,x,159,116);x+=124;place(densitySlider,x,159,150);x+=158;place(swingSlider,x,159,150);x+=158;place(humanizeSlider,x,159,150);
+        // Arrangement toolbar: editing and view on the left, panels on the right.
+        x=16;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&timelineGrid,150},{&zoomSelectionButton,140},{&loopSelectionButton,140},{&fitSongButton,100},{&followButton,90},{&automationButton,140}}){place(*item.first,x,199,item.second,26);x+=item.second+8;}
+        x=w-16;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&mixerToggle,90},{&browserToggle,100},{&inspectorToggle,110},{&leadButton,170}}){x-=item.second;place(*item.first,x,199,item.second,26);x-=8;}
         const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-476)):28;
         const int footer=getHeight()-31-dockHeight-38;
         inspectorWidth=std::clamp(inspectorWidth,184,std::max(184,std::min(480,w/3)));
         const int left=inspectorVisible?inspectorWidth+24:56;
-        arrangementPort.setBounds(left,238,w-left-12,std::max(60,footer-246));
+        // The browser takes the full height on the right; arrangement, harmony line and mixer share the rest.
+        const int browserWidth=browserVisible?std::clamp(w/4,300,380):0,right=w-12-(browserVisible?browserWidth+8:0);
+        sampleBrowser.setBounds(w-12-browserWidth,238,browserWidth,std::max(120,getHeight()-35-238));
+        arrangementPort.setBounds(left,238,right-left,std::max(60,footer-246));
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,238,inspectorVisible?inspectorWidth:32,std::max(60,footer-238));trackInspector.setSize(inspectorVisible?inspectorWidth-16:32,inspectorVisible?634:inspectorPort.getHeight());
         inspectorCollapse.setBounds(inspectorVisible?inspectorWidth-32:16,242,24,22);inspectorCollapse.setButtonText(inspectorVisible?"<":">");inspectorCollapse.toFront(false);
         inspectorResizer.setBounds(12+inspectorWidth,238,8,std::max(60,footer-238));inspectorResizer.toFront(false);
-        mixer.setBounds(12,footer+36,w-24,dockHeight);
-        place(chordsLabel,18,footer,w-650,28);
-        int fx=w-626;for(const auto& item:std::initializer_list<std::pair<juce::Component*,int>>{{&inspectorToggle,112},{&mixerToggle,90},{&fitSongButton,112},{&followButton,96},{&automationButton,160}}){place(*item.first,fx,footer,item.second);fx+=item.second+6;}
+        mixer.setBounds(12,footer+36,right-12,dockHeight);
+        place(chordsLabel,18,footer,right-24,28);
     }else{
+        sampleBrowser.setVisible(false);chordEditButton.setVisible(true);place(chordEditButton,1118,122,114);
         place(backButton,16,122,160);place(sectionSelector,600,122,230);place(editButton,w-170,122,150);place(instrumentButton,w-200,122,180);place(leadButton,850,122,260);place(panelSections,850,122,260);
         if(engine){
             inspectorLabel.setVisible(false);soundButton.setVisible(true);sampleButton.setVisible(true);soundBox.setVisible(false);
@@ -624,7 +652,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     select(0,1);showInstrument();capture("piano-family-extended");const auto take=clip().seed;regenerate(Scope::clip);ok=mark("regenerate",clip().seed!=take&&clip().motifSeed!=0)&&ok;const auto generated=clip();if(clipButton.onClick)clipButton.onClick();ok=mark("apply-clip",clip()==generated)&&ok;
     showArrangement();fitSong();ok=mark("fit-song",arrangementPort.isVisible()&&!pianoPort.isVisible()&&headerWidth+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth())&&ok;capture("interface");
     ok=mark("automation",arrangement.verifyAutomation(folder))&&ok;
-    capture("daw-workspace");ok=mark("daw-workspace",verifyDawWorkspace(folder))&&ok;ok=mark("timeline",verifyTimelineEditing(folder))&&ok;ok=mark("navigation",verifyNavigation(folder))&&ok;
+    capture("daw-workspace");ok=mark("daw-workspace",verifyDawWorkspace(folder))&&ok;ok=mark("timeline",verifyTimelineEditing(folder))&&ok;ok=mark("navigation",verifyNavigation(folder))&&ok;ok=mark("sample-browser",verifySampleBrowser(folder))&&ok;
     juce::String layoutReport,editingReport;
     for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(track>=4)ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
     folder.getChildFile("panel-layout.txt").replaceWithText(layoutReport);folder.getChildFile("midi-editing.txt").replaceWithText(editingReport);
@@ -634,7 +662,10 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
 void MainComponent::timerCallback(){
     const double beat=timelinePosition();positionLabel.setText(juce::String((int)beat/4+1).paddedLeft('0',3)+" : "+juce::String((int)beat%4+1)+"   /   "+juce::String((int)project.length()/4),juce::dontSendNotification);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);mixer.tick();
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
-    arrangement.repaint();piano.repaint();if(page==Page::instrument)instrumentPanel.repaint();audio.collectGarbage();
+    // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):
+    // an idle arranger uses no CPU for drawing.
+    static double lastBeat=-1;const bool moving=audio.isPlaying()||beat!=lastBeat||audio.masterLevel()>0||juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown();lastBeat=beat;
+    if(moving){arrangement.repaint();if(page==Page::editor)piano.repaint();if(page==Page::instrument)instrumentPanel.repaint();}audio.collectGarbage();
     if(++ticks%1200==0&&dirty&&!loadingPlugin){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
@@ -666,6 +697,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
         if(code=='Z'&&(page==Page::arrangement||page==Page::editor)){zoomSelection();return true;}
         if((code=='+'||code=='='||code=='-')&&(page==Page::arrangement||page==Page::editor)){auto& port=page==Page::editor?pianoPort:arrangementPort;zoomAt(page==Page::editor,code=='-'?.8:1.25,port.getWidth()*.5);return true;}
         if(code=='F'&&page==Page::arrangement){fitSong();return true;}
+        if(code=='B'&&page==Page::arrangement){showSampleBrowser(!browserVisible);return true;}
         if(code=='C'){toggleMetronome();return true;}
         if(code=='L'){loopButton.triggerClick();return true;}
         if(code=='H'&&(page==Page::arrangement||page==Page::editor)){checkpoint();humanize(clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),clipLength());tidyNotes(clip(),clipLength());piano.clearSelection();changed();return true;}
@@ -688,7 +720,8 @@ void MainComponent::chooseFile(const juce::String& title,const juce::String& fil
 void MainComponent::save(bool as){if(loadingPlugin){message("Attendi il caricamento dello strumento.");return;}audio.capturePluginStates(project);if(as||projectFile==juce::File()){chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[this](juce::File file){const auto target=file.withFileExtension("fga");auto next=project;next.name=target.getFileNameWithoutExtension().toStdString();auto r=saveProject(next,target);if(r.wasOk()){projectFile=target;project.name=next.name;dirty=false;message("Progetto salvato: "+projectFile.getFullPathName());repaint();}else message(r.getErrorMessage(),true);});}else{auto r=saveProject(project,projectFile);if(r.wasOk()){dirty=false;message("Progetto salvato.");repaint();}else message(r.getErrorMessage(),true);}}
 void MainComponent::open(const juce::File& file){if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}if(!requestClose())return;Project next;auto r=loadProject(file,next);if(r.failed()){message(r.getErrorMessage(),true);return;}audio.stop();undoStack.clear();redoStack.clear();project=std::move(next);editCursor=-1;projectFile=file;selectedTrack=selectedSection=0;dirty=false;piano.clearSelection();audio.publish(project);refreshControls();restoreInstruments();select(4,0);showArrangement();message("Progetto aperto. I file audio e i plugin restano esterni al progetto.");repaint();}
 void MainComponent::restoreInstruments(){pluginWindow.reset();for(int i=0;i<trackCount;++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,juce::File(utf(t.instrumentPath)),t.sampleRoot);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));if(!t.effectPath.empty()||!t.effectId.empty())loadEffectFile(i,juce::File::isAbsolutePath(utf(t.effectPath))?juce::File(utf(t.effectPath)):juce::File(),utf(t.effectId),utf(t.effectState));}audio.publish(project);}
-void MainComponent::loadSampleFile(int track,const juce::File& file){pluginWindow.reset();checkpoint();auto& t=project.tracks[(size_t)track];int root=track>=4?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;auto r=audio.loadSample(track,file,root);if(r.failed()){message(r.getErrorMessage(),true);return;}t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);message(juce::String::fromUTF8("Campione caricato · nota radice ")+juce::String(root)+" (tasto destro sulla traccia per cambiarla).");}
+void MainComponent::loadSampleFile(int track,const juce::File& file){pluginWindow.reset();checkpoint();auto& t=project.tracks[(size_t)track];int root=track>=4?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;auto r=audio.loadSample(track,file,root);if(r.failed()){message(r.getErrorMessage(),true);return;}t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();
+    message(tr("Sample loaded")+": "+file.getFileName()+juce::String::fromUTF8(" → ")+Localisation::upper(utf(t.name))+juce::String::fromUTF8("  ·  ")+tr("root note")+" "+juce::MidiMessage::getMidiNoteName(root,true,true,3)+" ("+tr("right-click the track to change it")+").");}
 void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
     if(id.isNotEmpty())audio.markMissing(track);
     if(auto xml=juce::XmlDocument::parse(id)){
@@ -764,6 +797,23 @@ void MainComponent::showPluginMenu(juce::Component*){
 }
 void MainComponent::importFile(const juce::File& f){auto imported=clip();const double duration=clipIndex()<0?4.:clipLength();auto r=importMidi(f,imported,duration);if(r.failed()){message(r.getErrorMessage(),true);return;}if(clipIndex()<0){imported.span=duration;auto edited=project;const int placed=edited.placeClip(selectedTrack,std::move(imported),arrangement.snapBeat(timelinePosition()));if(placed<0)return;checkpoint();project=std::move(edited);selectClip(selectedTrack,placed);}else{checkpoint();clip()=std::move(imported);}piano.clearSelection();changed();message("MIDI importato nel clip selezionato.");}
 
+void MainComponent::showSampleBrowser(bool visible){
+    browserVisible=visible;browserToggle.setToggleState(visible,juce::dontSendNotification);Localisation::setSetting("sampleBrowserVisible",visible?"1":"0");
+    if(visible&&page!=Page::arrangement)showArrangement();resized();
+}
+bool MainComponent::isInterestedInDragSource(const SourceDetails& details){return details.description.toString().startsWith(SampleBrowser::dragPrefix);}
+void MainComponent::itemDragMove(const SourceDetails& details){
+    int track=-1;
+    if(page==Page::arrangement&&arrangementPort.getBounds().contains(details.localPosition)){const auto point=arrangement.getLocalPoint(this,details.localPosition);const int row=arrangement.rowAt(point.y);if(row>=0&&point.y>=arrangementPort.getViewArea().getY()+rulerHeight)track=trackAtRow(row);}
+    if(track!=arrangement.dropTrack){arrangement.dropTrack=track;arrangement.repaint();}
+}
+void MainComponent::itemDragExit(const SourceDetails&){if(arrangement.dropTrack>=0){arrangement.dropTrack=-1;arrangement.repaint();}}
+void MainComponent::itemDropped(const SourceDetails& details){
+    arrangement.dropTrack=-1;arrangement.repaint();
+    if(sampleBrowser.isVisible()&&sampleBrowser.getBounds().contains(details.localPosition))return; // dropped back on the browser
+    const auto path=details.description.toString().fromFirstOccurrenceOf(SampleBrowser::dragPrefix,false,false);
+    filesDropped(juce::StringArray(path),details.localPosition.x,details.localPosition.y);
+}
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files){for(auto f:files)if(juce::File(f).hasFileExtension("fga;mid;midi;wav;aif;aiff;flac;ogg"))return true;return false;}
 void MainComponent::filesDropped(const juce::StringArray& files,int x,int y){
     if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}

@@ -28,7 +28,7 @@ void MainComponent::togglePlayback(){
     if(!audio.isPlaying()&&editCursor>=0){if(editCursor>project.length())return;audio.seek(editCursor);}editCursor=-1;audio.play(!audio.isPlaying());
 }
 // Live click on every beat (accented bar); never part of an export.
-void MainComponent::toggleMetronome(){audio.setMetronome(!audio.metronomeOn());message(audio.metronomeOn()?"Metronome on.":"Metronome off.");}
+void MainComponent::toggleMetronome(){audio.setMetronome(!audio.metronomeOn());metronomeButton.setToggleState(audio.metronomeOn(),juce::dontSendNotification);message(audio.metronomeOn()?"Metronome on.":"Metronome off.");}
 void MainComponent::selectClip(int track,int index,bool keepSelection){
     track=std::clamp(track,0,trackCount-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
     const int guide=index>=0?project.sectionAtBeat(project.clipStart(track,index)):project.sectionAtBeat(timelinePosition());
@@ -66,18 +66,18 @@ bool MainComponent::verifyTimelineEditing(const juce::File& folder){
     audio.stop();editCursor=-1;project.sections={{Section::main,4,"Main"},{Section::breakdown,4,"Break"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(2,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0},{4,.25,36,90,0},{8,.25,36,80,0},{12,.25,36,70,0}};
     arrangement.pixelsPerBar=64;selectedClip=-1;arrangement.selectedClips.clear();showArrangement();selectClip(4,0);changed();arrangementPort.setViewPosition(0,0);bool ok=true;juce::String failed;
     auto stage=[&](const char* label){if(!ok&&failed.isEmpty())failed=label;};
-    seekTimeline(4);timelineSplit.onClick();ok=ok&&project.tracks[4].clips.size()==3&&selectedClip==1&&clipStart()==4&&clipLength()==12;
+    seekTimeline(4);timelineCommand(4);ok=ok&&project.tracks[4].clips.size()==3&&selectedClip==1&&clipStart()==4&&clipLength()==12;
     seekTimeline(8);keyPressed(juce::KeyPress('E',juce::ModifierKeys::commandModifier,0));ok=ok&&project.tracks[4].clips.size()==4&&selectedClip==2&&clipStart()==8&&clipLength()==8;stage("split button and shortcut");
     const auto splitState=project;selectClip(4,0);arrangement.selectedClips={0,1};
-    timelineCopy.onClick();seekTimeline(24);timelinePaste.onClick();ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,24)>=0&&project.clipAtBeat(4,28)>=0;stage("paste retains complete clip group selection");
-    timelineDuplicate.onClick();ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,32)>=0&&project.clipAtBeat(4,36)>=0;stage("repeat duplicate works on the full pasted group");
+    timelineCommand(2);seekTimeline(24);timelineCommand(3);ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,24)>=0&&project.clipAtBeat(4,28)>=0;stage("paste retains complete clip group selection");
+    timelineCommand(5);ok=ok&&arrangement.selectedClips.size()==2&&project.clipAtBeat(4,32)>=0&&project.clipAtBeat(4,36)>=0;stage("repeat duplicate works on the full pasted group");
     project=splitState;selectClip(4,0);arrangement.selectedClips={0,1};changed();
     auto groupEvent=[&](float x){const juce::Point<float> p(x,76);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
     arrangement.mouseDown(groupEvent(232));arrangement.mouseDrag(groupEvent(360));arrangement.mouseUp(groupEvent(360));ok=ok&&project.clipAtBeat(4,0)<0&&project.clipAtBeat(4,4)<0&&project.clipAtBeat(4,8)>=0&&project.clipAtBeat(4,12)>=0&&arrangement.selectedClips.size()==2;stage("selected clip group movement");project=splitState;selectClip(4,2);changed();
-    timelineCopy.onClick();arrangement.mouseDown(groupEvent(856));arrangement.mouseUp(groupEvent(856));ok=ok&&timelinePosition()==40&&audio.position()==32;togglePlayback();ok=ok&&!audio.isPlaying()&&timelinePosition()==40;timelinePaste.onClick();ok=ok&&selectedClip==4&&clipStart()==40&&clipLength()==8&&clip().notes.size()==2&&project.sections[0].bars==4;stage("copy paste at cursor beyond guide");togglePlayback();ok=ok&&audio.isPlaying()&&std::abs(audio.position()-40)<.1;togglePlayback();stage("play starts from the pasted clip cursor");
+    timelineCommand(2);arrangement.mouseDown(groupEvent(856));arrangement.mouseUp(groupEvent(856));ok=ok&&timelinePosition()==40&&audio.position()==32;togglePlayback();ok=ok&&!audio.isPlaying()&&timelinePosition()==40;timelineCommand(3);ok=ok&&selectedClip==4&&clipStart()==40&&clipLength()==8&&clip().notes.size()==2&&project.sections[0].bars==4;stage("copy paste at cursor beyond guide");togglePlayback();ok=ok&&audio.isPlaying()&&std::abs(audio.position()-40)<.1;togglePlayback();stage("play starts from the pasted clip cursor");
     showEditor();ok=ok&&page==Page::editor&&piano.verifyEditing()&&selectedClip==4&&clipStart()==40;showArrangement();stage("full MIDI editor for independent clip index beyond guide count");
-    timelineCut.onClick();ok=ok&&project.clipAtBeat(4,40)<0;seekTimeline(48);timelinePaste.onClick();ok=ok&&clipStart()==48&&clipLength()==8;
-    timelineDuplicate.onClick();ok=ok&&clipStart()==56&&project.clipAtBeat(4,48)>=0;stage("cut paste and adjacent duplicate");
+    timelineCommand(1);ok=ok&&project.clipAtBeat(4,40)<0;seekTimeline(48);timelineCommand(3);ok=ok&&clipStart()==48&&clipLength()==8;
+    timelineCommand(5);ok=ok&&clipStart()==56&&project.clipAtBeat(4,48)>=0;stage("cut paste and adjacent duplicate");
     Project loaded;ok=ok&&projectFromJson(projectJson(project),loaded).wasOk()&&loaded.tracks[4].freeTimeline&&loaded.tracks[4].clips==project.tracks[4].clips;stage("independent clip project round trip");
     auto event=[&](float x,float y,int mods=0){const juce::Point<float> p(x,y);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
     arrangement.pixelsPerBar=16;updateSizes();arrangementPort.setViewPosition(0,0);
@@ -88,7 +88,7 @@ bool MainComponent::verifyTimelineEditing(const juce::File& folder){
     ok=ok&&project.sections[0].bars==6&&project.tracks[4].clips==beforeGuide&&audio.position()==guidePlay;stage("guide edge drag leaves clips and playhead unchanged");
     selectClip(4,project.clipAtBeat(4,48));arrangement.pixelsPerBar=32;updateSizes();arrangementPort.setViewPosition(0,0);
     if(auto out=folder.getChildFile("timeline-editing.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out)&&ok;}else ok=false;
-    keyPressed(juce::KeyPress('A',juce::ModifierKeys::commandModifier,0));timelineDelete.onClick();ok=ok&&project.tracks[4].clips.empty();project.normalise();ok=ok&&project.tracks[4].clips.empty();stage("select all and delete all blocks without resurrecting placeholders");
+    keyPressed(juce::KeyPress('A',juce::ModifierKeys::commandModifier,0));timelineCommand(6);ok=ok&&project.tracks[4].clips.empty();project.normalise();ok=ok&&project.tracks[4].clips.empty();stage("select all and delete all blocks without resurrecting placeholders");
     showEditor();ok=ok&&clipIndex()>=0&&clipLength()==4&&clip().notes.empty();stage("create editable empty clip on an empty track");
     project.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"},{Section::outro,4,"Outro"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(3,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[2].notes={{0,.25,36,55,0}};project.resizeClipLoop(4,0,32);selectClip(4,2);project.resizeGuide(0,6);changed();ok=ok&&selectedClip==1&&clipStart()==32&&clip().notes.size()==1&&clip().notes[0].velocity==55;stage("selected clip survives materialisation of fully covered legacy blocks");
     project=saved;editCursor=-1;selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();timelineClipboard=board;arrangement.pixelsPerBar=savedZoom;select(savedTrack,savedSection);showArrangement();changed();undoStack.clear();redoStack.clear();refreshControls();

@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.13.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.14.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -110,17 +110,30 @@ Il **MIXER** mostra i diciassette canali nell’ordine musicale e un master fiss
 - **Bordo destro del clip**: trascina per accorciare o estendere soltanto quel loop, a passi di un beat; **Maiusc** permette passi di un quarto di beat. Il MIDI si ripete senza cambiare velocità o dinamiche. Accorciare non cancella la sorgente: riallungando la recuperi. Puoi superare il confine della sezione; il clip esteso ha precedenza sulle parti coperte della stessa traccia, senza raddoppiare le note.
 - **Bordo destro dell’intestazione di sezione**: ridimensiona la guida a passi di una battuta. Si spostano Intro, Main, Break e le etichette successive; clip, locatori e automazione volume restano nelle loro posizioni musicali. Il tasto destro permette di rinominare, cambiare funzione, inserire, duplicare, riordinare o eliminare una sezione della guida. **Esc** annulla; **UNDO** ripristina.
 - **Trascina un clip** per spostarlo lungo la timeline o su un’altra traccia; **Alt-trascina** lo copia. Lo spostamento lascia uno spazio vuoto nella posizione originale. Le sovrapposizioni a destinazione vengono sostituite conservando i frammenti esterni. La traccia di destinazione mantiene il proprio suono; il MIDI della batteria viene adattato alla sua corsia. **Maiusc-clic** seleziona altri clip sulla stessa traccia; **Ctrl/Cmd+A** li seleziona tutti.
-- **TAGLIA / COPIA / INCOLLA / DIVIDI / DUPLICA / ELIMINA**, sopra la timeline, sono disponibili anche con il tasto destro. Incolla usa il cursore: clicca nello spazio vuoto della timeline, anche dopo la fine attuale, per scegliere la posizione. Dividi taglia il clip selezionato al cursore; Duplica mette le copie dopo l’intervallo selezionato. Elimina lascia uno spazio vuoto. Scorciatoie: **Ctrl/Cmd+X / C / V**, **S o Ctrl/Cmd+E**, **Ctrl/Cmd+D**, **Canc / Backspace**.
+- **Taglia, copia, incolla, dividi, duplica ed elimina** sono nel menu del tasto destro sul clip e sulla tastiera. Incolla usa il cursore: clicca nello spazio vuoto della timeline, anche dopo la fine attuale, per scegliere la posizione. Dividi taglia il clip selezionato al cursore; Duplica mette le copie dopo l’intervallo selezionato. Elimina lascia uno spazio vuoto. Scorciatoie: **Ctrl/Cmd+X / C / V**, **S o Ctrl/Cmd+E**, **Ctrl/Cmd+D**, **Canc / Backspace**.
 - **GRIGLIA** permette battute, beat, mezzi/quarti di beat o tempi liberi. Tieni **Maiusc durante il trascinamento** per spostare liberamente. Tasto destro nello spazio vuoto per **Crea clip MIDI vuoto**. Doppio clic sul clip per modificare le note nell’editor completo dello strumento originale.
 - **Clic sul righello delle battute**: sposta il cursore nel punto esatto, come sul righello dell’editor MIDI; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
-- **ADATTA BRANO / F**: mostra tutta la forma; **SEGUI**: scorrimento durante la riproduzione; **INSPECTOR / I** e **MIXER / F3**: mostra o nascondi i pannelli.
+- La barra sopra la timeline contiene **GRIGLIA**, **ZOOM SELEZIONE**, **LOOP SELEZIONE**, **ADATTA BRANO / F** (tutta la forma), **SEGUI** (scorrimento durante la riproduzione) e **AUTOMAZIONE**; a destra **GUITAR LEADS**, poi **INSPECTOR / I**, **BROWSER / B** e **MIXER / F3** mostrano o nascondono i pannelli.
 - Trascina un file MIDI o un campione sulla riga della traccia desiderata: viene assegnato proprio a quella traccia.
 
 La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Le modifiche alla guida conservano loop e automazione. Posizioni dei clip, sorgenti dei loop e spazi vuoti vengono salvati nel formato .fga 2; i progetti precedenti restano leggibili. Per riaprire una timeline modificata usa la versione 0.6.0 o successiva.
 
+### Browser dei campioni
+
+**BROWSER / B** apre il browser dei campioni a destra dell'arrangiamento; mixer e timeline gli fanno spazio. Ricorda le tue cartelle, i preferiti e l'ultima cartella visitata, anche dopo il riavvio.
+
+- **AGGIUNGI CARTELLA** aggiunge una cartella di campioni all'elenco in alto. Clic su una cartella per aprirla, sulla **stella** per renderla preferita (i preferiti restano in cima). Tasto destro per **Cambia cartella…**, **Rimuovi dall'elenco** o mostrarla nel file manager. Una cartella non raggiungibile (disco scollegato) è segnata **non disponibile**.
+- Il **percorso** mostra dove sei dentro la cartella salvata: clicca una parte per risalire. **◀ ▶** scorrono le cartelle visitate, **↑** (o Backspace) sale di un livello.
+- **Cerca** filtra per nome (devono comparire tutte le parole). I menu scelgono il tipo (tutto l'audio, WAV, AIFF, FLAC, OGG o tutti i file) e l'ordine (nome, data, dimensione, durata); la freccia lo inverte. Le cartelle vengono sempre per prime.
+- Seleziona un file per vederne durata, formato, frequenza, canali e dimensione. **▶** lo ascolta (fino a 30 secondi, anche a brano fermo); **AUTO** ascolta ogni file che selezioni.
+- **Doppio clic**, **Invio** o **CARICA · TRACCIA** carica il campione nel campionatore della traccia selezionata. **Trascina** un file sulla riga di una traccia per caricarlo lì: la riga si illumina durante il trascinamento. Annulla ripristina il suono precedente.
+- Il campionatore legge WAV, AIFF, FLAC e OGG. Gli altri file audio (MP3, M4A…) compaiono con **n/d** e un messaggio chiaro invece di essere caricati.
+
+Le cartelle vengono lette e le informazioni audio misurate in background: l'interfaccia resta reattiva anche con migliaia di file e il browser non consuma nulla quando è fermo.
+
 ### Navigazione e selezione
 
-- **Rotella sul righello** o **Ctrl/Cmd + rotella** sopra clip/note: zoom attorno al puntatore. **+ / −** usa il centro della vista; resta disponibile lo slider ZOOM.
+- **Rotella sul righello** o **Ctrl/Cmd + rotella** sopra clip/note: zoom attorno al puntatore. **+ / −** usa il centro della vista. L’editor MIDI ha anche lo slider ZOOM.
 - **Rotella** scorre in verticale; **Maiusc + rotella** e i gesti orizzontali del trackpad scorrono in orizzontale. Nell’arrangiamento puoi trascinare con il **tasto centrale** sui due assi. La navigazione manuale disattiva SEGUI; riattivalo per seguire la riproduzione.
 - **ZOOM SELEZIONE / Z** inquadra i clip selezionati. Nell’editor MIDI, **Z** inquadra le note selezionate oppure tutto il clip. **ADATTA BRANO / F** torna all’intero arrangiamento.
 - **LOOP SELEZIONE / Ctrl/Cmd + L** imposta i locatori sui clip selezionati. Nell’editor usa le note selezionate oppure il clip intero. È annullabile e cambia soltanto la riproduzione.
@@ -131,7 +144,9 @@ La selezione multipla nel piano roll mantiene le distanze fra le note anche ai b
 |---|---|
 | **⏮ ▶/❚❚ ■** | Torna all’inizio, play / pausa, stop. La barra spaziatrice fa play / pausa. |
 | **TEMPO** | Cambia i BPM dell’intero brano nel range del genere scelto. La durata in minuti segue le battute. |
+| **Posizione** | Battuta : beat / lunghezza del brano in battute, accanto al titolo TRASPORTO. |
 | **LOOP** | Ripete la zona impostata; LOOP CLIP ripete la parte scelta nell’editor. |
+| **CLICK** | Metronomo durante l'ascolto (mai nell'export); come il tasto **C**. |
 
 ### Progression, Harmony & Scales e Groove
 
@@ -197,7 +212,7 @@ I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di b
 | Pulsante | Cosa scegli |
 |---|---|
 | **BUILT-IN** | Torna al suono guida. Piano e basso hanno i sette timbri di tastiera; archi, quattro chitarre e quattro kit hanno i loro suoni. |
-| **CARICA CAMPIONE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. |
+| **CARICA CAMPIONE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 60 secondi. Il campione resta sul disco; il progetto ne ricorda il percorso. Il browser dei campioni (**B**) fa lo stesso con ascolto e trascinamento. |
 | **CARICA VST3 / AU** | Apre il browser dei plugin. I motori FaseGroove sono il primo gruppo; gli altri plugin sono divisi per produttore. Ricerca, preferiti e recenti funzionano come nel browser dei groove. Un clic carica uno strumento o un effetto in insert. |
 | **APRI VST** | L'interfaccia dello strumento caricato. Se c'è anche un effetto, scegli strumento o effetto. |
 
@@ -284,6 +299,7 @@ Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO �
 | **Home** | Cursore all'inizio. |
 | **L** | Loop sì / no. **Ctrl/Cmd + L** mette in loop la selezione. |
 | **C** | Metronomo sì / no (solo in ascolto, mai nell'export). |
+| **B** | Browser dei campioni sì / no. |
 
 Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca passano tra i risultati; **A− / A+** cambia la dimensione del testo. Clicca una schermata per aprirla più grande.
 

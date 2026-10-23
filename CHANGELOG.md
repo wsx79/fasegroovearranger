@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.14.0 — 2026-10-23
+
+- Sample browser (BROWSER, key B): your sample folders and favourites, saved; it reopens at the last folder. Breadcrumb, back/forward/up, search, type filter, sort by name, date, size or length, file info, preview with optional auto-preview, load by double-click, Enter, LOAD or by dragging onto a track. Folders scan in the background.
+- Interface: one toolbar (editing tools on the left; GUITAR LEADS, INSPECTOR, BROWSER and MIXER on the right); the transport shows the position, LOOP and CLICK (metronome). The timeline has alternating track shading, bar and section lines, clearer A/M/S switches and a playhead marker; it no longer repaints while idle. The duplicate edit buttons are gone (the same commands are in the clip menu and on the keyboard).
+- Engines updated to Piano 0.31, Drums 0.20 and Guitar 0.10; piano and bass, on separate tracks, no longer cut each other's notes.
+- Playback: plugin delay compensation; loading a plugin or sample affects only its track; exports render on a private copy, so playback keeps going; edits while playing restart only the notes that changed; no clicks at loop wraps and seeks; plugin notes are released on stop, seek and loop; mono plugins play on both sides.
+- Gapless MP3 export; a .fga opens from the command line or a second launch; closing asks to save; recovering the autosave no longer lets SAVE overwrite it; undo restores the right plugin states. Metronome on C, loop on L.
+
 ## 0.13.0 — 2026-10-22
 
 - Drum grooves follow the song genre. Open hats, garage kicks, the deep rim and jackin' hats come from that style. Jackin' shuffle is 62%. The jack pocket stays: four-on-the-floor, clap or snare on 2 and 4, offbeat open hat, swung closed-hat accent and shaker.

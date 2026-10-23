@@ -11,6 +11,7 @@
 #include "DawWorkspace.h"
 #include "PluginSettings.h"
 #include "PluginBrowser.h"
+#include "SampleBrowser.h"
 #include <set>
 namespace fga {
 class MainComponent;
@@ -34,6 +35,7 @@ public:
     std::array<bool,trackCount> volumeVisible{};
     double pixelsPerBar=6;
     std::set<int> selectedClips;
+    int dropTrack=-1; // a sample dragged from the browser over this track
     double snapBeat(double beat,bool bypass=false) const;
 private:
     friend class MainComponent;
@@ -114,7 +116,7 @@ private:
     double beat(float x) const {return std::max(0.,(x-leftMargin())/pixelsPerBeat);}
     int pitch(float y) const;
 };
-class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget {
+class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget,public juce::DragAndDropContainer,public juce::DragAndDropTarget {
 public:
     MainComponent();
     ~MainComponent() override;
@@ -126,6 +128,13 @@ public:
     bool keyPressed(const juce::KeyPress&) override;
     bool isInterestedInFileDrag(const juce::StringArray&) override;
     void filesDropped(const juce::StringArray&,int,int) override;
+    // Samples dragged from the browser onto a track.
+    bool isInterestedInDragSource(const SourceDetails&) override;
+    void itemDragMove(const SourceDetails&) override;
+    void itemDragExit(const SourceDetails&) override;
+    void itemDropped(const SourceDetails&) override;
+    void showSampleBrowser(bool);
+    bool verifySampleBrowser(const juce::File&);
     std::function<void(float)> onScaleChosen;
     Project project;
     int selectedTrack=0,selectedSection=0,selectedClip=-1;
@@ -186,7 +195,9 @@ private:
     InspectorResizer inspectorResizer{*this};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
     int mixerHeight=244,inspectorWidth=216;
-    juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
+    juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},browserToggle{"BROWSER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
+    SampleBrowser sampleBrowser{audio};
+    bool browserVisible=false;
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
@@ -196,7 +207,7 @@ private:
     juce::ComboBox sectionSelector,panelSections;
     juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
-    juce::ToggleButton loopButton{"LOOP"};
+    juce::ToggleButton loopButton{"LOOP"},metronomeButton{"CLICK"};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
     juce::Slider tempoSlider,swingSlider,densitySlider,humanizeSlider,masterSlider,zoomSlider;
@@ -206,8 +217,8 @@ private:
     juce::TextButton muteButton{"MUTE"},soloButton{"SOLO"};
     juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
     juce::ComboBox soundBox,gridBox;
-    juce::TextButton brushAccent{"Accent"},brushHit{"Hit"},brushGhost{"Ghost"},brushFlam{"Flam"};
-    juce::TextButton fitNotesButton{"FIT"},drawTool{"Draw"},selectTool{"Select"},eraseTool{"Erase"};
+    juce::TextButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
+    juce::TextButton fitNotesButton{"FIT"},drawTool{"DRAW"},selectTool{"SELECT"},eraseTool{"ERASE"};
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     juce::TextButton sectionLoopButton{"LOOP CLIP"};
     juce::TextButton chordEditButton{"EDIT CHORDS"};
@@ -219,7 +230,6 @@ private:
     bool noClipSelection=false;
     double selectionBeat=0,editCursor=-1;
     double timelineSnap=1;
-    juce::TextButton timelineCut{"CUT"},timelineCopy{"COPY"},timelinePaste{"PASTE"},timelineSplit{"SPLIT"},timelineDuplicate{"DUPLICATE"},timelineDelete{"DELETE"};
     juce::TextButton zoomSelectionButton{"ZOOM SELECTION"},loopSelectionButton{"LOOP SELECTION"};
     juce::ComboBox timelineGrid;
     juce::File projectFile;

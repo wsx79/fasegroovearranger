@@ -39,7 +39,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     refresh();setSize(208,626);
 }
 void TrackInspector::refresh(){
-    if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(text(t.name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
+    if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(Localisation::upper(text(t.name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
     source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():owner.audio.plugin(owner.selectedTrack)?owner.audio.plugin(owner.selectedTrack)->getName():tr("Missing instrument"),juce::dontSendNotification);
     const double bars=owner.clipLength()/4.;section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);
     gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
@@ -67,7 +67,7 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();
 }
-void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):text(owner.project.tracks[(size_t)track].name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,master?Palette::text:ink(track));gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=170);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(*this);repaint();}
+void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):Localisation::upper(text(owner.project.tracks[(size_t)track].name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,master?Palette::text:ink(track));gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=170);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(*this);repaint();}
 void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);clip.setColour(juce::TextButton::buttonOnColourId,owner.audio.hasClipped()?Palette::toms:Palette::control);repaint();}
 void MixerStrip::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(track==owner.selectedTrack?Palette::accent:Palette::panelEdge);g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(.5f),4,track==owner.selectedTrack?1.5f:1.f);const int top=getHeight()<170?56:99;auto meter=juce::Rectangle<float>((float)getWidth()-18,(float)top,7,(float)std::max(24,getHeight()-top-34));g.setColour(Palette::field);g.fillRoundedRectangle(meter,2);const float level=std::clamp((db(peak)+60)/60.f,0.f,1.f);g.setColour(peak>=1?Palette::toms:peak>.7f?Palette::accent:Palette::accent2);g.fillRect(meter.removeFromBottom(meter.getHeight()*level));}
 void MixerStrip::resized(){int w=getWidth();name.setBounds(4,5,w-8,22);instrument.setBounds(6,30,w-12,22);pan.setBounds(8,55,w-16,20);mute.setBounds(6,77,(w-16)/2,20);solo.setBounds(10+(w-16)/2,77,(w-16)/2,20);clip.setBounds(8,48,w-16,24);gain.setBounds(4,99,w-8,getHeight()-106);
@@ -205,4 +205,62 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression: "+firstFailure);return ok;
 }
 
+
+// Sample browser end to end: saved folders and favourites, navigation and history, search,
+// filters and sorting, info, preview, unsupported and missing files, double-click import into
+// the selected track, drag onto another track, layout and persistence. Headless (smoke test).
+bool MainComponent::verifySampleBrowser(const juce::File& folder){
+    bool ok=true;juce::String firstFailure;auto stage=[&](const char* name,bool value){if(!value&&firstFailure.isEmpty())firstFailure=name;ok=ok&&value;};
+    const auto savedSetting=Localisation::setting("sampleBrowser");const bool savedVisible=browserVisible;const auto savedProject=project;const int savedTrack=selectedTrack;
+    auto library=folder.getChildFile("browser-library");library.deleteRecursively();auto kicks=library.getChildFile("Drums").getChildFile("Kicks");kicks.createDirectory();
+    auto wav=[](const juce::File& f,double rate,int channels,int frames){juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> w(format.createWriterFor(f.createOutputStream().release(),rate,(unsigned)channels,16,{},0));
+        juce::AudioBuffer<float> b(channels,frames);for(int ch=0;ch<channels;++ch)for(int i=0;i<frames;++i)b.setSample(ch,i,.5f*(float)std::sin(i*.03)*(1.f-(float)i/(float)frames));w->writeFromAudioSampleBuffer(b,0,frames);};
+    wav(kicks.getChildFile("Kick Deep.wav"),44100,1,22050);wav(kicks.getChildFile("Kick Short.wav"),48000,2,4800);wav(library.getChildFile("Clap.wav"),44100,2,44100);
+    library.getChildFile("Loop.mp3").replaceWithText("mp3");library.getChildFile("readme.txt").replaceWithText("text");
+    showSampleBrowser(true);stage("browser shown",sampleBrowser.isVisible()&&!sampleBrowser.getBounds().intersects(arrangementPort.getBounds())&&!sampleBrowser.getBounds().intersects(mixer.getBounds())&&sampleBrowser.verifyLayout());
+    if(samples::Preferences::fromJson(savedSetting).folders.empty())if(auto out=folder.getChildFile("sample-browser-empty.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}
+    sampleBrowser.addFolder(library);sampleBrowser.toggleFavourite(library.getFullPathName());sampleBrowser.navigate(library);stage("listing",sampleBrowser.waitForListing(5000));
+    stage("folders first, audio only",sampleBrowser.visibleRows()==3&&sampleBrowser.fileAt(0).getFileName()=="Drums"&&sampleBrowser.fileAt(1).getFileName()=="Clap.wav"&&sampleBrowser.fileAt(2).getFileName()=="Loop.mp3");
+    sampleBrowser.setFilter(samples::allFiles);stage("all files filter",sampleBrowser.visibleRows()==4);sampleBrowser.setFilter(samples::allAudio);
+    sampleBrowser.navigate(kicks);sampleBrowser.waitForListing(5000);stage("breadcrumb from the saved folder",sampleBrowser.crumbNames().joinIntoString("/")=="browser-library/Drums/Kicks");
+    sampleBrowser.setSort(samples::byLength,true);sampleBrowser.waitForListing(500);for(int i=0;i<40&&sampleBrowser.fileAt(0).getFileName()!="Kick Short.wav";++i)juce::MessageManager::getInstance()->runDispatchLoopUntil(25);
+    stage("sort by length",sampleBrowser.fileAt(0).getFileName()=="Kick Short.wav"&&sampleBrowser.fileAt(1).getFileName()=="Kick Deep.wav");
+    sampleBrowser.setSort(samples::byName,false);stage("sort by name descending",sampleBrowser.fileAt(0).getFileName()=="Kick Short.wav");sampleBrowser.setSort(samples::byName,true);
+    sampleBrowser.setSearch("deep");stage("search",sampleBrowser.visibleRows()==1&&sampleBrowser.fileAt(0).getFileName()=="Kick Deep.wav");
+    sampleBrowser.selectRow(0);juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
+    stage("file info",sampleBrowser.infoText().contains("0:00.50")&&sampleBrowser.infoText().contains("WAV")&&sampleBrowser.infoText().contains("44.1 kHz")&&!sampleBrowser.infoIsError());
+    sampleBrowser.preview(sampleBrowser.fileAt(0));for(int i=0;i<100&&!audio.isPreviewing();++i)juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+    stage("preview starts",audio.isPreviewing());sampleBrowser.stopPreview();stage("preview stops",!audio.isPreviewing());
+    // Double-click / Enter / LOAD: into the selected track's sampler, with Undo.
+    select(6,selectedSection);const auto undoBefore=undoStack.size();
+    stage("import into the selected track",sampleBrowser.loadSelected()&&project.tracks[6].instrument=="sample"&&juce::File(juce::String::fromUTF8(project.tracks[6].instrumentPath.c_str())).getFileName()=="Kick Deep.wav"&&undoStack.size()==undoBefore+1);
+    sampleBrowser.setSearch("");
+    // Drag onto another track's row in the arrangement.
+    arrangementPort.setViewPosition(0,0);const int row=rowForTrack(7);const auto target=getLocalPoint(&arrangement,juce::Point<int>(216+40,arrangement.rowY(row)+arrangement.rowHeight(row)/2));
+    const SourceDetails drag(juce::String(SampleBrowser::dragPrefix)+kicks.getChildFile("Kick Short.wav").getFullPathName(),&sampleBrowser,target);
+    stage("drag source accepted",isInterestedInDragSource(drag));itemDragMove(drag);stage("drop target highlighted",arrangement.dropTrack==7);
+    if(auto out=folder.getChildFile("sample-browser.png").createOutputStream()){juce::PNGImageFormat png;stage("browser screenshot",png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out));}
+    // Other window shapes (the content scales with the width, so only the height changes).
+    {const int height=getHeight();for(int h:{760,1100}){setSize(1440,h);const bool fits=sampleBrowser.verifyLayout()&&!sampleBrowser.getBounds().intersects(arrangementPort.getBounds())&&!sampleBrowser.getBounds().intersects(mixer.getBounds())&&sampleBrowser.getBottom()<=getHeight()-31;
+        stage(h==760?"browser layout 760":"browser layout 1100",fits);if(auto out=folder.getChildFile("sample-browser-"+juce::String(h)+".png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}}
+        setSize(1440,height);}
+    itemDropped(drag);stage("drop loads the hovered track",project.tracks[7].instrument=="sample"&&selectedTrack==7&&juce::String::fromUTF8(project.tracks[7].instrumentPath.c_str()).endsWith("Kick Short.wav")&&arrangement.dropTrack<0);
+    // Unsupported and unavailable.
+    sampleBrowser.navigate(library);sampleBrowser.waitForListing(5000);sampleBrowser.selectRow(2);
+    stage("unsupported file",!sampleBrowser.loadSelected()&&sampleBrowser.infoIsError()&&project.tracks[(size_t)selectedTrack].instrumentPath.find("Loop.mp3")==std::string::npos);
+    stage("history",sampleBrowser.canBack());sampleBrowser.back();sampleBrowser.waitForListing(5000);stage("back",sampleBrowser.currentFolder()==kicks&&sampleBrowser.canForward());
+    sampleBrowser.forward();sampleBrowser.waitForListing(5000);stage("forward",sampleBrowser.currentFolder()==library);
+    sampleBrowser.navigate(kicks);sampleBrowser.waitForListing(5000);sampleBrowser.up();sampleBrowser.waitForListing(5000);stage("up",sampleBrowser.currentFolder()==kicks.getParentDirectory());
+    sampleBrowser.navigate(library.getChildFile("Missing"));sampleBrowser.waitForListing(5000);stage("unavailable folder",sampleBrowser.visibleRows()==0);
+    // Saved for the next session.
+    sampleBrowser.navigate(kicks);sampleBrowser.waitForListing(5000);
+    const auto saved=samples::Preferences::fromJson(Localisation::setting("sampleBrowser"));
+    stage("preferences saved",saved.lastFolder==kicks.getFullPathName()&&saved.folders.size()>=1&&saved.isFavourite(library.getFullPathName())&&Localisation::setting("sampleBrowserVisible")=="1");
+    sampleBrowser.removeFolder(library.getFullPathName());stage("folder removed",!samples::Preferences::fromJson(Localisation::setting("sampleBrowser")).isFavourite(library.getFullPathName()));
+    // Restore everything the check touched.
+    sampleBrowser.stopPreview();audio.useInternal(6);audio.useInternal(7);project=savedProject;select(savedTrack,selectedSection);changed();undoStack.clear();redoStack.clear();
+    Localisation::setSetting("sampleBrowser",savedSetting);showSampleBrowser(savedVisible);library.deleteRecursively();message(tr("Ready"));
+    folder.getChildFile("sample-browser.txt").replaceWithText(ok?"PASS sample browser: saved folders/favourites, folders-first listing, type filter, search, sort by length/name, breadcrumb, back/forward/up, file info, preview start/stop, unsupported and unavailable files, Enter/double-click import with Undo, drag onto a track with highlight, saved preferences":"FAIL sample browser: "+firstFailure);
+    return ok;
+}
 }

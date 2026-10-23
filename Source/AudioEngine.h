@@ -44,7 +44,8 @@ struct Instrument {
     void reset();
     int kind;
     std::atomic<float> tone{.5f}, sound{0};
-    juce::Synthesiser synth;
+    juce::Synthesiser synth;                    // built-in guide voices (tracks 0-2)
+    std::unique_ptr<juce::Synthesiser> sampler; // user sample: built off the audio thread, swapped in
     juce::Reverb reverb;
     juce::dsp::StateVariableTPTFilter<float> bassLowPass;
     juce::dsp::Chorus<float> chorus;
@@ -60,6 +61,7 @@ struct Instrument {
     juce::AudioBuffer<float> scratch;
     juce::MidiBuffer midi,effectMidi;
     std::unique_ptr<juce::AudioPluginInstance> plugin,effect;
+    juce::PluginDescription pluginDescription,effectDescription; // as loaded: re-creates them for a private export
     const std::vector<TimedEvent>* schedule=nullptr; // inside the adopted ScheduleState
     const VolumeAutomation* volume=nullptr;         // inside the adopted MixState
     std::vector<float> volumeGains;
@@ -76,17 +78,41 @@ struct Instrument {
     std::array<int,128> soundingVelocity{};
     bool resync=false;
     std::uint64_t noteOns=0; // diagnostics and tests
+    // Plugin delay compensation: every track is delayed to line up with the slowest one.
+    // The line is allocated once here, never on the audio thread.
+    static constexpr int maxDelay=1<<15;
+    juce::AudioBuffer<float> delayLine{2,maxDelay};
+    int delayWrite=0,latency=0,delay=0;
+    bool delayUsed=false;
+    void adoptChannels(int block); // after a plugin/effect swap: channel count and scratch size
+    void applyDelay(juce::AudioBuffer<float>&,int count);
+};
+// A file being auditioned by the sample browser: decoded off the audio thread, then handed over.
+struct PreviewClip {
+    juce::AudioBuffer<float> audio;
+    double rate=44100,position=0;
 };
 class AudioEngine : public juce::AudioIODeviceCallback, public juce::AudioPlayHead {
 public:
     AudioEngine();
+    struct Offline {};
+    explicit AudioEngine(Offline); // no audio device: a private copy used to render exports
     ~AudioEngine() override;
+    // Message thread: a copy of the current instruments (samples shared, plugins re-created from
+    // their state) that renders an export while this engine keeps playing. nullptr when a plugin
+    // cannot be duplicated: exportAudio on this engine is then the fallback.
+    std::unique_ptr<AudioEngine> offlineCopy();
+    // Sample browser audition, mixed after the master and independent of the transport.
+    void startPreview(juce::AudioBuffer<float>&& audio,double rate);
+    void stopPreview();
+    bool isPreviewing() const {return previewing.load();}
+    int latencySamples() const {return totalLatency.load();}
     juce::AudioDeviceManager devices;
     juce::AudioPluginFormatManager formats;
     // publish/updateMix never take the engine lock: playback keeps running while editing.
     void publish(const Project&);
     void updateMix(const Project&);
-    void collectGarbage(){schedules.collect();mixes.collect();}
+    void collectGarbage(){schedules.collect();mixes.collect();previews.collect();}
     void setMetronome(bool on){metronome=on;}
     bool metronomeOn() const {return metronome.load();}
     void play(bool);
@@ -127,6 +153,11 @@ private:
     std::atomic<double> currentBeat{0},tempo{122};
     Handoff<ScheduleState> schedules;
     Handoff<MixState> mixes;
+    Handoff<PreviewClip> previews;
+    std::atomic<bool> previewing{false};
+    std::atomic<int> totalLatency{0};
+    void mixPreview(float* const* output,int channels,int count);
+    void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
     double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;
     int blockSize=512;
     double deviceRate=44100;

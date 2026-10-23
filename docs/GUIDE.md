@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.13.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.14.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -110,17 +110,30 @@ The **MIXER** shows seventeen channels in musical order with a fixed master at t
 - **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
 - **Right edge of a section header**: resize the guide in whole bars. Intro, Main, Break and the following guide labels move; clips, locators and volume automation stay at their musical times. Right-click the header to rename it, change its role, insert, duplicate, reorder or delete a guide section. **Escape** cancels a drag; **UNDO** restores it.
 - **Drag a clip** to move it along the timeline or onto another track; **Alt-drag** copies it. The original position becomes a gap when moving. Destination overlaps are replaced while outside fragments are retained. The target track keeps its sound; drum MIDI maps to its lane. **Shift-click** selects more clips on the same track; **Ctrl/Cmd+A** selects all its clips.
-- **CUT / COPY / PASTE / SPLIT / DUPLICATE / DELETE**, above the timeline, also appear in the right-click menu. Paste uses the cursor; click empty timeline space, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
+- **Cut, copy, paste, split, duplicate and delete** are in the clip's right-click menu and on the keyboard. Paste uses the cursor; click empty timeline space, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
 - **SNAP** chooses bars, beats, half/quarter beats or free timing. Hold **Shift during a drag** for free timing. Right-click empty track space for **Create empty MIDI clip**. Double-click a clip to edit its notes in the original full instrument editor.
 - **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
-- **FIT SONG / F** shows the complete form; **FOLLOW** scrolls during playback; **INSPECTOR / I** and **MIXER / F3** toggle the panels.
+- The toolbar above the timeline holds **SNAP**, **ZOOM SELECTION**, **LOOP SELECTION**, **FIT SONG / F** (complete form), **FOLLOW** (scrolls during playback) and **AUTOMATION**; on its right **GUITAR LEADS**, then **INSPECTOR / I**, **BROWSER / B** and **MIXER / F3** toggle the panels.
 - Drop a MIDI file or personal sample on a track row to target that track.
 
 Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Guide edits preserve loop locators and automation. Clip positions, loop sources and gaps save in .fga format 2; format 1 projects still open. Reopen edited timelines with version 0.6.0 or later.
 
+### Sample browser
+
+**BROWSER / B** opens the sample browser on the right of the arrangement; the mixer and timeline make room for it. It remembers your folders, favourites and the last folder you visited, also after a restart.
+
+- **ADD FOLDER** adds a sample folder to the list at the top. Click a folder to open it, the **star** to make it a favourite (favourites stay first). Right-click a folder to **Change folder…**, **Remove from the list** or show it in the file manager. A folder that is not reachable (unplugged drive) is marked **offline**.
+- The **breadcrumb** shows where you are inside the saved folder; click a part to go back up. **◀ ▶** move through the folders you visited, **↑** (or Backspace) goes up one level.
+- **Search** filters by name (every word must match). The menus choose the type (all audio, WAV, AIFF, FLAC, OGG or all files) and the order (name, date, size, length); the arrow reverses it. Folders always come first.
+- Select a file to see its duration, format, sample rate, channels and size. **▶** plays a preview (up to 30 seconds, it also works with the song stopped); **AUTO** previews every file you select.
+- **Double-click**, **Enter** or **LOAD · TRACK** loads the sample into the selected track's sampler. **Drag** a file onto a track row to load it there: the row lights up while you drag. Undo restores the previous sound.
+- The arranger's sampler reads WAV, AIFF, FLAC and OGG. Other audio files (MP3, M4A…) are listed with **n/a** and a clear message instead of being loaded.
+
+Folders are read and audio headers measured in the background, so the interface stays responsive even with thousands of files; nothing runs while the browser is idle.
+
 ### Navigation and selection
 
-- **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The existing ZOOM slider remains available.
+- **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The MIDI editor also has a ZOOM slider.
 - **Wheel** scrolls vertically; **Shift + wheel** scrolls horizontally. Horizontal trackpad gestures also scroll horizontally. **Middle-button drag**, in the arrangement, pans both axes. Manual navigation turns FOLLOW off; enable it again to follow playback.
 - **ZOOM SELECTION / Z** frames the selected clips; in the MIDI editor, **Z** frames selected notes, or the whole clip if no notes are selected. **FIT SONG / F** restores the complete arrangement view.
 - **LOOP SELECTION / Ctrl/Cmd + L** sets both playback locators from the selected clips. In the MIDI editor it uses the selected notes, or the complete clip. This changes playback only and can be undone.
@@ -131,7 +144,9 @@ Moving a multiple-note selection in the piano roll preserves spacing at clip and
 |---|---|
 | **⏮ ▶/❚❚ ■** | Return to the start, play / pause, stop. The space bar toggles play / pause. |
 | **TEMPO** | Sets song BPM within the selected genre’s range. Duration follows the bar count. |
+| **Position** | Bar : beat / song length in bars, next to the TRANSPORT title. |
 | **LOOP** | Repeats the chosen region; LOOP CLIP repeats the selected editor section. |
+| **CLICK** | Metronome while playing (live only, never exported); same as **C**. |
 
 ### Progression, Harmony & Scales and Groove
 
@@ -195,7 +210,7 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 | Button | What you choose |
 |---|---|
 | **BUILT-IN** | Return to the guide sound. Piano and bass have seven keyboard tones; strings, four guitars and four drum kits have their own sounds. |
-| **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. |
+| **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. The sample browser (**B**) does the same with preview and drag & drop. |
 | **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or one insert effect. |
 | **OPEN VST** | The loaded instrument's own interface. When an effect is also loaded, choose instrument or effect. |
 
@@ -282,6 +297,7 @@ An autosave is written once a minute when work has changed. **AUDIO → restore 
 | **Home** | Playhead to the start. |
 | **L** | Loop on / off. **Ctrl/Cmd + L** loops the selection. |
 | **C** | Metronome on / off (live only, never exported). |
+| **B** | Sample browser on / off. |
 
 In this guide, **Ctrl/Cmd + F** focuses search. The arrows beside search move between results; **A− / A+** changes text size. Click a screenshot to open it larger.
 

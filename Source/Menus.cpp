@@ -10,15 +10,16 @@ juce::String u(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
 class ExportTask:public juce::ThreadWithProgressWindow {
 public:
-    ExportTask(AudioEngine& e,Project p,juce::File path,std::vector<int> selected,bool mp3,std::function<void(juce::Result)> done)
-    :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),engine(e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),callback(std::move(done)){}
+    // `copy`, when given, is a private engine: the export renders there and playback goes on.
+    ExportTask(AudioEngine& e,std::unique_ptr<AudioEngine> copy,Project p,juce::File path,std::vector<int> selected,bool mp3,std::function<void(juce::Result)> done)
+    :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),owned(std::move(copy)),engine(owned?*owned:e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),callback(std::move(done)){}
     void run()override{
         for(size_t i=0;i<tracks.size();++i){int track=tracks[i];auto file=tracks.size()>1?target.getChildFile(juce::String(rowForTrack(track)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)track].name))+(isMp3?".mp3":".wav")):target;
             setStatusMessage(file.getFileName());result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());});if(result.failed())return;
         }
     }
-    void threadComplete(bool cancelled)override{callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
-private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();
+    void threadComplete(bool cancelled)override{owned.reset();callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
+private:std::unique_ptr<AudioEngine> owned;AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();
 };
 }
 juce::File MainComponent::projectInCommandLine(const juce::String& commandLine){
@@ -108,8 +109,10 @@ void MainComponent::exportFile(int type,int track){
         if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));if(target.createDirectory().failed()){message("Impossibile creare la cartella stem.",true);return;}}
         else target=target.withFileExtension(midi?"mid":mp3?"mp3":"wav");
         if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithData(bytes.data(),bytes.size())||!temp.overwriteTargetFileWithTemporary())return false;return true;};bool ok=true;if(batch){for(int ti=0;ti<trackCount;++ti)ok=write(target.getChildFile(juce::String(rowForTrack(ti)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)ti].name))+".mid"),ti)&&ok;}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
-        audio.stop();closePluginEditor();std::vector<int> tracks;if(batch)for(int row=0;row<trackCount;++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
-        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,[safe,target](juce::Result r){if(safe!=nullptr)safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());});exportTask->launchThread();
+        // Render on a private copy of the instruments so playback keeps running; only when a
+        // plugin cannot be duplicated does the export take over the live engine (and stop it).
+        auto copy=audio.offlineCopy();if(!copy){audio.stop();closePluginEditor();}std::vector<int> tracks;if(batch)for(int row=0;row<trackCount;++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
+        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,std::move(copy),project,target,tracks,mp3,[safe,target](juce::Result r){if(safe!=nullptr)safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());});exportTask->launchThread();
     });
 }
 }

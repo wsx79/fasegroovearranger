@@ -80,6 +80,11 @@ public:
                 if(restored.tracks[0].instrumentState.empty()){fail("Plugin state missing from project");return;}
                 engine.restorePluginState(0,juce::String::fromUTF8(restored.tracks[0].instrumentState.c_str()));
                 r=render("host-restored.wav");if(r.failed()){fail(r.getErrorMessage());return;}
+                // Export on a private copy (plugin re-created from its state) while the live one keeps its transport.
+                {auto copy=engine.offlineCopy();if(copy==nullptr){fail("Plugin could not be duplicated for a private export");return;}
+                    engine.publish(p);engine.play(true);const double at=engine.position();
+                    r=copy->exportAudio(p,folder.getChildFile("host-offline.wav"),0,false,[]{return false;},[](double){});if(r.failed()){fail(r.getErrorMessage());return;}
+                    if(!engine.isPlaying()||engine.position()!=at){fail("Private export disturbed the live transport");return;}engine.stop();}
                 folder.getChildFile("host.txt").replaceWithText("PASS native VST3 load, MIDI/playhead, editor lifecycle and project state restore");
                 setApplicationReturnValue(0);quit();
             });return;
@@ -176,6 +181,11 @@ public:
             for(auto& t:p.tracks)t.mute=true;
             run("silence.wav",-1,false);
             auto bytes=fga::midiFile(p);folder.getChildFile("song.mid").replaceWithData(bytes.data(),bytes.size());
+            {
+                // The files scripts/verify-midi.py reads: a complete generated song, one stem and piano pedal/expression.
+                auto song=fga::newProject(1);auto write=[&](const char* name,const std::vector<std::uint8_t>& data){folder.getChildFile(name).replaceWithData(data.data(),data.size());};
+                write("test-song.mid",fga::midiFile(song));write("test-kick.mid",fga::midiFile(song,4));song.tracks[0].engine.pedalCC=true;write("test-piano-cc.mid",fga::midiFile(song,0));
+            }
             setApplicationReturnValue(ok?0:1);quit();return;
         }
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();

@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.14.0 — 2026-10-23
+
+- Browser campioni (BROWSER, tasto B): le tue cartelle di campioni e i preferiti, salvati; si riapre nell'ultima cartella. Percorso, avanti/indietro/su, ricerca, filtro per tipo, ordinamento per nome, data, dimensione o durata, informazioni sul file, ascolto con autopreview opzionale, caricamento con doppio clic, Invio, LOAD o trascinando su una traccia. Le cartelle si scansionano in background.
+- Interfaccia: una sola toolbar (strumenti di modifica a sinistra; GUITAR LEADS, INSPECTOR, BROWSER e MIXER a destra); il transport mostra la posizione, LOOP e CLICK (metronomo). La timeline ha tracce a righe alternate, linee di battuta e di sezione, interruttori A/M/S più chiari e un indicatore del cursore; da ferma non si ridisegna più. Tolti i pulsanti di modifica doppi (gli stessi comandi sono nel menu della clip e da tastiera).
+- Motori aggiornati a Piano 0.31, Drums 0.20 e Guitar 0.10; piano e basso, su tracce separate, non si tagliano più le note.
+- Riproduzione: compensazione della latenza dei plugin; caricare un plugin o un campione tocca solo la sua traccia; gli export si generano su una copia privata, quindi la riproduzione continua; le modifiche durante la riproduzione fanno ripartire solo le note cambiate; niente clic ai giri del loop e ai salti; le note dei plugin si chiudono a stop, salto e loop; i plugin mono suonano su entrambi i lati.
+- Export MP3 senza silenzio iniziale; un .fga si apre da riga di comando o da una seconda apertura; alla chiusura chiede di salvare; il recupero dell'autosalvataggio non fa più sovrascrivere il file con SALVA; annulla ripristina gli stati giusti dei plugin. Metronomo con C, loop con L.
+
 ## 0.13.0 — 2026-10-22
 
 - I groove di batteria seguono il genere del brano. Charleston aperti, cassa garage, rim deep e hat jackin' escono da quello stile. Lo shuffle Jackin' è al 62%. Il jack resta: cassa in 4/4, clap o rullante su 2 e 4, charleston aperto in levare, accento di charleston chiuso in shuffle e shaker.

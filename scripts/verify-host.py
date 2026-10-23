@@ -22,9 +22,11 @@ def signal(name):
     frequency = crossings * rate / len(values)
     return rms, frequency, frames
 
-before, loud, restored = [signal(name) for name in ['host-before.wav', 'host-loud.wav', 'host-restored.wav']]
+before, loud, restored, offline = [signal(name) for name in ['host-before.wav', 'host-loud.wav', 'host-restored.wav', 'host-offline.wav']]
 assert before[0] > .001 and abs(before[1]-440) < 3, before
 assert before[2] == loud[2] == restored[2]
 assert 2.95 < loud[0]/before[0] < 3.05, (before, loud)
 assert abs(restored[0]/before[0]-1) < .001, (before, restored)
-print(f'PASS real VST3 host: {before[1]:.1f} Hz MIDI note, gain ratio {loud[0]/before[0]:.3f}, restored ratio {restored[0]/before[0]:.6f}; editor reopened and project state restored')
+# Export rendered on a private copy of the engine (plugin re-created from its saved state).
+assert offline[2] == restored[2] and abs(offline[0]/restored[0]-1) < .001 and abs(offline[1]-restored[1]) < 1, (restored, offline)
+print(f'PASS real VST3 host: {before[1]:.1f} Hz MIDI note, gain ratio {loud[0]/before[0]:.3f}, restored ratio {restored[0]/before[0]:.6f}, private-copy export ratio {offline[0]/restored[0]:.6f}; editor reopened and project state restored')

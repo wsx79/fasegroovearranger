@@ -59,6 +59,40 @@ int main(){
         dir.deleteRecursively();
         // After an export the engine plays again.
         engine.publish(p);engine.play(true);run(4);check(engine.isPlaying()&&engine.position()>0,"playback after export");
+        // Export on a private copy: the live engine keeps playing, untouched, and the copy's
+        // sampler (shared sample data) renders the same audio as the live one.
+        {
+            auto sampleDir=juce::File::createTempFile("fga-sample");sampleDir.createDirectory();auto wav=sampleDir.getChildFile("hit.wav");
+            {juce::WavAudioFormat wf;std::unique_ptr<juce::AudioFormatWriter> w(wf.createWriterFor(wav.createOutputStream().release(),44100,1,16,{},0));juce::AudioBuffer<float> hit(1,4410);for(int s=0;s<4410;++s)hit.setSample(0,s,(float)std::sin(s*.07)*(1.f-s/4410.f));w->writeFromAudioSampleBuffer(hit,0,4410);}
+            check(engine.loadSample(4,wav,36).wasOk(),"sample loads off the audio thread");
+            engine.publish(p);engine.play(true);run(2);const double before=engine.position();
+            auto copy=engine.offlineCopy();check(copy!=nullptr,"offline copy of built-in and sampler tracks");
+            auto a=sampleDir.getChildFile("live.wav"),b=sampleDir.getChildFile("copy.wav");
+            check(copy->exportAudio(p,b,4,false,[]{return false;},[](double){}).wasOk(),"export on the private copy");
+            check(engine.isPlaying()&&engine.position()==before,"the live engine keeps playing during a private export");
+            run(1);check(engine.position()>before,"and still advances");
+            check(engine.exportAudio(p,a,4,false,[]{return false;},[](double){}).wasOk(),"reference export");
+            juce::AudioFormatManager fm;fm.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> ra(fm.createReaderFor(a)),rb(fm.createReaderFor(b));
+            check(ra&&rb&&ra->lengthInSamples==rb->lengthInSamples,"same export length");
+            juce::AudioBuffer<float> ba(2,(int)ra->lengthInSamples),bb(2,(int)rb->lengthInSamples);ra->read(&ba,0,ba.getNumSamples(),0,true,true);rb->read(&bb,0,bb.getNumSamples(),0,true,true);
+            float diff=0;for(int ch=0;ch<2;++ch)for(int s=0;s<ba.getNumSamples();++s)diff=std::max(diff,std::abs(ba.getSample(ch,s)-bb.getSample(ch,s)));
+            check(diff<1e-6f&&ba.getMagnitude(0,0,ba.getNumSamples())>1e-3f,"the private export equals the live engine's export");
+            ra.reset();rb.reset();sampleDir.deleteRecursively();engine.useInternal(4);
+        }
+        // Sample browser audition: plays with the transport stopped, stops at once.
+        {
+            engine.stop();run(1);juce::AudioBuffer<float> tone(1,44100);for(int s=0;s<44100;++s)tone.setSample(0,s,.5f*(float)std::sin(s*.05));
+            engine.startPreview(std::move(tone),44100);run(1);check(engine.isPreviewing()&&out.getMagnitude(0,512)>.1f&&out.getMagnitude(1,512)>.1f,"preview sounds on both sides while stopped");
+            engine.stopPreview();run(1);check(!engine.isPreviewing()&&out.getMagnitude(0,512)==0,"preview stops at once");
+            juce::AudioBuffer<float> blip(2,64);blip.clear();blip.setSample(0,0,1);engine.startPreview(std::move(blip),44100);run(2);check(!engine.isPreviewing(),"a finished preview reports it");
+        }
+        // Delay compensation line: a track is delayed by exactly the difference in latency.
+        {
+            fga::Instrument track(4);track.delay=100;juce::AudioBuffer<float> block(2,256);block.clear();block.setSample(0,3,1);block.setSample(1,3,-1);
+            track.applyDelay(block,256);check(block.getSample(0,103)==1&&block.getSample(1,103)==-1&&block.getMagnitude(0,0,103)==0,"delay line shifts by the latency difference");
+            block.clear();track.applyDelay(block,256);check(block.getMagnitude(0,256)==0,"nothing left behind");
+            track.reset();check(!track.delayUsed,"reset clears the line");
+        }
         std::cout<<"Audio engine resync, transport and gapless MP3 passed\n";return 0;
     }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}
 }
