@@ -53,7 +53,9 @@ Listing list(const juce::File& folder,const std::function<bool()>& stop){
     if(!folder.isDirectory()){out.available=false;out.error=folder.exists()?"Not a folder":"Folder not available";return out;}
     for(const auto& item:juce::RangedDirectoryIterator(folder,false,"*",juce::File::findFilesAndDirectories|juce::File::ignoreHiddenFiles)){
         if(stop&&stop())break;
-        Entry e;e.file=item.getFile();e.name=e.file.getFileName();e.folder=item.isDirectory();e.size=e.folder?0:item.getFileSize();e.modified=item.getModificationTime();
+        Entry e;e.file=item.getFile();e.name=e.file.getFileName();
+        if(e.name.startsWithChar('.'))continue; // dot names are hidden on every platform
+        e.folder=item.isDirectory();e.size=e.folder?0:item.getFileSize();e.modified=item.getModificationTime();
         out.entries.push_back(std::move(e));
     }
     return out;

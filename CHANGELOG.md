@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.14.2 — 2026-10-23
+
+- Sample browser treats dot-prefixed files and folders as hidden on every platform, including Windows.
+
 ## 0.14.1 — 2026-10-23
 
 - Fix Windows build of sample browser.

@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.14.2 — 2026-10-23
+
+- Il browser campioni considera nascosti i file e le cartelle che iniziano con un punto su ogni piattaforma, Windows compreso.
+
 ## 0.14.1 — 2026-10-23
 
 - Corretto il build Windows del browser campioni.
