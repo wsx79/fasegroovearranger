@@ -1,0 +1,1876 @@
+--- a/Source/GuideVoice.h
++++ b/Source/GuideVoice.h
+@@ -52,7 +52,7 @@
+ {
+ public:
+     GuideVoice (const std::atomic<float>& toneParam, const std::atomic<float>& soundParam, bool centreOutput = false)
+-        : centred (centreOutput), tone (toneParam), soundChoice (soundParam) {}
++        : tone (toneParam), soundChoice (soundParam), centred (centreOutput) {}
+ 
+     bool canPlaySound (juce::SynthesiserSound* s) override
+     {
+@@ -158,7 +158,6 @@
+     }
+ 
+ private:
+-    const bool centred;
+     //==============================================================================
+     // Cheap maths for the per-sample loops (the guide sound runs up to 24 voices):
+ 
+@@ -516,6 +515,7 @@
+     //==============================================================================
+     const std::atomic<float>& tone;
+     const std::atomic<float>& soundChoice;
++    const bool centred; // Arranger bass; original plugin callers retain keyboard spread.
+     juce::Random random;
+ 
+     GuideSound sound = GuideSound::rhodes;
+@@ -549,3 +549,4 @@
+     bool strings = false;
+     double padLow2 = 0.0, vibratoPhase = 0.0;
+ };
++
+--- a/Source/engine/Generators.cpp
++++ b/Source/engine/Generators.cpp
+@@ -309,6 +309,7 @@
+     normaliseRiff (p, std::clamp ((double) densityIn, 0.0, 1.0));
+     return p;
+ }
++
+ 
+ namespace
+ {
+--- a/Source/engine/Generators.cpp.orig
++++ b/Source/engine/Generators.cpp.orig
+@@ -0,0 +1,1166 @@
++// Fase Groove Piano - Copyright (C) 2026 Fabio 'Pitch' Serra
++// SPDX-License-Identifier: AGPL-3.0-or-later
++
++#include "Generators.h"
++#include "GrooveEngine.h"
++
++#include <algorithm>
++#include <array>
++#include <cmath>
++
++namespace sgk
++{
++
++namespace
++{
++    /** Small deterministic PRNG (xorshift32). */
++    struct Random
++    {
++        explicit Random (std::uint32_t seed) : state (seed * 2654435761u + 0x9E3779B9u) { if (state == 0) state = 1; next(); }
++
++        std::uint32_t next() noexcept
++        {
++            state ^= state << 13;
++            state ^= state >> 17;
++            state ^= state << 5;
++            return state;
++        }
++
++        double uniform() noexcept       { return (next() >> 8) * (1.0 / 16777216.0); }
++        bool chance (double p) noexcept { return uniform() < p; }
++        int below (int n) noexcept      { return n > 0 ? (int) (next() % (std::uint32_t) n) : 0; }
++
++        std::uint32_t state;
++    };
++
++    bool isHit (char c) noexcept { return c == 'X' || c == 'x' || c == 'g' || c == '>' || c == 'u' || c == 'U' || c == 'd' || c == 'D'; }
++
++
++}
++
++void repairHolds (std::string& line)
++{
++    // A hold at the very start may continue a note from the end of the loop.
++    bool sounding = false;
++    for (int pass = 0; pass < 2; ++pass)
++    {
++        for (auto& c : line)
++        {
++            if (isHit (c))      sounding = true;
++            else if (c == '.')  sounding = false;
++            else if (c == '=' && ! sounding && pass == 1) c = '.';
++        }
++    }
++}
++
++GroovePattern applySegmentOrder (const GroovePattern& source, const std::array<int, numSegments>& order)
++{
++    const int len = source.length();
++    if (len % numSegments != 0)
++        return source;
++
++    bool identity = true;
++    for (int i = 0; i < numSegments; ++i)
++        identity = identity && order[(size_t) i] == i;
++    if (identity)
++        return source;
++
++    const int seg = len / numSegments;
++    GroovePattern p = source;
++
++    for (int i = 0; i < numSegments; ++i)
++    {
++        const int from = std::clamp (order[(size_t) i], 0, numSegments - 1) * seg;
++        for (int k = 0; k < seg; ++k)
++        {
++            p.rightHand[(size_t) (i * seg + k)] = source.rightHand[(size_t) (from + k)];
++            p.leftHand[(size_t) (i * seg + k)]  = source.leftHand[(size_t) (from + k)];
++        }
++    }
++
++    repairHolds (p.rightHand);
++    repairHolds (p.leftHand);
++    return p;
++}
++
++void copySegment (GroovePattern& into, const GroovePattern& from, int segment)
++{
++    const int len = into.length();
++    if (len != from.length() || len % numSegments != 0 || segment < 0 || segment >= numSegments)
++        return;
++
++    const int seg = len / numSegments;
++    for (int k = segment * seg; k < (segment + 1) * seg; ++k)
++    {
++        into.rightHand[(size_t) k] = from.rightHand[(size_t) k];
++        into.leftHand[(size_t) k]  = from.leftHand[(size_t) k];
++    }
++
++    repairHolds (into.rightHand);
++    repairHolds (into.leftHand);
++}
++
++//==============================================================================
++const char* sectionName (int section) noexcept
++{
++    static const char* const names[numSections] { "Main groove", "Intro", "Break", "Build-up", "Drop", "Outro" };
++    return names[std::clamp (section, 0, numSections - 1)];
++}
++
++double sectionVelocityScale (Section section) noexcept
++{
++    switch (section)
++    {
++        case Section::intro:     return 0.8;
++        case Section::breakdown: return 0.72;
++        case Section::buildup:   return 0.9;
++        case Section::drop:      return 1.1;
++        case Section::outro:     return 0.8;
++        case Section::main:
++        default:                 return 1.0;
++    }
++}
++
++bool sectionAllowsFills (Section section) noexcept
++{
++    return section == Section::main || section == Section::drop;
++}
++
++GroovePattern applySection (const GroovePattern& source, Section section)
++{
++    GroovePattern p = source;
++    const int len = p.length();
++
++    switch (section)
++    {
++        case Section::intro:
++        case Section::outro:
++        {
++            // Keep the accents, pushes and on-beat hits, softened; no bass.
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = p.rightHand[(size_t) i];
++                if (c == 'g' || ((c == 'x' || c == 'u' || c == 'd') && i % 4 != 0))
++                    c = '.';
++                else if (c == 'X')
++                    c = 'x';
++                else if (c == 'U' || c == 'D')
++                    c = (char) (c - 'A' + 'a');
++            }
++
++            repairHolds (p.rightHand);
++
++            bool any = std::any_of (p.rightHand.begin(), p.rightHand.end(), isHit);
++            if (! any)
++                p.rightHand[0] = 'x';
++
++            p.leftHand.assign ((size_t) len, '.');
++            break;
++        }
++
++        case Section::breakdown:
++        {
++            // Long, soft pads: one chord per bar, held almost to the end.
++            for (int i = 0; i < len; ++i)
++            {
++                const int inBar = i % 16;
++                p.rightHand[(size_t) i] = inBar == 0 ? 'X' : inBar < 15 ? '=' : '.';
++            }
++
++            p.leftHand.assign ((size_t) len, '.');
++            break;
++        }
++
++        case Section::buildup:
++        {
++            // Bar 1: straight 8ths, bar 2: driving 16ths; bass pumping on quarters then 8ths.
++            for (int i = 0; i < len; ++i)
++            {
++                const bool secondHalf = i >= len / 2;
++                p.rightHand[(size_t) i] = secondHalf ? (i % 4 == 0 ? 'X' : 'x') : (i % 2 == 0 ? (i % 4 == 0 ? 'X' : 'x') : '.');
++                p.leftHand[(size_t) i]  = secondHalf ? (i % 2 == 0 ? 'x' : '.') : (i % 4 == 0 ? 'x' : '.');
++            }
++            break;
++        }
++
++        case Section::drop:
++        case Section::main:
++        default:
++            break;
++    }
++
++    if (section != Section::main)
++        p.name = source.name + " / " + sectionName ((int) section);
++
++    return p;
++}
++
++//==============================================================================
++namespace
++{
++    /** Piano house riff from the classic loop figures: syncopated offbeat stabs (often every
++        three 16ths) over an octave bass on the 1 and the "&" of 2, decorated per seed. */
++    GroovePattern makeLoopRiff (Random& rng, double density)
++    {
++        // One-bar figures: the dotted-8th (3+3+3+3+2+2) family and its relatives, the rhythms
++        // that most piano house loops are built on.
++        static const char* const rhBars[] {
++            "x..x..x..x..x.x.", "x...x..x..x..x..", "x...x..x..x.x.x.", "..x.x..x..x.x.x.",
++            "x..x..x..x..x...", "x...x.x.x..x..x.", "x...x..x..x...x.", "x...x..x.x..x.x.",
++            "..x..x..x..x..x.", "x.x.x..x..x.x..x", "x...x...x..x..x.", "x..x..x.x..x..x.",
++            "x..x..x...x..x..", "..x..x....x..x..", "x......x..x..x..", "..x....x...x..x.",
++        };
++        static const char* const lhBars[] {
++            "x.....x.........", "x.....x.......x.", "x.....x.....x...", "x.....x.x...x.x.",
++        };
++        constexpr int numRh = (int) (sizeof (rhBars) / sizeof (*rhBars));
++        constexpr int numLh = (int) (sizeof (lhBars) / sizeof (*lhBars));
++
++        // House loops repeat their bar; now and then the second bar answers with another figure.
++        const int a = rng.below (numRh);
++        const int b = rng.chance (0.7) ? a : rng.below (numRh);
++        std::string right = std::string (rhBars[a]) + rhBars[b];
++
++        const int la = rng.below (numLh);
++        std::string left = std::string (lhBars[la]) + lhBars[rng.chance (0.6) ? la : rng.below (numLh)];
++
++        // Steady touch, like the loops: only the first hit of each bar is accented; sparse
++        // riffs hold a stab a little longer now and then.
++        for (int bar = 0; bar < 2; ++bar)
++        {
++            bool first = true;
++            for (int i = bar * 16; i < bar * 16 + 16; ++i)
++            {
++                char& c = right[(size_t) i];
++                if (c != 'x')
++                    continue;
++                if (first)
++                    c = 'X';
++                first = false;
++                if (i + 1 < 32 && right[(size_t) i + 1] == '.' && rng.chance (0.25 * (1.0 - density)))
++                    right[(size_t) i + 1] = '=';
++            }
++        }
++
++        // Push into the next loop, now and then with the bass.
++        if (rng.chance (0.45) && right[30] != '=')
++        {
++            right[30] = '>'; right[31] = '=';
++            if (rng.chance (0.5)) { left[30] = '>'; left[31] = '='; }
++        }
++
++        repairHolds (right);
++        repairHolds (left);
++
++        GroovePattern p;
++        p.rightHand = right;
++        p.leftHand = left;
++        return p;
++    }
++}
++
++GroovePattern makeRandomPatternRaw (std::uint32_t seed, float densityIn);
++
++namespace
++{
++    /** The last touch on a random riff: as busy as its density asks, never a long burst.
++        - at most 12 (sparse) .. 20 (busy) chord hits in the two bars: the weakest ones go
++          (an unaccented hit off the beat, not starting a hold or a push);
++        - at most 3 hits in a row (4 when busy): the middle of a longer burst becomes a ghost. */
++    void normaliseRiff (GroovePattern& p, double density)
++    {
++        auto& r = p.rightHand;
++        const int len = (int) r.size();
++        auto strongHit = [] (char c) { return c == 'X' || c == 'x' || c == '>' || c == 'u' || c == 'U' || c == 'd' || c == 'D'; };
++
++        const int maxHits = (int) std::lround (12.0 + 8.0 * density) * std::max (1, len / 32);
++        int hits = (int) std::count_if (r.begin(), r.end(), strongHit);
++        for (int pass = 0; pass < 2 && hits > maxHits; ++pass)
++            for (int i = len - 1; i >= 0 && hits > maxHits; --i)
++            {
++                const bool weak = r[(size_t) i] == 'x' && i % 4 != 0
++                               && (i + 1 >= len || (r[(size_t) i + 1] != '=' && r[(size_t) i + 1] != '>'));
++                // first pass: the 16ths between the 8ths; then any weak hit
++                if (weak && (pass == 1 || i % 2 == 1))
++                {
++                    r[(size_t) i] = '.';
++                    --hits;
++                }
++            }
++
++        const int maxRun = density > 0.6 ? 4 : 3;
++        int run = 0;
++        for (int i = 0; i < len; ++i)
++        {
++            run = strongHit (r[(size_t) i]) ? run + 1 : 0;
++            if (run > maxRun && r[(size_t) i - 1] == 'x')
++            {
++                r[(size_t) i - 1] = 'g';   // breathe inside the burst
++                run = 1;
++            }
++        }
++        repairHolds (r);
++    }
++}
++
++GroovePattern makeRandomPattern (std::uint32_t seed, float densityIn)
++{
++    auto p = makeRandomPatternRaw (seed, densityIn);
++    normaliseRiff (p, std::clamp ((double) densityIn, 0.0, 1.0));
++    return p;
++}
++
++
++namespace
++{
++    std::string packBar (const char* bar)
++    {
++        std::string out;
++        for (const char* p = bar; *p != '\0'; ++p)
++            if (*p != ' ')
++                out.push_back (*p);
++        return out;
++    }
++
++    std::string twoBars (const char* const* bars, int count, std::uint32_t seed)
++    {
++        const int a = (int) (seed % (std::uint32_t) count);
++        const int b = (int) ((seed / (std::uint32_t) count) % (std::uint32_t) count);
++        return packBar (bars[a]) + packBar (bars[b]);
++    }
++
++    GroovePattern genrePattern (const std::string& right)
++    {
++        GroovePattern p;
++        p.rightHand = right;
++        p.leftHand.assign (32, '.');
++        p.leftHand[0] = 'x';
++        p.leftHand[16] = 'x';
++        repairHolds (p.rightHand);
++        repairHolds (p.leftHand);
++        return p;
++    }
++
++    /** The touch of a genre riff, on top of its comping grid (which the seed picks and keeps):
++        accents where that style leans, ghost notes before hits, a turn on the last beat, a push
++        into the next loop, the density control, and a bass figure of the genre that locks to it.
++        Every choice comes from the seed, so the same seed and genre give the same riff. */
++    void shapeGenreRiff (GroovePattern& p, int genre, std::uint32_t seed, double density)
++    {
++        enum { soulful = 1, deep, gospel, jackin, jackinPiano, garage, afro, funky, neo = 10, chill };
++        Random rng (seed * 0x9E3779B1u + (std::uint32_t) genre * 0x85EBCA6Bu + 0x2545F491u);
++
++        auto& r = p.rightHand;
++        const int len = (int) r.size();
++        if (len != 32)
++            return;
++
++        // Genres that stab and never hold (their grids carry no '=').
++        const bool stabbed = genre == jackin || genre == jackinPiano || genre == garage || genre == funky;
++        auto hits = [&] { return (int) std::count_if (r.begin(), r.end(), isHit); };
++        auto inHold = [&] (int i) { return i > 0 && r[(size_t) i - 1] == '='; };
++        auto tresilloStep = [] (int i) { const int k = i % 16; return k == 0 || k == 3 || k == 6; };
++
++        // ---- density: a sparse setting leaves out a weak 16th, a busy one adds an "&" ----
++        if (density < 0.35)
++            for (int i = 1; i < len; i += 2)
++                if (r[(size_t) i] == 'x' && hits() > 6 && ! (genre == afro && tresilloStep (i))
++                    && (i + 1 >= len || r[(size_t) i + 1] != '=') && rng.chance ((0.35 - density) * 1.6))
++                    r[(size_t) i] = '.';
++        auto hasGap = [&]   // garage skips: somewhere a whole beat without a hit
++        {
++            for (int i = 0; i + 3 < len; ++i)
++                if (! isHit (r[(size_t) i]) && ! isHit (r[(size_t) i + 1]) && ! isHit (r[(size_t) i + 2]) && ! isHit (r[(size_t) i + 3]))
++                    return true;
++            return false;
++        };
++        if (density > 0.65)
++        {
++            // Pads and deep chords stay sparse; garage adds its skipping 16th, never filling every gap.
++            const int cap = genre == deep ? 8 : genre == chill ? 6 : len;
++            const int first = genre == garage ? 3 : 2;
++            for (int i = first; i < len; i += 4)
++                if (r[(size_t) i] == '.' && ! inHold (i) && hits() < cap && rng.chance ((density - 0.65) * 1.2))
++                {
++                    r[(size_t) i] = 'x';
++                    if (genre == garage && ! hasGap())
++                        r[(size_t) i] = '.';
++                }
++        }
++
++        // ---- the turn: now and then the last beat of the loop answers with another cell ----
++        static const char* const turns[12][3] {
++            {}, { "x=..", "..x=", "x..x" }, { "..x=", "x=..", ".x=." }, { "x.x.", ".x.x", "x..x" },
++            { ".x.x", "x.xx", "..xx" }, { "..xx", ".x.x", "x..x" }, { "...x", ".x..", "..x." },
++            { "..x.", ".x..", "x..x" }, { ".xx.", "x.xx", ".x.x" }, {}, { "..x.", "...x", ".x.." },
++            { "..x=", "x===", "...." },
++        };
++        if (genre >= 0 && genre < 12 && turns[genre][0] != nullptr && rng.chance (0.4))
++        {
++            const char* cell = turns[genre][rng.below (3)];
++            for (int k = 0; k < 4; ++k)
++                r[(size_t) 28 + (size_t) k] = cell[k];
++        }
++
++        // ---- garage: a stab on an "&" now and then slips a 16th late, the 2-step skip ----
++        if (genre == garage)
++            for (int i = 2; i + 1 < len; i += 4)
++                if (r[(size_t) i] == 'x' && r[(size_t) i + 1] == '.' && i % 16 != 0 && rng.chance (0.3))
++                {
++                    r[(size_t) i] = '.';
++                    r[(size_t) i + 1] = 'x';
++                }
++
++        // ---- push into the next loop: held where the style holds, a short anticipation where it stabs ----
++        if ((genre == soulful || genre == deep || genre == gospel || genre == neo) && rng.chance (0.4))
++        {
++            r[30] = '>';
++            r[31] = '=';
++        }
++        else if (stabbed && genre != garage && r[30] != '=' && ! isHit (r[30]) && rng.chance (0.3))
++            r[31] = '>';
++        repairHolds (r);
++
++        // ---- accents: the first hit of each bar, then where the style leans ----
++        for (int bar = 0; bar < 2; ++bar)
++            for (int i = bar * 16; i < bar * 16 + 16; ++i)
++                if (r[(size_t) i] == 'x') { r[(size_t) i] = 'X'; break; }
++        for (int i = 0; i < len; ++i)
++        {
++            if (r[(size_t) i] != 'x')
++                continue;
++            double lean = 0.0;
++            switch (genre)
++            {
++                case jackin: case jackinPiano: lean = i % 4 == 2 ? 0.5 : 0.0; break;     // the jacking "&"
++                case funky:   lean = i % 8 == 4 ? 0.6 : i % 4 == 3 ? 0.25 : 0.0; break; // 2 and 4, the "a"
++                case gospel:  lean = i % 8 == 4 ? 0.55 : 0.0; break;                     // the backbeat
++                case garage:  lean = i % 2 == 1 ? 0.5 : i % 4 == 2 ? 0.3 : 0.0; break;   // the skipped 16th, the offbeat
++                case afro:    lean = tresilloStep (i) ? 0.5 : 0.0; break;                // the tresillo
++                case soulful: case neo: lean = i % 4 == 2 ? 0.2 : 0.0; break;
++                case deep: case chill: lean = i % 8 == 0 ? 0.35 : 0.0; break;            // a chord on 1 or 3
++                default: break;
++            }
++            if (lean > 0.0 && rng.chance (lean))
++                r[(size_t) i] = 'X';
++        }
++
++        // ---- ghost notes: a soft 16th before a hit, where the style plays them ----
++        double ghost = 0.0;
++        switch (genre)
++        {
++            case funky: ghost = 0.35; break;
++            case jackin: ghost = 0.25; break;
++            case jackinPiano: case gospel: ghost = 0.18; break;
++            case neo: ghost = 0.12; break;
++            case afro: case soulful: ghost = 0.08; break;
++            default: break;
++        }
++        ghost *= 0.5 + density;
++        if (ghost > 0.0)
++            for (int i = 1; i + 1 < len; ++i)
++                if (r[(size_t) i] == '.' && i % 4 != 0 && ! inHold (i) && isHit (r[(size_t) i + 1]) && r[(size_t) i + 1] != 'g'
++                    && rng.chance (ghost))
++                    r[(size_t) i] = 'g';
++
++        // ---- the bass: a figure of the genre, the same in both bars or answered in the second ----
++        static const std::vector<std::vector<const char*>> bassBars {
++            {},
++            { "x=.....x..x.....", "x==...x...x.....", "x=......x=......", "x.....x.x.......", "x==.......x..x.." },
++            { "x==.......x.....", "x===......x=....", "x=......x=......", "x==....x........", "x=.......x=.....", "x==...x=........" },
++            { "x...x...x...x...", "x..x..x.x...x...", "x=..x=..x=..x..x", "x...x..xx...x..." },
++            { "x.x...x.x.x...x.", "..x...x...x...x.", "x..x..x...x..x..", "x.....x.x.....x.", "x.xx..x...x.x..." },
++            { "x.x...x.x.x...x.", "x.....x...x..x..", "x..x..x...x..x..", "x.....x.x.....x.", "..x...x...x...x." },
++            { "x.......x.x.....", "x......x..x.....", "x..x......x.....", "x.........x..x..", "x.....x....x...." },
++            { "x..x..x.........", "x..x..x...x.....", "x.....x...x..x..", "x..x..x...x..x.." },
++            { "x.x...x.x.x...x.", "x..x.x..x..x.x..", "x.xx..x.x.x..x..", "x...x.x.x..x..x.", "x.x..xx.x.x..x.." },
++            {},
++            { "x=....x...x.....", "x=.......x..x...", "x==....x..x.....", "x.......x=...x.." },
++            { "x===....x===....", "x=======........", "x===......x=....", "x=======...x=...", "x===...x=......." },
++        };
++        if (genre > 0 && genre < (int) bassBars.size() && ! bassBars[(size_t) genre].empty())
++        {
++            const auto& figures = bassBars[(size_t) genre];
++            const int n = (int) figures.size();
++            const int a = rng.below (n);
++            const int b = rng.chance (0.65) ? a : rng.below (n);
++            std::string left = std::string (figures[(size_t) a]) + figures[(size_t) b];
++            if (genre == funky || genre == jackin)   // dead notes between the bass hits
++                for (int i = 1; i + 1 < 32; ++i)
++                    if (left[(size_t) i] == '.' && left[(size_t) i - 1] != '=' && left[(size_t) i + 1] == 'x' && rng.chance (0.2))
++                        left[(size_t) i] = 'g';
++            if (r[30] == '>' && ! stabbed && rng.chance (0.6))
++            {
++                left[30] = '>'; left[31] = '='; left[0] = 'x';
++            }
++            p.leftHand = left;
++            repairHolds (p.leftHand);
++        }
++    }
++}
++
++GenreRiffFeel genreRiffFeel (int genre) noexcept
++{
++    // Indexes follow grooveCategories(): piano house through dance stabs.
++    static const GenreRiffFeel feel[] {
++        { 8, 2, 1, 0.45f, 0.48f },   // Piano House: upper-triad 9ths, offbeat
++        { 2, 2, 0, 0.28f, 0.72f },   // Soulful: rootless 9ths, a longer stab
++        { 2, 2, 1, 0.35f, 0.88f },   // Deep: rootless 9ths, held
++        { 3, 9, 0, 0.35f, 0.58f },   // Gospel: wide 13ths
++        { 0, 1, 1, 0.80f, 0.22f },   // Jackin': close 7ths, heavy swing, short
++        { 8, 1, 1, 0.65f, 0.28f },   // Jackin' Piano: upper triad, swung
++        { 2, 1, 1, 0.75f, 0.30f },   // Garage: swung, short
++        { 4, 1, 1, 0.35f, 0.50f },   // Afro: quartal
++        { 0, 10, 0, 0.30f, 0.35f },  // Funky: #9 colour, 16ths
++        { 7, 5, 0, 0.45f, 0.42f },   // '90s Piano House: octave triads, add9
++        { 2, 8, 1, 0.85f, 0.78f },   // Neo Soul: rootless 11ths, laid-back swing
++        { 3, 2, 1, 0.22f, 0.95f },   // Chill: wide 9ths, long gate
++        { 8, 0, 0, 0.12f, 0.22f },   // Dance Stabs: dry upper triads
++    };
++    const int n = (int) (sizeof (feel) / sizeof (*feel));
++    if (genre < 0 || genre >= n)
++        return feel[0];
++    return feel[genre];
++}
++
++GroovePattern makeRandomPattern (std::uint32_t seed, float densityIn, int genre)
++{
++    // House-family grooves keep the classic loop figures, seed for seed.
++    if (genre <= 0 || genre == 9 || genre == 12 || genre > 12)
++        return makeRandomPattern (seed, densityIn);
++
++    static const char* const soulful[] {
++        "x=.. ..x. x=.. ....", "x=.. .... ..x. ....", "x... ..x. x=.. ..x.", "x=.. ...x ..x. ....",
++        "x... .... x=.. ..x.", "x=.. ..x. .... ..x.", "x=.. ..x. .... x...", "x=.. .... x... ..x.",
++    };
++    static const char* const deep[] {
++        "x=== .... .... ....", "x=== .... ..x. ....", "x=.. .... x=.. ....", "x=== ..x. .... ....",
++        "x=.. .... .... ..x.", "..x= .... x=.. ....", "x=== .... .x.. ....", ".... x=== .... ....",
++    };
++    static const char* const gospel[] {
++        "x..x ..x. x... ..x.", "x.x. ..x. x..x ....", "x... ..x. x.x. ..x.", "x..x .... x... ..x.",
++        "x.x. x... ..x. ..x.", "x... x..x ..x. ....", "x..x ..x. x.x. ....", "x... ..x. x... x..x",
++    };
++    static const char* const jackin[] {
++        "x.x. ..x. x..x .x..", "x..x .x.x ..x. x..x", ".x.x x..x .x.. x.x.", "x.xx ..x. x.x. .xx.",
++        "x..x .x.. x.x. ..x.", ".x.x ..xx x..x .x.x", "x.x. .x.x x..x ..x.", "x..x x.x. .x.x x..x",
++    };
++    static const char* const jackinPiano[] {
++        "x... ..x. x.xx ..x.", "x..x ..x. .x.x ..x.", "x... .x.x ..x. x..x", "x..x ..x. x... .x.x",
++        "..x. x..x ..x. .x..", "x... ..xx ..x. x..x", "x..x .x.. ..x. x.x.", "x.x. ..x. x..x ..x.",
++    };
++    static const char* const garage[] {
++        "x... ...x ..x. ....", "x... .... ..x. ...x", "x..x .... ..x. ....", "x... .... .x.. ...x",
++        "x... ...x .... ..x.", "x..x .... ...x ....", "x... .... ..x. .x..", "x... ..x. .... ...x",
++    };
++    static const char* const afroTail[] {
++        "x..x..x.", "x...x...", ".x.x..x.", "x..x....", "..x.x..x", "x.x..x..", "....x..x", "x..x.x..",
++    };
++    static const char* const funky[] {
++        "x.x. .x.x x..x .x.x", ".x.x x.x. .xx. x.x.", "x..x .x.x ..xx .x..", ".xx. x..x .x.x x..x",
++        "x.xx ..x. .x.x x.x.", ".x.. x.xx .x.x ..xx", "x..x .xx. x.x. .x.x", ".x.x ..x. x.xx .x.x",
++    };
++    static const char* const neo[] {
++        "x=.. .x.. .... ....", "x=.. .... ..x. ...x", ".... ..x. x=.. ...x", "x=.. .... .x.. ....",
++        "x... ..x= .... ...x", "..x. x=.. .... .x..", "x=.. ...x ..x. ....", ".... .x.. x=.. ..x.",
++    };
++    static const char* const chill[] {
++        "x=== ==== .... ....", "x=== .... x=== ....", "x=== ..x= .... ....", "x=== .... .... ..x=",
++        "x=.. ..x. x=.. ....", "..x= ==== .... ....", ".... x=== ==== ....", "x=== ==== ..x. ....",
++    };
++
++    std::string right;
++    switch (genre)
++    {
++        case 1: right = twoBars (soulful, 8, seed); break;
++        case 2: right = twoBars (deep, 8, seed); break;
++        case 3: right = twoBars (gospel, 8, seed); break;
++        case 4: right = twoBars (jackin, 8, seed); break;
++        case 5: right = twoBars (jackinPiano, 8, seed); break;
++        case 6: right = twoBars (garage, 8, seed); break;
++        case 7:
++        {
++            const int a = (int) (seed % 8u);
++            const int b = (int) ((seed / 8u) % 8u);
++            right = std::string ("x..x..x.") + packBar (afroTail[a]) + "x..x..x." + packBar (afroTail[b]);
++            break;
++        }
++        case 8: right = twoBars (funky, 8, seed); break;
++        case 10: right = twoBars (neo, 8, seed); break;
++        case 11: right = twoBars (chill, 8, seed); break;
++        default: return makeRandomPattern (seed, densityIn);
++    }
++
++    auto p = genrePattern (right);
++    shapeGenreRiff (p, genre, seed, std::clamp ((double) densityIn, 0.0, 1.0));
++    p.name = "Random Riff #" + std::to_string (seed % 100000);
++    return p;
++}
++
++GroovePattern makeRandomPatternRaw (std::uint32_t seed, float densityIn)
++{
++    {
++        // Most riffs come from the classic piano house loop figures; only busy settings
++        // sometimes build one from comping cells instead.
++        Random pick (seed ^ 0xC0FFEEu);
++        if (pick.chance (0.95 - 0.35 * std::clamp ((double) densityIn, 0.0, 1.0)))
++        {
++            auto p = makeLoopRiff (pick, std::clamp ((double) densityIn, 0.0, 1.0));
++            p.name = "Random Riff #" + std::to_string (seed % 100000);
++            return p;
++        }
++    }
++
++    // Built like a keyboard player builds a riff: a half-bar motif made of house
++    // comping cells, answered by a second half-bar, then repeated with a different ending
++    // that pushes into the next bar (A B A B'). The bass keeps it simple and locks to it.
++    Random rng (seed);
++    const double density = std::clamp ((double) densityIn, 0.0, 1.0);
++
++    // One-beat right-hand cells (4 sixteenths), from sparse to busy.
++    static const char* const sparseCells[] { "..x.", "x...", "x=..", "..x=", "x===", "....", "...x", "x.x." };
++    static const char* const mediumCells[] { "..x.", ".x.x", "x..x", "..xx", "x.x.", "...x", ".xx.", "x..." , "..x=", "x=.x" };
++    static const char* const busyCells[]   { "x.xx", ".x.x", "xx.x", "x.x.", ".xx.", "..xx", "x..x", ".x.." };
++
++    auto pickCell = [&] () -> std::string
++    {
++        const double r = rng.uniform();
++        const double busyShare = 0.1 + 0.6 * density;
++        const double sparseShare = 0.55 * (1.0 - density);
++        if (r < sparseShare)
++            return sparseCells[rng.below ((int) (sizeof (sparseCells) / sizeof (*sparseCells)))];
++        if (r < sparseShare + busyShare)
++            return busyCells[rng.below ((int) (sizeof (busyCells) / sizeof (*busyCells)))];
++        return mediumCells[rng.below ((int) (sizeof (mediumCells) / sizeof (*mediumCells)))];
++    };
++
++    auto countIn = [] (const std::string& line) { return (int) std::count_if (line.begin(), line.end(), isHit); };
++
++    // A half-bar phrase (two beats) with at least one and at most six hits.
++    auto makeHalf = [&] ()
++    {
++        for (int attempt = 0; attempt < 16; ++attempt)
++        {
++            const auto half = pickCell() + pickCell();
++            const int hits = countIn (half);
++            if (hits >= 1 && hits <= 6)
++                return half;
++        }
++        return std::string ("..x...x.");
++    };
++
++    // Accents (first hit, and offbeat "&"s now and then) and, in busy riffs, ghost notes
++    // before a hit: decided per phrase, so a repeated phrase really repeats.
++    auto decorate = [&] (std::string half)
++    {
++        bool first = true;
++        for (int i = 0; i < (int) half.size(); ++i)
++        {
++            char& c = half[(size_t) i];
++            if (c != 'x')
++                continue;
++            if (first || (i % 4 == 2 && rng.chance (0.35)))
++                c = 'X';
++            first = false;
++        }
++
++        for (int i = 0; i + 1 < (int) half.size(); ++i)
++            if (half[(size_t) i] == '.' && isHit (half[(size_t) i + 1]) && rng.chance (0.22 * density))
++                half[(size_t) i] = 'g';
++
++        return half;
++    };
++
++    const auto motif = decorate (makeHalf());      // A
++    auto answer = makeHalf();                       // B
++    if (answer == motif)
++        answer = std::string (answer.rbegin(), answer.rend());
++    answer = decorate (answer);
++
++    // House piano keeps one voicing per chord, so riffs don't move by default
++    // (the Movement control adds it when wanted).
++
++    // B': the answer with a new last beat.
++    const std::string ending = answer.substr (0, 4) + decorate (pickCell());
++
++    std::string right = motif + answer + motif + ending;
++
++    // The "a" of beat 4 pushes the next chord in (the classic house anticipation).
++    const bool pushBar2 = rng.chance (0.55 + 0.25 * density);
++    const bool pushBar1 = rng.chance (0.25 * density);
++    if (pushBar2) { right[30] = '>'; right[31] = '='; }
++    if (pushBar1) { right[14] = '>'; right[15] = '='; }
++
++    if (countIn (right) < 6)
++        for (int i = 2; i < 32 && countIn (right) < 6; i += 8)
++            if (right[(size_t) i] == '.') right[(size_t) i] = 'x';
++
++    // ---- bass: one simple figure, the same in both bars ----
++    static const char* const bassFigures[] {
++        "x=......x.......",   // 1 and 3
++        "x=.......x......",   // 1 and the "e" of 3
++        "x.....x.........",   // 1 and the "&" of 2
++        "x==.......x.....",   // 1 held, pickup on the "&" of 3
++        "x.......x.....x.",   // 1, 3 and the "&" of 4
++        "x=....x=..x.....",   // syncopated house bass
++        "x==.....x==.....",   // half notes
++        "x...........x...",   // 1 and 4
++    };
++    const std::string bassBar = bassFigures[rng.below ((int) (sizeof (bassFigures) / sizeof (*bassFigures)))];
++    std::string left = bassBar + bassBar;
++
++    // The bass follows a push into bar 1 (or lands with it).
++    if (pushBar2 && rng.chance (0.6)) { left[30] = '>'; left[31] = '='; left[0] = 'x'; }
++    if (pushBar1 && rng.chance (0.6)) { left[14] = '>'; left[15] = '='; left[16] = 'x'; }
++
++    repairHolds (right);
++    repairHolds (left);
++
++    GroovePattern p;
++    p.name = "Random Riff #" + std::to_string (seed % 100000);
++    p.rightHand = right;
++    p.leftHand = left;
++    return p;
++}
++
++GroovePattern morphPatterns (const GroovePattern& a, const GroovePattern& b, double amount, std::uint32_t seed)
++{
++    GroovePattern out = a;
++    const int len = a.length();
++    if (len == 0 || b.length() == 0)
++        return out;
++    amount = std::clamp (amount, 0.0, 1.0);
++
++    // Each step switches at its own threshold; the downbeats of each beat follow the target a
++    // little earlier, so the blend keeps a clear pulse.
++    auto threshold = [seed] (int step, int salt)
++    {
++        auto x = (std::uint64_t) (step + 1) * 0x9E3779B97F4A7C15ULL ^ ((std::uint64_t) (seed + (std::uint32_t) salt) * 0xBF58476D1CE4E5B9ULL);
++        x ^= x >> 31; x *= 0x94D049BB133111EBULL; x ^= x >> 29;
++        const double r = (double) (x >> 11) * (1.0 / 9007199254740992.0);
++        return step % 4 == 0 ? r * 0.8 : 0.1 + r * 0.9;
++    };
++
++    for (int i = 0; i < len; ++i)
++    {
++        const int j = i % b.length();
++        if (amount >= 1.0 || threshold (i, 1) < amount) out.rightHand[(size_t) i] = b.rightHand[(size_t) j];
++        if (amount >= 1.0 || threshold (i, 2) < amount) out.leftHand[(size_t) i]  = b.leftHand[(size_t) j];
++    }
++    repairHolds (out.rightHand);
++    repairHolds (out.leftHand);
++    if (amount > 0.0)
++        out.name = a.name + " > " + b.name;
++    return out;
++}
++
++const char* intentionName (int i) noexcept
++{
++    static const char* const names[numIntentions] { "More soulful", "Funkier", "More minimal", "More energy", "More sophisticated", "Straighter" };
++    return names[std::clamp (i, 0, numIntentions - 1)];
++}
++
++GroovePattern applyIntention (const GroovePattern& source, Intention intention, std::uint32_t seed)
++{
++    GroovePattern p = source;
++    auto& rh = p.rightHand;
++    auto& lh = p.leftHand;
++    const int len = p.length();
++    if (len == 0)
++        return p;
++
++    auto chance = [seed] (int step, int salt)
++    {
++        auto x = (std::uint64_t) (step + 1) * 0x9E3779B97F4A7C15ULL ^ ((std::uint64_t) (seed * 31u + (std::uint32_t) salt) * 0xBF58476D1CE4E5B9ULL);
++        x ^= x >> 31; x *= 0x94D049BB133111EBULL; x ^= x >> 29;
++        return (double) (x >> 11) * (1.0 / 9007199254740992.0);
++    };
++    auto at = [len] (std::string& line, int i) -> char& { return line[(size_t) (((i % len) + len) % len)]; };
++    auto empty = [] (char c) { return c == '.'; };
++
++    switch (intention)
++    {
++        case Intention::minimal:
++        {
++            // Fewer notes: no ghosts, weak hits go, the strong ones stay and ring longer.
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = rh[(size_t) i];
++                const bool strong = c == 'X' || c == 'U' || c == 'D' || c == '>' || i % 8 == 0;
++                if (c == 'g' || (isHit (c) && ! strong && chance (i, 1) < 0.55))
++                    c = '.';
++            }
++            for (int i = 0; i < len; ++i)
++                if (isHit (rh[(size_t) i]) && i + 1 < len && empty (rh[(size_t) (i + 1)]) && chance (i, 2) < 0.6)
++                    rh[(size_t) (i + 1)] = '=';
++            for (int i = 0; i < len; ++i)
++                if (isHit (lh[(size_t) i]) && i % 8 != 0 && chance (i, 3) < 0.6)
++                    lh[(size_t) i] = '.';
++            break;
++        }
++
++        case Intention::energetic:
++        {
++            // More drive: offbeat 8ths filled in, accents on the beat, a pick-up into each bar.
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = rh[(size_t) i];
++                if (empty (c) && i % 4 == 2 && chance (i, 4) < 0.6) c = 'x';
++                else if (c == 'x' && i % 4 == 0) c = 'X';
++                else if (c == '=' && chance (i, 5) < 0.4) c = '.';
++            }
++            for (int bar = 0; bar < len / 16; ++bar)
++                if (empty (at (rh, bar * 16 + 15)) && chance (bar, 6) < 0.7)
++                    at (rh, bar * 16 + 15) = 'x';
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = lh[(size_t) i];
++                if (empty (c) && i % 4 == 0 && chance (i, 7) < 0.5) c = 'x';
++                else if (empty (c) && i % 4 == 2 && chance (i, 8) < 0.3) c = 'x';
++            }
++            break;
++        }
++
++        case Intention::funky:
++        {
++            // Ghost notes around the hits, some hits anticipated by a 16th, short notes.
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = rh[(size_t) i];
++                if (c == '=') { c = '.'; continue; }
++                if (empty (c) && i % 2 == 1 && (isHit (at (rh, i - 1)) || isHit (at (rh, i + 1))) && chance (i, 9) < 0.5)
++                    c = 'g';
++            }
++            for (int i = 4; i < len; i += 4)
++                if (i % 16 != 0 && (rh[(size_t) i] == 'x') && empty (at (rh, i - 1)) && chance (i, 10) < 0.35)
++                {
++                    at (rh, i - 1) = 'x';
++                    rh[(size_t) i] = '.';
++                }
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = lh[(size_t) i];
++                if (c == '=') c = '.';
++                else if (empty (c) && i % 4 == 3 && chance (i, 11) < 0.3) c = 'x';
++            }
++            break;
++        }
++
++        case Intention::soulful:
++        {
++            // Smoother: fewer ghosts, chords held, a push into the next bar, a calmer bass.
++            for (int i = 0; i < len; ++i)
++                if (rh[(size_t) i] == 'g' && chance (i, 12) < 0.7)
++                    rh[(size_t) i] = '.';
++            for (int i = 0; i < len; ++i)
++                if (isHit (rh[(size_t) i]))
++                    for (int k = 1; k <= 2 && i + k < len && empty (rh[(size_t) (i + k)])
++                                    && (i + k + 1 >= len || ! isHit (rh[(size_t) (i + k + 1)]) || k == 1); ++k)
++                        rh[(size_t) (i + k)] = '=';
++            for (int bar = 0; bar < len / 16; ++bar)
++                if (empty (at (rh, bar * 16 + 14)) && chance (bar, 13) < 0.5)
++                {
++                    at (rh, bar * 16 + 14) = '>';
++                    if (empty (at (rh, bar * 16 + 15))) at (rh, bar * 16 + 15) = '=';
++                }
++            for (int i = 0; i < len; ++i)
++                if (isHit (lh[(size_t) i]) && i % 2 == 1 && chance (i, 14) < 0.6)
++                    lh[(size_t) i] = '.';
++            break;
++        }
++
++        case Intention::straighter:
++        {
++            // On the grid's strong points: hits on the "e" / "a" 16ths move to the nearest 8th,
++            // ghost notes and pushes go, the bar starts on its downbeat.
++            for (auto* line : { &rh, &lh })
++            {
++                auto& l = *line;
++                for (int i = 0; i < len; ++i)
++                {
++                    char& c = l[(size_t) i];
++                    if (c == 'g') { c = '.'; continue; }
++                    if (c == '>') { c = 'x'; }
++                    if (i % 2 == 1 && isHit (c))
++                    {
++                        const char moved = c;
++                        c = '.';
++                        if (empty (at (l, i - 1)))      at (l, i - 1) = moved;   // a 16th earlier...
++                        else if (empty (at (l, i + 1))) at (l, i + 1) = moved;   // ...or later
++                    }
++                }
++                for (int bar = 0; bar < len / 16; ++bar)
++                    if (empty (at (l, bar * 16)) && line == &rh)
++                        at (l, bar * 16) = 'X';
++            }
++            break;
++        }
++
++        case Intention::sophisticated:
++        {
++            // The same rhythm, with the chord moving through its inversions inside the bar.
++            for (int i = 0; i < len; ++i)
++            {
++                char& c = rh[(size_t) i];
++                if (c == 'x' && i % 16 != 0 && chance (i, 15) < 0.3)
++                    c = chance (i, 16) < 0.5 ? 'u' : 'd';
++            }
++            break;
++        }
++    }
++
++    repairHolds (rh);
++    repairHolds (lh);
++    if (std::none_of (rh.begin(), rh.end(), isHit))
++        rh[0] = 'X';
++    return p;
++}
++
++GroovePattern addGhostNotes (const GroovePattern& source, std::uint32_t seed)
++{
++    Random rng (seed ^ 0x6057u);
++    GroovePattern p = source;
++    auto ghost = [&rng] (std::string& line, double chance)
++    {
++        const int len = (int) line.size();
++        for (int i = 1; i < len; ++i)
++            if (line[(size_t) i - 1] == '.' && (line[(size_t) i] == 'X' || line[(size_t) i] == 'x') && rng.chance (chance)
++                && (i < 2 || line[(size_t) i - 2] != 'g'))
++                line[(size_t) i - 1] = 'g';
++    };
++    ghost (p.rightHand, 0.45);
++    ghost (p.leftHand, 0.2);
++    return p;
++}
++
++GroovePattern makeVariation (const GroovePattern& source, std::uint32_t seed)
++{
++    Random rng (seed ^ 0x5EEDu);
++    GroovePattern p = source;
++    auto& r = p.rightHand;
++    auto& l = p.leftHand;
++    const int len = (int) r.size();
++
++    for (int beat = 0; beat + 4 <= len; beat += 4)
++    {
++        if (! rng.chance (0.35))
++            continue;
++
++        int hits = 0;
++        for (int k = 0; k < 4; ++k)
++            hits += isHit (r[(size_t) (beat + k)]) ? 1 : 0;
++
++        const int choice = rng.below (3);
++        if (choice == 0)
++        {
++            // Delay one hit by a 16th (more syncopation).
++            for (int k = 0; k < 3; ++k)
++                if ((r[(size_t) (beat + k)] == 'x' || r[(size_t) (beat + k)] == 'X') && r[(size_t) (beat + k + 1)] == '.')
++                {
++                    std::swap (r[(size_t) (beat + k)], r[(size_t) (beat + k + 1)]);
++                    break;
++                }
++        }
++        else if (choice == 1)
++        {
++            // A ghost note just before a hit.
++            for (int k = 1; k < 4; ++k)
++                if (r[(size_t) (beat + k - 1)] == '.' && isHit (r[(size_t) (beat + k)]))
++                {
++                    r[(size_t) (beat + k - 1)] = 'g';
++                    break;
++                }
++        }
++        else if (hits >= 2)
++        {
++            // Leave a gap: drop a non-accented hit.
++            for (int k = 3; k >= 0; --k)
++                if (r[(size_t) (beat + k)] == 'x')
++                {
++                    r[(size_t) (beat + k)] = '.';
++                    break;
++                }
++        }
++    }
++
++    // Push into the next bar at the end of each bar, and a bass pick-up.
++    for (int bar = 0; bar + 16 <= len; bar += 16)
++    {
++        if (rng.chance (0.6) && r[(size_t) (bar + 14)] != '=' && r[(size_t) (bar + 15)] != '>')
++        {
++            r[(size_t) (bar + 14)] = '>';
++            r[(size_t) (bar + 15)] = '=';
++        }
++        if (rng.chance (0.5) && l[(size_t) (bar + 14)] == '.' && l[(size_t) (bar + 13)] != '=')
++            l[(size_t) (bar + 14)] = 'x';
++    }
++
++    repairHolds (r);
++    repairHolds (l);
++    p.name = source.name + " (variation)";
++    return p;
++}
++
++GroovePattern addVoicingMovement (const GroovePattern& source, int level)
++{
++    if (level <= 0)
++        return source;
++
++    GroovePattern p = source;
++    auto& r = p.rightHand;
++
++    for (int half = 0; half * 8 < (int) r.size(); ++half)
++    {
++        const bool answer = half % 2 == 1;
++        if (level == 1 && ! answer)
++            continue;
++
++        // Already moving? Leave the phrase as written.
++        bool written = false;
++        for (int k = half * 8; k < half * 8 + 8 && k < (int) r.size(); ++k)
++            written = written || r[(size_t) k] == 'u' || r[(size_t) k] == 'd' || r[(size_t) k] == 'U' || r[(size_t) k] == 'D';
++        if (written)
++            continue;
++
++        int hit = 0;
++        for (int k = half * 8; k < half * 8 + 8 && k < (int) r.size(); ++k)
++        {
++            char& c = r[(size_t) k];
++            if (c != 'x' && c != 'X')
++                continue;
++
++            // Subtle: the 2nd and 4th hits of an answer go up. Lively: base, up, base, down,
++            // mirrored in the answer (down first) for a call-and-response contour.
++            int move = 0;
++            if (level == 1)
++                move = (hit % 2 == 1) ? 1 : 0;
++            else
++            {
++                static constexpr int contour[4] { 0, 1, 0, -1 };
++                move = contour[hit % 4] * (answer ? -1 : 1);
++            }
++
++            if (move > 0) c = (c == 'X') ? 'U' : 'u';
++            if (move < 0) c = (c == 'X') ? 'D' : 'd';
++            ++hit;
++        }
++    }
++
++    return p;
++}
++
++//==============================================================================
++std::vector<int> randomProgression (std::uint32_t seed, int length)
++{
++    Random rng (seed ^ 0xA5A5A5A5u);
++    length = std::clamp (length, 1, maxProgressionLength);
++
++    // Typical soulful / deep house moves from each degree.
++    static const std::array<std::vector<int>, 7> moves {{
++        { 3, 5, 1, 2, 4, 3 },   // I   -> IV vi ii iii V (IV twice: favourite)
++        { 4, 4, 2, 3, 0 },      // ii  -> V V iii IV I
++        { 5, 5, 3, 1 },         // iii -> vi vi IV ii
++        { 2, 4, 0, 1, 2 },      // IV  -> iii V I ii iii
++        { 0, 5, 2, 3, 0 },      // V   -> I vi iii IV I
++        { 1, 1, 3, 4, 2 },      // vi  -> ii ii IV V iii
++        { 2, 0 },               // vii -> iii I
++    }};
++
++    static const std::array<int, 6> starts { 0, 0, 5, 1, 3, 0 };
++
++    std::vector<int> out;
++    out.push_back (starts[(size_t) rng.below ((int) starts.size())]);
++
++    while ((int) out.size() < length)
++    {
++        const auto& options = moves[(size_t) out.back()];
++        int next = options[(size_t) rng.below ((int) options.size())];
++
++        // Avoid ending on the first chord, or it would repeat at the loop point.
++        if ((int) out.size() == length - 1 && length > 2 && next == out.front())
++            next = options[(size_t) rng.below ((int) options.size())];
++
++        out.push_back (next);
++    }
++
++    return out;
++}
++
++std::vector<int> randomProgression (std::uint32_t seed, int length, int scale)
++{
++    if (! scaleIsMinor (scale))
++        return randomProgression (seed, length);
++
++    Random rng (seed ^ 0x5A5A5A5Au);
++    length = std::clamp (length, 1, maxProgressionLength);
++
++    // Minor moves: i iv bVII bVI, the Dorian IV, v to i, bIII as a colour.
++    static const std::array<std::vector<int>, 7> moves {{
++        { 3, 6, 5, 3, 2, 6 },   // i    -> iv bVII bVI iv bIII bVII
++        { 4, 6, 0 },            // ii   -> v bVII i
++        { 6, 3, 5 },            // bIII -> bVII iv bVI
++        { 6, 0, 4, 2, 6 },      // iv   -> bVII i v bIII bVII
++        { 0, 5, 3 },            // v    -> i bVI iv
++        { 6, 3, 4, 2, 6 },      // bVI  -> bVII iv v bIII bVII
++        { 0, 2, 5, 3, 0 },      // bVII -> i bIII bVI iv i
++    }};
++    static const std::array<int, 5> starts { 0, 0, 0, 5, 3 };
++
++    std::vector<int> out;
++    out.push_back (starts[(size_t) rng.below ((int) starts.size())]);
++    while ((int) out.size() < length)
++    {
++        const auto& options = moves[(size_t) out.back()];
++        int next = options[(size_t) rng.below ((int) options.size())];
++        if ((int) out.size() == length - 1 && length > 2 && next == out.front())
++            next = options[(size_t) rng.below ((int) options.size())];
++        out.push_back (next);
++    }
++    return out;
++}
++
++std::vector<int> randomProgression (std::uint32_t seed, int length, int scale, int genre)
++{
++    if (genre != 3)
++        return randomProgression (seed, length, scale);
++
++    length = std::clamp (length, 1, maxProgressionLength);
++    // Each row starts on a step (a passing chord) and keeps walking.
++    static const int rows[][8] {
++        { 0, 1, 2, 4, 3, 2, 1, 0 },
++        { 3, 2, 1, 0, 4, 3, 2, 0 },
++        { 0, 1, 0, 2, 3, 4, 3, 0 },
++        { 5, 4, 3, 2, 1, 2, 4, 0 },
++        { 4, 3, 2, 1, 0, 1, 2, 4 },
++        { 1, 2, 3, 4, 3, 2, 0, 4 },
++        { 2, 1, 0, 4, 3, 2, 1, 0 },
++        { 6, 5, 4, 3, 2, 1, 0, 4 },
++    };
++    // The seed picks the row, then where in it the walk starts: any point whose next chord is a
++    // step away (so the walk still begins by step), which gives far more than eight progressions.
++    const int row = (int) (seed % 8u);
++    int starts[8] {}, numStarts = 0;
++    for (int i = 0; i < 8; ++i)
++    {
++        const int d = std::abs (rows[row][(i + 1) % 8] - rows[row][i]);
++        if (d == 1 || d == 6)
++            starts[numStarts++] = i;
++    }
++    const int start = numStarts > 0 ? starts[(seed / 8u) % (std::uint32_t) numStarts] : 0;
++    std::vector<int> out;
++    out.reserve ((size_t) length);
++    for (int i = 0; i < length; ++i)
++        out.push_back (rows[row][(start + i) % 8]);
++    return out;
++}
++
++const std::vector<ArrangementPart>& defaultArrangement()
++{
++    static const std::vector<ArrangementPart> parts {
++        { Section::intro, 8 }, { Section::main, 16 }, { Section::breakdown, 8 },
++        { Section::buildup, 4 }, { Section::drop, 16 }, { Section::outro, 8 },
++    };
++    return parts;
++}
++
++} // namespace sgk
+--- a/Source/engine/Generators.h
++++ b/Source/engine/Generators.h
+@@ -48,14 +48,15 @@
+     density 0..1 goes from sparse stabs to busy 16th chops. Same seed = same riff. */
+ GroovePattern makeRandomPattern (std::uint32_t seed, float density);
+ 
++
+ /** The same riff written in a groove-browser genre (the index of grooveCategories()).
+     Piano house, '90s piano house and dance stabs stay on the classic house figures,
+     so an old house seed still builds the same riff. Other genres keep their own
+     rhythm. Same seed and genre = same riff. */
+ GroovePattern makeRandomPattern (std::uint32_t seed, float density, int genre);
+ 
+-/** Voicing, colour, scale, swing and gate that belong to that genre. The GENRE
+-    parameter is not involved: the caller already knows the genre from the groove. */
++/** Voicing, colour, scale, swing and gate that belong to that genre. The caller
++    already knows the genre from the groove; there is no separate genre control. */
+ struct GenreRiffFeel
+ {
+     int voicing = 8;      // Voicing::upperTriad
+@@ -66,6 +67,7 @@
+ };
+ 
+ GenreRiffFeel genreRiffFeel (int genre) noexcept;
++
+ 
+ /** A take of the genre's feel: one of its idiomatic voicings and colours, swing and gate
+     nudged. Seed 0 gives genreRiffFeel(genre). */
+--- a/Source/engine/Generators.h.orig
++++ b/Source/engine/Generators.h.orig
+@@ -0,0 +1,119 @@
++// Fase Groove Piano - Copyright (C) 2026 Fabio 'Pitch' Serra
++// SPDX-License-Identifier: AGPL-3.0-or-later
++
++#pragma once
++
++// On-the-fly material: random funky riffs, random progressions and the
++// song-section variations (intro / break / build-up / drop ...).
++
++#include <array>
++#include <cstdint>
++#include <string>
++#include <vector>
++
++namespace sgk
++{
++
++struct GroovePattern;
++
++//==============================================================================
++enum class Section { main = 0, intro, breakdown, buildup, drop, outro };
++constexpr int numSections = 6;
++const char* sectionName (int section) noexcept;
++
++/** Rewrites a groove for a song section: sparse intro/outro, sustained
++    breakdown, 8ths-then-16ths build-up, the full groove for main/drop. */
++GroovePattern applySection (const GroovePattern& source, Section section);
++
++/** Loudness and bass behaviour of a section. */
++double sectionVelocityScale (Section section) noexcept;
++bool sectionAllowsFills (Section section) noexcept;
++
++//==============================================================================
++//==============================================================================
++/** A groove is split into four equal segments, A B C D (half a bar each for
++    a two-bar groove). */
++constexpr int numSegments = 4;
++
++/** Rebuilds the groove playing the segments in the given order (e.g. A A B C). */
++GroovePattern applySegmentOrder (const GroovePattern& source, const std::array<int, numSegments>& order);
++
++/** Copies segment `segment` of `from` into `into` (same length patterns). */
++void copySegment (GroovePattern& into, const GroovePattern& from, int segment);
++
++/** Removes holds ('=') that no longer follow a note, e.g. after editing. */
++void repairHolds (std::string& line);
++
++/** A brand new two-bar funky house riff (chords + bass) from a seed.
++    density 0..1 goes from sparse stabs to busy 16th chops. Same seed = same riff. */
++GroovePattern makeRandomPattern (std::uint32_t seed, float density);
++
++
++/** The same riff written in a groove-browser genre (the index of grooveCategories()).
++    Piano house, '90s piano house and dance stabs stay on the classic house figures,
++    so an old house seed still builds the same riff. Other genres keep their own
++    rhythm. Same seed and genre = same riff. */
++GroovePattern makeRandomPattern (std::uint32_t seed, float density, int genre);
++
++/** Voicing, colour, scale, swing and gate that belong to that genre. The caller
++    already knows the genre from the groove; there is no separate genre control. */
++struct GenreRiffFeel
++{
++    int voicing = 8;      // Voicing::upperTriad
++    int extension = 2;    // Extension::ninth
++    int scale = 1;        // Dorian
++    float swing = 0.45f;
++    float gate = 0.55f;
++};
++
++GenreRiffFeel genreRiffFeel (int genre) noexcept;
++
++
++/** A variation of a groove for the turnaround bars: a hit moved a 16th later here, a ghost
++    note there, a push into the next bar, a bass pick-up. Same seed = same variation. */
++GroovePattern makeVariation (const GroovePattern& source, std::uint32_t seed);
++
++/** The groove with a few ghost notes added (a 16th before some hits, on empty steps), and now and
++    then a bass ghost before a bass hit: the first step of the groove's evolution. */
++GroovePattern addGhostNotes (const GroovePattern& source, std::uint32_t seed);
++
++/** Groove morphing: amount 0 = a, 1 = b, in between a step-by-step blend that always grows the
++    same way (each step switches from a to b at its own point), with the holds repaired. */
++GroovePattern morphPatterns (const GroovePattern& a, const GroovePattern& b, double amount, std::uint32_t seed);
++
++/** Musical DNA: one step of a variation guided by an intention. */
++enum class Intention { soulful = 0, funky, minimal, energetic, sophisticated, straighter };
++constexpr int numIntentions = 6;
++const char* intentionName (int) noexcept;
++GroovePattern applyIntention (const GroovePattern&, Intention, std::uint32_t seed);
++
++/** Voicing movement for any groove: some hits play the chord an inversion up or down so
++    the top note moves. level 0 = off, 1 = subtle (the answer half-bars move), 2 = lively
++    (every half-bar moves: base, up, base, down). Hits already marked u/d are kept. */
++GroovePattern addVoicingMovement (const GroovePattern& source, int level);
++
++/** A random but musical progression of scale degrees (0 = I), built from the
++    moves soulful house uses most: ii-V, IV-iii-ii, falling fifths... */
++std::vector<int> randomProgression (std::uint32_t seed, int length);
++
++/** The same in a scale: the minor modes move the way minor house does (i - bVII - bVI, i - iv,
++    i - IV in Dorian...), the major ones as above. */
++std::vector<int> randomProgression (std::uint32_t seed, int length, int scale);
++
++/** Gospel (genre 3) walks by step, so a short progression still passes through
++    the next chord. Every other genre keeps randomProgression(seed, length, scale). */
++std::vector<int> randomProgression (std::uint32_t seed, int length, int scale, int genre);
++
++//==============================================================================
++struct ArrangementPart
++{
++    Section section;
++    int bars;
++    std::uint32_t variation = 0;   // regenerated on its own (0: the groove as it is)
++    int endFill = -1;              // fill on its last bar: -1 as set in the Groove panel, -2 none, else a fill style
++};
++
++/** Intro 8 | Main 16 | Break 8 | Build-up 4 | Drop 16 | Outro 8 */
++const std::vector<ArrangementPart>& defaultArrangement();
++
++} // namespace sgk
+--- a/Source/engine/GrooveEngine.cpp
++++ b/Source/engine/GrooveEngine.cpp
+@@ -6,7 +6,6 @@
+ #include <algorithm>
+ #include <cmath>
+ #include <cstdint>
+-#include <tuple>
+ 
+ namespace sgk
+ {
+@@ -1032,9 +1031,6 @@
+ 
+ int GrooveEngine::loopLengthInSteps (const GrooveSettings& s) noexcept
+ {
+-    if (s.playsEditedLoop())
+-        return std::clamp ((int) std::lround (s.editedLoopLength * 4.0 / 16.0) * 16, 16, 64 * 16);
+-
+     const int patternLength = GrooveEngine::patternLength (s);
+     const int progression = std::clamp (s.progressionLength, 1, maxProgressionLength) * std::max (1, s.stepsPerChord);
+ 
+@@ -1104,7 +1100,14 @@
+ 
+     // A bass line from the library has its own rhythm: show that one in the grid.
+     if (isBassLine (s.bass) && (s.section == Section::main || s.section == Section::drop))
++    {
+         p.leftHand = bassLineRhythm (bassLineIndex ((int) s.bass), p.length());
++        if (!s.bassLineOverride.empty())
++            for (size_t i=0;i<p.leftHand.size();++i) {
++                const char c=s.bassLineOverride[i%s.bassLineOverride.size()];
++                p.leftHand[i]=c=='.'?'.':c=='='?'=':c=='G'?'g':i%4==0?'X':'x';
++            }
++    }
+ 
+     if (s.grooveBars == 1 && p.length() > 16)
+     {
+@@ -1143,7 +1146,7 @@
+         || s.section != cachedSection || s.segmentOrder != cachedOrder
+         || s.userRight != cachedUserRight || s.userLeft != cachedUserLeft || s.grooveBars != cachedBars
+         || s.movement != cachedMovement || s.sectionVariation != cachedSectionVariation || cachedPattern.rightHand.empty()
+-        || (int) s.bass != cachedBass || s.realism != cachedRealism)   // a library bass line shows its own rhythm
++        || (int) s.bass != cachedBass || s.bassLineOverride != cachedBassLineOverride || s.realism != cachedRealism)   // a library bass line shows its own rhythm
+     {
+         cachedPattern = resolvePattern (s);
+         cachedVariation = makeVariation (cachedPattern, s.riffSeed * 17u + (std::uint32_t) s.pattern);
+@@ -1158,6 +1161,7 @@
+             cachedTakes[k] = s.realism ? makeVariation (cachedPattern, s.riffSeed * 53u + (std::uint32_t) s.pattern + k * 7919u)
+                                        : GroovePattern {};
+         cachedBass = (int) s.bass;
++        cachedBassLineOverride = s.bassLineOverride;
+         cachedRealism = s.realism;
+         cachedBars = s.grooveBars;
+         cachedMovement = s.movement;
+@@ -1228,7 +1232,7 @@
+     std::array<bool, numTracked> isOpen {};
+     for (const auto& e : all)
+     {
+-        const auto k = (size_t) trackIndex (e.note, e.part);
++        const auto k = (size_t) trackIndex (e.note, e.part, s.separateBass);
+         if (e.isNoteOn())
+         {
+             if (e.ppq >= lengthInBeats)
+@@ -1398,24 +1402,6 @@
+         kept.sort();
+         *hand = kept;
+     }
+-}
+-
+-bool GrooveEngine::sameSettings (const GrooveSettings& a, const GrooveSettings& b) noexcept
+-{
+-    auto fields = [] (const GrooveSettings& s)
+-    {
+-        return std::tie (s.keyRoot, s.scale, s.extension, s.voicing, s.centre, s.bass, s.strings,
+-                         s.progression, s.progressionLength, s.freeChords, s.stepsPerChord,
+-                         s.pattern, s.swing, s.bassGate, s.gate, s.velocity, s.humanize, s.fillEveryBars,
+-                         s.fillStyle, s.strum, s.octaveTop, s.approach, s.topLine, s.inversions,
+-                         s.variationEvery, s.evolveBars, s.rangeLow, s.rangeHigh, s.grooveBars, s.movement,
+-                         s.strumDirection, s.bpm, s.section, s.riffSeed, s.riffDensity, s.riffGenre,
+-                         s.segmentOrder, s.sectionVariation, s.humanizeStyle, s.humanizeSeed,
+-                         s.forcedFillBar, s.forcedFillStyle, s.editedLoop, s.editedLoopLength,
+-                         s.userRight, s.userLeft, s.userVelRight, s.userVelLeft, s.velocityOrder,
+-                         s.bassFeel, s.realism);
+-    };
+-    return fields (a) == fields (b);
+ }
+ 
+ GrooveEngine::HarmonyKey GrooveEngine::harmonyKey (const GrooveSettings& s) noexcept
+@@ -1452,11 +1438,6 @@
+         out[(size_t) i] = out[(size_t) len - 1];
+ }
+ 
+-const char* bassFeelName (int feel) noexcept
+-{
+-    static const char* const names[numBassFeels] { "Classic", "Sub (voice-led)", "Sub + sidechain gaps" };
+-    return names[mod (feel, numBassFeels)];
+-}
+ 
+ void GrooveEngine::voiceProgression (const GrooveSettings& s,
+                                      std::array<Chord, maxProgressionLength>& chords,
+@@ -2006,7 +1987,7 @@
+         // bass, and intro, outro and breakdown have no bass anyway.
+         if (s.section == Section::main || s.section == Section::drop)
+         {
+-            collectBassLine (step, s, chords, bassLines()[(size_t) std::clamp (bassLineIndex ((int) bassMode), 0, numBassLines - 1)].line);
++            collectBassLine (step, s, chords, s.bassLineOverride.empty() ? bassLines()[(size_t) std::clamp (bassLineIndex ((int) bassMode), 0, numBassLines - 1)].line : s.bassLineOverride);
+             return;
+         }
+         bassMode = BassMode::root;
+@@ -2214,7 +2195,7 @@
+     int gap = 1;
+     while (gap < n && (line[(size_t) ((pos + gap) % n)] == '.' || line[(size_t) ((pos + gap) % n)] == '='))
+         ++gap;
+-    const double gate = (double) std::clamp (s.bassGate >= 0 ? s.bassGate : s.gate, 0.05f, 1.0f);
++    const double gate = (double) std::clamp (s.gate, 0.05f, 1.0f);
+     const double steps = symbol == 'G' ? 0.3
+                        : hold > 0      ? hold + gate
+                                        : std::max (std::min ({ gate * gap, 4.0, gap - 0.08 }), std::min (gate, 0.9));
+@@ -2521,11 +2502,7 @@
+     if (mode == StringsMode::off)
+         return;
+     if (stringsFollowPiano (mode))
+-    {
+-        if (! s.playsEditedLoop())
+-            return;   // played in collectStep, with the piano's hits
+-        mode = StringsMode::pad;
+-    }
++        return;   // played in collectStep, with the piano's hits
+ 
+     const int spc = std::max (1, s.stepsPerChord);
+     const double t = (double) step * stepLength;
+@@ -2656,13 +2633,7 @@
+ 
+     // The strings' pad starts with each chord; starting (or turning them on) in the middle of a
+     // chord, it comes in at once for the rest of it.
+-    // A loop edited by hand carries its own string notes (edited in the piano roll); one edited
+-    // before the strings were switched on gets them generated.
+-    const bool loopHasStrings = s.playsEditedLoop()
+-        && std::any_of (s.editedLoop->begin(), s.editedLoop->end(), [] (const LoopNote& n) { return n.part == Part::strings; });
+-    if (s.strings != StringsMode::off && ! loopHasStrings
+-        && (stringsHold (s.strings) || (stringsFollowPiano (s.strings) && s.playsEditedLoop()))
+-        && stringsUntil < startPpq - 1.0e-6)
++    if (s.strings != StringsMode::off && stringsHold (s.strings) && stringsUntil < startPpq - 1.0e-6)
+     {
+         const int spc = std::max (1, s.stepsPerChord);
+         const auto now = (long long) std::floor (startPpq / stepLength + 1.0e-9);
+@@ -2677,33 +2648,11 @@
+             }
+     }
+ 
+-    if (s.playsEditedLoop())
+-    {
+-        // The loop edited in the piano roll (already carried over to the current settings),
+-        // repeated; Velocity and bass off still apply to it.
+-        const double length = s.editedLoopLength;
+-        const double scale = s.velocity / 118.0 * sectionVelocityScale (s.section);
+-        for (auto k = (long long) std::floor (startPpq / length) - 1; k <= (long long) std::floor (endPpq / length); ++k)
+-            for (const auto& n : *s.editedLoop)
+-                if ((n.part != Part::bass || s.bass != BassMode::off)   // bass off (PIANO only) silences the edited bass too
+-                    && (n.part != Part::strings || s.strings != StringsMode::off)
+-                    // only this block's notes: a long loop must not fill (and grow) the queue every block
+-                    && (double) k * length + n.start >= startPpq && (double) k * length + n.start < endPpq)
+-                    pending.push_back ({ (double) k * length + n.start, n.note,
+-                                         std::clamp ((int) std::lround (n.velocity * scale), 1, 127),
+-                                         std::max (0.02, n.length), false, n.part });
+-        if (! loopHasStrings)
+-            for (auto step = firstStep; step <= lastStep; ++step)
+-                collectStrings (step, s, startPpq, endPpq);
+-    }
+-    else
+-    {
+-        const auto& pattern = patternFor (s);
+-        for (auto step = firstStep; step <= lastStep; ++step)
+-        {
+-            collectStep (step, s, pattern, cachedVariation, chords, voiced);
+-            collectStrings (step, s, startPpq, endPpq);
+-        }
++    const auto& pattern = patternFor (s);
++    for (auto step = firstStep; step <= lastStep; ++step)
++    {
++        collectStep (step, s, pattern, cachedVariation, chords, voiced);
++        collectStrings (step, s, startPpq, endPpq);
+     }
+ 
+     pending.erase (std::remove_if (pending.begin(), pending.end(),
+@@ -2734,7 +2683,7 @@
+     {
+         flushOffsUpTo (p.ppq, true, out);
+ 
+-        const auto k = (size_t) trackIndex (p.note, p.part);
++        const auto k = (size_t) trackIndex (p.note, p.part, s.separateBass);
+         auto& off = offTime[k];
+ 
+         if (off >= 0.0)
+@@ -2779,169 +2728,4 @@
+ }
+ 
+ 
+-//==============================================================================
+-std::string stabBassLine (const GroovePattern& pattern)
+-{
+-    const int n = (int) pattern.rightHand.size();
+-    auto rhStabAt = [&] (int i)
+-    {
+-        const char r = pattern.rightHand[(size_t) ((i % n + n) % n)];
+-        return isHit (r) && r != 'g';
+-    };
+-    std::string line = pattern.leftHand;
+-    for (int i = 0; i < n && i < (int) line.size(); ++i)
+-    {
+-        const char r = pattern.rightHand[(size_t) i];
+-        const bool ownHit = isHit (pattern.leftHand[(size_t) i]) && ! rhStabAt (i) && ! rhStabAt (i - 1) && ! rhStabAt (i + 1);
+-        // The left hand doesn't strike again on a fast chop (a stab right after another one):
+-        // only accents and pushes get the bass there, so busy riffs don't turn into a muddy bass.
+-        const bool chop = rhStabAt (i) && rhStabAt (i - 1) && ! (r == 'X' || r == 'U' || r == 'D' || r == '>');
+-        if (chop)
+-            line[(size_t) i] = '.';
+-        else if (rhStabAt (i))
+-            line[(size_t) i] = r == '>' ? '>' : (r == 'X' || r == 'U' || r == 'D') ? 'X' : (r == 'u' || r == 'd') ? 'x' : r;
+-        else if (isHit (line[(size_t) i]) && ! ownHit)
+-            line[(size_t) i] = '.';
+-    }
+-    return line;
+-}
+-
+-//==============================================================================
+-std::vector<LoopNote> carryEdits (const std::vector<LoopNote>& base, const std::vector<LoopNote>& edited, double baseLength,
+-                                  const std::vector<LoopNote>& now, double nowLength)
+-{
+-    // The instrument a note belongs to (a fill is the piano's right hand).
+-    auto lane = [] (Part p) { return p == Part::fill ? Part::chords : p; };
+-    auto same = [] (const LoopNote& a, const LoopNote& b)
+-    {
+-        return std::abs (a.start - b.start) < 1.0e-6 && std::abs (a.length - b.length) < 1.0e-6
+-               && a.note == b.note && a.velocity == b.velocity && a.part == b.part;
+-    };
+-    if (std::abs (baseLength - nowLength) < 1.0e-6 && base.size() == now.size()
+-        && std::equal (base.begin(), base.end(), now.begin(), same))
+-        return edited;   // nothing changed
+-
+-    constexpr double together = 0.03, nearby = 0.12;   // beats
+-
+-    // Place of a note in its chord: 0 = lowest note of that part struck at that moment.
+-    auto rankIn = [&] (const std::vector<LoopNote>& notes, size_t i)
+-    {
+-        int rank = 0;
+-        for (size_t j = 0; j < notes.size(); ++j)
+-            if (j != i && notes[j].part == notes[i].part && std::abs (notes[j].start - notes[i].start) < together
+-                && (notes[j].note < notes[i].note || (notes[j].note == notes[i].note && j < i)))
+-                ++rank;
+-        return rank;
+-    };
+-
+-    std::vector<const LoopNote*> editOf (base.size(), nullptr);
+-    std::vector<const LoopNote*> added;
+-    for (const auto& e : edited)
+-    {
+-        if (e.origin >= 0 && e.origin < (int) base.size() && editOf[(size_t) e.origin] == nullptr)
+-            editOf[(size_t) e.origin] = &e;
+-        else
+-            added.push_back (&e);
+-    }
+-
+-    std::vector<int> baseRank (base.size());
+-    for (size_t i = 0; i < base.size(); ++i)
+-        baseRank[i] = rankIn (base, i);
+-    std::vector<int> nowRank (now.size());
+-    for (size_t j = 0; j < now.size(); ++j)
+-        nowRank[j] = rankIn (now, j);
+-
+-    std::vector<LoopNote> result;
+-    const double loop = std::max (0.25, baseLength);
+-    const int repeats = std::max (1, (int) std::ceil (nowLength / loop - 1.0e-6));
+-
+-    for (int r = 0; r < repeats; ++r)
+-    {
+-        const double offset = r * loop;
+-        std::vector<int> match (base.size(), -1);
+-        std::vector<char> used (now.size(), 0), removed (now.size(), 0);
+-
+-        // Each generated note of before, found again now: same part, nearest moment, same rank.
+-        for (size_t i = 0; i < base.size(); ++i)
+-        {
+-            int best = -1;
+-            double bestDistance = nearby;
+-            for (size_t j = 0; j < now.size(); ++j)
+-            {
+-                if (used[j] || now[j].part != base[i].part || nowRank[j] != baseRank[i])
+-                    continue;
+-                const double d = std::abs (now[j].start - (offset + base[i].start));
+-                if (d < bestDistance) { bestDistance = d; best = (int) j; }
+-            }
+-            if (best >= 0)
+-            {
+-                match[i] = best;
+-                used[(size_t) best] = 1;
+-            }
+-        }
+-
+-        std::vector<char> carried (now.size(), 0);
+-        for (size_t i = 0; i < base.size(); ++i)
+-        {
+-            const int m = match[i];
+-            if (m < 0)
+-                continue;
+-            const auto* e = editOf[i];
+-            if (e == nullptr)
+-            {
+-                removed[(size_t) m] = 1;   // deleted by hand: stays deleted
+-                continue;
+-            }
+-            const auto& b = base[i];
+-            const bool untouched = std::abs (e->start - b.start) < 1.0e-6 && std::abs (e->length - b.length) < 1.0e-6
+-                                   && e->note == b.note && e->velocity == b.velocity;
+-            if (untouched)
+-                continue;   // the new note as it is
+-            auto n = now[(size_t) m];
+-            n.start = std::clamp (n.start + (e->start - b.start), 0.0, nowLength - 0.001);
+-            n.note = std::clamp (n.note + (e->note - b.note), 0, 127);
+-            n.length = std::max (0.02, n.length * (e->length / std::max (0.001, b.length)));
+-            n.velocity = std::clamp (n.velocity + (e->velocity - b.velocity), 1, 127);
+-            n.origin = m;
+-            result.push_back (n);
+-            carried[(size_t) m] = 1;
+-        }
+-
+-        for (size_t j = 0; j < now.size(); ++j)
+-            if (now[j].start >= offset - 1.0e-9 && now[j].start < offset + loop - 1.0e-9 && ! removed[j] && ! carried[j])
+-            {
+-                auto n = now[j];
+-                n.origin = (int) j;
+-                result.push_back (n);
+-            }
+-
+-        // Notes added by hand: they move with the chord around them (the nearest generated note).
+-        for (const auto* e : added)
+-        {
+-            if (offset + e->start >= nowLength)
+-                continue;
+-            int shift = 0;
+-            double bestDistance = 1.0e9;
+-            for (size_t i = 0; i < base.size(); ++i)
+-            {
+-                if (match[i] < 0 || lane (base[i].part) != lane (e->part))
+-                    continue;
+-                const double d = std::abs (base[i].start - e->start) * 24.0 + std::abs (base[i].note - e->note);
+-                if (d < bestDistance) { bestDistance = d; shift = now[(size_t) match[i]].note - base[i].note; }
+-            }
+-            auto n = *e;
+-            n.start = offset + e->start;
+-            n.note = std::clamp (e->note + shift, 0, 127);
+-            n.origin = -1;
+-            result.push_back (n);
+-        }
+-    }
+-
+-    std::sort (result.begin(), result.end(), [] (const LoopNote& a, const LoopNote& b)
+-    {
+-        return std::tie (a.start, a.note, a.part) < std::tie (b.start, b.note, b.part);
+-    });
+-    return result;
+-}
+-
+ } // namespace sgk
+--- a/Source/engine/GrooveEngine.h
++++ b/Source/engine/GrooveEngine.h
+@@ -10,7 +10,6 @@
+ #include "Theory.h"
+ 
+ #include <array>
+-#include <memory>
+ #include <string>
+ #include <vector>
+ 
+@@ -157,27 +156,6 @@
+ 
+ enum class Part { chords = 0, bass = 1, fill = 2, strings = 3 };   // fill: the right hand during a fill (exported on its own track)
+ 
+-/** A note of a loop edited by hand in the piano roll (times in beats from the loop start). */
+-struct LoopNote
+-{
+-    double start = 0.0, length = 0.25;
+-    int note = 60, velocity = 100;
+-    Part part = Part::chords;
+-    int origin = -1;   // the generated note it comes from (index), -1 = added by hand
+-};
+-
+-/** Carries the edits made by hand on a loop over to the loop generated now (other chords,
+-    voicing, key, groove...): every generated note of `base` that was deleted, moved, lengthened
+-    or played softer in `edited` is found again in `now` (same part, same moment, same place in
+-    the chord) and changed the same way; notes added by hand follow the harmony; new generated
+-    notes stay. The result's `origin`s point into `now`. */
+-/** The rhythm the "Piano stabs" bass plays for a groove (a root under every chord stab, plus the
+-    bass's own hits that don't crowd a stab), written as a left-hand line. */
+-std::string stabBassLine (const GroovePattern&);
+-
+-std::vector<LoopNote> carryEdits (const std::vector<LoopNote>& base, const std::vector<LoopNote>& edited, double baseLength,
+-                                  const std::vector<LoopNote>& now, double nowLength);
+-
+ struct GrooveSettings
+ {
+     int keyRoot = 9;                       // A
+@@ -194,10 +172,10 @@
+     // Per slot: noFreeChord, or freeChordCode() to play that chord instead of the scale degree.
+     std::array<int, maxProgressionLength> freeChords { -1, -1, -1, -1, -1, -1, -1, -1 };
+     int stepsPerChord = 16;                // 8 = half bar, 16 = 1 bar ...
++    bool separateBass = false;             // Arranger: bass on its own track, never cuts or steals a piano note
+ 
+     int pattern = 0;
+     float swing = 0.25f;                   // 0 = straight, 1 = full triplet shuffle
+-    float bassGate = -1.0f;                 // negative: legacy shared gate; explicit family presets may separate it
+     float gate = 0.55f;                    // portion of a step a non-held hit lasts
+     int velocity = 96;
+     float humanize = 0.25f;
+@@ -219,7 +197,8 @@
+     Section section = Section::main;
+     std::uint32_t riffSeed = 1;            // used when pattern == randomPatternIndex()
+     float riffDensity = 0.5f;
+-    int riffGenre = -1;                   // grooveCategories() index while the random riff plays; -1 = classic house
++    int riffGenre = -1;                    // groove genre for a random riff; -1 keeps the classic figure
++    std::string bassLineOverride;          // standalone arrangement take; empty keeps the selected library line
+ 
+     std::array<int, numSegments> segmentOrder { 0, 1, 2, 3 };   // A B C D
+     std::uint32_t sectionVariation = 0;    // a song section regenerated on its own (0: the groove as it is)
+@@ -227,16 +206,6 @@
+     std::uint32_t humanizeSeed = 0;        // NEW FEEL: another, repeatable humanization
+     long long forcedFillBar = -1;          // a song section's own fill, on its last bar...
+     int forcedFillStyle = -1;              // ...in this style (-2: no fill there)
+-
+-    // Notes edited one by one in the piano roll: when set they replace the generated notes in the
+-    // main groove and the drop (the other song sections keep being generated).
+-    std::shared_ptr<const std::vector<LoopNote>> editedLoop;
+-    double editedLoopLength = 0.0;         // in beats
+-    bool playsEditedLoop() const noexcept
+-    {
+-        return editedLoop != nullptr && ! editedLoop->empty() && editedLoopLength > 0.0
+-               && (section == Section::main || section == Section::drop);
+-    }
+ 
+     // Used when pattern == userPatternIndex(): the hand-edited grid.
+     std::array<char, userPatternLength> userRight {};
+@@ -255,10 +224,6 @@
+     // varied over a phrase (another take now and then, a few hits left out, a top note that answers).
+     bool realism = false;
+ };
+-
+-constexpr int numBassFeels = 3;
+-const char* bassFeelName (int feel) noexcept;
+-
+ 
+ struct NoteEvent
+ {
+@@ -378,10 +343,6 @@
+     };
+     static HarmonyKey harmonyKey (const GrooveSettings& s) noexcept;
+ 
+-    /** True when every field of the two settings is the same (editedLoop by pointer): what is
+-        generated from them is then the same too. A new GrooveSettings field must be added here. */
+-    static bool sameSettings (const GrooveSettings& a, const GrooveSettings& b) noexcept;
+-
+     /** The bass root of every slot: C2..B2 (classic), or in the low octave voice-led from chord
+         to chord (sub feels: the nearest to the root before, the loop point included). */
+     static void bassRoots (const GrooveSettings& s, const std::array<Chord, maxProgressionLength>& chords,
+@@ -408,8 +369,10 @@
+     // Per note (0..127), and again for the strings (128..255): they have their own channel, so a
+     // string note can hold under the same piano note. Bass and piano share channel 1 by default, so
+     // they share a note: struck together, it belongs to the bass (the bass line never loses a note).
+-    static constexpr int numTracked = 256;
+-    static int trackIndex (int note, Part part) noexcept { return note + (part == Part::strings ? 128 : 0); }
++    // Arranger: with separateBass the bass is tracked apart (256..383), since it plays on its own track.
++    static constexpr int numTracked = 384;
++    static int trackIndex (int note, Part part, bool separateBass = false) noexcept
++    { return note + (part == Part::strings ? 128 : (separateBass && part == Part::bass ? 256 : 0)); }
+     std::array<double, numTracked> offTime {};    // < 0 when the note is not sounding
+     std::array<Part, numTracked> partOf {};
+     double stringsUntil = -1.0;                   // when the strings' current pad ends
+@@ -431,6 +394,7 @@
+     std::array<GroovePattern, 3> cachedEvolution;   // the groove's evolution: + ghosts, + variation, + fill
+     std::array<GroovePattern, 2> cachedTakes;       // realism: two other takes of the groove over a phrase
+     int cachedBass = -1;
++    std::string cachedBassLineOverride;
+     bool cachedRealism = false;
+     int cachedBars = 2, cachedMovement = 1;
+     int cachedIndex = -1;
+@@ -444,3 +408,4 @@
+ };
+ 
+ } // namespace sgk
++
+--- a/Source/engine/HarmonyAnalyzer.cpp
++++ b/Source/engine/HarmonyAnalyzer.cpp
+@@ -438,3 +438,4 @@
+ }
+ 
+ } // namespace sgk
++
+--- a/Source/engine/HarmonyAnalyzer.h
++++ b/Source/engine/HarmonyAnalyzer.h
+@@ -44,3 +44,4 @@
+ GroovePattern grooveFromNotes (const std::vector<AnalyzedNote>& notes, int beatsPerBar = 4);
+ 
+ } // namespace sgk
++
+--- a/Source/engine/Theory.cpp
++++ b/Source/engine/Theory.cpp
+@@ -875,3 +875,4 @@
+ }
+ 
+ } // namespace sgk
++
+--- a/Source/engine/Theory.h
++++ b/Source/engine/Theory.h
+@@ -111,3 +111,4 @@
+ NoteSet pentatonicNotes (int keyRoot, int scale, int low, int high) noexcept;
+ 
+ } // namespace sgk
++

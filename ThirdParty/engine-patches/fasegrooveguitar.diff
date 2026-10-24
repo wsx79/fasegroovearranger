@@ -1,0 +1,176 @@
+--- a/Source/GuideGuitar.h
++++ b/Source/GuideGuitar.h
+@@ -298,3 +298,4 @@
+     juce::Random random { 1979 };
+     std::array<Voice, 40> voices {};
+ };
++
+--- a/Source/engine/Generators.cpp
++++ b/Source/engine/Generators.cpp
+@@ -958,71 +958,6 @@
+ }
+ }
+ 
+-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre)
+-{
+-    // The genre's own idea of this lane first, from a few grooves...
+-    for (std::uint32_t attempt = 0; attempt < 12; ++attempt)
+-    {
+-        // (without the chord part a whole groove gets: that would be this lane's idea, not the genre's)
+-        const auto groove = randomPattern (seed * 31u + attempt * 7919u + (std::uint32_t) lane, density, genre, false);
+-        const auto& line = groove[lane];
+-        if (hits (line))
+-            return line;
+-    }
+-
+-    // ...otherwise a light part that fits any house groove.
+-    Random r (seed + 99u);
+-    static const char* cells[numLanes][3] {
+-        { "X... .... X... ....", "X... ..x. ..x. x...", "X... ..x. X... x.x." },        // down strum
+-        { ".... ..x. .... ..x.", "..x. ..x. ..x. ..x.", ".x.x ...x .x.. .x.x" },        // up strum
+-        { "..X. .... ..X. ....", "..X. ..X. ..X. ..X.", "X..X ..X. .X.. X.X." },        // stab
+-        { "..x. ..x. ..x. ..x.", "..xx ..x. ..xx ..x.", "x.xx .x.x x.xx .x.x" },        // chank
+-        { "g... g... g... g...", ".g.g .g.g .g.g .g.g", "gggg gggg gggg gggg" },        // scratch
+-        { ".... .... .... ..X.", "...X .... .... ..x.", "...X .... ..x. ..X." },        // slide
+-        { "X... .... .... ....", "X... .... .... ....", "X... .... X... ...." },        // swell
+-        { "x... x... x... x...", "x.x. x.x. x.x. x.x.", "x.xx x.xx x.xx x.xx" },        // arpeggio
+-        { ".... .... .... x.x.", ".... ..x. .... .x.x", "..x. .x.. .xxx x..." },        // lick
+-        { "x... .... x... ....", "x..x ..x. x..x ..x.", "X.x. x.x. X.x. x.x." },        // octaves
+-        { "X... .... X... ....", "X... ..X. ..X. X...", "X.x. X.x. X.x. X.x." },        // power chord
+-        { "X... .... .... ....", "X... .... X... ....", "X... .... X..x ...." },        // root
+-    };
+-    const int choice = std::clamp ((int) (density * 2.99f) + (r.chance (0.3f) ? (r.chance (0.5f) ? -1 : 1) : 0), 0, 2);
+-    GuitarPattern p;
+-    for (auto& l : p.lanes)
+-        l.assign ((size_t) randomBeatLength, '.');
+-    // Bar 2 is now and then the next lighter or busier cell, then answers bar 1 (a hit moves by
+-    // a quarter note), and a plain hit of a busy bar may rest: the same few cells, many lines.
+-    const int other = std::clamp (choice + (r.chance (0.45f) ? (r.chance (0.5f) ? -1 : 1) : 0), 0, 2);
+-    p[lane] = compact (cells[(int) lane][choice]) + compact (cells[(int) lane][other]);
+-    varySecondBar (p, r);
+-    auto& line = p[lane];
+-    for (int bar = 0; bar < 2; ++bar)
+-    {
+-        int steps[16], n = 0;
+-        for (int i = bar * 16 + 1; i < bar * 16 + 16; ++i)
+-            if (line[(size_t) i] == 'x' || line[(size_t) i] == 'X')
+-                steps[n++] = i;
+-        if (n >= 3 && r.chance (0.5f))
+-            line[(size_t) steps[r.nextInt (n)]] = '.';
+-    }
+-    if (genre == gospel || genre == dance)
+-    {
+-        // These genres stay on the 8ths: a 16th moves to the 8th before it, or rests.
+-        for (size_t i = 1; i < line.size(); i += 2)
+-            if (isHit (line[i]))
+-            {
+-                if (line[i - 1] == '.')
+-                    line[i - 1] = line[i];
+-                line[i] = '.';
+-            }
+-    }
+-    else if (density > 0.5f && lane != Lane::swell && lane != Lane::root)
+-        line[(size_t) (16 + r.pick ({ 11, 13, 14, 15 }))] = 'g';
+-    if (! hits (line))
+-        line[0] = 'X';
+-    return line;
+-}
+-
+ GuitarPattern makeVariation (const GuitarPattern& source, std::uint32_t seed)
+ {
+     Random r (seed * 2654435761u + 17u);
+@@ -1198,13 +1133,5 @@
+     }
+ }
+ 
+-const std::vector<ArrangementPart>& defaultArrangement()
+-{
+-    static const std::vector<ArrangementPart> parts {
+-        { Section::intro, 8 }, { Section::main, 16 }, { Section::breakdown, 8 },
+-        { Section::buildup, 4 }, { Section::drop, 16 }, { Section::outro, 8 },
+-    };
+-    return parts;
+-}
+-
+ } // namespace fgg
++
+--- a/Source/engine/Generators.h
++++ b/Source/engine/Generators.h
+@@ -34,10 +34,6 @@
+     seed. density 0..1 goes from a few chords to busy 16th strumming. Same seed = same groove. */
+ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
+ 
+-/** A new two-bar line for one lane only, in the style of a genre (density as above). Never empty:
+-    a lane the genre rarely uses gets a light, fitting part. Same seed = same line. */
+-std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
+-
+ /** A variation of a groove for the turnaround bar. New hits stay on the groove's grid
+     (8ths or 16ths) and a lick or a scratch is added only when that genre plays one.
+     Same seed = same variation. */
+@@ -72,7 +68,5 @@
+     int endFill = -1;              // fill on its last bar: -1 as set in the Song panel, -2 none, else a fill style
+ };
+ 
+-/** Intro 8 | Main 16 | Break 8 | Build-up 4 | Drop 16 | Outro 8 */
+-const std::vector<ArrangementPart>& defaultArrangement();
++} // namespace fgg
+ 
+-} // namespace fgg
+--- a/Source/engine/GrooveEngine.cpp
++++ b/Source/engine/GrooveEngine.cpp
+@@ -315,7 +315,7 @@
+     if (! s.useLiveChord)
+     {
+         // The chords come round after numChords bars (or fewer, when they repeat inside).
+-        steps = lcm (steps, chordPeriod (s) * 16);
++        steps = lcm (steps, chordPeriod (s) * std::max(1,s.stepsPerChord));
+     }
+     if (s.variationEvery > 0)
+         steps = lcm (steps, s.variationEvery * 16);
+@@ -391,11 +391,13 @@
+ {
+     const long long bar = floorDiv (step, 16);
+     const int stepInBar = mod (step, 16);
+-    const auto chord = chordAt (s, bar);
+-    const ChordVoicing& voicing = voicingAt (s, bar);
++    const auto chordSlot=floorDiv(step,std::max(1,s.stepsPerChord));
++    const auto chord = chordAt (s, chordSlot);
++    const ChordVoicing& voicing = voicingAt (s, chordSlot);
+     // The chord of the next bar: the last 8th of a bar can push into it.
+-    const auto nextChord = chordAt (s, bar + 1);
+-    const ChordVoicing& nextVoicing = voicingAt (s, bar + 1);
++    const auto nextSlot=floorDiv(step+2,std::max(1,s.stepsPerChord));
++    const auto nextChord = chordAt (s, nextSlot);
++    const ChordVoicing& nextVoicing = voicingAt (s, nextSlot);
+ 
+     // Every N bars the last bar plays a variation of the groove (the turnaround).
+     const bool varied = s.variationEvery > 0 && mod (bar, s.variationEvery) == s.variationEvery - 1
+@@ -534,7 +536,7 @@
+ 
+         const bool chordHit = isChordLane (lane);
+         // A chord hit on the last 8th of a bar plays the chord coming next (the push).
+-        const bool push = s.pushChanges && chordHit && stepInBar >= 14 && symbol != 'g' && ! (nextChord == chord);
++        const bool push = s.pushChanges && chordHit && mod(step,std::max(1,s.stepsPerChord)) >= std::max(1,s.stepsPerChord)-2 && symbol != 'g' && ! (nextChord == chord);
+         // Now and then (with Humanize) the last bar of the phrase answers with another top note.
+         // The chance follows Humanize; a step keeps its choice for the whole phrase.
+         const bool answer = human > 0.0 && phraseBar == 3
+@@ -939,3 +941,4 @@
+ }
+ 
+ } // namespace fgg
++
+--- a/Source/engine/GrooveEngine.h
++++ b/Source/engine/GrooveEngine.h
+@@ -53,6 +53,7 @@
+     // The chords: one per bar, numChords bars round. When liveChord is set (notes held on the MIDI
+     // input, e.g. from Fase Groove Piano), every bar plays that chord instead.
+     std::array<Chord, maxChords> chords {};
++    int stepsPerChord = 16; // Arranger: shared harmonic duration; 16 preserves plugin behaviour.
+     int numChords = 4;                     // the chords used, one per bar (1 to maxChords)
+     bool useLiveChord = false;
+     ChordTones liveChord {};
+@@ -212,3 +213,4 @@
+ };
+ 
+ } // namespace fgg
++

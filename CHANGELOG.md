@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.15.2 — 2026-10-24
+
+- More varied piano: every new song (GENERATE SONG, a new genre) takes one of the genre's voicings and colours, and the random riffs answer the first bar with an early hit or a pick-up (Piano 0.31.3 engine).
+- Vendored engines kept in step with the plugins by scripts/sync-engines.py; the Arranger's own engine changes are recorded in ThirdParty/ENGINE_PATCHES.md.
+
 ## 0.15.1 — 2026-10-24
 
 - Every song already has automation: a new or opened project writes random automation on GENERATE SONG and when a track, section or clip is regenerated (switch it off in the lane menu).

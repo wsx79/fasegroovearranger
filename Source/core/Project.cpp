@@ -436,6 +436,8 @@ void applyGenre(Project& p,int genre) {
         if(pattern>=0&&pattern<factoryCount)pattern=-1;
     }
     chooseProgression(p,presets[p.settings.genre]);
+    // Each song takes one of the genre's piano voicings and colours.
+    {const auto feel=sgk::genreRiffFeel(p.settings.genre,p.settings.seed);p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}
     // Match each style to an actual named bass line in the original library.
     static const int bassLines[]{8,23,16,11,22,13,18,15,20,12,10,16,12};
     p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
@@ -732,7 +734,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.begin()+4,[](const Track& t){
             return std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
-        if(!harmonyLocked)newSongHarmony(p,seed);
+        if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(p.settings.genre,seed);p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}   // a new song, a new piano colour
         varySongFeel(p,seed);renewForm(p);varyForm(p,seed);
     }
     const auto& s=p.settings;

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.15.2 — 2026-10-24
+
+- Piano più vario: ogni brano nuovo (GENERA BRANO, cambio di genere) prende uno dei voicing e dei colori del genere, e i riff casuali rispondono alla prima battuta con un colpo anticipato o un pick-up (motore Piano 0.31.3).
+- Motori inclusi allineati ai plugin con scripts/sync-engines.py; le modifiche proprie dell'Arranger sono in ThirdParty/ENGINE_PATCHES.md.
+
 ## 0.15.1 — 2026-10-24
 
 - Ogni brano ha già le automazioni: anche i progetti aperti le scrivono con GENERA BRANO e quando rigeneri traccia, sezione o clip (si spengono dal menu della corsia).
