@@ -21,6 +21,9 @@ struct TrackMix {
     std::array<bool,fgg::numLanes> laneMute{};
 };
 struct MixState { std::array<TrackMix,trackCount> tracks; double master=.8,tempo=122; };
+// The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
+inline int builtInSoundCount(int track){return track==2?1:track<2?numGuideSounds:4;}
+inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):track<2?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
 struct ScheduleState {
     std::array<std::vector<TimedEvent>,trackCount> schedules;
     std::array<std::uint64_t,trackCount> hashes{}; // which tracks changed since the last state
@@ -106,11 +109,12 @@ public:
     void startPreview(juce::AudioBuffer<float>&& audio,double rate);
     void stopPreview();
     bool isPreviewing() const {return previewing.load();}
-    int latencySamples() const {return totalLatency.load();}
     juce::AudioDeviceManager devices;
     juce::AudioPluginFormatManager formats;
     // publish/updateMix never take the engine lock: playback keeps running while editing.
-    void publish(const Project&);
+    // `normalised`: the caller has just normalised the project, so it is used as is (no copy).
+    // onlyTrack: only that track's notes changed since the last normalised publish.
+    void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
     void collectGarbage(){schedules.collect();mixes.collect();previews.collect();}
     void setMetronome(bool on){metronome=on;}
@@ -152,10 +156,10 @@ private:
     std::atomic<float> masterMeter{0};
     std::atomic<double> currentBeat{0},tempo{122};
     Handoff<ScheduleState> schedules;
+    juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
     Handoff<MixState> mixes;
     Handoff<PreviewClip> previews;
     std::atomic<bool> previewing{false};
-    std::atomic<int> totalLatency{0};
     void mixPreview(float* const* output,int channels,int count);
     void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
     double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;

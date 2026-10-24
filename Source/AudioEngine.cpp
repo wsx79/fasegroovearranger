@@ -4,6 +4,7 @@
 #include "core/Mp3Encoder.h"
 #include <cmath>
 #include <cstring>
+#include <optional>
 namespace fga {
 namespace {
 const std::vector<TimedEvent> noEvents;
@@ -70,12 +71,20 @@ AudioEngine::AudioEngine(){
 }
 AudioEngine::AudioEngine(Offline){for(int i=0;i<trackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);meters[(size_t)i]=0;}}
 AudioEngine::~AudioEngine(){lifetime.reset();devices.removeAudioCallback(this);const juce::ScopedLock lock(mutex);for(auto& i:instruments){if(i->plugin)i->plugin->releaseResources();if(i->effect)i->effect->releaseResources();}}
-void AudioEngine::publish(const Project& source){
-    auto canonical=source;canonical.normalise();const auto& p=canonical;
-    auto next=std::make_unique<ScheduleState>();
-    for(auto& e:events(canonical))if(e.track>=0&&e.track<trackCount)next->schedules[(size_t)e.track].push_back(e);
-    for(size_t ti=0;ti<(size_t)trackCount;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);
-    next->length=p.length();next->looping=p.loop;next->loopFrom=p.loopStart;next->loopTo=p.loopEnd;
+void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
+    std::optional<Project> canonical;if(!normalised){canonical=source;canonical->normalise();}const auto& p=canonical?*canonical:source;
+    auto next=std::make_unique<ScheduleState>();const double songLength=p.length();
+    {
+        // The edited project's last schedules are kept here: when one track changed (same song
+        // length) only that track's events are rebuilt. Other publishers (export, tests) drop them.
+        const juce::ScopedLock cacheLock(publishedLock);
+        const bool reuse=normalised&&publishedValid&&onlyTrack>=0&&onlyTrack<trackCount&&songLength==published.length;
+        if(reuse){*next=published;next->schedules[(size_t)onlyTrack].clear();for(auto& e:events(p,onlyTrack))next->schedules[(size_t)onlyTrack].push_back(e);next->hashes[(size_t)onlyTrack]=hashEvents(next->schedules[(size_t)onlyTrack]);}
+        else{for(auto& e:events(p))if(e.track>=0&&e.track<trackCount)next->schedules[(size_t)e.track].push_back(e);
+            for(size_t ti=0;ti<(size_t)trackCount;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);}
+        publishedValid=normalised;next->length=songLength;if(normalised)published=*next;
+    }
+    next->length=songLength;next->looping=p.loop;next->loopFrom=p.loopStart;next->loopTo=p.loopEnd;
     tempo=p.settings.bpm;
     mixes.post(mixState(p));schedules.post(std::move(next));adoptWhileStopped();
 }
@@ -158,7 +167,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
     // Plugin delay compensation: instrument + insert latency, every other track delayed to match.
     int maxLatency=0;for(auto& ptr:instruments){auto& i=*ptr;i.latency=(i.mode==2&&i.plugin?std::max(0,i.plugin->getLatencySamples()):0)+(i.effect?std::max(0,i.effect->getLatencySamples()):0);maxLatency=std::max(maxLatency,i.latency);}
-    maxLatency=std::min(maxLatency,Instrument::maxDelay-1);totalLatency=maxLatency;
+    maxLatency=std::min(maxLatency,Instrument::maxDelay-1);
     for(auto& ptr:instruments)ptr->delay=std::clamp(maxLatency-ptr->latency,0,Instrument::maxDelay-1);
     for(int ti=0;ti<trackCount;++ti){auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);
         while(i.cursor<schedule.size()&&schedule[i.cursor].beat<end){const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||laneMuted(i,e))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
@@ -177,14 +186,18 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);if(ti==1)i.bassLowPass.process(context);i.chorus.process(context);
             i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
-                for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){auto it=std::upper_bound(kick.begin(),kick.end(),time,[](double t,const TimedEvent& e){return t<e.beat;});phase=100;while(it!=kick.begin()){--it;if(it->controller<0&&it->velocity>0){phase=time-it->beat;break;}}}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
+                // Kick source: the last kick at or before the block start is found once, then each
+                // sample only steps over the kicks it passes (times grow through the block).
+                auto next=kick.begin();bool hasKick=false;double lastKick=0;
+                if(i.pumpSource==1){next=std::upper_bound(kick.begin(),kick.end(),beat,[](double t,const TimedEvent& e){return t<e.beat;});for(auto it=next;it!=kick.begin();){--it;if(it->controller<0&&it->velocity>0){hasKick=true;lastKick=it->beat;break;}}}
+                for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){for(;next!=kick.end()&&!(time<next->beat);++next)if(next->controller<0&&next->velocity>0){hasKick=true;lastKick=next->beat;}phase=hasKick?time-lastKick:100;}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
         }
         if(i.effect)i.effect->processBlock(block,i.effectMidi);
         i.applyDelay(block,count);
         i.midi.clear();i.guitarEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0;
-        if(audible){for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=i.volume?(float)i.volume->valueAt(beat+s/samplesPerBeat):1.f;for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
+        if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
         }else{i.leftGain.skip(count);i.rightGain.skip(count);}
         meters[(size_t)ti]=meter;
     }

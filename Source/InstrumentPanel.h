@@ -11,6 +11,10 @@ class InstrumentPanel : public juce::Component {
 public:
     explicit InstrumentPanel(MainComponent&);
     void rebuild();
+    // Renders a knob change still waiting for its 50 ms slot (also at drag end and before undo).
+    void flushRender();
+    void cancelRender(){renderTimer.stopTimer();renderTrack=-1;}
+    void repaintMeters();
     void refreshFromProject();
     juce::String layoutProblems()const;
     int sectionPosition(const juce::String& name)const{for(size_t i=0;i<headings.size()&&i<headingY.size();++i)if(headings[i].first==name)return headingY[i];return 0;}
@@ -30,6 +34,10 @@ private:
     CircleOfFifths circle;
     int guitarLane=0;
     bool builtGrid=true,builtInternal=true,rebuildPending=false;
+    int renderTrack=-1;
+    juce::TimedCallback renderTimer{[this]{flushRender();}};
+    void rebuildAsync();
+    void scheduleRender();
     void updateCircle();
     void heading(const juce::String&);
     void knob(const juce::String&,double,double,double,double,std::function<void(EngineOptions&,double)>,const juce::String& suffix={});
@@ -39,5 +47,4 @@ private:
     void toggle(const juce::String&,bool,std::function<void(EngineOptions&,bool)>);
     void apply(std::function<void(EngineOptions&)>);
 };
-void drawFamilyLogo(juce::Graphics&,juce::Rectangle<float>);
 }

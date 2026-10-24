@@ -8,7 +8,7 @@ namespace fga {
 // Discovery never loads plugin code in the workstation process.
 class PluginCatalog : private juce::Thread {
 public:
-    struct State { juce::Array<juce::PluginDescription> plugins; juce::String current; int checked=0,total=0,failed=0; bool scanning=false; };
+    struct State { juce::Array<juce::PluginDescription> plugins; juce::String current; int checked=0,total=0,failed=0; bool scanning=false; int count=0; };
     // Rows for the groove-style browser: FaseGroove engines first, then one manufacturer.
     struct BrowserRow {
         enum class Kind { engine, plugin, noEffect };
@@ -31,6 +31,8 @@ public:
     // category selects a group. A query searches every group. pinned keeps that order (favourites or recent).
     static std::vector<BrowserRow> browserRows(const juce::Array<juce::PluginDescription>&,const juce::String& category,const juce::String& query,const juce::StringArray& pinned);
     State state() const;
+    // The scan progress and the plugin count, without copying the plugin list (for 4 Hz timers).
+    State progressState() const;
     void cancel(){signalThreadShouldExit();}
     static int scanOne(const juce::String& format,const juce::String& identifier,const juce::File& output);
     static bool verify(const juce::File& probe,const juce::File& evidence);

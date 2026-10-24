@@ -4,7 +4,6 @@
 #include "Generators.h"
 
 #include <algorithm>
-#include <cmath>
 
 namespace fgg
 {
@@ -1067,18 +1066,6 @@ GuitarPattern applySegmentOrder (const GuitarPattern& source, const std::array<i
                 p.lanes[(size_t) l][(size_t) (k * segment + i)] = source.lanes[(size_t) l][(size_t) (from * segment + i)];
     }
     return p;
-}
-
-void copySegment (GuitarPattern& into, const GuitarPattern& from, int segment)
-{
-    const int len = into.length();
-    if (from.length() != len || len % numSegments != 0)
-        return;
-    const int size = len / numSegments;
-    segment = std::clamp (segment, 0, numSegments - 1);
-    for (int l = 0; l < numLanes; ++l)
-        for (int i = segment * size; i < (segment + 1) * size; ++i)
-            into.lanes[(size_t) l][(size_t) i] = from.lanes[(size_t) l][(size_t) i];
 }
 
 //==============================================================================

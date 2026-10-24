@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <unordered_map>
+#include <array>
 
 namespace Localisation
 {
@@ -162,6 +163,8 @@ juce::String upper (const juce::String& text)
     return out;
 }
 
+static juce::String translate (const juce::String& english, int lang);
+
 juce::String tr (const juce::String& english)
 {
     const int lang = currentLanguage.load();
@@ -169,6 +172,19 @@ juce::String tr (const juce::String& english)
     if(english=="Close"){static const char* words[]{"Close","Stretto","Cerrado","Serré","Enge Lage","Fechado"};return juce::String::fromUTF8(words[juce::jlimit(0,5,lang)]);}
 
 
+    // Many paints call tr(): keep each language's results (per thread, so no lock is needed).
+    struct Hash { size_t operator() (const juce::String& s) const noexcept { return (size_t) s.hashCode64(); } };
+    thread_local std::array<std::unordered_map<juce::String, juce::String, Hash>, 6> cache;
+    auto& known = cache[(size_t) juce::jlimit (0, 5, lang)];
+    if (const auto hit = known.find (english); hit != known.end())
+        return hit->second;
+    if (known.size() > 4096)
+        known.clear();
+    return known[english] = translate (english, lang);
+}
+
+static juce::String translate (const juce::String& english, int lang)
+{
     const auto& map = index();
     const auto it = map.find (english.toLowerCase().toStdString());
     if (it == map.end()){

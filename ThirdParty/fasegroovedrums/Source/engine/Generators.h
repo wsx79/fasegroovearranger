@@ -49,9 +49,6 @@ constexpr int numSegments = 4;
 /** Rebuilds the groove playing the parts in the given order (e.g. A A B C). */
 DrumPattern applySegmentOrder (const DrumPattern& source, const std::array<int, numSegments>& order);
 
-/** Copies part `segment` of `from` into `into` (patterns of the same length). */
-void copySegment (DrumPattern& into, const DrumPattern& from, int segment);
-
 //==============================================================================
 /** What the end of a fill bar plays. */
 enum class FillStyle { snareRoll = 0, tomRun, clapBuild, hatLift, dropOut, congaRun, mix,

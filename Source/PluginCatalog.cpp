@@ -37,7 +37,8 @@ juce::FileSearchPath PluginCatalog::standardFolders(){
 PluginCatalog::PluginCatalog(juce::File storage,bool includeStandard):Thread("Plugin catalogue"),directory(std::move(storage)),includeStandardPaths(includeStandard){read();}
 PluginCatalog::~PluginCatalog(){signalThreadShouldExit();stopThread(5000);}
 juce::File PluginCatalog::customFolder()const{const juce::ScopedLock lock(mutex);return custom.isEmpty()?juce::File():juce::File(custom[0]);}
-PluginCatalog::State PluginCatalog::state()const{const juce::ScopedLock lock(mutex);return progress;}
+PluginCatalog::State PluginCatalog::state()const{const juce::ScopedLock lock(mutex);auto s=progress;s.count=s.plugins.size();return s;}
+PluginCatalog::State PluginCatalog::progressState()const{const juce::ScopedLock lock(mutex);State s;s.current=progress.current;s.checked=progress.checked;s.total=progress.total;s.failed=progress.failed;s.scanning=progress.scanning;s.count=progress.plugins.size();return s;}
 bool PluginCatalog::setCustomFolder(const juce::File& file){
     const juce::ScopedLock lock(mutex);if(progress.scanning)return false;
     if(file==juce::File()){if(custom.isEmpty())return false;custom.clear();writeFolders();return true;}

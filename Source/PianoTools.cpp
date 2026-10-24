@@ -1,5 +1,6 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include "Branding.h"
 #include "MainComponent.h"
 #include "UiText.h"
 #include "CircleOfFifths.h"
@@ -31,7 +32,7 @@ public:
         setSize(850,650);updateReport();
     }
     ~MusicalTools()override{setLookAndFeel(nullptr);}
-    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);drawFamilyLogo(g,{20,12,300,55});g.setColour(Palette::accent);g.setFont(FamilyTheme::font(17,true));g.drawText(tr(title),340,26,480,30,juce::Justification::centredLeft);}
+    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);Branding::drawFullLogo(g,{20,12,300,55});g.setColour(Palette::accent);g.setFont(FamilyTheme::font(17,true));g.drawText(tr(title),340,26,480,30,juce::Justification::centredLeft);}
     void resized()override{a.setBounds(24,92,kind==3?350:802,32);b.setBounds(430,92,396,32);amount.setBounds(24,135,802,36);keepRhythm.setBounds(24,140,340,30);keepHarmony.setBounds(430,140,370,30);report.setBounds(24,186,802,360);circle.setBounds(160,88,530,490);hearA.setBounds(24,568,100,34);hearB.setBounds(136,568,100,34);apply.setBounds(560,568,120,34);close.setBounds(696,568,130,34);}
 private:
     void updateCircle(){if(!owner)return;auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed,owner->clip().motifSeed);std::vector<CircleOfFifths::ChordMark> chords,diatonic;std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
@@ -63,7 +64,7 @@ public:
     bool verifyMidiLearning(){if(!owner)return false;auto original=owner->project;owner->project.settings.key=0;owner->project.settings.scale=0;for(int n:{60,64,67})receive(juce::MidiMessage::noteOn(1,n,1.f));for(int n:{60,64,67})receive(juce::MidiMessage::noteOff(1,n));bool ok=owner->project.settings.chordCount==1&&owner->project.settings.degrees[0]==0&&owner->project.settings.freeChords[0]==-1;for(int n:{57,60,64})receive(juce::MidiMessage::noteOn(1,n,1.f));for(int n:{57,60,64})receive(juce::MidiMessage::noteOff(1,n));ok=owner->project.settings.chordCount==2&&owner->project.settings.degrees[1]==5&&owner->project.settings.freeChords[1]==-1&&ok;owner->project=std::move(original);owner->changed(false);owner->showInstrument();slot=0;return ok;}
     ~LearnChords()override{disconnect();setLookAndFeel(nullptr);}
     void resized()override{input.setBounds(24,95,getWidth()-48,34);status.setBounds(24,150,getWidth()-48,120);}
-    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);drawFamilyLogo(g,{20,14,300,55});g.setColour(Palette::accent);g.setFont(FamilyTheme::font(18,true));g.drawText(tr("LEARN"),360,24,300,34,juce::Justification::centredLeft);}
+    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);Branding::drawFullLogo(g,{20,14,300,55});g.setColour(Palette::accent);g.setFont(FamilyTheme::font(18,true));g.drawText(tr("LEARN"),360,24,300,34,juce::Justification::centredLeft);}
 private:
     void disconnect(){if(owner&&id.isNotEmpty()){owner->audio.devices.removeMidiInputDeviceCallback(id,this);if(!wasEnabled)owner->audio.devices.setMidiInputDeviceEnabled(id,false);}id.clear();down.fill(false);peak=mask=0;}
     void handleIncomingMidiMessage(juce::MidiInput*,const juce::MidiMessage& message)override{juce::Component::SafePointer<LearnChords> safe(this);juce::MessageManager::callAsync([safe,message]{if(safe)safe->receive(message);});}

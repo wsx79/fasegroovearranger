@@ -232,9 +232,11 @@ double Project::clipLength(int track,int section) const {
     return sections[(size_t)section].bars*4.;
 }
 double Project::length() const {
-    double end=sectionStart((int)sections.size());
+    // Running section starts: length() runs on every timer tick and paint.
+    std::vector<double> starts(sections.size()+1,0.);for(size_t i=0;i<sections.size();++i)starts[i+1]=starts[i]+sections[i].bars*4.0;
+    double end=starts.back();
     for(size_t ti=0;ti<tracks.size();++ti)for(size_t si=0;si<tracks[ti].clips.size();++si)
-        if(tracks[ti].clips[si].span>0)end=std::max(end,clipStart((int)ti,(int)si)+clipLength((int)ti,(int)si));
+        if(tracks[ti].clips[si].span>0)end=std::max(end,(tracks[ti].freeTimeline?tracks[ti].clips[si].position:starts[std::min(si,sections.size())])+clipLength((int)ti,(int)si));
     return end;
 }
 namespace {
@@ -288,7 +290,6 @@ void Project::normalise() {
     s.extension=std::clamp(s.extension,0,10); s.voicing=std::clamp(s.voicing,0,10);
     const auto& tempo=genreProfile(s.genre);
     s.bpm=finite(s.bpm,tempo.preferredBpm,tempo.minBpm,tempo.maxBpm); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
-    s.songMinutes=finite(s.songMinutes,5,4,20);
     s.chordCount=std::clamp(s.chordCount,1,8); s.bassMode=std::clamp(s.bassMode,0,sgk::numBassModes-1); s.stringsMode=std::clamp(s.stringsMode,0,10);
     for(auto& d:s.degrees) d=std::clamp(d,0,6);
     for(auto& c:s.freeChords) c=std::clamp(c,-1,35);
@@ -891,14 +892,17 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
     for(size_t ti=0;ti<p.tracks.size();++ti) {
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;
         const auto& t=p.tracks[ti];
-        double occupied=0;
+        double occupied=0,sectionBegin=0;
         for(size_t si=0;si<t.clips.size();++si) {
-            const double begin=p.clipStart((int)ti,(int)si),end=p.clipLength((int)ti,(int)si),from=std::max(0.,occupied-begin);
+            // Running section start instead of the O(n) clipStart for section-aligned clips.
+            const double begin=t.freeTimeline?t.clips[si].position:sectionBegin,end=p.clipLength((int)ti,(int)si),from=std::max(0.,occupied-begin);
+            if(si<p.sections.size())sectionBegin+=p.sections[si].bars*4.0;
             occupied=std::max(occupied,begin+end);if(from>=end)continue;
             if(ti==0&&t.engine.pedalCC&&!t.clips[si].notes.empty()){
                 const double chord=p.settings.chordSteps*.25;
                 for(double at=0;at<end;at+=chord){if(at<from)continue;out.push_back({begin+at,(int)ti,64,0,0,64});out.push_back({begin+at+.02,(int)ti,64,127,0,64});}
-                for(double at=0;at<end;at+=.25){if(at<from)continue;const int expression=(t.freeTimeline&&t.clips[si].role>=0?(Section)t.clips[si].role:p.sections[(size_t)p.sectionAtBeat(begin)].type)==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
+                const Section role=t.freeTimeline&&t.clips[si].role>=0?(Section)t.clips[si].role:p.sections.empty()?Section::main:p.sections[(size_t)p.sectionAtBeat(begin)].type;
+                for(double at=0;at<end;at+=.25){if(at<from)continue;const int expression=role==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
                 if(from>0){out.push_back({begin+from,(int)ti,64,0,0,64});out.push_back({begin+from,(int)ti,11,127,0,11});}
                 out.push_back({begin+end,(int)ti,64,0,0,64});out.push_back({begin+end,(int)ti,11,127,0,11});
             }

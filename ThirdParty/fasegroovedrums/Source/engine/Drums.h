@@ -66,6 +66,9 @@ const std::vector<DrumPattern>& drumPatterns();
 const std::vector<const char*>& grooveCategories();
 int categoryIndex (const std::string& category) noexcept;   // -1 when unknown
 
+/** The drumPatterns() indices of each grooveCategories() genre, in menu order (worked out once). */
+const std::vector<std::vector<int>>& presetsByGenre();
+
 /** Swing that suits a genre (0 = straight, 1 = full triplet shuffle). */
 float genreSwing (int category) noexcept;
 

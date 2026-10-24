@@ -13,6 +13,7 @@
 #include "PluginBrowser.h"
 #include "SampleBrowser.h"
 #include <set>
+#include <deque>
 namespace fga {
 class MainComponent;
 bool verifyPianoTools(MainComponent&,const juce::File&);
@@ -141,7 +142,8 @@ public:
     AudioEngine audio;
     PluginCatalog pluginCatalog;
     void checkpoint();
-    void changed(bool schedule=true);
+    // onlyTrack: just that track's notes changed (its schedule alone is rebuilt).
+    void changed(bool schedule=true,int onlyTrack=-1);
     void mixChanged();
     void select(int track,int section);
     void showTrackMenu(int);
@@ -182,6 +184,14 @@ public:
     bool clipLoopActive() const;
     // What the track actually plays: the plugin's name, the sample's name or the guide sound.
     juce::String soundSourceName(int track);
+    // The sound source plus the insert effect's name, as the inspectors show it.
+    juce::String sourceWithEffect(int track);
+    const juce::String& cachedSourceName(int track);
+    // Drag start/end of a slider: one undo step per gesture.
+    void trackGesture(juce::Slider&,std::function<void()> onEnd={});
+    static bool inGesture(const juce::Component& c){return (bool)c.getProperties()["fgaGesture"];}
+    void checkpoint(const void* control);
+    void repaintHeader();
     void useBuiltInSound(int track);
     void browseSamplesFor(int track);
     void toggleTrackLock();
@@ -236,7 +246,11 @@ private:
     juce::TextButton sectionLoopButton{"LOOP CLIP"};
     juce::TextButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
-    std::vector<Project> undoStack,redoStack;
+    std::deque<Project> undoStack,redoStack;
+    const void* lastCheckpointControl=nullptr;juce::uint32 lastCheckpointTime=0;
+    double lastTimerBeat=-1;int lastPlayX=-1,soundBoxTrack=-1;
+    juce::StringArray sectionSelectorNames;
+    std::array<juce::String,trackCount> sourceNames;std::array<bool,trackCount> sourceNameCached{};
     std::vector<Note> clipboard;
     std::vector<Clip> timelineClipboard;
     Clip emptyClip;

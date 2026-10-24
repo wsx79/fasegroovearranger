@@ -32,6 +32,16 @@ namespace
     }
 }
 
+namespace
+{
+    struct CachedIcon : juce::DeletedAtShutdown
+    {
+        std::unique_ptr<juce::Drawable> drawable = Branding::createIcon();
+        ~CachedIcon() override { clearSingletonInstance(); }
+        JUCE_DECLARE_SINGLETON_INLINE (CachedIcon, false)
+    };
+}
+
 namespace Branding
 {
     std::unique_ptr<juce::Drawable> createIcon()
@@ -60,8 +70,9 @@ namespace Branding
 
     void drawFullLogo (juce::Graphics& g, juce::Rectangle<float> area)
     {
+        // The icon SVG is parsed once, not on every paint of the window header.
         auto iconArea = area.removeFromLeft (area.getHeight());
-        if (auto icon = createIcon())
+        if (auto* icon = CachedIcon::getInstance()->drawable.get())
             icon->drawWithin (g, iconArea, juce::RectanglePlacement::centred, 1.0f);
 
         area.removeFromLeft (area.getHeight() * 0.18f);

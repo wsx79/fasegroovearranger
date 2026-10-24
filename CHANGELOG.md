@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.14.4 — 2026-10-24
+
+- Lighter: the mixer, the instrument panel, the timeline and the piano roll redraw only what changes; instrument-panel knobs re-render the part once the gesture settles instead of on every step; translations are applied only when the language changes; fewer project copies and recalculations on every edit; the plugin settings stay idle when hidden.
+- Drums and Guitar engines updated to 0.20.1 and 0.10.1. Generated music is unchanged.
+- Unused leftovers removed (duplicate translations, controls that were never created, the old song-minutes field; old projects still open).
+
 ## 0.14.3 — 2026-10-24
 
 - Loop: the loop button, L, section/clip loop and Ctrl+L switch the loop off again; a double-click on the ruler or the context menu clears the region. Undoable and saved with the project.

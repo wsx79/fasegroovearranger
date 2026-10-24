@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.14.4 — 2026-10-24
+
+- Più leggero: mixer, pannello strumento, timeline e piano roll ridisegnano solo ciò che cambia; le manopole del pannello strumento rigenerano la parte quando il gesto si ferma invece che a ogni scatto; le traduzioni si applicano solo al cambio lingua; meno copie e ricalcoli del progetto a ogni modifica; le impostazioni dei plugin restano ferme quando sono nascoste.
+- Motori Drums e Guitar aggiornati a 0.20.1 e 0.10.1. La musica generata non cambia.
+- Rimossi residui inutilizzati (traduzioni doppie, controlli mai creati, il vecchio campo dei minuti del brano; i progetti vecchi si aprono ancora).
+
 ## 0.14.3 — 2026-10-24
 
 - Loop: il pulsante loop, L, il loop di sezione/clip e Ctrl+L spengono di nuovo il loop; un doppio clic sul righello o il menu contestuale tolgono la zona. Annullabile e salvato nel progetto.

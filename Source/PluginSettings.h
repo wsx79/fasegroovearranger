@@ -20,6 +20,7 @@ private:
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Rectangle<int> card() const { return getLocalBounds().withSizeKeepingCentre(620,560); }
     void timerCallback() override;
+    void visibilityChanged() override;
     void showFolder();
 };
 }

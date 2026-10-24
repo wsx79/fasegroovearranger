@@ -78,7 +78,6 @@ struct Settings {
     double bpm = 122, swing = .2, density = .55, humanize = .2;
     int bassMode = 3, stringsMode = 1;
     std::uint32_t seed = 1979;
-    double songMinutes = 5;
     bool guitarLead = false;
     int chordSteps = 16;
     int chordCount = 4;

@@ -13,10 +13,12 @@ PluginSettings::PluginSettings(PluginCatalog& c):catalog(c){
     clear.onClick=[this]{if(catalog.setCustomFolder({})){showFolder();catalog.scan();}};
     rescan.onClick=[this]{catalog.scan();};retry.onClick=[this]{catalog.scan(true);};
     cancel.onClick=[this]{catalog.cancel();};
-    refreshText();startTimerHz(4);setVisible(false);
+    refreshText();setVisible(false);
 }
 void PluginSettings::showFolder(){const auto folder=catalog.customFolder();folderPath.setText(folder==juce::File()?tr("No custom folder"):folder.getFullPathName(),juce::dontSendNotification);}
-void PluginSettings::show(){showFolder();refreshText();timerCallback();setVisible(true);toFront(false);}
+void PluginSettings::show(){showFolder();refreshText();timerCallback();setVisible(true);toFront(false);startTimerHz(4);}
+// The 4 Hz status poll runs only while the panel is open.
+void PluginSettings::visibilityChanged(){if(!isVisible())stopTimer();}
 void PluginSettings::refreshText(){
     title.setText(tr("PLUGIN SETTINGS"),juce::dontSendNotification);standardLabel.setText(tr("Standard folders"),juce::dontSendNotification);customLabel.setText(tr("Custom folder"),juce::dontSendNotification);
     close.setButtonText(tr("CLOSE"));choose.setButtonText(tr("CHOOSE FOLDER"));clear.setButtonText(tr("CLEAR"));rescan.setButtonText(tr("RESCAN"));retry.setButtonText(tr("RETRY FAILED"));cancel.setButtonText(tr("CANCEL"));
@@ -26,8 +28,8 @@ void PluginSettings::refreshText(){
     showFolder();
 }
 void PluginSettings::timerCallback(){
-    if(!isVisible())return;const auto s=catalog.state();
-    auto text=tr(s.scanning?"Scanning plugins...":s.checked<s.total?"Plugin scan stopped":"Plugin scan complete")+"  "+juce::String(s.plugins.size())+" "+tr("plugins");
+    if(!isVisible())return;const auto s=catalog.progressState();
+    auto text=tr(s.scanning?"Scanning plugins...":s.checked<s.total?"Plugin scan stopped":"Plugin scan complete")+"  "+juce::String(s.count)+" "+tr("plugins");
     if(s.failed){text+="  · "+juce::String(s.failed)+" "+tr("skipped");}
     if(s.scanning){text+="  "+juce::String(s.checked)+" / "+juce::String(s.total);}
     status.setText(text,juce::dontSendNotification);status.setTooltip(s.current);

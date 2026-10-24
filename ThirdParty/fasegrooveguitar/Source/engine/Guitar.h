@@ -209,6 +209,10 @@ const std::vector<GuitarPattern>& guitarPatterns();
 /** Genre headings of the groove menu, in display order. */
 const std::vector<const char*>& grooveCategories();
 int categoryIndex (const std::string& category) noexcept;   // -1 when unknown
+/** The presets of a genre (grooveCategories() index), worked out once; empty for an unknown genre. */
+const std::vector<int>& patternsOfCategory (int category);
+/** Every preset of a known genre, genre by genre (the groove menu's order). */
+const std::vector<int>& patternsByCategory();
 
 /** Swing that suits a genre (0 = straight, 1 = full triplet shuffle). */
 float genreSwing (int category) noexcept;

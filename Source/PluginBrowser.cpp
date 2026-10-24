@@ -108,10 +108,11 @@ void PluginBrowser::choose(int row){
     if(entry.key.isNotEmpty()){auto names=loadList("recentPlugins");names.removeString(entry.key);names.insert(0,entry.key);while(names.size()>12)names.remove(names.size()-1);saveList("recentPlugins",names);}
 }
 void PluginBrowser::timerCallback(){
-    if(!isVisible())return;const auto state=catalog.state();
-    const auto stamp=juce::String(state.plugins.size())+":"+juce::String((int)state.scanning)+":"+juce::String(state.failed);
+    if(!isVisible())return;const auto state=catalog.progressState();
+    const auto stamp=juce::String(state.count)+":"+juce::String((int)state.scanning)+":"+juce::String(state.failed);
+    // Repaint only when the scan progress shown in the subtitle moves.
     if(stamp!=listStamp){listStamp=stamp;refreshText();resized();rebuildList();}
-    else repaint();
+    else if(state.checked!=paintedChecked){paintedChecked=state.checked;repaint();}
     rescanButton.setEnabled(!state.scanning);
 }
 int PluginBrowser::getNumRows(){return (int)entries.size();}

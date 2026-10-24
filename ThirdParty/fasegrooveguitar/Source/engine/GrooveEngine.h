@@ -148,6 +148,17 @@ public:
     /** Offline render of a whole clip starting at bar 1, with every note closed. */
     static std::vector<NoteEvent> renderClip (const GuitarSettings& s, double lengthInBeats);
 
+    /** The groove and its turnaround for some settings, worked out ahead (off the audio thread)
+        and handed to render with setPrepared; render builds its own when it doesn't match. */
+    struct Prepared
+    {
+        GuitarSettings key;
+        GuitarPattern pattern, variation;
+    };
+    static void prepare (Prepared&, const GuitarSettings&);
+    static bool samePattern (const GuitarSettings& a, const GuitarSettings& b) noexcept;
+    void setPrepared (const Prepared* p) noexcept { prepared = p; }
+
     /** Renders a whole song (intro, main, break...) with section markers. */
     struct Marker { double ppq; std::string name; };
     static std::vector<NoteEvent> renderArrangement (const GuitarSettings& s, const std::vector<ArrangementPart>& parts,
@@ -171,7 +182,7 @@ private:
     struct PendingOn { double ppq; int note; int velocity; double duration; int lane; bool choke = false; std::size_t order = 0;
                        int articulation = 0; bool grace = false; int controller = -1; };
 
-    const GuitarPattern& patternFor (const GuitarSettings& s);
+    const Prepared& patternFor (const GuitarSettings& s);
     void collectStep (long long step, const GuitarSettings& s, const GuitarPattern& pattern, const GuitarPattern& variation);
     void flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEvent>& out);
 
@@ -194,17 +205,11 @@ private:
     std::vector<PendingOn> pending;
     std::vector<int> scratch;
 
-    // Cache of the resolved pattern, rebuilt only when its inputs change.
-    GuitarPattern cachedPattern, cachedVariation;
-    int cachedIndex = -1;
-    std::uint32_t cachedSeed = 0;
-    float cachedDensity = -1.0f;
-    int cachedGenre = -1;
-    Section cachedSection = Section::main;
-    std::array<std::array<char, userPatternLength>, numLanes> cachedUser {};
-    std::array<int, numSegments> cachedOrder {};
-    int cachedBars = 2;
-    std::uint32_t cachedSectionVariation = 0;
+    // The resolved pattern: the one prepared ahead when it matches, else built here (and kept,
+    // rebuilt only when its inputs change).
+    const Prepared* prepared = nullptr;
+    Prepared cache;
+    bool cacheValid = false;
 };
 
 } // namespace fgg

@@ -1105,6 +1105,43 @@ int categoryIndex (const std::string& category) noexcept
     return -1;
 }
 
+namespace
+{
+    const std::vector<std::vector<int>>& categoryIndexTable()
+    {
+        static const auto table = []
+        {
+            std::vector<std::vector<int>> t (grooveCategories().size());
+            const auto& presets = guitarPatterns();
+            for (size_t g = 0; g < t.size(); ++g)
+                for (size_t i = 0; i < presets.size(); ++i)
+                    if (presets[i].category == grooveCategories()[g])
+                        t[g].push_back ((int) i);
+            return t;
+        }();
+        return table;
+    }
+}
+
+const std::vector<int>& patternsOfCategory (int category)
+{
+    static const std::vector<int> none;
+    const auto& t = categoryIndexTable();
+    return category >= 0 && category < (int) t.size() ? t[(size_t) category] : none;
+}
+
+const std::vector<int>& patternsByCategory()
+{
+    static const auto order = []
+    {
+        std::vector<int> o;
+        for (const auto& list : categoryIndexTable())
+            o.insert (o.end(), list.begin(), list.end());
+        return o;
+    }();
+    return order;
+}
+
 float genreSwing (int category) noexcept
 {
     // The same swing per genre as Fase Groove Drums, so the guitar sits in the drums' pocket.

@@ -396,6 +396,20 @@ int categoryIndex (const std::string& category) noexcept
     return -1;
 }
 
+const std::vector<std::vector<int>>& presetsByGenre()
+{
+    static const auto byGenre = []
+    {
+        std::vector<std::vector<int>> lists (grooveCategories().size());
+        const auto& presets = drumPatterns();
+        for (size_t i = 0; i < presets.size(); ++i)
+            if (const int genre = categoryIndex (presets[i].category); genre >= 0)
+                lists[(size_t) genre].push_back ((int) i);
+        return lists;
+    }();
+    return byGenre;
+}
+
 float genreSwing (int category) noexcept
 {
     // In 16th shuffle: 50 + swing*100/6. 0.36 is 56%, 0.6 is 60%, 0.72 is 62%. Chicago jack sits

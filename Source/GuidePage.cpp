@@ -1,7 +1,6 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "GuidePage.h"
-#include "InstrumentPanel.h"
 #include "FamilyTheme.h"
 #include "Branding.h"
 #include <BinaryData.h>
@@ -116,7 +115,7 @@ public:
         setSize(1100,800);
     }
     void loadManual(){book.setMarkdown(juce::String::fromUTF8(isEnglish?BinaryData::GUIDE_md:BinaryData::GUIDA_md,isEnglish?BinaryData::GUIDE_mdSize:BinaryData::GUIDA_mdSize));documentTitle=isEnglish?"USER GUIDE":"GUIDA DI UTILIZZO";close.setButtonText(isEnglish?"CLOSE":"CHIUDI");search.clear();index.updateContent();index.selectRow(0);port.setViewPosition(0,0);repaint();}
-    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);drawFamilyLogo(g,{20,12,294,54});g.setColour(Palette::dim);g.setFont(FamilyTheme::font(12,true));g.drawText(documentTitle,336,24,getWidth()-580,28,juce::Justification::centredLeft);g.setColour(Palette::panelEdge);g.fillRect(16,77,getWidth()-32,1);g.fillRect(238,128,1,getHeight()-164);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10,true));g.drawText(isEnglish?"CONTENTS":"INDICE",24,94,190,22,juce::Justification::centredLeft);g.setFont(FamilyTheme::font(11));g.drawText("FS PITCH  /  FASE GROOVE",20,getHeight()-27,260,20,juce::Justification::centredLeft);g.drawText(isEnglish?"Click a screenshot to enlarge it":"Clicca una schermata per ingrandirla",300,getHeight()-27,getWidth()-320,20,juce::Justification::centredRight);}
+    void paint(juce::Graphics& g)override{g.fillAll(Palette::background);Branding::drawFullLogo(g,{20,12,294,54});g.setColour(Palette::dim);g.setFont(FamilyTheme::font(12,true));g.drawText(documentTitle,336,24,getWidth()-580,28,juce::Justification::centredLeft);g.setColour(Palette::panelEdge);g.fillRect(16,77,getWidth()-32,1);g.fillRect(238,128,1,getHeight()-164);g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10,true));g.drawText(isEnglish?"CONTENTS":"INDICE",24,94,190,22,juce::Justification::centredLeft);g.setFont(FamilyTheme::font(11));g.drawText("FS PITCH  /  FASE GROOVE",20,getHeight()-27,260,20,juce::Justification::centredLeft);g.drawText(isEnglish?"Click a screenshot to enlarge it":"Clicca una schermata per ingrandirla",300,getHeight()-27,getWidth()-320,20,juce::Justification::centredRight);}
     void resized()override{language.setBounds(getWidth()-240,25,120,29);close.setBounds(getWidth()-110,25,90,29);search.setBounds(258,91,getWidth()-580,29);previous.setBounds(getWidth()-310,91,36,29);next.setBounds(getWidth()-268,91,36,29);result.setBounds(getWidth()-225,91,70,29);smaller.setBounds(getWidth()-150,91,58,29);larger.setBounds(getWidth()-86,91,58,29);index.setBounds(16,128,210,getHeight()-164);port.setBounds(250,134,getWidth()-266,getHeight()-173);book.setSize(port.getWidth()-16,book.getHeight());}
     bool keyPressed(const juce::KeyPress& key)override{if(key.getModifiers().isCommandDown()&&key.getKeyCode()=='F'){search.grabKeyboardFocus();return true;}return false;}
     void zoom(int delta){book.fontSize=std::clamp(book.fontSize+(float)delta,13.f,21.f);book.relayout();hits=book.find(search.getText());currentHit=-1;findNext(1);}

@@ -48,7 +48,8 @@ public:
 private:
     MainComponent& owner;
     int track;
-    float peak=0;
+    float peak=0,drawnLevel=-1;
+    int drawnColour=-1;
     bool updating=false,gainGesture=false,panGesture=false;
     juce::Label name;
     juce::Slider gain,pan;

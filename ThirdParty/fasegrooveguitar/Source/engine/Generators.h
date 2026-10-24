@@ -50,9 +50,6 @@ constexpr int numSegments = 4;
 /** Rebuilds the groove playing the parts in the given order (e.g. A A B C). */
 GuitarPattern applySegmentOrder (const GuitarPattern& source, const std::array<int, numSegments>& order);
 
-/** Copies part `segment` of `from` into `into` (patterns of the same length). */
-void copySegment (GuitarPattern& into, const GuitarPattern& from, int segment);
-
 //==============================================================================
 /** What the end of a fill bar plays. */
 enum class FillStyle { strumBuild = 0, octaveRun, scratchBuild, chankLift, dropOut, slideUp, mix,

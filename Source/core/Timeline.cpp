@@ -17,11 +17,12 @@ double Project::clipStart(int track,int clip)const{
     if(track<0||track>=(int)tracks.size()||clip<0||clip>=(int)tracks[(size_t)track].clips.size())return 0;
     return tracks[(size_t)track].freeTimeline?tracks[(size_t)track].clips[(size_t)clip].position:sectionStart(clip);
 }
-int Project::sectionAtBeat(double beat)const{int index=0;for(size_t i=1;i<sections.size();++i)if(beat>=sectionStart((int)i))index=(int)i;return index;}
+int Project::sectionAtBeat(double beat)const{int index=0;double start=0;for(size_t i=1;i<sections.size();++i){start+=sections[i-1].bars*4.0;if(beat>=start)index=(int)i;}return index;}
 int Project::clipAtBeat(int track,double beat)const{
     if(track<0||track>=(int)tracks.size())return -1;
     double occupied=0;const auto& clips=tracks[(size_t)track].clips;
-    for(size_t i=0;i<clips.size();++i){const double start=clipStart(track,(int)i),end=start+clipLength(track,(int)i),from=std::max(start,occupied);occupied=std::max(occupied,end);if(beat>=from&&beat<end)return (int)i;}return -1;
+    const bool free=tracks[(size_t)track].freeTimeline;double sectionBegin=0;
+    for(size_t i=0;i<clips.size();++i){const double start=free?clips[i].position:sectionBegin,end=start+clipLength(track,(int)i),from=std::max(start,occupied);if(i<sections.size())sectionBegin+=sections[i].bars*4.0;occupied=std::max(occupied,end);if(beat>=from&&beat<end)return (int)i;}return -1;
 }
 int Project::detachTrack(int track,int selected){
     if(track<0||track>=(int)tracks.size())return -1;auto& t=tracks[(size_t)track];if(t.freeTimeline)return selected;

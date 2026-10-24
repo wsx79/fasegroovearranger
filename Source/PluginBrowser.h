@@ -31,6 +31,7 @@ private:
     std::vector<PluginCatalog::BrowserRow> entries;
     juce::StringArray favouriteKeys;
     juce::String currentKey,listStamp;
+    int paintedChecked=-1;
     int category=firstCategory,engineFamily=0;
     bool quiet=false;
     juce::Rectangle<float> card() const { return getLocalBounds().toFloat().withSizeKeepingCentre(920.f,640.f); }

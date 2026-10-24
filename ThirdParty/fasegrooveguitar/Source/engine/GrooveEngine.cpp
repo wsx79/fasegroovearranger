@@ -356,30 +356,34 @@ FillStyle GrooveEngine::effectiveFillStyle (FillStyle style, long long bar, int 
     return choices[(size_t) (noise (bar, 4242) * (double) n) % n];
 }
 
-const GuitarPattern& GrooveEngine::patternFor (const GuitarSettings& s)
+bool GrooveEngine::samePattern (const GuitarSettings& a, const GuitarSettings& b) noexcept
 {
-    const bool usesSeed = s.pattern == randomPatternIndex();
-    const bool usesUser = s.pattern == userPatternIndex();
+    const bool usesSeed = a.pattern == randomPatternIndex();
+    const bool usesUser = a.pattern == userPatternIndex();
+    return a.pattern == b.pattern && a.section == b.section && a.segmentOrder == b.segmentOrder
+        && a.sectionVariation == b.sectionVariation && a.grooveBars == b.grooveBars
+        && a.riffSeed == b.riffSeed   // (the variation bar takes it too)
+        && (! usesSeed || (a.density == b.density && a.randomGenre == b.randomGenre))
+        && (! usesUser || a.user == b.user);
+}
 
-    if (s.pattern != cachedIndex || s.section != cachedSection || s.segmentOrder != cachedOrder
-        || s.sectionVariation != cachedSectionVariation || s.grooveBars != cachedBars
-        || s.riffSeed != cachedSeed   // (the variation bar takes it too)
-        || (usesSeed && (s.density != cachedDensity || s.randomGenre != cachedGenre))
-        || (usesUser && s.user != cachedUser))
+void GrooveEngine::prepare (Prepared& r, const GuitarSettings& s)
+{
+    r.key = s;
+    r.pattern = resolvePattern (s);
+    r.variation = makeVariation (r.pattern, (std::uint32_t) std::max (0, s.pattern) * 7919u + s.riffSeed);
+}
+
+const GrooveEngine::Prepared& GrooveEngine::patternFor (const GuitarSettings& s)
+{
+    if (prepared != nullptr && samePattern (prepared->key, s))
+        return *prepared;
+    if (! cacheValid || ! samePattern (cache.key, s))
     {
-        cachedPattern = resolvePattern (s);
-        cachedVariation = makeVariation (cachedPattern, (std::uint32_t) std::max (0, s.pattern) * 7919u + s.riffSeed);
-        cachedIndex = s.pattern;
-        cachedSection = s.section;
-        cachedSeed = s.riffSeed;
-        cachedDensity = s.density;
-        cachedGenre = s.randomGenre;
-        cachedUser = s.user;
-        cachedOrder = s.segmentOrder;
-        cachedSectionVariation = s.sectionVariation;
-        cachedBars = s.grooveBars;
+        prepare (cache, s);
+        cacheValid = true;
     }
-    return cachedPattern;
+    return cache;
 }
 
 //==============================================================================
@@ -799,7 +803,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
     if (endPpq <= startPpq)
         return;
 
-    const auto& pattern = patternFor (s);
+    const auto& resolved = patternFor (s);
     pending.clear();
 
     // Include every delayed string, even for a slow rake at the fastest host tempo.
@@ -815,7 +819,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
     // A negative template plus a 40 ms push and slide grace notes can precede three steps.
     const auto lastStep  = (long long) std::floor (endPpq / stepLength) + 3;
     for (auto step = firstStep; step <= lastStep; ++step)
-        collectStep (step, s, pattern, cachedVariation);
+        collectStep (step, s, resolved.pattern, resolved.variation);
 
     pending.erase (std::remove_if (pending.begin(), pending.end(),
                                    [&] (const PendingOn& p) { return p.ppq < startPpq || p.ppq >= endPpq || p.note < 0 || p.note > 127; }),

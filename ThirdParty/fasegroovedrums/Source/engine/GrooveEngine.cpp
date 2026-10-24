@@ -414,7 +414,6 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
             chosen = &v;
     }
     const DrumPattern& pattern = *chosen;
-    const DrumPattern& variation = pattern;
     const int len = std::max (1, pattern.length());
     const int pos = mod (sectionStep, len);
 
@@ -464,7 +463,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
     {
         if (s.pattern != userPatternIndex() || len != patternLength (s))
             return -1;
-        if (varied && variation.lanes[(size_t) lane][(size_t) pos] != normal.lanes[(size_t) lane][(size_t) pos])
+        if (varied && pattern.lanes[(size_t) lane][(size_t) pos] != normal.lanes[(size_t) lane][(size_t) pos])
             return -1;
         const int segment = len / numSegments;
         return std::clamp (s.segmentOrder[(size_t) (pos / segment)], 0, numSegments - 1) * segment + pos % segment;
