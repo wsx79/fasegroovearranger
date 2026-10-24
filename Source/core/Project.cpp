@@ -1,8 +1,8 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
-#include "PianoComping.h"
 #include "GenreSound.h"
+#include "../../ThirdParty/fasegroovepiano/Source/engine/Comping.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
@@ -787,7 +787,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(ti<3) {
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
                 auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,renderBars,clip.seed,-1}});
-                if(ti==0&&s.guitarLead)all=PianoComping::comping(all,clip.seed*7919u+1u,ps,beats);
+                if(ti==0&&s.guitarLead)all=sgk::Comping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
                 // Answer stabs need a piano rest. A break holds one chord, so they
                 // would otherwise stay silent. A pad still follows that harmony.

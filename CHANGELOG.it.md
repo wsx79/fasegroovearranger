@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.15.3 — 2026-10-24
+
+- L'accompagnamento di piano ora si compila dal motore di Piano stesso (un solo file condiviso); MIDI generato invariato.
+
 ## 0.15.2 — 2026-10-24
 
 - Piano più vario: ogni brano nuovo (GENERA BRANO, cambio di genere) prende uno dei voicing e dei colori del genere, e i riff casuali rispondono alla prima battuta con un colpo anticipato o un pick-up (motore Piano 0.31.3).

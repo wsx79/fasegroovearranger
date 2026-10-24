@@ -12,6 +12,8 @@
 
 - `GrooveSettings::separateBass`: the bass plays on its own track. `GrooveEngine::trackIndex` tracks bass notes apart (`numTracked` 384), so the bass never cuts or steals a piano note.
 - `GrooveSettings::bassLineOverride`: a bass figure developed by the Arranger for a regenerated take; the renderer and the resolved grid (`cachedBassLineOverride`) use it, empty keeps the selected library line.
+- `Comping.cpp` (the comping under a leading guitar, shared with the plugin): its `roundToInt` rounds a half away from zero (`std::lround`), as the Arranger's own copy did; the plugin rounds a half to even (as `juce::roundToInt`). Only the answers' velocities on an exact .5 differ; this keeps the Arranger's MIDI as it was.
+- Until the plugin commit with `Comping.{h,cpp}` is the recorded one, the two files count as Arranger additions in `engine-patches/fasegroovepiano.diff`; after that commit, `scripts/sync-engines.py --record --synced piano` (the merge of a file added on both sides reports a conflict until then).
 - `GuideVoice`: optional centred-output constructor argument, used only by the bass track (the plugin's callers keep the keyboard spread).
 - Not vendored (only the plugin's processor and editor use them; `sameSettings` would not compile here): the piano-roll edited loop (`LoopNote`, `editedLoop`, `playsEditedLoop`, `carryEdits`), `stabBassLine`, `bassGate`, `bassFeelName`, `GrooveEngine::sameSettings`.
 - Comments: `riffGenre`, the genre preset in `Generators.h`.

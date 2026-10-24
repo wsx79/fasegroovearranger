@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.15.2 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.15.3 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -25,11 +25,12 @@ if(NOT MSVC)
 endif()
 add_library(fga_mp3 STATIC Source/core/Mp3Encoder.cpp)
 target_link_libraries(fga_mp3 PUBLIC shine)
-add_library(fga_core STATIC Source/core/Project.cpp Source/core/Timeline.cpp Source/core/PianoComping.cpp Source/core/Midi.cpp
+add_library(fga_core STATIC Source/core/Project.cpp Source/core/Timeline.cpp Source/core/Midi.cpp
     ThirdParty/fasegroovepiano/Source/engine/Theory.cpp
     ThirdParty/fasegroovepiano/Source/engine/Generators.cpp
     ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.cpp
     ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.cpp
+    ThirdParty/fasegroovepiano/Source/engine/Comping.cpp
     ThirdParty/fasegroovedrums/Source/engine/Drums.cpp
     ThirdParty/fasegroovedrums/Source/engine/Generators.cpp
     ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.cpp

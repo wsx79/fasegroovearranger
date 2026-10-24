@@ -8,15 +8,17 @@ For every plugin, a three-way merge of Source/engine/* and Source/Guide*.h:
 The Arranger's changes are kept; plugin changes since the last sync are applied. A plugin with a
 conflict is left untouched and its conflicts are listed. ThirdParty/engine-patches/<plugin>.diff
 holds the exact Arranger changes against the recorded commit: a vendored file edited without
-recording them is reported.
+recording them is reported. A file new in the plugin is added (then list it in CMakeLists.txt).
 
-Usage: scripts/sync-engines.py [--check | --record [--synced]] [--repos DIR] [plugin ...]
+Usage: scripts/sync-engines.py [--check | --record [--synced]] [--worktree] [--repos DIR] [plugin ...]
   (no option)  apply the plugin changes, then record the new commit and patches
   --check      report only; exit 1 when a vendored engine is behind HEAD, conflicts or has
                unrecorded changes
   --record     record the current vendored files as the Arranger's changes (after editing them)
   --synced     with --record: the vendored files already hold the plugin's HEAD (a conflict
                resolved by hand), so HEAD becomes the last sync
+  --worktree   take the plugin's working tree (changes not committed yet) instead of HEAD;
+               nothing is recorded: after committing the plugin, run --record --synced
   --repos DIR  folder with the plugin repos (default: the folder holding this repo)
 Plugins: piano, drums, guitar (default: all three). After applying, build and check the MIDI
 (ctest, scripts/verify-midi.py) before committing.
@@ -33,6 +35,14 @@ third_party = root / 'ThirdParty'
 versions_file = third_party / 'ENGINE_VERSIONS'
 patches_dir = third_party / 'engine-patches'
 plugins = ['piano', 'drums', 'guitar']
+worktree = ':worktree'   # a "revision" meaning the plugin's working tree
+
+
+def is_engine_file(rel):
+    # Sources only: a stray .orig or .rej next to them is not part of the engine.
+    if Path(rel).suffix not in ('.h', '.cpp'):
+        return False
+    return rel.startswith('Source/engine/') or (rel.count('/') == 1 and Path(rel).name.startswith('Guide') and rel.endswith('.h'))
 
 
 def git(repo, *args, check=True):
@@ -58,23 +68,25 @@ def write_versions(versions):
     versions_file.write_text('\n'.join(lines) + '\n')
 
 
+def files_in(folder):
+    return {path.relative_to(folder).as_posix() for path in (folder / 'Source').rglob('*')
+            if path.is_file() and is_engine_file(path.relative_to(folder).as_posix())}
+
+
 def engine_files(repo, rev):
+    if rev == worktree:
+        return files_in(repo)
     names = git(repo, 'ls-tree', '-r', '--name-only', rev, '--', 'Source').stdout.decode().splitlines()
-    return {n for n in names if n.startswith('Source/engine/')
-            or (n.count('/') == 1 and Path(n).name.startswith('Guide') and n.endswith('.h'))}
+    return {n for n in names if is_engine_file(n)}
 
 
 def vendored_files(name):
-    folder = third_party / name
-    found = set()
-    for path in (folder / 'Source').rglob('*'):
-        rel = path.relative_to(folder).as_posix()
-        if path.is_file() and (rel.startswith('Source/engine/') or (rel.count('/') == 1 and path.name.startswith('Guide') and path.suffix == '.h')):
-            found.add(rel)
-    return found
+    return files_in(third_party / name)
 
 
 def blob(repo, rev, path):
+    if rev == worktree:
+        return (repo / path).read_text() if (repo / path).is_file() else None
     result = git(repo, 'show', f'{rev}:{path}', check=False)
     return result.stdout.decode() if result.returncode == 0 else None
 
@@ -104,7 +116,7 @@ def merge(ours, base, theirs):
         return result.stdout.decode(), result.returncode
 
 
-def sync(plugin, repos, mode, versions, synced=False):
+def sync(plugin, repos, mode, versions, synced=False, use_worktree=False):
     name = f'fasegroove{plugin}'
     repo = repos / name
     if not (repo / '.git').exists():
@@ -114,7 +126,8 @@ def sync(plugin, repos, mode, versions, synced=False):
     if base_rev is None:
         print(f'MISSING   {name}: no commit in {versions_file.relative_to(root)}')
         return False
-    head = git(repo, 'rev-parse', 'HEAD').stdout.decode().strip()
+    head = worktree if use_worktree else git(repo, 'rev-parse', 'HEAD').stdout.decode().strip()
+    shown = 'worktree' if use_worktree else head[:7]
     files = vendored_files(name)
     base_files = engine_files(repo, base_rev)
     base_texts = {p: blob(repo, base_rev, p) for p in base_files}
@@ -145,8 +158,10 @@ def sync(plugin, repos, mode, versions, synced=False):
             continue
         vendored = third_party / name / path
         if path not in files:
-            # A file the Arranger does not vendor: new upstream, or removed here on purpose.
-            notes.append(f'{path}: {"new in the plugin" if base is None else "changed in the plugin, not vendored"}')
+            if base is None:
+                changes[path] = theirs   # new in the plugin: added
+            else:
+                notes.append(f'{path}: changed in the plugin, not vendored (removed here on purpose?)')
             continue
         if theirs is None:
             notes.append(f'{path}: removed in the plugin, still vendored')
@@ -159,29 +174,39 @@ def sync(plugin, repos, mode, versions, synced=False):
             changes[path] = merged
 
     if conflicts:
-        print(f'CONFLICT  {name} {base_rev[:7]}..{head[:7]}: nothing applied')
+        print(f'CONFLICT  {name} {base_rev[:7]}..{shown}: nothing applied')
         for c in conflicts:
             print(f'    {c}')
         ok = False
     elif changes and mode == 'check':
-        print(f'BEHIND    {name} {base_rev[:7]}..{head[:7]}: {len(changes)} file(s) would change')
+        print(f'BEHIND    {name} {base_rev[:7]}..{shown}: {len(changes)} file(s) would change')
         for path, merged in changes.items():
-            ours = (third_party / name / path).read_text()
-            changed = sum(1 for l in difflib.ndiff(ours.splitlines(), merged.splitlines()) if l[:1] in '+-')
+            vendored = third_party / name / path
+            if not vendored.exists():
+                print(f'    {path} (new)')
+                continue
+            changed = sum(1 for l in difflib.ndiff(vendored.read_text().splitlines(), merged.splitlines()) if l[:1] in '+-')
             print(f'    {path} ({changed} lines)')
         ok = False
     elif mode == 'apply' and ok:
         for path, merged in changes.items():
-            (third_party / name / path).write_text(merged)
-        if base_rev != head:
+            target = third_party / name / path
+            if not target.exists():
+                notes.append(f'{path}: added' + (', list it in CMakeLists.txt' if path.endswith('.cpp') else ''))
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(merged)
+        if use_worktree:
+            if changes:
+                notes.append(f'nothing recorded: commit {name}, then scripts/sync-engines.py --record --synced {plugin}')
+        elif base_rev != head:
             versions[name] = head
             write_versions(versions)
             head_texts = {p: blob(repo, head, p) for p in head_files}
             patch_file.write_text(local_patch(name, head_texts, files))
-        print(f'{"applied" if changes else "in sync"}   {name} at {head[:7]}'
+        print(f'{"applied" if changes else "in sync"}   {name} at {shown}'
               + (f': {len(changes)} file(s) updated, rebuild and check the MIDI' if changes else ''))
     elif ok:
-        print(f'in sync   {name} at {head[:7]}' + ('' if base_rev == head else f' (recorded {base_rev[:7]}, its later changes are already here)'))
+        print(f'in sync   {name} at {shown}' + ('' if base_rev == head else f' (recorded {base_rev[:7]}, its later changes are already here)'))
     for n in notes:
         print(f'    note: {n}')
     return ok
@@ -193,17 +218,20 @@ def main():
     group.add_argument('--check', action='store_const', dest='mode', const='check')
     group.add_argument('--record', action='store_const', dest='mode', const='record')
     parser.add_argument('--synced', action='store_true')
+    parser.add_argument('--worktree', action='store_true')
     parser.add_argument('--repos', type=Path, default=root.parent)
     parser.add_argument('plugin', nargs='*')
     args = parser.parse_args()
     if args.synced and args.mode != 'record':
         parser.error('--synced goes with --record')
+    if args.worktree and args.mode == 'record':
+        parser.error('--worktree records nothing: commit the plugin, then --record --synced')
     if unknown := [p for p in args.plugin if p not in plugins]:
         parser.error(f'unknown plugin {unknown[0]} (choose from {", ".join(plugins)})')
     versions = read_versions()
     ok = True
     for plugin in args.plugin or plugins:
-        ok = sync(plugin, args.repos.resolve(), args.mode or 'apply', versions, args.synced) and ok
+        ok = sync(plugin, args.repos.resolve(), args.mode or 'apply', versions, args.synced, args.worktree) and ok
     return 0 if ok else 1
 
 

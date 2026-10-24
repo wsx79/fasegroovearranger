@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.15.3 — 2026-10-24
+
+- The piano comping now compiles from the Piano engine itself (one shared file); generated MIDI unchanged.
+
 ## 0.15.2 — 2026-10-24
 
 - More varied piano: every new song (GENERATE SONG, a new genre) takes one of the genre's voicings and colours, and the random riffs answer the first bar with an early hit or a pick-up (Piano 0.31.3 engine).
