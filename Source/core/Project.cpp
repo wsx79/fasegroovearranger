@@ -534,7 +534,9 @@ Project newProject(int genre) {
     // Balanced genre-specific guide levels leave summing headroom. Saved
     // projects keep their own master and mix; new songs use the curated balance.
     p.masterGain=.45;
-    applyGenre(p,genre);arrangeSong(p);generate(p);p.settings.randomAutomation=true;return p;
+    applyGenre(p,genre);arrangeSong(p);generate(p);p.settings.randomAutomation=true;
+    randomiseAutomation(p,Scope::song,0,0,p.settings.seed?p.settings.seed:1u);   // a new song already moves
+    return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.15.1 — 2026-10-24
+
+- Ogni brano ha già le automazioni: anche i progetti aperti le scrivono con GENERA BRANO e quando rigeneri traccia, sezione o clip (si spengono dal menu della corsia).
+- Le corsie automatizzate sono in blu: titolo della corsia, menu delle corsie, volume e pan nell'inspector.
+
 ## 0.15.0 — 2026-10-24
 
 - Automazioni oltre il volume: pan della traccia, volume master e parametri dei plugin, disegnate e modificate come le corsie del volume, annullabili, salvate e incluse negli export.

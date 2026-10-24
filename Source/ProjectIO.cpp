@@ -136,7 +136,7 @@ juce::var projectJson(const Project& p){
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
-    set(s,"guitarLead",c.guitarLead);if(c.randomAutomation)set(s,"randomAutomation",true);
+    set(s,"guitarLead",c.guitarLead);set(s,"randomAutomation",c.randomAutomation);
     set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
     juce::Array<juce::var> degrees,free;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);set(o,"settings",s);
     set(o,"masterGain",p.masterGain);if(!p.masterAutomation.isDefault())set(o,"masterAutomation",envelopeJson(p.masterAutomation));set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
@@ -162,7 +162,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
-    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",false);
+    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",true);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
     p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);

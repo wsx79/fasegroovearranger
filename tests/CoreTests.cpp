@@ -285,10 +285,11 @@ int main(int argc,char** argv){try{
         check(!fga::VolumeAutomation{}.active()&&fga::VolumeAutomation{}.isDefault(),"default lanes are bypassed and not saved");
     }
     {
-        // Random automation: off for older projects, deterministic, musical, scoped and lock-aware.
-        auto old=fga::newProject();old.settings.randomAutomation=false;fga::generate(old,fga::Scope::song,0,0,4242);
+        // Random automation: only when the project asks for it, deterministic, musical, scoped and lock-aware.
+        auto old=fga::newProject();old.settings.randomAutomation=false;for(auto& t:old.tracks){t.volume={};t.panAutomation={};}fga::generate(old,fga::Scope::song,0,0,4242);
         bool untouched=true;for(const auto& t:old.tracks)untouched=untouched&&t.volume.isDefault()&&t.panAutomation.isDefault();check(untouched,"no automation unless the project asks for it");
         auto p=fga::newProject();check(p.settings.randomAutomation,"new projects write automation when regenerating");
+        {bool moving=false;for(const auto& t:p.tracks)moving=moving||t.volume.moves()||t.panAutomation.moves();check(moving,"a new song already has automation");}
         p.sections={{fga::Section::intro,8,"Intro"},{fga::Section::main,8,"Main"},{fga::Section::buildup,8,"Build"},{fga::Section::drop,8,"Drop"},{fga::Section::breakdown,8,"Break"},{fga::Section::outro,8,"Outro"}};p.normalise();
         fga::ParameterAutomation lane;lane.name="Cutoff";p.tracks[3].parameters.push_back(lane);
         auto a=p,b=p;fga::generate(a,fga::Scope::song,0,0,777);fga::generate(b,fga::Scope::song,0,0,777);

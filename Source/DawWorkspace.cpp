@@ -61,6 +61,8 @@ void TrackInspector::refresh(){
     // A fader the user is dragging keeps its own value; the model follows it.
     if(!gainGesture)gain.setValue(db(t.gain),juce::dontSendNotification);
     if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
+    // An automated volume or pan reads in blue.
+    for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Palette::accent2);slider->setColour(juce::Slider::thumbColourId,Palette::accent2);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);}}
     const bool busy=owner.loadingPlugin>0;const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);

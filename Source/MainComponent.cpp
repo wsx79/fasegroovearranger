@@ -67,7 +67,7 @@ void ArrangementView::paint(juce::Graphics& g){
         g.setColour(current?Palette::accent.withAlpha(.7f):Palette::panelEdge.brighter(.15f));g.drawRoundedRectangle(config.reduced(.5f),4,1);
         IconButton::drawIcon(g,IconButton::Icon::gear,config.reduced(3,5),current?Palette::accent:Palette::dim);
         if(volumeVisible[ti]){g.setColour(Palette::panel);g.fillRect(x,y+rowHeight(row),headerWidth,80);const auto& shown=envelope((int)ti);const int target=laneTarget[ti];
-            g.setColour(Palette::text.withAlpha(.75f));g.setFont(FamilyTheme::font(10.f,true));g.drawFittedText(envelopeTitle((int)ti)+juce::String::fromUTF8(" \xe2\x96\xbe"),{x+16,y+rowHeight(row),190,20},juce::Justification::centredLeft,1,.7f);
+            g.setColour(shown.moves()?Palette::accent2:Palette::text.withAlpha(.75f));g.setFont(FamilyTheme::font(10.f,true));g.drawFittedText(envelopeTitle((int)ti)+juce::String::fromUTF8(" \xe2\x96\xbe"),{x+16,y+rowHeight(row),190,20},juce::Justification::centredLeft,1,.7f);
             label(g,shown.enabled?"ON":"BYPASS",{x+16,y+rowHeight(row)+24,88,24},11,shown.enabled?Palette::accent2:Palette::dim);label(g,target==lanePan?"L / C / R":target>=lanePlugin?"0 / 50 / 100%":"0 / 100 / 200%",{x+16,y+rowHeight(row)+51,184,20},9,Palette::dim);}
         g.setColour(Palette::panelEdge);g.fillRoundedRectangle((float)x+88,(float)(y+rowHeight(row)-4),40,2,1);
         float meter=std::clamp(owner.audio.level((int)ti),0.f,1.f);g.setColour(Palette::cymbals.withAlpha(.7f));g.fillRect(x+212,y+rowHeight(row)-5-(int)(meter*25),2,(int)(meter*25));
@@ -162,8 +162,9 @@ juce::String ArrangementView::envelopeTitle(int track) const{
 // or insert plugin (a new lane per parameter, at most maxParameterLanes per track).
 void ArrangementView::showLaneTargetMenu(int track){
     auto& t=owner.project.tracks[(size_t)track];const int current=laneTarget[(size_t)track];
-    juce::PopupMenu menu;menu.addItem(1,tr("Volume"),true,current==laneVolume);menu.addItem(2,tr("Pan"),true,current==lanePan);menu.addItem(3,tr("Master volume"),true,current==laneMaster);
-    if(!t.parameters.empty()){menu.addSeparator();for(size_t k=0;k<t.parameters.size();++k)menu.addItem(100+(int)k,juce::String::fromUTF8(t.parameters[k].name.c_str())+(t.parameters[k].slot==0?"":" ("+tr("Insert")+")"),true,current==lanePlugin+(int)k);}
+    juce::PopupMenu menu;const auto ink=[](const VolumeAutomation& v){return v.moves()?Palette::accent2:Palette::text;};   // automated lanes read in blue
+    menu.addColouredItem(1,tr("Volume"),ink(t.volume),true,current==laneVolume);menu.addColouredItem(2,tr("Pan"),ink(t.panAutomation),true,current==lanePan);menu.addColouredItem(3,tr("Master volume"),ink(owner.project.masterAutomation),true,current==laneMaster);
+    if(!t.parameters.empty()){menu.addSeparator();for(size_t k=0;k<t.parameters.size();++k)menu.addColouredItem(100+(int)k,juce::String::fromUTF8(t.parameters[k].name.c_str())+(t.parameters[k].slot==0?"":" ("+tr("Insert")+")"),ink(t.parameters[k].curve),true,current==lanePlugin+(int)k);}
     std::vector<std::pair<int,int>> choices; // slot, parameter index
     auto addPlugin=[&](juce::AudioPluginInstance* plugin,int slot,const char* caption){
         if(plugin==nullptr)return;juce::PopupMenu sub;const auto& params=plugin->getParameters();

@@ -22,7 +22,7 @@ int main(){try{
     auto legacy=fga::projectJson(p);for(auto& track:*legacy["tracks"].getArray())for(auto& clip:*track["clips"].getArray())clip.getDynamicObject()->removeProperty("motifSeed");for(auto& track:*legacy["tracks"].getArray())track.getDynamicObject()->removeProperty("volumeAutomation");check(fga::projectFromJson(legacy,restored).wasOk()&&!restored.tracks[4].volume.enabled&&restored.tracks[4].volume.points.empty(),"old projects load with bypassed empty automation");
     {
         // An older project (no pan, master or plugin lanes) saves exactly as before; the new lanes round-trip.
-        auto plain=juce::JSON::toString(fga::projectJson(p),false,17);check(!plain.contains("panAutomation")&&!plain.contains("parameterAutomation")&&!plain.contains("masterAutomation"),"unused lanes are not written");
+        auto bare=p;for(auto& t:bare.tracks)t.panAutomation={};auto plain=juce::JSON::toString(fga::projectJson(bare),false,17);check(!plain.contains("panAutomation")&&!plain.contains("parameterAutomation")&&!plain.contains("masterAutomation"),"unused lanes are not written");
         auto lanes=p;lanes.tracks[1].panAutomation.enabled=true;lanes.tracks[1].panAutomation.points={{0,.2,.3},{8,.9,0}};lanes.masterAutomation.enabled=true;lanes.masterAutomation.points={{4,1.2,-.4}};
         fga::ParameterAutomation lane;lane.slot=1;lane.index=7;lane.name="Filter – cutoff";lane.curve.enabled=true;lane.curve.points={{2,.1,0},{6,.6,.5}};lanes.tracks[2].parameters.push_back(lane);
         auto saved=juce::JSON::toString(fga::projectJson(lanes),false,17);fga::Project back;check(fga::projectFromJson(juce::JSON::parse(saved),back).wasOk(),"automation lanes parse");

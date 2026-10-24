@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.15.1 — 2026-10-24
+
+- Every song already has automation: a new or opened project writes random automation on GENERATE SONG and when a track, section or clip is regenerated (switch it off in the lane menu).
+- Automated lanes read in blue: lane title, lane menu, and the volume and pan of the inspector.
+
 ## 0.15.0 — 2026-10-24
 
 - Automation beyond volume: track pan, master volume and hosted plugin parameters, drawn and edited like the volume lanes, undoable, saved and rendered in exports.

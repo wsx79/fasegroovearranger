@@ -27,6 +27,8 @@ struct VolumeAutomation {
         return a.value+(end->value-a.value)*t;
     }
     bool active() const {return enabled&&!points.empty();}
+    // True when the lane actually moves (not a flat line): shown in blue in the interface.
+    bool moves() const {if(!active())return false;for(const auto& p:points)if(std::abs(p.value-points.front().value)>1e-6)return true;return false;}
     bool isDefault() const {return !enabled&&!locked&&points.empty();}
     // maxValue: 2 for a gain (volume, master), 1 for a pan or a plugin parameter (0..1).
     void normalise(double length,double maxValue=2.) {
