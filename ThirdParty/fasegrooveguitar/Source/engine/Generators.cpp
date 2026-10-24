@@ -613,6 +613,27 @@ namespace
     /** Every groove needs one accent a player can hear. Ghosts stay ghosts. A plain hit on a
         weak 16th of an accent lane is promoted only when the bar has nothing stronger, so the
         "&" and the downbeat stay louder than the 16ths around them. */
+    /** Every random groove has a main part a band can hear: a chord lane (strum, stab, chank
+        or power chord) with plain hits. A groove of swells, a few arpeggio notes and scratches
+        sounded like nothing at all; it gets a sparse chord in the genre's own lane, around
+        what is there (its own dice, so the rest of the groove stays as it was). */
+    void ensureChordPart (GuitarPattern& p, int genre, std::uint32_t seed)
+    {
+        for (auto lane : { Lane::strumDown, Lane::strumUp, Lane::stab, Lane::chank, Lane::power })
+            for (char c : p[lane])
+                if (c == 'x' || c == 'X')
+                    return;
+
+        Random r (seed * 2654435761u + 0x9E3779B9u);
+        const Lane lane = genre == dance ? Lane::power : genre == gospel ? Lane::strumDown : Lane::stab;
+        const auto cell = compact (r.pick ({ "X... .... .... ....", "X... .... ..x. ....", "X... .... .... ..x.",
+                                             "X... ..x. .... ....", "X... .... x... ...." }));
+        auto& line = p[lane];
+        for (size_t i = 0; i < line.size(); ++i)
+            if (cell[i % cell.size()] != '.' && line[i] == '.')
+                line[i] = cell[i % cell.size()];
+    }
+
     void ensureAudiblePeak (GuitarPattern& p, int genre)
     {
         for (int l = 0; l < numLanes; ++l)
@@ -679,7 +700,19 @@ namespace
     }
 }
 
+namespace
+{
+    GuitarPattern randomPattern (std::uint32_t seed, float density, int genre, bool withChordPart);
+}
+
 GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
+{
+    return randomPattern (seed, density, genre, true);
+}
+
+namespace
+{
+GuitarPattern randomPattern (std::uint32_t seed, float density, int genre, bool withChordPart)
 {
     // One main part from that genre's cells, then a root, a scratch and a lick only when the
     // genre plays them. Bar 2 starts as bar 1 and then answers inside the same metric class.
@@ -917,9 +950,12 @@ GuitarPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         if (p[lane][16] == '.')
             p[lane][16] = 'x';
     }
+    if (withChordPart)
+        ensureChordPart (p, genre, seed);
     ensureAudiblePeak (p, genre);
     normalisePattern (p, randomBeatLength);
     return p;
+}
 }
 
 GuitarPattern makeVariation (const GuitarPattern& source, std::uint32_t seed)

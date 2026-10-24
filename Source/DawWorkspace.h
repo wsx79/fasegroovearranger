@@ -4,9 +4,10 @@
 #include "FamilyTheme.h"
 namespace fga {
 class MainComponent;
+// The drag handle on the inspector's right edge, or (forBrowser) on the sample browser's left edge.
 class InspectorResizer : public juce::Component,public juce::SettableTooltipClient {
 public:
-    explicit InspectorResizer(MainComponent&);
+    explicit InspectorResizer(MainComponent&,bool forBrowser=false);
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
@@ -14,6 +15,7 @@ public:
     void mouseDoubleClick(const juce::MouseEvent&) override;
 private:
     MainComponent& owner;
+    const bool browser;
     float dragOrigin=0;
     int initialWidth=216;
 };

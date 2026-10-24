@@ -13,14 +13,15 @@ namespace fga {
 // lock (see Handoff). Schedules and automation are read in place: the audio thread never
 // copies, allocates or frees them.
 struct TrackMix {
-    VolumeAutomation volume;
+    VolumeAutomation volume,panAutomation;
+    std::vector<ParameterAutomation> parameters; // copied on the message thread, only read by the audio thread
     double gain=.75,pan=0,tone=.5,reverb=.12,chorus=0,pump=0,pumpRelease=.2;
     bool mute=false,solo=false;
     int sound=0,pumpRate=0,pumpSource=0,drumNote=36;
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
-struct MixState { std::array<TrackMix,trackCount> tracks; double master=.8,tempo=122; };
+struct MixState { std::array<TrackMix,trackCount> tracks; VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:track<2?numGuideSounds:4;}
 inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):track<2?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
@@ -67,7 +68,11 @@ struct Instrument {
     juce::PluginDescription pluginDescription,effectDescription; // as loaded: re-creates them for a private export
     const std::vector<TimedEvent>* schedule=nullptr; // inside the adopted ScheduleState
     const VolumeAutomation* volume=nullptr;         // inside the adopted MixState
-    std::vector<float> volumeGains;
+    const VolumeAutomation* panAutomation=nullptr;  // inside the adopted MixState
+    const std::vector<ParameterAutomation>* parameters=nullptr; // inside the adopted MixState
+    std::array<float,maxParameterLanes> parameterSent{}; // last value set on each lane's parameter (-1: none yet)
+    std::vector<float> volumeGains,panLeft,panRight;
+    juce::SmoothedValue<float> baseGain;            // gain * master: the pan automation applies its own pan law
     double gain=.75,pan=0;
     juce::SmoothedValue<float> leftGain,rightGain;
     bool mute=false,solo=false;
@@ -163,6 +168,8 @@ private:
     void mixPreview(float* const* output,int channels,int count);
     void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
     double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;
+    const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
+    std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
     int blockSize=512;
     double deviceRate=44100;
     int deviceBlock=512;
@@ -176,5 +183,6 @@ private:
     void flushIdle(int count);
     void click(float* const* output,int channels,int count,double beat);
     void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1);
+    void applyParameterAutomation(Instrument&,double beat);
 };
 }

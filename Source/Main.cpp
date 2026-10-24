@@ -115,7 +115,21 @@ public:
                     fga::VolumeAutomation expected;expected.enabled=juce::String(filename)!="automation-bypass.wav";expected.points=juce::String(filename)=="automation-curve.wav"?std::vector<fga::VolumePoint>{{0,0,.8},{4,1,-.6},{8,.25,0}}:std::vector<fga::VolumePoint>{{0,0,0}};
                     juce::AudioBuffer<float> dry(2,4096),wet(2,4096);double error=0;for(juce::int64 pos=0;pos<reference->lengthInSamples;pos+=4096){int count=(int)std::min<juce::int64>(4096,reference->lengthInSamples-pos);reference->read(&dry,0,count,pos,true,true);rendered->read(&wet,0,count,pos,true,true);for(int s=0;s<count;++s)for(int ch=0;ch<2;++ch)error=std::max(error,std::abs(wet.getSample(ch,s)-dry.getSample(ch,s)*expected.valueAt((pos+s)/reference->sampleRate*p.settings.bpm/60.)));}automation=automation&&error<2e-6;
                 }
-                automation=automation&&fga::midiFile(p,4)==notes;folder.getChildFile("volume-automation-audio.txt").replaceWithText(automation?"PASS sample-accurate curve, silence, bypass, MIDI unchanged":"FAIL volume automation audio");ok=automation&&ok;volume={};p.tracks[4].gain=savedGain;audio.useInternal(4);
+                {
+                    // The master lane multiplies like a volume lane; a pan lane hard left leaves the right side silent.
+                    volume={};p.masterAutomation.enabled=true;p.masterAutomation.points={{0,0,.8},{4,1,-.6},{8,.25,0}};run("automation-master.wav",4,false);p.masterAutomation={};
+                    p.tracks[4].panAutomation.enabled=true;p.tracks[4].panAutomation.points={{0,0,0}};run("automation-pan-left.wav",4,false);p.tracks[4].panAutomation={};
+                    fga::VolumeAutomation curve;curve.enabled=true;curve.points={{0,0,.8},{4,1,-.6},{8,.25,0}};
+                    for(const auto& filename:{"automation-master.wav","automation-pan-left.wav"}){
+                        auto rendered=std::unique_ptr<juce::AudioFormatReader>(readerFormats.createReaderFor(folder.getChildFile(filename)));if(!rendered||!reference||rendered->lengthInSamples!=reference->lengthInSamples){automation=false;continue;}
+                        const bool panned=juce::String(filename)=="automation-pan-left.wav";
+                        juce::AudioBuffer<float> dry(2,4096),wet(2,4096);double error=0,right=0,left=0;for(juce::int64 pos=0;pos<reference->lengthInSamples;pos+=4096){int count=(int)std::min<juce::int64>(4096,reference->lengthInSamples-pos);reference->read(&dry,0,count,pos,true,true);rendered->read(&wet,0,count,pos,true,true);
+                            for(int s=0;s<count;++s){if(panned){right=std::max(right,(double)std::abs(wet.getSample(1,s)));left=std::max(left,(double)std::abs(wet.getSample(0,s)));error=std::max(error,(double)std::abs(wet.getSample(0,s)-dry.getSample(0,s)));}
+                                else for(int ch=0;ch<2;++ch)error=std::max(error,std::abs(wet.getSample(ch,s)-dry.getSample(ch,s)*curve.valueAt((pos+s)/reference->sampleRate*p.settings.bpm/60.)));}}
+                        automation=automation&&error<2e-6&&(!panned||(right<1e-7&&left>1e-4));
+                    }
+                }
+                automation=automation&&fga::midiFile(p,4)==notes;folder.getChildFile("volume-automation-audio.txt").replaceWithText(automation?"PASS sample-accurate curve, silence, bypass, master and pan lanes, MIDI unchanged":"FAIL volume automation audio");ok=automation&&ok;volume={};p.tracks[4].gain=savedGain;audio.useInternal(4);
             }
             p.loop=true;p.loopStart=0;p.loopEnd=4;audio.publish(p);audio.seek(3.999);audio.play(true);
             juce::AudioBuffer<float> live(2,512);juce::AudioIODeviceCallbackContext context;

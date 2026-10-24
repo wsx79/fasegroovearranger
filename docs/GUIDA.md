@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.14.4** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.15.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 

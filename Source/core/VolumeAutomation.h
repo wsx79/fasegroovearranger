@@ -3,6 +3,8 @@
 #pragma once
 #include <algorithm>
 #include <cmath>
+#include <string>
+#include <utility>
 #include <vector>
 namespace fga {
 struct VolumePoint {
@@ -10,6 +12,7 @@ struct VolumePoint {
 };
 struct VolumeAutomation {
     bool enabled=false;
+    bool locked=false; // random automation keeps a locked lane as it is
     std::vector<VolumePoint> points;
     // Absolute musical time, independent of BPM. Hold the first/last value outside
     // the envelope. No MIDI CC is sent: this is post-instrument audio gain.
@@ -23,14 +26,30 @@ struct VolumeAutomation {
         t+=a.curve*t*(1.-t);
         return a.value+(end->value-a.value)*t;
     }
-    void normalise(double length) {
+    bool active() const {return enabled&&!points.empty();}
+    bool isDefault() const {return !enabled&&!locked&&points.empty();}
+    // maxValue: 2 for a gain (volume, master), 1 for a pan or a plugin parameter (0..1).
+    void normalise(double length,double maxValue=2.) {
         points.erase(std::remove_if(points.begin(),points.end(),[](const VolumePoint& p){return !std::isfinite(p.beat)||!std::isfinite(p.value)||!std::isfinite(p.curve);}),points.end());
         if(points.size()>16384)points.resize(16384);
-        for(auto& p:points){p.beat=std::clamp(p.beat,0.,length);p.value=std::clamp(p.value,0.,2.);p.curve=std::clamp(p.curve,-1.,1.);}
+        for(auto& p:points){p.beat=std::clamp(p.beat,0.,length);p.value=std::clamp(p.value,0.,maxValue);p.curve=std::clamp(p.curve,-1.,1.);}
         std::stable_sort(points.begin(),points.end(),[](const auto& a,const auto& b){return a.beat<b.beat;});
         std::vector<VolumePoint> unique;
         for(auto p:points){if(!unique.empty()&&p.beat-unique.back().beat<1./960.)unique.back()=p;else unique.push_back(p);}
         points=std::move(unique);
     }
 };
+// The same envelope drives the other automatable values. Values are 0..1:
+// pan 0 = left, .5 = centre, 1 = right; a plugin parameter takes the value as it is.
+inline double panFromAutomation(double value){return std::clamp(value*2.-1.,-1.,1.);}
+inline double automationFromPan(double pan){return std::clamp((pan+1.)*.5,0.,1.);}
+// A hosted plugin parameter: slot 0 = the track's instrument plugin, 1 = its insert effect.
+// The index is the plugin's own parameter index; the name is kept to show it and to find
+// the parameter again if the plugin's list changes.
+struct ParameterAutomation {
+    int slot=0,index=-1;
+    std::string name;
+    VolumeAutomation curve;
+};
+constexpr int maxParameterLanes=8;
 }

@@ -269,6 +269,47 @@ int main(int argc,char** argv){try{
     check(fga::midiFile(automated)==dryMidi,"audio automation must not alter MIDI notes or CC");const auto savedVolume=volume.points;fga::generate(automated,fga::Scope::clip,4,1,992);check(volume.enabled&&volume.points.size()==savedVolume.size()&&volume.points[0].curve==1,"regenerate preserves automation");
     volume.points={{8,.2,.4},{automated.sectionStart(1)+4,.8,-.5}};const auto oldSecond=volume.points[1].beat;automated.insertSection(1,{fga::Section::main,8,"Inserted"});check(volume.points[1].beat==oldSecond+32,"insert shifts automation");automated.removeSection(1);check(volume.points[1].beat==oldSecond,"remove shifts automation back");
     automated.moveSection(0,1);check(volume.points[0].beat==4&&volume.points[0].value==.8,"automation follows moved sections");
+    {
+        // Pan, master and plugin parameter lanes: the same envelope, edited by the same section operations.
+        auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,8,"B"}};p.normalise();
+        auto& t=p.tracks[3];t.panAutomation.enabled=true;t.panAutomation.points={{0,0,0},{16,1,0}};
+        check(std::abs(fga::panFromAutomation(t.panAutomation.valueAt(8)))<1e-12&&fga::panFromAutomation(t.panAutomation.valueAt(16))==1&&fga::panFromAutomation(0)==-1,"pan envelope maps 0..1 to left..right");
+        fga::ParameterAutomation lane;lane.slot=1;lane.index=3;lane.name="Cutoff";lane.curve.enabled=true;lane.curve.points={{4,.25,0},{20,.75,0},{40,1.7,0}};t.parameters.push_back(lane);
+        p.masterAutomation.enabled=true;p.masterAutomation.points={{4,1.5,0},{20,.5,0}};
+        p.normalise();check(t.parameters[0].curve.points[2].value==1&&p.masterAutomation.points[0].value==1.5&&t.panAutomation.points[1].value==1,"plugin and pan values clamp to 0..1, the master to 0..2");
+        p.insertSection(1,{fga::Section::main,4,"New"});check(t.panAutomation.points[1].beat==32&&t.parameters[0].curve.points[1].beat==36&&p.masterAutomation.points[1].beat==36,"insert shifts every automation lane");
+        p.removeSection(1);check(t.panAutomation.points[1].beat==16&&t.parameters[0].curve.points[1].beat==20&&p.masterAutomation.points[1].beat==20,"remove shifts every automation lane");
+        p.resizeSection(0,8);check(t.parameters[0].curve.points[0].beat==8&&p.masterAutomation.points[0].beat==8&&t.panAutomation.points[1].beat==32,"resize scales every automation lane");
+        p.moveSection(0,1);check(t.parameters[0].curve.points[2].beat==40&&t.parameters[0].curve.points[2].value==.25&&p.masterAutomation.points[1].beat==40&&p.masterAutomation.points[1].value==1.5,"automation lanes follow moved sections");
+        for(int k=0;k<12;++k)t.parameters.push_back(lane);p.normalise();check(t.parameters.size()==(size_t)fga::maxParameterLanes,"at most eight plugin lanes per track");
+        check(!fga::VolumeAutomation{}.active()&&fga::VolumeAutomation{}.isDefault(),"default lanes are bypassed and not saved");
+    }
+    {
+        // Random automation: off for older projects, deterministic, musical, scoped and lock-aware.
+        auto old=fga::newProject();old.settings.randomAutomation=false;fga::generate(old,fga::Scope::song,0,0,4242);
+        bool untouched=true;for(const auto& t:old.tracks)untouched=untouched&&t.volume.isDefault()&&t.panAutomation.isDefault();check(untouched,"no automation unless the project asks for it");
+        auto p=fga::newProject();check(p.settings.randomAutomation,"new projects write automation when regenerating");
+        p.sections={{fga::Section::intro,8,"Intro"},{fga::Section::main,8,"Main"},{fga::Section::buildup,8,"Build"},{fga::Section::drop,8,"Drop"},{fga::Section::breakdown,8,"Break"},{fga::Section::outro,8,"Outro"}};p.normalise();
+        fga::ParameterAutomation lane;lane.name="Cutoff";p.tracks[3].parameters.push_back(lane);
+        auto a=p,b=p;fga::generate(a,fga::Scope::song,0,0,777);fga::generate(b,fga::Scope::song,0,0,777);
+        bool same=true;for(int ti=0;ti<fga::trackCount;++ti){const auto& x=a.tracks[(size_t)ti];const auto& y=b.tracks[(size_t)ti];same=same&&x.volume.points.size()==y.volume.points.size()&&x.panAutomation.points.size()==y.panAutomation.points.size();
+            for(size_t k=0;same&&k<x.volume.points.size();++k)same=x.volume.points[k].beat==y.volume.points[k].beat&&x.volume.points[k].value==y.volume.points[k].value;}
+        check(same,"same seed, same automation");
+        const double intro0=a.sectionStart(0),intro1=a.sectionStart(1),outro0=a.sectionStart(5),outro1=a.sectionStart(6);
+        bool noFades=true;for(const auto& t:a.tracks){for(double x=intro0;x<intro1;x+=.5)noFades=noFades&&t.volume.valueAt(x)==1;for(double x=outro0;x<outro1;x+=.5)noFades=noFades&&t.volume.valueAt(x)==1;}
+        check(noFades,"no fade-in or fade-out in the intro and the outro");
+        const auto& strings=a.tracks[2].volume;const double build=a.sectionStart(2),drop=a.sectionStart(3);
+        check(strings.active()&&strings.valueAt(build+1)<.95&&strings.valueAt(drop-.1)>1.05&&strings.valueAt(drop)==1,"a riser through the build-up, back to unity on the drop");
+        const auto& sweep=a.tracks[3].parameters[0].curve;check(sweep.active()&&sweep.valueAt(build+1)<.4&&sweep.valueAt(drop-.1)>.75,"the plugin parameter sweeps up through the build-up");
+        check(a.tracks[4].volume.isDefault()&&a.tracks[1].panAutomation.isDefault(),"kick and bass keep the floor");
+        auto c=a;c.tracks[2].volume.locked=true;c.tracks[3].locked=true;const auto lockedStrings=c.tracks[2].volume.points;const auto lockedGuitar=c.tracks[3].panAutomation.points;
+        fga::generate(c,fga::Scope::song,0,0,1234);check(c.tracks[2].volume.points.size()==lockedStrings.size()&&c.tracks[3].panAutomation.points.size()==lockedGuitar.size(),"locked lanes and tracks keep their automation");
+        auto d=a;const auto before=d.tracks[0].volume;fga::randomiseAutomation(d,fga::Scope::section,0,2,99);
+        bool outside=true;for(double x=0;x<d.length();x+=.25)if(x<build||x>=drop)outside=outside&&std::abs(d.tracks[0].volume.valueAt(x)-before.valueAt(x))<1e-9;
+        check(outside,"a section's dice leave the rest of the song as it was");
+        auto e=a;const auto otherPan=e.tracks[2].panAutomation.points;fga::randomiseAutomation(e,fga::Scope::track,3,0,5,1);check(e.tracks[2].panAutomation.points.size()==otherPan.size()&&e.tracks[3].volume.points.size()==a.tracks[3].volume.points.size(),"a lane's dice move only that lane");
+        check(fga::midiFile(a)==fga::midiFile(b),"automation never changes the MIDI");
+    }
     fga::VolumeAutomation malformedVolume;malformedVolume.enabled=true;malformedVolume.points={{4,3,2},{-1,-2,-3},{4,.3,.5},{std::numeric_limits<double>::quiet_NaN(),1,0}};malformedVolume.normalise(8);check(malformedVolume.points.size()==2&&malformedVolume.points[0].beat==0&&malformedVolume.points[0].value==0&&malformedVolume.points[1].value==.3,"sanitize sort and merge automation points");
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,8,"B"}};p.normalise();

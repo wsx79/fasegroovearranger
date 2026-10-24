@@ -84,6 +84,7 @@ public:
 };
 InstrumentPanel::InstrumentPanel(MainComponent& m):owner(m){
     addChildComponent(circle);
+    circle.setFamilyFont(true);   // the arranger draws it with the family typeface
     circle.setFreeMode(Localisation::setting("freeCircle","1")!="0");
     circle.onPick=[this](int root,bool minor){owner.checkpoint();owner.project.settings.key=root;owner.project.settings.scale=minor?2:0;owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
     circle.onMoveChord=[this](int slot,int degree,int root,bool minor){auto& s=owner.project.settings;if(slot<0||slot>=s.chordCount)return;owner.checkpoint();if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;}else s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};

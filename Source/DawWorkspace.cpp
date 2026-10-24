@@ -13,12 +13,15 @@ void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds
 void slider(juce::Slider& s,double low,double high,const char* suffix){s.setRange(low,high,.1);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,60,20);s.setTextValueSuffix(suffix);s.setDoubleClickReturnValue(true,0);}
 void tip(juce::Component& c,const char* s){c.getProperties().set("fgaTip",s);}
 }
-InspectorResizer::InspectorResizer(MainComponent& m):owner(m){setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);tip(*this,"Drag the inspector's right edge to resize its width; double-click to restore the default.");}
+InspectorResizer::InspectorResizer(MainComponent& m,bool forBrowser):owner(m),browser(forBrowser){setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);tip(*this,forBrowser?"Drag the sample browser's left edge to resize its width; double-click to restore the default.":"Drag the inspector's right edge to resize its width; double-click to restore the default.");}
 void InspectorResizer::paint(juce::Graphics& g){g.setColour(Palette::dim.withAlpha(isMouseOverOrDragging()?.85f:.4f));const int middle=getHeight()/2;g.fillRoundedRectangle(2.f,(float)middle-18,2.f,36.f,1.f);g.fillRoundedRectangle(6.f,(float)middle-18,1.f,36.f,.5f);}
-void InspectorResizer::mouseDown(const juce::MouseEvent& e){dragOrigin=e.getEventRelativeTo(&owner).position.x;initialWidth=owner.inspectorWidth;}
-void InspectorResizer::mouseDrag(const juce::MouseEvent& e){owner.inspectorWidth=std::clamp(initialWidth+juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin),184,std::max(184,std::min(480,owner.getWidth()/3)));owner.resized();}
-void InspectorResizer::mouseUp(const juce::MouseEvent&){Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
-void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){owner.inspectorWidth=216;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
+void InspectorResizer::mouseDown(const juce::MouseEvent& e){dragOrigin=e.getEventRelativeTo(&owner).position.x;initialWidth=browser?owner.sampleBrowser.getWidth():owner.inspectorWidth;}
+void InspectorResizer::mouseDrag(const juce::MouseEvent& e){
+    // The browser sits on the right: dragging its left edge to the left makes it wider.
+    if(browser){owner.sampleBrowserWidth=owner.clampBrowserWidth(initialWidth-juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin));owner.resized();return;}
+    owner.inspectorWidth=std::clamp(initialWidth+juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin),184,std::max(184,std::min(480,owner.getWidth()/3)));owner.resized();}
+void InspectorResizer::mouseUp(const juce::MouseEvent&){if(browser)Localisation::setSetting("sampleBrowserWidth",owner.sampleBrowserWidth);else Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
+void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){owner.sampleBrowserWidth=0;owner.resized();Localisation::setSetting("sampleBrowserWidth",0);return;}owner.inspectorWidth=216;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
@@ -230,8 +233,10 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         stage("loop on/off, removal, double-click clear and Undo");
         showSampleBrowser(false);select(1,0);auto* chooserBefore=chooser.get();
         if(auto* button=dynamic_cast<juce::Button*>(trackInspector.findChildWithID("inspector-sample")))button->onClick();else ok=false;
-        ok=ok&&browserVisible&&sampleBrowser.isVisible()&&chooser.get()==chooserBefore&&page==Page::arrangement&&selectedTrack==1;showSampleBrowser(false);
-        stage("inspector LOAD SAMPLE opens the integrated browser");
+        ok=ok&&browserVisible&&sampleBrowser.isVisible()&&chooser.get()==chooserBefore&&page==Page::arrangement&&selectedTrack==1;
+        if(auto* button=dynamic_cast<juce::Button*>(trackInspector.findChildWithID("inspector-sample")))button->onClick();else ok=false;
+        ok=ok&&!browserVisible&&!sampleBrowser.isVisible()&&selectedTrack==1;showSampleBrowser(false);
+        stage("inspector LOAD SAMPLE opens the integrated browser and closes it again");
         auto* sourceLabel=dynamic_cast<juce::Label*>(trackInspector.findChildWithID("track-source"));
         ok=ok&&sourceLabel!=nullptr&&sourceLabel->getText()==soundSourceName(1)&&soundSourceName(1)==juce::String(guideSoundName(std::clamp(project.tracks[1].sound,0,6)))&&soundSourceName(4)==juce::String(GuideDrums::kitName(std::clamp(project.tracks[4].sound,0,3)));
         project.tracks[5].instrument="sample";project.tracks[5].instrumentPath=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("My Snare.wav").getFullPathName().toStdString();ok=ok&&soundSourceName(5)=="My Snare";
@@ -287,6 +292,17 @@ bool MainComponent::verifySampleBrowser(const juce::File& folder){
     wav(kicks.getChildFile("Kick Deep.wav"),44100,1,22050);wav(kicks.getChildFile("Kick Short.wav"),48000,2,4800);wav(library.getChildFile("Clap.wav"),44100,2,44100);
     library.getChildFile("Loop.mp3").replaceWithText("mp3");library.getChildFile("readme.txt").replaceWithText("text");
     showSampleBrowser(true);stage("browser shown",sampleBrowser.isVisible()&&!sampleBrowser.getBounds().intersects(arrangementPort.getBounds())&&!sampleBrowser.getBounds().intersects(mixer.getBounds())&&sampleBrowser.verifyLayout());
+    {
+        // The browser's left edge: dragged wider, remembered, and a double-click goes back to the automatic width.
+        auto edgeEvent=[this](float x){const juce::Point<float> p(x,20.f);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&browserResizer,&browserResizer,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+        const int before=sampleBrowser.getWidth(),savedWidth=sampleBrowserWidth;
+        browserResizer.mouseDown(edgeEvent(2.f));browserResizer.mouseDrag(edgeEvent(-38.f));browserResizer.mouseUp(edgeEvent(-38.f));
+        bool edge=browserResizer.isVisible()&&sampleBrowser.getWidth()==before+40&&Localisation::setting("sampleBrowserWidth","").getIntValue()==before+40
+                  &&!sampleBrowser.getBounds().intersects(arrangementPort.getBounds())&&browserResizer.getRight()==sampleBrowser.getX();
+        browserResizer.mouseDoubleClick(edgeEvent(2.f));edge=edge&&sampleBrowserWidth==0;
+        sampleBrowserWidth=savedWidth;Localisation::setSetting("sampleBrowserWidth",savedWidth);resized();
+        stage("sample browser resized by its edge and remembered",edge);
+    }
     if(samples::Preferences::fromJson(savedSetting).folders.empty())if(auto out=folder.getChildFile("sample-browser-empty.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}
     sampleBrowser.addFolder(library);sampleBrowser.toggleFavourite(library.getFullPathName());sampleBrowser.navigate(library);stage("listing",sampleBrowser.waitForListing(5000));
     stage("folders first, audio only",sampleBrowser.visibleRows()==3&&sampleBrowser.fileAt(0).getFileName()=="Drums"&&sampleBrowser.fileAt(1).getFileName()=="Clap.wav"&&sampleBrowser.fileAt(2).getFileName()=="Loop.mp3");

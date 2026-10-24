@@ -7,7 +7,7 @@ import re
 root = Path(__file__).resolve().parent.parent
 # Identical Git blobs in Piano 026f045, Drums 7f1def6 and Guitar e571f8d.
 expected = {
-    'Source/FamilyTheme.h': 'd61097f13d49dd041e06364a62b130f95d4e38e6',
+    'ThirdParty/fasegroove-common/FamilyTheme.h': 'd61097f13d49dd041e06364a62b130f95d4e38e6',
     'Resources/Inter-Regular.otf': '2d0bd1d645a9afaa4cf47afc4e1dc38698809f78',
     'Resources/Inter-SemiBold.otf': '52c84550ba03fa5543f14c5cb215b9b2c72946cb',
 }

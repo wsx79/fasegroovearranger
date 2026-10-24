@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.15.0 — 2026-10-24
+
+- Automazioni oltre il volume: pan della traccia, volume master e parametri dei plugin, disegnate e modificate come le corsie del volume, annullabili, salvate e incluse negli export.
+- Automazioni casuali (dado): sweep nei build-up, salite, movimenti di volume, pan e parametri dei plugin che seguono le sezioni; si rigenerano quando rigeneri brano, traccia, sezione o clip, rispettando i blocchi. Attive di default solo nei progetti nuovi.
+- CARICA CAMPIONE nell'inspector apre e chiude il browser campioni; il browser si può ridimensionare e ricorda la dimensione.
+- Motori Drums e Guitar aggiornati (snare nell'Afro, groove casuali di chitarra sempre udibili).
+- Tema, circolo delle quinte e logo FaseGroove ora vengono dal modulo comune.
+
 ## 0.14.4 — 2026-10-24
 
 - Più leggero: mixer, pannello strumento, timeline e piano roll ridisegnano solo ciò che cambia; le manopole del pannello strumento rigenerano la parte quando il gesto si ferma invece che a ogni scatto; le traduzioni si applicano solo al cambio lingua; meno copie e ricalcoli del progetto a ogni modifica; le impostazioni dei plugin restano ferme quando sono nascoste.

@@ -301,7 +301,9 @@ void Project::normalise() {
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
-        t.volume.normalise(length());
+        t.volume.normalise(length());t.panAutomation.normalise(length(),1.);
+        if(t.parameters.size()>(size_t)maxParameterLanes)t.parameters.resize((size_t)maxParameterLanes);
+        for(auto& lane:t.parameters){lane.slot=std::clamp(lane.slot,0,1);lane.index=std::max(-1,lane.index);if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
         auto& e=t.engine;
         e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
         e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
@@ -322,7 +324,7 @@ void Project::normalise() {
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
-    masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
+    masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }
 bool Project::loopMatches(double from,double to) const {
@@ -342,6 +344,11 @@ bool Project::toggleLoop() {
     loop=!loop&&hasLoopRegion();return loop;
 }
 void Project::clearLoop() {loop=false;loopStart=loopEnd=0;}
+std::vector<std::pair<VolumeAutomation*,double>> Project::envelopes(){
+    std::vector<std::pair<VolumeAutomation*,double>> all{{&masterAutomation,2.}};
+    for(auto& t:tracks){all.push_back({&t.volume,2.});all.push_back({&t.panAutomation,1.});for(auto& lane:t.parameters)all.push_back({&lane.curve,1.});}
+    return all;
+}
 void Project::insertSection(int index,SongSection section,int copyFrom) {
     if(sections.size()>=64) return;
     index=std::clamp(index,0,(int)sections.size());
@@ -349,8 +356,8 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
     std::vector<Clip> copies;
     for(auto& t:tracks) copies.push_back(copyFrom>=0&&copyFrom<(int)t.clips.size()?t.clips[(size_t)copyFrom]:Clip{});
     const double start=sectionStart(index),duration=std::clamp(section.bars,1,128)*4.;
-    for(auto& t:tracks){auto original=t.volume.points;for(auto& point:t.volume.points)if(point.beat>=start)point.beat+=duration;
-        if(copyFrom>=0&&copyFrom<(int)sections.size()){const double from=sectionStart(copyFrom),end=sectionStart(copyFrom+1);for(auto point:original)if(point.beat>=from&&point.beat<end&&point.beat-from<duration){point.beat=start+point.beat-from;t.volume.points.push_back(point);}}
+    for(auto [envelope,ceiling]:envelopes()){auto& points=envelope->points;auto original=points;for(auto& point:points)if(point.beat>=start)point.beat+=duration;
+        if(copyFrom>=0&&copyFrom<(int)sections.size()){const double from=sectionStart(copyFrom),end=sectionStart(copyFrom+1);for(auto point:original)if(point.beat>=from&&point.beat<end&&point.beat-from<duration){point.beat=start+point.beat-from;points.push_back(point);}}
     }
     if(loopStart>=start)loopStart+=duration;
     if(loopEnd>start)loopEnd+=duration;
@@ -362,7 +369,7 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
 void Project::removeSection(int index) {
     if(sections.size()<2||index<0||index>=(int)sections.size()) return;
     const double start=sectionStart(index),end=sectionStart(index+1);
-    for(auto& t:tracks){auto& points=t.volume.points;points.erase(std::remove_if(points.begin(),points.end(),[&](const VolumePoint& p){return p.beat>=start&&p.beat<end;}),points.end());for(auto& point:points)if(point.beat>=end)point.beat-=end-start;}
+    for(auto [envelope,ceiling]:envelopes()){auto& points=envelope->points;points.erase(std::remove_if(points.begin(),points.end(),[&](const VolumePoint& p){return p.beat>=start&&p.beat<end;}),points.end());for(auto& point:points)if(point.beat>=end)point.beat-=end-start;}
     auto shift=[&](double b){return b<=start?b:b>=end?b-(end-start):start;};
     loopStart=shift(loopStart);loopEnd=shift(loopEnd);
     sections.erase(sections.begin()+index); for(auto& t:tracks)if(!t.freeTimeline)t.clips.erase(t.clips.begin()+index); normalise();
@@ -371,7 +378,7 @@ void Project::moveSection(int from,int to) {
     if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to) return;
     const bool wholeSong=loopStart==0&&loopEnd==length();
     const double oldStart=sectionStart(from),oldEnd=sectionStart(from+1),destination=from<to?sectionStart(to+1)-(oldEnd-oldStart):sectionStart(to);
-    for(auto& t:tracks){for(auto& point:t.volume.points){if(point.beat>=oldStart&&point.beat<oldEnd)point.beat+=destination-oldStart;else if(from<to&&point.beat>=oldEnd&&point.beat<destination+oldEnd-oldStart)point.beat-=oldEnd-oldStart;else if(from>to&&point.beat>=destination&&point.beat<oldStart)point.beat+=oldEnd-oldStart;}t.volume.normalise(length());}
+    for(auto [envelope,ceiling]:envelopes()){for(auto& point:envelope->points){if(point.beat>=oldStart&&point.beat<oldEnd)point.beat+=destination-oldStart;else if(from<to&&point.beat>=oldEnd&&point.beat<destination+oldEnd-oldStart)point.beat-=oldEnd-oldStart;else if(from>to&&point.beat>=destination&&point.beat<oldStart)point.beat+=oldEnd-oldStart;}envelope->normalise(length(),ceiling);}
     auto moveMarker=[&](double beat,bool ending){
         const double probe=ending?std::nextafter(beat,-INFINITY):beat;
         if(probe>=oldStart&&probe<oldEnd)return beat+destination-oldStart;
@@ -390,7 +397,7 @@ void Project::resizeSection(int index,int bars){
     bars=std::clamp(bars,1,128);const double start=sectionStart(index),end=sectionStart(index+1);
     const double duration=bars*4.,delta=duration-(end-start);
     auto map=[&](double beat){return beat>=end?beat+delta:beat>start?start+(beat-start)*duration/(end-start):beat;};
-    for(auto& t:tracks)for(auto& point:t.volume.points)point.beat=map(point.beat);
+    for(auto [envelope,ceiling]:envelopes())for(auto& point:envelope->points)point.beat=map(point.beat);
     loopStart=map(loopStart);loopEnd=map(loopEnd);sections[(size_t)index].bars=bars;normalise();
 }
 bool transferClip(Project& p,int track,int from,int to,bool copy){
@@ -527,7 +534,7 @@ Project newProject(int genre) {
     // Balanced genre-specific guide levels leave summing headroom. Saved
     // projects keep their own master and mix; new songs use the curated balance.
     p.masterGain=.45;
-    applyGenre(p,genre);arrangeSong(p);generate(p);return p;
+    applyGenre(p,genre);arrangeSong(p);generate(p);p.settings.randomAutomation=true;return p;
 }
 std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;
@@ -706,7 +713,13 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     s.bassMode=sgk::bassModeForLine(bass[at]);
 }
 }
+static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
+    generateNotes(p,scope,track,section,seed);
+    // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
+    if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
+}
+static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();
     if(track<0||track>=trackCount||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
     if(scope==Scope::section){const double start=p.sectionStart(section),end=p.sectionStart(section+1);for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(!t.freeTimeline||t.locked)continue;for(double boundary:{start,end}){const int at=p.clipAtBeat(ti,boundary);if(at>=0&&!t.clips[(size_t)at].locked&&p.clipStart(ti,at)<boundary)p.splitClip(ti,at,boundary);}}}
@@ -842,7 +855,85 @@ bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(next==c.seed||next<=1)next=c.seed+2;
     c.seed=next;
     generate(p,Scope::clip,track,clip,0);
+    if(p.settings.randomAutomation)randomiseAutomation(p,Scope::clip,track,clip,next);
     return true;
+}
+namespace {
+struct AutomationDice {
+    std::uint32_t state;
+    explicit AutomationDice(std::uint32_t seed):state(mix(seed^0x9e3779b9U)){if(!state)state=1;}
+    double next(){state^=state<<13;state^=state>>17;state^=state<<5;return (state&0xffffff)/16777216.;}
+    double between(double a,double b){return a+(b-a)*next();}
+    bool chance(double p){return next()<p;}
+};
+// Which tracks move: the harmony and the percussion that colours the groove. Kick, bass,
+// snare and clap keep the floor (they stay where they are).
+bool volumeMoves(int ti){return ti==0||ti==2||ti==3||ti==8||ti==9||ti==11||ti==12||ti==13;}
+bool panMoves(int ti){return ti==2||ti==3||ti==9||ti==11||ti==12||ti==13||ti==14;}
+}
+void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){
+    p.normalise();
+    if(track<0||track>=trackCount)return;
+    double from=0,to=p.length();
+    if(scope==Scope::section){if(index<0||index>=(int)p.sections.size())return;from=p.sectionStart(index);to=p.sectionStart(index+1);}
+    if(scope==Scope::clip){const auto& clips=p.tracks[(size_t)track].clips;if(index<0||index>=(int)clips.size())return;from=p.clipStart(track,index);to=from+p.clipLength(track,index);}
+    if(to-from<1./960.)return;
+    const double tick=1./16.;
+    for(int ti=0;ti<trackCount;++ti){
+        if((scope==Scope::track||scope==Scope::clip)&&ti!=track)continue;
+        auto& t=p.tracks[(size_t)ti];if(t.locked)continue;
+        if(scope==Scope::clip&&t.clips[(size_t)index].locked)continue;
+        if(scope==Scope::section){const int at=p.clipAtBeat(ti,from);if(at>=0&&t.clips[(size_t)at].locked)continue;}
+        // Every lane this track automates: kind 0 volume, 1 pan, 2 + k plugin lane k.
+        for(int kind=0;kind<2+(int)t.parameters.size();++kind){
+            if(onlyLane>=0&&kind!=onlyLane)continue;
+            const bool asked=onlyLane>=0&&scope!=Scope::song;   // a lane's own dice moves it even on another track
+            if(kind==0&&!volumeMoves(ti)&&!asked)continue;
+            if(kind==1&&!panMoves(ti)&&!asked)continue;
+            auto& env=kind==0?t.volume:kind==1?t.panAutomation:t.parameters[(size_t)(kind-2)].curve;
+            if(env.locked)continue;
+            const double neutral=kind==0?1.:kind==1?automationFromPan(t.pan):(env.points.empty()?.5:env.points.front().value);   // a plugin lane rests where it starts
+            auto& points=env.points;
+            if(points.empty())points={{0,neutral,0},{p.length(),neutral,0}};
+            points.erase(std::remove_if(points.begin(),points.end(),[&](const VolumePoint& v){return v.beat>=from&&v.beat<to;}),points.end());
+            std::vector<VolumePoint> add{{from,neutral,0}};
+            double start=0;
+            for(size_t si=0;si<p.sections.size();++si){
+                const auto& section=p.sections[si];const double s0=start,s1=start+section.bars*4.;start=s1;
+                const double a=std::max(s0,from),b=std::min(s1,to);if(b-a<1.)continue;
+                AutomationDice dice(seed^mix((std::uint32_t)ti*7919U+(std::uint32_t)si*104729U+(std::uint32_t)kind*31U+1U));
+                const double length=b-a;
+                // Each section starts from the lane's resting value (held up to its first beat),
+                // so a section without movement stays flat and a riser never leaks backwards.
+                if(a-1./64.>from+1e-9)add.push_back({a-1./64.,neutral,0});
+                add.push_back({a,neutral,0});
+                switch(section.type){
+                case Section::buildup:
+                    if(kind==0){add.push_back({a,dice.between(.72,.86),dice.between(.3,.6)});add.push_back({b-tick,dice.between(1.08,1.2),0});add.push_back({b,1,0});}         // the riser into the drop
+                    else if(kind==1){const double side=dice.chance(.5)?1:-1,width=dice.between(.12,.3);add.push_back({a,neutral,.2});add.push_back({b-tick,std::clamp(neutral+side*width,0.,1.),0});add.push_back({b,neutral,0});} // it opens up
+                    else{add.push_back({a,dice.between(.12,.3),dice.between(.4,.7)});add.push_back({b-tick,dice.between(.82,1.),0});add.push_back({b,neutral,0});}             // the filter sweep
+                    break;
+                case Section::breakdown:
+                    if(kind==0&&(ti==0||ti==2)){add.push_back({a,dice.between(.88,.95),.3});add.push_back({a+length*.5,dice.between(1.02,1.08),-.3});add.push_back({b-tick,dice.between(.94,1.),0});add.push_back({b,1,0});}
+                    else if(kind==1&&dice.chance(.7)){const double width=dice.between(.08,.22);for(double x=a;x<b-1e-9;x+=8){const bool left=std::fmod((x-a)/8,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.3,.3)});}add.push_back({b,neutral,0});}
+                    else if(kind>=2){add.push_back({a,neutral,.3});add.push_back({a+length*.5,dice.between(.28,.45),-.3});add.push_back({b-tick,neutral,0});}
+                    break;
+                case Section::main:
+                case Section::drop:
+                    if(kind==0&&dice.chance(.5)){const double depth=dice.between(.04,.09);for(double x=a;x<b-1e-9;x+=8){add.push_back({x,1,.4});if(x+4<b)add.push_back({x+4,1-depth,-.4});}add.push_back({b,1,0});}
+                    else if(kind==1&&dice.chance(.55)){const double width=dice.between(.06,.18),bar=dice.chance(.5)?4.:8.;for(double x=a;x<b-1e-9;x+=bar){const bool left=std::fmod((x-a)/bar,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.4,.4)});}add.push_back({b,neutral,0});}
+                    else if(kind>=2&&dice.chance(.35)){const double depth=dice.between(.08,.2);for(double x=a;x+16<=b+1e-9;x+=16){add.push_back({x,neutral,.5});add.push_back({x+8,std::clamp(neutral+depth,0.,1.),-.5});}add.push_back({b,neutral,0});}
+                    break;
+                default: break;   // intro and outro: no fades, the level stays as mixed
+                }
+            }
+            // What follows the range keeps its own first point; without one the lane comes back to neutral.
+            const bool following=std::any_of(points.begin(),points.end(),[&](const VolumePoint& v){return std::abs(v.beat-to)<1./960.;});
+            if(!following&&to<p.length())add.push_back({to,neutral,0});
+            for(auto v:add){v.beat=std::clamp(v.beat,from,to);if(following&&v.beat>to-1./960.)continue;points.push_back(v);}
+            env.enabled=true;env.normalise(p.length(),kind==0?2.:1.);
+        }
+    }
 }
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;

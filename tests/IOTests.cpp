@@ -20,6 +20,17 @@ int main(){try{
     check(fga::projectFromJson(juce::var(),restored).failed(),"invalid format rejected");json.getDynamicObject()->setProperty("version",999);check(fga::projectFromJson(json,restored).failed(),"future schema rejected");json=juce::JSON::parse(text);json.getDynamicObject()->setProperty("tracks",juce::Array<juce::var>());check(fga::projectFromJson(json,restored).failed(),"missing tracks rejected");
     auto musical=p;auto loadedTake=restored;check(fga::projectFromJson(json=fga::projectJson(p),loadedTake).wasOk(),"reload musical take");fga::generate(musical,fga::Scope::clip,1,1);fga::generate(loadedTake,fga::Scope::clip,1,1);check(musical.tracks[1].clips[1]==loadedTake.tracks[1].clips[1],"saved musical take renders identically after loading");
     auto legacy=fga::projectJson(p);for(auto& track:*legacy["tracks"].getArray())for(auto& clip:*track["clips"].getArray())clip.getDynamicObject()->removeProperty("motifSeed");for(auto& track:*legacy["tracks"].getArray())track.getDynamicObject()->removeProperty("volumeAutomation");check(fga::projectFromJson(legacy,restored).wasOk()&&!restored.tracks[4].volume.enabled&&restored.tracks[4].volume.points.empty(),"old projects load with bypassed empty automation");
+    {
+        // An older project (no pan, master or plugin lanes) saves exactly as before; the new lanes round-trip.
+        auto plain=juce::JSON::toString(fga::projectJson(p),false,17);check(!plain.contains("panAutomation")&&!plain.contains("parameterAutomation")&&!plain.contains("masterAutomation"),"unused lanes are not written");
+        auto lanes=p;lanes.tracks[1].panAutomation.enabled=true;lanes.tracks[1].panAutomation.points={{0,.2,.3},{8,.9,0}};lanes.masterAutomation.enabled=true;lanes.masterAutomation.points={{4,1.2,-.4}};
+        fga::ParameterAutomation lane;lane.slot=1;lane.index=7;lane.name="Filter – cutoff";lane.curve.enabled=true;lane.curve.points={{2,.1,0},{6,.6,.5}};lanes.tracks[2].parameters.push_back(lane);
+        auto saved=juce::JSON::toString(fga::projectJson(lanes),false,17);fga::Project back;check(fga::projectFromJson(juce::JSON::parse(saved),back).wasOk(),"automation lanes parse");
+        const auto& b=back.tracks[2].parameters;check(back.tracks[1].panAutomation.enabled&&back.tracks[1].panAutomation.points.size()==2&&back.tracks[1].panAutomation.points[0].curve==.3&&back.masterAutomation.points.size()==1&&back.masterAutomation.points[0].value==1.2
+              &&b.size()==1&&b[0].slot==1&&b[0].index==7&&b[0].name==lane.name&&b[0].curve.points[1].curve==.5,"pan, master and plugin lanes round-trip");
+        check(juce::JSON::toString(fga::projectJson(back),false,17)==saved,"automation lanes save identically after loading");
+        auto bad=juce::JSON::parse(saved);bad["tracks"][2].getDynamicObject()->setProperty("parameterAutomation",juce::var("x"));check(fga::projectFromJson(bad,back).failed(),"invalid plugin automation rejected");
+    }
     p.tracks[2].effectPath="/fx/Spring.vst3";p.tracks[2].effectId="<PLUGIN/>";p.tracks[2].effectState="fx-state";check(fga::projectFromJson(fga::projectJson(p),restored).wasOk()&&restored.tracks[2].effectPath==p.tracks[2].effectPath&&restored.tracks[2].effectId==p.tracks[2].effectId&&restored.tracks[2].effectState==p.tracks[2].effectState&&restored.tracks[0].effectPath.empty(),"insert effect persists");
     tmp.deleteRecursively();std::cout<<"Project persistence, schema validation and MIDI import passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

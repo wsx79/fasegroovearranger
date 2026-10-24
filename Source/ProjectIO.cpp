@@ -113,22 +113,41 @@ void readEngine(const juce::var& o,EngineOptions& e){
 }
 
 }
+// An automation envelope as saved since the first volume lanes: {"enabled", "points": [[beat, value, curve]...]}.
+static juce::var envelopeJson(const VolumeAutomation& v){
+    auto o=object();set(o,"enabled",v.enabled);if(v.locked)set(o,"locked",true);juce::Array<juce::var> points;
+    for(const auto& p:v.points){juce::Array<juce::var> point;point.add(p.beat);point.add(p.value);point.add(p.curve);points.add(point);}
+    set(o,"points",points);return o;
+}
+static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
+    v.enabled=(bool)o.getProperty("enabled",false);v.locked=(bool)o.getProperty("locked",false);
+    if(auto* points=o["points"].getArray()){
+        if(points->size()>16384)return juce::Result::fail("Too many volume automation points.");
+        for(const auto& point:*points){
+            if(!point.isArray()||point.size()!=3)return juce::Result::fail("Invalid volume automation point.");
+            for(int k=0;k<3;++k)if(!(point[k].isDouble()||point[k].isInt()||point[k].isInt64())||!std::isfinite((double)point[k]))return juce::Result::fail("Invalid volume automation value.");
+            v.points.push_back({(double)point[0],(double)point[1],(double)point[2]});
+        }
+    }
+    return juce::Result::ok();
+}
 juce::var projectJson(const Project& p){
     auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
-    set(s,"guitarLead",c.guitarLead);
+    set(s,"guitarLead",c.guitarLead);if(c.randomAutomation)set(s,"randomAutomation",true);
     set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
     juce::Array<juce::var> degrees,free;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);set(o,"settings",s);
-    set(o,"masterGain",p.masterGain);set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
+    set(o,"masterGain",p.masterGain);if(!p.masterAutomation.isDefault())set(o,"masterAutomation",envelopeJson(p.masterAutomation));set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
     juce::Array<juce::var> sections,tracks;
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
         set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
-        auto volume=object();set(volume,"enabled",t.volume.enabled);juce::Array<juce::var> points;
-        for(const auto& p:t.volume.points){juce::Array<juce::var> point;point.add(p.beat);point.add(p.value);point.add(p.curve);points.add(point);}
-        set(volume,"points",points);set(a,"volumeAutomation",volume);
+        set(a,"volumeAutomation",envelopeJson(t.volume));
+        // Pan and plugin automation are written only when used: older projects save as before.
+        if(!t.panAutomation.isDefault())set(a,"panAutomation",envelopeJson(t.panAutomation));
+        if(!t.parameters.empty()){juce::Array<juce::var> lanes;for(const auto& lane:t.parameters){auto l=envelopeJson(lane.curve);set(l,"slot",lane.slot);set(l,"index",lane.index);set(l,"name",lane.name);lanes.add(l);}set(a,"parameterAutomation",lanes);}
         set(a,"instrument",t.instrument);set(a,"instrumentPath",t.instrumentPath);set(a,"instrumentId",t.instrumentId);set(a,"instrumentState",t.instrumentState);
         if(!t.effectPath.empty()||!t.effectId.empty()||!t.effectState.empty()){set(a,"effectPath",t.effectPath);set(a,"effectId",t.effectId);set(a,"effectState",t.effectState);}
         juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);if(clip.motifSeed)set(b,"motifSeed",(juce::int64)clip.motifSeed);set(b,"locked",clip.locked);if(t.freeTimeline){set(b,"position",clip.position);set(b,"role",clip.role);}if(clip.span>0)set(b,"span",clip.span);
@@ -143,23 +162,18 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
-    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);
+    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
-    p.masterGain=num(o,"masterGain",.8);p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
+    p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
     for(const auto& a:*sections){if(!a.isObject())return juce::Result::fail("Sezione non valida.");p.sections.push_back({(Section)(int)num(a,"type",0),(int)num(a,"bars",8),str(a,"name","Main")});}
     size_t noteCount=0;
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         readEngine(a["engine"],t.engine);
-        const auto volume=a["volumeAutomation"];t.volume.enabled=(bool)volume.getProperty("enabled",false);
-        if(auto* points=volume["points"].getArray()){
-            if(points->size()>16384)return juce::Result::fail("Too many volume automation points.");
-            for(const auto& point:*points){
-                if(!point.isArray()||point.size()!=3)return juce::Result::fail("Invalid volume automation point.");
-                for(int k=0;k<3;++k)if(!(point[k].isDouble()||point[k].isInt()||point[k].isInt64())||!std::isfinite((double)point[k]))return juce::Result::fail("Invalid volume automation value.");
-                t.volume.points.push_back({(double)point[0],(double)point[1],(double)point[2]});
-            }
-        }
+        if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
+        if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
+        if(a.hasProperty("parameterAutomation")){auto* lanes=a["parameterAutomation"].getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");
+            for(const auto& l:*lanes){if(!l.isObject())return juce::Result::fail("Invalid plugin automation lane.");ParameterAutomation lane;lane.slot=(int)num(l,"slot",0);lane.index=(int)num(l,"index",-1);lane.name=str(l,"name");if(auto r=readEnvelope(l,lane.curve);r.failed())return r;t.parameters.push_back(std::move(lane));}}
         t.instrument=str(a,"instrument","internal");if(t.instrument!="internal"&&t.instrument!="sample"&&t.instrument!="plugin")return juce::Result::fail("Tipo strumento non valido.");
         t.instrumentPath=str(a,"instrumentPath");t.instrumentId=str(a,"instrumentId");t.instrumentState=str(a,"instrumentState");
         t.effectPath=str(a,"effectPath");t.effectId=str(a,"effectId");t.effectState=str(a,"effectState");

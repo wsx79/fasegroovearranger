@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.15.0 — 2026-10-24
+
+- Automation beyond volume: track pan, master volume and hosted plugin parameters, drawn and edited like the volume lanes, undoable, saved and rendered in exports.
+- Random automation (dice): build-up sweeps, risers, volume, pan and plugin-parameter moves following the sections; rolled again when the song, a track, a section or a clip is regenerated, respecting locks. On by default in new projects only.
+- LOAD SAMPLE in the inspector opens and closes the sample browser; the browser can be resized and keeps its size.
+- Drums and Guitar engines updated (Afro snare parts, audible random guitar grooves).
+- Shared FaseGroove theme, circle of fifths and logo now come from the common module.
+
 ## 0.14.4 — 2026-10-24
 
 - Lighter: the mixer, the instrument panel, the timeline and the piano roll redraw only what changes; instrument-panel knobs re-render the part once the gesture settles instead of on every step; translations are applied only when the language changes; fewer project copies and recalculations on every edit; the plugin settings stay idle when hidden.

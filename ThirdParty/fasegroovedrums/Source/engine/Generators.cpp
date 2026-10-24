@@ -521,6 +521,13 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             setBar (! std::any_of (p[Lane::conga].begin(), p[Lane::conga].end(), isHit) ? Lane::conga : Lane::shaker, "x..x ..x. .x.. x..x");
         if (std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit) && accent.chance (0.4f))
             p[Lane::clap].assign ((size_t) randomBeatLength, '.');
+
+        // The snare talks too, lightly: a half-time hit, a sparse backbeat or a syncopated
+        // figure with ghosts around the clave (never the full house backbeat).
+        if (! std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit))
+            setBar (Lane::snare, accent.pick ({ ".... .... x... ....", ".... ..g. x... ..g.", "...g ..x. ...g x...",
+                                                ".g.. x... .g.. ..x.", "..g. .... ..x. .g..", ".... g..x .... g.x.",
+                                                "...x .... ..g. x..g", ".... .... x..g ..g." }));
     }
     else if (genre == deep && accent.chance (0.5f))
     {

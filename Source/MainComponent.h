@@ -34,6 +34,15 @@ public:
     int rowAt(int y) const;
     int totalHeight() const {return rowY(trackCount);}
     std::array<bool,trackCount> volumeVisible{};
+    // What each track's automation lane shows and edits: 0 volume, 1 pan, 2 master volume,
+    // 3 + k the track's plugin parameter lane k.
+    enum LaneTarget { laneVolume=0, lanePan, laneMaster, lanePlugin };
+    std::array<int,trackCount> laneTarget{};
+    VolumeAutomation& envelope(int track) const;
+    double envelopeMax(int track) const;       // 2 for a gain, 1 for pan and plugin parameters
+    double envelopeDefault(int track) const;   // a new lane's flat value
+    juce::String envelopeTitle(int track) const;
+    void showLaneTargetMenu(int track);
     double pixelsPerBar=6;
     std::set<int> selectedClips;
     int dropTrack=-1; // a sample dragged from the browser over this track
@@ -214,9 +223,11 @@ private:
     juce::Viewport arrangementPort,pianoPort,instrumentPort,inspectorPort;
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
-    InspectorResizer inspectorResizer{*this};
+    InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
     int mixerHeight=244,inspectorWidth=216;
+    int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
+    int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
     juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},browserToggle{"BROWSER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;

@@ -69,6 +69,8 @@ struct Track {
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
     std::string effectPath, effectId, effectState;
     VolumeAutomation volume;
+    VolumeAutomation panAutomation;            // 0..1 (see panFromAutomation); replaces `pan` while active
+    std::vector<ParameterAutomation> parameters; // hosted plugin parameters, at most maxParameterLanes
     EngineOptions engine;
     bool freeTimeline = false;
     std::vector<Clip> clips;
@@ -83,6 +85,9 @@ struct Settings {
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
     std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
+    // Regenerating (song, track, section, clip) also writes musical automation for that scope.
+    // Off in projects saved before it existed; new projects start with it on.
+    bool randomAutomation = false;
 };
 struct Project {
     std::string name = "Untitled groove";
@@ -90,6 +95,9 @@ struct Project {
     std::vector<SongSection> sections;
     std::vector<Track> tracks;
     double masterGain = .8;
+    VolumeAutomation masterAutomation; // gain multiplier on the master, as a track's volume
+    // Every automation envelope with its value ceiling (for edits that move or cut time).
+    std::vector<std::pair<VolumeAutomation*, double>> envelopes();
     bool loop = false;
     double loopStart = 0, loopEnd = 0;
     // Loop locators. An empty region (start == end) means no loop region at all.
@@ -150,6 +158,12 @@ void applyInstrumentChange(Project&, int track, bool harmony);
 // riff and pattern choices are kept, only the clip's variation seed changes.
 // Returns false (and changes nothing) for a locked track or clip.
 bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
+// Musical automation for a scope (as generate): build-up sweeps and risers, volume and pan
+// movement, plugin parameter sweeps on the lanes a track already has. No fades in intros or
+// outros. Locked tracks, clips and lanes are kept; the same seed gives the same lanes.
+// `index` is the section (Scope::section) or the clip (Scope::clip). onlyLane: 0 volume,
+// 1 pan, 2 + k plugin lane k, -1 every lane of the track(s).
+void randomiseAutomation(Project&, Scope scope, int track, int index, std::uint32_t seed, int onlyLane = -1);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);

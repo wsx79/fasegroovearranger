@@ -10,13 +10,13 @@ namespace {
 const std::vector<TimedEvent> noEvents;
 void mixTargets(Instrument& i,double master,bool snap){
     const float left=(float)(i.gain*master*std::min(1.,1.-i.pan)),right=(float)(i.gain*master*std::min(1.,1.+i.pan));
-    if(snap){i.leftGain.setCurrentAndTargetValue(left);i.rightGain.setCurrentAndTargetValue(right);}
-    else{i.leftGain.setTargetValue(left);i.rightGain.setTargetValue(right);}
+    if(snap){i.leftGain.setCurrentAndTargetValue(left);i.rightGain.setCurrentAndTargetValue(right);i.baseGain.setCurrentAndTargetValue((float)(i.gain*master));}
+    else{i.leftGain.setTargetValue(left);i.rightGain.setTargetValue(right);i.baseGain.setTargetValue((float)(i.gain*master));}
 }
 std::unique_ptr<MixState> mixState(const Project& p){
-    auto m=std::make_unique<MixState>();m->master=p.masterGain;m->tempo=p.settings.bpm;
+    auto m=std::make_unique<MixState>();m->master=p.masterGain;m->tempo=p.settings.bpm;m->masterAutomation=p.masterAutomation;
     for(size_t ti=0;ti<(size_t)trackCount&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
-        x.volume=t.volume;x.gain=t.gain;x.pan=t.pan;x.mute=t.mute;x.solo=t.solo;x.sound=t.sound;x.tone=t.engine.tone;x.reverb=t.engine.reverb;x.chorus=t.engine.chorus;
+        x.volume=t.volume;x.panAutomation=t.panAutomation;x.parameters=t.parameters;x.gain=t.gain;x.pan=t.pan;x.mute=t.mute;x.solo=t.solo;x.sound=t.sound;x.tone=t.engine.tone;x.reverb=t.engine.reverb;x.chorus=t.engine.chorus;
         x.pump=t.engine.pump;x.pumpRelease=t.engine.pumpRelease;x.pumpRate=std::clamp(t.engine.pumpRate,0,3);x.pumpSource=std::clamp(t.engine.pumpSource,0,1);
         x.drumNote=ti>=4?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
         for(size_t lane=0;lane<x.laneVolume.size();++lane){x.laneVolume[lane]=(float)t.engine.laneVolume[lane];x.laneMute[lane]=t.engine.laneMute[lane];}}
@@ -48,11 +48,11 @@ Instrument::Instrument(int track):kind(track){
     if(kind<3){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
 }
 void Instrument::prepare(double rate,int block){
-    leftGain.reset(rate,.01);rightGain.reset(rate,.01);
+    leftGain.reset(rate,.01);rightGain.reset(rate,.01);baseGain.reset(rate,.01);parameterSent.fill(-1.f);
     synth.setCurrentPlaybackSampleRate(rate);if(sampler)sampler->setCurrentPlaybackSampleRate(rate);if(kind>=4)drums.prepare(rate);if(kind==3)guitar.prepare(rate);
     auto preparePlugin=[&](juce::AudioPluginInstance* p){if(!p)return;p->releaseResources();p->setRateAndBufferSizeDetails(rate,block);p->prepareToPlay(rate,block);};
     preparePlugin(plugin.get());preparePlugin(effect.get());
-    volumeGains.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
+    volumeGains.resize((size_t)block);panLeft.resize((size_t)block);panRight.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
 }
 void Instrument::adoptChannels(int block){
     int channels=2;for(auto* p:{plugin.get(),effect.get()})if(p)channels=std::max({channels,p->getTotalNumOutputChannels(),p->getTotalNumInputChannels()});
@@ -93,9 +93,10 @@ void AudioEngine::updateMix(const Project& p){tempo=p.settings.bpm;mixes.post(mi
 // right after an edit (seek, loop, length) already see it, with or without a running device.
 void AudioEngine::adoptWhileStopped(){if(playing.load())return;const juce::ScopedLock lock(mutex);if(playing.load())return;collectGarbage();adoptState();collectGarbage();}
 void AudioEngine::applyMix(const MixState& m,bool snap){
-    master=m.master;
+    master=m.master;masterAutomation=&m.masterAutomation;
     for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=m.tracks[ti];
-        i.volume=&t.volume;i.gain=t.gain;i.pan=t.pan;mixTargets(i,master,snap);i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.tone;
+        if(i.parameters!=&t.parameters)i.parameterSent.fill(-1.f);   // other lanes: set every parameter again
+        i.volume=&t.volume;i.panAutomation=&t.panAutomation;i.parameters=&t.parameters;i.gain=t.gain;i.pan=t.pan;mixTargets(i,master,snap);i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.tone;
         i.bassLowPass.setCutoffFrequency((float)(100+1400*t.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.tone);
         for(size_t lane=0;lane<i.guitarLevels.size();++lane){i.guitarLevels[lane]=t.laneVolume[lane];if(i.guitarMuted[lane]!=t.laneMute[lane]){i.guitarMuted[lane]=t.laneMute[lane];if(playing){i.resync=true;needsResync=true;}}}
         juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);
@@ -162,6 +163,18 @@ void AudioEngine::click(float* const* output,int channels,int count,double beat)
         for(int ch=0;ch<channels;++ch)if(output[ch])output[ch][s]+=v;
         ++clickPos;--clickLeft;}
 }
+// Hosted plugin parameters follow their lanes once per rendered block (the device block, or
+// smaller at a loop end): set only when the value moves, before the plugin processes the block.
+void AudioEngine::applyParameterAutomation(Instrument& i,double beat){
+    if(i.parameters==nullptr)return;
+    const size_t lanes=std::min(i.parameters->size(),(size_t)maxParameterLanes);
+    for(size_t k=0;k<lanes;++k){const auto& lane=(*i.parameters)[k];if(!lane.curve.active()||lane.index<0)continue;
+        auto* target=lane.slot==0?(i.mode==2?i.plugin.get():nullptr):i.effect.get();if(target==nullptr)continue;
+        const auto& params=target->getParameters();if(lane.index>=params.size())continue;
+        const float value=(float)std::clamp(lane.curve.valueAt(beat),0.,1.);
+        if(std::abs(value-i.parameterSent[k])<1.e-5f)continue;
+        i.parameterSent[k]=value;params[lane.index]->setValue(value);}
+}
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack){
     const double samplesPerBeat=sampleRate*60./tempo.load(),end=beat+count/samplesPerBeat;
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
@@ -169,6 +182,9 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     int maxLatency=0;for(auto& ptr:instruments){auto& i=*ptr;i.latency=(i.mode==2&&i.plugin?std::max(0,i.plugin->getLatencySamples()):0)+(i.effect?std::max(0,i.effect->getLatencySamples()):0);maxLatency=std::max(maxLatency,i.latency);}
     maxLatency=std::min(maxLatency,Instrument::maxDelay-1);
     for(auto& ptr:instruments)ptr->delay=std::clamp(maxLatency-ptr->latency,0,Instrument::maxDelay-1);
+    // Master automation: one gain per sample for every track (the buffer is allocated once).
+    const bool masterActive=masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
+    if(masterActive)for(int s=0;s<count;++s)masterGains[(size_t)s]=(float)masterAutomation->valueAt(beat+s/samplesPerBeat);
     for(int ti=0;ti<trackCount;++ti){auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);
         while(i.cursor<schedule.size()&&schedule[i.cursor].beat<end){const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||laneMuted(i,e))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
             i.midi.addEvent(e.controller>=0?juce::MidiMessage::controllerEvent(1,e.controller,e.velocity):e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
@@ -178,6 +194,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         // Resized in place (never reallocated: prepare() sized it for the whole block), even with >32 plugin channels.
         i.scratch.setSize(i.scratch.getNumChannels(),count,false,false,true);auto& block=i.scratch;block.clear();
         if(i.effect){i.effectMidi.clear();i.effectMidi.addEvents(i.midi,0,count,0);}
+        applyParameterAutomation(i,beat+.5*count/samplesPerBeat);
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
         else if(i.mode==1){if(i.sampler)i.sampler->renderNextBlock(block,i.midi,0,count);}
         else if(i.mode==0){if(ti<3)i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
@@ -197,8 +214,16 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         i.midi.clear();i.guitarEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0;
-        if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
-        }else{i.leftGain.skip(count);i.rightGain.skip(count);}
+        if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
+            if(masterActive)for(int s=0;s<count;++s)i.volumeGains[(size_t)s]*=masterGains[(size_t)s];
+            // Pan automation: its own pan law per sample (as the static pan), on gain * master.
+            const bool panActive=i.panAutomation&&i.panAutomation->active();
+            if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
+            else i.baseGain.skip(count);
+            for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
+                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}continue;}
+                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
+        }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
         meters[(size_t)ti]=meter;
     }
 }
