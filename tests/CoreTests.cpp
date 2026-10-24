@@ -143,6 +143,7 @@ void verifyGenreIdentity(){
 #include "ClubArrangementChecks.h"
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
+#include "ArrangerFixChecks.h"
 // Engine integration: the vendored generators' seed and genre fixes are live, and the
 // arranger's note extraction never leaves millisecond stubs or flams in pitched tracks.
 void verifyEngineIntegration(){
@@ -164,7 +165,7 @@ void verifyEngineIntegration(){
     }
 }
 int main(int argc,char** argv){try{
-    verifyEngineIntegration();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
+    verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();

@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## 0.14.3 — 2026-10-24
+
+- Loop: the loop button, L, section/clip loop and Ctrl+L switch the loop off again; a double-click on the ruler or the context menu clears the region. Undoable and saved with the project.
+- LOAD SAMPLE in the inspector opens the built-in sample browser for that track.
+- Track headers show the instrument in use: the plugin, the sample or the built-in sound.
+- The inspector is rebuilt as one stable column.
+- GENERATE SONG follows the current genre's form every time; timeline edits no longer freeze it; locked tracks and clips stay.
+- Instrument panel changes re-render the part; harmony changes also re-render bass, strings and guitar (locks respected).
+- MIDI editor: REGENERATE button (undoable). Pencil, select and eraser are icons.
+
 ## 0.14.2 — 2026-10-23
 
 - Sample browser treats dot-prefixed files and folders as hidden on every platform, including Windows.

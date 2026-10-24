@@ -17,18 +17,25 @@ private:
     float dragOrigin=0;
     int initialWidth=216;
 };
+// Selected track's mix, sound source and clip actions. It keeps no pointer to a
+// track, clip or plugin: every refresh and every action reads the current selection.
 class TrackInspector : public juce::Component {
 public:
     explicit TrackInspector(MainComponent&);
     void refresh();
+    int preferredHeight() const { return contentHeight; }
     void paint(juce::Graphics&) override;
     void resized() override;
 private:
     MainComponent& owner;
     bool updating=false,gainGesture=false,panGesture=false;
+    int contentHeight=0;
+    std::vector<std::pair<juce::String,juce::Rectangle<int>>> captions;
     juce::Label name,source,section;
     juce::Slider gain,pan;
     juce::TextButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
+    int layout(int width);
+    bool validTrack() const;
 };
 class MixerStrip : public juce::Component {
 public:

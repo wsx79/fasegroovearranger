@@ -324,6 +324,23 @@ void Project::normalise() {
     masterGain=finite(masterGain,.8,0,2); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }
+bool Project::loopMatches(double from,double to) const {
+    const double a=std::clamp(std::min(from,to),0.,length()),b=std::clamp(std::max(from,to),0.,length());
+    return std::abs(loopStart-a)<1e-6&&std::abs(loopEnd-b)<1e-6;
+}
+void Project::setLoopRegion(double from,double to) {
+    loopStart=std::clamp(std::min(from,to),0.,length());loopEnd=std::clamp(std::max(from,to),loopStart,length());
+    loop=hasLoopRegion();if(!loop)loopStart=loopEnd=0;
+}
+bool Project::toggleLoopRegion(double from,double to) {
+    if(loop&&loopMatches(from,to)){clearLoop();return false;}
+    setLoopRegion(from,to);return loop;
+}
+bool Project::toggleLoop() {
+    if(!hasLoopRegion()){loopStart=0;loopEnd=length();}
+    loop=!loop&&hasLoopRegion();return loop;
+}
+void Project::clearLoop() {loop=false;loopStart=loopEnd=0;}
 void Project::insertSection(int index,SongSection section,int copyFrom) {
     if(sections.size()>=64) return;
     index=std::clamp(index,0,(int)sections.size());
@@ -416,12 +433,8 @@ void applyGenre(Project& p,int genre) {
     p.settings.bassMode=sgk::bassModeForLine(bassLines[p.settings.genre]);
     applyGenreSound(p);
 }
-void arrangeSong(Project& p) {
-    p.normalise();
-    // Phrase lengths and dramatic arcs are specific to the original thirteen styles.
-    // Transitions belong to the musical form; the instrument engines shape intro/outro.
-    // Mix-in/out development is part of these sections, never appended elsewhere.
-    const int genre=std::clamp(p.settings.genre,0,12);
+namespace {
+const std::vector<SongSection>& genreForm(int genre) {
     static const std::vector<SongSection> forms[]{
         {{Section::intro,32,"Intro"},{Section::main,32,"Piano theme"},{Section::breakdown,16,"Piano break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Piano drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}},
         {{Section::intro,32,"Intro"},{Section::main,32,"Soulful verse"},{Section::main,16,"Answer"},{Section::breakdown,16,"Soul break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Soulful chorus"},{Section::outro,32,"Outro"}},
@@ -437,7 +450,23 @@ void arrangeSong(Project& p) {
         {{Section::intro,16,"Chill intro"},{Section::main,24,"First landscape"},{Section::breakdown,16,"Space"},{Section::main,24,"Second landscape"},{Section::drop,16,"Warm return"},{Section::outro,16,"Chill outro"}},
         {{Section::intro,32,"Intro"},{Section::main,32,"Stab theme"},{Section::breakdown,16,"Breakdown"},{Section::buildup,16,"Tension"},{Section::drop,32,"Stab drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}}
     };
-    auto sections=forms[genre];
+    return forms[std::clamp(genre,0,12)];
+}
+// A form nobody restructured: the factory section sequence of some genre.
+bool factoryForm(const Project& p,int genre) {
+    const auto& form=genreForm(genre);
+    if(form.size()!=p.sections.size())return false;
+    for(size_t i=0;i<form.size();++i)if(form[i].type!=p.sections[i].type||form[i].name!=p.sections[i].name)return false;
+    return true;
+}
+}
+void arrangeSong(Project& p) {
+    p.normalise();
+    // Phrase lengths and dramatic arcs are specific to the original thirteen styles.
+    // Transitions belong to the musical form; the instrument engines shape intro/outro.
+    // Mix-in/out development is part of these sections, never appended elsewhere.
+    const int genre=std::clamp(p.settings.genre,0,12);
+    auto sections=genreForm(genre);
     // A phrase resolves both the harmonic cycle and the selected groove. Longer
     // evolving motifs need more room; dense material answers sooner. This changes
     // musical repeats, never stretches a form to an arbitrary clock duration.
@@ -617,6 +646,25 @@ void varyForm(Project& p,std::uint32_t seed) {
     }
     for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)p.resizeSection((int)i,next[i]);
 }
+// Without locks a new song follows the current settings: a factory form of
+// another genre becomes this genre's form, and tracks detached by timeline
+// edits return to the sections so the form can vary. User-built forms stay.
+void renewForm(Project& p) {
+    const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
+    if(locked||p.sections.empty())return;
+    const bool wasLooping=p.loop,hadRegion=p.hasLoopRegion(),wholeLoop=p.loopStart==0&&p.loopEnd==p.length();
+    const double from=p.loopStart,to=p.loopEnd;
+    bool otherGenre=false;
+    for(int genre=0;genre<13;++genre)if(genre!=p.settings.genre&&factoryForm(p,genre))otherGenre=true;
+    if(otherGenre&&!factoryForm(p,p.settings.genre)){
+        arrangeSong(p);
+        if(!hadRegion)p.clearLoop();else if(!wholeLoop){p.loopStart=std::min(from,p.length());p.loopEnd=std::min(to,p.length());}
+        p.loop=wasLooping&&p.hasLoopRegion();
+        return;
+    }
+    for(auto& t:p.tracks)if(t.freeTimeline){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
+    p.normalise();
+}
 void newSongHarmony(Project& p,std::uint32_t seed) {
     auto& s=p.settings;const auto before=s;
     auto differs=[&]{return s.scale!=before.scale||s.chordCount!=before.chordCount
@@ -669,7 +717,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             return std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked)newSongHarmony(p,seed);
-        varySongFeel(p,seed);varyForm(p,seed);
+        varySongFeel(p,seed);renewForm(p);varyForm(p,seed);
     }
     const auto& s=p.settings;
     const auto& profile=genreProfile(s.genre);
@@ -772,6 +820,28 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
             tidyNotes(clip,beats);
         }
     }
+}
+void applyInstrumentChange(Project& p,int track,bool harmony) {
+    p.normalise();
+    if(track<0||track>=trackCount)return;
+    for(int ti=0;ti<trackCount;++ti){
+        if(ti!=track&&!(harmony&&ti<4))continue;
+        if(p.tracks[(size_t)ti].locked||p.tracks[(size_t)ti].clips.empty())continue;
+        generate(p,Scope::track,ti,0,0);
+    }
+}
+bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
+    if(track<0||track>=trackCount)return false;
+    auto& t=p.tracks[(size_t)track];
+    if(t.locked||clip<0||clip>=(int)t.clips.size()||t.clips[(size_t)clip].locked)return false;
+    auto& c=t.clips[(size_t)clip];
+    // The musical take (motifSeed, or the song's legacy motif) is kept, so the
+    // groove chosen in the panel stays; only the performance variation changes.
+    auto next=mix(seed^(c.seed*2654435761U)^((std::uint32_t)clip*977U));
+    if(next==c.seed||next<=1)next=c.seed+2;
+    c.seed=next;
+    generate(p,Scope::clip,track,clip,0);
+    return true;
 }
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;

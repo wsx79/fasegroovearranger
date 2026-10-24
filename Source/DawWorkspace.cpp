@@ -22,37 +22,69 @@ void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){owner.inspector
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
-    name.setFont(FamilyTheme::font(17,true));source.setFont(FamilyTheme::font(11));source.setColour(juce::Label::textColourId,Palette::dim);source.setMinimumHorizontalScale(.75f);section.setFont(FamilyTheme::font(12));
-    gain.setComponentID("track-gain");pan.setComponentID("track-pan");
+    name.setFont(FamilyTheme::font(17,true));name.setMinimumHorizontalScale(.7f);name.setInterceptsMouseClicks(false,false);
+    source.setFont(FamilyTheme::font(11));source.setColour(juce::Label::textColourId,Palette::dim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
+    section.setFont(FamilyTheme::font(12));section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
+    gain.setComponentID("track-gain");pan.setComponentID("track-pan");sample.setComponentID("inspector-sample");loop.setComponentID("inspector-loop");
     slider(gain,-60,6.0," dB");slider(pan,-100,100,"%");
-    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;};
-    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
-    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;};
-    pan.onValueChange=[this]{if(updating)return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
+    for(auto* b:{&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&loop})b->setClickingTogglesState(false);
+    // Actions read the selection when clicked; nothing is cached between refreshes.
+    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;refresh();};
+    gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
+    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;refresh();};
+    pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
     instrument.onClick=[this]{owner.showInstrument();};editor.onClick=[this]{owner.showEditor();};
-    mute.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
-    solo.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.solo=!t.solo;owner.mixChanged();};
-    lockTrack.onClick=[this]{owner.lockButton.triggerClick();};lockClip.onClick=[this]{owner.lockClipButton.triggerClick();};
-    internal.onClick=[this]{owner.soundButton.triggerClick();};sample.onClick=[this]{owner.sampleButton.triggerClick();};plugin.onClick=[this]{owner.showPluginMenu(&plugin);};pluginEditor.onClick=[this]{owner.pluginEditorButton.triggerClick();};
-    regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.sectionLoopButton.triggerClick();};
+    mute.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
+    solo.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.solo=!t.solo;owner.mixChanged();};
+    lockTrack.onClick=[this]{if(validTrack())owner.toggleTrackLock();};lockClip.onClick=[this]{if(validTrack())owner.toggleClipLock();};
+    internal.onClick=[this]{owner.useBuiltInSound(owner.selectedTrack);};sample.onClick=[this]{owner.browseSamplesFor(owner.selectedTrack);};
+    plugin.onClick=[this]{owner.showPluginMenu(&plugin);};pluginEditor.onClick=[this]{if(owner.pluginEditorButton.onClick)owner.pluginEditorButton.onClick();};
+    regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.toggleClipLoop();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
-    refresh();setSize(208,626);
+    tip(sample,"Open the integrated sample browser for this track: double-click a sample or drag it onto the track.");tip(loop,"Loop the selected clip; click again to remove the loop.");
+    // No refresh here: the owner is still being constructed; select() fills the inspector.
+    contentHeight=layout(208);setSize(208,contentHeight);
 }
+bool TrackInspector::validTrack()const{return owner.selectedTrack>=0&&owner.selectedTrack<(int)owner.project.tracks.size();}
 void TrackInspector::refresh(){
-    if(owner.project.tracks.empty())return;updating=true;const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];name.setText(Localisation::upper(text(t.name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(owner.selectedTrack));
-    source.setText(t.instrument=="internal"?tr("Fase Groove engine"):t.instrument=="sample"?juce::File(text(t.instrumentPath)).getFileName():owner.audio.plugin(owner.selectedTrack)?owner.audio.plugin(owner.selectedTrack)->getName():tr("Missing instrument"),juce::dontSendNotification);
-    const double bars=owner.clipLength()/4.;section.setText(text(owner.project.sections[(size_t)owner.selectedSection].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);
-    gain.setValue(db(t.gain),juce::dontSendNotification);pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(owner.clip().locked,juce::dontSendNotification);internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);pluginEditor.setEnabled(owner.audio.plugin(owner.selectedTrack)!=nullptr&&!owner.loadingPlugin);sample.setEnabled(!owner.loadingPlugin);plugin.setEnabled(!owner.loadingPlugin);internal.setEnabled(!owner.loadingPlugin);updating=false;translateControls(*this);
+    if(!validTrack())return;
+    updating=true;const int ti=owner.selectedTrack;const auto& t=owner.project.tracks[(size_t)ti];
+    name.setText(Localisation::upper(text(t.name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(ti));
+    auto sound=owner.soundSourceName(ti);if(!t.effectPath.empty()){const auto fx=text(t.effectPath);sound+=" + "+(juce::File::isAbsolutePath(fx)?juce::File(fx).getFileNameWithoutExtension():fx);}
+    source.setText(sound,juce::dontSendNotification);source.setTooltip(sound);
+    const int clipIndex=owner.clipIndex();const bool hasClip=clipIndex>=0&&clipIndex<(int)t.clips.size();
+    if(hasClip){const double bars=owner.clipLength()/4.;const int guide=std::clamp(owner.project.sectionAtBeat(owner.clipStart()),0,(int)owner.project.sections.size()-1);section.setText(text(owner.project.sections[(size_t)guide].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);}
+    else section.setText(juce::String::fromUTF8("—"),juce::dontSendNotification);
+    // A fader the user is dragging keeps its own value; the model follows it.
+    if(!gainGesture)gain.setValue(db(t.gain),juce::dontSendNotification);
+    if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
+    const bool busy=owner.loadingPlugin>0;const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
+    mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
+    lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
+    internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);sample.setToggleState(t.instrument=="sample",juce::dontSendNotification);plugin.setToggleState(t.instrument=="plugin",juce::dontSendNotification);
+    internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);
+    regenerate.setEnabled(hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
+    updating=false;translateControls(*this);repaint();
 }
-void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());if(getWidth()<=40)return;caption(g,"TRACK INSPECTOR",{12,6,getWidth()-48,18});caption(g,"VOLUME / PAN",{12,190,getWidth()-24,18});caption(g,"SOUND ASSIGNMENT",{12,278,getWidth()-24,20});caption(g,"SELECTED CLIP",{12,480,getWidth()-24,20});}
+void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());if(getWidth()<=40)return;for(const auto& c:captions)caption(g,c.first,c.second);}
+// One vertical flow places every row and caption, so nothing overlaps at any width.
+int TrackInspector::layout(int width){
+    captions.clear();const int w=std::max(120,width-24),half=(w-6)/2;int y=6;
+    auto cap=[&](const char* title,int gap){y+=gap;captions.push_back({title,{12,y,w,18}});y+=22;};
+    auto row=[&](juce::Component& c,int h){c.setBounds(12,y,w,h);y+=h+6;};
+    auto pair=[&](juce::Component& a,juce::Component& b,int h){a.setBounds(12,y,half,h);b.setBounds(18+half,y,half,h);y+=h+6;};
+    captions.push_back({"TRACK INSPECTOR",{12,y,w-36,18}});y+=24;
+    row(name,26);source.setBounds(12,y-4,w,22);y+=22;
+    row(instrument,28);row(editor,28);pair(mute,solo,24);
+    cap("VOLUME / PAN",4);row(gain,28);row(pan,28);
+    cap("SOUND ASSIGNMENT",4);row(internal,26);row(sample,26);row(plugin,26);row(pluginEditor,26);
+    cap("LOCKS",4);row(lockTrack,26);row(lockClip,26);
+    cap("SELECTED CLIP",4);row(section,22);row(regenerate,26);row(loop,26);
+    return y+6;
+}
 void TrackInspector::resized(){
     const bool collapsed=getWidth()<=40;for(auto* child:getChildren())child->setVisible(!collapsed);if(collapsed)return;
-    const int w=getWidth()-24;
-    name.setBounds(12,30,w,26);source.setBounds(12,60,w,24);instrument.setBounds(12,94,w,28);editor.setBounds(12,128,w,28);
-    mute.setBounds(12,163,w/2-3,24);solo.setBounds(15+w/2,163,w/2-3,24);gain.setBounds(12,215,w,28);pan.setBounds(12,247,w,28);
-    internal.setBounds(12,304,w,26);sample.setBounds(12,334,w,26);plugin.setBounds(12,364,w,26);pluginEditor.setBounds(12,394,w,26);
-    lockTrack.setBounds(12,436,w/2-3,26);lockClip.setBounds(15+w/2,436,w/2-3,26);
-    section.setBounds(12,504,w,26);regenerate.setBounds(12,538,w,26);loop.setBounds(12,570,w,26);
+    contentHeight=layout(getWidth());
 }
 
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
@@ -181,6 +213,39 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     ok=ok&&project.sections[0].bars==6&&midiFile(project)==beforeCancel&&undoStack.size()==historySize;
     audio.seek(2);arrangement.mouseDown(event(406,76));arrangement.mouseUp(event(406,76));ok=ok&&std::abs(audio.position()-23.75)<1e-9;
     stage("individual loops and independent guide resizing, persistence, Undo and Escape");
+
+    {   // User-reported problems: loop removal, inspector sample browser and sound names,
+        // editor REGENERATE and instrument-panel changes, each with Undo.
+        const auto savedProject=project;showArrangement();arrangementPort.setViewPosition(0,0);select(4,1);project.clearLoop();changed(false);
+        sectionLoopButton.onClick();ok=ok&&project.loop&&clipLoopActive()&&sectionLoopButton.getToggleState();
+        sectionLoopButton.onClick();ok=ok&&!project.loop&&!project.hasLoopRegion()&&!sectionLoopButton.getToggleState();
+        undo(false);ok=ok&&project.loop&&clipLoopActive();undo(true);ok=ok&&!project.loop&&!project.hasLoopRegion();
+        keyPressed(juce::KeyPress('L'));ok=ok&&project.loop&&project.loopStart==0&&project.loopEnd==project.length();keyPressed(juce::KeyPress('L'));ok=ok&&!project.loop;
+        checkpoint();setLoopRange(4,16);arrangementPort.setViewPosition(0,0);arrangement.mouseDoubleClick(event(280,46));ok=ok&&!project.loop&&!project.hasLoopRegion();
+        undo(false);ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16;
+        stage("loop on/off, removal, double-click clear and Undo");
+        showSampleBrowser(false);select(1,0);auto* chooserBefore=chooser.get();
+        if(auto* button=dynamic_cast<juce::Button*>(trackInspector.findChildWithID("inspector-sample")))button->onClick();else ok=false;
+        ok=ok&&browserVisible&&sampleBrowser.isVisible()&&chooser.get()==chooserBefore&&page==Page::arrangement&&selectedTrack==1;showSampleBrowser(false);
+        stage("inspector LOAD SAMPLE opens the integrated browser");
+        auto* sourceLabel=dynamic_cast<juce::Label*>(trackInspector.findChildWithID("track-source"));
+        ok=ok&&sourceLabel!=nullptr&&sourceLabel->getText()==soundSourceName(1)&&soundSourceName(1)==juce::String(guideSoundName(std::clamp(project.tracks[1].sound,0,6)))&&soundSourceName(4)==juce::String(GuideDrums::kitName(std::clamp(project.tracks[4].sound,0,3)));
+        project.tracks[5].instrument="sample";project.tracks[5].instrumentPath=juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("My Snare.wav").getFullPathName().toStdString();ok=ok&&soundSourceName(5)=="My Snare";
+        project.tracks[6].instrument="plugin";project.tracks[6].instrumentPath="/missing/Big Synth.vst3";ok=ok&&soundSourceName(6).contains("Big Synth");
+        project=savedProject;changed();
+        stage("track headers and inspector name the actual sound");
+        select(0,1);showEditor();const auto beforeEdit=clip();clip().notes.clear();regenerateClipButton.onClick();
+        ok=ok&&regenerateClipButton.isVisible()&&!clip().notes.empty()&&clip().seed!=beforeEdit.seed;undo(false);ok=ok&&clip().notes.empty();
+        clip().locked=true;const auto lockedClip=clip();regenerateClipButton.onClick();ok=ok&&clip()==lockedClip;clip().locked=false;
+        ok=ok&&drawTool.getButtonText().isEmpty()&&drawTool.getTooltip().isNotEmpty()&&eraseTool.getTooltip().isNotEmpty()&&selectTool.getTooltip().isNotEmpty();
+        stage("editor REGENERATE with locks and Undo; tool icons with tips");
+        project=savedProject;changed();select(0,1);showInstrument();const auto pianoBefore=project.tracks[0].clips;
+        juce::ComboBox* groove=nullptr;for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="GROOVE")groove=dynamic_cast<juce::ComboBox*>(child);
+        if(groove){groove->setSelectedItemIndex(groove->getSelectedItemIndex()==2?3:2,juce::sendNotificationSync);}
+        ok=ok&&groove!=nullptr&&project.tracks[0].clips!=pianoBefore;undo(false);ok=ok&&project.tracks[0].clips==pianoBefore;
+        stage("instrument panel groove re-renders the piano, Undo restores it");
+        project=savedProject;changed();showArrangement();
+    }
 
     const auto savedHeights=arrangement.trackHeights;const auto savedLanes=arrangement.volumeVisible;
     arrangement.trackHeights.fill(40);arrangement.volumeVisible.fill(false);updateSizes();arrangementPort.setViewPosition(0,0);

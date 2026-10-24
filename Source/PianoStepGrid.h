@@ -19,10 +19,10 @@ public:
         if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,sgk::GrooveEngine::basePattern(pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed)));
         if(ev.y<70){auto& symbol=(owner.selectedTrack==1?e.userLeft:e.userRight)[(size_t)i];const std::string symbols=".xXg>=";auto pos=symbols.find(symbol);symbol=ev.mods.isRightButtonDown()?'.':symbols[(pos==std::string::npos?0:pos+1)%symbols.size()];}
         else setLevel(ev);
-        owner.changed(false);repaint();
+        owner.applyInstrumentSettings(owner.selectedTrack,false);repaint();
     }
-    void mouseDrag(const juce::MouseEvent& ev)override{if(ev.getMouseDownY()>=70){setLevel(ev);owner.changed(false);repaint();}}
-    void mouseDoubleClick(const juce::MouseEvent& ev)override{if(ev.y>=70){int i=index(ev.position.x);if(i>=0){owner.checkpoint();auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;(owner.selectedTrack==1?e.userVelLeft:e.userVelRight)[(size_t)i]=0;owner.changed(false);repaint();}}}
+    void mouseDrag(const juce::MouseEvent& ev)override{if(ev.getMouseDownY()>=70){setLevel(ev);owner.applyInstrumentSettings(owner.selectedTrack,false);repaint();}}
+    void mouseDoubleClick(const juce::MouseEvent& ev)override{if(ev.y>=70){int i=index(ev.position.x);if(i>=0){owner.checkpoint();auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;(owner.selectedTrack==1?e.userVelLeft:e.userVelRight)[(size_t)i]=0;owner.applyInstrumentSettings(owner.selectedTrack,false);repaint();}}}
 private:
     int index(float x)const{return x<80||x>=getWidth()?-1:std::clamp((int)((x-80)*32/(getWidth()-80)),0,31);}
     void setLevel(const juce::MouseEvent& ev){int i=index(ev.position.x);if(i<0)return;auto& e=owner.project.tracks[(size_t)owner.selectedTrack].engine;(owner.selectedTrack==1?e.userVelLeft:e.userVelRight)[(size_t)i]=(unsigned char)std::clamp((int)((145-ev.y)*127/70),1,127);}

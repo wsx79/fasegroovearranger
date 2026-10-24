@@ -70,8 +70,8 @@ void MainComponent::loopSelection(){
     const bool editor=page==Page::editor;double from=0,to=0;
     if(!selectionRange(*this,editor?piano.selected:arrangement.selectedClips,editor,from,to))return;
     if(editor){from+=clipStart();to+=clipStart();}
-    if(project.loop&&project.loopStart==from&&project.loopEnd==to)return;
-    checkpoint();setLoopRange(from,to);
+    // The same selection again removes the loop.
+    checkpoint();project.toggleLoopRegion(from,to);changed(false);
 }
 void PianoRoll::retainSelection(const std::vector<Note>& wanted){
     selected.clear();const auto& notes=owner.clip().notes;

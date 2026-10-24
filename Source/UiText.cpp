@@ -15,7 +15,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("NEW"))return tr("Start a new song project.");
     if(key.equalsIgnoreCase("OPEN"))return tr("Open a local .fga project.");
     if(key.equalsIgnoreCase("EXPORT"))return tr("Export the mix or separate tracks as MIDI, WAV or MP3.");
-    if(key.equalsIgnoreCase("LOAD SAMPLE"))return tr("Choose a personal audio sample for this track.");
+    if(key.equalsIgnoreCase("LOAD SAMPLE"))return tr("Open the integrated sample browser for this track: double-click a sample or drag it onto the track.");
     if(key.equalsIgnoreCase("LOAD VST3 / AU"))return tr("Open the plugin browser: FaseGroove engines first, then instruments and effects by manufacturer.");
     if(key.equalsIgnoreCase("OPEN VST"))return tr("Load an installed instrument; OPEN VST shows its own controls.");
     if(key.equalsIgnoreCase("COPY"))return tr("Copy or paste MIDI notes in the selected clip.");
@@ -101,7 +101,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("Voicing"))return tr("How the chord notes are spread on the keyboard");
     if(key.equalsIgnoreCase("Extensions"))return tr("How rich the chords are: triads, 7ths, 9ths, 11ths/13ths, 6/9, sus...");
     if(key=="UNDO"||key=="REDO"||key=="CLOSE"||key=="DELETE"||key=="+12"||key=="-12")return tr(key);
-    return tr(key)+". "+tr("Settings apply on the next generation; the MIDI already written stays editable.");
+    return tr(key)+". "+tr("Changes re-render this part right away; locked tracks and clips are kept.");
 }
 
 void translateControls(juce::Component& c){

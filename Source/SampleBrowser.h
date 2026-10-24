@@ -22,6 +22,7 @@ public:
     static constexpr const char* dragPrefix="fga-sample:";
     void refreshText();
     void refreshTarget();
+    void focusList(){if(isShowing())fileList.grabKeyboardFocus();}
     void paint(juce::Graphics&) override;
     void paintOverChildren(juce::Graphics&) override;
     void resized() override;

@@ -105,6 +105,33 @@ namespace
                 p.lineTo (0.9f, 0.8f); p.lineTo (0.1f, 0.8f); p.closeSubPath();
                 strokeWidth = 0.08f;
                 break;
+            case I::pencil:
+            {
+                // Pencil at 45 degrees: body, ferrule line and tip.
+                p.startNewSubPath (0.68f, 0.14f); p.lineTo (0.86f, 0.32f); p.lineTo (0.36f, 0.82f);
+                p.lineTo (0.14f, 0.86f); p.lineTo (0.18f, 0.64f); p.closeSubPath();
+                p.startNewSubPath (0.58f, 0.24f); p.lineTo (0.76f, 0.42f);
+                p.startNewSubPath (0.18f, 0.64f); p.lineTo (0.36f, 0.82f);
+                strokeWidth = 0.08f;
+                break;
+            }
+            case I::pointer:
+                // Arrow cursor.
+                p.startNewSubPath (0.26f, 0.12f); p.lineTo (0.26f, 0.78f); p.lineTo (0.42f, 0.63f);
+                p.lineTo (0.53f, 0.88f); p.lineTo (0.64f, 0.83f); p.lineTo (0.53f, 0.59f);
+                p.lineTo (0.74f, 0.58f); p.closeSubPath();
+                strokeWidth = 0.075f;
+                break;
+            case I::eraser:
+            {
+                // Tilted eraser block over a base line; the lower half is the rubber.
+                p.startNewSubPath (0.56f, 0.14f); p.lineTo (0.88f, 0.46f); p.lineTo (0.5f, 0.84f);
+                p.lineTo (0.3f, 0.84f); p.lineTo (0.14f, 0.68f); p.closeSubPath();
+                p.startNewSubPath (0.36f, 0.34f); p.lineTo (0.68f, 0.66f);
+                p.startNewSubPath (0.5f, 0.88f); p.lineTo (0.9f, 0.88f);
+                strokeWidth = 0.08f;
+                break;
+            }
             case I::none:
             default: break;
         }

@@ -1,5 +1,15 @@
 # Novità — Fase Groove Arranger
 
+## 0.14.3 — 2026-10-24
+
+- Loop: il pulsante loop, L, il loop di sezione/clip e Ctrl+L spengono di nuovo il loop; un doppio clic sul righello o il menu contestuale tolgono la zona. Annullabile e salvato nel progetto.
+- CARICA CAMPIONE nell'inspector apre il browser campioni interno per quella traccia.
+- Le tracce mostrano lo strumento usato: il plugin, il campione o il suono interno.
+- L'inspector è rifatto come un'unica colonna stabile.
+- GENERA BRANO segue ogni volta la forma del genere attuale; le modifiche sulla timeline non la bloccano più; tracce e clip bloccate restano.
+- Le modifiche nel pannello strumento rigenerano la parte; quelle dell'armonia rigenerano anche basso, archi e chitarra (blocchi rispettati).
+- Editor MIDI: pulsante RIGENERA (annullabile). Matita, selezione e gomma sono icone.
+
 ## 0.14.2 — 2026-10-23
 
 - Il browser campioni considera nascosti i file e le cartelle che iniziano con un punto su ogni piattaforma, Windows compreso.

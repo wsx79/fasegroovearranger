@@ -93,6 +93,13 @@ struct Project {
     double masterGain = .8;
     bool loop = false;
     double loopStart = 0, loopEnd = 0;
+    // Loop locators. An empty region (start == end) means no loop region at all.
+    bool hasLoopRegion() const { return loopEnd - loopStart >= 1. / 960.; }
+    bool loopMatches(double from, double to) const;
+    void setLoopRegion(double from, double to);   // sets and enables the loop
+    bool toggleLoopRegion(double from, double to); // same active region: clears it; returns the new state
+    bool toggleLoop();                             // no region: loops the whole song
+    void clearLoop();
     double sectionStart(int index) const;
     double length() const;
     double clipLength(int track, int section) const;
@@ -136,6 +143,14 @@ std::vector<std::string> chordNames(const Settings&);
 // patterns, releasing fixed pattern/riff overrides on targeted tracks. Song scope
 // also changes key, tempo, feel and 8-bar section lengths unless notes are locked.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
+// Instrument-panel edits re-render the stored takes (zero seed) of the edited
+// track. Harmony edits (key, scale, chords, voicing...) also re-render the other
+// harmonic parts that follow the chords: piano, bass, strings and guitar. Locks hold.
+void applyInstrumentChange(Project&, int track, bool harmony);
+// A new performance take of one clip from the current instrument settings: groove,
+// riff and pattern choices are kept, only the clip's variation seed changes.
+// Returns false (and changes nothing) for a locked track or clip.
+bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);

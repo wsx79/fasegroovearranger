@@ -176,6 +176,18 @@ public:
     void suspendFollow();
     bool verifyNavigation(const juce::File&);
     void setLoopRange(double from,double to);
+    void toggleLoop();
+    void clearLoop();
+    void toggleClipLoop();
+    bool clipLoopActive() const;
+    // What the track actually plays: the plugin's name, the sample's name or the guide sound.
+    juce::String soundSourceName(int track);
+    void useBuiltInSound(int track);
+    void browseSamplesFor(int track);
+    void toggleTrackLock();
+    void toggleClipLock();
+    void regenerateEditedClip();
+    void applyInstrumentSettings(int track,bool harmony);
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
     bool verifyDawWorkspace(const juce::File&);
@@ -218,7 +230,8 @@ private:
     juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
     juce::ComboBox soundBox,gridBox;
     juce::TextButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
-    juce::TextButton fitNotesButton{"FIT"},drawTool{"DRAW"},selectTool{"SELECT"},eraseTool{"ERASE"};
+    juce::TextButton fitNotesButton{"FIT"};
+    IconButton drawTool{IconButton::Icon::pencil},selectTool{IconButton::Icon::pointer},eraseTool{IconButton::Icon::eraser},regenerateClipButton{IconButton::Icon::dice};
     juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     juce::TextButton sectionLoopButton{"LOOP CLIP"};
     juce::TextButton chordEditButton{"EDIT CHORDS"};
