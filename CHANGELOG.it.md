@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.16.1 — 2026-10-25
+
+- Loop nel righello: trascina i bordi per ridimensionarlo (agganciato alla griglia, almeno un beat), trascina il centro per spostarlo, trascina sul righello vuoto per disegnarne uno nuovo; un annulla per gesto, un clic sposta ancora il cursore.
+
 ## 0.16.0 — 2026-10-25
 
 - Nuovo aspetto da DAW professionale: trasporto centrato con LCD (posizione, tempo, metro, tonalità), barra a icone con suggerimenti, righello con marker di sezione colorati, clip con anteprima delle note, intestazioni traccia con icona dello strumento e meter stereo, mixer con scala dB, meter stereo con picco e pan a manopola, inspector a sezioni, tastiera del piano roll ridisegnata. Da fermo non ridisegna nulla.

@@ -154,6 +154,40 @@ void ArrangementView::paint(juce::Graphics& g){
         juce::Path head;head.addTriangle(playX-5.5f,(float)y+33,playX+6.5f,(float)y+33,playX+.5f,(float)y+40);g.setColour(Daw::playhead);g.fillPath(head);}
     if(clipMoving&&clipTrack>=0&&clipTarget>=0){auto indices=selectedClips;indices.insert(clipSource);double delta=clipDropBeat-p.clipStart(clipTrack,clipSource);for(int index:indices)delta=std::max(delta,-p.clipStart(clipTrack,index));g.setColour(Daw::accent);for(int index:indices){if(index<0||index>=(int)p.tracks[(size_t)clipTrack].clips.size())continue;const float x=beatX(p.clipStart(clipTrack,index)+delta);g.drawRoundedRectangle({x+1,(float)rowY(rowForTrack(clipTarget))+2,std::max(2.f,(float)(p.clipLength(clipTrack,index)/4*pixelsPerBar)-1),(float)rowHeight(rowForTrack(clipTarget))-4},Daw::radius,2.f);}}
 }
+int ArrangementView::loopEdgeAt(float x)const{
+    const auto& p=owner.project;if(!p.hasLoopRegion())return loopNone;const float from=headerWidth+(float)(p.loopStart/4*pixelsPerBar),to=headerWidth+(float)(p.loopEnd/4*pixelsPerBar);
+    const float toFrom=std::abs(x-from),toTo=std::abs(x-to);if(std::min(toFrom,toTo)>5)return loopNone;return toTo<=toFrom?loopRightEdge:loopLeftEdge;
+}
+// Edges and moves snap to the timeline grid (Shift: free); a loop is at least one beat long.
+// The first real movement makes one Undo step; a region that was off stays off.
+void ArrangementView::dragLoop(const juce::MouseEvent& e){
+    if(!loopGestureActive){if(std::abs(e.position.x-loopPressX)<(loopGesture==loopLeftEdge||loopGesture==loopRightEdge?2.f:4.f))return;owner.checkpoint();loopGestureActive=true;}
+    auto& p=owner.project;const double length=p.length(),beat=std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,length);const bool free=e.mods.isShiftDown();
+    auto snap=[&](double b){return std::clamp(snapBeat(b,free),0.,length);};double from=loopFrom,to=loopTo;
+    if(loopGesture==loopLeftEdge)from=std::clamp(snap(beat),0.,std::max(0.,loopTo-1));
+    else if(loopGesture==loopRightEdge)to=std::clamp(snap(beat),std::min(length,loopFrom+1),length);
+    else if(loopGesture==loopMove){const double delta=std::clamp(snap(loopFrom+beat-loopPressBeat)-loopFrom,-loopFrom,length-loopTo);from=loopFrom+delta;to=loopTo+delta;}
+    else{from=snap(loopPressBeat);to=snap(beat);if(std::abs(to-from)<1){to=beat>=loopPressBeat?from+1:from-1;if(to<0){from=1;to=0;}if(to>length){to=length;from=length-1;}}}
+    p.setLoopRegion(from,to);if(loopGesture!=loopDraw&&!loopWasOn)p.loop=false;owner.changed(false);
+    const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);
+}
+bool ArrangementView::verifyLoopEditing(){
+    // At 32 px per bar (8 px per beat), snap 1 beat, a loop from beat 4 to 16.
+    const auto saved=owner.project;const double zoom=pixelsPerBar;const double snap=owner.timelineSnap;pixelsPerBar=32;owner.timelineSnap=1;owner.updateSizes();owner.arrangementPort.setViewPosition(0,0);
+    auto at=[](double beat){return headerWidth+(float)beat*8;};
+    auto event=[this](float x,int mods=0){const juce::Point<float> p(x,46);return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,this,this,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
+    auto drag=[&](float from,float to,int mods=0){mouseDown(event(from,mods));mouseDrag(event((from+to)*.5f,mods));mouseDrag(event(to,mods));mouseUp(event(to,mods));};
+    auto& p=owner.project;owner.checkpoint();p.setLoopRegion(4,16);owner.changed(false);const auto history=owner.undoStack.size();
+    bool ok=loopEdgeAt(at(16)+3)==loopRightEdge&&loopEdgeAt(at(4)-3)==loopLeftEdge&&loopEdgeAt(at(10))==loopNone;
+    drag(at(16),at(18)+2);ok=ok&&p.loop&&p.loopStart==4&&p.loopEnd==18;                              // right edge, snapped
+    drag(at(4),at(2)-3);ok=ok&&p.loopStart==2&&p.loopEnd==18;                                         // left edge
+    drag(at(10),at(14));ok=ok&&p.loopStart==6&&p.loopEnd==22;                                         // whole region
+    drag(at(22),at(1));ok=ok&&p.loopStart==6&&p.loopEnd==7;                                           // at least one beat
+    drag(at(24),at(29));ok=ok&&p.loop&&p.loopStart==24&&p.loopEnd==29;                                // a new loop drawn on the ruler
+    ok=ok&&owner.undoStack.size()==history+5;owner.undo(false);ok=ok&&p.loopStart==6&&p.loopEnd==7;owner.undo(false);ok=ok&&p.loopStart==6&&p.loopEnd==22;
+    const double position=owner.timelinePosition();mouseDown(event(at(10)));mouseUp(event(at(10)));ok=ok&&p.loopStart==6&&p.loopEnd==22&&std::abs(owner.timelinePosition()-10)<1e-9&&position!=10;   // a click seeks
+    owner.project=saved;pixelsPerBar=zoom;owner.timelineSnap=snap;owner.changed(false);owner.updateSizes();return ok;
+}
 void ArrangementView::setHover(int track,int clip){
     if(track==hoverTrack&&clip==hoverClip)return;
     const auto view=owner.arrangementPort.getViewArea();
@@ -173,7 +207,8 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         if(e.y<v.getY()+32){owner.select(owner.selectedTrack,si);owner.seekTimeline(std::max(0.,(e.position.x-headerWidth)*4./pixelsPerBar));}
         else{const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());
             if(e.mods.isShiftDown()){owner.checkpoint();loopDragging=true;loopAnchor=beat;owner.setLoopRange(beat,std::min(owner.project.length(),beat+4));}
-            else owner.seekTimeline(std::max(0.,(e.position.x-headerWidth)*4./pixelsPerBar));}
+            else{const auto& p=owner.project;const int edge=loopEdgeAt(e.position.x);loopPressX=e.position.x;loopPressBeat=std::max(0.,(e.position.x-headerWidth)*4./pixelsPerBar);loopFrom=p.loopStart;loopTo=p.loopEnd;loopWasOn=p.loop;loopGestureActive=false;
+                loopGesture=edge!=loopNone?edge:p.hasLoopRegion()&&loopPressBeat>p.loopStart&&loopPressBeat<p.loopEnd?loopMove:loopDraw;grabKeyboardFocus();}}
         return;
     }
     const int row=rowAt(e.y);if(row<0)return;const int ti=trackAtRow(row);
@@ -301,11 +336,14 @@ void ArrangementView::mouseDrag(const juce::MouseEvent& e){
             const bool ok=resizeTrack<0?(owner.project.resizeGuide(resizeSectionIndex,(int)(duration/4)),true):owner.project.resizeClipLoop(resizeTrack,resizeSectionIndex,duration);
             if(!ok){owner.project=std::move(previous);return;}resizeLastLength=duration;owner.refreshControls();repaint();}
         const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);return;}
+    if(loopGesture!=loopNone){dragLoop(e);return;}
     if(loopDragging){const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());owner.setLoopRange(std::min(loopAnchor,beat),std::min(owner.project.length(),std::max(loopAnchor,beat)+4));return;}
     if(clipTrack>=0){clipMoving=clipMoving||std::abs(e.position.x-clipAnchorX)>4||rowAt(e.y)!=rowForTrack(clipTrack);const int row=rowAt(e.y);clipTarget=row>=0?trackAtRow(row):clipTrack;clipDropBeat=snapBeat(owner.project.clipStart(clipTrack,clipSource)+(e.position.x-clipAnchorX)*4./pixelsPerBar,e.mods.isShiftDown());const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);repaint();return;}
     if(dragTrack<0||dragPoint<0)return;auto& points=envelope(dragTrack).points;if(dragPoint>=(int)points.size())return;if(bending)points[(size_t)dragPoint].curve=std::clamp(originalCurve+(dragY-e.position.y)/40.,-1.,1.);else editPoint(e.position,!e.mods.isShiftDown());owner.changed(false);}
 void ArrangementView::mouseUp(const juce::MouseEvent&){
     if(panning){panning=false;return;}
+    // A click without a drag on the loop strip seeks there, as before.
+    if(loopGesture!=loopNone){const bool moved=loopGestureActive;loopGesture=loopNone;loopGestureActive=false;if(!moved)owner.seekTimeline(loopPressBeat);repaint();return;}
     if(heightTrack>=0){heightTrack=-1;saveTrackHeights();return;}
     if(resizeBefore){if(resizeLastLength!=resizeOriginalLength){auto after=std::move(owner.project);owner.project=*resizeBefore;owner.checkpoint();owner.project=std::move(after);resizeBefore.reset();resizeSectionIndex=resizeTrack=-1;owner.changed();}else{const double beat=std::clamp((resizeAnchorX-headerWidth)*4./pixelsPerBar,0.,owner.project.length());cancelResize();owner.seekTimeline(beat);}return;}
     if(clipMoving&&clipTrack>=0&&clipTarget>=0)owner.moveSelectedClips(clipTrack,clipSource,clipTarget,clipDropBeat,copyingClip);clipMoving=false;
@@ -319,7 +357,9 @@ void ArrangementView::mouseMove(const juce::MouseEvent& e){{const auto v=owner.a
     const bool edge=header?edgeAt(-1,e.position.x)>=0:e.y>=view.getY()+rulerHeight&&hoverRow>=0&&e.y<rowY(hoverRow)+rowHeight(hoverRow)&&edgeAt(trackAtRow(hoverRow),e.position.x)>=0;
     setMouseCursor(edge?juce::MouseCursor::LeftRightResizeCursor:juce::MouseCursor::NormalCursor);
     if(edge){setTooltip(tr(header?"Drag this guide edge to change its duration. Clips and automation stay in place. Escape cancels; Undo restores.":"Drag this edge to resize only this clip loop. Shorten and extend without losing the source; Shift for quarter-beat timing. Escape cancels; Undo restores."));return;}
-    const auto v=owner.arrangementPort.getViewArea();if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+rowHeight(row)){setTooltip(tr("Click to select and position playback. Double-click or E opens MIDI editing. Drag to move; Alt-drag copies. Shift-click selects more clips on this track. Use the edit toolbar or right-click for split, cut, copy, paste, duplicate and delete."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
+    const auto v=owner.arrangementPort.getViewArea();if(e.y>=v.getY()+32&&e.y<v.getY()+rulerHeight&&e.x>=v.getX()+headerWidth){const int loopEdge=loopEdgeAt(e.position.x);const double beat=(e.position.x-headerWidth)*4./pixelsPerBar;const bool inside=owner.project.hasLoopRegion()&&beat>owner.project.loopStart&&beat<owner.project.loopEnd;
+        setMouseCursor(loopEdge!=loopNone?juce::MouseCursor::LeftRightResizeCursor:inside?juce::MouseCursor::DraggingHandCursor:juce::MouseCursor::NormalCursor);setTooltip(tr("Drag the loop edges to resize it, drag inside it to move it, or drag on the ruler to draw a new loop. Click to seek; double-click the loop to remove it."));return;}
+    if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click the ruler to seek; Shift-drag to set the loop range."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.y<rowY(row)+rowHeight(row)){setTooltip(tr("Click to select and position playback. Double-click or E opens MIDI editing. Drag to move; Alt-drag copies. Shift-click selects more clips on this track. Use the edit toolbar or right-click for split, cut, copy, paste, duplicate and delete."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}
 bool ArrangementView::verifyAutomation(const juce::File& folder){
     const auto saved=owner.project;const auto visibility=volumeVisible;const int track=4;const double zoom=pixelsPerBar;pixelsPerBar=24;owner.select(track,0);owner.arrangementPort.setViewPosition(0,0);
     bool ok=!volumeVisible[(size_t)track]&&!owner.project.tracks[(size_t)track].volume.enabled;
@@ -923,6 +963,15 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     int tips=0;std::function<void(juce::Component&)> count=[&](auto& c){if(auto* tip=dynamic_cast<juce::SettableTooltipClient*>(&c))if(tip->getTooltip().isNotEmpty())++tips;for(auto* child:c.getChildren())count(*child);};count(*this);ok=tips>=50&&ok;
     folder.getChildFile("localisation.txt").replaceWithText(ok?"PASS six interface languages, live translation, extended piano sections and control tooltips":"FAIL localisation or extended controls");showArrangement();return ok;
 }
+// Every visible icon-only button must explain itself with a tooltip.
+juce::StringArray MainComponent::iconButtonsWithoutTips(){
+    juce::StringArray missing;std::function<void(juce::Component&,const juce::String&)> scan=[&](juce::Component& c,const juce::String& path){
+        if(!c.isVisible())return;
+        // It must also be the component the pointer finds there (not covered by another one).
+        if(auto* icon=dynamic_cast<IconButton*>(&c))if(icon->getTooltip().trim().isEmpty()||(getComponentAt(getLocalPoint(&c,c.getLocalBounds().getCentre()))!=&c))missing.add(path+"/"+(c.getComponentID().isNotEmpty()?c.getComponentID():c.getName().isNotEmpty()?c.getName():juce::String(c.getX())+","+juce::String(c.getY())));
+        for(auto* child:c.getChildren())scan(*child,path+"/"+juce::String(c.getParentComponent()?c.getParentComponent()->getIndexOfChildComponent(&c):0));};
+    scan(*this,"main");return missing;
+}
 bool MainComponent::writeUiEvidence(const juce::File& folder){
     juce::String fail;
     auto mark=[&](const char* step,bool value){if(!value&&fail.isEmpty())fail=step;return value;};
@@ -954,6 +1003,8 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     for(int track:{4,1,0,2,3}){select(track,1);showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentPort.isVisible()&&!pianoPort.isVisible()&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(track>=4)ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize where pitched, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
     folder.getChildFile("panel-layout.txt").replaceWithText(layoutReport);folder.getChildFile("midi-editing.txt").replaceWithText(editingReport);
     select(3,1);piano.guitarNotes=true;showEditor();ok=mark("guitar-lanes",!piano.laneView())&&ok;capture("guitar-notes");ok=mark("guitar-notes",piano.verifyEditing())&&ok;piano.guitarNotes=false;showArrangement();select(4,0);
+    {juce::StringArray missing;showArrangement();showSampleBrowser(true);missing.addArray(iconButtonsWithoutTips());showSampleBrowser(false);for(int track:{0,3,4}){select(track,1);showInstrument();missing.addArray(iconButtonsWithoutTips());showEditor();missing.addArray(iconButtonsWithoutTips());}showArrangement();select(4,0);
+        if(!missing.isEmpty())fail="icon buttons without a tooltip: "+missing.joinIntoString(", ");ok=mark("icon-tips",missing.isEmpty())&&ok;}
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 }
 void MainComponent::timerCallback(){

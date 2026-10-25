@@ -61,6 +61,14 @@ private:
     int dragTrack=-1,dragPoint=-1;
     bool bending=false,loopDragging=false,copyingClip=false;
     double loopAnchor=0;
+    // Loop brace gestures on the lower ruler: move an edge, move the region or draw a new one.
+    enum LoopGesture { loopNone=0,loopLeftEdge,loopRightEdge,loopMove,loopDraw };
+    int loopGesture=loopNone;bool loopGestureActive=false,loopWasOn=false;float loopPressX=0;double loopPressBeat=0,loopFrom=0,loopTo=0;
+    int loopEdgeAt(float x) const;   // loopLeftEdge, loopRightEdge or loopNone
+    void dragLoop(const juce::MouseEvent&);
+public:
+    bool verifyLoopEditing();
+private:
     int clipTrack=-1,clipSource=-1,clipTarget=-1;
     double clipAnchorX=0,clipDropBeat=0;
     bool clipMoving=false;
@@ -212,6 +220,7 @@ public:
     void applyInstrumentSettings(int track,bool harmony);
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
+    juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);
 private:

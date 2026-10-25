@@ -253,6 +253,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     arrangement.mouseDown(event(248,46,juce::ModifierKeys::shiftModifier));arrangement.mouseDrag(event(312,46,juce::ModifierKeys::shiftModifier));arrangement.mouseUp(event(312,46));ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16&&dirty;
     arrangement.mouseDoubleClick(event(232,76));ok=ok&&page==Page::editor&&pianoPort.isVisible();
     stage("ruler, loop and full MIDI editor");
+    showArrangement();ok=ok&&arrangement.verifyLoopEditing();stage("loop brace: edge resize, move, draw on the ruler, grid snap, one-beat minimum, click to seek and Undo");
     showArrangement();project.loop=false;changed();arrangementPort.setViewPosition(0,0);
     const double beforeEdgeResize=audio.position();
     arrangement.mouseDown(event(342,76));arrangement.mouseDrag(event(278,76));arrangement.mouseUp(event(278,76));

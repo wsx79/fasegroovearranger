@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.16.1 — 2026-10-25
+
+- Loop in the ruler: drag its edges to resize it (snapped to the grid, at least one beat), drag the middle to move it, drag on an empty ruler to draw a new one; one undo per gesture, a click still moves the playhead.
+
 ## 0.16.0 — 2026-10-25
 
 - New professional DAW look: centred transport with an LCD (position, tempo, metre, key), icon toolbar with tooltips, ruler with coloured section markers, clips with note previews, track headers with instrument icon and stereo meters, mixer with dB scale, stereo peak-hold meters and pan knobs, sectioned inspector, redrawn piano-roll keyboard. Nothing redraws while stopped.
