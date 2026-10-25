@@ -519,5 +519,16 @@ int main(int argc,char** argv){try{
         check(original.size()==higher.size()&&!higher.empty(),"global lead octave retains attacks");
         for(size_t i=0;i<original.size();++i)check(higher[i].pitch==original[i].pitch+12&&higher[i].start==original[i].start&&higher[i].velocity==original[i].velocity,"global lead octave changes register, keeping the stored take");
     }
+    {
+        auto p=fga::newProject(1);const int first=p.addMidiTrack(),second=p.addMidiTrack();
+        p.tracks[(size_t)second].name="Personal lead";p.tracks[(size_t)second].clips[0].notes={{1,1,77,112,0}};p.tracks[(size_t)second].instrument="plugin";p.tracks[(size_t)second].instrumentState="saved instrument";p.tracks[(size_t)second].effectState="saved effect";
+        const auto keep=p.tracks[(size_t)second];const auto factory=p.tracks[0].clips;
+        check(!p.deleteMidiTrack(0)&&!p.deleteMidiTrack(fga::leadTrack)&&!p.deleteMidiTrack(99),"only handwritten MIDI tracks can be deleted");
+        check(p.deleteMidiTrack(first)&&p.tracks.size()==fga::trackCount+1,"delete a handwritten MIDI track");
+        const auto& moved=p.tracks[(size_t)first];check(moved.name==keep.name&&moved.clips==keep.clips&&moved.instrumentState==keep.instrumentState&&moved.effectState==keep.effectState&&moved.kind==first&&p.tracks[0].clips==factory,"later manual notes, name, plugin and effect state follow their compacted routing ID");
+        check(p.addMidiTrack()==second,"a deleted slot can be reused");
+        auto names=fga::newProject(1);const int deleted=names.addMidiTrack();names.addMidiTrack();names.deleteMidiTrack(deleted);const auto added=names.addMidiTrack();
+        check(names.tracks[(size_t)deleted].name!=names.tracks[(size_t)added].name,"default MIDI track names remain distinct after deletion and addition");
+    }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

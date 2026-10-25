@@ -270,6 +270,13 @@ void InstrumentPanel::rebuild(){
 }
 juce::String InstrumentPanel::layoutProblems()const{
     juce::String problems;
+    if(owner.selectedTrack<3){
+        const juce::Rectangle<int> content(40,254,256,204);
+        for(const auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();
+            if(name=="Voicing"||name=="TOP LINE"||name=="MOVEMENT"||name=="Range"||name=="STRUM DIRECTION"||name=="BASS LINE"||name=="BASS FEEL"||name=="STRINGS STYLE")
+                if(!c.component->getBounds().isEmpty()&&!content.contains(c.component->getBounds()))problems+="Outside coloured instrument frame: "+name+"\n";
+        }
+    }
     for(size_t i=0;i<controls.size();++i){const auto& c=controls[i];auto r=c.component->getBounds();auto name=c.component->getProperties()["fgaControl"].toString();if(r.isEmpty()||!getLocalBounds().contains(r))problems+="Outside panel: "+name+"\n";
         for(size_t j=i+1;j<controls.size();++j)if(r.intersects(controls[j].component->getBounds()))problems+="Overlapping controls: "+name+" / "+controls[j].component->getProperties()["fgaControl"].toString()+"\n";
     }
@@ -319,9 +326,9 @@ void InstrumentPanel::resized(){
         tool("Piano",32,y+82,90);tool("Bass",122,y+82,90);tool("Strings",212,y+82,90);put("Voicing",40,y+132,150);if(track==0)put("A/B",156,y+114,34,15);put("TOP LINE",198,y+132,98);
         put("BASS LINE",40,y+132,256);put("STRINGS STYLE",40,y+132,256);
         put("REGISTER",40,y+187,76,78);put(lead?"ATTACK DELAY":"STRUM",120,y+187,76,78);
-        put("MOVEMENT",202,y+165,102);put("Range",202,y+230,102,24);
-        put("Top +8va",32,y+288,128,24);put("STRUM DIRECTION",168,y+286,136,24);
-        put("BASS FEEL",32,y+184,272);
+        put("MOVEMENT",202,y+165,94);put("Range",202,y+230,94,24);
+        put("Top +8va",32,y+288,128,24);put("STRUM DIRECTION",168,y+286,128,24);
+        put("BASS FEEL",40,y+184,256);
         circle.setBounds(338,y+30,cw-20,268);put("Free chords",342,y+308,230,24);
         put("GROOVE",gx+14,y+46,gw-170);tool("<",gx+gw-152,y+50,20);tool(">",gx+gw-132,y+50,20);tool("NEW RIFF",gx+gw-98,y+46,84);
         const int phrase=(gw-38)/2;put("GROOVE LENGTH",gx+14,y+98,phrase);put("VARIATION EVERY",gx+24+phrase,y+98,phrase);

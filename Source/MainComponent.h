@@ -168,6 +168,10 @@ public:
     void select(int track,int section);
     void showTrackMenu(int);
     void addMidiTrack();
+    void deleteMidiTrack(int);
+    void showAddSectionMenu();
+    void addSongSection(Section);
+    void fitGeneratedView();
     void showInstrument();
     void showEditor();
     void showArrangement();
@@ -241,7 +245,7 @@ private:
     int mixerHeight=244,inspectorWidth=248;
     int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
-    juce::TextButton inspectorCollapse{"<"};
+    IconButton inspectorCollapse{IconButton::Icon::inspector};
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;

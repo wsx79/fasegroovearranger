@@ -365,9 +365,14 @@ void Project::normalise() {
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }
+bool Project::deleteMidiTrack(int track) {
+    if(!isManualTrack(track)||track>=(int)tracks.size())return false;
+    tracks.erase(tracks.begin()+track);normalise();return true;
+}
 int Project::addMidiTrack() {
     normalise();if(tracks.size()>=maxTracks)return -1;
-    Track t;t.kind=(int)tracks.size();t.name="MIDI "+std::to_string(t.kind-trackCount+1);
+    Track t;t.kind=(int)tracks.size();int number=t.kind-trackCount+1;
+    do{t.name="MIDI "+std::to_string(number++);}while(std::any_of(tracks.begin(),tracks.end(),[&](const Track& existing){return existing.name==t.name;}));
     t.freeTimeline=true;t.gain=.6;
     Clip c;c.position=0;c.span=sections.front().bars*4.;c.role=(int)sections.front().type;
     t.clips.push_back(c);tracks.push_back(std::move(t));normalise();return (int)tracks.size()-1;

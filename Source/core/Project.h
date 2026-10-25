@@ -130,6 +130,7 @@ struct Project {
     void removeGuide(int section);
     void moveGuide(int from, int to);
     void normalise();
+    bool deleteMidiTrack(int track); // generated instrument tracks cannot be removed
     int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
     void insertSection(int index, SongSection section, int copyFrom = -1);
     bool duplicateSection(int index);

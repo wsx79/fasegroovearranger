@@ -1,5 +1,16 @@
 # Validation record
 
+## 0.19.0 — MIDI deletion and workspace refinements
+
+- All seven Linux CTest checks pass, including core generation, independent MIDI reader, MP3, project I/O, updater, realtime audio and sample browser.
+- Core deletion checks protect all generated instruments and retain a later manual track's notes, name, plugin state and effect state after routing compaction. Deleted capacity is reusable and newly added tracks receive distinct default names.
+- Native UI smoke deletes a manual track through its inspector action, verifies the following track's notes and sound, and exercises Undo/Redo. It also fills the 32-track capacity, deletes and re-adds a track and checks that + MIDI is re-enabled after deletion and Undo.
+- The collapsed inspector is fully hidden with zero retained width, restoring the arrangement's left edge to 12 px; its toolbar icon restores the original width. Existing mixer/inspector resize, collapse, MIDI and transport checks pass.
+- All six section choices insert their selected role and support Undo. Explicit clip regeneration, APPLY and song regeneration reset horizontal zoom to fit; the MIDI editor also fits the generated pitch range.
+- Native panel checks cover Piano, Bass, Strings, Guitar, Drums and Lead. Playing menus are constrained inside the coloured frame. Screenshots verify track names above the mixer faders, source buttons below, the compact inspector icon and a readable master CLIP indicator.
+- Native MIDI-editing, automation, transport, sample browser, embedded IT/EN guides and audio export checks pass. Eighteen aligned stem exports, silent lane volume/mute tests, MP3 and audible regeneration variation pass independent verification.
+- Family theme/fonts, guide links and packaging fixtures pass. Release uses the unchanged Windows/macOS/Linux workflow and full thirteen-genre club audio gate.
+
 ## 0.18.0 — handwritten tracks, separate panels and piano variety
 
 - All seven Linux CTest checks pass: generation, independent MIDI reader, MP3, project I/O, updater, realtime audio and sample browser.

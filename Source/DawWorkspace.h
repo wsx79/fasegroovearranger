@@ -37,7 +37,7 @@ private:
     std::vector<juce::Rectangle<int>> cards;
     juce::Label name,source,section;
     juce::Slider gain,pan;
-    juce::TextButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
+    juce::TextButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},deleteTrack{"DELETE MIDI TRACK"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
     int layout(int width);
     bool validTrack() const;
 };

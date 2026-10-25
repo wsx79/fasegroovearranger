@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.19.0 — 2026-10-25
+
+- Handwritten MIDI tracks can be deleted from the inspector or track menu. Undo restores notes, routing, instrument/effect state and following tracks; generated instrument tracks remain protected.
+- The inspector uses a compact panel icon. Hiding it returns its entire width to the arrangement; reopen it from the toolbar or with I.
+- + SECTION opens a menu for Main, Intro, Breakdown, Build-up, Drop and Outro, inserting the chosen role as one undoable action.
+- Mixer strips show the track name at the top and the built-in/sample/plugin selector at the foot, including compact strips.
+- Piano/Bass/Strings controls sit inside the coloured playing frame with consistent padding.
+- Regeneration automatically fits the song in the arrangement, or the clip length and generated pitch range in the MIDI editor.
+
 ## 0.18.0 — 2026-10-25
 
 - Instrument panels open in a separate resizable window; the arrangement or MIDI editor stays in place, with playback and edits shared in real time.

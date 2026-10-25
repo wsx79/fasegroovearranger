@@ -26,7 +26,7 @@ void InspectorResizer::mouseUp(const juce::MouseEvent&){if(browser)Localisation:
 void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){owner.sampleBrowserWidth=0;owner.resized();Localisation::setSetting("sampleBrowserWidth",0);return;}owner.inspectorWidth=248;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
-    for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
+    for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
     name.setComponentID("track-name");name.setFont(Daw::font(18,true));name.setMinimumHorizontalScale(.7f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
     source.setFont(Daw::font(11));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
@@ -39,6 +39,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
     pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;refresh();};
     pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
+    deleteTrack.setComponentID("delete-midi-track");deleteTrack.onClick=[this]{owner.deleteMidiTrack(owner.selectedTrack);};tip(deleteTrack,"Delete this handwritten MIDI track. Undo restores its notes and sound.");
     instrument.onClick=[this]{owner.showInstrument();};editor.onClick=[this]{owner.showEditor();};
     mute.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
     solo.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.solo=!t.solo;owner.mixChanged();};
@@ -69,7 +70,7 @@ void TrackInspector::refresh(){
     if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
     // An automated volume or pan reads in blue.
     for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);}}
-    const bool busy=owner.loadingPlugin>0;const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
+    const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
     internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);sample.setToggleState(t.instrument=="sample",juce::dontSendNotification);plugin.setToggleState(t.instrument=="plugin",juce::dontSendNotification);
@@ -105,7 +106,7 @@ int TrackInspector::layout(int width){
     auto endCard=[&]{y+=8;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=8;cardStart=y;};
     title("TRACK INSPECTOR");
     name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+24,w,16);y+=46;
-    mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=30;endCard();
+    mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=30;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
     title("SOUND ASSIGNMENT");
     const int third=(w-gap*2)/3;
     internal.setBounds(inset,y,third,26);sample.setBounds(inset+third+gap,y,third,26);plugin.setBounds(inset+2*(third+gap),y,w-2*(third+gap),26);y+=32;
@@ -141,7 +142,7 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();
 }
-void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):Localisation::upper(text(owner.project.tracks[(size_t)track].name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,Daw::text);gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=170);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(name);translateControls(instrument);repaint();}
+void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):Localisation::upper(text(owner.project.tracks[(size_t)track].name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,Daw::text);gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(name);translateControls(instrument);repaint();}
 void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);
     // Each side falls smoothly; its peak holds for 1.5 s, then falls too.
     for(int side=0;side<2;++side){const float now=track<0?owner.audio.masterLevel(side):owner.audio.level(track,side);sides[(size_t)side]=std::max(now,sides[(size_t)side]*.82f);
@@ -174,15 +175,15 @@ void MixerStrip::paint(juce::Graphics& g){
         const float db=(float)gain.getValue();g.setColour(gain.isMouseOverOrDragging()?Daw::text:Daw::textDim);g.setFont(Daw::font(10.f,true));g.drawText(db<=-59.9f?juce::String::fromUTF8("-\xe2\x88\x9e"):juce::String(db,1),value,juce::Justification::centred);}
     if(pan.isVisible()){const double value=pan.getValue();g.setColour(Daw::textFaint);g.setFont(Daw::font(8.5f));g.drawText(std::abs(value)<.5?juce::String("C"):(value<0?"L":"R")+juce::String((int)std::round(std::abs(value))),juce::Rectangle<int>(pan.getX()-6,pan.getBottom(),pan.getWidth()+12,10),juce::Justification::centred);}
     // Name at the foot, on a band of the track colour.
-    const auto band=juce::Rectangle<float>(2.f,(float)h-20.f,(float)w-4.f,18.f);g.setColour(master?Daw::control:colour.withAlpha(current?.4f:.2f));g.fillRoundedRectangle(band,2.f);
+    const auto band=juce::Rectangle<float>(2.f,6.f,(float)w-4.f,22.f);g.setColour(master?Daw::control:colour.withAlpha(current?.4f:.2f));g.fillRoundedRectangle(band,2.f);
     g.setColour(current?Daw::text:juce::Colours::black.withAlpha(.6f));g.drawRoundedRectangle(body,Daw::radius,current?1.2f:1.f);
 }
 void MixerStrip::resized(){const int w=getWidth(),h=getHeight();const bool master=track<0;const bool compact=h<170;
-    name.setBounds(3,h-20,w-6,18);
+    name.setBounds(3,8,w-6,18);
     const int meterWidth=master?14:9,faderRight=w-meterWidth-10;
-    if(compact){pan.setVisible(false);instrument.setVisible(false);mute.setBounds(5,8,(w-14)/2,18);solo.setBounds(9+(w-14)/2,8,(w-14)/2,18);clip.setBounds(6,8,w-12,18);gain.setBounds(10,32,faderRight-10,std::max(20,h-32-40));}
-    else{pan.setVisible(!master);instrument.setVisible(!master);instrument.setBounds(5,8,w-10,18);pan.setBounds(6,30,28,28);mute.setBounds(38,30,w-43,15);solo.setBounds(38,47,w-43,15);clip.setBounds(6,8,w-12,18);
-        gain.setBounds(10,master?36:72,faderRight-10,std::max(20,h-(master?36:72)-40));}}
+    if(compact){pan.setVisible(false);instrument.setVisible(!master);instrument.setBounds(5,h-22,w-10,18);mute.setBounds(5,30,(w-14)/2,18);solo.setBounds(9+(w-14)/2,30,(w-14)/2,18);clip.setBounds(6,32,w-12,18);gain.setBounds(10,master?60:54,faderRight-10,std::max(20,h-(master?60:54)-40));}
+    else{pan.setVisible(!master);instrument.setVisible(!master);instrument.setBounds(5,h-22,w-10,18);pan.setBounds(6,32,28,28);mute.setBounds(38,32,w-43,15);solo.setBounds(38,49,w-43,15);clip.setBounds(6,32,w-12,18);
+        gain.setBounds(10,master?60:72,faderRight-10,std::max(20,h-(master?60:72)-40));}}
 void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
 DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize its height; double-click to restore the default.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);collapseButton.setComponentID("mixer-collapse");
     tip(collapseButton,"Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.");
@@ -215,9 +216,9 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         collapse->onClick();ok=ok&&!mixerVisible&&mixer.isVisible()&&mixer.getHeight()==28&&arrangementPort.getHeight()>trackAreaHeight&&!mixerToggle.getToggleState();
         if(auto output=folder.getChildFile("mixer-collapsed.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
         const int trackAreaWidth=arrangementPort.getWidth();
-        inspectorCollapse.onClick();ok=ok&&!inspectorVisible&&inspectorPort.isVisible()&&inspectorPort.getWidth()==32&&arrangementPort.getWidth()>trackAreaWidth&&!inspectorToggle.getToggleState()&&inspectorCollapse.isVisible();
+        inspectorCollapse.onClick();ok=ok&&!inspectorVisible&&!inspectorPort.isVisible()&&inspectorPort.getWidth()==0&&arrangementPort.getWidth()>trackAreaWidth&&!inspectorToggle.getToggleState()&&!inspectorCollapse.isVisible()&&arrangementPort.getX()==12;
         if(auto output=folder.getChildFile("workspace-collapsed.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
-        inspectorCollapse.onClick();ok=ok&&inspectorVisible&&inspectorPort.getWidth()==inspectorWidth&&arrangementPort.getWidth()==trackAreaWidth&&inspectorToggle.getToggleState();
+        inspectorToggle.setToggleState(true,juce::dontSendNotification);inspectorToggle.onClick();ok=ok&&inspectorVisible&&inspectorPort.getWidth()==inspectorWidth&&arrangementPort.getWidth()==trackAreaWidth&&inspectorToggle.getToggleState();
         collapse->onClick();ok=ok&&mixerVisible&&mixer.getHeight()==expandedHeight&&mixerToggle.getToggleState()&&midiFile(project)==unchangedMidi&&audio.position()==unchangedPosition;
     }else ok=false;
     stage("dock collapse and restore");
@@ -381,6 +382,25 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         Project restored;ok=ok&&projectFromJson(projectJson(project),restored).wasOk()&&restored.tracks[(size_t)added].clips==written&&restored.tracks[(size_t)added].name=="La mia melodia";
         showArrangement();const auto mainPage=page;showInstrument();ok=ok&&page==mainPage&&instrumentIsOpen()&&instrumentPanel.layoutProblems().isEmpty();
         stage("manual MIDI editing, rename, generation isolation, save/load, add undo/redo and detached panel");
+        const int following=project.addMidiTrack();project.tracks[(size_t)following].name="Keep this track";project.tracks[(size_t)following].sound=3;project.tracks[(size_t)following].clips[0].notes={{1,.5,79,97,0}};const auto followingNotes=project.tracks[(size_t)following].clips;
+        select(added,0);changed();
+        if(auto* remove=dynamic_cast<juce::Button*>(trackInspector.findChildWithID("delete-midi-track")))remove->onClick();else ok=false;
+        ok=ok&&project.tracks.size()==count+1&&project.tracks[(size_t)added].name=="Keep this track"&&project.tracks[(size_t)added].clips==followingNotes&&project.tracks[(size_t)added].sound==3;
+        undo(false);ok=ok&&project.tracks.size()==count+2&&project.tracks[(size_t)added].clips==written;
+        undo(true);ok=ok&&project.tracks.size()==count+1&&project.tracks[(size_t)added].clips==followingNotes;
+        const auto generatedCount=project.tracks.size();deleteMidiTrack(0);ok=ok&&project.tracks.size()==generatedCount;
+        stage("delete manual track with later-track routing and undo/redo; generated tracks protected");
+        const auto capacityBefore=project;while(project.tracks.size()<maxTracks)project.addMidiTrack();changed();resized();ok=ok&&!addTrackButton.isEnabled();
+        deleteMidiTrack(maxTracks-1);ok=ok&&addTrackButton.isEnabled();addTrackButton.onClick();ok=ok&&project.tracks.size()==maxTracks&&!addTrackButton.isEnabled();undo(false);ok=ok&&addTrackButton.isEnabled();
+        project=capacityBefore;selectedTrack=0;selectedClip=-1;changed();resized();stage("delete frees track capacity and re-enables add MIDI, including after undo");
+        for(int type=0;type<6;++type){const auto formBefore=project;const int at=selectedSection+1;addSongSection((Section)type);ok=ok&&project.sections[(size_t)at].type==(Section)type&&project.sections.size()==formBefore.sections.size()+1;undo(false);ok=ok&&project.sections.size()==formBefore.sections.size();}
+        stage("all six section menu choices insert the chosen role and undo");
+        select(0,0);showEditor();piano.pixelsPerBeat=160;pianoPort.setViewPosition(200,0);regenerateEditedClip();
+        ok=ok&&pianoPort.getViewPositionX()==0&&piano.pixelsPerBeat<160&&piano.leftMargin()+clipLength()*piano.pixelsPerBeat<=pianoPort.getWidth();
+        piano.pixelsPerBeat=160;regenerate(Scope::clip,false);ok=ok&&piano.pixelsPerBeat<160&&pianoPort.getViewPositionX()==0;
+        int lowest=127,highest=0;for(const auto& n:clip().notes){lowest=std::min(lowest,n.pitch);highest=std::max(highest,n.pitch);}ok=ok&&piano.lowNote<=lowest&&piano.highNote>=highest;
+        showArrangement();arrangement.pixelsPerBar=160;regenerate(Scope::song);ok=ok&&arrangement.pixelsPerBar<160&&arrangementPort.getViewPositionX()==0;
+        stage("regeneration fits horizontal clip/song zoom and the generated pitch range");
         project=before;selectedTrack=0;selectedClip=-1;changed();
     }
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
