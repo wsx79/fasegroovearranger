@@ -1,5 +1,32 @@
 # Novità — Fase Groove Arranger
 
+## 0.20.0 — 2026-10-25
+
+- Clic sui nomi delle sezioni per ascoltare dal punto scelto. Clic su clip e griglia seleziona e modifica senza spostare la riproduzione; il righello numerato mantiene cursore e loop.
+- Annulla conserva il clip selezionato quando il suo intervallo è invariato, indipendentemente dal cursore di ascolto.
+- Durata MIDI visibile e modificabile dal bordo destro anche nei Drums. I colpi scritti a mano usano le durate del generatore, compresi due beat per il Crash.
+- I campioni Drums completano la coda naturale, sia durante l’ascolto sia nell’export audio. Stop continua a silenziarli subito.
+- Pannelli strumento ed editor VST restano in primo piano fino alla chiusura manuale; alla riapertura tornano al centro dello schermo.
+- Estensioni del piano applica subito il cambiamento dal selettore principale, come nel pannello originale. Entrambi i controlli sono verificati sul MIDI prodotto.
+- Guide della famiglia IT/EN aggiornate.
+
+## 0.19.0 — 2026-10-25
+
+- Elimina le tracce MIDI scritte a mano dall’inspector o dal menu traccia; Annulla ripristina note, routing, strumenti ed effetti. Le tracce generate restano protette.
+- Inspector richiudibile con una piccola icona: nessuna fascia vuota; riapertura dalla barra o con I.
+- + SECTION propone Main, Intro, Breakdown, Build-up, Drop e Outro.
+- Mixer con nome della traccia sopra il fader e sorgente sonora sotto. Menu Piano/Bass/Strings contenuti nei riquadri colorati.
+- Rigenerazione con zoom automatico sul brano oppure su durata e registro del clip.
+
+## 0.18.0 — 2026-10-25
+
+- Pannelli strumento in finestre separate e ridimensionabili, con ascolto e modifiche condivisi.
+- + MIDI aggiunge tracce scritte a mano, fino a 32 totali; supporta piano roll, sample/plugin, effetti, automazioni, salvataggio e stem. La generazione preserva le note manuali.
+- Rinomina dal nome nell’inspector/mixer o dal menu traccia; APRI VST apre l’editor dello strumento o effetto assegnato.
+- Ottava generale Lead relativa alle singole corsie, condivisa con il motore Lead VST3/Standalone.
+- Rigenerazioni del piano con attacchi ritmici più distinti, senza contare dinamica e umanizzazione come nuovi pattern. Take salvati e parti bloccate restano riproducibili.
+- Tonalità complete nella barra, comprese sigle come Db.
+
 ## 0.17.0 — 2026-10-25
 
 - Motore originale Fase Groove Lead integrato come diciottesima traccia: generazione monofonica, armonia e durata accordi condivise, dodici corsie, quattro synth guida, sample/plugin, automazioni e stem MIDI/audio.

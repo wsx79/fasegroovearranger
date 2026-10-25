@@ -18,6 +18,18 @@ int main(){
             for(int block=0;block<48;++block){engine.audioDeviceIOCallbackWithContext(nullptr,0,buffer.getArrayOfWritePointers(),2,512,context);peak=std::max(peak,buffer.getMagnitude(0,512));}
             check(peak>.001f&&engine.noteOnsSent(ti)>0,"handwritten MIDI track produces guide audio");engine.stop();
         }
+        {
+            auto dir=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-crash-tail","",false);dir.createDirectory();const auto sample=dir.getChildFile("Crash.wav"),exported=dir.getChildFile("Crash-export.wav");
+            juce::WavAudioFormat wav;{std::unique_ptr<juce::AudioFormatWriter> writer(wav.createWriterFor(sample.createOutputStream().release(),44100,2,16,{},0));check(writer!=nullptr,"create crash sample");juce::AudioBuffer<float> source(2,52920);for(int ch=0;ch<2;++ch)for(int n=0;n<source.getNumSamples();++n)source.setSample(ch,n,.4f*std::sin(n*.071f)*(1.f-n/52920.f));writer->writeFromAudioSampleBuffer(source,0,source.getNumSamples());}
+            auto crash=fga::newProject(1);crash.sections={{fga::Section::main,4,"Main"}};crash.normalise();crash.masterAutomation.enabled=false;for(auto& t:crash.tracks){t.volume.enabled=false;for(auto& c:t.clips)c.notes.clear();}
+            crash.tracks[16].clips[0].notes={{0,.25,49,110,12}};crash.tracks[16].instrument="sample";crash.tracks[16].instrumentPath=sample.getFullPathName().toStdString();crash.tracks[16].sampleRoot=49;
+            check(engine.loadSample(16,sample,49).wasOk(),"load real Crash sample");engine.publish(crash);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;float tail=0;
+            for(int n=0;n<80;++n){engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);if(n>=40)tail=std::max(tail,block.getMagnitude(0,512));}
+            check(tail>.001f,"short handwritten drum notes preserve the sample's natural tail");engine.stop();engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);check(block.getMagnitude(0,512)==0,"forced stop silences the ringing Crash sample");
+            auto copy=engine.offlineCopy();check(copy!=nullptr,"copy drum sampler");check(copy->exportAudio(crash,exported,16,false,[]{return false;},[](double){}).wasOk(),"export Crash sample tail");
+            juce::AudioFormatManager formats;formats.registerBasicFormats();{std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(exported));check(reader!=nullptr,"read exported crash");juce::AudioBuffer<float> audio(2,4096);reader->read(&audio,0,4096,26460,true,true);check(audio.getMagnitude(0,4096)>.001f,"private-copy export retains the complete Crash tail after note-off");}
+            engine.useInternal(16);copy.reset();dir.deleteRecursively();
+        }
         auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
         p.tracks[0].clips[0].notes={{0,12,60,100,0}};p.tracks[4].clips[0].notes={{0,.25,36,100,0}};

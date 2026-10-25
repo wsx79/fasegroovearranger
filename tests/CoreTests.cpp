@@ -530,5 +530,8 @@ int main(int argc,char** argv){try{
         auto names=fga::newProject(1);const int deleted=names.addMidiTrack();names.addMidiTrack();names.deleteMidiTrack(deleted);const auto added=names.addMidiTrack();
         check(names.tracks[(size_t)deleted].name!=names.tracks[(size_t)added].name,"default MIDI track names remain distinct after deletion and addition");
     }
+    {
+        check(fga::defaultDrumNoteLength(16)==2.&&fga::defaultDrumNoteLength(4)==1.&&fga::defaultDrumNoteLength(8)==.225&&fga::defaultDrumNoteLength(9)==.5,"handwritten drum gates match the original engine, including Crash");
+    }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

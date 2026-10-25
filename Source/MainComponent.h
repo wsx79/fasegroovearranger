@@ -96,6 +96,7 @@ public:
     explicit PianoRoll(MainComponent&);
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
+    void mouseMove(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseWheelMove(const juce::MouseEvent&,const juce::MouseWheelDetails&) override;
@@ -227,6 +228,7 @@ public:
     bool writeUiEvidence(const juce::File&);
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
+    bool verifyPluginWindow();
     bool verifyTimelineEditing(const juce::File&);
 private:
     DawLookAndFeel theme;

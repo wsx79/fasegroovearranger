@@ -44,6 +44,7 @@ struct SongSection { Section type = Section::main; int bars = 8; std::string nam
 // MIDI file use musical order through trackAtRow().
 int trackAtRow(int row);
 int rowForTrack(int track);
+double defaultDrumNoteLength(int track);
 struct EngineOptions {
     std::uint32_t riffSeed=0,humanizeSeed=0;
     int pumpRate=0,pumpSource=0;

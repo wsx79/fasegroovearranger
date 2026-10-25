@@ -275,21 +275,21 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     undo(false);ok=ok&&project.settings.guitarLead==oldLead;
     for(int ti=0;ti<trackCount;++ti)ok=ok&&project.tracks[(size_t)ti].clips==beforeLead.tracks[(size_t)ti].clips;
     stage("header selection, explicit engine gear and main guitar lead toggle with undo");
-    arrangement.mouseDown(event(232,76));arrangement.mouseUp(event(232,76));ok=ok&&page==Page::arrangement&&selectedTrack==4&&selectedSection==0&&std::abs(audio.position()-2)<1e-9&&!audio.isPlaying();
+    const double gridPosition=audio.position();arrangement.mouseDown(event(232,76));arrangement.mouseUp(event(232,76));ok=ok&&page==Page::arrangement&&selectedTrack==4&&selectedSection==0&&audio.position()==gridPosition&&!audio.isPlaying();
     arrangement.mouseDown(event(232,76));arrangement.mouseDrag(event(360,76));arrangement.mouseUp(event(360,76));ok=ok&&project.tracks[4].freeTimeline&&project.tracks[4].clips.size()==1&&project.clipStart(4,0)==16&&project.tracks[4].clips[0].notes[0].start==0;
     undo(false);ok=ok&&project.tracks[4].clips[0].notes[0].start==0&&project.tracks[4].clips[1].notes[0].start==1;
-    arrangement.mouseDown(event(365,76));arrangement.mouseUp(event(365,76));
-    ok=ok&&selectedSection==1&&std::abs(audio.position()-18.625)<1e-9&&!audio.isPlaying();
+    arrangement.mouseDown(event(365,20));arrangement.mouseUp(event(365,20));
+    ok=ok&&selectedSection==1&&std::abs(audio.position()-18.625)<1e-9&&audio.isPlaying();
     audio.play(true);ok=ok&&std::abs(audio.position()-18.625)<1e-9;
     arrangement.mouseDown(event(291,116));arrangement.mouseUp(event(291,116));
-    ok=ok&&selectedTrack==5&&audio.isPlaying()&&std::abs(audio.position()-9.375)<1e-9;audio.play(false);
+    ok=ok&&selectedTrack==5&&audio.isPlaying()&&std::abs(audio.position()-18.625)<1e-9;audio.play(false);
     arrangement.pixelsPerBar=240;updateSizes();arrangementPort.setViewPosition(320,0);
     const int scroll=arrangementPort.getViewPositionX();
     arrangement.mouseDown(event((float)(scroll+253),76));arrangement.mouseUp(event((float)(scroll+253),76));
-    ok=ok&&scroll>0&&std::abs(audio.position()-(scroll+37)*4./240)<1e-9;
+    ok=ok&&scroll>0&&std::abs(audio.position()-18.625)<1e-9;
     arrangement.pixelsPerBar=32;updateSizes();arrangementPort.setViewPosition(0,0);
     arrangement.mouseDown(event(283,46));arrangement.mouseUp(event(283,46));ok=ok&&std::abs(audio.position()-8.375)<1e-9;
-    stage("precise clip seek and scrolling");
+    stage("grid selection leaves transport untouched; section header starts audition and ruler seeks precisely");
     arrangement.mouseDown(event(280,46));arrangement.mouseUp(event(280,46));ok=ok&&std::abs(audio.position()-8)<1e-9;
     arrangement.mouseDown(event(248,46,juce::ModifierKeys::shiftModifier));arrangement.mouseDrag(event(312,46,juce::ModifierKeys::shiftModifier));arrangement.mouseUp(event(312,46));ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16&&dirty;
     arrangement.mouseDoubleClick(event(232,76));ok=ok&&page==Page::editor&&pianoPort.isVisible();
@@ -312,17 +312,17 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     if(auto output=folder.getChildFile("section-loop-resize.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
     const auto beforeCancel=midiFile(project);const auto historySize=undoStack.size();arrangement.mouseDown(event(406,16));arrangement.mouseDrag(event(470,16));arrangement.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));arrangement.mouseUp(event(470,16));
     ok=ok&&project.sections[0].bars==6&&midiFile(project)==beforeCancel&&undoStack.size()==historySize;
-    audio.seek(2);arrangement.mouseDown(event(406,76));arrangement.mouseUp(event(406,76));ok=ok&&std::abs(audio.position()-23.75)<1e-9;
+    audio.seek(2);arrangement.mouseDown(event(406,76));arrangement.mouseUp(event(406,76));ok=ok&&std::abs(audio.position()-2)<1e-9;
     stage("individual loops and independent guide resizing, persistence, Undo and Escape");
 
     {   // User-reported problems: loop removal, inspector sample browser and sound names,
         // editor REGENERATE and instrument-panel changes, each with Undo.
         const auto savedProject=project;showArrangement();arrangementPort.setViewPosition(0,0);select(4,1);project.clearLoop();changed(false);
-        sectionLoopButton.onClick();ok=ok&&project.loop&&clipLoopActive()&&sectionLoopButton.getToggleState();
-        sectionLoopButton.onClick();ok=ok&&!project.loop&&!project.hasLoopRegion()&&!sectionLoopButton.getToggleState();
-        undo(false);ok=ok&&project.loop&&clipLoopActive();undo(true);ok=ok&&!project.loop&&!project.hasLoopRegion();
-        keyPressed(juce::KeyPress('L'));ok=ok&&project.loop&&project.loopStart==0&&project.loopEnd==project.length();keyPressed(juce::KeyPress('L'));ok=ok&&!project.loop;
-        checkpoint();setLoopRange(4,16);arrangementPort.setViewPosition(0,0);arrangement.mouseDoubleClick(event(280,46));ok=ok&&!project.loop&&!project.hasLoopRegion();
+        sectionLoopButton.onClick();ok=ok&&project.loop&&clipLoopActive()&&sectionLoopButton.getToggleState();stage("clip loop enabled");
+        sectionLoopButton.onClick();ok=ok&&!project.loop&&!project.hasLoopRegion()&&!sectionLoopButton.getToggleState();stage("clip loop removed");
+        undo(false);ok=ok&&project.loop&&clipLoopActive();undo(true);ok=ok&&!project.loop&&!project.hasLoopRegion();stage("clip loop Undo/Redo");
+        keyPressed(juce::KeyPress('L'));ok=ok&&project.loop&&project.loopStart==0&&project.loopEnd==project.length();keyPressed(juce::KeyPress('L'));ok=ok&&!project.loop;stage("global loop shortcut");
+        checkpoint();setLoopRange(4,16);arrangementPort.setViewPosition(0,0);arrangement.mouseDoubleClick(event(280,46));ok=ok&&!project.loop&&!project.hasLoopRegion();stage("loop double-click removal");
         undo(false);ok=ok&&project.loop&&project.loopStart==4&&project.loopEnd==16;
         stage("loop on/off, removal, double-click clear and Undo");
         showSampleBrowser(false);select(1,0);auto* chooserBefore=chooser.get();
@@ -401,10 +401,21 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         int lowest=127,highest=0;for(const auto& n:clip().notes){lowest=std::min(lowest,n.pitch);highest=std::max(highest,n.pitch);}ok=ok&&piano.lowNote<=lowest&&piano.highNote>=highest;
         showArrangement();arrangement.pixelsPerBar=160;regenerate(Scope::song);ok=ok&&arrangement.pixelsPerBar<160&&arrangementPort.getViewPositionX()==0;
         stage("regeneration fits horizontal clip/song zoom and the generated pitch range");
+        project=newProject(1);project.sections={{Section::main,4,"Main"}};project.normalise();selectedTrack=0;selectedSection=0;selectedClip=-1;changed();showInstrument();
+        juce::ComboBox* extensions=nullptr;for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="Extensions")extensions=dynamic_cast<juce::ComboBox*>(child);
+        if(extensions){extensions->setSelectedItemIndex(1,juce::sendNotificationSync);extensions->setSelectedItemIndex(0,juce::sendNotificationSync);const auto triads=project.tracks[0].clips[0].notes;ok=ok&&project.settings.extension==0;extensions->setSelectedItemIndex(2,juce::sendNotificationSync);ok=ok&&project.settings.extension==2&&project.tracks[0].clips[0].notes!=triads;extensionBox.setSelectedItemIndex(0,juce::sendNotificationSync);ok=ok&&project.settings.extension==0&&project.tracks[0].clips[0].notes==triads;}else ok=false;
+        stage("piano Extensions changes real MIDI immediately from both panel and main harmony controls");
+        if(auto* floating=dynamic_cast<juce::DocumentWindow*>(instrumentPort.getTopLevelComponent())){
+            ok=ok&&floating->isAlwaysOnTop();floating->setTopLeftPosition(37,46);floating->closeButtonPressed();ok=ok&&!floating->isVisible();showInstrument();
+            if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())ok=ok&&floating->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;
+            ok=ok&&floating->isVisible()&&floating->isAlwaysOnTop();
+        }else ok=false;
+        stage("instrument window stays on top, closes manually and reopens centred");
+        select(16,0);showEditor();ok=ok&&piano.verifyEditing();stage("handwritten Crash has factory gate, and drum notes can be resized");
         project=before;selectedTrack=0;selectedClip=-1;changed();
     }
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
-    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, precise clip/ruler seek, paused start, playing jump, scrolled seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression: "+firstFailure);return ok;
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression: "+firstFailure);return ok;
 }
 
 

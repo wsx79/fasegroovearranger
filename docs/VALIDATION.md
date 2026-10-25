@@ -1,5 +1,15 @@
 # Validation record
 
+## 0.20.0 — transport selection, drum gates and floating editors
+
+- All seven Linux CTest checks pass, including the new handwritten drum gate checks and a real 1.2-second WAV sample played by a 0.25-beat Crash note. The sample remains audible after note-off in realtime playback and private-copy WAV export; Stop silences it.
+- Native UI smoke passes section-header seek-and-play, non-seeking grid selection while stopped/playing and after scrolling, numbered-ruler seek, loop resize/removal/Undo and independent clip editing. Undo retains selection for unchanged clip ranges while the playhead is elsewhere.
+- Native editing gestures pass for Kick and Crash as well as pitched instruments and Guitar: handwritten gates match the original Drums engine; move, velocity, right-edge duration editing and delete work. Drum notes display their stored lengths.
+- The Piano panel's Extensions and main harmony selector are exercised through real ComboBox callbacks: triads and ninths produce different MIDI, and returning to triads restores the same notes.
+- Instrument-window checks cover always-on-top, explicit close and centred reopening. A real VST3 host probe exercises the same wrapper lifecycle, including moved-window close/reopen, and verifies MIDI pitch, parameter changes, state restore and private-copy export.
+- Native rendering passes aligned stems, mute/solo isolation, MP3, sustained-note chase, automation, audible regeneration variation and embedded IT/EN guide checks. Family theme/font/manual and Windows/Linux packaging fixtures pass.
+- Release follows the unchanged Windows/macOS/Linux workflow, Windows installer and full thirteen-genre club audio gate.
+
 ## 0.19.0 — MIDI deletion and workspace refinements
 
 - All seven Linux CTest checks pass, including core generation, independent MIDI reader, MP3, project I/O, updater, realtime audio and sample browser.

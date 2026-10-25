@@ -102,7 +102,7 @@ The inspector groups **track**, **sound**, **volume/pan** and **selected clip** 
 
 Drag the **lower edge of a track header** to change that track’s height independently (40–240 pixels). Other tracks keep their heights; MIDI durations stay unchanged. Double-click the edge to restore the default height; **Escape** cancels a drag. Heights are remembered between sessions.
 
-**M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to position playback at that point. **ZOOM** changes how much of the song you see.
+**M** and **S** beside a track name mute and solo it without opening the panel. Click the section-name header to start playback from that point. **ZOOM** changes how much of the song you see.
 
 ### DAW workspace
 
@@ -119,11 +119,11 @@ The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, m
 
 The **MIXER** shows the tracks in musical order with a fixed master at the right. Track names (Kick, Snare, etc.) are at the top; the built-in/sample/VST selector is at the bottom. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. **COLLAPSE MIXER**, at the top right of the mixer, folds the faders away to give space back to the tracks. A slim bar keeps **SHOW MIXER** available to restore the previous height. **MIXER / F3** also works. Drag the mixer header to adjust its height; double-click restores the default height. The chosen size is remembered; channels scroll horizontally when needed.
 
-- **Click anywhere in a clip** to select it and place the cursor exactly there; press **PLAY** or **Space** to listen from that point. While playing, clicking jumps immediately. This also works after horizontal scrolling and beyond an active loop’s end; **double-click** or **E** opens the full MIDI editor.
+- **Click a clip or the grid** to select without moving the cursor or interrupting playback. **Click the section-name header** to place the cursor and immediately listen from that position. The numbered ruler still positions the cursor and controls the loop. **Double-click** or **E** opens the full MIDI editor.
 - **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
 - **Right edge of a section header**: resize the guide in whole bars. Intro, Main, Break and the following guide labels move; clips, locators and volume automation stay at their musical times. Right-click the header to rename it, change its role, insert, duplicate, reorder or delete a guide section. **Escape** cancels a drag; **UNDO** restores it.
 - **Drag a clip** to move it along the timeline or onto another track; **Alt-drag** copies it. The original position becomes a gap when moving. Destination overlaps are replaced while outside fragments are retained. The target track keeps its sound; drum MIDI maps to its lane. **Shift-click** selects more clips on the same track; **Ctrl/Cmd+A** selects all its clips.
-- **Cut, copy, paste, split, duplicate and delete** are in the clip's right-click menu and on the keyboard. Paste uses the cursor; click empty timeline space, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
+- **Cut, copy, paste, split, duplicate and delete** are in the clip's right-click menu and on the keyboard. Paste uses the cursor; click the numbered ruler, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
 - **SNAP** chooses bars, beats, half/quarter beats or free timing. Hold **Shift during a drag** for free timing. Right-click empty track space for **Create empty MIDI clip**. Double-click a clip to edit its notes in the original full instrument editor.
 - **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
 - The toolbar above the timeline holds **SNAP**, **ZOOM SELECTION**, **LOOP SELECTION**, **FIT SONG / F** (complete form), **FOLLOW** (scrolls during playback) and **AUTOMATION**; on its right **GUITAR LEADS**, then **INSPECTOR / I**, **BROWSER / B** and **MIXER / F3** toggle the panels.
@@ -171,7 +171,7 @@ Folders are read and audio headers measured in the background, so the interface 
 | **PROGRESSION** | A progression from the Fase Groove Piano library. Some also choose a suitable scale. |
 | **NEW CHORDS** | Prepares another degree progression in the selected scale. |
 | **EDIT CHORDS** | Change each chord: a scale degree, or major, minor or dominant on a chromatic root. One to eight chords, with a shared harmonic duration. |
-| **Extensions / Voicing** | Chord colour and the piano notes' arrangement. |
+| **Extensions / Voicing** | Chord colour and piano note layout; Extensions applies immediately to unlocked harmonic parts. |
 | **DENSITY** | From a few notes to a busier groove. |
 | **SWING** | Moves alternating sixteenths, from straight towards shuffle. |
 | **FEEL / HUMANIZE** | Small timing and velocity differences. |
@@ -200,6 +200,8 @@ The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed 
 | **Lead** | Monophonic motifs, answers, arpeggios and runs; attack delay, four synth sounds and the twelve-lane mixer. |
 
 Guitar-part **VOLUME** faders control the guide sound; the selected part’s **LEVEL** changes MIDI dynamics on generation. Part mutes also affect playback of existing notes. MIDI export preserves the clip’s notes.
+
+**VST** and **INSTRUMENT PANEL** windows stay on top until manually closed. Each reopening centres them on the screen.
 
 #### Lead
 
@@ -256,7 +258,7 @@ Double-click a **clip** to open the full editor. Choose which part to edit in th
 |---|---|
 | **Click empty space** | Add a note on the grid. |
 | **Drag a note** | Move it in time; in the pitched piano roll, also change its pitch. |
-| **Drag its right edge** | Change the length of pitched notes. |
+| **Drag its right edge** | Change the length of pitched notes and drum hits. |
 | **Alt + drag vertically** | Change velocity without moving the note. |
 | **Shift + click** | Add or remove a note from the selection. |
 | **Right-click / DELETE / Backspace** | Delete a note. In the guitar lane view, right-click removes the strum gesture. |
@@ -268,6 +270,8 @@ Double-click a **clip** to open the full editor. Choose which part to edit in th
 | **Ctrl/Cmd + X / D** | Cut selected notes / duplicate them directly after the selected phrase, preserving spacing. Duplication needs enough room inside the clip. |
 | **Left / Right** | Nudge selected notes by one grid step; Shift uses one bar. The group stops together at the clip boundary. |
 | **Up / Down** | Transpose selected pitched notes one semitone; Shift uses an octave. Drum pitch stays fixed. In guitar lane view, move the selection by one lane. |
+
+In **Drums**, drag a hit’s right edge to change its MIDI duration. Handwritten hits start with the generator’s gate lengths: **Crash** uses two beats. Guide drums and drum samples finish their natural tails even with short notes; VST instruments receive the chosen MIDI duration.
 
 Quantise and transpose affect the selection, or the whole clip when nothing is selected. **ZOOM** opens up timing detail. **Escape** returns to the arrangement.
 
@@ -396,7 +400,7 @@ The song keeps its base groove across sections, changing performance, density an
 | **REGENERATE CLIP** | Just the selected track in this section. |
 | **NEW ARRANGEMENT** | Rebuilds the form and notes from genre, harmonic phrases and groove development. Unlock tracks and clips first. |
 
-**Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** adds a Main part after the selected section. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
+**Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** opens a menu to choose the role of the section inserted after the selected one. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
 
 > Try this: duplicate a drop, change only the bass in the second copy, then make the piano sparser. Keep a recognisable idea and change who carries it.
 

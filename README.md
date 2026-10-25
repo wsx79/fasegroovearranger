@@ -27,6 +27,8 @@ By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance:
 
 Separate instrument windows, a global Lead octave and handwritten MIDI tracks (**+ MIDI**, up to 32 tracks in total). Double-click inspector or mixer names to rename tracks. Piano regeneration selects more distinct rhythmic figures within the same genre.
 
+Click the section-name header to listen from a position; clip selection preserves playback. Drum hits support MIDI length editing and natural sample tails. Instrument and VST windows stay on top and reopen centred.
+
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
 The DAW workspace includes a side inspector, eighteen-channel mixer and master, bar ruler and loop locators, independent clip editing (split, cut/copy/paste, duplicate, delete, move/copy and multi-selection), fit-to-song and playback following. The section lane above the tracks is an editable guide; guide edits preserve MIDI positions.

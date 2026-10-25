@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## 0.20.0 — 2026-10-25
+
+- Click the section-name header to start playback from that exact position. Grid/clip clicks select and edit without seeking or interrupting playback; the numbered ruler retains cursor and loop controls.
+- Undo keeps the selected clip when its timeline range is unchanged, independently of the playhead.
+- Drum notes show their actual MIDI lengths and support right-edge resizing. Handwritten hits use the original generator gates, including two beats for Crash.
+- Drum samples play their natural one-shot tails, in playback and private-copy audio export, matching the built-in kit. Forced transport stops still silence them.
+- Instrument panels and VST editors stay on top until manually closed and reopen centred on screen.
+- The main Piano Extensions selector immediately applies harmony changes, matching the original panel; both controls are checked against the resulting MIDI.
+- Italian and English family guides document the updated interactions.
+
 ## 0.19.0 — 2026-10-25
 
 - Handwritten MIDI tracks can be deleted from the inspector or track menu. Undo restores notes, routing, instrument/effect state and following tracks; generated instrument tracks remain protected.

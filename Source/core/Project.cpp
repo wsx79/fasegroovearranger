@@ -236,6 +236,16 @@ void applyPianoIntention(Project& p,int track,int intention,bool keepRhythm,bool
 }
 
 int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3,leadTrack}; return row>=trackCount?std::clamp(row,trackCount,maxTracks-1):order[std::clamp(row,0,trackCount-1)]; }
+double defaultDrumNoteLength(int track){
+    // Same gates as fasegroovedrums::GrooveEngine::noteLength (in beats).
+    if(!isDrumTrack(track))return .25;
+    switch((fgd::Lane)(track-4)){
+        case fgd::Lane::closedHat:case fgd::Lane::shaker:case fgd::Lane::tambourine:return .225;
+        case fgd::Lane::openHat:return .5;
+        case fgd::Lane::crash:return 2.;
+        default:return 1.;
+    }
+}
 int rowForTrack(int track) { if(isManualTrack(track))return track;for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
 const char* sectionName(Section s) {
     static const char* names[]{"Main","Intro","Breakdown","Build-up","Drop","Outro"};

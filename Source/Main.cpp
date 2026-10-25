@@ -65,6 +65,7 @@ public:
                     editor->addToDesktop(juce::ComponentPeer::windowIsTemporary);editor->setVisible(true);
                     editor.reset();if(plugin->getActiveEditor()!=nullptr){fail("Plugin editor lifetime invalid");return;}
                 }
+                if(!window->content->main.verifyPluginWindow()){fail("VST window on-top/close/reopen-centred behavior invalid");return;}
                 auto p=fga::newProject();p.sections={{fga::Section::main,1,"Main"}};p.normalise();
                 for(auto& track:p.tracks){track.mute=true;track.clips[0].notes.clear();}
                 auto& track=p.tracks[0];track.mute=false;track.instrument="plugin";track.instrumentPath=description.fileOrIdentifier.toStdString();

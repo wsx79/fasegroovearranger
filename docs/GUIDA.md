@@ -100,7 +100,7 @@ I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per bas
 
 Trascina il **bordo inferiore del nome di una traccia** per cambiarne l’altezza in modo indipendente (40–240 pixel). Le altre tracce conservano la propria altezza; le durate MIDI restano invariate. Il doppio clic sul bordo ripristina l’altezza iniziale; **Esc** annulla il trascinamento. Le altezze vengono ricordate tra le sessioni.
 
-**M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull’intestazione di una sezione posiziona la riproduzione nel punto indicato. Lo **ZOOM** cambia quanto brano vedi.
+**M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sui nomi delle sezioni avvia la riproduzione dal punto indicato. Lo **ZOOM** cambia quanto brano vedi.
 
 ### Spazio di lavoro DAW
 
@@ -117,11 +117,11 @@ L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB,
 
 Il **MIXER** mostra le tracce nell’ordine musicale e un master fisso a destra. I nomi (Kick, Snare, ecc.) sono in alto; la scelta suono guida/sample/VST è in basso. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; il doppio clic ripristina quella predefinita. La dimensione scelta viene ricordata; i canali scorrono orizzontalmente quando lo spazio non basta.
 
-- **Clic in qualsiasi punto del clip**: seleziona e posiziona il cursore esattamente lì; premi **PLAY** o **Spazio** per ascoltare da quel punto. Durante la riproduzione il clic fa saltare subito l’ascolto. Funziona anche dopo lo scorrimento orizzontale e oltre la fine di un loop attivo; **doppio clic** o **E**: editor MIDI grande.
+- **Clic nel clip o nella griglia**: seleziona senza spostare il cursore o interrompere l’ascolto. **Clic in alto sui nomi delle sezioni**: posiziona il cursore e avvia subito la riproduzione da quel punto. Il righello numerato resta disponibile per posizionare il cursore e gestire il loop. **Doppio clic** o **E** apre l’editor MIDI.
 - **Bordo destro del clip**: trascina per accorciare o estendere soltanto quel loop, a passi di un beat; **Maiusc** permette passi di un quarto di beat. Il MIDI si ripete senza cambiare velocità o dinamiche. Accorciare non cancella la sorgente: riallungando la recuperi. Puoi superare il confine della sezione; il clip esteso ha precedenza sulle parti coperte della stessa traccia, senza raddoppiare le note.
 - **Bordo destro dell’intestazione di sezione**: ridimensiona la guida a passi di una battuta. Si spostano Intro, Main, Break e le etichette successive; clip, locatori e automazione volume restano nelle loro posizioni musicali. Il tasto destro permette di rinominare, cambiare funzione, inserire, duplicare, riordinare o eliminare una sezione della guida. **Esc** annulla; **UNDO** ripristina.
 - **Trascina un clip** per spostarlo lungo la timeline o su un’altra traccia; **Alt-trascina** lo copia. Lo spostamento lascia uno spazio vuoto nella posizione originale. Le sovrapposizioni a destinazione vengono sostituite conservando i frammenti esterni. La traccia di destinazione mantiene il proprio suono; il MIDI della batteria viene adattato alla sua corsia. **Maiusc-clic** seleziona altri clip sulla stessa traccia; **Ctrl/Cmd+A** li seleziona tutti.
-- **Taglia, copia, incolla, dividi, duplica ed elimina** sono nel menu del tasto destro sul clip e sulla tastiera. Incolla usa il cursore: clicca nello spazio vuoto della timeline, anche dopo la fine attuale, per scegliere la posizione. Dividi taglia il clip selezionato al cursore; Duplica mette le copie dopo l’intervallo selezionato. Elimina lascia uno spazio vuoto. Scorciatoie: **Ctrl/Cmd+X / C / V**, **S o Ctrl/Cmd+E**, **Ctrl/Cmd+D**, **Canc / Backspace**.
+- **Taglia, copia, incolla, dividi, duplica ed elimina** sono nel menu del tasto destro sul clip e sulla tastiera. Incolla usa il cursore: clicca sul righello numerato, anche dopo la fine attuale, per scegliere la posizione. Dividi taglia il clip selezionato al cursore; Duplica mette le copie dopo l’intervallo selezionato. Elimina lascia uno spazio vuoto. Scorciatoie: **Ctrl/Cmd+X / C / V**, **S o Ctrl/Cmd+E**, **Ctrl/Cmd+D**, **Canc / Backspace**.
 - **GRIGLIA** permette battute, beat, mezzi/quarti di beat o tempi liberi. Tieni **Maiusc durante il trascinamento** per spostare liberamente. Tasto destro nello spazio vuoto per **Crea clip MIDI vuoto**. Doppio clic sul clip per modificare le note nell’editor completo dello strumento originale.
 - **Clic sul righello delle battute**: sposta il cursore nel punto esatto, come sul righello dell’editor MIDI; **Maiusc-trascina**: imposta l’intervallo di loop. Le due estremità restano visibili anche quando LOOP è spento.
 - La barra sopra la timeline contiene **GRIGLIA**, **ZOOM SELEZIONE**, **LOOP SELEZIONE**, **ADATTA BRANO / F** (tutta la forma), **SEGUI** (scorrimento durante la riproduzione) e **AUTOMAZIONE**; a destra **GUITAR LEADS**, poi **INSPECTOR / I**, **BROWSER / B** e **MIXER / F3** mostrano o nascondono i pannelli.
@@ -171,7 +171,7 @@ L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionat
 | **PROGRESSIONE** | Sceglie un giro dalla libreria di Fase Groove Piano. Alcuni giri impostano anche la scala adatta. |
 | **NUOVI ACCORDI** | Prepara un altro giro di gradi nella scala scelta. |
 | **MODIFICA ACCORDI** | Cambia ogni accordo: grado della scala oppure maggiore, minore o dominante su una fondamentale cromatica. Da 1 a 8 accordi, con durata condivisa. |
-| **Estensioni / Voicing** | Il colore degli accordi e la disposizione delle note del piano. |
+| **Estensioni / Voicing** | Il colore degli accordi e la disposizione delle note del piano: Estensioni applica subito il cambiamento alle parti armoniche sbloccate. |
 | **DENSITÀ** | Da poche note a un groove più fitto. |
 | **SWING** | Sposta i sedicesimi alternati: da dritto a più shuffle. |
 | **FEEL / UMANIZZA** | Piccole differenze di tempo e dinamica. |
@@ -200,6 +200,8 @@ Premi **INSTRUMENT PANEL** nell’inspector o la **rotella** della traccia per a
 | **Lead** | Motivi monofonici, risposte, arpeggi e passaggi; ritardo attacco, quattro timbri synth e mixer delle dodici righe. |
 
 I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL** della parte scelta cambia le dinamiche MIDI alla generazione. I mute delle parti agiscono anche sull’ascolto delle note già scritte. L’esportazione MIDI conserva le note del clip.
+
+Le finestre **VST** e **INSTRUMENT PANEL** restano in primo piano fino alla chiusura manuale. Ogni riapertura le centra sullo schermo.
 
 #### Lead
 
@@ -258,7 +260,7 @@ Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sez
 |---|---|
 | **Clic nel vuoto** | Aggiunge una nota sulla griglia. |
 | **Trascina una nota** | La sposta nel tempo; nel piano roll intonato cambia anche l'altezza. |
-| **Bordo destro della nota** | Cambia la durata delle note intonate. |
+| **Bordo destro della nota** | Cambia la durata delle note intonate e dei colpi Drums. |
 | **Alt + trascina in verticale** | Cambia la dinamica, senza spostare la nota. |
 | **Shift + clic** | Aggiunge o toglie una nota dalla selezione. |
 | **Tasto destro / ELIMINA / Backspace** | Elimina la nota. Nelle lane della chitarra, il tasto destro elimina il gesto di pennata. |
@@ -270,6 +272,8 @@ Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sez
 | **Ctrl/Cmd + X / D** | Taglia le note selezionate / le duplica subito dopo la frase selezionata, conservando le distanze. La copia deve entrare interamente nel clip. |
 | **Sinistra / Destra** | Sposta la selezione di uno step; Maiusc usa una battuta. Ai bordi del clip il gruppo si ferma insieme. |
 | **Su / Giù** | Traspone le note intonate di un semitono; Maiusc usa un’ottava. La batteria conserva la nota assegnata. Nelle lane della chitarra sposta la selezione di una corsia. |
+
+Nei **Drums**, trascina il bordo destro del colpo per cambiarne la durata MIDI. I colpi scritti a mano partono dalle durate del generatore: il **Crash** usa due beat. Suoni guida e campioni Drums completano la propria coda naturale anche con note corte; i VST ricevono la durata MIDI scelta.
 
 Quantise e trasposizione lavorano sulla selezione; senza selezione, su tutto il clip. Lo **ZOOM** ingrandisce i dettagli nel tempo. **Esc** torna all'arrangiamento.
 
@@ -399,7 +403,7 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 | **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |
 | **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere, frasi armoniche e sviluppo del groove. Prima devi sbloccare tracce e clip. |
 
-**Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** aggiunge una parte Main dopo quella scelta. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
+**Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** apre un menu per scegliere la funzione della sezione da inserire dopo quella selezionata. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
 
 > Prova così: duplica il drop, cambia soltanto il basso della seconda copia, poi alleggerisci il piano. Mantieni un'idea riconoscibile e cambia chi la porta avanti.
 

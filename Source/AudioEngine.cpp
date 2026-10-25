@@ -7,6 +7,13 @@
 #include <optional>
 namespace fga {
 namespace {
+// Drum samples follow the guide kit: MIDI gates do not truncate the natural tail.
+// Forced resets and voice stealing still release the voice immediately.
+class DrumSampleVoice : public juce::SamplerVoice {
+public:
+    void stopNote(float velocity,bool allowTailOff)override{if(!allowTailOff)juce::SamplerVoice::stopNote(velocity,false);}
+};
+juce::SynthesiserVoice* sampleVoice(int track){return isDrumTrack(track)?static_cast<juce::SynthesiserVoice*>(new DrumSampleVoice):new juce::SamplerVoice;}
 const std::vector<TimedEvent> noEvents;
 void mixTargets(Instrument& i,double master,bool snap){
     const float left=(float)(i.gain*master*std::min(1.,1.-i.pan)),right=(float)(i.gain*master*std::min(1.,1.+i.pan));
@@ -285,7 +292,7 @@ juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root){
     if(!r||r->lengthInSamples<=0)return juce::Result::fail("Campione audio non leggibile.");
     if(r->lengthInSamples>r->sampleRate*60)return juce::Result::fail("Usare campioni fino a 60 secondi.");
     juce::BigInteger range;range.setRange(0,128,true);
-    auto next=std::make_unique<juce::Synthesiser>();for(int v=0;v<32;++v)next->addVoice(new juce::SamplerVoice);
+    auto next=std::make_unique<juce::Synthesiser>();for(int v=0;v<32;++v)next->addVoice(sampleVoice(track));
     next->addSound(new juce::SamplerSound(file.getFileName(),*r,range,std::clamp(root,0,127),.002,.1,60.));
     double rate=0;{const juce::ScopedLock lock(mutex);rate=sampleRate;}next->setCurrentPlaybackSampleRate(rate);
     std::unique_ptr<juce::AudioPluginInstance> oldPlugin;std::unique_ptr<juce::Synthesiser> oldSampler;
@@ -336,7 +343,7 @@ std::unique_ptr<AudioEngine> AudioEngine::offlineCopy(){
     for(size_t ti=0;ti<instruments.size();++ti){auto& from=*instruments[ti];auto& to=*copy->instruments[ti];
         if(from.mode==3)return nullptr;
         to.mode=from.mode;
-        if(from.mode==1&&from.sampler){auto sampler=std::make_unique<juce::Synthesiser>();for(int v=0;v<32;++v)sampler->addVoice(new juce::SamplerVoice);
+        if(from.mode==1&&from.sampler){auto sampler=std::make_unique<juce::Synthesiser>();for(int v=0;v<32;++v)sampler->addVoice(sampleVoice((int)ti));
             for(int k=0;k<from.sampler->getNumSounds();++k)sampler->addSound(from.sampler->getSound(k)); // sample data is shared, read-only
             to.sampler=std::move(sampler);}
         if(from.mode==2&&from.plugin){to.plugin=duplicate(*from.plugin,from.pluginDescription,false);if(!to.plugin)return nullptr;}
