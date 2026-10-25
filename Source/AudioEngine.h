@@ -6,6 +6,7 @@
 #include "../ThirdParty/fasegroovepiano/Source/GuideVoice.h"
 #include "../ThirdParty/fasegroovedrums/Source/GuideDrums.h"
 #include "../ThirdParty/fasegrooveguitar/Source/GuideGuitar.h"
+#include "../ThirdParty/fasegroovelead/Source/GuideLead.h"
 #include <atomic>
 #include <juce_dsp/juce_dsp.h>
 namespace fga {
@@ -24,7 +25,7 @@ struct TrackMix {
 struct MixState { std::array<TrackMix,trackCount> tracks; VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:track<2?numGuideSounds:4;}
-inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):track<2?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
+inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):track<2?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
 struct ScheduleState {
     std::array<std::vector<TimedEvent>,trackCount> schedules;
     std::array<std::uint64_t,trackCount> hashes{}; // which tracks changed since the last state
@@ -56,12 +57,14 @@ struct Instrument {
     double pump=0,pumpRelease=.2;int pumpRate=0,pumpSource=0;
     GuideDrums drums;
     GuideGuitar guitar;
+    GuideLead lead;
     DrumSamples drumSamples;
     std::array<int,fgd::numLanes> drumNotes{};
     std::array<float,fgd::numLanes> drumLevels{};
     std::array<float,fgg::numLanes> guitarLevels{};
     std::array<bool,fgg::numLanes> guitarMuted{};
     std::vector<GuideGuitar::Event> guitarEvents;
+    std::vector<GuideLead::Event> leadEvents;
     juce::AudioBuffer<float> scratch;
     juce::MidiBuffer midi,effectMidi;
     std::unique_ptr<juce::AudioPluginInstance> plugin,effect;

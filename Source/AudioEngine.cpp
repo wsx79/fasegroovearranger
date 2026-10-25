@@ -18,7 +18,7 @@ std::unique_ptr<MixState> mixState(const Project& p){
     for(size_t ti=0;ti<(size_t)trackCount&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
         x.volume=t.volume;x.panAutomation=t.panAutomation;x.parameters=t.parameters;x.gain=t.gain;x.pan=t.pan;x.mute=t.mute;x.solo=t.solo;x.sound=t.sound;x.tone=t.engine.tone;x.reverb=t.engine.reverb;x.chorus=t.engine.chorus;
         x.pump=t.engine.pump;x.pumpRelease=t.engine.pumpRelease;x.pumpRate=std::clamp(t.engine.pumpRate,0,3);x.pumpSource=std::clamp(t.engine.pumpSource,0,1);
-        x.drumNote=ti>=4?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
+        x.drumNote=isDrumTrack((int)ti)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
         for(size_t lane=0;lane<x.laneVolume.size();++lane){x.laneVolume[lane]=(float)t.engine.laneVolume[lane];x.laneMute[lane]=t.engine.laneMute[lane];}}
     return m;
 }
@@ -28,7 +28,7 @@ std::uint64_t hashEvents(const std::vector<TimedEvent>& events){
     return h^events.size();
 }
 const std::vector<TimedEvent>& eventsOf(const Instrument& i){return i.schedule?*i.schedule:noEvents;}
-bool laneMuted(const Instrument& i,const TimedEvent& e){return i.kind==3&&e.controller<0&&i.guitarMuted[(size_t)std::clamp(e.lane,0,fgg::numLanes-1)];}
+bool laneMuted(const Instrument& i,const TimedEvent& e){return (i.kind==3||i.kind==leadTrack)&&e.controller<0&&i.guitarMuted[(size_t)std::clamp(e.lane,0,fgg::numLanes-1)];}
 size_t cursorAt(const Instrument& i,double beat){const auto& s=eventsOf(i);return (size_t)(std::lower_bound(s.begin(),s.end(),beat,[](const TimedEvent& e,double b){return e.beat<b;})-s.begin());}
 // What the schedule holds at the cursor: the pitches sounding (held or sustained), their
 // velocity, lane and start beat, and the last value of each controller.
@@ -38,18 +38,18 @@ Hold holdState(const Instrument& i){Hold h;h.cc.fill(-1);bool sustain=false;cons
         if(e.controller>=0){h.cc[(size_t)std::clamp(e.controller,0,127)]=e.velocity;if(e.controller==64){sustain=e.velocity>=64;if(!sustain)for(size_t n=0;n<128;++n)if(!h.pressed[n])h.vel[n]=0;}}
         else{auto n=(size_t)std::clamp(e.pitch,0,127);h.pressed[n]=e.velocity>0;if(e.velocity>0){h.vel[n]=e.velocity;h.start[n]=e.beat;}else if(!sustain)h.vel[n]=0;h.lane[n]=e.lane;}}
     return h;}
-void noteOn(Instrument& i,int n,int velocity,int lane,double start){i.midi.addEvent(juce::MidiMessage::noteOn(1,n,(juce::uint8)velocity),0);if(i.kind==3)i.guitarEvents.push_back({0,n,velocity/127.f,lane});i.sounding[(size_t)n]=true;i.soundingStart[(size_t)n]=start;i.soundingVelocity[(size_t)n]=velocity;++i.noteOns;}
-void noteOff(Instrument& i,int n,int lane){i.midi.addEvent(juce::MidiMessage::noteOff(1,n),0);if(i.kind==3)i.guitarEvents.push_back({0,n,0.f,lane});i.sounding[(size_t)n]=false;}
+void noteOn(Instrument& i,int n,int velocity,int lane,double start){i.midi.addEvent(juce::MidiMessage::noteOn(1,n,(juce::uint8)velocity),0);if(i.kind==3)i.guitarEvents.push_back({0,n,velocity/127.f,lane});if(i.kind==leadTrack)i.leadEvents.push_back({0,n,velocity/127.f,lane});i.sounding[(size_t)n]=true;i.soundingStart[(size_t)n]=start;i.soundingVelocity[(size_t)n]=velocity;++i.noteOns;}
+void noteOff(Instrument& i,int n,int lane){i.midi.addEvent(juce::MidiMessage::noteOff(1,n),0);if(i.kind==3)i.guitarEvents.push_back({0,n,0.f,lane});if(i.kind==leadTrack)i.leadEvents.push_back({0,n,0.f,lane});i.sounding[(size_t)n]=false;}
 }
 
 Instrument::Instrument(int track):kind(track){
     for(int i=0;i<fgd::numLanes;++i)drumNotes[(size_t)i]=fgd::defaultNote(i);
-    delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);guitarEvents.reserve(8192);midi.ensureSize(262144);effectMidi.ensureSize(262144);
+    delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);guitarEvents.reserve(8192);leadEvents.reserve(8192);midi.ensureSize(262144);effectMidi.ensureSize(262144);
     if(kind<3){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
 }
 void Instrument::prepare(double rate,int block){
     leftGain.reset(rate,.01);rightGain.reset(rate,.01);baseGain.reset(rate,.01);parameterSent.fill(-1.f);
-    synth.setCurrentPlaybackSampleRate(rate);if(sampler)sampler->setCurrentPlaybackSampleRate(rate);if(kind>=4)drums.prepare(rate);if(kind==3)guitar.prepare(rate);
+    synth.setCurrentPlaybackSampleRate(rate);if(sampler)sampler->setCurrentPlaybackSampleRate(rate);if(isDrumTrack(kind))drums.prepare(rate);if(kind==3)guitar.prepare(rate);if(kind==leadTrack)lead.prepare(rate);
     auto preparePlugin=[&](juce::AudioPluginInstance* p){if(!p)return;p->releaseResources();p->setRateAndBufferSizeDetails(rate,block);p->prepareToPlay(rate,block);};
     preparePlugin(plugin.get());preparePlugin(effect.get());
     volumeGains.resize((size_t)block);panLeft.resize((size_t)block);panRight.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
@@ -64,7 +64,7 @@ void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
     for(int s=0;s<count;++s){const int r=(w-delay)&(maxDelay-1);left[w]=inL[s];right[w]=inR[s];inL[s]=left[r];inR[s]=right[r];w=(w+1)&(maxDelay-1);}
     delayWrite=w;
 }
-void Instrument::reset(){if(delayUsed){delayLine.clear();delayUsed=false;delayWrite=0;}if(sampler)sampler->allNotesOff(0,false);bassLowPass.reset();reverb.reset();chorus.reset();synth.allNotesOff(0,false);drums.allNotesOff();guitar.allNotesOff();if(plugin)plugin->reset();if(effect)effect->reset();midi.clear();effectMidi.clear();guitarEvents.clear();}
+void Instrument::reset(){if(delayUsed){delayLine.clear();delayUsed=false;delayWrite=0;}if(sampler)sampler->allNotesOff(0,false);bassLowPass.reset();reverb.reset();chorus.reset();synth.allNotesOff(0,false);drums.allNotesOff();guitar.allNotesOff();lead.allNotesOff();if(plugin)plugin->reset();if(effect)effect->reset();midi.clear();effectMidi.clear();guitarEvents.clear();leadEvents.clear();}
 AudioEngine::AudioEngine(){
     formats.addDefaultFormats();for(int i=0;i<trackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);instruments[(size_t)i]->prepare(sampleRate,blockSize);meters[(size_t)i]=0;}
     devices.initialise(0,2,nullptr,true);devices.addAudioCallback(this);
@@ -97,10 +97,10 @@ void AudioEngine::applyMix(const MixState& m,bool snap){
     for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=m.tracks[ti];
         if(i.parameters!=&t.parameters)i.parameterSent.fill(-1.f);   // other lanes: set every parameter again
         i.volume=&t.volume;i.panAutomation=&t.panAutomation;i.parameters=&t.parameters;i.gain=t.gain;i.pan=t.pan;mixTargets(i,master,snap);i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.tone;
-        i.bassLowPass.setCutoffFrequency((float)(100+1400*t.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.tone);
+        i.bassLowPass.setCutoffFrequency((float)(100+1400*t.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.tone);i.lead.setSound(t.sound);i.lead.setTone((float)t.tone);
         for(size_t lane=0;lane<i.guitarLevels.size();++lane){i.guitarLevels[lane]=t.laneVolume[lane];if(i.guitarMuted[lane]!=t.laneMute[lane]){i.guitarMuted[lane]=t.laneMute[lane];if(playing){i.resync=true;needsResync=true;}}}
         juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);
-        i.pump=t.pump;i.pumpRelease=t.pumpRelease;i.pumpRate=t.pumpRate;i.pumpSource=t.pumpSource;if(ti>=4)i.drumNotes[ti-4]=t.drumNote;}
+        i.pump=t.pump;i.pumpRelease=t.pumpRelease;i.pumpRate=t.pumpRate;i.pumpSource=t.pumpSource;if(isDrumTrack((int)ti))i.drumNotes[ti-4]=t.drumNote;}
 }
 // Audio side (or export, under the lock): take the newest published state, if any.
 void AudioEngine::adoptState(){
@@ -150,7 +150,7 @@ void AudioEngine::flushIdle(int count){
     const int n=std::max(1,std::min(count,blockSize));
     for(auto& ptr:instruments){auto& i=*ptr;
         if(i.mode==2&&i.plugin&&!i.midi.isEmpty()){i.scratch.setSize(i.scratch.getNumChannels(),n,false,false,true);i.scratch.clear();i.plugin->processBlock(i.scratch,i.midi);}
-        i.midi.clear();i.guitarEvents.clear();}
+        i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();}
 }
 void AudioEngine::click(float* const* output,int channels,int count,double beat){
     if(!metronome.load()){clickLeft=0;return;}
@@ -190,6 +190,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             i.midi.addEvent(e.controller>=0?juce::MidiMessage::controllerEvent(1,e.controller,e.velocity):e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
             if(e.controller<0){const auto k=(size_t)std::clamp(e.pitch,0,127);i.sounding[k]=e.velocity>0;if(e.velocity>0){i.soundingStart[k]=e.beat;i.soundingVelocity[k]=e.velocity;++i.noteOns;}}
             if(ti==3&&e.controller<0)i.guitarEvents.push_back({at,e.pitch,e.velocity/127.f,e.lane});
+            if(ti==leadTrack&&e.controller<0)i.leadEvents.push_back({at,e.pitch,e.velocity/127.f,e.lane});
         }
         // Resized in place (never reallocated: prepare() sized it for the whole block), even with >32 plugin channels.
         i.scratch.setSize(i.scratch.getNumChannels(),count,false,false,true);auto& block=i.scratch;block.clear();
@@ -197,7 +198,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         applyParameterAutomation(i,beat+.5*count/samplesPerBeat);
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
         else if(i.mode==1){if(i.sampler)i.sampler->renderNextBlock(block,i.midi,0,count);}
-        else if(i.mode==0){if(ti<3)i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
+        else if(i.mode==0){if(ti<3)i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);if(ti==1)i.bassLowPass.process(context);i.chorus.process(context);
@@ -211,7 +212,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         }
         if(i.effect)i.effect->processBlock(block,i.effectMidi);
         i.applyDelay(block,count);
-        i.midi.clear();i.guitarEvents.clear();
+        i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0,side[2]{};
         if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
@@ -260,7 +261,7 @@ juce::Optional<juce::AudioPlayHead::PositionInfo> AudioEngine::getPosition() con
 namespace {
 // A track changes instrument while the song may be playing: forget what the old one was holding
 // and let resync strike the held notes on the new one. Only this track is touched.
-void restrike(Instrument& i){i.synth.allNotesOff(0,false);i.drums.allNotesOff();i.guitar.allNotesOff();i.sounding.fill(false);i.midi.clear();i.effectMidi.clear();i.guitarEvents.clear();i.resync=true;}
+void restrike(Instrument& i){i.synth.allNotesOff(0,false);i.drums.allNotesOff();i.guitar.allNotesOff();i.lead.allNotesOff();i.sounding.fill(false);i.midi.clear();i.effectMidi.clear();i.guitarEvents.clear();i.leadEvents.clear();i.resync=true;}
 bool configure(juce::AudioPluginInstance& next,bool effect,juce::String& error){
     next.enableAllBuses();auto layout=next.getBusesLayout();
     if(effect){if(!layout.inputBuses.isEmpty())layout.inputBuses.getReference(0)=juce::AudioChannelSet::stereo();}

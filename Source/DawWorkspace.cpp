@@ -21,13 +21,13 @@ void InspectorResizer::mouseDown(const juce::MouseEvent& e){dragOrigin=e.getEven
 void InspectorResizer::mouseDrag(const juce::MouseEvent& e){
     // The browser sits on the right: dragging its left edge to the left makes it wider.
     if(browser){owner.sampleBrowserWidth=owner.clampBrowserWidth(initialWidth-juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin));owner.resized();return;}
-    owner.inspectorWidth=std::clamp(initialWidth+juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin),184,std::max(184,std::min(480,owner.getWidth()/3)));owner.resized();}
+    owner.inspectorWidth=std::clamp(initialWidth+juce::roundToInt(e.getEventRelativeTo(&owner).position.x-dragOrigin),224,std::max(224,std::min(480,owner.getWidth()/3)));owner.resized();}
 void InspectorResizer::mouseUp(const juce::MouseEvent&){if(browser)Localisation::setSetting("sampleBrowserWidth",owner.sampleBrowserWidth);else Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
-void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){owner.sampleBrowserWidth=0;owner.resized();Localisation::setSetting("sampleBrowserWidth",0);return;}owner.inspectorWidth=216;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
+void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){owner.sampleBrowserWidth=0;owner.resized();Localisation::setSetting("sampleBrowserWidth",0);return;}owner.inspectorWidth=248;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
-    name.setFont(Daw::font(16,true));name.setMinimumHorizontalScale(.7f);name.setInterceptsMouseClicks(false,false);
+    name.setFont(Daw::font(18,true));name.setMinimumHorizontalScale(.7f);name.setInterceptsMouseClicks(false,false);
     source.setFont(Daw::font(11));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
     gain.setComponentID("track-gain");pan.setComponentID("track-pan");sample.setComponentID("inspector-sample");loop.setComponentID("inspector-loop");
@@ -48,8 +48,11 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.toggleClipLoop();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
     tip(sample,"Open the integrated sample browser for this track: double-click a sample or drag it onto the track.");tip(loop,"Loop the selected clip; click again to remove the loop.");
+    internal.setButtonText(tr("Built-in"));sample.setButtonText(tr("Sample"));plugin.setButtonText("VST / AU");
+    editor.setButtonText(tr("EDIT MIDI"));regenerate.setButtonText(tr("REGENERATE"));loop.setButtonText(tr("LOOP"));pluginEditor.setButtonText(tr("OPEN EDITOR"));
+    tip(plugin,"Choose an instrument or effect from the plugin browser.");tip(regenerate,"Regenerate the selected clip, keeping track and clip locks.");
     // No refresh here: the owner is still being constructed; select() fills the inspector.
-    contentHeight=layout(208);setSize(208,contentHeight);
+    contentHeight=layout(232);setSize(232,contentHeight);
 }
 bool TrackInspector::validTrack()const{return owner.selectedTrack>=0&&owner.selectedTrack<(int)owner.project.tracks.size();}
 void TrackInspector::refresh(){
@@ -73,33 +76,53 @@ void TrackInspector::refresh(){
     internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);
     regenerate.setEnabled(hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
     // Only these texts change here; the rest is translated on creation and language change.
-    updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);repaint();
+    updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);resized();repaint();
 }
 void TrackInspector::paint(juce::Graphics& g){
-    g.fillAll(Daw::surface);if(getWidth()<=40){g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRect(getLocalBounds());return;}
-    // The selected track's colour across the top and beside its name.
-    const int ti=owner.selectedTrack;if(validTrack()){g.setColour(ink(ti));g.fillRect(0,0,getWidth(),3);g.fillRoundedRectangle(12.f,(float)name.getY()+5,4.f,(float)name.getHeight()-10,1.5f);}
-    for(size_t i=0;i<captions.size();++i){if(i==0)caption(g,captions[i].first,captions[i].second);else sectionTitle(g,captions[i].first,captions[i].second);}
-    g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRect(getLocalBounds());}
-// One vertical flow places every row and caption, so nothing overlaps at any width.
+    g.fillAll(Daw::base);if(getWidth()<=40)return;
+    for(const auto& bounds:cards){
+        g.setColour(Daw::surface);g.fillRoundedRectangle(bounds.toFloat(),Daw::panelRadius);
+        g.setColour(Daw::line);g.drawRoundedRectangle(bounds.toFloat().reduced(.5f),Daw::panelRadius,1.f);
+    }
+    if(validTrack()&&!cards.empty()){
+        const auto colour=ink(owner.selectedTrack);
+        auto badge=juce::Rectangle<float>(20.f,(float)name.getY()-1.f,28.f,24.f);
+        g.setColour(colour.withAlpha(.16f));g.fillRoundedRectangle(badge,4.f);
+        g.setColour(colour);g.setFont(Daw::font(12,true));
+        g.drawText(juce::String(rowForTrack(owner.selectedTrack)+1).paddedLeft('0',2),badge,juce::Justification::centred);
+        g.setColour(colour);g.fillRoundedRectangle(cards.front().toFloat().withHeight(2.f).reduced(10.f,0),1.f);
+    }
+    for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim);
+}
+// Four compact cards share the workstation's type, spacing and colours. Actions
+// retain their component IDs and always operate on the current selection.
 int TrackInspector::layout(int width){
-    // A 4 px grid: 12 px margins, 24 px controls, 4 px between rows, 12 px before a section.
-    captions.clear();const int w=std::max(120,width-24),half=(w-4)/2;int y=10;
-    auto cap=[&](const char* title){y+=12;captions.push_back({title,{12,y,w,14}});y+=20;};
-    auto row=[&](juce::Component& c,int h){c.setBounds(12,y,w,h);y+=h+4;};
-    auto pair=[&](juce::Component& a,juce::Component& b,int h){a.setBounds(12,y,half,h);b.setBounds(16+half,y,half,h);y+=h+4;};
-    captions.push_back({"TRACK INSPECTOR",{12,y,w-36,14}});y+=20;
-    name.setBounds(20,y,w-8,24);y+=22;source.setBounds(20,y,w-8,16);y+=24;
-    row(instrument,24);row(editor,24);pair(mute,solo,24);
-    cap("VOLUME / PAN");row(gain,24);row(pan,24);
-    cap("SOUND ASSIGNMENT");row(internal,24);row(sample,24);row(plugin,24);row(pluginEditor,24);
-    cap("LOCKS");pair(lockTrack,lockClip,24);
-    cap("SELECTED CLIP");row(section,20);row(regenerate,24);row(loop,24);
-    return y+8;
+    cards.clear();captions.clear();const int margin=8,inset=20,w=std::max(120,width-inset*2),gap=6;
+    const int half=(w-gap)/2;int y=8,cardStart=y;
+    auto title=[&](const char* text){captions.push_back({text,{inset,y+10,w,14}});y+=30;};
+    auto row=[&](juce::Component& c,int height=26){c.setBounds(inset,y,w,height);y+=height+4;};
+    auto pair=[&](juce::Component& a,juce::Component& b){a.setBounds(inset,y,half,26);b.setBounds(inset+half+gap,y,w-half-gap,26);y+=32;};
+    auto endCard=[&]{y+=8;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=8;cardStart=y;};
+    title("TRACK INSPECTOR");
+    name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+24,w,16);y+=46;
+    mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=30;endCard();
+    title("SOUND ASSIGNMENT");
+    const int third=(w-gap*2)/3;
+    internal.setBounds(inset,y,third,26);sample.setBounds(inset+third+gap,y,third,26);plugin.setBounds(inset+2*(third+gap),y,w-2*(third+gap),26);y+=32;
+    row(instrument);
+    const bool external=validTrack()&&(owner.audio.plugin(owner.selectedTrack)!=nullptr||owner.audio.effectPlugin(owner.selectedTrack)!=nullptr);
+    pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
+    endCard();
+    title("VOLUME / PAN");
+    captions.push_back({"Volume",{inset,y+5,44,14}});gain.setBounds(inset+46,y,w-46,24);y+=34;
+    captions.push_back({"Pan",{inset,y+5,44,14}});pan.setBounds(inset+46,y,w-46,24);y+=34;endCard();
+    title("SELECTED CLIP");
+    row(section,18);pair(editor,regenerate);pair(loop,lockClip);endCard();
+    return y;
 }
 void TrackInspector::resized(){
     const bool collapsed=getWidth()<=40;for(auto* child:getChildren())child->setVisible(!collapsed);if(collapsed)return;
-    contentHeight=layout(getWidth());
+    contentHeight=layout(getWidth());if(getHeight()!=contentHeight)setSize(getWidth(),contentHeight);
 }
 
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
@@ -202,7 +225,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     ok=ok&&mixerHeight==originalMixerHeight+40&&mixer.getHeight()==mixerHeight&&Localisation::setting("mixerHeight","").getIntValue()==mixerHeight&&midiFile(project)==unchangedMidi&&audio.position()==unchangedPosition;
     stage("scaled drag resizing and saved dimensions");
     if(auto output=folder.getChildFile("workspace-resized.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
-    inspectorResizer.mouseDoubleClick(resizeEvent(&inspectorResizer,2,20));mixer.mouseDoubleClick(resizeEvent(&mixer,600,10));ok=ok&&inspectorWidth==216&&mixerHeight==244;
+    inspectorResizer.mouseDoubleClick(resizeEvent(&inspectorResizer,2,20));mixer.mouseDoubleClick(resizeEvent(&mixer,600,10));ok=ok&&inspectorWidth==248&&mixerHeight==244;
     stage("default dock size reset");
     inspectorWidth=originalWidth;mixerHeight=originalMixerHeight;Localisation::setSetting("inspectorWidth",inspectorWidth);Localisation::setSetting("mixerHeight",mixerHeight);resized();
     const int originalHeight=getHeight();
@@ -215,6 +238,19 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         undo(false);ok=ok&&std::abs(project.tracks[(size_t)selectedTrack].gain-originalGain)<1e-9;
     }else ok=false;
     stage("inspector fader and undo");
+    {   // Compact inspector cards stay readable at the minimum, default and expanded widths.
+        const int previous=selectedTrack;const int width=trackInspector.getWidth();
+        for(int track:{0,4,leadTrack}){select(track,1);for(int size:{208,232,400}){
+            trackInspector.setSize(size,trackInspector.preferredHeight());trackInspector.refresh();
+            const auto children=trackInspector.getChildren();
+            for(int a=0;a<children.size();++a)if(children[a]->isVisible()){
+                ok=ok&&trackInspector.getLocalBounds().contains(children[a]->getBounds())&&!children[a]->getBounds().isEmpty();
+                for(int b=a+1;b<children.size();++b)if(children[b]->isVisible())ok=ok&&!children[a]->getBounds().intersects(children[b]->getBounds());
+            }
+        }}trackInspector.setSize(width,trackInspector.preferredHeight());select(previous,1);resized();
+        stage("inspector cards fit every supported width and Lead selection");
+    }
+
     project.sections={{Section::main,4,"First"},{Section::drop,4,"Second"}};project.normalise();for(auto& t:project.tracks)for(auto& c:t.clips)c.notes.clear();
     project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[1].notes={{1,.25,36,75,0}};
     project.loop=false;project.loopStart=0;project.loopEnd=32;selectedTrack=4;selectedSection=0;arrangement.pixelsPerBar=32;changed();arrangementPort.setViewPosition(0,0);

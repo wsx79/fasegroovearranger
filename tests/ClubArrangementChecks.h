@@ -67,7 +67,7 @@ inline void verifyClubSeedCases(){
 inline void verifyClubEdgeCases(){
     auto base=fga::newProject(1);
     {auto malformed=base;malformed.settings.bpm=std::numeric_limits<double>::quiet_NaN();malformed.settings.key=-500;malformed.settings.scale=500;
-        const auto safe=fga::midiFile(malformed);check(safe.size()>100&&safe[11]==18,"MIDI metadata is normalised before serialization");
+        const auto safe=fga::midiFile(malformed);check(safe.size()>100&&safe[11]==fga::trackCount+1,"MIDI metadata is normalised before serialization");
         bool rejected=false;try{fga::midiFile(base,-2);}catch(const std::out_of_range&){rejected=true;}check(rejected,"invalid negative MIDI stem index rejected");}
 
     for(double bpm:{80.,140.,std::numeric_limits<double>::quiet_NaN()}){

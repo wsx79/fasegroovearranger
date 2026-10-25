@@ -12,6 +12,8 @@ Original sources, copied with copyright and licence notices:
 - https://github.com/wsx79/fasegroovedrums at `7f1def6a4e4cb72ed887f7754171affec12af001`
 - https://github.com/wsx79/fasegrooveguitar at `e571f8d02621c65adeb35207214771571499fc65`
 
+- https://github.com/wsx79/fasegroovelead at `a2294b902228b4ab2f15e542e38ca75cc8cc4428` (v0.1.0)
+
 The vendored engines are kept in step with later plugin commits by `scripts/sync-engines.py`: the commit of each last sync is in `ThirdParty/ENGINE_VERSIONS`, the Arranger's own changes in `ThirdParty/ENGINE_PATCHES.md`.
 
 See `ThirdParty/*/LICENSE`, original notices and `docs/ARCHITECTURE.md`. The original third-party documentation is retained for provenance; this app's privacy and guide are the documents in the repository root and `docs/`.

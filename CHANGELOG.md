@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.17.0 — 2026-10-25
+
+- Original Fase Groove Lead engine integrated as the eighteenth track: monophonic generation, shared harmony and chord duration, twelve phrase lanes, four guide synths, sample/plugin routing, automation and MIDI/audio stems.
+- Existing seventeen-track projects load unchanged, with an empty Lead track appended. Original track IDs and MIDI remain stable.
+- Inspector redesigned as compact track, sound, mix and clip cards, with a single-row source selector, clear labels and a contextual plugin editor. Existing actions, undo, collapse and resize remain functional.
+
 ## 0.16.2 — 2026-10-25
 
 - The save / discard dialog on close, the messages and the rename box follow the Arranger's theme instead of the system default.

@@ -53,8 +53,8 @@ inline juce::Colour trackColour(int track){
         0xffff8a4d,0xff58b4f5,0xff6c9cff,0xff8a93ff,                                              // kick, snare, clap, rim
         0xff5fd68a,0xff45cfa5,0xff3ec5c5,                                                         // closed hat, open hat, ride
         0xffb69cff,0xffc690ff,0xffd98cf0,0xffe68acb,                                              // shaker, tambourine, conga, cowbell
-        0xffff6b6b,0xffff9473};                                                                   // tom, crash
-    return juce::Colour(colours[std::clamp(track,0,16)]);
+        0xffff6b6b,0xffff9473,0xff64d6ca};                                                                   // tom, crash
+    return juce::Colour(colours[std::clamp(track,0,17)]);
 }
 // Section markers on the ruler, by the kind of section.
 inline juce::Colour sectionColour(int kind){

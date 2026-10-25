@@ -42,6 +42,9 @@ juce::String controlTip(const juce::String& key){
     if(key.endsWithIgnoreCase(" MUTE")||key=="Part mute")return tr("Mute this lane (MIDI out, guide guitar and clips)");
     if(key.equalsIgnoreCase("GROOVE"))return tr("The rhythm of both hands, grouped by genre");
     if(key.equalsIgnoreCase("REGISTER"))return tr("Moves the right hand up or down the keyboard");
+    if(key=="ATTACK DELAY")return tr("Lead phrase attack delay in milliseconds; also sets the approach-note duration.");
+    if(key=="Resolve after fill")return tr("Resolve the lead melody on the bar after a fill.");
+    if(key=="Lead part")return tr("Choose the melodic phrase lane to edit.");
     if(key.equalsIgnoreCase("STRUM"))return tr("Rolls the chord notes like a pianist instead of hitting them all together");
     if(key.equalsIgnoreCase("STRUM DIRECTION"))return tr("Direction of the roll: up, down, or alternating (up on the beat, down off it). Click to change");
     if(key.equalsIgnoreCase("SWING"))return tr("Delays the off-beat 16ths for a shuffled, human feel");

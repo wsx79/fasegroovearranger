@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.16.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.17.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -96,6 +96,8 @@ The top contains project commands, transport and the controls shared by everyone
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
+The inspector groups **track**, **sound**, **volume/pan** and **selected clip** into compact cards. Built-in, sample and plugin choices share one row; the plugin editor appears when an external instrument/effect is assigned. Mute, solo, track/clip locks, MIDI editing, regeneration and clip loop retain their actions and undo behaviour. Drag its edge to resize it; double-click restores the 248 px default.
+
 Drag the **lower edge of a track header** to change that track’s height independently (40–240 pixels). Other tracks keep their heights; MIDI durations stay unchanged. Double-click the edge to restore the default height; **Escape** cancels a drag. Heights are remembered between sessions.
 
 **M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to position playback at that point. **ZOOM** changes how much of the song you see.
@@ -150,7 +152,7 @@ Folders are read and audio headers measured in the background, so the interface 
 
 ### Progression, Harmony & Scales and Groove
 
-**The song has one shared key and scale.** Piano, bass, strings and guitar use the same progression. There is no need to LINK the individual instruments.
+**The song has one shared key and scale.** Piano, bass, strings, guitar and lead use the same progression. There is no need to LINK the individual instruments.
 
 | Control | What it does |
 |---|---|
@@ -171,7 +173,7 @@ Inside an instrument panel, **APPLY TRACK** or **APPLY CLIP** applies its parame
 
 ### Tracks: extended piano, bass, strings and drums
 
-The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Then come **Bass, Piano, Strings and Guitar**. The guitar stays together on one track.
+The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Then come **Bass, Piano, Strings, Guitar and Lead**. The guitar stays together on one track.
 
 <p align="center"><img src="images/guide_piano.png" alt="Piano" width="900"></p>
 
@@ -184,8 +186,17 @@ Click an instrument's **name** to open its panel. Choose how to hear it at the t
 | **Strings** | A strings style, from sustained support to a rhythmic part. |
 | **Drums** | Just the selected piece: groove, velocity, MIDI note and pocket. |
 | **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
+| **Lead** | Monophonic motifs, answers, arpeggios and runs; attack delay, four synth sounds and the twelve-lane mixer. |
 
 Guitar-part **VOLUME** faders control the guide sound; the selected part’s **LEVEL** changes MIDI dynamics on generation. Part mutes also affect playback of existing notes. MIDI export preserves the clip’s notes.
+
+#### Lead
+
+<p align="center"><img src="images/guide_lead.png" alt="Lead" width="900"></p>
+
+Lead uses the same melodic engine and four guide synth sounds as [Fase Groove Lead](https://github.com/wsx79/fasegroovelead). Its twelve phrase lanes generate one melodic voice; passing notes follow the shared key and scale, strong beats follow the chord slots, including their shared half/one/two/four-bar duration. Groove, density, new riff/feel, A–D order, fills, variations, lane levels, mutes, timing and octave controls work like the original instrument. ATTACK DELAY is in milliseconds; PLAYING offers held hooks, upper register and anticipated harmony. Lead has its own pitched MIDI editor, sample/VST/AU assignment, effect, automation and stems. Its MIDI export uses melodic channel 5, separate from the drum channel.
+
+Existing seventeen-track projects load with an empty Lead track appended. Existing track IDs, notes, plugins, mix and automation stay intact. Regenerate Lead explicitly to add a melody to an old song; manual MIDI edits remain editable like the other pitched instruments.
 
 ### Genre sound palettes
 

@@ -76,7 +76,7 @@ namespace {
 juce::String makerOf(const juce::PluginDescription& d){auto name=d.manufacturerName.trim();return name.isEmpty()?"Unknown manufacturer":name;}
 void addEngines(std::vector<PluginCatalog::BrowserRow>& rows,const juce::String& query){
     struct Engine { const char* name; const char* detail; int id; };
-    static const Engine engines[]{{"FaseGroove Piano","Built-in piano",0},{"FaseGroove Bass","Built-in bass",1},{"FaseGroove Strings","Built-in strings",2},{"FaseGroove Guitar","Built-in guitar",3},{"FaseGroove Drums","Built-in drums",4}};
+    static const Engine engines[]{{"FaseGroove Piano","Built-in piano",0},{"FaseGroove Bass","Built-in bass",1},{"FaseGroove Strings","Built-in strings",2},{"FaseGroove Guitar","Built-in guitar",3},{"FaseGroove Drums","Built-in drums",4},{"FaseGroove Lead","Built-in lead",5}};
     for(const auto& e:engines){
         const juce::String name(e.name);
         if(query.isNotEmpty()&&!name.containsIgnoreCase(query)&&!juce::String(e.detail).containsIgnoreCase(query)&&!juce::String("FaseGroove").containsIgnoreCase(query))continue;
@@ -185,7 +185,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         juce::PluginDescription fx,keys;fx.name="Spring";fx.manufacturerName="Acme";fx.pluginFormatName="VST3";fx.fileOrIdentifier="/plugins/Spring.vst3";fx.isInstrument=false;keys.name="Keys";keys.manufacturerName="Zebra";keys.pluginFormatName="VST3";keys.fileOrIdentifier="/plugins/Keys.vst3";keys.isInstrument=true;
         juce::Array<juce::PluginDescription> sample;sample.add(fx);sample.add(keys);const auto cats=pluginCategories(sample);
         ok=cats.size()==3&&cats[0]=="FaseGroove"&&cats[1]=="Acme"&&cats[2]=="Zebra"&&ok;
-        const auto fg=browserRows(sample,"FaseGroove",{},{});ok=fg.size()==6&&fg[0].kind==BrowserRow::Kind::engine&&fg[0].engine==0&&fg[4].engine==4&&fg[5].kind==BrowserRow::Kind::noEffect&&ok;
+        const auto fg=browserRows(sample,"FaseGroove",{},{});ok=fg.size()==7&&fg[0].kind==BrowserRow::Kind::engine&&fg[0].engine==0&&fg[4].engine==4&&fg[5].engine==5&&fg[6].kind==BrowserRow::Kind::noEffect&&ok;
         const auto acme=browserRows(sample,"Acme",{},{});ok=acme.size()==1&&!acme[0].instrument&&acme[0].name=="Spring"&&ok;
         const auto foundRows=browserRows(sample,{},"keys",{});ok=foundRows.size()==1&&foundRows[0].instrument&&ok;
         const auto pinned=browserRows(sample,{},{},juce::StringArray(pluginKey(fx)));ok=pinned.size()==1&&pinned[0].name=="Spring"&&ok;

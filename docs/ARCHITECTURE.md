@@ -1,8 +1,8 @@
 # Architecture and provenance
 
-The application is a native JUCE GUI executable, not a wrapper around the three plugin binaries. All three original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar step adapter adds a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
+The application is a native JUCE GUI executable, not a wrapper around the four plugin binaries. All four original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`, `fgl`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar and lead step adapters add a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
-`Project` holds musical settings, ordered sections and 17 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Track count/order is fixed in schema version 1. Guide insertion/reordering/removal leaves audible clip positions intact; legacy whole-arrangement transforms remain separate APIs. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
+`Project` holds musical settings, ordered sections and 18 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Legacy track IDs 0–16 stay fixed; Lead is appended at ID 17. Seventeen-track schema version 1/2 projects upgrade by adding an empty Lead track, and current saves retain the version 2 timeline format. Guide insertion/reordering/removal leaves audible clip positions intact; legacy whole-arrangement transforms remain separate APIs. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
 
 Piano, bass and strings come from the Piano engine's distinct parts. Piano generation starts with an original genre-specific preset and uses its variation/intention generators. Drums and guitar use their original genre-aware random generators and arrangement renderers. Harmony is shared by scale degrees/free chord codes; guitar uses its original diatonic/code chord builders. Rich extensions outside the guitar's supported vocabulary are simplified to its supported chord colour.
 
@@ -26,7 +26,7 @@ Track volume envelopes use optional schema-v1 `volumeAutomation` fields (`enable
 
 ## DAW workspace (0.5.0)
 
-`DawWorkspace.h/.cpp` owns the side track inspector and the seventeen mixer strips plus master. The mixer can resize vertically and reveals the selected channel. Its controls use the existing project gain/pan/mute/solo and sound assignments; `mixChanged()` updates audio without normalising all MIDI notes for every fader movement.
+`DawWorkspace.h/.cpp` owns the side track inspector and the eighteen mixer strips plus master. The mixer can resize vertically and reveals the selected channel. Its controls use the existing project gain/pan/mute/solo and sound assignments; `mixChanged()` updates audio without normalising all MIDI notes for every fader movement.
 
 `ArrangementView` keeps the track header and section/bar rulers visible while scrolling. Single clicks select clips, double clicks open the full editor, and drags swap or copy section-aligned clips on the same instrument. Shift-drag sets the persisted loop range. Track IDs and the `.fga` schema are unchanged.
 

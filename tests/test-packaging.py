@@ -19,7 +19,7 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
                      'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
                      'Resources/arranger.svg', 'ThirdParty/shine/COPYING',
                      'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
-                     'ThirdParty/fasegrooveguitar/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
+                     'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
             dest = root / path
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(repo / path, dest)
@@ -43,7 +43,8 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
             assert 'docs/ARCHITECTURE.md' not in names and 'docs/VALIDATION.md' not in names
             assert 'Resources/Inter-Regular.otf' not in names and 'Resources/Inter-SemiBold.otf' not in names
             assert 'Resources/Inter-OFL.txt' in names and 'ThirdParty/shine/COPYING' in names
-            for image in ['logo.svg', 'options.png', 'screenshot.png', 'images/guide_piano.png']:
+            assert 'ThirdParty/fasegroovelead/LICENSE' in names and 'docs/images/inspector.png' in names
+            for image in ['logo.svg', 'options.png', 'screenshot.png', 'images/guide_piano.png', 'images/guide_lead.png']:
                 assert f'docs/{image}' in names
             if system == 'Linux':
                 assert archive.getinfo('Standalone/' + binary.name).external_attr >> 16 & 0o111

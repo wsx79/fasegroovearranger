@@ -21,20 +21,22 @@
 
 **[Download the latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).** Verified Windows, macOS universal and Linux packages are under **Assets**. This is an initial development application.
 
-Create a complete song with the original Piano, Drums and Guitar engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
+Create a complete song with the original Piano, Drums, Guitar and Lead engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
 
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
-The DAW workspace includes a side inspector, seventeen-channel mixer and master, bar ruler and loop locators, independent clip editing (split, cut/copy/paste, duplicate, delete, move/copy and multi-selection), fit-to-song and playback following. The section lane above the tracks is an editable guide; guide edits preserve MIDI positions.
+The DAW workspace includes a side inspector, eighteen-channel mixer and master, bar ruler and loop locators, independent clip editing (split, cut/copy/paste, duplicate, delete, move/copy and multi-selection), fit-to-song and playback following. The section lane above the tracks is an editable guide; guide edits preserve MIDI positions.
 
 Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scrolls horizontally. Z frames the selection and Ctrl/Cmd+L loops it. The MIDI editor also supports arrow-key nudging, octave steps, cut, duplication and paste at the cursor.
 
 ## What is implemented
 
 - The original, vendored C++ generation engines run inside the application; no Fase Groove plugin installation is required.
-- 17 tracks in musical order: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Bass, Piano, Strings and Guitar.
+- 18 tracks in musical order: Kick, Snare, Clap, Rim, Closed Hat, Open Hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash, Bass, Piano, Strings, Guitar and Lead.
+- Lead is a dedicated melodic track with the original monophonic generator and four guide synth sounds; old projects gain an empty Lead track without changing their existing content.
+- A compact four-card inspector keeps sound, mix and clip actions readable and preserves the existing actions.
 - The guitar stays together as one instrument, preserving its playing lanes internally.
 - Full-song, single-track, single-section and single-clip generation, deterministic stored takes, track/clip generation locks, and 40-step undo/redo.
 - Genre-specific forms whose length follows the groove and complete harmonic phrases. Musical intro/outro development uses the original engines, without a fixed duration target or forced silent harmonic windows.
@@ -102,7 +104,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.16.2** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio warping, multi-effect chains, buses/sends, and MIDI controller recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.17.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio warping, multi-effect chains, buses/sends, and MIDI controller recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 
@@ -113,3 +115,5 @@ The original guide instruments are synthesized audition sounds; they are not sam
 [Ko-fi](https://ko-fi.com/fabios1979) · [PayPal](https://paypal.me/fabios79) · [Spotify](https://open.spotify.com/artist/29iQGuXML8LEw3xRp1dNRP)
 
 [Club arrangement policy, sources and musical validation](docs/CLUB_ARRANGEMENT.md).
+
+[Inspector preview](docs/images/inspector.png)

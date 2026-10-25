@@ -98,7 +98,10 @@ public:
             auto p=fga::newProject(1);p.sections={{fga::Section::drop,2,"Drop"}};p.normalise();fga::generate(p);
             bool ok=window->content->main.writeUiEvidence(folder);auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
             run("mix.wav",-1,false);run("mix.mp3",-1,true);
-            for(int ti=0;ti<17;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
+            for(int ti=0;ti<fga::trackCount;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
+            const auto leadMidi=fga::midiFile(p,fga::leadTrack);
+            p.tracks[fga::leadTrack].engine.laneVolume.fill(0);run("lead-volume-zero.wav",fga::leadTrack,false);ok=ok&&fga::midiFile(p,fga::leadTrack)==leadMidi;
+            p.tracks[fga::leadTrack].engine.laneVolume.fill(1);p.tracks[fga::leadTrack].engine.laneMute.fill(true);run("lead-lanes-muted.wav",fga::leadTrack,false);ok=ok&&fga::midiFile(p,fga::leadTrack)==leadMidi;p.tracks[fga::leadTrack].engine.laneMute.fill(false);
             const auto guitarMidi=fga::midiFile(p,3);p.tracks[3].engine.laneVolume.fill(0);run("guitar-volume-zero.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;
             p.tracks[3].engine.laneVolume.fill(1);p.tracks[3].engine.laneMute.fill(true);run("guitar-lanes-muted.wav",3,false);ok=ok&&fga::midiFile(p,3)==guitarMidi;p.tracks[3].engine.laneMute.fill(false);
             {
@@ -151,7 +154,7 @@ public:
             transport=transport&&audio.position()>=0&&audio.position()<4&&audio.isPlaying();
             audio.play(false);audio.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);
             transport=transport&&live.getMagnitude(0,512)==0&&audio.masterLevel()==0;
-            for(int ti=0;ti<17;++ti)transport=transport&&audio.level(ti)==0;
+            for(int ti=0;ti<fga::trackCount;++ti)transport=transport&&audio.level(ti)==0;
             folder.getChildFile("transport.txt").replaceWithText(transport?"PASS precise paused/live seek, seek beyond loop, loop re-entry, loop after export and pause silence":"FAIL transport");ok=ok&&transport;
             {
                 auto probe=p;probe.loop=false;for(auto& t:probe.tracks){t.mute=true;for(auto& c:t.clips)c.notes.clear();}

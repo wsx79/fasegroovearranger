@@ -10,7 +10,12 @@
 
 namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
-constexpr int trackCount = 17;
+constexpr int leadTrack = 17;
+constexpr int legacyTrackCount = 17;
+constexpr int trackCount = 18;
+inline bool isDrumTrack(int track) { return track >= 4 && track < legacyTrackCount; }
+inline bool isHarmonicTrack(int track) { return track >= 0 && (track < 4 || track == leadTrack); }
+inline int instrumentFamily(int track) { return isDrumTrack(track) ? 4 : track == leadTrack ? 5 : track; }
 enum class Section { main, intro, breakdown, buildup, drop, outro };
 enum class Scope { song, track, section, clip };
 struct Note {
@@ -62,7 +67,7 @@ struct EngineOptions {
 };
 struct Track {
     std::string name;
-    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums
+    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead
     double gain = .75, pan = 0;
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;

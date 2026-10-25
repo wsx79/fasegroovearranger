@@ -27,9 +27,9 @@ else:
 
 files = {'LICENSE', 'README.md', 'README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md',
          'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
-         'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING',
+         'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
-         'ThirdParty/fasegrooveguitar/LICENSE'}
+         'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
 # Include the user manuals and their local links/images, not the development
 # documentation, source assets or duplicate embedded fonts.
 pending = [root / 'docs/GUIDE.md', root / 'docs/GUIDA.md']

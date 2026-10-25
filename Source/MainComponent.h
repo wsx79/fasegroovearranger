@@ -237,7 +237,7 @@ private:
     DawMixer mixer{*this};
     InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
-    int mixerHeight=244,inspectorWidth=216;
+    int mixerHeight=244,inspectorWidth=248;
     int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
     juce::TextButton inspectorCollapse{"<"};

@@ -6,6 +6,7 @@
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
+#include "../../ThirdParty/fasegroovelead/Source/engine/GrooveEngine.h"
 #include <cmath>
 #include <limits>
 #include <numeric>
@@ -42,11 +43,24 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     }
     return p;
 }
+// MIDI clips have a one-tick minimum duration. Very close humanized attacks must
+// not turn that minimum into a second lead voice; keep the later attack instead.
+void monophonicLead(Clip& clip){
+    constexpr double tick=1./960.;size_t written=0;
+    for(size_t read=0;read<clip.notes.size();++read){const Note note=clip.notes[read];
+        while(written>0&&clip.notes[written-1].start+clip.notes[written-1].length>note.start){
+            auto& previous=clip.notes[written-1];const double length=note.start-previous.start;
+            if(length<tick){--written;continue;}previous.length=length;break;
+        }
+        clip.notes[written++]=note;
+    }
+    clip.notes.resize(written);
+}
 template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>& stream, double beats, Filter filter) {
     // Note-offs pair per engine voice (piano part, guitar/drum lane): the same pitch in two
     // voices (a fill over a held chord) must not let one voice's note-off cut the other's
     // note to a millisecond stub. tidyNotes() then coalesces overlaps for the one MIDI channel.
-    constexpr bool laned=std::is_same_v<E,fgg::NoteEvent>||std::is_same_v<E,fgd::NoteEvent>;
+    constexpr bool laned=std::is_same_v<E,fgl::NoteEvent>||std::is_same_v<E,fgg::NoteEvent>||std::is_same_v<E,fgd::NoteEvent>;
     constexpr int voices=32;
     constexpr double stub=1./32.;
     std::array<int,128*voices> active; active.fill(-1);
@@ -60,7 +74,7 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
         if(e.isNoteOn()) {
             // A unison inside a strum (another string or lane, the chord and a fill) lands a few ms
             // after the first one: one attack, not a flam or a millisecond stub. Drum flams stay.
-            if constexpr(!std::is_same_v<E,fgd::NoteEvent>){const int last=latest[(size_t)e.note];
+            if constexpr(!std::is_same_v<E,fgd::NoteEvent>&&!std::is_same_v<E,fgl::NoteEvent>){const int last=latest[(size_t)e.note];
                 if(last>=0&&e.ppq>=notes[(size_t)last].start&&e.ppq-notes[(size_t)last].start<stub){
                     auto& n=notes[(size_t)last];n.velocity=std::max(n.velocity,std::clamp(e.velocity,1,127));
                     if(index>=0&&index!=last)close(index,std::max(.001,e.ppq-notes[(size_t)index].start));
@@ -197,7 +211,7 @@ void applyPianoIntention(Project& p,int track,int intention,bool keepRhythm,bool
     }
 }
 
-int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3}; return order[std::clamp(row,0,16)]; }
+int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3,leadTrack}; return order[std::clamp(row,0,trackCount-1)]; }
 int rowForTrack(int track) { for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
 const char* sectionName(Section s) {
     static const char* names[]{"Main","Intro","Breakdown","Build-up","Drop","Outro"};
@@ -297,7 +311,7 @@ void Project::normalise() {
     if(sections.size()>64) sections.resize(64);
     for(auto& p:sections) {p.bars=std::clamp(p.bars,1,128); p.type=(Section)std::clamp((int)p.type,0,5);}
     if(tracks.size()>trackCount) tracks.resize(trackCount);
-    while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); tracks.push_back(t); }
+    while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind==leadTrack?"Lead":t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); if(t.kind==leadTrack){t.gain=.22;t.engine.density=.42;t.engine.roomForBand=false;t.engine.fillEvery=8;} tracks.push_back(t); }
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
@@ -320,7 +334,7 @@ void Project::normalise() {
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneVolume[i]=finite(e.laneVolume[i],1,0,2);e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
         for(size_t k=0;k<t.clips.size();++k){auto& c=t.clips[k];c.role=std::clamp(c.role,-1,5);if(t.freeTimeline){c.position=finite(c.position,0,0,131072);if(c.role<0)c.role=(int)sections[(size_t)sectionAtBeat(c.position)].type;c.span=finite(c.span,4,1./960.,512);}c.span=finite(c.span,0,0,512);if(c.span>0)c.span=std::max(t.freeTimeline?1./960.:.25,c.span);c.loopLength=finite(c.loopLength,0,0,512);if(c.loopLength>0)c.loopLength=std::max(.25,c.loopLength);
-            if(i>=4)for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
+            if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
@@ -432,7 +446,7 @@ void applyGenre(Project& p,int genre) {
     // style. Preserve explicitly authored user patterns and all other controls.
     for(size_t ti=0;ti<p.tracks.size();++ti){
         auto& pattern=p.tracks[ti].engine.pattern;
-        const int factoryCount=ti<3?(int)sgk::groovePatterns().size():ti==3?(int)fgg::guitarPatterns().size():(int)fgd::drumPatterns().size();
+        const int factoryCount=ti<3?(int)sgk::groovePatterns().size():ti==3?(int)fgg::guitarPatterns().size():ti==leadTrack?(int)fgl::leadPatterns().size():(int)fgd::drumPatterns().size();
         if(pattern>=0&&pattern<factoryCount)pattern=-1;
     }
     chooseProgression(p,presets[p.settings.genre]);
@@ -505,7 +519,9 @@ void arrangeSong(Project& p) {
             evolution=std::max(evolution,engine.evolveBars);
             if(engine.pattern>=0&&engine.pattern<(int)sgk::groovePatterns().size())
                 motif=std::max(motif,(sgk::groovePatterns()[(size_t)engine.pattern].length()+15)/16);
-        }else if(ti>=4&&engine.pattern>=0&&engine.pattern<(int)fgd::drumPatterns().size())
+        }else if(ti==leadTrack&&engine.pattern>=0&&engine.pattern<(int)fgl::leadPatterns().size())
+            motif=std::max(motif,(fgl::leadPatterns()[(size_t)engine.pattern].length()+15)/16);
+        else if(isDrumTrack((int)ti)&&engine.pattern>=0&&engine.pattern<(int)fgd::drumPatterns().size())
             motif=std::max(motif,(fgd::drumPatterns()[(size_t)engine.pattern].length()+15)/16);
     }
     const int harmonicBars=std::max(1,(p.settings.chordCount*p.settings.chordSteps+15)/16);
@@ -548,7 +564,7 @@ std::vector<std::string> chordNames(const Settings& s) {
 namespace {
 // Entrances measured on a 32-bar club intro. The outro reverses these layers.
 // Shorter intros scale in complete eight-bar phrases. Rhythmic identities still
-// come exclusively from the three original genre engines.
+// come exclusively from the four original genre engines.
 int mixEntry(int genre,int track,int bars) {
     static constexpr int harmony[13][4]{
         {16,24,24,24},{16,24,24,24},{24,16,16,24},{16,32,24,24},
@@ -557,7 +573,8 @@ int mixEntry(int genre,int track,int bars) {
         {24,24,32,24}
     };
     int entry=0;
-    if(track<4)entry=harmony[genre][track];
+    if(track==leadTrack)entry=24;
+    else if(track<4)entry=harmony[genre][track];
     else{
         const int lane=track-4;
         // Kick, closed hats and shaker provide a countable pulse from bar one.
@@ -579,7 +596,7 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
     if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
     const auto& e=p.tracks[(size_t)track].engine;
-    const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():fgd::userPatternIndex();
+    const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():track==leadTrack?fgl::userPatternIndex():fgd::userPatternIndex();
     if(e.pattern==user)return;
     auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
         // Strings follow the harmony for the whole verse and chorus. Gating them
@@ -731,8 +748,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
     if(seed&&scope==Scope::song) {
         p.settings.seed=seed;
         // Existing locked harmonic notes cannot follow a new global key/chord cycle.
-        const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.begin()+4,[](const Track& t){
-            return std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
+        const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){
+            return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(p.settings.genre,seed);p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}   // a new song, a new piano colour
         varySongFeel(p,seed);renewForm(p);varyForm(p,seed);
@@ -764,9 +781,9 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 if(scope==Scope::song)e.density=-1;
                 prepared=true;
             }
-            if(seed) clip.motifSeed=mix(seed+(ti>=4?313U:(std::uint32_t)ti*131U));
-            if(seed) clip.seed=ti>=4?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
-            else if(clip.seed==1) clip.seed=ti>=4?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
+            if(seed) clip.motifSeed=mix(seed+(isDrumTrack(ti)?313U:(std::uint32_t)ti*131U));
+            if(seed) clip.seed=isDrumTrack(ti)?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
+            else if(clip.seed==1) clip.seed=isDrumTrack(ti)?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             clip.loopSource.clear();clip.loopLength=0;
             const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
             const auto& e=t.engine;
@@ -813,6 +830,21 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,renderBars,clip.seed,-1}});
                 clip.notes=notesFrom(all,beats,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
                 // Articulation lanes are carried directly by notesFrom, in linear time.
+            } else if(ti==leadTrack) {
+                fgl::LeadSettings ls;
+                ls.key=s.key;ls.scale=s.scale;ls.stepsPerChord=s.chordSteps;
+                ls.pattern=e.pattern>=0&&e.pattern<(int)fgl::leadPatterns().size()?e.pattern:fgl::randomPatternIndex();
+                ls.randomGenre=s.genre;ls.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+2227U));
+                ls.density=ps.riffDensity;ls.swing=ps.swing;ls.humanize=ps.humanize;ls.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
+                ls.tempo=s.bpm;ls.numChords=s.chordCount;ls.fillEveryBars=mixing?0:e.fillEvery;ls.variationEvery=mixing?0:e.variationEvery;
+                ls.fillStyle=(fgl::FillStyle)(e.fillStyle<0?(int)fgl::FillStyle::mix:std::min(e.fillStyle,fgl::numFillStyles-1));
+                ls.velocity=e.velocity;ls.accentGroove=(float)e.accent;ls.attackMs=(float)(e.strum*80);ls.grooveBars=e.grooveBars;
+                ls.segmentOrder=e.segments;ls.letRing=e.letRing;ls.roomForBand=e.roomForBand;ls.pushChanges=e.pushChanges;ls.resolveAfterFill=e.afterFill;
+                for(size_t l=0;l<12;++l){ls.levels[l]=(float)e.laneLevel[l];ls.laneSwing[l]=(float)e.laneSwing[l];ls.laneShift[l]=(float)e.laneShift[l];ls.octaves[l]=e.laneOctave[l];ls.muted[l]=e.laneMute[l];}
+                for(int i=0;i<s.chordCount;++i)ls.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgl::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgl::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
+                std::rotate(ls.chords.begin(),ls.chords.begin()+chordOffset,ls.chords.begin()+s.chordCount);
+                auto all=fgl::GrooveEngine::renderArrangement(ls,{{(fgl::Section)engineType,renderBars,clip.seed,-1}});
+                clip.notes=notesFrom(all,beats,[](const fgl::NoteEvent& event){return !event.isController()&&event.lane<fgl::numLanes;});
             } else {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=s.genre;
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
@@ -826,7 +858,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)rhythmType,renderBars,ds.sectionVariation,-1}});
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
-            if(ti>=4)for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
+            if(isDrumTrack(ti))for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeBandRoles(clip,p,ti,guide);
             shapeMixSection(clip,s.genre,ti,type,renderBars);
             if(ti==2&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){
@@ -835,7 +867,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 clip.notes=notesFrom(bed,beats,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
-            tidyNotes(clip,beats);
+            tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
         }
     }
 }
@@ -843,7 +875,7 @@ void applyInstrumentChange(Project& p,int track,bool harmony) {
     p.normalise();
     if(track<0||track>=trackCount)return;
     for(int ti=0;ti<trackCount;++ti){
-        if(ti!=track&&!(harmony&&ti<4))continue;
+        if(ti!=track&&!(harmony&&isHarmonicTrack(ti)))continue;
         if(p.tracks[(size_t)ti].locked||p.tracks[(size_t)ti].clips.empty())continue;
         generate(p,Scope::track,ti,0,0);
     }
@@ -872,8 +904,8 @@ struct AutomationDice {
 };
 // Which tracks move: the harmony and the percussion that colours the groove. Kick, bass,
 // snare and clap keep the floor (they stay where they are).
-bool volumeMoves(int ti){return ti==0||ti==2||ti==3||ti==8||ti==9||ti==11||ti==12||ti==13;}
-bool panMoves(int ti){return ti==2||ti==3||ti==9||ti==11||ti==12||ti==13||ti==14;}
+bool volumeMoves(int ti){return ti==0||ti==2||ti==3||ti==leadTrack||ti==8||ti==9||ti==11||ti==12||ti==13;}
+bool panMoves(int ti){return ti==2||ti==3||ti==leadTrack||ti==9||ti==11||ti==12||ti==13||ti==14;}
 }
 void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){
     p.normalise();

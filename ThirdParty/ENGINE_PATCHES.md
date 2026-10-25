@@ -31,3 +31,7 @@
 ## All
 
 - Every file ends with an extra empty line.
+
+## Lead (`fgl`)
+
+- `LeadSettings::stepsPerChord`: shared harmonic duration (8/16/32/64 sixteenth steps). The current harmonic slot, anticipation and loop length follow it; standalone defaults to 16. All melodic phrase generation and the guide synth are vendored from Lead.

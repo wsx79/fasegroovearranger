@@ -11,6 +11,7 @@
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.h"
 #include "../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
+#include "../ThirdParty/fasegroovelead/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 namespace {
 int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
@@ -164,8 +165,37 @@ void verifyEngineIntegration(){
             if(ti==3)for(size_t k=1;k<notes.size();++k)for(size_t j=k;j-->0&&notes[k].start-notes[j].start<1./32.;)check(notes[j].pitch!=notes[k].pitch,"a guitar unison is one attack, not a flam");}
     }
 }
+void verifyLeadIntegration(){
+    using namespace fga;
+    check(leadTrack==17&&trackAtRow(17)==leadTrack&&rowForTrack(leadTrack)==17,"Lead keeps all legacy track IDs and musical rows");
+    {
+        fgl::LeadSettings s;s.pattern=fgl::userPatternIndex();s.humanize=s.swing=s.attackMs=0;s.pushChanges=false;s.resolveAfterFill=false;
+        s.numChords=2;s.chords[0]={0,(int)fgl::ChordType::major};s.chords[1]={7,(int)fgl::ChordType::major};
+        s.user[(size_t)fgl::Lane::root][0]='X';s.user[(size_t)fgl::Lane::root][8]='X';s.stepsPerChord=8;
+        std::vector<int> half;for(auto event:fgl::GrooveEngine::renderClip(s,4))if(event.isNoteOn())half.push_back(event.note%12);
+        check(half==std::vector<int>({0,7}),"Lead changes harmony after half a bar");
+        s.stepsPerChord=16;std::vector<int> bar;for(auto event:fgl::GrooveEngine::renderClip(s,4))if(event.isNoteOn())bar.push_back(event.note%12);
+        check(bar==std::vector<int>({0,0}),"Lead retains one-bar harmony when requested");
+    }
+    for(int genre=0;genre<13;++genre){
+        auto p=newProject(genre);p.sections={{Section::main,8,"Main"}};p.normalise();generate(p,Scope::track,leadTrack,0,0);
+        const auto original=p;const auto& notes=p.tracks[leadTrack].clips[0].notes;
+        check(!notes.empty(),"Every family genre produces a lead melody");
+        double off=0;for(const auto& n:notes){check(n.start+1e-8>=off,"Lead remains monophonic in Arranger clips");check(n.pitch>=0&&n.pitch<=127&&n.velocity>0&&n.velocity<=127,"Lead notes are valid MIDI");check(n.lane>=0&&n.lane<12,"Lead preserves melodic lane IDs");off=n.start+n.length;}
+        generate(p,Scope::track,leadTrack,0,0);check(p.tracks[leadTrack].clips==original.tracks[leadTrack].clips,"Lead take is repeatable");
+        generate(p,Scope::track,leadTrack,0,719u);
+        for(int t=0;t<legacyTrackCount;++t)check(p.tracks[(size_t)t].clips==original.tracks[(size_t)t].clips,"Lead regeneration leaves the other instruments unchanged");
+        check(p.tracks[leadTrack].clips!=original.tracks[leadTrack].clips,"Lead regeneration writes a new melodic take");
+        auto locked=p;locked.tracks[leadTrack].locked=true;generate(locked,Scope::track,leadTrack,0,123u);check(locked.tracks[leadTrack].clips==p.tracks[leadTrack].clips,"Lead track lock survives regeneration");
+        p.tracks[leadTrack].clips[0].locked=true;const auto before=p.tracks[leadTrack].clips;generate(p,Scope::clip,leadTrack,0,923u);check(p.tracks[leadTrack].clips==before,"Lead clip lock survives regeneration");
+        p=original;p.settings.key=(p.settings.key+3)%12;applyInstrumentChange(p,0,true);check(p.tracks[leadTrack].clips!=original.tracks[leadTrack].clips,"Shared harmony edits re-render Lead");
+        p=original;for(auto& mute:p.tracks[leadTrack].engine.laneMute)mute=true;applyInstrumentChange(p,leadTrack,false);check(p.tracks[leadTrack].clips[0].notes.empty(),"Lead lane mutes reach the generator");
+        p=original;p.tracks[leadTrack].engine.laneVolume.fill(.15);applyInstrumentChange(p,leadTrack,false);check(p.tracks[leadTrack].clips==original.tracks[leadTrack].clips,"Lead audio faders do not change MIDI dynamics");
+        for(int duration:{8,16,32,64}){p=original;p.settings.chordSteps=duration;applyInstrumentChange(p,leadTrack,true);check(!p.tracks[leadTrack].clips[0].notes.empty(),"Lead supports every shared harmonic duration");}
+    }
+}
 int main(int argc,char** argv){try{
-    verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
+    verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
@@ -227,8 +257,8 @@ int main(int argc,char** argv){try{
     for(int genre=0;genre<13;++genre){
         auto p=fga::newProject(genre);auto original=p;verifyClubProject(p,genre,argc>1?argv[1]:"");
         {auto slow=p;slow.settings.bpm=80;fga::arrangeSong(slow);check(slow.length()==p.length(),"tempo does not stretch a musical form to minutes");auto developing=p;developing.tracks[0].engine.grooveBars=4;fga::arrangeSong(developing);check(developing.length()>p.length(),"longer groove develops over more complete phrases");}
-        if(genre==1){auto sparse=p,busy=p;sparse.tracks[0].engine.density=0;busy.tracks[0].engine.density=1;fga::arrangeSong(sparse);fga::arrangeSong(busy);check(sparse.length()>busy.length(),"sparse and busy grooves have different phrase development");auto lead=p;lead.settings.guitarLead=true;fga::generate(lead,fga::Scope::track,0);check(lead.tracks[0].clips!=p.tracks[0].clips,"original guitar lead piano answers");for(int ti=1;ti<17;++ti)check(lead.tracks[(size_t)ti].clips==p.tracks[(size_t)ti].clips,"lead piano generation isolation");auto shifted=p;shifted.tracks[4].engine.midiNote=50;fga::generate(shifted,fga::Scope::track,4);for(const auto& c:shifted.tracks[4].clips)for(auto n:c.notes)check(n.pitch==50,"custom drum MIDI mapping");}
-        check(p.tracks.size()==17,"17 instrument tracks");check(p.sections.size()>=6,"genre-specific song stages");
+        if(genre==1){auto sparse=p,busy=p;sparse.tracks[0].engine.density=0;busy.tracks[0].engine.density=1;fga::arrangeSong(sparse);fga::arrangeSong(busy);check(sparse.length()>busy.length(),"sparse and busy grooves have different phrase development");auto lead=p;lead.settings.guitarLead=true;fga::generate(lead,fga::Scope::track,0);check(lead.tracks[0].clips!=p.tracks[0].clips,"original guitar lead piano answers");for(int ti=1;ti<fga::trackCount;++ti)check(lead.tracks[(size_t)ti].clips==p.tracks[(size_t)ti].clips,"lead piano generation isolation");auto shifted=p;shifted.tracks[4].engine.midiNote=50;fga::generate(shifted,fga::Scope::track,4);for(const auto& c:shifted.tracks[4].clips)for(auto n:c.notes)check(n.pitch==50,"custom drum MIDI mapping");}
+        check(p.tracks.size()==fga::trackCount,"18 instrument tracks");check(p.sections.size()>=6,"genre-specific song stages");
         check(p.length()*60/p.settings.bpm>=240,"full genre form includes intro and outro");
         check(p.length()*60/p.settings.bpm<480,"genre forms remain musically bounded");
         check(p.sections.front().type==fga::Section::intro&&p.sections.back().type==fga::Section::outro,"intro and outro belong to form");
@@ -243,11 +273,11 @@ int main(int argc,char** argv){try{
         p=original;p.tracks[0].locked=true;p.tracks[4].clips[4].locked=true;fga::generate(p,fga::Scope::song,0,0,12345);
         check(p.tracks[0].clips==original.tracks[0].clips,"track lock");check(p.tracks[4].clips[4].notes==original.tracks[4].clips[4].notes&&p.tracks[4].clips[4].seed==original.tracks[4].clips[4].seed,"clip lock");
         p=original;fga::generate(p,fga::Scope::track,3,0,1357);
-        for(int ti=0;ti<17;++ti)if(ti!=3)check(p.tracks[(size_t)ti].clips==original.tracks[(size_t)ti].clips,"track scope");
+        for(int ti=0;ti<fga::trackCount;++ti)if(ti!=3)check(p.tracks[(size_t)ti].clips==original.tracks[(size_t)ti].clips,"track scope");
         p=original;fga::generate(p,fga::Scope::section,0,3,2468);
-        for(int ti=0;ti<17;++ti)for(size_t si=0;si<p.sections.size();++si)if(si!=3)check(p.tracks[(size_t)ti].clips[si]==original.tracks[(size_t)ti].clips[si],"section scope");
+        for(int ti=0;ti<fga::trackCount;++ti)for(size_t si=0;si<p.sections.size();++si)if(si!=3)check(p.tracks[(size_t)ti].clips[si]==original.tracks[(size_t)ti].clips[si],"section scope");
         p=original;p.insertSection(2,p.sections[1],1);check(p.tracks[0].clips[2]==original.tracks[0].clips[1],"duplicate MIDI");p.removeSection(2);check(p.length()==original.length(),"remove section duration");p.moveSection(1,4);check(p.tracks[0].clips[4]==original.tracks[0].clips[1],"move section MIDI");
-        auto midi=fga::midiFile(original);check(midi.size()>500&&std::string(midi.begin(),midi.begin()+4)=="MThd","MIDI header");check(midi[11]==18,"conductor and 17 tracks");
+        auto midi=fga::midiFile(original);check(midi.size()>500&&std::string(midi.begin(),midi.begin()+4)=="MThd","MIDI header");check(midi[11]==fga::trackCount+1,"conductor and 18 tracks");
         auto stem=fga::midiFile(original,4);check(stem[11]==2,"single stem MIDI");
         if(argc>1&&genre==1){auto pedal=original;pedal.tracks[0].engine.pedalCC=true;auto cc=fga::midiFile(pedal,0);std::ofstream ccFile(std::string(argv[1])+"/test-piano-cc.mid",std::ios::binary);ccFile.write((const char*)cc.data(),(std::streamsize)cc.size());std::ofstream f(std::string(argv[1])+"/test-song.mid",std::ios::binary);f.write((const char*)midi.data(),(std::streamsize)midi.size());std::ofstream g(std::string(argv[1])+"/test-kick.mid",std::ios::binary);g.write((const char*)stem.data(),(std::streamsize)stem.size());}
         std::cout<<"PASS "<<fga::genres()[(size_t)genre]<<" / "<<(int)(p.length()*60/p.settings.bpm)/60<<":"<<(int)(p.length()*60/p.settings.bpm)%60<<" / "<<p.length()/4<<" bars\n";

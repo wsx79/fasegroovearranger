@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.16.2 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.17.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -36,7 +36,10 @@ add_library(fga_core STATIC Source/core/Project.cpp Source/core/Timeline.cpp Sou
     ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.cpp
     ThirdParty/fasegrooveguitar/Source/engine/Guitar.cpp
     ThirdParty/fasegrooveguitar/Source/engine/Generators.cpp
-    ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.cpp)
+    ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.cpp
+    ThirdParty/fasegroovelead/Source/engine/Lead.cpp
+    ThirdParty/fasegroovelead/Source/engine/Generators.cpp
+    ThirdParty/fasegroovelead/Source/engine/GrooveEngine.cpp)
 target_include_directories(fga_core PUBLIC Source/core)
 if(FGA_BUILD_TESTS)
     enable_testing()
@@ -68,7 +71,7 @@ if(FGA_BUILD_APP)
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
         MICROPHONE_PERMISSION_ENABLED FALSE)
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
-        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_mixer.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
+        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
     target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)

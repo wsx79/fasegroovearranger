@@ -28,7 +28,7 @@ for i, row in enumerate(rows):
     assert float(row['min_phrase_rms']) > .00001
     assert float(row['first_phrase_rms']) > .0001 and float(row['last_phrase_rms']) > .0001
     assert all(section['bars'] % 8 == 0 for section in project['sections'])
-    assert len(project['tracks']) == 17
+    assert len(project['tracks']) == 18
     print(f"PASS full song {row['genre']}: {bpm:g} BPM, {bars} bars, {float(row['seconds']):.1f}s, peak {float(row['peak']):.4f}")
 # Independently decode the complete reference MP3, including first/final phrases.
 mp3 = folder / 'Soulful-House-full-song.mp3'

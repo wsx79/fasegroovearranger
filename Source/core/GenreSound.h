@@ -35,7 +35,7 @@ inline void applyGenreSound(Project& p){
     p.settings.voicing=a.voicing;p.settings.stringsMode=a.strings;
     p.settings.guitarLead=p.settings.genre==8;
     for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(t.locked)continue;auto& e=t.engine;
-        e.fillEvery=ti<4?16:8;e.variationEvery=8;e.afterFill=true;
+        e.fillEvery=isHarmonicTrack(ti)?16:8;e.variationEvery=8;e.afterFill=true;
         if(ti==0){e.gate=a.gate;e.strum=a.strum;e.centre=p.settings.genre==11?67:64;e.octaveTop=p.settings.genre==9;e.density=a.density;e.humanize=p.settings.genre==10?.32:.14;}
         if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==2||p.settings.genre==6||p.settings.genre==7||p.settings.genre==12)?2:0;e.humanize=.05;e.realism=true;}
         if(p.settings.genre==4){
@@ -44,6 +44,7 @@ inline void applyGenreSound(Project& p){
         }
         if(ti==2)e.density=.3;
         if(ti==3){e.strum=p.settings.genre==8?.12:.22;e.letRing=p.settings.genre==11;e.roomForBand=true;e.density=p.settings.genre==8?.68:p.settings.genre==4?.22:.35;if(p.settings.genre==4)e.strum=.06;}
+        if(ti==leadTrack){e.strum=.15;e.density=.42;e.humanize=.14;e.roomForBand=false;e.fillEvery=8;}
         // Keep user instruments and their mix/routing. Genre changes configure
         // their MIDI vocabulary, while the original guide palette is curated.
         if(t.instrument!="internal")continue;
@@ -52,6 +53,7 @@ inline void applyGenreSound(Project& p){
         else if(ti==1){t.sound=a.bass;t.gain=a.bassGain;e.tone=a.bassTone;}
         else if(ti==2){t.gain=a.stringsGain;e.tone=p.settings.genre==8?.56:.25;e.reverb=.18;}
         else if(ti==3){t.sound=a.guitar;t.gain=a.guitarGain;e.tone=a.guitarTone;e.reverb=.07;t.pan=.14;}
+        else if(ti==leadTrack){t.sound=a.guitar;t.gain=.22;e.tone=a.guitarTone;e.reverb=.12;}
         else {t.sound=a.kit;e.tone=a.drumTone;const int lane=ti-4;
             // GuideDrums already scales each lane (kick .95, snare .6, hats .28).
             // Keep that balance audible instead of attenuating the upper kit twice.

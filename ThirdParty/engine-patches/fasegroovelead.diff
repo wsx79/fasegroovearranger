@@ -1,0 +1,47 @@
+--- a/Source/engine/GrooveEngine.cpp
++++ b/Source/engine/GrooveEngine.cpp
+@@ -315,7 +315,7 @@
+     if (! s.useLiveChord)
+     {
+         // The chords come round after numChords bars (or fewer, when they repeat inside).
+-        steps = lcm (steps, chordPeriod (s) * 16);
++        steps = lcm (steps, chordPeriod (s) * std::max (1, s.stepsPerChord));
+     }
+     if (s.variationEvery > 0)
+         steps = lcm (steps, s.variationEvery * 16);
+@@ -391,11 +391,12 @@
+ {
+     const long long bar = floorDiv (step, 16);
+     const int stepInBar = mod (step, 16);
+-    const auto chord = chordAt (s, bar);
+-    const ChordVoicing& voicing = voicingAt (s, bar);
++    const long long chordSlot = floorDiv (step, std::max (1, s.stepsPerChord));
++    const auto chord = chordAt (s, chordSlot);
++    const ChordVoicing& voicing = voicingAt (s, chordSlot);
+     // The chord of the next bar: the last 8th of a bar can push into it.
+-    const auto nextChord = chordAt (s, bar + 1);
+-    const ChordVoicing& nextVoicing = voicingAt (s, bar + 1);
++    const auto nextChord = chordAt (s, chordSlot + 1);
++    const ChordVoicing& nextVoicing = voicingAt (s, chordSlot + 1);
+ 
+     // Every N bars the last bar plays a variation of the groove (the turnaround).
+     const bool varied = s.variationEvery > 0 && mod (bar, s.variationEvery) == s.variationEvery - 1
+@@ -534,7 +535,7 @@
+ 
+         const bool chordHit = isChordLane (lane);
+         // A chord hit on the last 8th of a bar plays the chord coming next (the push).
+-        const bool push = s.pushChanges && chordHit && stepInBar >= 14 && symbol != 'g' && ! (nextChord == chord);
++        const bool push = s.pushChanges && chordHit && mod (step, std::max (1, s.stepsPerChord)) >= std::max (0, s.stepsPerChord - 2) && symbol != 'g' && ! (nextChord == chord);
+         // Now and then (with Humanize) the last bar of the phrase answers with another top note.
+         // The chance follows Humanize; a step keeps its choice for the whole phrase.
+         const bool answer = human > 0.0 && phraseBar == 3
+--- a/Source/engine/GrooveEngine.h
++++ b/Source/engine/GrooveEngine.h
+@@ -30,6 +30,7 @@
+ {
+     LeadSettings() noexcept;
+ 
++    int stepsPerChord = 16; // Arranger shared harmony; standalone uses one bar.
+     int key = 0;
+     int scale = 0;
+     int pattern = 0;

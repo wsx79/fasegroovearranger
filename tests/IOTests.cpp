@@ -32,5 +32,15 @@ int main(){try{
         auto bad=juce::JSON::parse(saved);bad["tracks"][2].getDynamicObject()->setProperty("parameterAutomation",juce::var("x"));check(fga::projectFromJson(bad,back).failed(),"invalid plugin automation rejected");
     }
     p.tracks[2].effectPath="/fx/Spring.vst3";p.tracks[2].effectId="<PLUGIN/>";p.tracks[2].effectState="fx-state";check(fga::projectFromJson(fga::projectJson(p),restored).wasOk()&&restored.tracks[2].effectPath==p.tracks[2].effectPath&&restored.tracks[2].effectId==p.tracks[2].effectId&&restored.tracks[2].effectState==p.tracks[2].effectState&&restored.tracks[0].effectPath.empty(),"insert effect persists");
+    {
+        auto legacy=fga::projectJson(p);legacy["tracks"].getArray()->remove(fga::leadTrack);
+        fga::Project loaded;check(fga::projectFromJson(legacy,loaded).wasOk(),"Legacy seventeen-track projects still load");
+        check(loaded.tracks.size()==fga::trackCount&&loaded.tracks[fga::leadTrack].name=="Lead","Legacy project appends Lead without renumbering tracks");
+        const auto upgraded=fga::projectJson(loaded);
+        for(int t=0;t<fga::legacyTrackCount;++t)check(juce::JSON::toString(upgraded["tracks"][t],false,17)==juce::JSON::toString(legacy["tracks"][t],false,17),"Legacy notes, routing, effects and automation are preserved");
+        for(const auto& c:loaded.tracks[fga::leadTrack].clips)check(c.notes.empty(),"Loading an old project does not add notes to its mix");
+        loaded.tracks[fga::leadTrack].instrument="plugin";loaded.tracks[fga::leadTrack].instrumentPath="/lead/Lead.vst3";loaded.tracks[fga::leadTrack].instrumentState="lead-state";loaded.tracks[fga::leadTrack].engine.laneShift[4]=12.5;
+        fga::Project back;check(fga::projectFromJson(fga::projectJson(loaded),back).wasOk()&&back.tracks[fga::leadTrack].instrumentState=="lead-state"&&back.tracks[fga::leadTrack].engine.laneShift[4]==12.5,"Lead routing and lane settings round-trip");
+    }
     tmp.deleteRecursively();std::cout<<"Project persistence, schema validation and MIDI import passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

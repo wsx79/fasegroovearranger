@@ -1,0 +1,2 @@
+# Generated unified patches contain whitespace-only context lines.
+ThirdParty/engine-patches/*.diff -whitespace

@@ -16,6 +16,7 @@ def read(path, expected_tracks, require_cc=False):
         size = struct.unpack('>I', data[pos+4:pos+8])[0]
         pos += 8
         end, active, tick = pos + size, {}, 0
+        track_name = ""
         def vlq():
             nonlocal pos
             value = 0
@@ -36,9 +37,11 @@ def read(path, expected_tracks, require_cc=False):
                     assert size == 3 and int.from_bytes(payload, 'big') > 0
                     tempos += 1
                 if typ == 6: markers += 1
+                if typ == 3: track_name = payload.decode("utf-8")
                 if typ == 47: assert size == 0 and pos == end
             else:
                 typ, channel = status >> 4, status & 15
+                if track_name == "Lead": assert channel == 4, "Lead must use melodic channel 5, never drum channel 10"
                 assert typ in (8, 9, 11, 12)
                 pitch = data[pos]; pos += 1
                 if typ == 12: continue
@@ -61,10 +64,10 @@ def read(path, expected_tracks, require_cc=False):
     print(f'PASS {path}: {tracks} tracks, {note_count} matched notes, {markers} section markers')
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else 'build/core')
-read(folder / 'test-song.mid', 18)
+read(folder / 'test-song.mid', 19)
 read(folder / 'test-kick.mid', 2)
 
 read(folder / "test-piano-cc.mid",2,True)
 
 for path in sorted(folder.glob("club-*.mid")):
-    read(path,18)
+    read(path,19)

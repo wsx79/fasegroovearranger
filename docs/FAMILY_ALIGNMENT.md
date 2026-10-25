@@ -8,6 +8,8 @@ Source comparison, 20 October 2026. Reference branches are `main` at:
 | Drums | `7f1def6a4e4cb72ed887f7754171affec12af001` | `Source/PluginEditor.cpp`: `layout`, `IconButton`, `Knob`, `OptionsOverlay`; `Updater.*`, README and docs |
 | Guitar | `e571f8d02621c65adeb35207214771571499fc65` | `Source/PluginEditor.cpp`: `layout`, `OptionsOverlay`, `PartCard`, `ChordPanel`, `MixerView`; `Branding.*`, README and docs |
 
+Lead integration (0.17.0): the released v0.1.0 engine and guide synth from `a2294b9` use the same vendoring/synchronisation workflow. The shared harmony-duration adapter is recorded in `ENGINE_PATCHES.md`. Lead shares the existing instrument-panel composition and DAW routing, mixer, editor and export paths.
+
 ## Differences found and corrections
 
 | Area | Arranger before this change | Family reference and correction |

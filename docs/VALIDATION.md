@@ -1,5 +1,16 @@
 # Validation record
 
+## 0.17.0 — Lead integration and inspector
+
+- Seven CTest checks pass on Linux: core generation, independent MIDI reader, MP3, project I/O, shared updater safeguards, audio engine and sample browser.
+- Lead is vendored from the released v0.1.0 source at `a2294b9`; its only engine patch is the shared harmonic duration. `sync-engines.py --check lead` passes.
+- The original MIDI tracks are byte-identical in all 16 baseline MIDI files; the new track is appended and exported on melodic channel 5. Core checks exercise all thirteen genres, monophony, take isolation, locks and shared chord durations.
+- Seventeen-track JSON migration preserves existing notes, plugin/effect routing, mix and automation exactly, appending an empty Lead track. Eighteen-track projects and Lead settings round-trip.
+- Native UI smoke passes Lead controls, pitched editing, internal/external panel layout, all inspector card bounds at minimum/default/expanded widths, resizing/collapse, actions and undo. Both embedded guides render nine chapters and seven images.
+- Native audio verification passes all eighteen aligned stems, Lead guide-volume/mute isolation and MIDI preservation. VST3 host and isolated plugin-catalogue probes pass.
+- Packaging fixtures pass English/Italian guides, Lead illustration and licence, inspector preview, platform payload allowlists and executable permissions. The existing CI workflow also runs its full thirteen-genre club audio audit and native platform builds before publishing.
+
+
 ## DAW workspace and regressions (0.5.0)
 
 [Native interface validation](https://github.com/wsx79/fasegroovearranger/actions/runs/39558741208), source `4a403992e831ec5ad99577daf49741ff7e818e8f`:

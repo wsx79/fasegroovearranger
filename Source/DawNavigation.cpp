@@ -94,7 +94,7 @@ void PianoRoll::pasteNotes(){
     if(count>2000000)return;
     owner.checkpoint();auto& notes=owner.clip().notes;notes.insert(notes.end(),copied.begin(),copied.end());owner.changed();
     // Normalisation adapts notes to the destination drum lane.
-    if(owner.selectedTrack>=4)for(auto& n:copied)n.pitch=owner.project.tracks[(size_t)owner.selectedTrack].engine.midiNote>=0?owner.project.tracks[(size_t)owner.selectedTrack].engine.midiNote:fgd::defaultNote(owner.selectedTrack-4);
+    if(isDrumTrack(owner.selectedTrack))for(auto& n:copied)n.pitch=owner.project.tracks[(size_t)owner.selectedTrack].engine.midiNote>=0?owner.project.tracks[(size_t)owner.selectedTrack].engine.midiNote:fgd::defaultNote(owner.selectedTrack-4);
     retainSelection(copied);
 }
 bool PianoRoll::editKeys(const juce::KeyPress& key){

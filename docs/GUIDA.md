@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.16.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.17.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -148,9 +148,11 @@ Le cartelle vengono lette e le informazioni audio misurate in background: l'inte
 | **LOOP** | Ripete la zona impostata; LOOP CLIP ripete la parte scelta nell’editor. |
 | **CLICK** | Metronomo durante l'ascolto (mai nell'export); come il tasto **C**. |
 
+L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionato** in riquadri compatti. Strumento interno, sample e plugin condividono una riga; l'editor del plugin compare quando è assegnato uno strumento o effetto esterno. Mute, solo, blocchi, modifica MIDI, rigenerazione e loop conservano azioni e undo. Trascina il bordo per ridimensionarlo; il doppio clic ripristina 248 px.
+
 ### Progression, Harmony & Scales e Groove
 
-**Tonalità e scala sono una sola scelta per tutto il brano.** Piano, basso, archi e chitarra usano lo stesso giro. Non serve collegare i singoli strumenti con LINK.
+**Tonalità e scala sono una sola scelta per tutto il brano.** Piano, basso, archi, chitarra e lead usano lo stesso giro. Non serve collegare i singoli strumenti con LINK.
 
 | Controllo | Cosa fa |
 |---|---|
@@ -171,7 +173,7 @@ Nel pannello di uno strumento, **APPLICA TRACCIA** o **APPLICA CLIP** applica i 
 
 ### Le tracce: piano esteso, basso, archi e batteria
 
-Le prime tredici tracce sono i pezzi della batteria: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Seguono **Bass, Piano, Strings e Guitar**. La chitarra resta tutta su una traccia.
+Le prime tredici tracce sono i pezzi della batteria: **Kick, Snare, Clap, Rim, Closed hat, Open hat, Ride, Shaker, Tambourine, Conga, Cowbell, Tom, Crash**. Seguono **Bass, Piano, Strings, Guitar e Lead**. La chitarra resta tutta su una traccia.
 
 <p align="center"><img src="images/guide_piano.png" alt="Piano" width="900"></p>
 
@@ -184,8 +186,17 @@ Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli c
 | **Strings** | Lo stile degli archi: un sostegno lungo o una parte più ritmica. |
 | **Batteria** | Soltanto il pezzo scelto: groove, dinamica, nota MIDI e posizione rispetto al beat. |
 | **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
+| **Lead** | Motivi monofonici, risposte, arpeggi e passaggi; ritardo attacco, quattro timbri synth e mixer delle dodici righe. |
 
 I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL** della parte scelta cambia le dinamiche MIDI alla generazione. I mute delle parti agiscono anche sull’ascolto delle note già scritte. L’esportazione MIDI conserva le note del clip.
+
+#### Lead
+
+<p align="center"><img src="images/guide_lead.png" alt="Lead" width="900"></p>
+
+Lead usa lo stesso motore melodico e i quattro timbri synth guida di [Fase Groove Lead](https://github.com/wsx79/fasegroovelead). Le dodici corsie generano una sola voce melodica: i passaggi seguono tonalità e scala condivise, le note forti seguono gli accordi, anche con durata di mezza, una, due o quattro battute. Groove, densità, nuovo riff/feel, ordine A–D, fill, variazioni, livelli, mute, timing e ottave funzionano come nello strumento originale. ATTACK DELAY è in millisecondi; PLAYING offre motivi tenuti, registro alto e anticipi armonici. Lead ha editor MIDI intonato, sample/VST/AU, effetto, automazioni e stem propri. L'export usa il canale melodico 5, separato dalla batteria.
+
+I progetti precedenti a diciassette tracce si aprono con Lead vuoto aggiunto in fondo. ID delle tracce, note, plugin, mix e automazioni restano intatti. Rigenera esplicitamente Lead per aggiungere la melodia a un vecchio brano; le modifiche MIDI manuali restano libere come negli altri strumenti intonati.
 
 ### Suoni per genere
 

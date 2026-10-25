@@ -68,7 +68,7 @@ inline bool writeClubAudioAudit(const juce::File& folder){
             auto result=audio.exportAudio(preview,folder.getChildFile("preview-"+juce::String(genre)+".mp3"),-1,true,[]{return false;},[](double){});
             ok=result.wasOk()&&ok;
             if(genre==4){
-                auto drums=preview;for(int ti=0;ti<4;++ti)drums.tracks[(size_t)ti].mute=true;
+                auto drums=preview;for(int ti=0;ti<trackCount;++ti)if(isHarmonicTrack(ti))drums.tracks[(size_t)ti].mute=true;
                 ok=audio.exportAudio(drums,folder.getChildFile("Jackin-drums.mp3"),-1,true,[]{return false;},[](double){}).wasOk()&&ok;
                 ok=audio.exportAudio(preview,folder.getChildFile("Jackin-bass.mp3"),1,true,[]{return false;},[](double){}).wasOk()&&ok;
                 ok=audio.exportAudio(preview,folder.getChildFile("Jackin-keys.mp3"),0,true,[]{return false;},[](double){}).wasOk()&&ok;

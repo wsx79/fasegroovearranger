@@ -247,6 +247,13 @@ namespace
                 p.addRoundedRectangle (0.3f, 0.38f, 0.4f, 0.24f, 0.04f);
                 strokeWidth = 0.08f;
                 break;
+            case I::lead:
+                p.addRoundedRectangle (0.08f, 0.64f, 0.2f, 0.1f, 0.025f);
+                p.addRoundedRectangle (0.3f, 0.46f, 0.2f, 0.1f, 0.025f);
+                p.addRoundedRectangle (0.52f, 0.26f, 0.2f, 0.1f, 0.025f);
+                p.addRoundedRectangle (0.74f, 0.46f, 0.18f, 0.1f, 0.025f);
+                strokeWidth = 0.07f;
+                break;
             case I::piano:
                 p.addRoundedRectangle (0.1f, 0.16f, 0.8f, 0.68f, 0.05f);
                 for (float x : { 0.3f, 0.5f, 0.7f }) { p.startNewSubPath (x, 0.5f); p.lineTo (x, 0.84f); }

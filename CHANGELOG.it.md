@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.17.0 — 2026-10-25
+
+- Motore originale Fase Groove Lead integrato come diciottesima traccia: generazione monofonica, armonia e durata accordi condivise, dodici corsie, quattro synth guida, sample/plugin, automazioni e stem MIDI/audio.
+- I progetti precedenti a diciassette tracce si aprono invariati, con Lead vuoto aggiunto in fondo. ID e MIDI delle tracce esistenti restano stabili.
+- Inspector ridisegnato in riquadri compatti per traccia, suono, mix e clip, con selettore sorgente su una riga, etichette chiare ed editor plugin contestuale. Comandi, undo, chiusura e ridimensionamento restano funzionanti.
+
 ## 0.16.2 — 2026-10-25
 
 - La finestra salva / scarta alla chiusura, i messaggi e la finestra di rinomina seguono il tema dell'Arranger invece di quello standard.

@@ -20,7 +20,7 @@ Usage: scripts/sync-engines.py [--check | --record [--synced]] [--worktree] [--r
   --worktree   take the plugin's working tree (changes not committed yet) instead of HEAD;
                nothing is recorded: after committing the plugin, run --record --synced
   --repos DIR  folder with the plugin repos (default: the folder holding this repo)
-Plugins: piano, drums, guitar (default: all three). After applying, build and check the MIDI
+Plugins: piano, drums, guitar, lead (default: all four). After applying, build and check the MIDI
 (ctest, scripts/verify-midi.py) before committing.
 """
 from pathlib import Path
@@ -34,7 +34,7 @@ root = Path(__file__).resolve().parent.parent
 third_party = root / 'ThirdParty'
 versions_file = third_party / 'ENGINE_VERSIONS'
 patches_dir = third_party / 'engine-patches'
-plugins = ['piano', 'drums', 'guitar']
+plugins = ['piano', 'drums', 'guitar', 'lead']
 worktree = ':worktree'   # a "revision" meaning the plugin's working tree
 
 

@@ -38,7 +38,7 @@ const FaseGroove::ProductInfo& FaseGroove::product()
 namespace Branding
 {
     const char* const appName   = name;
-    const char* const tagline   = "Piano + Drums + Guitar - one ecosystem";
+    const char* const tagline   = "Piano + Drums + Guitar + Lead - one ecosystem";
     const char* const sourceUrl = "https://github.com/wsx79/fasegroovearranger";
 }
 

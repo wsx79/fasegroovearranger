@@ -26,11 +26,11 @@ def inspect(path):
 mix = inspect(folder / 'mix.wav')
 assert mix[2] > .001 and 0 < mix[3] < .9985, ("default mix must retain headroom", mix)
 active = 0
-for i in range(17):
+for i in range(18):
     stem = inspect(folder / f'stem-{i}.wav')
     assert stem[:2] == mix[:2], f'stem {i} alignment'
     if stem[2] > .00001: active += 1
-    if i < 5: assert stem[2] > .00001, f'silent primary instrument {i}'
+    if i < 5 or i == 17: assert stem[2] > .00001, f'silent primary instrument {i}'
 assert active >= 8, f'only {active} active stems'
 assert inspect(folder / 'guitar-volume-zero.wav')[3] == 0, 'guitar guide faders must control audio without rewriting MIDI'
 assert inspect(folder / 'guitar-lanes-muted.wav')[3] == 0, 'guitar lane mute must silence stored MIDI during playback'
@@ -80,3 +80,6 @@ for track in (0, 1, 3):
     regeneration.append(f'track {track}: relative PCM difference {difference:.4f}')
 (folder / 'regeneration-audio.txt').write_text('PASS same assigned sounds, humanisation disabled; new musical takes change rendered audio\n' + '\n'.join(regeneration))
 print('PASS regenerated phrases audibly differ with the same assigned instrument sounds')
+
+assert inspect(folder / "lead-volume-zero.wav")[3] == 0, "Lead guide faders change audio without changing MIDI"
+assert inspect(folder / "lead-lanes-muted.wav")[3] == 0, "Lead lane mutes silence existing notes"

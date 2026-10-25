@@ -15,6 +15,7 @@ juce::Image guideImage(const juce::String& name){
     if(name=="screenshot.png"||name.endsWith("guide_arrangement.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_arrangement_png,BinaryData::guide_arrangement_pngSize);
     if(name.endsWith("guide_piano.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_piano_png,BinaryData::guide_piano_pngSize);
     if(name.endsWith("guide_guitar.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_guitar_png,BinaryData::guide_guitar_pngSize);
+    if(name.endsWith("guide_lead.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_lead_png,BinaryData::guide_lead_pngSize);
     if(name.endsWith("guide_mixer.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_mixer_png,BinaryData::guide_mixer_pngSize);
     return {};
 }
@@ -121,7 +122,7 @@ public:
     void zoom(int delta){book.fontSize=std::clamp(book.fontSize+(float)delta,13.f,21.f);book.relayout();hits=book.find(search.getText());currentHit=-1;findNext(1);}
     void findNext(int direction){if(hits.empty()){result.setText(search.getText().isEmpty()?"":isEnglish?"No results":"Nessuno",juce::dontSendNotification);return;}currentHit=(currentHit+direction+(int)hits.size())%(int)hits.size();port.setViewPosition(0,hits[(size_t)currentHit]);result.setText(juce::String(currentHit+1)+" / "+juce::String((int)hits.size()),juce::dontSendNotification);}
     bool evidence(const juce::File& folder){
-        bool content=book.chapters.size()==9&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::image&&b.image.isValid();})==6&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::table;})>=10;
+        bool content=book.chapters.size()==9&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::image&&b.image.isValid();})==7&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::table;})>=10;
         for(const auto& b:book.blocks)if(b.kind==GuideBook::Kind::table){content=content&&!b.rows.empty()&&b.rows.front().size()>=2;for(const auto& row:b.rows)content=content&&row.size()==b.rows.front().size();}
         auto shot=[&](const char* name){auto file=folder.getChildFile(juce::String(name)+(isEnglish?"-en":"-it")+".png");if(auto out=file.createOutputStream()){juce::PNGImageFormat png;return png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}return false;};
         port.setViewPosition(0,0);bool ok=shot("guide-welcome");for(const auto& block:book.blocks)if(block.target.startsWithChar('#'))ok=book.positionFor(block.target.substring(1))>0&&ok;index.selectRow(2);ok=port.getViewArea().getY()>0&&shot("guide-chapter")&&ok;search.setText(isEnglish?"NEW ARRANGEMENT":juce::String::fromUTF8("NUOVO ARRANGIAMENTO"));search.onTextChange();ok=!hits.empty()&&shot("guide-search")&&ok;zoom(1);ok=book.fontSize==16&&ok;search.clear();return content&&ok;
@@ -139,5 +140,5 @@ private:
 }
 std::unique_ptr<juce::Component> createGuidePage(bool english){return std::make_unique<GuidePage>(english);}
 std::unique_ptr<juce::Component> createReferencePage(const juce::String& title,const juce::String& markdown){return std::make_unique<GuidePage>(title,markdown);}
-bool verifyGuidePages(const juce::File& folder){GuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, six images including cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;}
+bool verifyGuidePages(const juce::File& folder){GuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, seven images including Lead/cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;}
 }
