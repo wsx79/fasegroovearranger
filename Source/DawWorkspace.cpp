@@ -261,6 +261,8 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     arrangement.mouseDown(event(278,76));arrangement.mouseDrag(event(406,76));arrangement.mouseUp(event(406,76));
     ok=ok&&project.clipLength(4,0)==24&&project.tracks[4].clips[0].notes.size()==2&&project.tracks[4].clips[0].notes[1].start==16;
     if(auto output=folder.getChildFile("clip-loop-resize.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
+    {juce::AlertWindow dialog(tr("Unsaved changes"),tr("The project has unsaved changes. Save them before closing?"),juce::MessageBoxIconType::QuestionIcon,this);dialog.addButton(tr("SAVE"),1);dialog.addButton(tr("Discard"),2);dialog.addButton(tr("Cancel"),0);   // the themed close dialog
+        if(auto output=folder.getChildFile("close-dialog.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(dialog.createComponentSnapshot(dialog.getLocalBounds()),*output)&&ok;}else ok=false;}
     Project loaded;ok=ok&&projectFromJson(projectJson(project),loaded).wasOk()&&loaded.tracks[4].clips[0]==project.tracks[4].clips[0]&&events(loaded,4).size()==events(project,4).size();
     undo(false);ok=ok&&project.clipLength(4,0)==8;undo(false);ok=ok&&project.clipLength(4,0)==16&&project.tracks[4].clips[0].notes.size()==1;
     arrangement.mouseDown(event(342,16));arrangement.mouseDrag(event(406,16));arrangement.mouseUp(event(406,16));

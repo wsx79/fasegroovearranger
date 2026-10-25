@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.16.2 — 2026-10-25
+
+- La finestra salva / scarta alla chiusura, i messaggi e la finestra di rinomina seguono il tema dell'Arranger invece di quello standard.
+
 ## 0.16.1 — 2026-10-25
 
 - Loop nel righello: trascina i bordi per ridimensionarlo (agganciato alla griglia, almeno un beat), trascina il centro per spostarlo, trascina sul righello vuoto per disegnarne uno nuovo; un annulla per gesto, un clic sposta ancora il cursore.

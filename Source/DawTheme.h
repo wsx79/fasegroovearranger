@@ -90,7 +90,24 @@ public:
         setColour(juce::ListBox::backgroundColourId,Daw::well);
         setColour(juce::ScrollBar::thumbColourId,Daw::lineStrong);
         setColour(juce::CaretComponent::caretColourId,Daw::accent);
+        setColour(juce::AlertWindow::backgroundColourId,Daw::surfaceHi);
+        setColour(juce::AlertWindow::textColourId,Daw::text);
+        setColour(juce::AlertWindow::outlineColourId,Daw::lineStrong);
     }
+    // Dialogs (save / discard, messages, rename): a raised panel in the theme, the title in
+    // bold under an accent bar (no icon: the title says what it is).
+    void drawAlertBox(juce::Graphics& g,juce::AlertWindow& w,const juce::Rectangle<int>& textArea,juce::TextLayout& text) override{
+        const auto r=w.getLocalBounds().toFloat();
+        g.setColour(Daw::surfaceHi);g.fillRoundedRectangle(r,6.f);
+        g.setColour(Daw::lineStrong);g.drawRoundedRectangle(r.reduced(.5f),6.f,1.f);
+        g.setColour(Daw::accent);g.fillRoundedRectangle(r.getX()+1.f,r.getY()+1.f,r.getWidth()-2.f,3.f,1.5f);
+        g.setColour(Daw::text);text.draw(g,textArea.toFloat());
+    }
+    int getAlertBoxWindowFlags() override{return juce::ComponentPeer::windowAppearsOnTaskbar;}
+    juce::Font getAlertWindowTitleFont() override{return Daw::font(15.f,true);}
+    juce::Font getAlertWindowMessageFont() override{return Daw::font(13.f);}
+    juce::Font getAlertWindowFont() override{return Daw::font(12.5f);}
+    int getAlertWindowButtonHeight() override{return 30;}
     // Flat buttons: a 3 px radius, a hairline edge and a 1 px top light; on = accent.
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour& background,bool highlighted,bool down) override{
         const auto r=b.getLocalBounds().toFloat().reduced(.5f);const bool on=b.getToggleState();

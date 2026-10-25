@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.16.2 — 2026-10-25
+
+- The save / discard dialog on close, the messages and the rename box follow the Arranger's theme instead of the system default.
+
 ## 0.16.1 — 2026-10-25
 
 - Loop in the ruler: drag its edges to resize it (snapped to the grid, at least one beat), drag the middle to move it, drag on an empty ruler to draw a new one; one undo per gesture, a click still moves the playhead.
