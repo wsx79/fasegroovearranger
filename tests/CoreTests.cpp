@@ -494,5 +494,30 @@ int main(int argc,char** argv){try{
     for(int g=0;g<13;++g){auto styled=fga::newProject(g);std::ostringstream signature;for(int t:{0,1,3,4})signature<<styled.tracks[(size_t)t].sound<<":"<<styled.tracks[(size_t)t].engine.tone<<":";palettes.insert(signature.str());check(styled.tracks[1].pan==0&&styled.tracks[1].engine.reverb==0&&styled.tracks[1].engine.chorus==0,"dry centred default bass");check(styled.tracks[4].gain*.95>styled.tracks[8].gain*.28&&styled.tracks[4].gain*.95<3*styled.tracks[8].gain*.28,"drum balance includes original engine lane calibration");}
     check(palettes.size()==13,"thirteen distinct sound palettes, not one default kit/keyboard");
     auto personal=fga::newProject();personal.tracks[0].locked=true;personal.tracks[0].sound=6;personal.tracks[1].instrument="plugin";personal.tracks[1].instrumentPath="personal.vst3";personal.tracks[1].gain=.37;personal.tracks[3].instrument="sample";personal.tracks[3].instrumentPath="personal.wav";fga::applyGenre(personal,8);check(personal.tracks[0].sound==6&&personal.tracks[1].gain==.37&&personal.tracks[1].instrumentPath=="personal.vst3"&&personal.tracks[3].instrumentPath=="personal.wav","style preserves locked guides, personal instruments and routing");
+    {
+        auto manual=fga::newProject(1);const int track=manual.addMidiTrack();
+        check(track==fga::trackCount&&manual.tracks[(size_t)track].clips[0].notes.empty(),"new handwritten MIDI track starts empty");
+        auto& t=manual.tracks[(size_t)track];t.name="Melodia personale";t.clips[0].notes={{0,1,60,101,0},{1.5,.5,67,94,0}};
+        t.instrument="plugin";t.instrumentPath="personal.vst3";t.volume.enabled=true;t.volume.points={{0,.83,0}};const auto kept=t;
+        fga::generate(manual,fga::Scope::song,0,0,38451);
+        fga::generate(manual,fga::Scope::section,0,0,7951);
+        fga::applyInstrumentChange(manual,0,true);fga::applyGenre(manual,6);fga::arrangeSong(manual);fga::generate(manual);
+        check(manual.tracks[(size_t)track].clips==kept.clips&&manual.tracks[(size_t)track].name==kept.name&&manual.tracks[(size_t)track].instrumentPath==kept.instrumentPath,"manual MIDI, name and routing survive song/section/harmony/genre/form changes");
+        int ons=0;for(const auto& e:fga::events(manual,track))if(e.velocity>0&&e.controller<0)++ons;
+        check(ons==2&&!fga::midiFile(manual,track).empty(),"manual notes reach the export schedule");
+        check(manual.tracks[(size_t)track].volume.points.size()==1&&manual.tracks[(size_t)track].volume.points[0].value==.83,"automatic generation preserves manual-track automation");
+        fga::randomiseAutomation(manual,fga::Scope::track,track,0,5179,0);check(manual.tracks[(size_t)track].volume.points.size()>1&&manual.tracks[(size_t)track].clips==kept.clips,"manual automation lane dice works without rewriting handwritten MIDI");
+        while(manual.tracks.size()<fga::maxTracks)check(manual.addMidiTrack()>=0,"add several handwritten tracks");
+        check(manual.addMidiTrack()==-1&&manual.tracks.size()==fga::maxTracks,"manual track limit is bounded");
+        for(int ti=fga::trackCount;ti<fga::maxTracks;++ti)check(fga::trackAtRow(ti)==ti&&fga::rowForTrack(ti)==ti&&!fga::isDrumTrack(ti),"manual routing and visual order stay stable");
+    }
+    {
+        auto p=fga::newProject(1);p.sections={{fga::Section::main,8,"Main"}};p.normalise();
+        p.tracks[fga::leadTrack].engine.roomForBand=false;p.tracks[fga::leadTrack].engine.fillEvery=0;p.tracks[fga::leadTrack].engine.variationEvery=0;
+        fga::generate(p,fga::Scope::track,fga::leadTrack);const auto original=p.tracks[fga::leadTrack].clips[0].notes;
+        p.tracks[fga::leadTrack].engine.globalOctave=1;fga::applyInstrumentChange(p,fga::leadTrack,false);const auto& higher=p.tracks[fga::leadTrack].clips[0].notes;
+        check(original.size()==higher.size()&&!higher.empty(),"global lead octave retains attacks");
+        for(size_t i=0;i<original.size();++i)check(higher[i].pitch==original[i].pitch+12&&higher[i].start==original[i].start&&higher[i].velocity==original[i].velocity,"global lead octave changes register, keeping the stored take");
+    }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

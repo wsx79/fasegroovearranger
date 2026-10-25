@@ -30,7 +30,7 @@ void MainComponent::togglePlayback(){
 // Live click on every beat (accented bar); never part of an export.
 void MainComponent::toggleMetronome(){audio.setMetronome(!audio.metronomeOn());metronomeButton.setToggleState(audio.metronomeOn(),juce::dontSendNotification);message(audio.metronomeOn()?"Metronome on.":"Metronome off.");}
 void MainComponent::selectClip(int track,int index,bool keepSelection){
-    track=std::clamp(track,0,trackCount-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
+    track=std::clamp(track,0,(int)project.tracks.size()-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
     const int guide=index>=0?project.sectionAtBeat(project.clipStart(track,index)):project.sectionAtBeat(timelinePosition());
     select(track,guide);selectedClip=index;noClipSelection=index<0;selectionBeat=index>=0?project.clipStart(track,index)+1./1920.:timelinePosition();
     arrangement.selectedClips=keepSelection&&same?previous:std::set<int>{};if(index>=0)arrangement.selectedClips.insert(index);

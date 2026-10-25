@@ -25,6 +25,7 @@ class TrackInspector : public juce::Component {
 public:
     explicit TrackInspector(MainComponent&);
     void refresh();
+    void finishNameEdit(){if(name.isBeingEdited())name.hideEditor(false);}
     int preferredHeight() const { return contentHeight; }
     void paint(juce::Graphics&) override;
     void resized() override;

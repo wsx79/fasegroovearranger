@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.18.0 — 2026-10-25
+
+- Instrument panels open in a separate resizable window; the arrangement or MIDI editor stays in place, with playback and edits shared in real time.
+- Add handwritten MIDI tracks with + MIDI (up to 32 tracks in total). They support piano-roll editing, built-in sound, sample/VST/AU, effects, automation, project persistence and stems; automatic generation preserves their notes.
+- Rename tracks directly by double-clicking their inspector/mixer name, or through the existing track context menu. The inspector uses OPEN VST for the plugin editor.
+- Lead global octave in the instrument panel, relative to the twelve lane offsets, using the same engine setting as Lead VST3/Standalone.
+- Piano regeneration chooses a rhythm more distinct from the previous take, drawn from the original genre generator. Holds, accents and humanisation do not count as different attacks; saved takes and locked segments remain reproducible.
+- Wider key display in the transport, including complete flat names such as Db.
+
 ## 0.17.0 — 2026-10-25
 
 - Original Fase Groove Lead engine integrated as the eighteenth track: monophonic generation, shared harmony and chord duration, twelve phrase lanes, four guide synths, sample/plugin routing, automation and MIDI/audio stems.

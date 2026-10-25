@@ -12,10 +12,12 @@ namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
 constexpr int leadTrack = 17;
 constexpr int legacyTrackCount = 17;
-constexpr int trackCount = 18;
+constexpr int trackCount = 18; // generated tracks, stable IDs
+constexpr int maxTracks = 32;
+inline bool isManualTrack(int track) { return track >= trackCount && track < maxTracks; }
 inline bool isDrumTrack(int track) { return track >= 4 && track < legacyTrackCount; }
 inline bool isHarmonicTrack(int track) { return track >= 0 && (track < 4 || track == leadTrack); }
-inline int instrumentFamily(int track) { return isDrumTrack(track) ? 4 : track == leadTrack ? 5 : track; }
+inline int instrumentFamily(int track) { return isDrumTrack(track) ? 4 : track == leadTrack ? 5 : isManualTrack(track) ? 0 : track; }
 enum class Section { main, intro, breakdown, buildup, drop, outro };
 enum class Scope { song, track, section, clip };
 struct Note {
@@ -55,7 +57,7 @@ struct EngineOptions {
     double swing = -1, humanize = -1, density = -1, gate = .55, strum = .15, accent = .85, tone = .5;
     double reverb = .12, chorus = 0, pump = 0, pumpRelease = .2;
     int centre = 64, movement = 1, strumDirection = 0, topLine = 0, approach = 0, evolveBars = 0, humanizeStyle = 0, bassFeel = 0;
-    int rangeLow = 24, rangeHigh = 108, midiNote = -1;
+    int rangeLow = 24, rangeHigh = 108, midiNote = -1, globalOctave = 0;
     bool octaveTop = false, realism = true, letRing = false, roomForBand = true, pushChanges = true, afterFill = true, genreFeel = true, bassSpace = true;
     std::array<int,4> segments {0,1,2,3};
     std::array<double,12> laneVolume {1,1,1,1,1,1,1,1,1,1,1,1};
@@ -67,7 +69,7 @@ struct EngineOptions {
 };
 struct Track {
     std::string name;
-    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead
+    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead, 18..31 handwritten MIDI
     double gain = .75, pan = 0;
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
@@ -128,6 +130,7 @@ struct Project {
     void removeGuide(int section);
     void moveGuide(int from, int to);
     void normalise();
+    int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
     void insertSection(int index, SongSection section, int copyFrom = -1);
     bool duplicateSection(int index);
     void removeSection(int index);
@@ -154,6 +157,7 @@ std::vector<std::string> chordNames(const Settings&);
 // A zero seed applies settings to stored takes. A nonzero seed draws new genre
 // patterns, releasing fixed pattern/riff overrides on targeted tracks. Song scope
 // also changes key, tempo, feel and 8-bar section lengths unless notes are locked.
+// Handwritten MIDI tracks keep their notes, routing and automation.
 void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 0, std::uint32_t seed = 0);
 // Instrument-panel edits re-render the stored takes (zero seed) of the edited
 // track. Harmony edits (key, scale, chords, voicing...) also re-render the other

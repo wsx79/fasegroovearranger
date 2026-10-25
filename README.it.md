@@ -23,6 +23,8 @@
 
 Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
+Pannelli strumento in finestre separate, ottava generale Lead e tracce MIDI scritte a mano (**+ MIDI**, fino a 32 tracce totali). Rinomina le tracce con doppio clic sul nome nell’inspector o mixer. Le rigenerazioni del piano scelgono figure più distinte nello stesso genere.
+
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
 
 La vista DAW comprende inspector laterale, mixer a 18 canali con master, righello e locatori di loop, clip indipendenti con divisione al cursore, taglia/copia/incolla, duplicazione, eliminazione, spostamento e selezione multipla, adattamento dell’intero brano e scorrimento in riproduzione. La struttura in alto resta una guida modificabile: le sue modifiche conservano le posizioni MIDI.

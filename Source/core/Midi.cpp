@@ -32,7 +32,8 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
     for(int row=0;row<(int)p.tracks.size();++row){
         const size_t ti=(size_t)trackAtRow(row);
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;
-        Bytes data;text(data,0,3,p.tracks[ti].name);int channel=isDrumTrack((int)ti)?9:ti==leadTrack?4:(int)ti;
+        Bytes data;text(data,0,3,p.tracks[ti].name);int channel=isDrumTrack((int)ti)?9:ti==leadTrack?4:isManualTrack((int)ti)?(5+((int)ti-trackCount))%15:(int)ti;
+        if(isManualTrack((int)ti)&&channel>=9)channel=(channel+1)%16;
         // GM hints make exported MIDI immediately useful in a GM player.
         if(isHarmonicTrack((int)ti)){static const int programs[]{4,33,48,26,80};data.insert(data.end(),{0,(std::uint8_t)(0xc0|channel),(std::uint8_t)programs[ti==leadTrack?4:ti]});}
         last=0;

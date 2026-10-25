@@ -70,6 +70,8 @@ Want another take? **REGENERATE TRACK** changes just the selected instrument; **
 
 ---
 
+New piano regenerations compare the previous rhythmic attacks against draws from the genre generator: velocity and humanisation alone do not count as another rhythm. APPLY and project loading retain the saved take; locked segments remain protected.
+
 ## 3. The interface, section by section
 
 <p align="center"><img src="screenshot.png" alt="Interface" width="900"></p>
@@ -90,7 +92,7 @@ The top contains project commands, transport and the controls shared by everyone
 | **Genre and duration** | Genre defines the form. Length follows groove development and complete harmonic phrases; the display shows the result. |
 | **PROGRESSION · EDIT CHORDS** | Ready-made progressions and individual chords. HARMONY shows the current progression. |
 | **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
-| **Track name** | Opens its instrument panel, with groove, playing, sound and mixer controls. |
+| **Track name** | Selects the track; its gear opens a separate instrument window with groove, playing, sound and mixer controls. |
 | **Double-click clip / E** | Opens the large MIDI editor for just that track and section. |
 | **AUDIO · OPTIONS · GUIDE** | Output device; information, credits and privacy; the guide. |
 
@@ -103,6 +105,8 @@ Drag the **lower edge of a track header** to change that track’s height indepe
 **M** and **S** beside a track name mute and solo it without opening the panel. Click a section header to position playback at that point. **ZOOM** changes how much of the song you see.
 
 ### DAW workspace
+
+**+ MIDI**, in the corner above the track headers, adds a blank track and opens its piano roll. Write notes by hand, assign a guide sound, sample or VST/AU in the inspector, and use clips, loops, effects, automation and exports as on the other tracks. Up to **32 tracks in total** are available. GENERATE SONG, genre changes and harmony changes preserve these notes. Double-click a track’s **name in the inspector or mixer** to rename it; right-click → Rename is also available. **OPEN VST** opens its assigned external instrument or effect.
 
 The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. The **<** arrow at its top right folds it into a narrow rail to give the tracks more width; **>** reopens it. The arrow remains visible when scrolling through the controls. Drag the panel’s **right edge** to resize its width; double-click that edge to restore the default width. The chosen size is remembered. **INSPECTOR / I** also works. Scroll the inspector if vertical space is limited.
 
@@ -177,7 +181,7 @@ The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed 
 
 <p align="center"><img src="images/guide_piano.png" alt="Piano" width="900"></p>
 
-Click an instrument's **name** to open its panel. Choose how to hear it at the top; below are groove, feel, playing and fills. **EDIT MIDI** opens the notes; **< ARRANGEMENT** returns to the song.
+**INSTRUMENT PANEL** in the inspector, or the track’s **gear**, opens a separate resizable window. The arrangement or piano roll stays visible and playback continues. Choose how to hear it at the top; below are groove, feel, playing and fills. **EDIT MIDI** opens the notes; **< ARRANGEMENT** returns to the song.
 
 | Instrument | Where to start |
 |---|---|
@@ -195,6 +199,8 @@ Guitar-part **VOLUME** faders control the guide sound; the selected part’s **L
 <p align="center"><img src="images/guide_lead.png" alt="Lead" width="900"></p>
 
 Lead uses the same melodic engine and four guide synth sounds as [Fase Groove Lead](https://github.com/wsx79/fasegroovelead). Its twelve phrase lanes generate one melodic voice; passing notes follow the shared key and scale, strong beats follow the chord slots, including their shared half/one/two/four-bar duration. Groove, density, new riff/feel, A–D order, fills, variations, lane levels, mutes, timing and octave controls work like the original instrument. ATTACK DELAY is in milliseconds; PLAYING offers held hooks, upper register and anticipated harmony. Lead has its own pitched MIDI editor, sample/VST/AU assignment, effect, automation and stems. Its MIDI export uses melodic channel 5, separate from the drum channel.
+
+**Global octave** shifts the entire Lead melody from −2 to +2 octaves, relative to each lane’s own octave. It is stored in the project and used for MIDI and audio export.
 
 Existing seventeen-track projects load with an empty Lead track appended. Existing track IDs, notes, plugins, mix and automation stay intact. Regenerate Lead explicitly to add a melody to an old song; manual MIDI edits remain editable like the other pitched instruments.
 

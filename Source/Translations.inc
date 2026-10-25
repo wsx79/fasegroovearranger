@@ -1108,3 +1108,15 @@
 { "Sustain", "Sustain", "Sustain", "Sustain", "Sustain", "Sustain" },
 { "Palm mute", "Palm mute", "Palm mute", "Palm mute", "Palm Mute", "Palm mute" },
 { "Dead note", "Nota stoppata", "Nota muerta", "Note étouffée", "Dead Note", "Nota abafada" },
+
+{ "Global octave", "Ottava generale", "Octava global", "Octave globale", "Globale Oktave", "Oitava global" },
+{ "Add MIDI track", "Aggiungi traccia MIDI", "Añadir pista MIDI", "Ajouter une piste MIDI", "MIDI-Spur hinzufügen", "Adicionar faixa MIDI" },
+{ "OPEN VST", "APRI VST", "ABRIR VST", "OUVRIR VST", "VST ÖFFNEN", "ABRIR VST" },
+{ "Double-click to rename this track.", "Doppio clic per rinominare questa traccia.", "Doble clic para renombrar esta pista.", "Double-cliquez pour renommer cette piste.", "Doppelklicken, um diese Spur umzubenennen.", "Clique duas vezes para renomear esta faixa." },
+{ "Add a blank MIDI track for writing notes by hand. Automatic generation leaves it untouched.", "Aggiunge una traccia MIDI vuota per scrivere le note a mano. La generazione automatica la conserva.", "Añade una pista MIDI vacía para escribir notas a mano. La generación automática la conserva.", "Ajoute une piste MIDI vide pour écrire les notes à la main. La génération automatique la conserve.", "Fügt eine leere MIDI-Spur zum manuellen Schreiben hinzu. Die automatische Erzeugung erhält sie.", "Adiciona uma faixa MIDI vazia para escrever notas à mão. A geração automática a preserva." },
+
+{ "Transpose every lead lane by octaves, keeping its own octave offset", "Traspone tutte le corsie Lead per ottave, mantenendo gli scostamenti individuali", "Transpone todas las líneas por octavas conservando sus ajustes", "Transpose toutes les lignes par octaves en gardant leurs réglages", "Transponiert alle Lead-Spuren in Oktaven mit ihren eigenen Abständen", "Transpõe todas as linhas por oitavas mantendo seus ajustes" },
+
+{ "Instrument panel", "Pannello strumento", "Panel del instrumento", "Panneau de l’instrument", "Instrumentenfenster", "Painel do instrumento" },
+{ "Choose the song section to edit.", "Scegli la sezione del brano da modificare.", "Elige la sección de la canción que editar.", "Choisissez la section du morceau à modifier.", "Wähle den Songabschnitt zum Bearbeiten.", "Escolha a seção da música para editar." },
+{ "Jump to the instrument controls.", "Vai ai controlli dello strumento.", "Ir a los controles del instrumento.", "Aller aux commandes de l’instrument.", "Zu den Instrumentenreglern springen.", "Ir aos controles do instrumento." },

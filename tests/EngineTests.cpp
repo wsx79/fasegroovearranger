@@ -11,6 +11,13 @@ int main(){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
         fga::AudioEngine engine;engine.devices.closeAudioDevice(); // drive the callback by hand
+        {
+            auto manual=fga::newProject(1);manual.sections={{fga::Section::main,4,"Main"}};manual.normalise();
+            for(auto& t:manual.tracks)for(auto& c:t.clips)c.notes.clear();int ti=manual.addMidiTrack();manual.tracks[(size_t)ti].clips[0].notes={{0,1,72,110,0}};
+            engine.publish(manual);engine.play(true);juce::AudioBuffer<float> buffer(2,512);juce::AudioIODeviceCallbackContext context;float peak=0;
+            for(int block=0;block<48;++block){engine.audioDeviceIOCallbackWithContext(nullptr,0,buffer.getArrayOfWritePointers(),2,512,context);peak=std::max(peak,buffer.getMagnitude(0,512));}
+            check(peak>.001f&&engine.noteOnsSent(ti)>0,"handwritten MIDI track produces guide audio");engine.stop();
+        }
         auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
         p.tracks[0].clips[0].notes={{0,12,60,100,0}};p.tracks[4].clips[0].notes={{0,.25,36,100,0}};

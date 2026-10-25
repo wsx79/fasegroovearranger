@@ -70,6 +70,8 @@ Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **
 
 ---
 
+Le nuove rigenerazioni del piano confrontano gli attacchi della figura precedente con quelli estratti dal generatore del genere: una diversa velocity o umanizzazione da sola non conta come un nuovo ritmo. APPLY e il caricamento di un progetto mantengono la figura salvata; i segmenti bloccati restano protetti.
+
 ## 3. L’interfaccia, sezione per sezione
 
 <p align="center"><img src="screenshot.png" alt="Interfaccia" width="900"></p>
@@ -90,7 +92,7 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 | **Genere e durata** | Il genere determina la forma; la durata è un risultato di groove e frasi armoniche, mostrato senza un cursore dei minuti. |
 | **PROGRESSIONE · MODIFICA ACCORDI** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
 | **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
-| **Nome della traccia** | Apre il pannello dello strumento, con groove, esecuzione, suono e mixer. |
+| **Nome della traccia** | Seleziona la traccia; la rotella apre il pannello in una finestra separata, con groove, esecuzione, suono e mixer. |
 | **Doppio clic sul clip / E** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
 | **AUDIO · OPZIONI · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
 
@@ -101,6 +103,8 @@ Trascina il **bordo inferiore del nome di una traccia** per cambiarne l’altezz
 **M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sull’intestazione di una sezione posiziona la riproduzione nel punto indicato. Lo **ZOOM** cambia quanto brano vedi.
 
 ### Spazio di lavoro DAW
+
+**+ MIDI**, nell’angolo sopra le intestazioni delle tracce, aggiunge una traccia vuota e apre il piano roll. Scrivi le note a mano, assegna un suono guida, un campione o un VST/AU dall’inspector e usa clip, loop, effetti, automazioni ed export come sulle altre tracce. Sono disponibili fino a **32 tracce totali**. GENERA BRANO, i cambi di genere e gli accordi non riscrivono queste note. Doppio clic sul **nome nell’inspector o nel mixer** per rinominare qualsiasi traccia; resta disponibile anche il menu destro → Rinomina. **APRI VST** apre lo strumento o effetto esterno assegnato.
 
 L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La freccia **<** nell’angolo superiore destro lo richiude in una barra stretta e allarga le tracce; la freccia **>** lo riapre. Il comando resta visibile anche quando scorri i controlli. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Funzionano anche **INSPECTOR / I**. Se lo spazio verticale è ridotto, scorri il pannello.
 
@@ -177,7 +181,7 @@ Le prime tredici tracce sono i pezzi della batteria: **Kick, Snare, Clap, Rim, C
 
 <p align="center"><img src="images/guide_piano.png" alt="Piano" width="900"></p>
 
-Clicca il **nome** di uno strumento per aprire il suo pannello. In alto scegli con cosa ascoltarlo; sotto trovi groove, feel, esecuzione e fill. **EDIT MIDI** apre le note; **< ARRANGIAMENTO** torna al brano.
+Premi **INSTRUMENT PANEL** nell’inspector o la **rotella** della traccia per aprire una finestra separata e ridimensionabile. Il brano o il piano roll restano visibili e la riproduzione continua. In alto scegli con cosa ascoltarlo; sotto trovi groove, feel, esecuzione e fill. **EDIT MIDI** apre le note; **< ARRANGIAMENTO** torna al brano.
 
 | Strumento | Da dove partire |
 |---|---|
@@ -195,6 +199,8 @@ I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL
 <p align="center"><img src="images/guide_lead.png" alt="Lead" width="900"></p>
 
 Lead usa lo stesso motore melodico e i quattro timbri synth guida di [Fase Groove Lead](https://github.com/wsx79/fasegroovelead). Le dodici corsie generano una sola voce melodica: i passaggi seguono tonalità e scala condivise, le note forti seguono gli accordi, anche con durata di mezza, una, due o quattro battute. Groove, densità, nuovo riff/feel, ordine A–D, fill, variazioni, livelli, mute, timing e ottave funzionano come nello strumento originale. ATTACK DELAY è in millisecondi; PLAYING offre motivi tenuti, registro alto e anticipi armonici. Lead ha editor MIDI intonato, sample/VST/AU, effetto, automazioni e stem propri. L'export usa il canale melodico 5, separato dalla batteria.
+
+**Ottava generale** sposta tutta la melodia Lead da −2 a +2 ottave, mantenendo le ottave delle singole corsie. Il valore viene salvato nel progetto e usato anche per MIDI e audio esportati.
 
 I progetti precedenti a diciassette tracce si aprono con Lead vuoto aggiunto in fondo. ID delle tracce, note, plugin, mix e automazioni restano intatti. Rigenera esplicitamente Lead per aggiungere la melodia a un vecchio brano; le modifiche MIDI manuali restano libere come negli altri strumenti intonati.
 

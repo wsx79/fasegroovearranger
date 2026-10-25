@@ -32,7 +32,7 @@ private:
     struct Card { juce::String title; juce::Rectangle<int> bounds; };
     std::vector<Card> cards;
     CircleOfFifths circle;
-    int guitarLane=0;
+    int guitarLane=0,builtTrack=-1;
     bool builtGrid=true,builtInternal=true,rebuildPending=false;
     int renderTrack=-1;
     juce::TimedCallback renderTimer{[this]{flushRender();}};

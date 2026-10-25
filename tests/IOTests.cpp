@@ -4,6 +4,12 @@
 #include <stdexcept>
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 int main(){try{
+    {
+        auto original=fga::newProject(1);int ti=original.addMidiTrack();original.tracks[(size_t)ti].name="MIDI – melodia";original.tracks[(size_t)ti].clips[0].notes={{2,.75,74,103,0}};original.tracks[(size_t)ti].instrument="sample";original.tracks[(size_t)ti].instrumentPath="melody.wav";original.tracks[fga::leadTrack].engine.globalOctave=-1;
+        const auto json=juce::JSON::toString(fga::projectJson(original),false,17);fga::Project loaded;
+        check(fga::projectFromJson(juce::JSON::parse(json),loaded).wasOk(),"manual track project loads");
+        check(juce::JSON::toString(fga::projectJson(loaded),false,17)==json,"manual notes, renamed tracks, routing and global Lead octave round-trip exactly");
+    }
     auto p=fga::newProject(6);p.name="Garage – progetto";p.tracks[0].clips[0].notes.push_back({.125,1.375,65,117,2});p.tracks[0].clips[0].notes.push_back({.000012345678901234567,1./960.,110,87,0});p.tracks[2].locked=true;p.tracks[1].instrument="plugin";p.tracks[1].instrumentPath="/not/installed/Test.vst3";p.tracks[1].instrumentState="0123-state";p.tracks[5].gain=.317;p.tracks[5].pan=-.23;p.loop=true;p.loopStart=32;p.loopEnd=96;p.settings.guitarLead=true;p.tracks[3].engine.laneShift[5]=23;p.tracks[3].engine.laneVolume[5]=.37;p.tracks[3].engine.laneOctave[1]=-1;p.tracks[3].engine.laneMute[8]=true;p.tracks[0].engine.pattern=12;p.tracks[0].engine.gate=.78;p.tracks[0].engine.reverb=.37;p.settings.chordSteps=8;p.tracks[0].engine.inversions[2]=-2;p.tracks[0].engine.userRight[3]='X';p.tracks[0].engine.userVelRight[3]=89;p.tracks[0].engine.velocityOrder={3,2,1,0};p.tracks[0].engine.segmentLocked[1]=true;p.tracks[0].engine.riffSeed=987;p.tracks[0].engine.humanizeSeed=456;p.tracks[0].engine.pumpRate=2;p.tracks[0].engine.pedalCC=true;p.normalise();
     fga::generate(p,fga::Scope::clip,1,1,4951);
     // Loop state persists: an active selection loop and a removed loop both round-trip.

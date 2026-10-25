@@ -48,6 +48,20 @@ inline void verifyRegeneration(){
             check(p.settings.key==take.settings.key&&sameHarmony(p.settings,take.settings)&&p.settings.bpm==take.settings.bpm&&p.length()==take.length(),"apply retains harmony, tempo and form");
             for(int ti=0;ti<fga::trackCount;++ti)check(p.tracks[ti].clips==take.tracks[ti].clips,"new musical takes must be reproducible without a new seed");
         }
+        // Consecutive regenerations must differ in strong piano attacks. Changing only
+        // key, velocity, duration, swing or humanisation cannot satisfy this check.
+        {
+            auto q=p;q.sections={{fga::Section::main,8,"Main"}};q.normalise();
+            auto attacks=[](const sgk::GroovePattern& pattern){std::set<int> result;for(int i=0;i<32;++i){const char c=pattern.rightHand[(size_t)i%pattern.rightHand.size()];if(c!='.'&&c!='='&&c!='g')result.insert(i);}return result;};
+            std::set<int> previous;int sum=0,near=0;
+            for(unsigned take=0;take<16;++take){
+                fga::generate(q,fga::Scope::track,0,0,7159U*(take+1));const auto& clip=q.tracks[0].clips[0];
+                const auto current=attacks(sgk::GrooveEngine::basePattern(fga::pianoEngineSettings(q,0,clip.seed,clip.motifSeed)));
+                if(take){std::vector<int> difference;std::set_symmetric_difference(previous.begin(),previous.end(),current.begin(),current.end(),std::back_inserter(difference));sum+=(int)difference.size();if(difference.size()<6)++near;}
+                previous=current;
+            }
+            check(sum>=15*6&&near<=1,"consecutive piano takes need distinct rhythmic figures inside every genre");
+        }
         // All scopes replace musical content while leaving other clips and sound assignments alone.
         for(auto scope:{fga::Scope::track,fga::Scope::section,fga::Scope::clip}){
             auto q=p;const auto before=q;

@@ -22,13 +22,13 @@ struct TrackMix {
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
-struct MixState { std::array<TrackMix,trackCount> tracks; VolumeAutomation masterAutomation; double master=.8,tempo=122; };
+struct MixState { std::array<TrackMix,maxTracks> tracks; VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
-inline int builtInSoundCount(int track){return track==2?1:track<2?numGuideSounds:4;}
-inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):track<2?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
+inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
+inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):(track<2||isManualTrack(track))?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
 struct ScheduleState {
-    std::array<std::vector<TimedEvent>,trackCount> schedules;
-    std::array<std::uint64_t,trackCount> hashes{}; // which tracks changed since the last state
+    std::array<std::vector<TimedEvent>,maxTracks> schedules;
+    std::array<std::uint64_t,maxTracks> hashes{}; // which tracks changed since the last state
     double length=0,loopFrom=0,loopTo=0;
     bool looping=false;
 };
@@ -160,12 +160,12 @@ public:
     void audioDeviceIOCallbackWithContext(const float* const*,int,float* const*,int,int,const juce::AudioIODeviceCallbackContext&) override;
 private:
     juce::CriticalSection mutex; // transport and instrument changes; never held for long
-    std::array<std::unique_ptr<Instrument>,trackCount> instruments;
-    std::array<std::atomic<float>,trackCount> meters;
+    std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
+    std::array<std::atomic<float>,maxTracks> meters;
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
     int clickLeft=0,clickPos=0;double clickHz=1000;
     std::atomic<float> masterMeter{0};
-    std::array<std::array<std::atomic<float>,2>,trackCount> sideMeters{};
+    std::array<std::array<std::atomic<float>,2>,maxTracks> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
     void clearMeters(){masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};

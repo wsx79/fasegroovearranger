@@ -43,6 +43,30 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     }
     return p;
 }
+// Compare attacks, not accents, held ticks or humanisation: another take should
+// be a recognisably different rhythmic figure from the same genre vocabulary.
+std::uint32_t pianoAttacks(const sgk::GroovePattern& pattern) {
+    std::uint32_t bits=0;if(pattern.rightHand.empty())return bits;
+    for(int i=0;i<32;++i){const char c=pattern.rightHand[(size_t)i%pattern.rightHand.size()];if(c!='.'&&c!='='&&c!='g')bits|=1U<<i;}
+    return bits;
+}
+int bitCount(std::uint32_t bits){int count=0;for(;bits;bits&=bits-1)++count;return count;}
+std::uint32_t freshPianoMotif(const Settings& settings,const sgk::GroovePattern& previous,std::uint32_t seed){
+    const auto old=pianoAttacks(previous);if(!old)return seed;
+    auto best=seed;double bestScore=-1;
+    // Draw only from the plugin's own genre generator. Keep its timing cells,
+    // harmonic anchors and density, rather than scattering arbitrary extra hits.
+    for(unsigned attempt=0;attempt<32;++attempt){
+        const auto candidate=attempt?mix(seed+attempt*0x9e3779b9U):seed;
+        const auto attacks=pianoAttacks(sgk::GrooveEngine::basePattern(pianoSettings(settings,candidate)));
+        const int changes=bitCount(old^attacks),all=bitCount(old|attacks);
+        const double contrast=all?(double)changes/all:0;
+        const double score=changes+contrast;
+        if(score>bestScore){best=candidate;bestScore=score;}
+        if(changes>=6&&contrast>=.35)return candidate;
+    }
+    return best;
+}
 // MIDI clips have a one-tick minimum duration. Very close humanized attacks must
 // not turn that minimum into a second lead voice; keep the later attack instead.
 void monophonicLead(Clip& clip){
@@ -211,8 +235,8 @@ void applyPianoIntention(Project& p,int track,int intention,bool keepRhythm,bool
     }
 }
 
-int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3,leadTrack}; return order[std::clamp(row,0,trackCount-1)]; }
-int rowForTrack(int track) { for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
+int trackAtRow(int row) { static constexpr int order[]{4,5,6,7,8,9,10,11,12,13,14,15,16,1,0,2,3,leadTrack}; return row>=trackCount?std::clamp(row,trackCount,maxTracks-1):order[std::clamp(row,0,trackCount-1)]; }
+int rowForTrack(int track) { if(isManualTrack(track))return track;for(int i=0;i<trackCount;++i)if(trackAtRow(i)==track)return i;return 0; }
 const char* sectionName(Section s) {
     static const char* names[]{"Main","Intro","Breakdown","Build-up","Drop","Outro"};
     return names[std::clamp((int)s,0,5)];
@@ -310,7 +334,7 @@ void Project::normalise() {
     if(sections.empty()) sections.push_back({Section::main,8,"Main"});
     if(sections.size()>64) sections.resize(64);
     for(auto& p:sections) {p.bars=std::clamp(p.bars,1,128); p.type=(Section)std::clamp((int)p.type,0,5);}
-    if(tracks.size()>trackCount) tracks.resize(trackCount);
+    if(tracks.size()>maxTracks) tracks.resize(maxTracks);
     while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind==leadTrack?"Lead":t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); if(t.kind==leadTrack){t.gain=.22;t.engine.density=.42;t.engine.roomForBand=false;t.engine.fillEvery=8;} tracks.push_back(t); }
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
@@ -319,7 +343,7 @@ void Project::normalise() {
         if(t.parameters.size()>(size_t)maxParameterLanes)t.parameters.resize((size_t)maxParameterLanes);
         for(auto& lane:t.parameters){lane.slot=std::clamp(lane.slot,0,1);lane.index=std::max(-1,lane.index);if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
         auto& e=t.engine;
-        e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
+        e.globalOctave=std::clamp(e.globalOctave,-2,2);e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
         e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
         e.gate=finite(e.gate,.55,.02,2);e.strum=finite(e.strum,.15,0,1);e.accent=finite(e.accent,.85,0,1);e.tone=finite(e.tone,.5,0,1);
         e.reverb=finite(e.reverb,.12,0,1);e.chorus=finite(e.chorus,0,0,1);e.pump=finite(e.pump,0,0,1);e.pumpRelease=finite(e.pumpRelease,.2,.05,1);
@@ -340,6 +364,13 @@ void Project::normalise() {
     }
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
+}
+int Project::addMidiTrack() {
+    normalise();if(tracks.size()>=maxTracks)return -1;
+    Track t;t.kind=(int)tracks.size();t.name="MIDI "+std::to_string(t.kind-trackCount+1);
+    t.freeTimeline=true;t.gain=.6;
+    Clip c;c.position=0;c.span=sections.front().bars*4.;c.role=(int)sections.front().type;
+    t.clips.push_back(c);tracks.push_back(std::move(t));normalise();return (int)tracks.size()-1;
 }
 bool Project::loopMatches(double from,double to) const {
     const double a=std::clamp(std::min(from,to),0.,length()),b=std::clamp(std::max(from,to),0.,length());
@@ -544,7 +575,7 @@ void arrangeSong(Project& p) {
     }
     std::vector<SongSection> bounded;
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
-    p.sections=std::move(bounded);for(auto& t:p.tracks){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
+    p.sections=std::move(bounded);for(auto& t:p.tracks)if(!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     p.normalise();p.loopStart=0;p.loopEnd=p.length();
 }
 Project newProject(int genre) {
@@ -691,7 +722,7 @@ void renewForm(Project& p) {
         p.loop=wasLooping&&p.hasLoopRegion();
         return;
     }
-    for(auto& t:p.tracks)if(t.freeTimeline){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
+    for(auto& t:p.tracks)if(t.freeTimeline&&!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     p.normalise();
 }
 void newSongHarmony(Project& p,std::uint32_t seed) {
@@ -742,8 +773,16 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();
-    if(track<0||track>=trackCount||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
+    if(isManualTrack(track)&&(scope==Scope::track||scope==Scope::clip))return;
+    if(track<0||track>=(int)p.tracks.size()||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
     if(scope==Scope::section){const double start=p.sectionStart(section),end=p.sectionStart(section+1);for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(!t.freeTimeline||t.locked)continue;for(double boundary:{start,end}){const int at=p.clipAtBeat(ti,boundary);if(at>=0&&!t.clips[(size_t)at].locked&&p.clipStart(ti,at)<boundary)p.splitClip(ti,at,boundary);}}}
+    sgk::GroovePattern previousPiano;
+    if(seed&&!p.tracks[0].locked&&(scope==Scope::song||scope==Scope::section||track==0)){
+        const auto& piano=p.tracks[0];
+        for(size_t ci=0;ci<piano.clips.size();++ci){const auto& c=piano.clips[ci];const int guide=piano.freeTimeline?p.sectionAtBeat(p.clipStart(0,(int)ci)):(int)ci;
+            if(c.locked||(scope==Scope::clip&&(int)ci!=section)||(scope==Scope::section&&guide!=section))continue;
+            previousPiano=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,0,c.seed,c.motifSeed));break;}
+    }
     const auto previousSongSeed=p.settings.seed;
     if(seed&&scope==Scope::song) {
         p.settings.seed=seed;
@@ -760,6 +799,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         auto& t=p.tracks[(size_t)ti];
         if(t.locked||((scope==Scope::track||scope==Scope::clip)&&ti!=track)) continue;
         bool prepared=false;
+        auto selectedMotif=mix(seed+(isDrumTrack(ti)?313U:(std::uint32_t)ti*131U));
         for(size_t si=0;si<t.clips.size();++si) {
             const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,(int)si)):(int)si;
             if((scope==Scope::section&&guide!=section)||(scope==Scope::clip&&(int)si!=section))continue;
@@ -768,11 +808,12 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 // Explicit regeneration leaves fixed presets and seed overrides behind.
                 // APPLY (zero seed) continues to render the chosen settings exactly.
                 auto& e=t.engine;
+                if(ti==0){auto settings=s;if(scope!=Scope::song&&e.density>=0)settings.density=e.density;selectedMotif=freshPianoMotif(settings,previousPiano,selectedMotif);}
                 if(ti<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})) {
                     const auto previousMotif=clip.motifSeed?clip.motifSeed:mix(previousSongSeed+(std::uint32_t)ti*131U);
                     const auto source=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,ti,clip.seed,previousMotif));
                     auto settings=s;if(e.density>=0)settings.density=e.density;
-                    auto target=sgk::GrooveEngine::basePattern(pianoSettings(settings,mix(seed+(std::uint32_t)ti*131U)));
+                    auto target=sgk::GrooveEngine::basePattern(pianoSettings(settings,selectedMotif));
                     for(int segment=0;segment<4;++segment)if(e.segmentLocked[(size_t)segment])sgk::copySegment(target,source,segment);
                     sgk::repairHolds(target.rightHand);sgk::repairHolds(target.leftHand);
                     setPianoPattern(e,target);
@@ -781,7 +822,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 if(scope==Scope::song)e.density=-1;
                 prepared=true;
             }
-            if(seed) clip.motifSeed=mix(seed+(isDrumTrack(ti)?313U:(std::uint32_t)ti*131U));
+            if(seed) clip.motifSeed=selectedMotif;
             if(seed) clip.seed=isDrumTrack(ti)?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=isDrumTrack(ti)?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             clip.loopSource.clear();clip.loopLength=0;
@@ -832,7 +873,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 // Articulation lanes are carried directly by notesFrom, in linear time.
             } else if(ti==leadTrack) {
                 fgl::LeadSettings ls;
-                ls.key=s.key;ls.scale=s.scale;ls.stepsPerChord=s.chordSteps;
+                ls.globalOctave=e.globalOctave;ls.key=s.key;ls.scale=s.scale;ls.stepsPerChord=s.chordSteps;
                 ls.pattern=e.pattern>=0&&e.pattern<(int)fgl::leadPatterns().size()?e.pattern:fgl::randomPatternIndex();
                 ls.randomGenre=s.genre;ls.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+2227U));
                 ls.density=ps.riffDensity;ls.swing=ps.swing;ls.humanize=ps.humanize;ls.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
@@ -909,13 +950,14 @@ bool panMoves(int ti){return ti==2||ti==3||ti==leadTrack||ti==9||ti==11||ti==12|
 }
 void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){
     p.normalise();
-    if(track<0||track>=trackCount)return;
+    if(track<0||track>=(int)p.tracks.size())return;
     double from=0,to=p.length();
     if(scope==Scope::section){if(index<0||index>=(int)p.sections.size())return;from=p.sectionStart(index);to=p.sectionStart(index+1);}
     if(scope==Scope::clip){const auto& clips=p.tracks[(size_t)track].clips;if(index<0||index>=(int)clips.size())return;from=p.clipStart(track,index);to=from+p.clipLength(track,index);}
     if(to-from<1./960.)return;
     const double tick=1./16.;
-    for(int ti=0;ti<trackCount;++ti){
+    for(int ti=0;ti<(int)p.tracks.size();++ti){
+        if(isManualTrack(ti)&&(scope==Scope::song||scope==Scope::section))continue;
         if((scope==Scope::track||scope==Scope::clip)&&ti!=track)continue;
         auto& t=p.tracks[(size_t)ti];if(t.locked)continue;
         if(scope==Scope::clip&&t.clips[(size_t)index].locked)continue;

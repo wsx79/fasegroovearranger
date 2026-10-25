@@ -33,12 +33,12 @@ public:
     int rowHeight(int row) const {return trackHeights[(size_t)trackAtRow(row)];}
     int rowY(int row) const;
     int rowAt(int y) const;
-    int totalHeight() const {return rowY(trackCount);}
-    std::array<bool,trackCount> volumeVisible{};
+    int totalHeight() const;
+    std::array<bool,maxTracks> volumeVisible{};
     // What each track's automation lane shows and edits: 0 volume, 1 pan, 2 master volume,
     // 3 + k the track's plugin parameter lane k.
     enum LaneTarget { laneVolume=0, lanePan, laneMaster, lanePlugin };
-    std::array<int,trackCount> laneTarget{};
+    std::array<int,maxTracks> laneTarget{};
     VolumeAutomation& envelope(int track) const;
     double envelopeMax(int track) const;       // 2 for a gain, 1 for pan and plugin parameters
     double envelopeDefault(int track) const;   // a new lane's flat value
@@ -51,7 +51,7 @@ public:
 private:
     friend class MainComponent;
     MainComponent& owner;
-    std::array<int,trackCount> trackHeights{};
+    std::array<int,maxTracks> trackHeights{};
     int heightTrack=-1,heightBefore=40;
     int hoverTrack=-1,hoverClip=-1;   // the clip under the pointer, outlined
     void setHover(int track,int clip);
@@ -167,6 +167,7 @@ public:
     void mixChanged();
     void select(int track,int section);
     void showTrackMenu(int);
+    void addMidiTrack();
     void showInstrument();
     void showEditor();
     void showArrangement();
@@ -260,6 +261,7 @@ private:
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    juce::TextButton addTrackButton { "+ MIDI" };
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
     juce::Slider tempoSlider,swingSlider,densitySlider,humanizeSlider,masterSlider,zoomSlider;
     juce::Label positionLabel,chordsLabel,statusLabel;
@@ -279,7 +281,7 @@ private:
     const void* lastCheckpointControl=nullptr;juce::uint32 lastCheckpointTime=0;
     double lastTimerBeat=-1;int lastPlayX=-1,soundBoxTrack=-1;
     juce::StringArray sectionSelectorNames;
-    std::array<juce::String,trackCount> sourceNames;std::array<bool,trackCount> sourceNameCached{};
+    std::array<juce::String,maxTracks> sourceNames;std::array<bool,maxTracks> sourceNameCached{};
     std::vector<Note> clipboard;
     std::vector<Clip> timelineClipboard;
     Clip emptyClip;
@@ -293,6 +295,9 @@ private:
     int loadingPlugin=0;
     int ticks=0;
     std::unique_ptr<juce::FileChooser> chooser;
+    class InstrumentWindow;
+    std::unique_ptr<InstrumentWindow> instrumentWindow;
+    bool instrumentIsOpen() const;
     class PluginWindow;
     std::unique_ptr<PluginWindow> pluginWindow;
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;

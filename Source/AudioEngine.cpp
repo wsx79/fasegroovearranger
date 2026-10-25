@@ -15,7 +15,7 @@ void mixTargets(Instrument& i,double master,bool snap){
 }
 std::unique_ptr<MixState> mixState(const Project& p){
     auto m=std::make_unique<MixState>();m->master=p.masterGain;m->tempo=p.settings.bpm;m->masterAutomation=p.masterAutomation;
-    for(size_t ti=0;ti<(size_t)trackCount&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
+    for(size_t ti=0;ti<(size_t)maxTracks&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
         x.volume=t.volume;x.panAutomation=t.panAutomation;x.parameters=t.parameters;x.gain=t.gain;x.pan=t.pan;x.mute=t.mute;x.solo=t.solo;x.sound=t.sound;x.tone=t.engine.tone;x.reverb=t.engine.reverb;x.chorus=t.engine.chorus;
         x.pump=t.engine.pump;x.pumpRelease=t.engine.pumpRelease;x.pumpRate=std::clamp(t.engine.pumpRate,0,3);x.pumpSource=std::clamp(t.engine.pumpSource,0,1);
         x.drumNote=isDrumTrack((int)ti)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
@@ -45,7 +45,7 @@ void noteOff(Instrument& i,int n,int lane){i.midi.addEvent(juce::MidiMessage::no
 Instrument::Instrument(int track):kind(track){
     for(int i=0;i<fgd::numLanes;++i)drumNotes[(size_t)i]=fgd::defaultNote(i);
     delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);guitarEvents.reserve(8192);leadEvents.reserve(8192);midi.ensureSize(262144);effectMidi.ensureSize(262144);
-    if(kind<3){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
+    if(kind<3||isManualTrack(kind)){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
 }
 void Instrument::prepare(double rate,int block){
     leftGain.reset(rate,.01);rightGain.reset(rate,.01);baseGain.reset(rate,.01);parameterSent.fill(-1.f);
@@ -66,10 +66,10 @@ void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
 }
 void Instrument::reset(){if(delayUsed){delayLine.clear();delayUsed=false;delayWrite=0;}if(sampler)sampler->allNotesOff(0,false);bassLowPass.reset();reverb.reset();chorus.reset();synth.allNotesOff(0,false);drums.allNotesOff();guitar.allNotesOff();lead.allNotesOff();if(plugin)plugin->reset();if(effect)effect->reset();midi.clear();effectMidi.clear();guitarEvents.clear();leadEvents.clear();}
 AudioEngine::AudioEngine(){
-    formats.addDefaultFormats();for(int i=0;i<trackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);instruments[(size_t)i]->prepare(sampleRate,blockSize);meters[(size_t)i]=0;}
+    formats.addDefaultFormats();for(int i=0;i<maxTracks;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);instruments[(size_t)i]->prepare(sampleRate,blockSize);meters[(size_t)i]=0;}
     devices.initialise(0,2,nullptr,true);devices.addAudioCallback(this);
 }
-AudioEngine::AudioEngine(Offline){for(int i=0;i<trackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);meters[(size_t)i]=0;}}
+AudioEngine::AudioEngine(Offline){for(int i=0;i<maxTracks;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);meters[(size_t)i]=0;}}
 AudioEngine::~AudioEngine(){lifetime.reset();devices.removeAudioCallback(this);const juce::ScopedLock lock(mutex);for(auto& i:instruments){if(i->plugin)i->plugin->releaseResources();if(i->effect)i->effect->releaseResources();}}
 void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
     std::optional<Project> canonical;if(!normalised){canonical=source;canonical->normalise();}const auto& p=canonical?*canonical:source;
@@ -78,10 +78,10 @@ void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
         // The edited project's last schedules are kept here: when one track changed (same song
         // length) only that track's events are rebuilt. Other publishers (export, tests) drop them.
         const juce::ScopedLock cacheLock(publishedLock);
-        const bool reuse=normalised&&publishedValid&&onlyTrack>=0&&onlyTrack<trackCount&&songLength==published.length;
+        const bool reuse=normalised&&publishedValid&&onlyTrack>=0&&onlyTrack<maxTracks&&songLength==published.length;
         if(reuse){*next=published;next->schedules[(size_t)onlyTrack].clear();for(auto& e:events(p,onlyTrack))next->schedules[(size_t)onlyTrack].push_back(e);next->hashes[(size_t)onlyTrack]=hashEvents(next->schedules[(size_t)onlyTrack]);}
-        else{for(auto& e:events(p))if(e.track>=0&&e.track<trackCount)next->schedules[(size_t)e.track].push_back(e);
-            for(size_t ti=0;ti<(size_t)trackCount;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);}
+        else{for(auto& e:events(p))if(e.track>=0&&e.track<maxTracks)next->schedules[(size_t)e.track].push_back(e);
+            for(size_t ti=0;ti<(size_t)maxTracks;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);}
         publishedValid=normalised;next->length=songLength;if(normalised)published=*next;
     }
     next->length=songLength;next->looping=p.loop;next->loopFrom=p.loopStart;next->loopTo=p.loopEnd;
@@ -106,7 +106,7 @@ void AudioEngine::applyMix(const MixState& m,bool snap){
 void AudioEngine::adoptState(){
     if(auto* m=mixes.adopt())applyMix(*m,!playing.load());
     // The replaced state is parked for the message thread to free: read its hashes before.
-    const bool hadOld=schedules.current!=nullptr;std::array<std::uint64_t,trackCount> oldHashes{};if(hadOld)oldHashes=schedules.current->hashes;
+    const bool hadOld=schedules.current!=nullptr;std::array<std::uint64_t,maxTracks> oldHashes{};if(hadOld)oldHashes=schedules.current->hashes;
     if(auto* s=schedules.adopt()){
         length=s->length;looping=s->looping;loopFrom=std::clamp(s->loopFrom,0.,length);loopTo=std::clamp(s->loopTo,loopFrom,length);
         currentBeat=std::min(currentBeat.load(),length);loopBypassed=currentBeat>=loopTo;
@@ -185,7 +185,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     // Master automation: one gain per sample for every track (the buffer is allocated once).
     const bool masterActive=masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
     if(masterActive)for(int s=0;s<count;++s)masterGains[(size_t)s]=(float)masterAutomation->valueAt(beat+s/samplesPerBeat);
-    for(int ti=0;ti<trackCount;++ti){auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);
+    for(int ti=0;ti<maxTracks;++ti){auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);
         while(i.cursor<schedule.size()&&schedule[i.cursor].beat<end){const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||laneMuted(i,e))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
             i.midi.addEvent(e.controller>=0?juce::MidiMessage::controllerEvent(1,e.controller,e.velocity):e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
             if(e.controller<0){const auto k=(size_t)std::clamp(e.pitch,0,127);i.sounding[k]=e.velocity>0;if(e.velocity>0){i.soundingStart[k]=e.beat;i.soundingVelocity[k]=e.velocity;++i.noteOns;}}
@@ -198,7 +198,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         applyParameterAutomation(i,beat+.5*count/samplesPerBeat);
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
         else if(i.mode==1){if(i.sampler)i.sampler->renderNextBlock(block,i.midi,0,count);}
-        else if(i.mode==0){if(ti<3)i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
+        else if(i.mode==0){if(ti<3||isManualTrack(ti))i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);if(ti==1)i.bassLowPass.process(context);i.chorus.process(context);
@@ -364,19 +364,19 @@ juce::AudioPluginInstance* AudioEngine::plugin(int track){return instruments[(si
 juce::AudioPluginInstance* AudioEngine::effectPlugin(int track){return instruments[(size_t)track]->effect.get();}
 // Message thread only (the only thread that replaces plugins), so no engine lock: holding it
 // while a plugin serialises its state would silence playback during save/autosave/undo.
-void AudioEngine::capturePluginStates(Project& p){for(size_t ti=0;ti<instruments.size();++ti){if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);p.tracks[ti].instrumentState=state.toBase64Encoding().toStdString();}if(auto* effect=instruments[ti]->effect.get()){juce::MemoryBlock state;effect->getStateInformation(state);p.tracks[ti].effectState=state.toBase64Encoding().toStdString();}}}
+void AudioEngine::capturePluginStates(Project& p){for(size_t ti=0;ti<instruments.size()&&ti<p.tracks.size();++ti){if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);p.tracks[ti].instrumentState=state.toBase64Encoding().toStdString();}if(auto* effect=instruments[ti]->effect.get()){juce::MemoryBlock state;effect->getStateInformation(state);p.tracks[ti].effectState=state.toBase64Encoding().toStdString();}}}
 void AudioEngine::restorePluginState(int track,const juce::String& state){juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
 void AudioEngine::restoreEffectState(int track,const juce::String& state){juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->effect.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
 void AudioEngine::markMissing(int track){const juce::ScopedLock lock(mutex);instruments[(size_t)track]->mode=3;}
 juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak){
     if(rawPeak)*rawPeak=0;
-    if(onlyTrack < -1 || onlyTrack>=trackCount)return juce::Result::fail("Invalid export track");
+    if(onlyTrack < -1 || onlyTrack>=maxTracks)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
     struct Guard{AudioEngine& e;~Guard(){const juce::ScopedLock lock(e.mutex);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);if(i->effect)i->effect->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.needsReset=true;e.hardReset=true;e.exporting=false;}} guard{*this};
     publish(p);
     int compensation=0;
-    {const juce::ScopedLock lock(mutex);for(int ti=0;ti<trackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
+    {const juce::ScopedLock lock(mutex);for(int ti=0;ti<maxTracks;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
         playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();if(mp3)sampleRate=44100;
         for(auto& i:instruments){if(i->plugin)i->plugin->setNonRealtime(true);if(i->effect)i->effect->setNonRealtime(true);i->prepare(sampleRate,blockSize);}resetAt(0);
         // Delay compensation moves every track later by the largest latency: render that much

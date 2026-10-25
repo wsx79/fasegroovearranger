@@ -1,5 +1,15 @@
 # Validation record
 
+## 0.18.0 — handwritten tracks, separate panels and piano variety
+
+- All seven Linux CTest checks pass: generation, independent MIDI reader, MP3, project I/O, updater, realtime audio and sample browser.
+- The [piano audit](PIANO_VARIATION.md) compares 48 consecutive regenerations in each of 13 genres, ignoring transposition, velocity, holds, ghosts and humanisation. Similar consecutive pairs fall from 155/611 to 1/611, with the remaining pair in sparse Chill. Separate core regressions exercise sixteen consecutive takes per genre, saved-take reproducibility, fixed presets, locks and untargeted clips.
+- Manual MIDI tracks start with canonical empty clips, preserve notes/routing/name/automation through song, section, harmony, genre and form operations, and support explicit automation-lane dice. Save/load is byte-identical after normalisation. The 32-track limit and stable visual/routing IDs are checked. Realtime audio tests confirm handwritten guide-synth output.
+- Native UI smoke passes the actual detached instrument viewport without changing the main page, all six instrument layouts, pitched editing, manual-track add/undo/redo, rename and window-title refresh, generation isolation and project round-trip. All twelve complete key names fit the transport display. Lead internal and external panels have no overlapping or out-of-bounds controls; global octave is visible and captioned.
+- Lead 0.1.1 (`07b33a3`) supplies the shared global-octave engine. Octave tests retain rhythmic attacks, velocities and relative lane settings, and transpose pitches by twelve semitones. `sync-engines.py --check lead` passes; only the existing shared chord-duration patch remains.
+- Native audio verification passes eighteen aligned stem exports, guide volume/mute isolation, MP3, automation, transport and audible regeneration differences. The real VST3 host probe passes note pitch, plugin state/editor lifecycle, effect gain and independent export; the isolated catalogue probe passes.
+- English/Italian guides retain the nine-chapter family structure and native illustrations. Family theme/fonts, guide links and packaging fixtures pass. The unchanged release workflow gates Windows, macOS and Linux packages and the thirteen-genre club-audio audit before publication.
+
 ## 0.17.0 — Lead integration and inspector
 
 - Seven CTest checks pass on Linux: core generation, independent MIDI reader, MP3, project I/O, shared updater safeguards, audio engine and sample browser.
