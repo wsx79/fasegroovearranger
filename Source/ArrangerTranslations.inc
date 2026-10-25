@@ -165,7 +165,6 @@
 { "INSTRUMENT", "STRUMENTO", "INSTRUMENTO", "INSTRUMENT", "INSTRUMENT", "INSTRUMENTO" },
 { "INSTRUMENT / TRACK", "STRUMENTO / TRACCIA", "INSTRUMENTO / PISTA", "INSTRUMENT / PISTE", "INSTRUMENT / SPUR", "INSTRUMENTO / FAIXA" },
 { "MIDI EDITOR", "EDITOR MIDI", "EDITOR MIDI", "ÉDITEUR MIDI", "MIDI-EDITOR", "EDITOR MIDI" },
-{ "bars", "battute", "compases", "mesures", "Takte", "compassos" },
 { "INTERNAL", "INTERNO", "INTERNO", "INTERNE", "INTERN", "INTERNO" },
 { "SAMPLE", "CAMPIONE", "MUESTRA", "ÉCHANTILLON", "SAMPLE", "AMOSTRA" },
 { "Song length follows genre, harmonic phrases and groove development.", "La durata segue genere, frasi armoniche e sviluppo del groove.", "La duración sigue el género, las frases armónicas y el desarrollo del groove.", "La durée suit le genre, les phrases harmoniques et le développement du groove.", "Die Dauer folgt Genre, harmonischen Phrasen und Groove-Entwicklung.", "A duração segue o gênero, as frases harmônicas e o desenvolvimento do groove." },

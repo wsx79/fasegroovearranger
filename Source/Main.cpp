@@ -209,7 +209,7 @@ public:
     void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}}
     void shutdown()override{window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
-private:FamilyLookAndFeel theme;std::unique_ptr<Window> window;
+private:DawLookAndFeel theme;std::unique_ptr<Window> window;
 };
 }
 START_JUCE_APPLICATION(Application)

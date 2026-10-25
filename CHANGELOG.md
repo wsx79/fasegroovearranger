@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.16.0 — 2026-10-25
+
+- New professional DAW look: centred transport with an LCD (position, tempo, metre, key), icon toolbar with tooltips, ruler with coloured section markers, clips with note previews, track headers with instrument icon and stereo meters, mixer with dB scale, stereo peak-hold meters and pan knobs, sectioned inspector, redrawn piano-roll keyboard. Nothing redraws while stopped.
+- Updater and translations from the shared FaseGroove module (same checks and behaviour); two translation fixes (pt "OPÇÕES", it "Blocca A").
+
 ## 0.15.3 — 2026-10-24
 
 - The piano comping now compiles from the Piano engine itself (one shared file); generated MIDI unchanged.

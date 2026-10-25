@@ -391,14 +391,14 @@ void InstrumentPanel::resized(){
     if(getHeight()!=bottom+10)setSize(W,bottom+10);
 }
 void InstrumentPanel::paint(juce::Graphics& g){
-    g.fillAll(Palette::background);
+    g.fillAll(Daw::base);
     for(const auto& card:cards){
         const bool piano=owner.selectedTrack<3;
         const auto area=card.bounds;
         const auto r=area.toFloat();
-        const float radius=piano?6.f:8.f;
-        g.setColour(Palette::panel);g.fillRoundedRectangle(r,radius);
-        g.setColour(Palette::panelEdge);g.drawRoundedRectangle(r.reduced(.5f),radius,1);
+        const float radius=Daw::panelRadius;
+        g.setColour(Daw::surface);g.fillRoundedRectangle(r,radius);
+        g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(r.reduced(.5f),radius,1);
         if(piano){
             // Piano::drawPanel has its own smaller, letter-spaced title.
             auto head=area.reduced(14,8).removeFromTop(16).toFloat();

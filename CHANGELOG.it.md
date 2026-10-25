@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.16.0 — 2026-10-25
+
+- Nuovo aspetto da DAW professionale: trasporto centrato con LCD (posizione, tempo, metro, tonalità), barra a icone con suggerimenti, righello con marker di sezione colorati, clip con anteprima delle note, intestazioni traccia con icona dello strumento e meter stereo, mixer con scala dB, meter stereo con picco e pan a manopola, inspector a sezioni, tastiera del piano roll ridisegnata. Da fermo non ridisegna nulla.
+- Aggiornamento e traduzioni dal modulo comune FaseGroove (stessi controlli e comportamento); due traduzioni corrette (pt "OPÇÕES", it "Blocca A").
+
 ## 0.15.3 — 2026-10-24
 
 - L'accompagnamento di piano ora si compila dal motore di Piano stesso (un solo file condiviso); MIDI generato invariato.

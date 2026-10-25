@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "GuidePage.h"
-#include "FamilyTheme.h"
+#include "DawTheme.h"
 #include "Branding.h"
 #include <BinaryData.h>
 #include <functional>
@@ -37,7 +37,7 @@ public:
     explicit PicturePage(juce::Image image){setLookAndFeel(&theme);picture.setImage(image);picture.setSize(image.getWidth(),image.getHeight());port.setViewedComponent(&picture,false);addAndMakeVisible(port);setSize(1060,760);}
     ~PicturePage()override{setLookAndFeel(nullptr);}
     void resized()override{port.setBounds(getLocalBounds());}
-private:FamilyLookAndFeel theme;juce::ImageComponent picture;juce::Viewport port;
+private:DawLookAndFeel theme;juce::ImageComponent picture;juce::Viewport port;
 };
 class GuideBook:public juce::Component{
 public:
@@ -132,7 +132,7 @@ private:
     void selectedRowsChanged(int row)override{if(row>=0&&row<getNumRows())port.setViewPosition(0,(int)book.blocks[(size_t)book.chapters[(size_t)row].second].area.getY()-20);}
     juce::String getTooltipForRow(int row)override{return row>=0&&row<getNumRows()?book.chapters[(size_t)row].first:juce::String();}
     bool isEnglish=false,manual=false;juce::String documentTitle;
-    FamilyLookAndFeel theme;GuideBook book;juce::Viewport port;juce::ListBox index;
+    DawLookAndFeel theme;GuideBook book;juce::Viewport port;juce::ListBox index;
     juce::TextEditor search;juce::TextButton previous{"<"},next{">"},smaller{"A-"},larger{"A+"},close{"CHIUDI"};juce::ComboBox language;juce::Label result;
     std::vector<int> hits;int currentHit=-1;
 };

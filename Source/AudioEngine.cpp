@@ -115,7 +115,7 @@ void AudioEngine::adoptState(){
             i.cursor=cursorAt(i,currentBeat);if(playing){i.resync=true;needsResync=true;}}
     }
 }
-void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length){currentBeat=looping?loopFrom:0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled){masterMeter=0;for(auto& meter:meters)meter=0;}needsReset=true;needsChase=enabled;}
+void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length){currentBeat=looping?loopFrom:0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;}
 void AudioEngine::stop(){play(false);seek(0);}
 // An explicit seek beyond the loop must remain audible there until the song ends.
 void AudioEngine::seek(double beat){const juce::ScopedLock lock(mutex);currentBeat=std::clamp(beat,0.0,length);loopBypassed=currentBeat>=loopTo;needsReset=true;needsChase=playing;}
@@ -213,7 +213,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         i.applyDelay(block,count);
         i.midi.clear();i.guitarEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
-        float meter=0;
+        float meter=0,side[2]{};
         if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
             if(masterActive)for(int s=0;s<count;++s)i.volumeGains[(size_t)s]*=masterGains[(size_t)s];
             // Pan automation: its own pan law per sample (as the static pan), on gain * master.
@@ -221,10 +221,10 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
             else i.baseGain.skip(count);
             for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
-                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}continue;}
-                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;meter=std::max(meter,std::abs(v));}}
+                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];output[ch][s]+=v;side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
+                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];output[ch][s]+=v;side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
         }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
-        meters[(size_t)ti]=meter;
+        meters[(size_t)ti]=meter;sideMeters[(size_t)ti][0]=side[0];sideMeters[(size_t)ti][1]=side[1];
     }
 }
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){const juce::ScopedLock lock(mutex);deviceRate=d->getCurrentSampleRate()>0?d->getCurrentSampleRate():44100;deviceBlock=std::max(16,d->getCurrentBufferSizeSamples());if(exporting)return;sampleRate=deviceRate;blockSize=deviceBlock;for(auto& i:instruments){i->prepare(sampleRate,blockSize);i->sounding.fill(false);}needsReset=true;needsChase=playing;hardReset=true;}
@@ -236,7 +236,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
     const juce::ScopedTryLock lock(mutex);if(!lock.isLocked()||exporting)return;
     adoptState();
     if(needsReset)resetAt(currentBeat);else if(needsResync&&playing)resyncAt(currentBeat);
-    if(!playing){flushIdle(count);masterMeter=0;for(auto& meter:meters)meter=0;return;}
+    if(!playing){flushIdle(count);clearMeters();return;}
     int done=0;
     while(done<count&&playing){double beat=currentBeat;const bool hasLoop=looping&&!loopBypassed&&loopTo-loopFrom>=1./960.;double boundary=hasLoop?loopTo:length;
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom;needsChase=true;resetAt(loopFrom);continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
@@ -244,8 +244,8 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
         float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;
         render(pointers,used,n,beat);click(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
     }
-    float outputPeak=0;for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s){if(!std::isfinite(output[ch][s])){output[ch][s]=0;masterClip=true;}outputPeak=std::max(outputPeak,std::abs(output[ch][s]));}
-    masterMeter=outputPeak;if(outputPeak>=1)masterClip=true;
+    float outputPeak=0,sides[2]{};for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s){if(!std::isfinite(output[ch][s])){output[ch][s]=0;masterClip=true;}const float v=std::abs(output[ch][s]);outputPeak=std::max(outputPeak,v);sides[std::min(ch,1)]=std::max(sides[std::min(ch,1)],v);}
+    masterMeter=outputPeak;masterSides[0]=sides[0];masterSides[1]=channels>1?sides[1]:sides[0];if(outputPeak>=1)masterClip=true;
     // Final safety ceiling; export reports and preserves the floating-point mix before encoding.
     for(int ch=0;ch<channels;++ch)if(output[ch])for(int s=0;s<count;++s)output[ch][s]=std::clamp(output[ch][s],-.999f,.999f);
 }

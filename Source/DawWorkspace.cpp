@@ -6,15 +6,17 @@
 namespace fga {
 namespace {
 juce::String text(const std::string& s){return juce::String::fromUTF8(s.c_str());}
-juce::Colour ink(int track){if(track==0||track==3)return Palette::accent;if(track==1)return Palette::accent2;if(track==2)return Palette::strings;const int lane=track-4;return lane==0?Palette::accent:lane<=3?Palette::accent2:lane<=6?Palette::cymbals:lane<=10?Palette::percussion:Palette::toms;}
+juce::Colour ink(int track){return Daw::trackColour(track);}
 float db(double gain){return gain<=.001?-60.f:juce::Decibels::gainToDecibels((float)gain,-60.f);}
 double amplitude(double value){return value<=-59.99?0.:juce::Decibels::decibelsToGain(value);}
-void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){g.setColour(Palette::dim);g.setFont(FamilyTheme::font(10,true));g.drawText(tr(s),bounds,juce::Justification::centredLeft);}
+void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){Daw::drawCaps(g,tr(s),bounds,Daw::textFaint);}
+// A section title with a hairline running to the panel's edge.
+void sectionTitle(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){const auto text=tr(s).toUpperCase();Daw::drawCaps(g,text,bounds,Daw::textDim);const int used=(int)juce::GlyphArrangement::getStringWidth(Daw::caps(),text)+8;if(used<bounds.getWidth()){g.setColour(Daw::line);g.fillRect(bounds.getX()+used,bounds.getCentreY(),bounds.getWidth()-used,1);}}
 void slider(juce::Slider& s,double low,double high,const char* suffix){s.setRange(low,high,.1);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,60,20);s.setTextValueSuffix(suffix);s.setDoubleClickReturnValue(true,0);}
 void tip(juce::Component& c,const char* s){c.getProperties().set("fgaTip",s);}
 }
 InspectorResizer::InspectorResizer(MainComponent& m,bool forBrowser):owner(m),browser(forBrowser){setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);tip(*this,forBrowser?"Drag the sample browser's left edge to resize its width; double-click to restore the default.":"Drag the inspector's right edge to resize its width; double-click to restore the default.");}
-void InspectorResizer::paint(juce::Graphics& g){g.setColour(Palette::dim.withAlpha(isMouseOverOrDragging()?.85f:.4f));const int middle=getHeight()/2;g.fillRoundedRectangle(2.f,(float)middle-18,2.f,36.f,1.f);g.fillRoundedRectangle(6.f,(float)middle-18,1.f,36.f,.5f);}
+void InspectorResizer::paint(juce::Graphics& g){const int middle=getHeight()/2;g.setColour((isMouseOverOrDragging()?Daw::accent:Daw::textFaint).withAlpha(isMouseOverOrDragging()?.9f:.5f));for(int dot=-2;dot<=2;++dot)g.fillEllipse(getWidth()*.5f-1.5f,(float)middle+dot*7-1.5f,3.f,3.f);}
 void InspectorResizer::mouseDown(const juce::MouseEvent& e){dragOrigin=e.getEventRelativeTo(&owner).position.x;initialWidth=browser?owner.sampleBrowser.getWidth():owner.inspectorWidth;}
 void InspectorResizer::mouseDrag(const juce::MouseEvent& e){
     // The browser sits on the right: dragging its left edge to the left makes it wider.
@@ -25,12 +27,13 @@ void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){own
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&regenerate,&loop})addAndMakeVisible(c);
-    name.setFont(FamilyTheme::font(17,true));name.setMinimumHorizontalScale(.7f);name.setInterceptsMouseClicks(false,false);
-    source.setFont(FamilyTheme::font(11));source.setColour(juce::Label::textColourId,Palette::dim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
-    section.setFont(FamilyTheme::font(12));section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
+    name.setFont(Daw::font(16,true));name.setMinimumHorizontalScale(.7f);name.setInterceptsMouseClicks(false,false);
+    source.setFont(Daw::font(11));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
+    section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
     gain.setComponentID("track-gain");pan.setComponentID("track-pan");sample.setComponentID("inspector-sample");loop.setComponentID("inspector-loop");
     slider(gain,-60,6.0," dB");slider(pan,-100,100,"%");
     for(auto* b:{&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&loop})b->setClickingTogglesState(false);
+    mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);
     // Actions read the selection when clicked; nothing is cached between refreshes.
     gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;refresh();};
     gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
@@ -52,7 +55,7 @@ bool TrackInspector::validTrack()const{return owner.selectedTrack>=0&&owner.sele
 void TrackInspector::refresh(){
     if(!validTrack())return;
     updating=true;const int ti=owner.selectedTrack;const auto& t=owner.project.tracks[(size_t)ti];
-    name.setText(Localisation::upper(text(t.name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,ink(ti));
+    name.setText(Localisation::upper(text(t.name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,Daw::text);
     const auto sound=owner.sourceWithEffect(ti);
     source.setText(sound,juce::dontSendNotification);source.setTooltip(sound);
     const int clipIndex=owner.clipIndex();const bool hasClip=clipIndex>=0&&clipIndex<(int)t.clips.size();
@@ -62,7 +65,7 @@ void TrackInspector::refresh(){
     if(!gainGesture)gain.setValue(db(t.gain),juce::dontSendNotification);
     if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
     // An automated volume or pan reads in blue.
-    for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Palette::accent2);slider->setColour(juce::Slider::thumbColourId,Palette::accent2);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);}}
+    for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);}}
     const bool busy=owner.loadingPlugin>0;const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
@@ -72,21 +75,27 @@ void TrackInspector::refresh(){
     // Only these texts change here; the rest is translated on creation and language change.
     updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);repaint();
 }
-void TrackInspector::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(Palette::panelEdge);g.drawRect(getLocalBounds());if(getWidth()<=40)return;for(const auto& c:captions)caption(g,c.first,c.second);}
+void TrackInspector::paint(juce::Graphics& g){
+    g.fillAll(Daw::surface);if(getWidth()<=40){g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRect(getLocalBounds());return;}
+    // The selected track's colour across the top and beside its name.
+    const int ti=owner.selectedTrack;if(validTrack()){g.setColour(ink(ti));g.fillRect(0,0,getWidth(),3);g.fillRoundedRectangle(12.f,(float)name.getY()+5,4.f,(float)name.getHeight()-10,1.5f);}
+    for(size_t i=0;i<captions.size();++i){if(i==0)caption(g,captions[i].first,captions[i].second);else sectionTitle(g,captions[i].first,captions[i].second);}
+    g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRect(getLocalBounds());}
 // One vertical flow places every row and caption, so nothing overlaps at any width.
 int TrackInspector::layout(int width){
-    captions.clear();const int w=std::max(120,width-24),half=(w-6)/2;int y=6;
-    auto cap=[&](const char* title,int gap){y+=gap;captions.push_back({title,{12,y,w,18}});y+=22;};
-    auto row=[&](juce::Component& c,int h){c.setBounds(12,y,w,h);y+=h+6;};
-    auto pair=[&](juce::Component& a,juce::Component& b,int h){a.setBounds(12,y,half,h);b.setBounds(18+half,y,half,h);y+=h+6;};
-    captions.push_back({"TRACK INSPECTOR",{12,y,w-36,18}});y+=24;
-    row(name,26);source.setBounds(12,y-4,w,22);y+=22;
-    row(instrument,28);row(editor,28);pair(mute,solo,24);
-    cap("VOLUME / PAN",4);row(gain,28);row(pan,28);
-    cap("SOUND ASSIGNMENT",4);row(internal,26);row(sample,26);row(plugin,26);row(pluginEditor,26);
-    cap("LOCKS",4);row(lockTrack,26);row(lockClip,26);
-    cap("SELECTED CLIP",4);row(section,22);row(regenerate,26);row(loop,26);
-    return y+6;
+    // A 4 px grid: 12 px margins, 24 px controls, 4 px between rows, 12 px before a section.
+    captions.clear();const int w=std::max(120,width-24),half=(w-4)/2;int y=10;
+    auto cap=[&](const char* title){y+=12;captions.push_back({title,{12,y,w,14}});y+=20;};
+    auto row=[&](juce::Component& c,int h){c.setBounds(12,y,w,h);y+=h+4;};
+    auto pair=[&](juce::Component& a,juce::Component& b,int h){a.setBounds(12,y,half,h);b.setBounds(16+half,y,half,h);y+=h+4;};
+    captions.push_back({"TRACK INSPECTOR",{12,y,w-36,14}});y+=20;
+    name.setBounds(20,y,w-8,24);y+=22;source.setBounds(20,y,w-8,16);y+=24;
+    row(instrument,24);row(editor,24);pair(mute,solo,24);
+    cap("VOLUME / PAN");row(gain,24);row(pan,24);
+    cap("SOUND ASSIGNMENT");row(internal,24);row(sample,24);row(plugin,24);row(pluginEditor,24);
+    cap("LOCKS");pair(lockTrack,lockClip,24);
+    cap("SELECTED CLIP");row(section,20);row(regenerate,24);row(loop,24);
+    return y+8;
 }
 void TrackInspector::resized(){
     const bool collapsed=getWidth()<=40;for(auto* child:getChildren())child->setVisible(!collapsed);if(collapsed)return;
@@ -95,8 +104,12 @@ void TrackInspector::resized(){
 
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&gain,&pan,&mute,&solo,&instrument,&clip})addAndMakeVisible(c);
-    name.setInterceptsMouseClicks(false,false);name.setFont(FamilyTheme::font(11,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.65f);
-    slider(gain,-60,6," dB");gain.setSliderStyle(juce::Slider::LinearVertical);gain.setTextBoxStyle(juce::Slider::TextBoxBelow,false,78,20);slider(pan,-100,100,"%");pan.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);
+    name.setInterceptsMouseClicks(false,false);name.setFont(Daw::font(10.5f,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.65f);
+    // A mixer fader: -60 to +6 dB with 0 dB at three quarters of its travel, its value shown
+    // below it; the pan is a knob.
+    slider(gain,-60,6," dB");gain.setSliderStyle(juce::Slider::LinearVertical);gain.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);gain.setSkewFactor(2.2);
+    slider(pan,-100,100,"%");pan.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);pan.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);pan.setMouseDragSensitivity(160);
+    instrument.setColour(juce::TextButton::buttonColourId,Daw::surfaceHi);mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);clip.setColour(juce::TextButton::buttonOnColourId,Daw::meterHigh);
     gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;};
     gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpoint();if(track<0)owner.project.masterGain=amplitude(gain.getValue());else owner.project.tracks[(size_t)track].gain=amplitude(gain.getValue());owner.mixChanged();};
     pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;};
@@ -105,15 +118,48 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();
 }
-void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):Localisation::upper(text(owner.project.tracks[(size_t)track].name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,master?Palette::text:ink(track));gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=170);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(name);translateControls(instrument);repaint();}
-void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);clip.setColour(juce::TextButton::buttonOnColourId,owner.audio.hasClipped()?Palette::toms:Palette::control);
+void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;updating=true;const bool master=track<0;name.setText(master?tr("MASTER"):Localisation::upper(text(owner.project.tracks[(size_t)track].name)),juce::dontSendNotification);name.setColour(juce::Label::textColourId,Daw::text);gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=170);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=170);clip.setVisible(master);if(!master){auto& t=owner.project.tracks[(size_t)track];pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(name);translateControls(instrument);repaint();}
+void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);
+    // Each side falls smoothly; its peak holds for 1.5 s, then falls too.
+    for(int side=0;side<2;++side){const float now=track<0?owner.audio.masterLevel(side):owner.audio.level(track,side);sides[(size_t)side]=std::max(now,sides[(size_t)side]*.82f);
+        if(sides[(size_t)side]>=holds[(size_t)side]){holds[(size_t)side]=sides[(size_t)side];holdTicks[(size_t)side]=30;}else if(--holdTicks[(size_t)side]<=0)holds[(size_t)side]=std::max(sides[(size_t)side],holds[(size_t)side]*.9f);}
     // Repaint only when the drawn meter moves: an idle arranger must not redraw 18 strips 20 times a second.
-    const float level=std::clamp((db(peak)+60)/60.f,0.f,1.f);const int colour=peak>=1?2:peak>.7f?1:0;
-    if(std::abs(level-drawnLevel)>.002f||colour!=drawnColour){drawnLevel=level;drawnColour=colour;repaint();}}
-void MixerStrip::paint(juce::Graphics& g){g.fillAll(Palette::panel);g.setColour(track==owner.selectedTrack?Palette::accent:Palette::panelEdge);g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(.5f),4,track==owner.selectedTrack?1.5f:1.f);const int top=getHeight()<170?56:99;auto meter=juce::Rectangle<float>((float)getWidth()-18,(float)top,7,(float)std::max(24,getHeight()-top-34));g.setColour(Palette::field);g.fillRoundedRectangle(meter,2);const float level=std::clamp((db(peak)+60)/60.f,0.f,1.f);g.setColour(peak>=1?Palette::toms:peak>.7f?Palette::accent:Palette::accent2);g.fillRect(meter.removeFromBottom(meter.getHeight()*level));}
-void MixerStrip::resized(){int w=getWidth();name.setBounds(4,5,w-8,22);instrument.setBounds(6,30,w-12,22);pan.setBounds(8,55,w-16,20);mute.setBounds(6,77,(w-16)/2,20);solo.setBounds(10+(w-16)/2,77,(w-16)/2,20);clip.setBounds(8,48,w-16,24);gain.setBounds(4,99,w-8,getHeight()-106);
-    if(getHeight()<170){pan.setVisible(false);instrument.setVisible(false);mute.setBounds(6,30,(w-16)/2,20);solo.setBounds(10+(w-16)/2,30,(w-16)/2,20);clip.setBounds(8,30,w-16,22);gain.setBounds(4,56,w-8,getHeight()-63);}
-    else{pan.setVisible(track>=0);instrument.setVisible(track>=0);}}
+    const float level=Daw::meterPosition(peak);const int colour=peak>=1?2:peak>.5f?1:0;bool moved=std::abs(level-drawnLevel)>.002f||colour!=drawnColour;
+    for(size_t side=0;side<2;++side){const float shown=Daw::meterPosition(sides[side]),held=Daw::meterPosition(holds[side]);if(std::abs(shown-drawnSides[side])>.002f||std::abs(held-drawnHolds[side])>.002f){moved=true;drawnSides[side]=shown;drawnHolds[side]=held;}}
+    if(moved){drawnLevel=level;drawnColour=colour;repaint(meterBounds());}}
+float MixerStrip::faderY(double db)const{return (float)gain.getY()+(float)gain.getPositionOfValue(db);}
+juce::Rectangle<int> MixerStrip::meterBounds()const{const bool master=track<0;const int width=master?14:9;const int top=(int)std::floor(faderY(6)),bottom=(int)std::ceil(faderY(-60));return {getWidth()-width-8,top,width,std::max(4,bottom-top)};}
+void MixerStrip::paint(juce::Graphics& g){
+    const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth(),h=getHeight();
+    const auto body=getLocalBounds().toFloat().reduced(.5f);g.setColour(master?Daw::surfaceHi:current?Daw::surfaceHi.brighter(.03f):Daw::surface);g.fillRoundedRectangle(body,Daw::radius);
+    g.setColour(colour.withAlpha(master?.0f:.9f));g.fillRect(2.f,1.f,(float)w-4.f,3.f);
+    // dB scale beside the fader, meters on the right (two sides with peak hold).
+    if(gain.isVisible()&&gain.getHeight()>40){
+        const int left=gain.getX()+gain.getWidth()/2-14;g.setFont(Daw::font(8.5f));
+        for(double db:{6.,0.,-6.,-12.,-24.,-48.}){const float y=faderY(db);g.setColour(db==0?Daw::textDim:Daw::textFaint);g.fillRect((float)left+9.f,y,4.f,1.f);
+            if(gain.getHeight()>90||db==0||db==-24)g.drawText(juce::String((int)std::abs(db)),juce::Rectangle<float>((float)left-12.f,y-5.f,19.f,10.f),juce::Justification::centredRight);}
+        const auto meter=meterBounds().toFloat();g.setColour(juce::Colours::black.withAlpha(.6f));g.fillRoundedRectangle(meter.expanded(1.f),1.5f);
+        const float sideWidth=(meter.getWidth()-1.f)*.5f;const float top=faderY(6),bottom=faderY(-60);
+        juce::ColourGradient gradient=juce::ColourGradient::vertical(Daw::meterHigh,top,Daw::meterLow,bottom);auto at=[&](double db){return std::clamp((faderY(db)-top)/std::max(1.f,bottom-top),0.f,1.f);};gradient.addColour(at(0),Daw::meterHigh);gradient.addColour(at(-6),Daw::meterMid);gradient.addColour(at(-14),Daw::meterLow);
+        auto levelY=[&](float linear){if(linear<=.001f)return bottom;return faderY(std::clamp((double)juce::Decibels::gainToDecibels(linear,-60.f),-60.,6.));};
+        for(int side=0;side<2;++side){const float x=meter.getX()+side*(sideWidth+1.f);const float y=levelY(sides[(size_t)side]);
+            if(y<bottom){g.setGradientFill(gradient);g.fillRect(juce::Rectangle<float>(x,y,sideWidth,bottom-y));}
+            const float hold=holds[(size_t)side];if(hold>.001f){g.setColour(Daw::meterColour(hold));g.fillRect(x,levelY(hold)-1.f,sideWidth,1.5f);}}
+        g.setColour(juce::Colours::black.withAlpha(.5f));g.fillRect(meter.getX(),faderY(0),meter.getWidth(),1.f);
+        // The fader's value under it.
+        const auto value=juce::Rectangle<float>(4.f,(float)gain.getBottom()+2.f,(float)w-8.f,15.f);g.setColour(Daw::well);g.fillRoundedRectangle(value,2.f);
+        const float db=(float)gain.getValue();g.setColour(gain.isMouseOverOrDragging()?Daw::text:Daw::textDim);g.setFont(Daw::font(10.f,true));g.drawText(db<=-59.9f?juce::String::fromUTF8("-\xe2\x88\x9e"):juce::String(db,1),value,juce::Justification::centred);}
+    if(pan.isVisible()){const double value=pan.getValue();g.setColour(Daw::textFaint);g.setFont(Daw::font(8.5f));g.drawText(std::abs(value)<.5?juce::String("C"):(value<0?"L":"R")+juce::String((int)std::round(std::abs(value))),juce::Rectangle<int>(pan.getX()-6,pan.getBottom(),pan.getWidth()+12,10),juce::Justification::centred);}
+    // Name at the foot, on a band of the track colour.
+    const auto band=juce::Rectangle<float>(2.f,(float)h-20.f,(float)w-4.f,18.f);g.setColour(master?Daw::control:colour.withAlpha(current?.4f:.2f));g.fillRoundedRectangle(band,2.f);
+    g.setColour(current?Daw::text:juce::Colours::black.withAlpha(.6f));g.drawRoundedRectangle(body,Daw::radius,current?1.2f:1.f);
+}
+void MixerStrip::resized(){const int w=getWidth(),h=getHeight();const bool master=track<0;const bool compact=h<170;
+    name.setBounds(3,h-20,w-6,18);
+    const int meterWidth=master?14:9,faderRight=w-meterWidth-10;
+    if(compact){pan.setVisible(false);instrument.setVisible(false);mute.setBounds(5,8,(w-14)/2,18);solo.setBounds(9+(w-14)/2,8,(w-14)/2,18);clip.setBounds(6,8,w-12,18);gain.setBounds(10,32,faderRight-10,std::max(20,h-32-40));}
+    else{pan.setVisible(!master);instrument.setVisible(!master);instrument.setBounds(5,8,w-10,18);pan.setBounds(6,30,28,28);mute.setBounds(38,30,w-43,15);solo.setBounds(38,47,w-43,15);clip.setBounds(6,8,w-12,18);
+        gain.setBounds(10,master?36:72,faderRight-10,std::max(20,h-(master?36:72)-40));}}
 void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
 DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize its height; double-click to restore the default.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);collapseButton.setComponentID("mixer-collapse");
     tip(collapseButton,"Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.");
@@ -122,8 +168,10 @@ DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("
 void DawMixer::refresh(){for(auto& s:strips)s->refresh();master.refresh();}
 void DawMixer::tick(){for(auto& s:strips)s->tick();master.tick();}
 void DawMixer::reveal(int track){const int x=rowForTrack(track)*channelWidth;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+channelWidth-4>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+channelWidth-4-port.getViewWidth(),0);}
-void DawMixer::paint(juce::Graphics& g){g.fillAll(Palette::background);caption(g,"MIXER",{8,0,120,22});caption(g,"Audio levels / MIDI velocities unchanged",{130,0,getWidth()-300,22});if(owner.mixerVisible){g.setColour(Palette::dim.withAlpha(.4f));g.fillRoundedRectangle(getWidth()*.5f-18,7,36,2,1);g.fillRoundedRectangle(getWidth()*.5f-18,12,36,1,.5f);}}
-void DawMixer::resized(){collapseButton.setBounds(getWidth()-156,1,152,22);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;port.setBounds(0,25,getWidth()-110,getHeight()-25);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/trackCount,74,100);channels.setSize(trackCount*channelWidth,height);for(int row=0;row<trackCount;++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-4,height);master.setBounds(getWidth()-104,25,104,height);}
+void DawMixer::paint(juce::Graphics& g){g.fillAll(Daw::base);g.setColour(Daw::chrome);g.fillRoundedRectangle(0,0,(float)getWidth(),24,Daw::radius);g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(juce::Rectangle<float>(0,0,(float)getWidth(),24).reduced(.5f),Daw::radius,1);
+    Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-300,24});
+    if(owner.mixerVisible){g.setColour(Daw::textFaint.withAlpha(.6f));for(int dot=-2;dot<=2;++dot)g.fillEllipse(getWidth()*.5f+dot*7-1.5f,10.5f,3.f,3.f);}}
+void DawMixer::resized(){collapseButton.setBounds(getWidth()-150,2,146,20);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;port.setBounds(0,29,getWidth()-112,getHeight()-29);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/trackCount,74,100);channels.setSize(trackCount*channelWidth,height);for(int row=0;row<trackCount;++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-3,height);master.setBounds(getWidth()-104,29,104,height);}
 void DawMixer::mouseDown(const juce::MouseEvent& e){if(e.y<25&&owner.mixerVisible){resizingMixer=true;resizeOrigin=e.getEventRelativeTo(&owner).position.y;resizeHeight=getHeight();}}
 void DawMixer::mouseDrag(const juce::MouseEvent& e){if(resizingMixer){owner.mixerHeight=std::clamp(resizeHeight+juce::roundToInt(resizeOrigin-e.getEventRelativeTo(&owner).position.y),160,std::max(160,owner.getHeight()-476));owner.resized();}}
 void DawMixer::mouseUp(const juce::MouseEvent&){if(resizingMixer)Localisation::setSetting("mixerHeight",owner.mixerHeight);resizingMixer=false;}

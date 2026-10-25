@@ -1,7 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
-#include "FamilyTheme.h"
+#include "DawTheme.h"
 namespace fga {
 class MainComponent;
 // The drag handle on the inspector's right edge, or (forBrowser) on the sample browser's left edge.
@@ -51,7 +51,11 @@ private:
     MainComponent& owner;
     int track;
     float peak=0,drawnLevel=-1;
+    std::array<float,2> sides{},holds{},drawnSides{-1.f,-1.f},drawnHolds{-1.f,-1.f};
+    std::array<int,2> holdTicks{};
     int drawnColour=-1;
+    float faderY(double db) const;
+    juce::Rectangle<int> meterBounds() const;
     bool updating=false,gainGesture=false,panGesture=false;
     juce::Label name;
     juce::Slider gain,pan;

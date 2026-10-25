@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.15.3 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.16.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -69,7 +69,7 @@ if(FGA_BUILD_APP)
         MICROPHONE_PERMISSION_ENABLED FALSE)
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
         Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_mixer.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
-    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp Source/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp Source/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
+    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)
     target_include_directories(FaseGrooveArranger PRIVATE ThirdParty/fasegroove-common)
@@ -86,9 +86,9 @@ if(FGA_BUILD_APP)
         target_compile_definitions(fga_io_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
         add_test(NAME project_io COMMAND fga_io_tests)
         juce_add_console_app(fga_update_tests PRODUCT_NAME "Arranger update tests")
-        target_sources(fga_update_tests PRIVATE tests/UpdaterTests.cpp Source/Updater.cpp Source/Localisation.cpp)
-        target_include_directories(fga_update_tests PRIVATE Source)
-        target_link_libraries(fga_update_tests PRIVATE juce::juce_events juce::juce_data_structures juce::juce_cryptography)
+        target_sources(fga_update_tests PRIVATE tests/UpdaterTests.cpp ThirdParty/fasegroove-common/Updater.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/Product.cpp)
+        target_include_directories(fga_update_tests PRIVATE Source ThirdParty/fasegroove-common)
+        target_link_libraries(fga_update_tests PRIVATE ArrangerResources juce::juce_gui_basics juce::juce_cryptography)
         target_compile_definitions(fga_update_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}")
         add_test(NAME family_updater COMMAND fga_update_tests)
         juce_add_console_app(fga_engine_tests PRODUCT_NAME "Arranger engine tests")

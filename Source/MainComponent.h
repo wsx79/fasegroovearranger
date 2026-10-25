@@ -3,7 +3,7 @@
 #pragma once
 #include "AudioEngine.h"
 #include "ProjectIO.h"
-#include "FamilyTheme.h"
+#include "DawTheme.h"
 #include "InstrumentPanel.h"
 #include "FamilyOptions.h"
 #include "FamilyControls.h"
@@ -25,6 +25,7 @@ public:
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
     void mouseDoubleClick(const juce::MouseEvent&) override;
     void mouseWheelMove(const juce::MouseEvent&,const juce::MouseWheelDetails&) override;
     bool verifyAutomation(const juce::File&);
@@ -52,6 +53,8 @@ private:
     MainComponent& owner;
     std::array<int,trackCount> trackHeights{};
     int heightTrack=-1,heightBefore=40;
+    int hoverTrack=-1,hoverClip=-1;   // the clip under the pointer, outlined
+    void setHover(int track,int clip);
     float heightAnchorY=0;
     int heightEdgeAt(const juce::MouseEvent&) const;
     void saveTrackHeights();
@@ -212,7 +215,7 @@ public:
     bool verifyDawWorkspace(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);
 private:
-    FamilyLookAndFeel theme;
+    DawLookAndFeel theme;
     OptionsOverlay options;
     PluginSettings pluginSettings{pluginCatalog};
     PluginBrowser pluginBrowser{pluginCatalog};
@@ -228,19 +231,25 @@ private:
     int mixerHeight=244,inspectorWidth=216;
     int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
-    juce::TextButton inspectorCollapse{"<"},inspectorToggle{"INSPECTOR"},mixerToggle{"MIXER"},browserToggle{"BROWSER"},fitSongButton{"FIT SONG"},followButton{"FOLLOW"};
+    juce::TextButton inspectorCollapse{"<"};
+    IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;
     InstrumentPanel instrumentPanel{*this};
     enum class Page { arrangement,instrument,editor };
     Page page=Page::arrangement;
+    // Window layout: the control bar, the toolbar rows below it (two, three in the MIDI editor)
+    // and the status bar.
+    static constexpr int controlBarHeight=56,toolRowHeight=36,statusHeight=28;
+    int toolbarBottom()const{return controlBarHeight+(page==Page::editor?3:2)*toolRowHeight;}
+    juce::Rectangle<int> lcdArea;std::vector<int> lcdDividers;std::vector<juce::Rectangle<int>> toolbarDividers;
     juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
-    juce::TextButton automationButton{"AUTOMATION"};
+    IconButton automationButton{IconButton::Icon::automation};
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
-    juce::TextButton newButton{"NEW"},openButton{"OPEN"},saveButton{"SAVE"},saveAsButton{"SAVE AS"},exportButton{"EXPORT"},settingsButton{"AUDIO"},aboutButton{"OPTIONS"},helpButton{"GUIDE"};
+    IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
-    juce::ToggleButton loopButton{"LOOP"},metronomeButton{"CLICK"};
+    IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
     juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
     juce::Slider tempoSlider,swingSlider,densitySlider,humanizeSlider,masterSlider,zoomSlider;
@@ -268,7 +277,7 @@ private:
     bool noClipSelection=false;
     double selectionBeat=0,editCursor=-1;
     double timelineSnap=1;
-    juce::TextButton zoomSelectionButton{"ZOOM SELECTION"},loopSelectionButton{"LOOP SELECTION"};
+    IconButton zoomSelectionButton{IconButton::Icon::zoomSelection},loopSelectionButton{IconButton::Icon::loopSelection};
     juce::ComboBox timelineGrid;
     juce::File projectFile;
     bool dirty=false,refreshing=false;
@@ -305,6 +314,7 @@ private:
     void closePluginEditor();
     void showChordMenu();
     void message(const juce::String&,bool error=false);
+    void showPosition(double beat);
     void timerCallback() override;
     void importFile(const juce::File&);
     void modifySelected(std::function<void(Clip&)>);

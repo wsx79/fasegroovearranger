@@ -112,8 +112,8 @@ void OptionsOverlay::refreshText()
     aboutTab.setButtonText (tr ("ABOUT"));
     closeButton.setButtonText (tr ("CLOSE"));
     sourceButton.setButtonText (tr ("SOURCE CODE"));
-    kofiButton.setButtonText (tr ("DONATE: Ko-fi"));
-    paypalButton.setButtonText (tr ("DONATE: PayPal"));
+    kofiButton.setButtonText (tr ("DONATE: KO-FI"));
+    paypalButton.setButtonText (tr ("DONATE: PAYPAL"));
     spotifyButton.setButtonText (tr ("SPOTIFY"));
     spotifyButton.setTooltip (tr ("Listen to my productions on Spotify"));
     languageLabel.setText (Localisation::upper (tr ("Language")), juce::dontSendNotification);

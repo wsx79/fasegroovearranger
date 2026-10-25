@@ -8,7 +8,7 @@ namespace {
 void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}
 }
 int main(){
-    namespace u=fga::Updater;
+    namespace u=::Updater;   // the family updater (fasegroove-common), set up for the arranger in Product.cpp
     const auto root=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("FaseGrooveArranger-updater-test",{},false);
     struct Cleanup{juce::File file;~Cleanup(){file.deleteRecursively();}}cleanup{root};
     try{

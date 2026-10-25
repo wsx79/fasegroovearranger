@@ -132,6 +132,9 @@ public:
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
     float masterLevel() const {return masterMeter.load();}
+    // Per side (0 left, 1 right) peaks of the last block, for the stereo meters.
+    float level(int track,int side) const {return sideMeters[(size_t)track][(size_t)(side&1)].load();}
+    float masterLevel(int side) const {return masterSides[(size_t)(side&1)].load();}
     bool hasClipped() const {return masterClip.load();}
     void clearClipping(){masterClip=false;}
     std::uint64_t noteOnsSent(int track) const {return instruments[(size_t)track]->noteOns;}
@@ -159,6 +162,9 @@ private:
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
     int clickLeft=0,clickPos=0;double clickHz=1000;
     std::atomic<float> masterMeter{0};
+    std::array<std::array<std::atomic<float>,2>,trackCount> sideMeters{};
+    std::array<std::atomic<float>,2> masterSides{};
+    void clearMeters(){masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
