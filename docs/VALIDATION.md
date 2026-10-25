@@ -1,5 +1,15 @@
 # Validation record
 
+## 0.21.0 — AI composition
+
+- All seven Linux CTest checks pass. Project I/O tests now exercise composition compilation: six minutes at 138 BPM outside genre limits, MIDI pattern expansion, percussion mapping, monophonic Lead, harmony metadata, duration overrides, DJ phrase preservation and closing-fill movement.
+- AI failures are transactional: malformed JSON/notes, disabled tracks, unknown references, duplicate pattern IDs and simultaneous Lead attacks cannot mutate the destination. Full-song locks, targeted-track isolation and locked independent clips are covered; assigned instruments, effect/plugin state and mix remain intact.
+- Four provider request and response envelopes are checked offline. A real local HTTP fixture exercises POST context, a six-minute MIDI result, authentication/quota/invalid-response failures, redirect blocking and cancellation during a stalled response. No paid authenticated online request or local model weights were used in validation; users configure their own service/model.
+- Native UI smoke passes the actual composer window, provider selection, masked session key, six-minute insertion, tempo display at 138 BPM, duration display at 6:00, immediate playback, Undo and stale-project rejection. English and Italian screenshots come from the application. The original six interface languages and icon tooltips pass.
+- Embedded IT/EN manuals pass nine-chapter navigation, eight images including the new AI composer, search, zoom and table layout. Exact shared family theme/fonts, linked manuals, packaging and source/license fixtures pass.
+- Native mix/stem/MP3 rendering, mute/solo and audible-regeneration checks pass. The real VST3 host probe passes MIDI pitch, parameter ratio, state restore, editor lifecycle and private-copy export.
+- Release retains the Windows/macOS/Linux workflow and Windows installer, adding local AI HTTP tests on each platform and Linux libcurl build headers. macOS app metadata allows the selected local Ollama connection without relaxing HTTPS for online services.
+
 ## 0.20.0 — transport selection, drum gates and floating editors
 
 - All seven Linux CTest checks pass, including the new handwritten drum gate checks and a real 1.2-second WAV sample played by a 0.25-beat Crash note. The sample remains audible after note-off in realtime playback and private-copy WAV export; Stop silences it.

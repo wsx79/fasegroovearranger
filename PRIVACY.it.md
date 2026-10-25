@@ -1,12 +1,12 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.7.1 · 21 ottobre 2026
+Versione 0.21.0 · 25 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
 ## Dati e connessioni
 
-L'app elabora musica sul dispositivo. Non richiede account, non raccoglie dati personali per un servizio remoto e non contiene analytics, telemetria, pubblicità, cookie o caricamento automatico di file. La verifica delle release GitHub è l'unica connessione propria dell'app ed è disattivabile, come descritto sotto. La generazione avviene nei motori C++ integrati; non invia prompt o musica a servizi AI.
+L'app elabora musica sul dispositivo. Non richiede account, non raccoglie dati personali per un servizio remoto e non contiene analytics, telemetria, pubblicità, cookie o caricamento automatico di file. La verifica delle release GitHub è disattivabile. I motori C++ integrati generano musica sul dispositivo. La composizione IA facoltativa si collega al servizio scelto soltanto quando premi COMPONI.
 
 Le pagine di codice sorgente, Spotify e donazioni si aprono nel browser soltanto quando premi il relativo pulsante. Tali servizi applicano le proprie condizioni e informative. Le dipendenze possono essere scaricate da GitHub durante la compilazione da sorgente; questo non avviene durante l'esecuzione dell'app già compilata.
 
@@ -42,3 +42,11 @@ I pacchetti vengono scaricati e preparati in `Downloads/Fase Groove Arranger upd
 Lingua, dimensione, tooltip, modalità del circolo, preferenza aggiornamenti e versione ignorata rimangono nelle impostazioni locali. La rete su Linux usa curl di sistema; se manca, il lavoro musicale offline resta disponibile.
 
 La ricerca dei plugin legge le cartelle standard e quelle personali selezionate, incluse le sottocartelle. Percorsi, descrizioni degli strumenti, impronte dei metadati dei file e stato dei controlli falliti sono conservati localmente nella cartella dati dell’utente, sotto `Fase Groove Arranger/Plugins`. L’app non carica questo catalogo su servizi esterni. Per verificare un plugin nuovo/aggiornato viene avviata una copia separata dell’app; codice, licenze e comportamento di rete del plugin restano di competenza del produttore.
+
+## Composizione IA facoltativa
+
+CREA CON IA supporta OpenAI, Anthropic, Google Gemini e un server Ollama di cui scegli l’indirizzo. Ogni pressione di COMPONI invia richiesta scritta, nomi/ruoli delle tracce, nomi e durate delle sezioni, tonalità, scala, accordi e un estratto limitato del MIDI usato come contesto musicale. Il servizio online riceve normali dati di connessione e la propria chiave API per l’autenticazione; applica le sue condizioni su privacy, conservazione, modelli e fatturazione. Ollama sul tuo computer elabora localmente; un indirizzo remoto riceve il contesto su quel server.
+
+Il contesto musicale non contiene audio, campioni, percorsi locali, catalogo plugin, stati serializzati di strumenti/effetti o chiavi API. Il provider scelto riceve la chiave soltanto in un header HTTPS, con reindirizzamenti disattivati. Le chiavi restano nella memoria del processo per la sessione: non vengono salvate in progetti, preferenze, file temporanei, log o argomenti di processi esterni. La connessione usa HTTPS nativo su Windows/macOS e libcurl su Linux. Si salvano soltanto preferenze di servizio/modello e indirizzo Ollama. Chiudere la finestra annulla una richiesta in corso; il servizio potrebbe averla già elaborata o fatturata. Non partono richieste automatiche e non si passa automaticamente a un altro provider.
+
+Le risposte sono convalidate come dati musicali limitati, senza eseguire codice. L’anteprima viene inserita soltanto con APPLICA; Annulla ripristina il progetto precedente. Il MIDI e l’arrangiamento diventano normali dati di progetto, salvati e autosalvati localmente come la musica scritta a mano.

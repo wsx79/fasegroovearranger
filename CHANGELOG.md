@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.21.0 — 2026-10-25
+
+- Amber AI COMPOSER button with a new family sparkle icon and a separate composer window.
+- OpenAI, Anthropic/Claude, Google Gemini and Ollama adapters, editable model selection, session-only API keys and cancellable background requests. Credentials and prompts remain in memory during HTTPS requests.
+- The model writes actual MIDI motifs, transitions and arrangement sections; bounded validation, monophonic Lead, track mappings and nearest-bar duration fitting precede a reviewable preview.
+- New-song and selected-track composition retain assigned instruments and mix. Targeted edits retain other tracks and locked clips, including independent timelines. APPLY supports optional playback, Undo and stale-project protection.
+- AI projects retain their chosen 30–300 BPM outside factory genre limits, including save/load; choosing a factory genre restores its original tempo policy.
+- IT/EN guides and privacy documents describe setup, API billing, Ollama, transmitted musical context and key handling. Local HTTP fixtures exercise real requests, failures and cancellation without API keys.
+
 ## 0.20.0 — 2026-10-25
 
 - Click the section-name header to start playback from that exact position. Grid/clip clicks select and edit without seeking or interrupting playback; the numbered ruler retains cursor and loop controls.

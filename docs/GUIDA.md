@@ -129,6 +129,23 @@ Il **MIXER** mostra le tracce nell’ordine musicale e un master fisso a destra.
 
 La selezione multipla nel piano roll mantiene le distanze fra le note anche ai bordi della sezione o dell’intervallo MIDI. Le modifiche alla guida conservano loop e automazione. Posizioni dei clip, sorgenti dei loop e spazi vuoti vengono salvati nel formato .fga 2; i progetti precedenti restano leggibili. Per riaprire una timeline modificata usa la versione 0.6.0 o successiva.
 
+### Comporre con l’IA
+
+<p align="center"><img src="images/guide_ai_it.png" alt="Compositore IA" width="900"></p>
+
+Il pulsante ambra **CREA CON IA**, con le scintille nella barra dell’arrangiamento, apre il compositore in una finestra separata. L’IA scrive le note MIDI e le sezioni; ascolti con **suoni guida, campioni e VST/AU già assegnati** alle tracce. Tutte le note restano modificabili.
+
+1. Scegli **OpenAI**, **Anthropic / Claude**, **Google / Gemini** oppure **Ollama**. Scegli un modello dall’elenco o scrivine il nome esatto. Per i servizi online inserisci la tua chiave API: resta in memoria soltanto per questa sessione. Il collegamento **Chiavi API / aiuto** apre la pagina del servizio. Gli abbonamenti alle app di chat non includono necessariamente l’uso delle API, che può avere costi a consumo.
+2. Per Ollama, avvia il server, scarica un modello adatto e indica il suo nome esatto e l’indirizzo, normalmente `http://127.0.0.1:11434`. Non serve una chiave. Se scegli un server su un’altra macchina, il contesto musicale viene inviato a quell’indirizzo.
+3. Scegli **Nuovo brano** per sostituire l’intero MIDI conservando strumenti e mix, oppure **Modifica tracce selezionate** per riscrivere soltanto quelle abilitate, mantenendo forma, tempo e altre tracce. Spunta gli strumenti da usare. Le tracce bloccate non sono selezionabili e i clip bloccati restano intatti nella modifica mirata; per un nuovo brano devi sbloccare tracce e clip.
+4. Descrivi il risultato: «Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop, basso ipnotico e un lead che evolve». **Dal prompt** prende la durata dalla richiesta; in alternativa scegli i minuti dal menu. Il tempo IA può andare da 30 a 300 BPM, anche oltre i preset dei tredici generi. La durata viene adattata alla battuta più vicina.
+5. Premi **COMPONI**. L’elaborazione avviene in background; **Annulla** la interrompe senza cambiare il progetto. L’anteprima mostra descrizione, durata, sezioni e numero di note per strumento. Risultati incompleti o non validi non vengono applicati.
+6. Premi **APPLICA**. **Ascolta dopo Applica** avvia il brano; **ANNULLA / Ctrl+Z** ripristina la versione precedente. Il nuovo brano azzera le vecchie automazioni, così non conserva dissolvenze appartenenti alla forma precedente. La modifica mirata conserva quelle esistenti. Se hai modificato il progetto durante l’attesa, rigenera l’anteprima per includere le nuove modifiche.
+
+Per chiedere «cambia soltanto il basso», scegli **Modifica tracce selezionate**, abilita solo Bass e descrivi la modifica. Il contesto comprende armonia e un estratto del MIDI corrente; si inviano anche i nomi delle tracce e delle sezioni, mentre percorsi dei file, audio e stati dei plugin restano locali. Nessuna chiave API viene scritta nei progetti, nelle preferenze o nei file temporanei.
+
+La qualità dipende dal modello. Per errori di autorizzazione verifica chiave e accesso al modello; per limiti o credito esaurito controlla il servizio. Un modello locale piccolo può produrre MIDI non valido: riprova con una richiesta più semplice o un modello più capace. I comandi tradizionali **APPLICA/RIGENERA** continuano a usare i motori originali e possono riscrivere le note IA: blocca le parti da conservare.
+
 ### Browser dei campioni
 
 **BROWSER / B** apre il browser dei campioni a destra dell'arrangiamento; mixer e timeline gli fanno spazio. Ricorda le tue cartelle, i preferiti e l'ultima cartella visitata, anche dopo il riavvio.
@@ -515,8 +532,7 @@ Trovi tutte le novità, versione per versione, nel [changelog](../CHANGELOG.it.m
 [Releases](https://github.com/wsx79/fasegroovearranger/releases).
 
 **L’app si collega a internet o raccoglie dati?**
-La musica resta sul computer. Solo il controllo aggiornamenti opzionale contatta GitHub;
-i link esterni si aprono se li scegli. Vedi la [privacy policy](../PRIVACY.it.md).
+I motori originali lavorano sul computer. Il controllo aggiornamenti facoltativo contatta GitHub. CREA CON IA invia richiesta e contesto musicale al servizio scelto soltanto con COMPONI; audio, percorsi e stati plugin restano locali e le chiavi restano in memoria. I link esterni si aprono se li scegli. Vedi la [privacy policy](../PRIVACY.it.md).
 
 ---
 
@@ -545,4 +561,4 @@ Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**, AI coding
 
 [Codice sorgente e famiglia Fase Groove](https://github.com/wsx79/fasegroovearranger)
 
-L'app è gratuita e open source, **GNU AGPL v3 o successiva**. Usa JUCE e il carattere Inter. Funziona offline, senza account, analytics o caricamenti della tua musica. I collegamenti esterni aprono il browser soltanto se li scegli. Campioni e VST personali mantengono le proprie licenze e condizioni; i dettagli sono in Privacy e Licenze, incluse nel pacchetto.
+L'app è gratuita e open source, **GNU AGPL v3 o successiva**. Usa JUCE e il carattere Inter. I motori originali funzionano offline, senza analytics o caricamenti automatici. CREA CON IA è facoltativo e invia il contesto musicale dichiarato al servizio scelto. I collegamenti esterni aprono il browser soltanto se li scegli. Campioni e VST personali mantengono le proprie licenze e condizioni; i dettagli sono in Privacy e Licenze, incluse nel pacchetto.

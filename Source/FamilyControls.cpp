@@ -14,6 +14,8 @@ namespace
         filled = false;
         switch (icon)
         {
+            case I::sparkles:
+                for(auto star:{juce::Rectangle<float>(.12f,.22f,.55f,.66f),juce::Rectangle<float>(.66f,.06f,.25f,.32f)}){const auto c=star.getCentre();p.startNewSubPath(c.x,star.getY());p.quadraticTo(c.x, c.y,star.getRight(),c.y);p.quadraticTo(c.x,c.y,c.x,star.getBottom());p.quadraticTo(c.x,c.y,star.getX(),c.y);p.quadraticTo(c.x,c.y,c.x,star.getY());p.closeSubPath();}filled=true;break;
             case I::play:   p.addTriangle (0.28f, 0.18f, 0.28f, 0.82f, 0.82f, 0.5f); filled = true; break;
             case I::pause:  p.addRoundedRectangle (0.24f, 0.2f, 0.17f, 0.6f, 0.03f); p.addRoundedRectangle (0.59f, 0.2f, 0.17f, 0.6f, 0.03f); filled = true; break;
             case I::stop:   p.addRoundedRectangle (0.24f, 0.24f, 0.52f, 0.52f, 0.05f); filled = true; break;

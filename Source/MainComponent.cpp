@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Branding.h"
 #include "MainComponent.h"
+#include "AiComposerWindow.h"
+#include "AiComposer.h"
 #include "UiText.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <BinaryData.h>
@@ -689,6 +691,7 @@ MainComponent::MainComponent(){
     loopButton.onClick=[this]{toggleLoop();};
     loopButton.getProperties().set("fgaTip","Loop playback on or off. Shortcut: L. Ctrl/Cmd+L loops the selection; again removes it. Double-click the loop strip to clear it.");
     sectionLoopButton.onClick=[this]{toggleClipLoop();};sectionLoopButton.getProperties().set("fgaTip","Loop the selected clip; click again to remove the loop.");
+    addAndMakeVisible(aiComposeButton);aiComposeButton.primary=true;aiComposeButton.setButtonText("AI COMPOSER");aiComposeButton.getProperties().set("fgaTip","Compose MIDI notes and an arrangement with your selected AI service.");aiComposeButton.onClick=[this]{showAiComposer();};
     songButton.onClick=[this]{regenerate(Scope::song);};trackButton.onClick=[this]{regenerate(Scope::track,page!=Page::instrument);};sectionButton.onClick=[this]{regenerate(Scope::section);};clipButton.onClick=[this]{regenerate(Scope::clip,page!=Page::instrument);};
     harmonyButton.onClick=[this]{checkpoint();randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(project);changed();message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");};
     undoButton.onClick=[this]{undo(false);};redoButton.onClick=[this]{undo(true);};
@@ -759,8 +762,28 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     }
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto."));startTimerHz(20);
 }
-MainComponent::~MainComponent(){updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();instrumentWindow.reset();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
+MainComponent::~MainComponent(){aiWindow.reset();updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();instrumentWindow.reset();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
+void MainComponent::showAiComposer(){if(loadingPlugin)return;if(!aiWindow)aiWindow=std::make_unique<AiComposerWindow>(*this);aiWindow->show();}
+juce::Result MainComponent::captureAiProject(Project& base){if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");instrumentPanel.flushRender();trackInspector.finishNameEdit();audio.capturePluginStates(project);base=project;return juce::Result::ok();}
+juce::Result MainComponent::applyAiComposition(const Project& base,const Project& generated,bool listen){
+    if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");
+    auto musical=[](Project p){for(auto& t:p.tracks){t.instrumentState.clear();t.effectState.clear();}return juce::JSON::toString(projectJson(p),false,17);};
+    if(generated.tracks.size()!=project.tracks.size()||generated.sections.empty())return juce::Result::fail("The composition is incomplete.");
+    if(musical(project)!=musical(base))return juce::Result::fail("The project changed while AI was composing. Generate again to include your latest edits.");
+    instrumentPanel.flushRender();checkpoint();audio.stop();auto next=generated;
+    for(size_t i=0;i<next.tracks.size()&&i<project.tracks.size();++i){next.tracks[i].instrumentState=project.tracks[i].instrumentState;next.tracks[i].effectState=project.tracks[i].effectState;}
+    project=std::move(next);selectedTrack=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);selectedSection=0;selectedClip=-1;noClipSelection=false;editCursor=-1;selectionBeat=0;arrangement.selectedClips.clear();piano.clearSelection();changed();showArrangement();fitGeneratedView();if(instrumentIsOpen())instrumentPanel.rebuild();if(listen)audio.play(true);return juce::Result::ok();
+}
+bool MainComponent::verifyAiComposer(const juce::File& folder){
+    showAiComposer();bool ok=aiComposeButton.isVisible()&&aiComposeButton.getTooltip().isNotEmpty()&&aiWindow->verify(folder);aiWindow->closeButtonPressed();
+    const auto language=Localisation::current();aiWindow.reset();Localisation::setCurrent(Localisation::Language::italian);showAiComposer();const auto itFolder=folder.getChildFile("ai-it");itFolder.createDirectory();ok=aiWindow->verify(itFolder)&&ok;aiWindow->closeButtonPressed();aiWindow.reset();Localisation::setCurrent(language);
+    const auto saved=project;AiOptions o;o.tracks={4,leadTrack};o.prompt="6 minute techno";
+    const juce::String json=R"({"title":"AI techno","summary":"Six-minute composition","bpm":138,"key":0,"scale":1,"genre":12,"target_seconds":360,"sections":[{"name":"Intro","type":"intro","bars":16},{"name":"Drop","type":"drop","bars":32},{"name":"Outro","type":"outro","bars":16}],"patterns":[{"id":"kick","track":4,"beats":4,"notes":[[0,36,0.5,110],[1,36,0.5,100],[2,36,0.5,110],[3,36,0.5,100]]},{"id":"lead","track":17,"beats":4,"notes":[[0,60,0.5,100],[1,63,0.5,90],[2,67,1,100]]}],"clips":[{"section":0,"pattern":"kick"},{"section":1,"pattern":"kick"},{"section":1,"pattern":"lead"},{"section":2,"pattern":"kick"}]})";
+    Project result;juce::String summary;ok=aiCompile(project,o,json,result,summary).wasOk()&&ok;ok=applyAiComposition(saved,result,true).wasOk()&&ok;ok=ok&&audio.isPlaying()&&project.settings.bpm==138&&tempoSlider.getValue()==138&&durationLabel.getText()=="6:00"&&std::abs(project.length()*60/138-360)<.01&&!project.tracks[leadTrack].clips[1].notes.empty();undo(false);ok=ok&&midiFile(project)==midiFile(saved);project.settings.density+=.01;ok=ok&&applyAiComposition(saved,result,false).failed();project=saved;audio.stop();changed();
+    folder.getChildFile("ai-composer.txt").replaceWithText(ok?"PASS composer window, provider choices, masked session key, real six-minute MIDI insertion, 138 BPM persistence, playback, Undo and stale-result protection":"FAIL AI composer");return ok;
+}
+
 void MainComponent::fitGeneratedView(){
     piano.fitNotes();
     if(page==Page::editor){
@@ -860,7 +883,7 @@ void MainComponent::select(int track,int section){instrumentPanel.flushRender();
     if(page==Page::arrangement){const auto v=arrangementPort.getViewArea();const int y=arrangement.rowY(rowForTrack(selectedTrack));if(y<v.getY()+rulerHeight)arrangementPort.setViewPosition(v.getX(),std::max(0,y-rulerHeight));else if(y+arrangement.rowHeight(rowForTrack(selectedTrack))>v.getBottom())arrangementPort.setViewPosition(v.getX(),y+arrangement.rowHeight(rowForTrack(selectedTrack))-v.getHeight());}
     sampleBrowser.refreshTarget();if(instrumentIsOpen()&&(previousTrack!=selectedTrack||previousSection!=selectedSection)){instrumentPanel.rebuild();instrumentWindow->refresh();}arrangement.repaint();piano.repaint();}
 void MainComponent::refreshControls(){
-    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(tempo.minBpm,tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
+    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
@@ -948,6 +971,7 @@ void MainComponent::resized(){
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&durationLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
+    aiComposeButton.setVisible(song);
     zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
     sampleBrowser.setVisible(song&&browserVisible);browserResizer.setVisible(song&&browserVisible);
     automationButton.setVisible(song);addTrackButton.setVisible(song);addTrackButton.setEnabled(project.tracks.size()<maxTracks&&!loadingPlugin);
@@ -991,7 +1015,7 @@ void MainComponent::resized(){
         place(leadButton,w-12-140,rowA,140);
         x=12;place(progressionBox,x,rowB,206);x+=212;place(harmonyButton,x,rowB,118);x+=122;place(chordEditButton,x,rowB,118);x+=122;divider(x+4,rowB+4,20);x+=13;
         place(extensionBox,x,rowB,112);x+=116;place(voicingBox,x,rowB,124);x+=128;divider(x+4,rowB+4,20);x+=13;
-        for(auto* s:{&densitySlider,&swingSlider,&humanizeSlider}){place(*s,x,rowB,164);x+=172;}
+        const int feelWidth=std::clamp((w-152-x)/3-8,92,164);for(auto* s:{&densitySlider,&swingSlider,&humanizeSlider}){place(*s,x,rowB,feelWidth);x+=feelWidth+8;}place(aiComposeButton,w-144,rowB,132);
         const int top=toolbarBottom()+8;
         const int dockHeight=mixerVisible?std::clamp(mixerHeight,160,std::max(160,getHeight()-476)):28;
         const int footer=getHeight()-31-dockHeight-38;
@@ -1092,6 +1116,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     select(0,1);showInstrument();capture("piano-family-extended");const auto take=clip().seed;regenerate(Scope::clip);ok=mark("regenerate",clip().seed!=take&&clip().motifSeed!=0)&&ok;const auto generated=clip();if(instrumentWindow)instrumentWindow->body->applyClip.onClick();ok=mark("apply-clip",clip()==generated)&&ok;
     showArrangement();fitSong();ok=mark("fit-song",arrangementPort.isVisible()&&!pianoPort.isVisible()&&headerWidth+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth())&&ok;capture("interface");
     ok=mark("automation",arrangement.verifyAutomation(folder))&&ok;
+    ok=mark("ai-composer",verifyAiComposer(folder))&&ok;
     capture("daw-workspace");ok=mark("daw-workspace",verifyDawWorkspace(folder))&&ok;ok=mark("timeline",verifyTimelineEditing(folder))&&ok;ok=mark("navigation",verifyNavigation(folder))&&ok;ok=mark("sample-browser",verifySampleBrowser(folder))&&ok;
     juce::String layoutReport,editingReport;
     for(int track:{4,16,1,0,2,3,leadTrack}){select(track,1);const auto mainPage=page;showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentIsOpen()&&instrumentPort.getTopLevelComponent()!=getTopLevelComponent()&&page==mainPage&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(isDrumTrack(track))ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2||track==leadTrack)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize pitched and drum notes, delete, precise ruler seek":"FAIL editing gestures")+"\n";}

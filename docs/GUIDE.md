@@ -131,6 +131,23 @@ The **MIXER** shows the tracks in musical order with a fixed master at the right
 
 Moving a multiple-note selection in the piano roll preserves spacing at clip and MIDI pitch boundaries. Guide edits preserve loop locators and automation. Clip positions, loop sources and gaps save in .fga format 2; format 1 projects still open. Reopen edited timelines with version 0.6.0 or later.
 
+### Compose with AI
+
+<p align="center"><img src="images/guide_ai.png" alt="AI composer" width="900"></p>
+
+The amber **AI COMPOSER** button, with sparkles in the arrangement toolbar, opens a separate composer window. AI writes MIDI notes and song sections; your **assigned guide sounds, samples and VST/AU instruments** play them. Every note remains editable.
+
+1. Choose **OpenAI**, **Anthropic / Claude**, **Google / Gemini**, or **Ollama**. Select a suggested model or type its exact name. Online services need your own API key, kept in memory for this session only. **API keys / help** opens the service’s setup page. Chat-app subscriptions do not necessarily include API access; usage may incur separate charges.
+2. For Ollama, start the server, download a suitable model, and enter its exact name and address, normally `http://127.0.0.1:11434`. No API key is required. A server on another machine receives the musical context at the address you choose.
+3. Choose **New song** to replace the entire MIDI arrangement while retaining instruments and mix, or **Edit selected tracks** to rewrite only enabled tracks while preserving the form, tempo and other parts. Tick the instruments to use. Locked tracks cannot be enabled; targeted editing preserves locked clips. Unlock all tracks and clips before creating a new song.
+4. Describe the result: “A six-minute techno song at 138 BPM, DJ intro, two drops, hypnotic bass and an evolving lead.” **From the prompt** takes duration from your request; alternatively choose minutes from the menu. AI compositions support 30–300 BPM, beyond the thirteen preset genres. Duration fits the nearest whole bar.
+5. Press **COMPOSE**. Generation runs in the background; **Cancel** stops it without changing the project. The preview lists the description, duration, sections and note counts by instrument. Invalid or incomplete responses cannot be applied.
+6. Press **APPLY**. **Listen when applied** starts playback; **UNDO / Ctrl+Z** restores the previous version. New-song composition clears old automation so fades from the previous form cannot affect the new song. Targeted editing preserves automation. If the project changed while the model was working, regenerate the preview to include your latest edits.
+
+To ask “change only the bass”, choose **Edit selected tracks**, enable only Bass, and describe the change. Context includes harmony and excerpts of the current MIDI, plus track/section names; file paths, audio and plugin states are never uploaded. API keys are never written to projects, preferences or temporary files.
+
+Quality depends on the model. For authentication errors, check the key and model access; for quota errors, check the service’s limits and billing. Small local models may return invalid MIDI: simplify the request or use a more capable model. Traditional **APPLY/REGENERATE** commands still use the original engines and can overwrite AI notes; lock parts you want to retain.
+
 ### Sample browser
 
 **BROWSER / B** opens the sample browser on the right of the arrangement; the mixer and timeline make room for it. It remembers your folders, favourites and the last folder you visited, also after a restart.
@@ -512,8 +529,8 @@ Find version-by-version changes in the [changelog](../CHANGELOG.md) and on the
 [Releases](https://github.com/wsx79/fasegroovearranger/releases) page.
 
 **Does the app connect to the internet or collect data?**
-Your music stays on your computer. Only the optional update check contacts GitHub; external
-links open when you choose them. See the [privacy policy](../PRIVACY.md).
+
+Release checks use GitHub and can be disabled. AI composition connects only when you press COMPOSE, sending your request, track/section names and musical context to the chosen service. Audio, paths and plugin states stay local; keys stay in memory. See Privacy for details.
 
 ---
 
@@ -542,4 +559,4 @@ Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**, AI coding
 
 [Source code and the Fase Groove family](https://github.com/wsx79/fasegroovearranger)
 
-The app is free and open source, **GNU AGPL v3 or later**, built with JUCE and the Inter typeface. It works offline with no accounts, analytics or music uploads. External links open your browser only when you choose them. Your samples and plugins keep their own licences and terms; Privacy and Licences are included in the package.
+The app is free and open source, **GNU AGPL v3 or later**, built with JUCE and the Inter typeface. Its original engines work offline, with no analytics or automatic uploads. AI composition is optional and sends only the disclosed musical context to your chosen service. External links open your browser only when you choose them. Your samples and plugins keep their own licences and terms; Privacy and Licences are included in the package.

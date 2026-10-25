@@ -50,6 +50,7 @@ assert (folder / 'transport.txt').read_text().startswith('PASS')
 print(f'PASS native rendering: {active} active stems, aligned {mix[1]} frames at {mix[0]} Hz, RMS {mix[2]:.5f}, silent mute mix, bundled MP3 and screenshot')
 
 assert (folder / "ui.txt").read_text().startswith("PASS"), "instrument/editor interface routing"
+assert (folder / "ai-composer.txt").read_text().startswith("PASS"), "AI composer window, six-minute MIDI, routing, Undo and stale results"
 
 assert (folder / "guide.txt").read_text().startswith("PASS"), "native guide navigation, search and layout"
 for name in ["guide-welcome-it.png", "guide-chapter-it.png", "guide-search-en.png", "credits.png"]:

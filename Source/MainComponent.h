@@ -138,6 +138,7 @@ private:
     double beat(float x) const {return std::max(0.,(x-leftMargin())/pixelsPerBeat);}
     int pitch(float y) const;
 };
+class AiComposerWindow;
 class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget,public juce::DragAndDropContainer,public juce::DragAndDropTarget {
 public:
     MainComponent();
@@ -229,8 +230,14 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow();
+    void showAiComposer();
+    juce::Result captureAiProject(Project&);
+    juce::Result applyAiComposition(const Project&,const Project&,bool listen);
+    bool verifyAiComposer(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);
 private:
+    std::unique_ptr<AiComposerWindow> aiWindow;
+    IconButton aiComposeButton{IconButton::Icon::sparkles};
     DawLookAndFeel theme;
     OptionsOverlay options;
     PluginSettings pluginSettings{pluginCatalog};

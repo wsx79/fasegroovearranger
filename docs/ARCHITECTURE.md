@@ -67,3 +67,11 @@ The instrument window owns a toolbar and reparents the existing non-owned instru
 [Piano regeneration audit](PIANO_VARIATION.md) records attack-only comparisons and the bounded candidate selection from the original genre generator.
 
 Drum samples use a SamplerVoice variant that ignores tail-allowed note-off but respects forced stops, matching the guide kit’s one-shot behavior. Playback and private offline copies use the same voice type; pitched samples retain ordinary gate behavior. Manual drum notes start with the original generator gate lengths, while the editor displays and resizes their stored MIDI durations. Arrangement grid selection leaves transport untouched; section-name clicks seek and play. Floating instrument/plugin editors are always-on-top and reopened at screen centre.
+
+## AI composer (0.21.0)
+
+`AiComposer` builds provider-specific OpenAI Chat Completions, Anthropic Messages, Gemini generateContent and Ollama chat requests. The musical context is explicitly constructed from track roles/names, form, harmony and bounded note excerpts; it never serialises a Project for upload. Requests use an in-memory WebInputStream, native networking on Windows/macOS and lazily loaded libcurl on Linux. A watchdog cancels blocking I/O and enforces a four-minute online deadline (fifteen minutes for a local model). No credentials or prompts are written to files or process arguments.
+
+Models return compact MIDI patterns and section placements rather than executable generator commands. Compilation validates ranges, references, enabled tracks and resource bounds, fits the form to the nearest requested bar, enforces monophonic Lead, resolves percussion mappings and preserves the original track instruments/mix. Targeted editing restores locked independent clips over the newly written parts. The preview is private until APPLY; musical project comparison prevents stale results overwriting intervening edits, while plugin state captured at apply time stays current. A single checkpoint supports Undo.
+
+Optional `Settings::freeTempo` persists an AI composition’s 30–300 BPM without applying genre-preset working ranges. Legacy projects retain their previous policy; applying a genre clears the override. All original generation engines and presets remain unchanged.

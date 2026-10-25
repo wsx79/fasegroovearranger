@@ -25,6 +25,8 @@ Create a complete song with the original Piano, Drums, Guitar and Lead engines: 
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
 
+**AI COMPOSER** writes editable MIDI notes and a full arrangement from your request, using your assigned instruments. Choose OpenAI, Claude, Gemini or Ollama, review the preview, then APPLY with Undo. Online APIs need your own key; keys stay in memory. [AI guide](docs/GUIDE.md#compose-with-ai).
+
 Separate instrument windows, a global Lead octave and handwritten MIDI tracks (**+ MIDI**, up to 32 tracks in total). Double-click inspector or mixer names to rename tracks. Piano regeneration selects more distinct rhythmic figures within the same genre.
 
 Click the section-name header to listen from a position; clip selection preserves playback. Drum hits support MIDI length editing and natural sample tails. Instrument and VST windows stay on top and reopen centred.
@@ -60,7 +62,7 @@ Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scro
 
 ## Build and run
 
-Requires CMake 3.22+, a C++17 compiler, and JUCE **8.0.9** (automatically fetched at build time, or supplied locally with `-DJUCE_DIR=/path/to/JUCE`). The runtime works offline.
+Requires CMake 3.22+, a C++17 compiler, and JUCE **8.0.9** (automatically fetched at build time, or supplied locally with `-DJUCE_DIR=/path/to/JUCE`). The original engines work offline; optional AI uses the selected service. Linux AI networking needs system libcurl (build headers: `libcurl4-openssl-dev`).
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -73,7 +75,7 @@ The standalone application is in `build/FaseGrooveArranger_artefacts/Release/`. 
 On Ubuntu/Debian install the native development dependencies first:
 
 ```sh
-sudo apt-get install build-essential cmake libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
+sudo apt-get install build-essential cmake libcurl4-openssl-dev libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev
 ```
 
 Download from [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** uses the same English/Italian installer as the family, with Start menu shortcuts and uninstall. Portable family ZIPs are available for Windows, universal macOS and Linux, with one ZIP per platform. **OPTIONS → SETTINGS → CHECK NOW** downloads the matching update; **INSTALL NOW** runs the setup or replaces a writable portable copy and reopens the app. Projects and preferences remain. Versions 0.7.0 and earlier need one manual installation. See the [installation/update guide](docs/GUIDE.md#1-installation). Windows setup is unsigned; macOS uses the family's ad-hoc/optional Developer ID signing flow. Development packages are also in Actions → Artifacts.
@@ -108,7 +110,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.17.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio warping, multi-effect chains, buses/sends, and MIDI controller recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.21.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio warping, multi-effect chains, buses/sends, and MIDI controller recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

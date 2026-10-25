@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Linux dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libasound2-dev libx11-dev libxext-dev libxinerama-dev libxrandr-dev libxcursor-dev libfreetype6-dev libfontconfig1-dev libgl1-mesa-dev xvfb ffmpeg
       - name: Validate family resources and Markdown guides
         run: python scripts/verify-family.py
       - name: Configure
@@ -47,6 +47,8 @@ jobs:
         run: cmake --build build --config Release -j2
       - name: Tests
         run: ctest --test-dir build -C Release --output-on-failure
+      - name: AI composition HTTP and cancellation integration
+        run: python scripts/test-ai.py
       - name: Standalone rendering smoke test
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --smoke-test "$RUNNER_TEMP/arranger-smoke"

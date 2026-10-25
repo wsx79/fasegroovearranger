@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.21.0 — 2026-10-25
+
+- Pulsante ambra CREA CON IA con scintille nel tema della famiglia e compositore in finestra separata.
+- OpenAI, Anthropic/Claude, Google Gemini e Ollama: scelta del modello, chiavi API solo in memoria e richieste in background annullabili.
+- L’IA scrive vere note MIDI, motivi, transizioni e sezioni. Prima dell’anteprima si verificano dati, Lead monofonico, tracce e durata alla battuta più vicina.
+- Nuovo brano oppure modifica delle tracce scelte, conservando strumenti e mix. La modifica mirata preserva altre tracce e clip bloccati, anche sulle timeline indipendenti. APPLICA permette ascolto, Annulla e protezione dalle modifiche intervenute durante l’attesa.
+- Tempo IA da 30 a 300 BPM conservato nei progetti; la scelta di un genere classico ripristina i suoi limiti originali.
+- Guide e privacy IT/EN aggiornate con configurazione, costi API, Ollama, contesto trasmesso e gestione delle chiavi. Test HTTP locali senza credenziali verificano richieste, errori e annullamento.
+
 ## 0.20.0 — 2026-10-25
 
 - Clic sui nomi delle sezioni per ascoltare dal punto scelto. Clic su clip e griglia seleziona e modifica senza spostare la riproduzione; il righello numerato mantiene cursore e loop.

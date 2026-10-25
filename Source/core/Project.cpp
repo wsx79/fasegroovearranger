@@ -337,7 +337,7 @@ void Project::normalise() {
     if(s.chordSteps!=8&&s.chordSteps!=16&&s.chordSteps!=32&&s.chordSteps!=64)s.chordSteps=16;
     s.extension=std::clamp(s.extension,0,10); s.voicing=std::clamp(s.voicing,0,10);
     const auto& tempo=genreProfile(s.genre);
-    s.bpm=finite(s.bpm,tempo.preferredBpm,tempo.minBpm,tempo.maxBpm); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
+    s.bpm=finite(s.bpm,tempo.preferredBpm,s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
     s.chordCount=std::clamp(s.chordCount,1,8); s.bassMode=std::clamp(s.bassMode,0,sgk::numBassModes-1); s.stringsMode=std::clamp(s.stringsMode,0,10);
     for(auto& d:s.degrees) d=std::clamp(d,0,6);
     for(auto& c:s.freeChords) c=std::clamp(c,-1,35);
@@ -480,6 +480,7 @@ void randomiseHarmony(Project& p,std::uint32_t seed) {
     std::copy(degrees.begin(),degrees.end(),p.settings.degrees.begin());
 }
 void applyGenre(Project& p,int genre) {
+    p.settings.freeTempo=false;
     p.normalise();
     p.settings.genre=std::clamp(genre,0,12);
     static const int presets[]{4,2,0,8,17,28,9,0,33,27,29,6,4};

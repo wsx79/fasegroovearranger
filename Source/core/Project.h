@@ -96,6 +96,7 @@ struct Settings {
     // Regenerating (song, track, section, clip) also writes musical automation for that scope.
     // Off in projects saved before it existed; new projects start with it on.
     bool randomAutomation = false;
+    bool freeTempo = false; // AI/imported compositions may use 30..300 BPM beyond genre presets
 };
 struct Project {
     std::string name = "Untitled groove";

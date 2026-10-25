@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.20.0 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.21.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -69,14 +69,15 @@ if(FGA_BUILD_APP)
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"
         COMPANY_NAME "FS Pitch" BUNDLE_ID "com.fspitch.fasegroovearranger"
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
-        MICROPHONE_PERMISSION_ENABLED FALSE)
+        MICROPHONE_PERMISSION_ENABLED FALSE
+        PLIST_TO_MERGE "<plist><dict><key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict><key>NSLocalNetworkUsageDescription</key><string>Connect to your selected Ollama server to compose MIDI.</string></dict></plist>")
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
-        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
-    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
+        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
+    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/AiComposer.cpp Source/AiComposerWindow.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/ProjectIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)
     target_include_directories(FaseGrooveArranger PRIVATE ThirdParty/fasegroove-common)
-    target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_DISPLAY_SPLASH_SCREEN=0
+    target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=1 JUCE_LOAD_CURL_SYMBOLS_LAZILY=1 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1
         JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:FaseGrooveArranger,JUCE_PRODUCT_NAME>"
         JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}")
@@ -84,9 +85,9 @@ if(FGA_BUILD_APP)
         juce::juce_recommended_config_flags juce::juce_recommended_warning_flags)
     if(FGA_BUILD_TESTS)
         juce_add_console_app(fga_io_tests PRODUCT_NAME "Arranger project tests")
-        target_sources(fga_io_tests PRIVATE tests/IOTests.cpp Source/ProjectIO.cpp)
+        target_sources(fga_io_tests PRIVATE tests/IOTests.cpp tests/AiTests.cpp Source/AiComposer.cpp Source/ProjectIO.cpp)
         target_link_libraries(fga_io_tests PRIVATE fga_core juce::juce_audio_basics juce::juce_core)
-        target_compile_definitions(fga_io_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0)
+        target_compile_definitions(fga_io_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=1 JUCE_LOAD_CURL_SYMBOLS_LAZILY=1)
         add_test(NAME project_io COMMAND fga_io_tests)
         juce_add_console_app(fga_update_tests PRODUCT_NAME "Arranger update tests")
         target_sources(fga_update_tests PRIVATE tests/UpdaterTests.cpp ThirdParty/fasegroove-common/Updater.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/Product.cpp)

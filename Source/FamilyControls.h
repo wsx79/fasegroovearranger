@@ -9,7 +9,7 @@ public:
     enum class Icon { none, play, pause, stop, rewind, dice, undo, redo, gear, close, fullScreen, exitFullScreen,
                       lock, unlock, left, right, song, folder, pencil, pointer, eraser,
                       loop, metronome, newFile, save, saveAs, exportFile, speaker, help, mixer, inspector, browser,
-                      zoomSelection, fitWidth, follow, automation, loopSelection, piano, bass, strings, guitar, drum, lead };
+                      zoomSelection, fitWidth, follow, automation, loopSelection, piano, bass, strings, guitar, drum, lead, sparkles };
 
     explicit IconButton (Icon i = Icon::none) : juce::Button ({}), icon (i) {}
     void setIcon (Icon i) { if (i != icon) { icon = i; repaint(); } }

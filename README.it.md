@@ -25,6 +25,8 @@ Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi 
 
 Clic sui nomi delle sezioni per ascoltare dal punto scelto; la selezione dei clip conserva la riproduzione. Durata MIDI modificabile anche nei Drums e coda naturale dei campioni. Finestre strumento e VST in primo piano, centrate alla riapertura.
 
+**CREA CON IA** scrive note MIDI modificabili e l’arrangiamento dalla tua richiesta, usando gli strumenti assegnati. Scegli OpenAI, Claude, Gemini oppure Ollama, controlla l’anteprima e APPLICA con Annulla disponibile. Le API online richiedono la tua chiave, conservata solo in memoria. [Guida IA](docs/GUIDA.md#comporre-con-lia).
+
 Pannelli strumento in finestre separate, ottava generale Lead e tracce MIDI scritte a mano (**+ MIDI**, fino a 32 tracce totali). Rinomina le tracce con doppio clic sul nome nell’inspector o mixer. Le rigenerazioni del piano scelgono figure più distinte nello stesso genere.
 
 ![Fase Groove Arranger](docs/images/guide_arrangement.png)
