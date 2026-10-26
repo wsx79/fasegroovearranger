@@ -151,6 +151,7 @@ public:
     juce::Result setMidiInput(const juce::String& identifier);
     const juce::String& midiInput()const{return midiIdentifier;}
     void setMidiMonitor(int track,bool enabled);
+    std::array<bool,128> activeNotes(int track)const;
     void liveMidi(int track,const juce::MidiMessage& message,bool recordable=true){capture.enqueue(track,message,recordable);}
     juce::Result startRecording(int track,int countInBars);
     MidiTake finishRecording();
@@ -186,6 +187,8 @@ private:
     double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0;
     int liveTail=0;bool chaseRecord=false;
     void processLive(int count,double beat,bool capturing);
+    void publishActiveNotes(int track);
+    std::array<std::array<std::atomic<std::uint64_t>,2>,maxTracks> activeKeyMasks{};
     void chaseLiveRecord(double beat);
     MixerBuses busGraph;
     juce::CriticalSection mutex; // transport and instrument changes; never held for long
@@ -196,7 +199,7 @@ private:
     std::atomic<float> masterMeter{0};
     std::array<std::array<std::atomic<float>,2>,maxTracks> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
-    void clearMeters(){masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
+    void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;

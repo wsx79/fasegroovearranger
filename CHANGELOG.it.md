@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.2
+
+- Campionatore apribile dall’inspector, con menu limitato ai campioni; registrazione e bus conservano tutte le tracce.
+- Studio riordinato in gruppi di controlli, tastiera sempre visibile, nomi delle note, evidenziazione di tasti/pad e meter dei bus.
+- Zoom con rotella e pizzicamento sul puntatore, scorrimento orizzontale e doppio clic per inquadrare il campione.
+- Taglio automatico sui transienti o in parti uguali, fette suonabili e ripristino default annullabile senza perdere file, MIDI o mix.
+- Tooltip descrittivi tradotti nella finestra di Studio, secondo la preferenza globale; guide IT/EN e verifiche aggiornate.
+
 ## 0.22.1
 
 - Ollama locale come scelta iniziale del compositore IA, senza chiave API.

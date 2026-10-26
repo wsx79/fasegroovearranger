@@ -26,7 +26,7 @@ void InspectorResizer::mouseUp(const juce::MouseEvent&){if(browser)Localisation:
 void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){owner.sampleBrowserWidth=0;owner.resized();Localisation::setSetting("sampleBrowserWidth",0);return;}owner.inspectorWidth=248;owner.resized();Localisation::setSetting("inspectorWidth",owner.inspectorWidth);}
 
 TrackInspector::TrackInspector(MainComponent& m):owner(m){
-    for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
+    for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&samplerEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
     name.setComponentID("track-name");name.setFont(Daw::font(18,true));name.setMinimumHorizontalScale(.7f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
     source.setFont(Daw::font(11));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.7f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
@@ -46,6 +46,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     lockTrack.onClick=[this]{if(validTrack())owner.toggleTrackLock();};lockClip.onClick=[this]{if(validTrack())owner.toggleClipLock();};
     internal.onClick=[this]{owner.useBuiltInSound(owner.selectedTrack);};sample.onClick=[this]{owner.browseSamplesFor(owner.selectedTrack);};
     plugin.onClick=[this]{owner.showPluginMenu(&plugin);};pluginEditor.onClick=[this]{if(owner.pluginEditorButton.onClick)owner.pluginEditorButton.onClick();};
+    samplerEditor.setComponentID("inspector-sampler");samplerEditor.onClick=[this]{owner.showStudio(0);};Localisation::bindText(samplerEditor,"OPEN SAMPLER");tip(samplerEditor,"Open the waveform, sample settings and playable slices for this track.");
     regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.toggleClipLoop();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
     tip(sample,"Open the integrated sample browser for this track: double-click a sample or drag it onto the track.");tip(loop,"Loop the selected clip; click again to remove the loop.");
@@ -74,7 +75,7 @@ void TrackInspector::refresh(){
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
     internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);sample.setToggleState(t.instrument=="sample",juce::dontSendNotification);plugin.setToggleState(t.instrument=="plugin",juce::dontSendNotification);
-    internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);
+    internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);samplerEditor.setEnabled(t.instrument=="sample"&&!busy);
     regenerate.setEnabled(!isManualTrack(ti)&&hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
     // Only these texts change here; the rest is translated on creation and language change.
     updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);resized();repaint();
@@ -113,6 +114,7 @@ int TrackInspector::layout(int width){
     row(instrument);
     const bool external=validTrack()&&(owner.audio.plugin(owner.selectedTrack)!=nullptr||owner.audio.effectPlugin(owner.selectedTrack)!=nullptr);
     pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
+    const bool sampled=validTrack()&&owner.project.tracks[(size_t)owner.selectedTrack].instrument=="sample";samplerEditor.setVisible(sampled);if(sampled)row(samplerEditor);else samplerEditor.setBounds({});
     endCard();
     title("VOLUME / PAN");
     captions.push_back({"Volume",{inset,y+5,44,14}});gain.setBounds(inset+46,y,w-46,24);y+=34;

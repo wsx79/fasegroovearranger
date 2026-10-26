@@ -11,6 +11,8 @@ int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
     runAiTests();runStudioIOTests();
+    {auto project=fga::newProject(72);auto& track=project.tracks[4];track.instrument="sample";track.instrumentPath="drum-fixture.wav";track.sampler.mode=1;track.clips[0].notes={{0,.25,36,100,0},{.5,.25,37,100,0}};project.normalise();fga::Project loaded;check(track.clips[0].notes[1].pitch==37&&fga::projectFromJson(fga::projectJson(project),loaded).wasOk()&&loaded.tracks[4].clips[0].notes[1].pitch==37,"sample drum MIDI pitches survive normalisation, recording and project round-trip outside slice mode");track.instrument="internal";project.normalise();check(track.clips[0].notes[0].pitch==track.clips[0].notes[1].pitch,"built-in drum guides keep their existing fixed MIDI mapping");}
+
     {
         auto original=fga::newProject(1);int ti=original.addMidiTrack();original.tracks[(size_t)ti].name="MIDI – melodia";original.tracks[(size_t)ti].clips[0].notes={{2,.75,74,103,0}};original.tracks[(size_t)ti].instrument="sample";original.tracks[(size_t)ti].instrumentPath="melody.wav";original.tracks[fga::leadTrack].engine.globalOctave=-1;
         const auto json=juce::JSON::toString(fga::projectJson(original),false,17);fga::Project loaded;

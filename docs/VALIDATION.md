@@ -1,5 +1,14 @@
 # Validation record
 
+## 0.22.2 — Studio sampler workflow
+
+- Seven Linux CTest groups pass, with project round-trip checks preserving sample drum pitches outside slice mode and the original fixed MIDI mapping for built-in drum guides. The core executable is rebuilt against the updated core library and passes again.
+- Native Studio checks cover the inspector entry, sample-only target IDs, retained all-track recording/bus targets, wheel/pinch pointer anchoring, horizontal pan and double-click fit without trim changes.
+- Transient/equal slicing, visible mapped keys/pads, actual sounding-note display, reset preserving file/MIDI and Undo pass. A take keeps its target when changing tabs; close/reopen and recovery checks remain passing.
+- Audio callbacks verify note indication during a one-shot tail after note-off, clearing at Stop, sustain and monitor retargeting. GUI note reads use atomic snapshots rather than locking synthesiser voices.
+- Studio owns its tooltip window; a real tooltip is shown in the native check. Descriptions, keyboard tips and compact layout checks pass. New labels/tooltips use the six family languages; shared theme/font/module files remain unchanged.
+- Refreshed native sampler, recording and bus images accompany the IT/EN guides. Hardware MIDI keyboards and physical trackpad gestures still require a device-level check; native tests invoke the actual UI and audio callbacks with controlled input.
+
 ## 0.22.1 — Local AI setup
 
 - Seven Linux CTest checks pass. Ollama HTTP fixtures verify installed-model discovery, duplicate/cloud/remote-alias exclusion, address normalization, empty/wrong servers, connection refusal, missing models, memory errors, no-key requests, blocked redirects and cancellation.

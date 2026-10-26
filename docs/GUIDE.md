@@ -163,17 +163,20 @@ Folders are read and audio headers measured in the background, so the interface 
 
 ### Studio: sampler, recording and buses
 
-**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. Choose the target track at the top. Four tabs share the selected track.
+**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording, buses and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
 
 <p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
 
-**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 60 seconds. Drag the nearest waveform edge to trim start/end; zoom and position allow precise edits. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
+**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 60 seconds. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. Zoom and position sliders follow these gestures. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
 - **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
 - **LOOP** repeats the loop region in Classic mode; crossfade softens the seam. **REVERSE** changes playback direction.
 - Root note, transpose and fine tuning set pitch; **VOICES = 1** makes the instrument monophonic. Attack, decay, sustain and release shape the envelope. The low-pass filter has cutoff and resonance; **VELOCITY** sets sensitivity to note strength.
 - **TEMPO SYNC** separates duration from pitch. Set the sample’s original **SOURCE BPM**; playback then follows project tempo. Without sync, transposition also changes playback speed.
-- **DETECT SLICES** finds transients. Shift-click adds a marker; right-click removes the nearest one. **Slices** maps regions to consecutive notes from **FIRST SLICE NOTE**. Audition slices with the pads; a bank selector appears for more than 16 slices. **WRITE SLICE MIDI** replaces the selected clip’s notes with triggers, up to its length; Undo restores the previous clip.
+- **AUTO SLICE** immediately maps playable slices. Choose **Transients** or **4 / 8 / 16 / 32 / 64 equal slices**; slicing respects the trimmed region and maps consecutive pitches from **FIRST SLICE NOTE**. Selecting **Slices** with no markers detects them automatically. Shift-click adds a marker; right-click removes the nearest. Pads and keyboard remain visible together; unmapped keys are dimmed. Banks contain 16 pads. **WRITE SLICE MIDI** replaces clip notes with triggers at their original rhythmic positions; Undo restores the clip.
+- **RESET SAMPLE** restores trim, loop, envelope, filter, pitch and slices to defaults, resets the root and eight-voice limit and fits the waveform. It preserves the sample file, MIDI notes and track mix as one undoable action. Sample instruments on drum tracks preserve played MIDI pitches in every mode.
+- The keyboard stays at the bottom when the controls scroll. Play with the mouse or **A W S E D F T G Y H U J K** after focusing it. For a hardware keyboard, select its input and enable **MIDI INPUT**. Song MIDI, keyboard and pad notes light up and their names appear on the right. The indication also follows one-shot tails after key release.
+- Controls are grouped into region/loop, pitch/envelope and filter/slices. Tooltips explain actions and units when you rest the pointer over a control. They follow the global tooltip preference and work in Studio’s separate window.
 - **SAVE PRESET** writes a `.fgs` and a neighbouring sample folder. Move both together. **OPEN PRESET** restores sample, root and settings. Project saving and Undo/Redo also preserve sampler settings.
 
 <p align="center"><img src="images/guide_recording.png" alt="Studio MIDI" width="980"></p>

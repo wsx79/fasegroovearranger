@@ -577,3 +577,185 @@
 { "Ollama connected. Choose a local model and describe your song. No API key needed.", "Ollama collegato. Scegli un modello locale e descrivi il brano. Non serve una chiave API.", "Ollama conectado. Elige un modelo local y describe tu canción. Sin clave API.", "Ollama connecté. Choisissez un modèle local et décrivez le morceau. Sans clé API.", "Ollama verbunden. Lokales Modell wählen und den Song beschreiben. Kein API-Schlüssel nötig.", "Ollama conectado. Escolha um modelo local e descreva a música. Sem chave API." },
 
 { "Ollama did not respond in time. Check that the server is running and try again.", "Ollama non ha risposto in tempo. Verifica che il server sia avviato e riprova.", "Ollama no respondió a tiempo. Comprueba que esté abierto y reinténtalo.", "Ollama n’a pas répondu à temps. Vérifiez que le serveur est ouvert et réessayez.", "Ollama hat nicht rechtzeitig geantwortet. Server prüfen und erneut versuchen.", "Ollama não respondeu a tempo. Verifique o servidor e tente novamente." },
+
+{ "OPEN SAMPLER", "APRI CAMPIONATORE", "ABRIR MUESTREADOR", "OUVRIR L’ÉCHANTILLONNEUR", "SAMPLER ÖFFNEN", "ABRIR SAMPLER" },
+
+{ "RESET SAMPLE", "RIPRISTINA DEFAULT", "RESTABLECER", "RÉINITIALISER", "STANDARDWERTE", "RESTAURAR PADRÕES" },
+
+{ "AUTO SLICE", "TAGLIO AUTOMATICO", "CORTE AUTOMÁTICO", "DÉCOUPE AUTOMATIQUE", "AUTOMATISCH TEILEN", "CORTE AUTOMÁTICO" },
+
+{ "REGION & LOOP", "REGIONE E LOOP", "REGIÓN Y BUCLE", "RÉGION ET BOUCLE", "BEREICH UND LOOP", "REGIÃO E LOOP" },
+
+{ "PITCH & ENVELOPE", "INTONAZIONE E INVILUPPO", "TONO Y ENVOLVENTE", "HAUTEUR ET ENVELOPPE", "TONHÖHE UND HÜLLKURVE", "AFINAÇÃO E ENVELOPE" },
+
+{ "FILTER & SLICES", "FILTRO E TAGLI", "FILTRO Y CORTES", "FILTRE ET TRANCHES", "FILTER UND SLICES", "FILTRO E FATIAS" },
+
+{ "Transients", "Transienti", "Transitorios", "Transitoires", "Transienten", "Transientes" },
+
+{ "4 equal slices", "4 parti uguali", "4 partes iguales", "4 parts égales", "4 gleiche Teile", "4 partes iguais" },
+
+{ "8 equal slices", "8 parti uguali", "8 partes iguales", "8 parts égales", "8 gleiche Teile", "8 partes iguais" },
+
+{ "16 equal slices", "16 parti uguali", "16 partes iguales", "16 parts égales", "16 gleiche Teile", "16 partes iguais" },
+
+{ "32 equal slices", "32 parti uguali", "32 partes iguales", "32 parts égales", "32 gleiche Teile", "32 partes iguais" },
+
+{ "64 equal slices", "64 parti uguali", "64 partes iguales", "64 parts égales", "64 gleiche Teile", "64 partes iguais" },
+
+{ "No sample tracks", "Nessuna traccia con campione", "Sin pistas con muestras", "Aucune piste avec échantillon", "Keine Sample-Spuren", "Nenhuma faixa com amostra" },
+
+{ "No active notes", "Nessuna nota attiva", "Sin notas activas", "Aucune note active", "Keine aktiven Noten", "Nenhuma nota ativa" },
+
+{ "PLAYING", "IN RIPRODUZIONE", "SONANDO", "EN LECTURE", "WIRD GESPIELT", "TOCANDO" },
+
+{ "MIDI INPUT", "INGRESSO MIDI", "ENTRADA MIDI", "ENTRÉE MIDI", "MIDI-EINGANG", "ENTRADA MIDI" },
+
+{ "Load a sample to edit its waveform.", "Carica un campione per modificarne la forma d’onda.", "Carga una muestra para editar su onda.", "Chargez un échantillon pour modifier sa forme d’onde.", "Ein Sample laden, um seine Wellenform zu bearbeiten.", "Carregue uma amostra para editar sua forma de onda." },
+
+{ "Load an audio file into this track without changing its MIDI.", "Carica un file audio nella traccia senza modificarne il MIDI.", "Carga audio en esta pista sin cambiar su MIDI.", "Charger de l’audio dans cette piste sans modifier son MIDI.", "Audiodatei in diese Spur laden, ohne ihr MIDI zu ändern.", "Carrega áudio nesta faixa sem alterar o MIDI." },
+
+{ "Open a sampler preset with its sample and playback settings.", "Apri un preset con il campione e i parametri di riproduzione.", "Abre un preset con la muestra y sus ajustes.", "Ouvrir un preset avec l’échantillon et ses réglages.", "Preset mit Sample und Wiedergabeeinstellungen öffnen.", "Abre um preset com a amostra e seus ajustes." },
+
+{ "Save the sample and sampler settings as a portable preset.", "Salva campione e parametri in un preset portatile.", "Guarda muestra y ajustes en un preset portátil.", "Enregistrer l’échantillon et les réglages dans un preset portable.", "Sample und Einstellungen als portables Preset speichern.", "Salva amostra e ajustes em um preset portátil." },
+
+{ "Restore sampler defaults, keeping the sample file, MIDI and track mix. Undo restores your edits.", "Ripristina i parametri del campionatore, conservando file, MIDI e mix. Annulla recupera le modifiche.", "Restablece el sampler conservando archivo, MIDI y mezcla. Deshacer recupera los ajustes.", "Rétablir les réglages du sampler en conservant fichier, MIDI et mixage. Annuler restaure les modifications.", "Sampler zurücksetzen, Sampledatei, MIDI und Mix behalten. Rückgängig stellt die Änderungen wieder her.", "Restaura o sampler mantendo arquivo, MIDI e mixagem. Desfazer recupera os ajustes." },
+
+{ "Cut the sample at attacks or into equal pieces and map the slices to consecutive keyboard notes.", "Taglia sui transienti o in parti uguali e assegna le fette a note consecutive.", "Corta por ataques o en partes iguales y asigna los cortes a notas consecutivas.", "Découper aux attaques ou en parts égales et répartir les tranches sur des notes consécutives.", "An Anschlägen oder in gleiche Teile schneiden und auf aufeinanderfolgende Tasten legen.", "Corta nos ataques ou em partes iguais e mapeia as fatias em notas consecutivas." },
+
+{ "Replace the selected clip notes with slice triggers in their original timing. Undo restores the clip.", "Sostituisci le note del clip con le fette nella loro posizione ritmica originale. Annulla ripristina il clip.", "Sustituye las notas del clip por cortes en sus tiempos originales. Deshacer restaura el clip.", "Remplacer les notes du clip par les tranches à leur position rythmique d’origine. Annuler restaure le clip.", "Clipnoten durch Slice-Trigger im ursprünglichen Rhythmus ersetzen. Rückgängig stellt den Clip wieder her.", "Substitui as notas do clipe por fatias no ritmo original. Desfazer restaura o clipe." },
+
+{ "Play the sample or each slice backwards.", "Riproduci il campione o ogni fetta al contrario.", "Reproduce la muestra o cada corte al revés.", "Lire l’échantillon ou chaque tranche à l’envers.", "Sample oder jeden Slice rückwärts abspielen.", "Reproduz a amostra ou cada fatia ao contrário." },
+
+{ "Repeat the loop region while a key is held in gate mode.", "Ripeti la regione del loop mentre tieni premuto un tasto in modalità gate.", "Repite la región mientras mantienes una tecla en modo gate.", "Répéter la boucle tant qu’une touche est tenue en mode gate.", "Loop-Bereich wiederholen, solange im Gate-Modus eine Taste gehalten wird.", "Repete o loop enquanto uma tecla é mantida no modo gate." },
+
+{ "Snap trim edges and slice markers to nearby zero crossings to reduce clicks.", "Aggancia tagli e marcatori ai passaggi per lo zero vicini per ridurre i clic.", "Ajusta cortes y marcadores a cruces por cero cercanos para reducir clics.", "Aligner coupes et repères sur les passages par zéro pour réduire les clics.", "Schnittpunkte an nahe Nulldurchgänge setzen, um Klicks zu reduzieren.", "Ajusta cortes e marcadores aos cruzamentos por zero próximos para reduzir cliques." },
+
+{ "Follow the song tempo using Source BPM, independently of note pitch.", "Segui il tempo del brano usando BPM sorgente, indipendentemente dall’intonazione.", "Sigue el tempo del tema según BPM de origen, independientemente del tono.", "Suivre le tempo du morceau selon le BPM source, indépendamment de la hauteur.", "Dem Songtempo anhand des Quell-BPM folgen, unabhängig von der Tonhöhe.", "Segue o andamento da música usando o BPM original, sem alterar a afinação." },
+
+{ "Enable the low-pass filter. Cutoff and resonance shape the sample tone.", "Attiva il filtro passa-basso; frequenza e risonanza modellano il timbro.", "Activa el filtro paso bajo; frecuencia y resonancia cambian el timbre.", "Activer le filtre passe-bas pour façonner le timbre avec fréquence et résonance.", "Tiefpass aktivieren; Grenzfrequenz und Resonanz formen den Klang.", "Ativa o filtro passa-baixas; frequência e ressonância moldam o timbre." },
+
+{ "Sample trim start, as a fraction of the full file: 0 is the beginning.", "Inizio del taglio come frazione del file: 0 è l’inizio.", "Inicio del recorte como fracción del archivo: 0 es el principio.", "Début du recadrage en fraction du fichier : 0 est le début.", "Schnittanfang als Dateianteil: 0 ist der Anfang.", "Início do corte como fração do arquivo: 0 é o começo." },
+
+{ "Sample trim end, as a fraction of the full file: 1 is the end.", "Fine del taglio come frazione del file: 1 è la fine.", "Fin del recorte como fracción del archivo: 1 es el final.", "Fin du recadrage en fraction du fichier : 1 est la fin.", "Schnittende als Dateianteil: 1 ist das Ende.", "Fim do corte como fração do arquivo: 1 é o final." },
+
+{ "Beginning of the repeated region inside the sample trim.", "Inizio della regione ripetuta all’interno del taglio.", "Inicio de la región repetida dentro del recorte.", "Début de la région répétée dans le recadrage.", "Anfang des wiederholten Bereichs innerhalb des Schnitts.", "Início da região repetida dentro do corte." },
+
+{ "End of the repeated region inside the sample trim.", "Fine della regione ripetuta all’interno del taglio.", "Fin de la región repetida dentro del recorte.", "Fin de la région répétée dans le recadrage.", "Ende des wiederholten Bereichs innerhalb des Schnitts.", "Fim da região repetida dentro do corte." },
+
+{ "Blend the loop edges over this many seconds to soften the seam.", "Sfuma i bordi del loop per il numero di secondi indicato, attenuando lo stacco.", "Funde los bordes del bucle durante estos segundos para suavizar la unión.", "Fondre les bords de la boucle sur cette durée pour adoucir le raccord.", "Loop-Ränder über diese Sekunden weich überblenden.", "Suaviza a união das bordas do loop por estes segundos." },
+
+{ "Fade in each sample or slice over this many seconds.", "Dissolvenza in entrata di ogni campione o fetta, in secondi.", "Entrada gradual de cada muestra o corte, en segundos.", "Fondu d’entrée de chaque échantillon ou tranche, en secondes.", "Einblendzeit jedes Samples oder Slices in Sekunden.", "Entrada gradual de cada amostra ou fatia, em segundos." },
+
+{ "Fade out near the end of each sample or slice.", "Dissolvenza vicino alla fine di ogni campione o fetta.", "Salida gradual al final de cada muestra o corte.", "Fondu de sortie à la fin de chaque échantillon ou tranche.", "Am Ende jedes Samples oder Slices ausblenden.", "Saída gradual no final de cada amostra ou fatia." },
+
+{ "MIDI note that plays the sample at its original pitch.", "Nota MIDI che riproduce il campione all’intonazione originale.", "Nota MIDI que reproduce la muestra en su tono original.", "Note MIDI reproduisant l’échantillon à sa hauteur d’origine.", "MIDI-Note für die ursprüngliche Tonhöhe des Samples.", "Nota MIDI que reproduz a amostra na afinação original." },
+
+{ "Transpose the sample and all slices by semitones.", "Trasponi il campione e tutte le fette di un numero di semitoni.", "Transpone la muestra y todos los cortes en semitonos.", "Transposer l’échantillon et toutes les tranches en demi-tons.", "Sample und alle Slices um Halbtöne transponieren.", "Transpõe a amostra e todas as fatias em semitons." },
+
+{ "Fine-tune pitch in cents. 100 cents equals one semitone.", "Regolazione fine in centesimi: 100 centesimi equivalgono a un semitono.", "Afinación fina en cents: 100 cents equivalen a un semitono.", "Accord fin en cents : 100 cents valent un demi-ton.", "Feinstimmung in Cent: 100 Cent entsprechen einem Halbton.", "Afinação fina em cents: 100 cents equivalem a um semitom." },
+
+{ "Maximum simultaneous sample voices. Older voices are replaced at this limit.", "Numero massimo di voci simultanee. Raggiunto il limite, vengono sostituite le più vecchie.", "Máximo de voces simultáneas; al alcanzarlo se sustituyen las más antiguas.", "Nombre maximal de voix ; les plus anciennes sont remplacées à cette limite.", "Maximale Stimmenzahl; an der Grenze werden die ältesten ersetzt.", "Máximo de vozes simultâneas; ao atingir o limite, as mais antigas são substituídas." },
+
+{ "Time for the amplitude envelope to reach full level.", "Tempo necessario all’inviluppo per raggiungere il livello massimo.", "Tiempo de la envolvente hasta alcanzar el nivel máximo.", "Temps de l’enveloppe pour atteindre le niveau maximal.", "Zeit bis zum maximalen Hüllkurvenpegel.", "Tempo do envelope até atingir o nível máximo." },
+
+{ "Time for the amplitude envelope to fall to the sustain level.", "Tempo di discesa dell’inviluppo fino al livello di sustain.", "Tiempo de caída de la envolvente hasta el nivel de sustain.", "Temps de descente de l’enveloppe jusqu’au niveau de sustain.", "Zeit bis die Hüllkurve den Sustain-Pegel erreicht.", "Tempo de descida do envelope até o nível de sustain." },
+
+{ "Level held after the attack and decay stages.", "Livello mantenuto dopo attacco e decadimento.", "Nivel mantenido tras el ataque y decaimiento.", "Niveau maintenu après l’attaque et le déclin.", "Gehaltener Pegel nach Attack und Decay.", "Nível mantido após ataque e decaimento." },
+
+{ "Fade time after releasing a key in gate mode.", "Dissolvenza dopo il rilascio del tasto, in modalità gate.", "Salida gradual tras soltar la tecla en modo gate.", "Durée du fondu après relâchement de la touche en mode gate.", "Ausblendzeit nach Loslassen einer Taste im Gate-Modus.", "Saída gradual após soltar a tecla no modo gate." },
+
+{ "How much MIDI velocity changes sample loudness.", "Quanto la velocity MIDI modifica il volume del campione.", "Cuánto modifica la velocidad MIDI el volumen de la muestra.", "Influence de la vélocité MIDI sur le volume de l’échantillon.", "Einfluss der MIDI-Anschlagstärke auf die Sample-Lautstärke.", "Quanto a velocidade MIDI altera o volume da amostra." },
+
+{ "Low-pass cutoff frequency: lower values remove more high frequencies.", "Frequenza del passa-basso: valori più bassi attenuano maggiormente gli acuti.", "Frecuencia del paso bajo: valores bajos eliminan más agudos.", "Fréquence du passe-bas : une valeur basse atténue davantage les aigus.", "Tiefpass-Grenzfrequenz: niedrigere Werte entfernen mehr Höhen.", "Frequência do passa-baixas: valores menores removem mais agudos." },
+
+{ "Emphasize frequencies around the filter cutoff.", "Enfatizza le frequenze intorno al taglio del filtro.", "Realza las frecuencias cercanas al corte del filtro.", "Accentuer les fréquences autour de la coupure du filtre.", "Frequenzen um die Filter-Grenzfrequenz betonen.", "Realça as frequências próximas ao corte do filtro." },
+
+{ "Original sample tempo, used by tempo sync and slice MIDI timing.", "Tempo originale del campione, usato per la sincronizzazione e il MIDI delle fette.", "Tempo original, usado por la sincronización y el ritmo MIDI de los cortes.", "Tempo d’origine utilisé pour la synchronisation et le MIDI des tranches.", "Ursprüngliches Tempo für Temposynchronisation und Slice-MIDI.", "Andamento original usado na sincronização e no MIDI das fatias." },
+
+{ "Higher sensitivity detects more attacks when slicing by transients.", "Una sensibilità maggiore rileva più attacchi nel taglio sui transienti.", "Una sensibilidad mayor detecta más ataques al cortar por transitorios.", "Une sensibilité élevée détecte davantage d’attaques des transitoires.", "Höhere Empfindlichkeit erkennt mehr Transienten-Anschläge.", "Uma sensibilidade maior detecta mais ataques nos transientes." },
+
+{ "MIDI note assigned to the first slice; following slices use consecutive notes.", "Nota MIDI della prima fetta; le successive usano note consecutive.", "Nota MIDI del primer corte; los demás usan notas consecutivas.", "Note MIDI de la première tranche ; les suivantes utilisent les notes consécutives.", "MIDI-Note des ersten Slices; weitere Slices folgen auf den nächsten Noten.", "Nota MIDI da primeira fatia; as demais usam notas consecutivas." },
+
+{ "Copy used samples beside the project and save a portable project with relative paths.", "Copia i campioni usati accanto al progetto e salva percorsi relativi portatili.", "Copia las muestras junto al proyecto y guarda rutas relativas portátiles.", "Copier les échantillons près du projet et enregistrer des chemins relatifs portables.", "Samples neben das Projekt kopieren und portable relative Pfade speichern.", "Copia as amostras ao lado do projeto e salva caminhos relativos portáteis." },
+
+{ "Find missing sample files by content or by a unique matching filename.", "Trova i campioni mancanti per contenuto o nome univoco.", "Busca las muestras ausentes por contenido o nombre único.", "Retrouver les échantillons manquants par contenu ou nom unique.", "Fehlende Samples anhand des Inhalts oder eindeutiger Namen suchen.", "Encontra amostras ausentes pelo conteúdo ou por nome único." },
+
+{ "Open the waveform, sample settings and playable slices for this track.", "Apri forma d’onda, parametri e fette suonabili del campione di questa traccia.", "Abre onda, ajustes y cortes tocables de esta pista.", "Ouvrir la forme d’onde, les réglages et les tranches jouables de cette piste.", "Wellenform, Sample-Einstellungen und spielbare Slices dieser Spur öffnen.", "Abre a onda, os ajustes e as fatias tocáveis desta faixa." },
+
+{ "Wheel or pinch to zoom at the pointer; swipe horizontally or Shift-wheel to scroll. Double-click fits the sample. Drag trims; Shift-click adds a slice, right-click removes one.", "Rotella o gesto di pizzicamento: zoom sul puntatore. Scorrimento orizzontale o Maiusc+rotella: spostamento. Doppio clic: campione intero. Trascina i tagli; Maiusc+clic aggiunge una fetta, clic destro la rimuove.", "Rueda o pellizco: zoom en el puntero. Desliza horizontalmente o Mayús+rueda para desplazar. Doble clic: muestra completa. Arrastra los recortes; Mayús+clic añade un corte, clic derecho lo elimina.", "Molette ou pincement : zoom au pointeur. Balayage horizontal ou Maj+molette : déplacement. Double-clic : échantillon entier. Glisser pour recadrer ; Maj+clic ajoute une tranche, clic droit la retire.", "Mausrad oder Pinch zoomt am Zeiger; horizontal wischen oder Umschalt+Mausrad verschiebt. Doppelklick zeigt das ganze Sample. Schnittkanten ziehen; Umschalt+Klick fügt Slices hinzu, Rechtsklick entfernt sie.", "Roda ou pinça: zoom no cursor. Deslize horizontal ou Shift+roda para mover. Clique duplo: amostra inteira. Arraste os cortes; Shift+clique adiciona uma fatia, clique direito remove." },
+
+{ "Zoom the waveform. The mouse wheel and trackpad pinch zoom at the pointer.", "Ingrandisci la forma d’onda. Rotella e pizzicamento sul trackpad centrano lo zoom sul puntatore.", "Amplía la onda. Rueda y pellizco centran el zoom en el puntero.", "Agrandir la forme d’onde. Molette et pincement centrent le zoom au pointeur.", "Wellenform vergrößern. Mausrad und Pinch zoomen am Zeiger.", "Amplia a onda. Roda e pinça centralizam o zoom no cursor." },
+
+{ "Move through the zoomed waveform without changing the trim points.", "Spostati nella forma d’onda ingrandita senza modificare i tagli.", "Desplaza la onda ampliada sin modificar los recortes.", "Déplacer la vue agrandie sans modifier les points de recadrage.", "In der vergrößerten Wellenform navigieren, ohne Schnittpunkte zu ändern.", "Move a visualização ampliada sem alterar os cortes." },
+
+{ "Choose the MIDI keyboard that plays this sample.", "Scegli la tastiera MIDI che suona questo campione.", "Elige el teclado MIDI para esta muestra.", "Choisir le clavier MIDI pour cet échantillon.", "MIDI-Tastatur für dieses Sample wählen.", "Escolha o teclado MIDI para esta amostra." },
+
+{ "Enable the selected MIDI input for this sample. The on-screen keyboard always works.", "Attiva l’ingresso MIDI scelto per questo campione. La tastiera a schermo funziona sempre.", "Activa la entrada MIDI elegida. El teclado en pantalla funciona siempre.", "Activer l’entrée MIDI choisie. Le clavier à l’écran fonctionne toujours.", "Gewählten MIDI-Eingang aktivieren. Die Bildschirmtastatur funktioniert immer.", "Ativa a entrada MIDI escolhida. O teclado na tela sempre funciona." },
+
+{ "Choose a sample track. Recording and bus pages also accept instrument and MIDI tracks.", "Scegli una traccia con campione. Le pagine registrazione e bus permettono anche tracce strumento e MIDI.", "Elige una pista con muestra. Grabación y buses permiten también pistas de instrumento y MIDI.", "Choisir une piste avec échantillon. Enregistrement et bus acceptent aussi les pistes instrument et MIDI.", "Sample-Spur wählen. Aufnahme und Busse erlauben auch Instrument- und MIDI-Spuren.", "Escolha uma faixa com amostra. Gravação e buses também aceitam faixas de instrumento e MIDI." },
+
+{ "Gate follows key length; one-shot plays to the end; slices maps each detected piece to a separate key.", "Gate segue la durata del tasto; one-shot suona fino alla fine; fette assegna ogni pezzo a un tasto diverso.", "Gate sigue la duración de la tecla; one-shot llega al final; cortes asigna cada pieza a una tecla.", "Gate suit la durée de la touche ; one-shot joue jusqu’au bout ; tranches répartit les morceaux sur les touches.", "Gate folgt der Tastendauer; One-shot spielt bis zum Ende; Slices legt jeden Teil auf eine eigene Taste.", "Gate segue a duração da tecla; one-shot toca até o fim; fatias mapeia cada parte em uma tecla." },
+
+{ "Detect attacks or divide the trimmed region into equal slices, then press Auto slice.", "Rileva gli attacchi oppure dividi la regione tagliata in parti uguali, poi premi Taglio automatico.", "Detecta ataques o divide la región en partes iguales y pulsa Corte automático.", "Détecter les attaques ou diviser la région en parts égales, puis lancer Découpe automatique.", "Anschläge erkennen oder den Bereich gleichmäßig teilen, dann Automatisch teilen drücken.", "Detecta ataques ou divide a região em partes iguais; depois pressione Corte automático." },
+
+{ "Choose the bank of sixteen slice pads. The keyboard can play every slice.", "Scegli il banco di sedici pad. La tastiera può suonare tutte le fette.", "Elige el banco de dieciséis pads. El teclado toca todos los cortes.", "Choisir la banque de seize pads. Le clavier joue toutes les tranches.", "Bank mit sechzehn Pads wählen. Die Tastatur spielt alle Slices.", "Escolha o banco de dezesseis pads. O teclado toca todas as fatias." },
+
+{ "Play the sample with the mouse or computer keys A W S E D F T G Y H U J K. In Slices, consecutive notes trigger consecutive pieces.", "Suona con il mouse o con A W S E D F T G Y H U J K. In modalità Tagli, note consecutive suonano pezzi consecutivi.", "Toca con el ratón o A W S E D F T G Y H U J K. En Cortes, notas consecutivas tocan piezas consecutivas.", "Jouer à la souris ou avec A W S E D F T G Y H U J K. En mode Tranches, les notes consécutives jouent les morceaux successifs.", "Mit Maus oder A W S E D F T G Y H U J K spielen. Im Slice-Modus spielen aufeinanderfolgende Noten die nächsten Teile.", "Toque com o mouse ou A W S E D F T G Y H U J K. Em Fatias, notas consecutivas tocam partes consecutivas." },
+
+{ "Play and record MIDI with the mouse or computer keys A W S E D F T G Y H U J K.", "Suona e registra MIDI con il mouse o con A W S E D F T G Y H U J K.", "Toca y graba MIDI con el ratón o A W S E D F T G Y H U J K.", "Jouer et enregistrer le MIDI à la souris ou avec A W S E D F T G Y H U J K.", "MIDI mit Maus oder A W S E D F T G Y H U J K spielen und aufnehmen.", "Toque e grave MIDI com o mouse ou A W S E D F T G Y H U J K." },
+
+{ "Notes currently sounding, including one-shot sample tails and MIDI playback.", "Note attualmente in riproduzione, comprese le code one-shot e il MIDI del brano.", "Notas sonando, incluidas las colas one-shot y la reproducción MIDI.", "Notes en cours, y compris les queues one-shot et la lecture MIDI.", "Aktuell klingende Noten, einschließlich One-shot-Ausklängen und MIDI-Wiedergabe.", "Notas em reprodução, incluindo caudas one-shot e MIDI." },
+
+{ "Play this slice. Its MIDI note is shown on the pad.", "Suona questa fetta. La nota MIDI è indicata sul pad.", "Toca este corte. El pad indica su nota MIDI.", "Jouer cette tranche. Sa note MIDI est indiquée sur le pad.", "Diesen Slice spielen. Seine MIDI-Note steht auf dem Pad.", "Toca esta fatia. A nota MIDI aparece no pad." },
+
+{ "Choose the MIDI device to monitor or record; no device is needed for the on-screen keyboard.", "Scegli il dispositivo MIDI da ascoltare o registrare. La tastiera a schermo non richiede dispositivi.", "Elige el dispositivo MIDI para escuchar o grabar. El teclado en pantalla no necesita dispositivos.", "Choisir le périphérique MIDI à écouter ou enregistrer. Le clavier à l’écran n’en nécessite pas.", "MIDI-Gerät zum Abhören oder Aufnehmen wählen. Die Bildschirmtastatur benötigt kein Gerät.", "Escolha o dispositivo MIDI para ouvir ou gravar. O teclado na tela não exige dispositivos." },
+
+{ "Refresh the list of connected MIDI devices.", "Aggiorna l’elenco dei dispositivi MIDI collegati.", "Actualiza los dispositivos MIDI conectados.", "Actualiser les périphériques MIDI connectés.", "Liste angeschlossener MIDI-Geräte aktualisieren.", "Atualiza os dispositivos MIDI conectados." },
+
+{ "Listen to the selected MIDI input through the target track.", "Ascolta l’ingresso MIDI scelto attraverso la traccia selezionata.", "Escucha la entrada MIDI a través de la pista elegida.", "Écouter l’entrée MIDI via la piste choisie.", "Gewählten MIDI-Eingang über die Zielspur abhören.", "Ouve a entrada MIDI pela faixa escolhida." },
+
+{ "Wait zero, one or two bars before recording starts.", "Attendi zero, una o due battute prima della registrazione.", "Espera cero, uno o dos compases antes de grabar.", "Attendre zéro, une ou deux mesures avant l’enregistrement.", "Vor Aufnahmebeginn null, einen oder zwei Takte warten.", "Aguarda zero, um ou dois compassos antes de gravar." },
+
+{ "Align recorded note starts to this grid, preserving their lengths.", "Allinea gli inizi delle note alla griglia mantenendone le durate.", "Alinea los inicios a la rejilla conservando las duraciones.", "Aligner les débuts des notes sur la grille en conservant leur durée.", "Notenanfänge am Raster ausrichten und ihre Länge erhalten.", "Alinha o início das notas à grade preservando as durações." },
+
+{ "Add notes to existing MIDI. Turn off to replace notes in the recorded region.", "Aggiungi note al MIDI esistente. Disattiva per sostituire le note nella regione registrata.", "Añade notas al MIDI existente. Desactiva para sustituir las notas de la región grabada.", "Ajouter des notes au MIDI existant. Désactiver pour remplacer les notes de la région enregistrée.", "Noten zu vorhandenem MIDI hinzufügen. Ausschalten ersetzt Noten im Aufnahmebereich.", "Adiciona notas ao MIDI existente. Desative para substituir as notas da região gravada." },
+
+{ "Start recording MIDI into the target track; press again to finish one undoable take.", "Avvia la registrazione MIDI nella traccia; premi di nuovo per concludere una take annullabile.", "Graba MIDI en la pista; pulsa de nuevo para terminar una toma que se puede deshacer.", "Enregistrer le MIDI sur la piste ; appuyer à nouveau pour terminer une prise annulable.", "MIDI-Aufnahme starten; erneut drücken beendet einen rückgängig machbaren Take.", "Inicia a gravação MIDI; pressione novamente para finalizar uma tomada que pode ser desfeita." },
+
+{ "Finish the MIDI take and stop playback.", "Concludi la take MIDI e ferma la riproduzione.", "Termina la toma MIDI y detén la reproducción.", "Terminer la prise MIDI et arrêter la lecture.", "MIDI-Take abschließen und Wiedergabe stoppen.", "Finaliza a tomada MIDI e para a reprodução." },
+
+{ "Send this track directly to the master or through one of the two groups.", "Invia la traccia direttamente al master oppure a uno dei due gruppi.", "Envía la pista al master o a uno de los dos grupos.", "Envoyer la piste au master ou à l’un des deux groupes.", "Spur direkt zum Master oder über eine der beiden Gruppen senden.", "Envia a faixa ao master ou a um dos dois grupos." },
+
+{ "Amount of this track sent to the shared reverb.", "Quantità inviata dalla traccia al riverbero condiviso.", "Cantidad enviada a la reverberación compartida.", "Quantité envoyée à la réverbération partagée.", "Send-Pegel zum gemeinsamen Hall.", "Quantidade enviada à reverberação compartilhada." },
+
+{ "Amount of this track sent to the shared tempo delay.", "Quantità inviata dalla traccia al delay condiviso sincronizzato.", "Cantidad enviada al delay compartido sincronizado.", "Quantité envoyée au delay partagé synchronisé.", "Send-Pegel zum gemeinsamen temposynchronen Delay.", "Quantidade enviada ao delay compartilhado sincronizado." },
+
+{ "Double-click to rename this group or return.", "Doppio clic per rinominare questo gruppo o ritorno.", "Doble clic para renombrar este grupo o retorno.", "Double-cliquer pour renommer ce groupe ou retour.", "Doppelklick zum Umbenennen dieser Gruppe oder dieses Returns.", "Clique duplo para renomear este grupo ou retorno." },
+
+{ "Listen to this mixer group or return on its own.", "Ascolta soltanto questo gruppo o ritorno del mixer.", "Escucha solo este grupo o retorno del mezclador.", "Écouter ce groupe ou retour du mixeur seul.", "Diese Mixer-Gruppe oder diesen Return allein abhören.", "Ouve apenas este grupo ou retorno do mixer." },
+
+{ "Mute this mixer group or return.", "Silenzia questo gruppo o ritorno del mixer.", "Silencia este grupo o retorno del mezclador.", "Couper ce groupe ou retour du mixeur.", "Diese Mixer-Gruppe oder diesen Return stummschalten.", "Silencia este grupo ou retorno do mixer." },
+
+{ "Mixer group or return output level.", "Livello d’uscita del gruppo o ritorno.", "Nivel de salida del grupo o retorno.", "Niveau de sortie du groupe ou retour.", "Ausgangspegel der Gruppe oder des Returns.", "Nível de saída do grupo ou retorno." },
+
+{ "Mixer group or return stereo position.", "Posizione stereo del gruppo o ritorno.", "Posición estéreo del grupo o retorno.", "Position stéréo du groupe ou retour.", "Stereoposition der Gruppe oder des Returns.", "Posição estéreo do grupo ou retorno." },
+
+{ "Size and decay of the shared reverb.", "Dimensione e decadimento del riverbero condiviso.", "Tamaño y caída de la reverberación compartida.", "Taille et déclin de la réverbération partagée.", "Größe und Ausklang des gemeinsamen Halls.", "Tamanho e decaimento da reverberação compartilhada." },
+
+{ "Reduce high frequencies in the effect tail.", "Attenua le alte frequenze nella coda dell’effetto.", "Reduce los agudos de la cola del efecto.", "Atténuer les aigus dans la queue de l’effet.", "Höhen im Effektausklang reduzieren.", "Reduz os agudos na cauda do efeito." },
+
+{ "Amount of delay fed back for successive echoes.", "Quantità di delay reinviata per gli echi successivi.", "Cantidad de delay realimentada para ecos sucesivos.", "Quantité de delay réinjectée pour les échos successifs.", "Delay-Rückkopplung für aufeinanderfolgende Echos.", "Quantidade de delay realimentada para ecos sucessivos." },
+
+{ "Delay time in quarter-note beats, following the song tempo.", "Tempo del delay in quarti, sincronizzato al brano.", "Tiempo del delay en negras, sincronizado al tema.", "Durée du delay en noires, synchronisée au morceau.", "Delay-Zeit in Viertelschlägen, synchron zum Songtempo.", "Tempo do delay em semínimas, sincronizado à música." },
+
+{ "Amount of stereo crossfeed between the delay channels.", "Quantità di incrocio stereo fra i canali del delay.", "Cantidad de cruce estéreo entre canales del delay.", "Quantité de croisement stéréo entre les canaux du delay.", "Stereo-Überkreuzung zwischen den Delay-Kanälen.", "Quantidade de cruzamento estéreo entre os canais do delay." },
+
+{ "PLAY & RECORD", "SUONA E REGISTRA", "TOCAR Y GRABAR", "JOUER ET ENREGISTRER", "SPIELEN UND AUFNEHMEN", "TOCAR E GRAVAR" },
+
+{ "TRACK ROUTING", "PERCORSO DELLA TRACCIA", "RUTA DE LA PISTA", "ROUTAGE DE LA PISTE", "SPUR-ROUTING", "ROTEAMENTO DA FAIXA" },
+
+{ "PROJECT SAMPLES", "CAMPIONI DEL PROGETTO", "MUESTRAS DEL PROYECTO", "ÉCHANTILLONS DU PROJET", "PROJEKT-SAMPLES", "AMOSTRAS DO PROJETO" },
+
+{ "Unlock the clip before writing slice MIDI.", "Sblocca il clip prima di scrivere il MIDI delle fette.", "Desbloquea el clip antes de escribir el MIDI de los cortes.", "Déverrouiller le clip avant d’écrire le MIDI des tranches.", "Clip vor dem Schreiben von Slice-MIDI entsperren.", "Desbloqueie o clipe antes de escrever o MIDI das fatias." },
+
+{ "MIDI RECORDING", "REGISTRAZIONE MIDI", "GRABACIÓN MIDI", "ENREGISTREMENT MIDI", "MIDI-AUFNAHME", "GRAVAÇÃO MIDI" },

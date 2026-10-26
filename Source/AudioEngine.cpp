@@ -207,6 +207,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
         else if(i.mode==1){if(i.sampler)i.sampler->renderNextBlock(block,i.midi,0,count);}
         else if(i.mode==0){if(ti<3||isManualTrack(ti))i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
+        publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);if(ti==1)i.bassLowPass.process(context);i.chorus.process(context);
@@ -238,7 +239,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     busGraph.finish(output,channels,count,masterActive?masterGains.data():nullptr);
 }
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){const juce::ScopedLock lock(mutex);deviceRate=d->getCurrentSampleRate()>0?d->getCurrentSampleRate():44100;deviceBlock=std::max(16,d->getCurrentBufferSizeSamples());if(exporting)return;sampleRate=deviceRate;blockSize=deviceBlock;busGraph.prepare(sampleRate,blockSize);if(mixes.current)busGraph.configure(mixes.current->buses,mixes.current->tempo,mixes.current->master,true);deviceOutputLatency=d->getOutputLatencyInSamples();for(auto& i:instruments){i->prepare(sampleRate,blockSize);i->sounding.fill(false);}needsReset=true;needsChase=playing;hardReset=true;}
-void AudioEngine::audioDeviceStopped(){const juce::ScopedLock lock(mutex);if(exporting)return;for(auto& i:instruments){i->reset();i->sounding.fill(false);}}
+void AudioEngine::audioDeviceStopped(){const juce::ScopedLock lock(mutex);if(exporting)return;clearMeters();for(auto& i:instruments){i->reset();i->sounding.fill(false);}}
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float* const* output,int channels,int count,const juce::AudioIODeviceCallbackContext&){
     if(count<=0)return;
     for(int ch=0;ch<channels;++ch)if(output[ch])juce::FloatVectorOperations::clear(output[ch],count);

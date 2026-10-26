@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.2
+
+- Open the sampler from the track inspector; sample-only targets in the sampler page preserve all-track MIDI recording and bus routing.
+- Reorganize Studio into clear control groups with a persistent performance keyboard, note names, active-key/pad feedback and bus meters.
+- Pointer-anchored wheel/pinch zoom, horizontal scrolling and double-click waveform fit.
+- One-action transient/equal slicing with playable MIDI mappings, and an undoable sampler reset preserving file, notes and mix.
+- Descriptive localized tooltips in Studio’s own window, respecting the global preference; updated IT/EN guides and regression checks.
+
 ## 0.22.1
 
 - Local Ollama is the initial AI composer service; no API key is requested for local models.

@@ -107,3 +107,9 @@ verified neighbouring sample folder. The original sample files are never edited.
 ### Local model setup (0.22.1)
 
 The composer initially selects Ollama (one-time preference migration). A cancellable worker requests `/api/tags` with an eight-second deadline when opened or refreshed, without sending musical context or credentials. The model menu lists installed non-cloud models, preserving a previous choice only if still available. Composition is disabled until discovery succeeds. Address normalization accepts bare hosts and common API suffixes. Native Ollama error bodies are bounded and displayed for model/memory failures; online error bodies are not exposed. Local generation uses a 16K context, up to 8192 output tokens and disables Qwen3 thinking. Opening/closing or changing the service invalidates discovery callbacks; generation still uses the existing validated preview and explicit Apply transaction.
+
+### Studio sampler workflow (0.22.2)
+
+The sampler page filters target items by source type while retaining real project track IDs; other tabs accept all tracks. Recording prevents implicit target changes. The performance keyboard sits outside the scrolling parameter viewport. Transient and equal slicing share the existing persisted marker array; Reset restores the same defaults as sample loading as one undo step. Sample instruments retain their MIDI pitches when normalising drum tracks; built-in drum generators and guide mappings keep their previous behaviour.
+
+The audio thread publishes active keys in two atomic 64-bit words per track after rendering. Sample keys derive from active voices, including one-shot tails; the GUI reads snapshots without locking or feeding keyboard-display changes back into MIDI input. Studio has its own preference-aware tooltip window. Waveform view gestures update zoom/scroll only, with pointer anchoring; trimming begins on an actual drag, so fitting the view cannot edit trim points.

@@ -10,6 +10,18 @@ juce::Result AudioEngine::setMidiInput(const juce::String& id){
     auto list=juce::MidiInput::getAvailableDevices();if(std::none_of(list.begin(),list.end(),[&](const auto& d){return d.identifier==id;}))return juce::Result::fail("MIDI input is not available.");
     ownsMidiInput=!devices.isMidiInputDeviceEnabled(id);devices.setMidiInputDeviceEnabled(id,true);if(!devices.isMidiInputDeviceEnabled(id))return juce::Result::fail("Cannot open MIDI input.");devices.addMidiInputDeviceCallback(id,&capture);midiIdentifier=id;return juce::Result::ok();
 }
+std::array<bool,128> AudioEngine::activeNotes(int track)const{
+    std::array<bool,128> result{};if(track<0||track>=maxTracks)return result;
+    for(int word=0;word<2;++word){const auto bits=activeKeyMasks[(size_t)track][(size_t)word].load(std::memory_order_relaxed);for(int bit=0;bit<64;++bit)result[(size_t)(word*64+bit)]=(bits&(std::uint64_t(1)<<bit))!=0;}return result;
+}
+// Audio-thread snapshot: the GUI never locks or touches synthesiser voices.
+void AudioEngine::publishActiveNotes(int track){
+    std::array<std::uint64_t,2> bits{};const auto& instrument=*instruments[(size_t)track];
+    auto mark=[&](int note){if(note>=0&&note<128)bits[(size_t)note/64]|=std::uint64_t(1)<<(note%64);};
+    if(instrument.mode==1&&instrument.sampler){for(int v=0;v<instrument.sampler->getNumVoices();++v){const auto* voice=instrument.sampler->getVoice(v);if(voice->isVoiceActive())mark(voice->getCurrentlyPlayingNote());}}
+    else for(int note=0;note<128;++note){bool sounding=instrument.sounding[(size_t)note];for(int channel=0;channel<16&&!sounding;++channel)sounding=liveHeld[(size_t)track][(size_t)(channel*128+note)]!=0;if(sounding)mark(note);}
+    for(int word=0;word<2;++word)activeKeyMasks[(size_t)track][(size_t)word].store(bits[(size_t)word],std::memory_order_relaxed);
+}
 void AudioEngine::setMidiMonitor(int track,bool enabled){
     const juce::ScopedLock lock(mutex);const int next=std::clamp(track,0,maxTracks-1),previous=capture.target;
     const bool release=previous!=next||(capture.monitor&&!enabled);
