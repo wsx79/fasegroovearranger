@@ -692,7 +692,7 @@ MainComponent::MainComponent(){
     loopButton.onClick=[this]{toggleLoop();};
     loopButton.getProperties().set("fgaTip","Loop playback on or off. Shortcut: L. Ctrl/Cmd+L loops the selection; again removes it. Double-click the loop strip to clear it.");
     sectionLoopButton.onClick=[this]{toggleClipLoop();};sectionLoopButton.getProperties().set("fgaTip","Loop the selected clip; click again to remove the loop.");
-    addAndMakeVisible(studioButton);studioButton.setTooltip("Sampler, MIDI recording, buses and project samples");studioButton.onClick=[this]{showStudio();};
+    addAndMakeVisible(studioButton);Localisation::bindTip(studioButton,"Sampler, MIDI recording, buses and project samples");studioButton.onClick=[this]{showStudio();};
     addAndMakeVisible(aiComposeButton);aiComposeButton.primary=true;aiComposeButton.setButtonText("AI COMPOSER");aiComposeButton.getProperties().set("fgaTip","Compose MIDI notes and an arrangement with your selected AI service.");aiComposeButton.onClick=[this]{showAiComposer();};
     songButton.onClick=[this]{regenerate(Scope::song);};trackButton.onClick=[this]{regenerate(Scope::track,page!=Page::instrument);};sectionButton.onClick=[this]{regenerate(Scope::section);};clipButton.onClick=[this]{regenerate(Scope::clip,page!=Page::instrument);};
     harmonyButton.onClick=[this]{checkpoint();randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(project);changed();message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");};
