@@ -90,7 +90,7 @@ public:
         folder.getChildFile("studio.txt").replaceWithText(ok?"PASS native Studio panels, sampler load, trim and undo":"FAIL Studio panels");return ok;
     }
     void endSession(){finish();releasePads();keys.allNotesOff(0);owner.setEnabled(!busy);}
-    void showTab(int n){if(!owner.audio.isRecording())track=std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1);tabs.setCurrentTabIndex(std::clamp(n,0,3));resized();refresh();}
+    void showTab(int n){if(!owner.audio.isRecording())track=std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1);tabs.setCurrentTabIndex(std::clamp(n,0,3));resized();refresh();if(!owner.audio.isRecording())owner.audio.setMidiMonitor(track,monitor.getToggleState());}
     void paint(juce::Graphics& g)override{g.fillAll(Daw::base);}
     void resized()override{
         auto r=getLocalBounds().reduced(16);target.setBounds(r.removeFromTop(30));r.removeFromTop(10);tabs.setBounds(r);sampler.setSize(std::max(900,samplerPort.getWidth()-16),760);
