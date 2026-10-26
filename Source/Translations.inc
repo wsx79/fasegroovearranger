@@ -1111,7 +1111,6 @@
 
 { "Global octave", "Ottava generale", "Octava global", "Octave globale", "Globale Oktave", "Oitava global" },
 { "Add MIDI track", "Aggiungi traccia MIDI", "Añadir pista MIDI", "Ajouter une piste MIDI", "MIDI-Spur hinzufügen", "Adicionar faixa MIDI" },
-{ "OPEN VST", "APRI VST", "ABRIR VST", "OUVRIR VST", "VST ÖFFNEN", "ABRIR VST" },
 { "Double-click to rename this track.", "Doppio clic per rinominare questa traccia.", "Doble clic para renombrar esta pista.", "Double-cliquez pour renommer cette piste.", "Doppelklicken, um diese Spur umzubenennen.", "Clique duas vezes para renomear esta faixa." },
 { "Add a blank MIDI track for writing notes by hand. Automatic generation leaves it untouched.", "Aggiunge una traccia MIDI vuota per scrivere le note a mano. La generazione automatica la conserva.", "Añade una pista MIDI vacía para escribir notas a mano. La generación automática la conserva.", "Ajoute une piste MIDI vide pour écrire les notes à la main. La génération automatique la conserve.", "Fügt eine leere MIDI-Spur zum manuellen Schreiben hinzu. Die automatische Erzeugung erhält sie.", "Adiciona uma faixa MIDI vazia para escrever notas à mão. A geração automática a preserva." },
 

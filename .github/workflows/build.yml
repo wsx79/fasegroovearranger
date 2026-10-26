@@ -18,7 +18,28 @@ concurrency:
   group: build-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
+  family:
+    name: Verify pinned family module
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify module inventory and translation keys
+        run: |
+          python3 ThirdParty/fasegroove-common/VerifyModule.py
+          python3 ThirdParty/fasegroove-common/CheckTranslations.py
+      - name: Read canonical revision
+        id: pin
+        run: python3 -c "import json, os; p=json.load(open('ThirdParty/fasegroove-common.lock.json')); print('revision=' + p['revision'], file=open(os.environ['GITHUB_OUTPUT'], 'a'))"
+      - uses: actions/checkout@v4
+        with:
+          repository: wsx79/fasegroove
+          ref: ${{ steps.pin.outputs.revision }}
+          path: .canonical-family
+          persist-credentials: false
+      - name: Compare with pinned canonical source
+        run: python3 .canonical-family/common/VerifyModule.py --module ThirdParty/fasegroove-common --canonical .canonical-family
   core:
+    needs: family
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -28,6 +49,7 @@ jobs:
       - run: mkdir -p build/midi && build/fga_core_tests build/midi && python3 scripts/verify-midi.py build/midi
       - run: python3 tests/test-packaging.py
   standalone:
+    needs: family
     strategy:
       fail-fast: false
       matrix:

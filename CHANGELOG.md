@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.21.2 — 2026-10-26
+
+- Pinned shared-module SHA and complete inventory checked offline and against its canonical source in CI; Lead included in default sync/check.
+- Translation catalogs checked for duplicate keys, including multiline entries; intentional common/product overrides remain supported.
+- Removed two shadowed translation rows, preserving intentional case-insensitive common overrides; restored complete Spanish, French, German and Portuguese loading messages.
+
 ## 0.21.1 — 2026-10-26
 
 - Fix Piano's note-range slider in Harmony & Scales: both limit handles now appear at their actual positions and follow dragging, with the selected interval highlighted. The previous theme drew a stationary single-value handle although the MIDI limits changed.

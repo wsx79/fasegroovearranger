@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.21.2 — 2026-10-26
+
+- SHA e inventario completo del modulo comune verificati offline e contro la fonte canonica in CI; Lead incluso nel sync/check predefinito.
+- Cataloghi verificati contro chiavi duplicate, anche su più righe; gli override intenzionali prodotto/comune restano supportati.
+- Rimosse due righe di traduzione sovrascritte, preservando gli override comuni per il lookup senza distinzione di maiuscole; ripristinati i messaggi di caricamento completi in spagnolo, francese, tedesco e portoghese.
+
 ## 0.21.1 — 2026-10-26
 
 - Corretto il cursore dell’estensione delle note del Piano in Armonia e scale: entrambi gli estremi appaiono nella posizione reale e seguono il trascinamento, con l’intervallo selezionato evidenziato. Il tema precedente disegnava un cursore singolo fermo, anche se i limiti MIDI cambiavano.
