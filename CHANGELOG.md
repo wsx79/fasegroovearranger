@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.4
+
+- Isolated Studio sample audition with Play, Stop and optional repeat; current sampler edits are heard live without changing song position or MIDI.
+- Audition note feedback, lifecycle cleanup and localized tooltips. Sampler playback, track mixer and song transport remain separate.
+- Use a plain ASCII separator in the Studio title to avoid a garbled character.
+
 ## 0.22.3
 
 - Inactive Studio bus meters show localized Silence instead of special minus/infinity glyphs; active readings use numeric dB.

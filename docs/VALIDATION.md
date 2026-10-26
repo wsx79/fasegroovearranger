@@ -1,5 +1,14 @@
 # Validation record
 
+## 0.22.4 — Isolated Studio sample audition
+
+- Seven local Linux CTest groups pass. New audio callbacks verify isolated audible output despite track mute/zero gain, preserved transport position, natural one-pass completion, repeated regions, live filter edits, trim/reverse/root changes and first-slice mapping.
+- Stop, repeat-off, song playback, recording and instrument replacement terminate audition correctly. MIDI queued while auditioning does not play later. Missing/invalid sample targets are rejected.
+- Native Studio checks exercise the actual Play/Stop/repeat buttons, sounding-note feedback, close cleanup, enabled states and tooltips. Project JSON and Undo remain unchanged by audition controls. Existing sampler, scrolling, recording and floating-window checks pass.
+- Studio uses a dedicated instance of the existing sample synthesiser before track mixing. The normal sampler DSP and project schema are unchanged. Parameter snapshots remain owned by the private audition instance; synth allocation/destruction happen outside the audio callback.
+- The title uses an ASCII separator and is checked by the native integration test. The guide sampler image is captured from the updated native window. Common module/theme/fonts and six-language dictionaries pass their checks.
+- These checks use controlled PCM, real audio/UI callbacks and a virtual display; physical audio hardware remains outside this environment. Local native tests used the updated code with the previous version resource; the official pipeline builds and tests the final tagged version.
+
 ## 0.22.3 — Studio scrolling and meter labels
 
 - Native UI regression sends real wheel callbacks over sampler sliders, bus sliders, track/routing/mode/device menus, including pages detached by the tab control. Project JSON, menu choices and Undo history remain unchanged.

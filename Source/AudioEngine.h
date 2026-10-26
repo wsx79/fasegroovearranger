@@ -109,6 +109,15 @@ struct PreviewClip {
     juce::AudioBuffer<float> audio;
     double rate=44100,position=0;
 };
+// Private sampler for isolated Studio audition; built and destroyed off the audio thread.
+struct SampleAudition {
+    std::unique_ptr<SampleSynth> synth;
+    SamplerSettings settings;
+    juce::AudioBuffer<float> buffer{2,512};
+    juce::MidiBuffer midi;
+    int track=0,note=60;
+    bool started=false;
+};
 class AudioEngine : public juce::AudioIODeviceCallback, public juce::AudioPlayHead {
 public:
     AudioEngine();
@@ -123,6 +132,11 @@ public:
     void startPreview(juce::AudioBuffer<float>&& audio,double rate);
     void stopPreview();
     bool isPreviewing() const {return previewing.load();}
+    bool startSampleAudition(int track,bool repeat);
+    void stopSampleAudition(){auditioning=false;}
+    void setSampleAuditionLoop(bool repeat){auditionLoop=repeat;}
+    bool isSampleAuditioning()const{return auditioning.load();}
+    int sampleAuditionNote(int track)const{return auditioning&&auditionTrack==track?auditionNote.load():-1;}
     juce::AudioDeviceManager devices;
     juce::AudioPluginFormatManager formats;
     // publish/updateMix never take the engine lock: playback keeps running while editing.
@@ -204,6 +218,10 @@ private:
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
     Handoff<MixState> mixes;
+    std::unique_ptr<SampleAudition> sampleAudition; // protected by mutex
+    std::atomic<bool> auditioning{false},auditionLoop{false};
+    std::atomic<int> auditionTrack{-1},auditionNote{-1};
+    void mixSampleAudition(float* const*,int channels,int count);
     Handoff<PreviewClip> previews;
     std::atomic<bool> previewing{false};
     void mixPreview(float* const* output,int channels,int count);

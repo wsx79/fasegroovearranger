@@ -53,6 +53,7 @@ Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scro
 - Native audio playback, seeking and song/section loops; per-track gain, pan, mute, solo and meters; master level.
 - Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3/AU instrument plus one insert effect per track. Plugin editor and state persistence. The plugin browser matches the FaseGroove groove browser: FaseGroove engines first, then manufacturer groups, with search. Startup scans the default VST3 folders and one custom folder; the known list is a JUCE KnownPluginList. Configure the folder in OPTIONS → SETTINGS → PLUGINS.
 - **STUDIO**: inspector access for sample tracks, wheel/pinch waveform zoom, transient/equal slicing with an always-visible keyboard and sounding-note display, undoable defaults, descriptive tooltips, portable presets, independent tempo/pitch sync, MIDI note recording, two groups and shared reverb/delay sends. Collect & save and relink make sample projects portable. See the [guide](docs/GUIDE.md).
+- Studio sample audition: isolated Play/Stop and optional repeat, with live sampler edits and note feedback.
 - Sample browser (**B**): saved sample folders and favourites, breadcrumb and history, search, type filter and sorting, file info, preview, and loading into a track's sampler by double-click or drag onto the track.
 - Project files (`.fga`), atomic saves, periodic local autosave and missing-instrument relinking.
 - Multitrack MIDI and individual MIDI files; stereo 24-bit WAV and 320 kbps stereo MP3, for a mix, one track or all 17 stems. **The MP3 encoder is bundled.**
@@ -111,7 +112,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.22.3** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.22.4** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

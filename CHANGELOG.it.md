@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.4
+
+- Ascolto isolato del campione in Studio con Play, Stop e ripetizione opzionale; le modifiche al campionatore si sentono subito, senza cambiare posizione del brano o MIDI.
+- Indicazione della nota ascoltata, arresto al cambio campione/chiusura e tooltip tradotti.
+- Separatore ASCII nel titolo di Studio per evitare il carattere corrotto.
+
 ## 0.22.3
 
 - I meter di Studio senza segnale mostrano Silenzio, al posto dei simboli meno/infinito; i livelli attivi restano numerici in dB.

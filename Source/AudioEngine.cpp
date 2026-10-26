@@ -122,7 +122,7 @@ void AudioEngine::adoptState(){
             i.cursor=cursorAt(i,currentBeat);if(playing){i.resync=true;needsResync=true;}}
     }
 }
-void AudioEngine::play(bool enabled){const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length){currentBeat=looping?loopFrom:0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;}
+void AudioEngine::play(bool enabled){stopSampleAudition();const juce::ScopedLock lock(mutex);if(enabled&&currentBeat>=length){currentBeat=looping?loopFrom:0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;}
 void AudioEngine::stop(){play(false);seek(0);}
 // An explicit seek beyond the loop must remain audible there until the song ends.
 void AudioEngine::seek(double beat){const juce::ScopedLock lock(mutex);currentBeat=std::clamp(beat,0.0,length);loopBypassed=currentBeat>=loopTo;needsReset=true;needsChase=playing;}
@@ -239,7 +239,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     busGraph.finish(output,channels,count,masterActive?masterGains.data():nullptr);
 }
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){const juce::ScopedLock lock(mutex);deviceRate=d->getCurrentSampleRate()>0?d->getCurrentSampleRate():44100;deviceBlock=std::max(16,d->getCurrentBufferSizeSamples());if(exporting)return;sampleRate=deviceRate;blockSize=deviceBlock;busGraph.prepare(sampleRate,blockSize);if(mixes.current)busGraph.configure(mixes.current->buses,mixes.current->tempo,mixes.current->master,true);deviceOutputLatency=d->getOutputLatencyInSamples();for(auto& i:instruments){i->prepare(sampleRate,blockSize);i->sounding.fill(false);}needsReset=true;needsChase=playing;hardReset=true;}
-void AudioEngine::audioDeviceStopped(){const juce::ScopedLock lock(mutex);if(exporting)return;clearMeters();for(auto& i:instruments){i->reset();i->sounding.fill(false);}}
+void AudioEngine::audioDeviceStopped(){stopSampleAudition();const juce::ScopedLock lock(mutex);if(exporting)return;clearMeters();for(auto& i:instruments){i->reset();i->sounding.fill(false);}}
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float* const* output,int channels,int count,const juce::AudioIODeviceCallbackContext&){
     if(count<=0)return;
     for(int ch=0;ch<channels;++ch)if(output[ch])juce::FloatVectorOperations::clear(output[ch],count);
@@ -248,9 +248,11 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const*,int,float
     const juce::ScopedTryLock lock(mutex);if(!lock.isLocked()||exporting)return;
     adoptState();
     if(needsReset)resetAt(currentBeat);else if(needsResync&&playing)resyncAt(currentBeat);
-    if(!playing){processLive(std::min(count,blockSize),currentBeat,false);bool voices=false;for(auto& i:instruments)voices=voices||(i->sampler&&voicesActive(*i->sampler))||voicesActive(i->synth);if(voices)liveTail=std::max(liveTail,(int)sampleRate*2);if(capture.monitor||liveTail>0){int done=0;while(done<count){int n=std::min(blockSize,count-done);float* pointers[2]{};const int used=std::min(channels,2);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;render(pointers,used,n,currentBeat,-1,false);done+=n;}liveTail=std::max(0,liveTail-count);}else{flushIdle(count);clearMeters();return;}}
+    const bool audition=auditioning.load();
+    if(audition){LiveMidiEvent ignored;while(capture.pop(ignored)){}mixSampleAudition(output,channels,count);}
+    if(!audition&&!playing){processLive(std::min(count,blockSize),currentBeat,false);bool voices=false;for(auto& i:instruments)voices=voices||(i->sampler&&voicesActive(*i->sampler))||voicesActive(i->synth);if(voices)liveTail=std::max(liveTail,(int)sampleRate*2);if(capture.monitor||liveTail>0){int done=0;while(done<count){int n=std::min(blockSize,count-done);float* pointers[2]{};const int used=std::min(channels,2);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;render(pointers,used,n,currentBeat,-1,false);done+=n;}liveTail=std::max(0,liveTail-count);}else{flushIdle(count);clearMeters();return;}}
     int done=0;
-    while(done<count&&playing){double beat=currentBeat;
+    while(!audition&&done<count&&playing){double beat=currentBeat;
         if(capture.active&&capture.countIn>0){const double remaining=capture.countIn.load();const int n=std::min({blockSize,count-done,std::max(1,(int)std::ceil(remaining*sampleRate*60/tempo.load()))});float* pointers[2]{};const int used=std::min(2,channels);for(int c=0;c<used;++c)pointers[c]=output[c]?output[c]+done:nullptr;processLive(n,beat,false);render(pointers,used,n,beat,-1,false);click(pointers,used,n,-remaining,true);capture.countIn=std::max(0.,remaining-n*tempo.load()/(sampleRate*60));done+=n;if(capture.countIn<=0){recordWallStart=juce::Time::getMillisecondCounterHiRes()*.001;chaseRecord=true;}continue;}
         const bool hasLoop=looping&&!loopBypassed&&loopTo-loopFrom>=1./960.;double boundary=hasLoop?loopTo:length;
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom;needsChase=true;resetAt(loopFrom);continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
@@ -353,7 +355,45 @@ std::unique_ptr<AudioEngine> AudioEngine::offlineCopy(){
     }
     return copy;
 }
+bool AudioEngine::startSampleAudition(int track,bool repeat){
+    if(track<0||track>=maxTracks||isRecording()||exporting)return false;
+    auto asset=sampleAsset(track);if(!asset)return false;
+    auto next=std::make_unique<SampleAudition>();next->track=track;
+    next->synth=std::make_unique<SampleSynth>(asset,next->settings,60,isDrumTrack(track));
+    next->synth->setCurrentPlaybackSampleRate(deviceRate);
+    stopPreview();
+    {const juce::ScopedLock lock(mutex);if(isRecording()||exporting)return false;
+        playing=false;needsReset=true;hardReset=true;auditionLoop=repeat;
+        clearMeters();sampleAudition.swap(next);auditionTrack=track;auditionNote=-1;auditioning=true;}
+    return true;
+}
+void AudioEngine::mixSampleAudition(float* const* output,int channels,int count){
+    auto* a=sampleAudition.get();if(!a||!mixes.current||instruments[(size_t)a->track]->mode!=1
+        ||sampleAsset(a->track)!=a->synth->sharedAsset()){auditioning=false;return;}
+    const auto& mix=mixes.current->tracks[(size_t)a->track];
+    // Keep the synth's parameter pointer owned here, independent of retired mix states.
+    bool restart=a->synth->configure(mix.sampler,mix.sampleRoot,mixes.current->tempo);
+    a->settings=mix.sampler;a->synth->configure(a->settings,mix.sampleRoot,mixes.current->tempo);
+    const int note=a->synth->mode()==2?a->settings.sliceBase:mix.sampleRoot;
+    if(note!=a->note){a->synth->allNotesOff(0,false);restart=true;}a->note=note;
+    if(restart)a->started=false;
+    if(a->synth->getSampleRate()!=deviceRate){auditioning=false;return;}
+    for(int at=0;at<count;){
+        if(!voicesActive(*a->synth)){
+            if(a->started&&!auditionLoop){auditioning=false;break;}
+            a->synth->noteOn(1,note,1.f);a->started=true;
+            if(!voicesActive(*a->synth)){auditioning=false;break;}
+        }
+        auditionNote=note;const int n=std::min(64,count-at);a->buffer.clear(0,n);
+        a->synth->renderNextBlock(a->buffer,a->midi,0,n);
+        for(int ch=0;ch<std::min(2,channels);++ch)if(output[ch])
+            juce::FloatVectorOperations::addWithMultiply(output[ch]+at,a->buffer.getReadPointer(ch),.8f,n);
+        at+=n;
+    }
+    if(!auditionLoop&&!voicesActive(*a->synth))auditioning=false;
+}
 void AudioEngine::startPreview(juce::AudioBuffer<float>&& audio,double rate){
+    stopSampleAudition();
     auto clip=std::make_unique<PreviewClip>();clip->audio=std::move(audio);clip->rate=rate>0?rate:44100.;
     previewing=clip->audio.getNumSamples()>1;previews.post(std::move(clip));
 }
@@ -381,6 +421,7 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     if(onlyTrack < -1 || onlyTrack>=maxTracks)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
+    stopSampleAudition();
     struct Guard{AudioEngine& e;~Guard(){const juce::ScopedLock lock(e.mutex);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;e.busGraph.prepare(e.sampleRate,e.blockSize);if(e.mixes.current)e.busGraph.configure(e.mixes.current->buses,e.mixes.current->tempo,e.mixes.current->master,true);for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);if(i->effect)i->effect->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.needsReset=true;e.hardReset=true;e.exporting=false;}} guard{*this};
     publish(p);
     int compensation=0;
