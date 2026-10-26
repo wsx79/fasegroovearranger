@@ -24,7 +24,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.17.0** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.21.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -215,6 +215,8 @@ Premi **INSTRUMENT PANEL** nell’inspector o la **rotella** della traccia per a
 | **Batteria** | Soltanto il pezzo scelto: groove, dinamica, nota MIDI e posizione rispetto al beat. |
 | **Guitar** | Pennate, let ring, spazio per la band, anticipi e mixer delle dodici righe. |
 | **Lead** | Motivi monofonici, risposte, arpeggi e passaggi; ritardo attacco, quattro timbri synth e mixer delle dodici righe. |
+
+**Estensione delle note del Piano (Armonia e scale):** trascina il cursore sinistro per la nota più bassa degli accordi e quello destro per la più alta. Entrambi seguono il mouse; il tratto evidenziato mostra l’intervallo consentito. Il MIDI del Piano sbloccato si aggiorna subito. ANNULLA ripristina l’intervallo e le note precedenti.
 
 I cursori **VOLUME** delle parti della chitarra regolano il suono guida; **LEVEL** della parte scelta cambia le dinamiche MIDI alla generazione. I mute delle parti agiscono anche sull’ascolto delle note già scritte. L’esportazione MIDI conserva le note del clip.
 

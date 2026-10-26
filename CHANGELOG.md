@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.21.1 — 2026-10-26
+
+- Fix Piano's note-range slider in Harmony & Scales: both limit handles now appear at their actual positions and follow dragging, with the selected interval highlighted. The previous theme drew a stationary single-value handle although the MIDI limits changed.
+- Native UI regression checks visible handles, hit targets, dragging both limits and the resulting MIDI. IT/EN guides explain the two handles.
+
 ## 0.21.0 — 2026-10-25
 
 - Amber AI COMPOSER button with a new family sparkle icon and a separate composer window.

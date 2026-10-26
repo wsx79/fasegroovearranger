@@ -405,6 +405,32 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         juce::ComboBox* extensions=nullptr;for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="Extensions")extensions=dynamic_cast<juce::ComboBox*>(child);
         if(extensions){extensions->setSelectedItemIndex(1,juce::sendNotificationSync);extensions->setSelectedItemIndex(0,juce::sendNotificationSync);const auto triads=project.tracks[0].clips[0].notes;ok=ok&&project.settings.extension==0;extensions->setSelectedItemIndex(2,juce::sendNotificationSync);ok=ok&&project.settings.extension==2&&project.tracks[0].clips[0].notes!=triads;extensionBox.setSelectedItemIndex(0,juce::sendNotificationSync);ok=ok&&project.settings.extension==0&&project.tracks[0].clips[0].notes==triads;}else ok=false;
         stage("piano Extensions changes real MIDI immediately from both panel and main harmony controls");
+        // Earlier regeneration fixtures queue panel rebuilds. Drain those callbacks
+        // before retaining a control across real mouse notifications.
+        bool controlsReady=false;juce::MessageManager::callAsync([&controlsReady]{controlsReady=true;});
+        while(!controlsReady)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        juce::Slider* range=nullptr;for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="Range")range=dynamic_cast<juce::Slider*>(child);
+        if(range){
+            // Pixel checks catch the old stationary thumb; value-only tests miss it.
+            const auto hasThumb=[&](double note){const auto image=range->createComponentSnapshot(range->getLocalBounds());return image.getPixelAt(juce::roundToInt(range->getPositionOfValue(note)),range->getHeight()/2-3).getBrightness()>.6f;};
+            ok=ok&&range->getSliderStyle()==juce::Slider::TwoValueHorizontal&&hasThumb(range->getMinValue())&&hasThumb(range->getMaxValue());
+            const auto drag=[&](double from,double to){
+                const juce::Point<float> start(range->getPositionOfValue(from),range->getHeight()*.5f),end(range->getPositionOfValue(to),start.y);
+                const auto event=[&](juce::Point<float> point,bool dragged){return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),point,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,range,range,juce::Time::getCurrentTime(),start,juce::Time::getCurrentTime(),1,dragged);};
+                ok=ok&&instrumentPanel.getComponentAt(range->getPosition()+start.toInt())==range;
+                range->mouseDown(event(start,false));range->mouseDrag(event(end,true));
+                juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+                range->mouseUp(event(end,true));instrumentPanel.flushRender();
+            };
+            const auto beforeRange=project.tracks[0].clips[0].notes;
+            drag(range->getMinValue(),72);ok=ok&&range->getMinValue()==72&&project.tracks[0].engine.rangeLow==72&&hasThumb(72);
+            drag(range->getMaxValue(),84);ok=ok&&range->getMaxValue()==84&&project.tracks[0].engine.rangeHigh==84&&hasThumb(72)&&hasThumb(84)&&!hasThumb(24)&&!hasThumb(108);
+            ok=ok&&project.tracks[0].clips[0].notes!=beforeRange;
+            if(auto output=folder.getChildFile("piano-range.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()),*output)&&ok;}else ok=false;
+            undo(false);ok=ok&&project.tracks[0].engine.rangeLow==72&&project.tracks[0].engine.rangeHigh==108;
+            undo(false);ok=ok&&project.tracks[0].engine.rangeLow==24&&project.tracks[0].engine.rangeHigh==108&&project.tracks[0].clips[0].notes==beforeRange;
+        }else ok=false;
+        stage("piano note range draws both real thumbs, follows mouse drags and updates MIDI");
         if(auto* floating=dynamic_cast<juce::DocumentWindow*>(instrumentPort.getTopLevelComponent())){
             ok=ok&&floating->isAlwaysOnTop();floating->setTopLeftPosition(37,46);floating->closeButtonPressed();ok=ok&&!floating->isVisible();showInstrument();
             if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())ok=ok&&floating->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;
@@ -415,7 +441,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         project=before;selectedTrack=0;selectedClip=-1;changed();
     }
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
-    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor":"FAIL DAW workspace regression: "+firstFailure);return ok;
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor, visible Piano range thumbs with mouse dragging, MIDI update and Undo":"FAIL DAW workspace regression: "+firstFailure);return ok;
 }
 
 

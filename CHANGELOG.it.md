@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.21.1 — 2026-10-26
+
+- Corretto il cursore dell’estensione delle note del Piano in Armonia e scale: entrambi gli estremi appaiono nella posizione reale e seguono il trascinamento, con l’intervallo selezionato evidenziato. Il tema precedente disegnava un cursore singolo fermo, anche se i limiti MIDI cambiavano.
+- Verifica nativa dei cursori visibili, dell’area cliccabile, del trascinamento di entrambi gli estremi e del MIDI risultante. Guide IT/EN aggiornate.
+
 ## 0.21.0 — 2026-10-25
 
 - Pulsante ambra CREA CON IA con scintille nel tema della famiglia e compositore in finestra separata.

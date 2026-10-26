@@ -1,5 +1,11 @@
 # Validation record
 
+## 0.21.1 — Piano note-range feedback
+
+- All seven Linux CTest checks pass. Native UI checks now verify the Piano range control's actual painted handles at both limits, hit targets and real mouse-down/drag/up notifications. Both handles move to their new pitches; the old positions contain no ghost handles. The resulting MIDI changes, and Undo restores each range edit and the original notes.
+- The defect was in Arranger's single-value-only slider renderer. Piano's original VST/standalone uses JUCE's existing two-value renderer and needs no change.
+- Fresh native Piano imagery and IT/EN manuals show and explain both handles. The embedded nine-chapter/eight-image manuals and original window, editing and AI UI checks pass. Full native smoke and independent WAV/MP3/stem verification pass, including audible regeneration variety.
+
 ## 0.21.0 — AI composition
 
 - All seven Linux CTest checks pass. Project I/O tests now exercise composition compilation: six minutes at 138 BPM outside genre limits, MIDI pattern expansion, percussion mapping, monophonic Lead, harmony metadata, duration overrides, DJ phrase preservation and closing-fill movement.

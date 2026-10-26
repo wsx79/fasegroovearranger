@@ -24,7 +24,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 ## 1. Installation
 
-This guide covers **v0.17.0** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.21.1** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -215,6 +215,8 @@ The first thirteen tracks are the drum pieces: **Kick, Snare, Clap, Rim, Closed 
 | **Drums** | Just the selected piece: groove, velocity, MIDI note and pocket. |
 | **Guitar** | Strums, let ring, room for band, pushes and the twelve-lane mixer. |
 | **Lead** | Monophonic motifs, answers, arpeggios and runs; attack delay, four synth sounds and the twelve-lane mixer. |
+
+**Piano note range (Harmony & Scales):** drag the left handle to set the lowest chord note and the right handle to set the highest. Both handles follow the mouse; the highlighted interval shows the allowed range. The unlocked Piano MIDI updates immediately. Undo restores the previous range and notes.
 
 Guitar-part **VOLUME** faders control the guide sound; the selected part’s **LEVEL** changes MIDI dynamics on generation. Part mutes also affect playback of existing notes. MIDI export preserves the clip’s notes.
 

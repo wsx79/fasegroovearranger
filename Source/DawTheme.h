@@ -142,7 +142,7 @@ public:
     // Linear sliders: a thin groove with the value in the accent and a small round thumb;
     // vertical sliders are mixer faders with a flat cap; bar styles draw nothing (a value
     // display, as the transport tempo).
-    void drawLinearSlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float,float,juce::Slider::SliderStyle style,juce::Slider& s) override{
+    void drawLinearSlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float minPos,float maxPos,juce::Slider::SliderStyle style,juce::Slider& s) override{
         if(style==juce::Slider::LinearBar||style==juce::Slider::LinearBarVertical)return;
         const auto value=s.findColour(juce::Slider::thumbColourId)==Daw::text?Daw::accent:s.findColour(juce::Slider::thumbColourId);
         const float alpha=s.isEnabled()?1.f:.4f;
@@ -161,11 +161,18 @@ public:
         if(!horizontal)return;
         const float cy=y+height*.5f;const auto groove=juce::Rectangle<float>((float)x,cy-1.5f,(float)width,3.f);
         g.setColour(juce::Colours::black.withAlpha(.55f*alpha));g.fillRoundedRectangle(groove,1.5f);
-        const float origin=s.getMinimum()<0&&s.getMaximum()>0&&std::abs(s.getMinimum()+s.getMaximum())<1e-9?(float)s.getPositionOfValue(0):(float)x;
-        g.setColour(value.withMultipliedAlpha(alpha));g.fillRoundedRectangle(juce::Rectangle<float>(std::min(origin,pos),cy-1.5f,std::abs(pos-origin),3.f),1.5f);
-        const auto thumb=juce::Rectangle<float>(10.f,10.f).withCentre({pos,cy});
-        g.setColour(juce::Colours::black.withAlpha(.4f));g.fillEllipse(thumb.translated(0,1.f));
-        g.setColour((s.isMouseOverOrDragging()?Daw::text:Daw::text.withAlpha(.85f)).withMultipliedAlpha(alpha));g.fillEllipse(thumb);
+        const bool range=style==juce::Slider::TwoValueHorizontal;
+        // A two-value slider has no centre value: JUCE supplies the two thumb
+        // positions separately. Drawing `pos` here leaves a stationary ghost thumb.
+        const float origin=range?minPos:s.getMinimum()<0&&s.getMaximum()>0&&std::abs(s.getMinimum()+s.getMaximum())<1e-9?(float)s.getPositionOfValue(0):(float)x;
+        const float end=range?maxPos:pos;
+        g.setColour(value.withMultipliedAlpha(alpha));g.fillRoundedRectangle(juce::Rectangle<float>(std::min(origin,end),cy-1.5f,std::abs(end-origin),3.f),1.5f);
+        const auto drawThumb=[&](float position){
+            const auto thumb=juce::Rectangle<float>(10.f,10.f).withCentre({position,cy});
+            g.setColour(juce::Colours::black.withAlpha(.4f));g.fillEllipse(thumb.translated(0,1.f));
+            g.setColour((s.isMouseOverOrDragging()?Daw::text:Daw::text.withAlpha(.85f)).withMultipliedAlpha(alpha));g.fillEllipse(thumb);
+        };
+        if(range){drawThumb(minPos);drawThumb(maxPos);}else drawThumb(pos);
     }
     int getSliderThumbRadius(juce::Slider& s) override{return s.getSliderStyle()==juce::Slider::LinearVertical?7:5;}
     juce::Label* createSliderTextBox(juce::Slider& s) override{
