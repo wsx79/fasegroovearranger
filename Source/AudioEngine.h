@@ -181,7 +181,8 @@ private:
     MidiCapture capture;
     juce::String midiIdentifier;bool ownsMidiInput=false;
     MidiTake takeInfo;
-    std::array<std::array<unsigned char,16*128>,maxTracks> liveHeld{};
+    std::array<std::array<unsigned char,16*128>,maxTracks> liveHeld{}; // high bit: key released under sustain
+    std::array<std::array<bool,16>,maxTracks> livePedal{};
     double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0;
     int liveTail=0;bool chaseRecord=false;
     void processLive(int count,double beat,bool capturing);

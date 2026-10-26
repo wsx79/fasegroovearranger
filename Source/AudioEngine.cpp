@@ -130,12 +130,12 @@ void AudioEngine::setLoop(bool enabled,double from,double to){const juce::Scoped
 void AudioEngine::resetAt(double beat){
     // Stopped or starting: a full reset (silent anyway). Playing (loop wrap, seek): release the
     // sounding notes with their natural release and keep effect tails, so the jump is click-free.
-    const bool hard=!playing||hardReset;if(hard){busGraph.reset();liveTail=0;if(!capture.active)for(auto& keys:liveHeld)keys.fill(0);}
+    const bool hard=!playing||hardReset;if(hard){busGraph.reset();liveTail=0;if(!capture.active){for(auto& keys:liveHeld)keys.fill(0);for(auto& pedal:livePedal)pedal.fill(false);}}
     for(auto& ptr:instruments){auto& i=*ptr;if(hard)i.reset();i.resync=false;i.cursor=cursorAt(i,beat);
         // Explicit note-offs first: many plugins ignore All Notes Off (CC 123).
         for(int n=0;n<128;++n)if(i.sounding[(size_t)n])noteOff(i,n,0);
         i.midi.addEvent(juce::MidiMessage::controllerEvent(1,64,0),0);i.midi.addEvent(juce::MidiMessage::controllerEvent(1,11,127),0);
-        if(hard){i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);if(capture.active)for(int channel=0;channel<16;++channel)for(int note=0;note<128;++note){auto velocity=liveHeld[(size_t)i.kind][(size_t)(channel*128+note)];if(velocity)i.midi.addEvent(juce::MidiMessage::noteOn(channel+1,note,velocity),0);}}
+        if(hard){i.midi.addEvent(juce::MidiMessage::allNotesOff(1),0);if(capture.active)for(int channel=0;channel<16;++channel){if(livePedal[(size_t)i.kind][(size_t)channel])i.midi.addEvent(juce::MidiMessage::controllerEvent(channel+1,64,127),0);for(int note=0;note<128;++note){auto velocity=liveHeld[(size_t)i.kind][(size_t)(channel*128+note)];if(velocity){i.midi.addEvent(juce::MidiMessage::noteOn(channel+1,note,(juce::uint8)(velocity&127)),0);if(velocity&128)i.midi.addEvent(juce::MidiMessage::noteOff(channel+1,note),0);}}}}
         if(needsChase){const auto h=holdState(i);
             for(int c=0;c<128;++c)if(h.cc[(size_t)c]>=0)i.midi.addEvent(juce::MidiMessage::controllerEvent(1,c,h.cc[(size_t)c]),0);
             for(int n=0;n<128;++n)if(h.vel[(size_t)n]>0){noteOn(i,n,h.vel[(size_t)n],h.lane[(size_t)n],h.start[(size_t)n]);if(!h.pressed[(size_t)n])noteOff(i,n,h.lane[(size_t)n]);}}
