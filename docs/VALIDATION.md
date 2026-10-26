@@ -1,5 +1,12 @@
 # Validation record
 
+## 0.22.3 — Studio scrolling and meter labels
+
+- Native UI regression sends real wheel callbacks over sampler sliders, bus sliders, track/routing/mode/device menus, including pages detached by the tab control. Project JSON, menu choices and Undo history remain unchanged.
+- Zero meters use the localized Silence label; unity and half gain display plain numeric `0.0 dB` and `-6.0 dB`. The native bus image is refreshed.
+- Existing sampler trim/slicing/reset/Undo, actual note indication, recording, editor and floating-window checks pass. The audio DSP and project format are unchanged.
+- No user project or changed Kick parameter was supplied; the exact cause of that user's attenuation is not established. Recovery instructions distinguish sampler defaults from track/group mix settings.
+
 ## 0.22.2 — Studio sampler workflow
 
 - Seven Linux CTest groups pass, with project round-trip checks preserving sample drum pitches outside slice mode and the original fixed MIDI mapping for built-in drum guides. The core executable is rebuilt against the updated core library and passes again.

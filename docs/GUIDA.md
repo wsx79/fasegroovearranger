@@ -183,9 +183,13 @@ Le cartelle vengono lette e le informazioni audio misurate in background: l'inte
 
 <p align="center"><img src="images/guide_buses.png" alt="Studio bus" width="980"></p>
 
-**BUS E MANDATE.** Instrada la traccia al master, al gruppo A o al gruppo B. Le due mandate alimentano un riverbero comune e un delay sincronizzato al tempo. I quattro canali hanno nome, livello, pan, mute e solo; i ritorni aggiungono i controlli dell’effetto. Le mandate seguono livello e gruppo della traccia. Il master controlla anche i ritorni. Esportazione e ascolto usano lo stesso percorso; gli stem includono il contributo dei propri effetti condivisi e hanno la stessa durata.
+**BUS E MANDATE.** Un meter fermo indica **Silenzio**: significa che quel bus non sta ricevendo segnale, non che sia necessariamente in mute. Gli altri valori sono numeri in dB. Instrada la traccia al master, al gruppo A o al gruppo B. Le due mandate alimentano un riverbero comune e un delay sincronizzato al tempo. I quattro canali hanno nome, livello, pan, mute e solo; i ritorni aggiungono i controlli dell’effetto. Le mandate seguono livello e gruppo della traccia. Il master controlla anche i ritorni. Esportazione e ascolto usano lo stesso percorso; gli stem includono il contributo dei propri effetti condivisi e hanno la stessa durata.
 
 **CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
+
+**Scorrimento sicuro.** In Studio rotella e trackpad fanno navigare la vista: non cambiano livelli, parametri o menu passando sopra i controlli. Per modificare un valore trascina il controllo oppure digita nella casella numerica. Sopra la forma d’onda restano attivi zoom e spostamento.
+
+**Se il kick diventa molto basso dopo una modifica.** Usa prima **ANNULLA**. Se la sorgente è un campione, seleziona Kick e premi **RIPRISTINA DEFAULT** nel campionatore: conserva file, MIDI e mix. Se resta basso, controlla anche volume, mute/solo, automazioni, routing e livello/mute del gruppo assegnato, perché il reset del campionatore conserva il mix. Per individuare la causa esatta serve lo stato del progetto; la sola attenuazione non identifica un difetto del motore audio.
 
 ### Navigazione e selezione
 

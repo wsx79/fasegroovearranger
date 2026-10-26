@@ -185,9 +185,13 @@ Folders are read and audio headers measured in the background, so the interface 
 
 <p align="center"><img src="images/guide_buses.png" alt="Studio bus" width="980"></p>
 
-**BUS & SEND.** Route the track directly to master or through group A/B. Two sends feed shared reverb and tempo delay. Four channels have editable name, level, pan, mute and solo; returns also expose effect controls. Sends follow track and group levels. Master controls returns too. Playback and export use the same graph; stems include their contributions to shared effects and have matching lengths.
+**BUS & SEND.** An idle meter reads **Silence**: that bus is receiving no signal, which does not necessarily mean it is muted. Other readings are numeric dB. Route the track directly to master or through group A/B. Two sends feed shared reverb and tempo delay. Four channels have editable name, level, pan, mute and solo; returns also expose effect controls. Sends follow track and group levels. Master controls returns too. Playback and export use the same graph; stems include their contributions to shared effects and have matching lengths.
 
 **MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
+
+**Safe scrolling.** In Studio, wheel and trackpad gestures navigate the view without changing levels, parameters or menu choices underneath the pointer. Drag a control or type in its numeric field to edit a value. Waveform zoom and panning remain available.
+
+**If the kick becomes quiet after an edit.** Try **UNDO** first. For a sample source, select Kick and press **RESET SAMPLE**: it preserves the file, MIDI and mix. If it remains quiet, also check track volume, mute/solo, automation, routing and the assigned group level/mute, since sampler reset preserves the mix. Identifying the exact cause requires the project state; low level alone does not establish an audio-engine defect.
 
 ### Navigation and selection
 

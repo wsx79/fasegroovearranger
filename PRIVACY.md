@@ -1,6 +1,6 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.22.2 · 26 October 2026
+Version 0.22.3 · 26 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 

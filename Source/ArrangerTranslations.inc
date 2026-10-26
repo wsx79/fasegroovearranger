@@ -759,3 +759,5 @@
 { "Unlock the clip before writing slice MIDI.", "Sblocca il clip prima di scrivere il MIDI delle fette.", "Desbloquea el clip antes de escribir el MIDI de los cortes.", "Déverrouiller le clip avant d’écrire le MIDI des tranches.", "Clip vor dem Schreiben von Slice-MIDI entsperren.", "Desbloqueie o clipe antes de escrever o MIDI das fatias." },
 
 { "MIDI RECORDING", "REGISTRAZIONE MIDI", "GRABACIÓN MIDI", "ENREGISTREMENT MIDI", "MIDI-AUFNAHME", "GRAVAÇÃO MIDI" },
+
+{ "Silence", "Silenzio", "Silencio", "Silence", "Stille", "Silêncio" },

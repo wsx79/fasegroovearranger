@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.3
+
+- Inactive Studio bus meters show localized Silence instead of special minus/infinity glyphs; active readings use numeric dB.
+- Mouse-wheel and trackpad scrolling no longer change Studio parameters, bus levels, routing or menu choices accidentally. Waveform zoom/pan, scrollbar navigation and explicit drag/text editing remain available.
+- Native regression verifies that scrolling leaves project data and Undo unchanged, including controls on inactive tabs. Documented recovery of a quiet kick without replacing its MIDI or sample.
+
 ## 0.22.2
 
 - Open the sampler from the track inspector; sample-only targets in the sampler page preserve all-track MIDI recording and bus routing.

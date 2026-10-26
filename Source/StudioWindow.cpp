@@ -45,6 +45,12 @@ juce::String studioTip(const juce::String& name){
     };
     for(const auto& entry:tips)if(name==entry.first)return entry.second;return name;
 }
+// Wheel gestures navigate Studio; changing a parameter requires a drag or typed value.
+void protectScrollGestures(juce::Component& component){
+    if(auto* slider=dynamic_cast<juce::Slider*>(&component))slider->setScrollWheelEnabled(false);
+    if(auto* menu=dynamic_cast<juce::ComboBox*>(&component))menu->setScrollWheelEnabled(false);
+    for(auto* child:component.getChildren())protectScrollGestures(*child);
+}
 class StudioTabsTheme : public DawLookAndFeel {
 public:
     int getTabButtonBestWidth(juce::TabBarButton& b,int)override{return std::max(116,(int)juce::GlyphArrangement::getStringWidth(Daw::caps(11),b.getButtonText())+32);}
@@ -73,7 +79,8 @@ public:
 class StudioMeter : public juce::Component,public juce::SettableTooltipClient {
 public:
     void setLevel(float value){if(level!=value){level=value;repaint();}}
-    void paint(juce::Graphics& g)override{auto area=getLocalBounds().toFloat().reduced(0,7);auto bar=area.withTrimmedRight(65);g.setColour(Daw::well);g.fillRoundedRectangle(bar,2);const float db=juce::Decibels::gainToDecibels(level,-60.f),amount=std::clamp((db+60)/66,0.f,1.f);g.setColour(level>1?Daw::meterHigh:level>.8?Daw::meterMid:Daw::meterLow);g.fillRoundedRectangle(bar.withWidth(bar.getWidth()*amount),2);g.setColour(Daw::textDim);g.setFont(Daw::font(11));g.drawText(level>.00001f?juce::String(db,1)+" dB":juce::String::fromUTF8("−∞ dB"),getLocalBounds(),juce::Justification::centredRight);}
+    juce::String valueText()const{return level>.00001f?juce::String(juce::Decibels::gainToDecibels(level,-60.f),1)+" dB":tr("Silence");}
+    void paint(juce::Graphics& g)override{auto area=getLocalBounds().toFloat().reduced(0,7);auto bar=area.withTrimmedRight(65);g.setColour(Daw::well);g.fillRoundedRectangle(bar,2);const float db=juce::Decibels::gainToDecibels(level,-60.f),amount=std::clamp((db+60)/66,0.f,1.f);g.setColour(level>1?Daw::meterHigh:level>.8?Daw::meterMid:Daw::meterLow);g.fillRoundedRectangle(bar.withWidth(bar.getWidth()*amount),2);g.setColour(Daw::textDim);g.setFont(Daw::font(11));g.drawText(valueText(),getLocalBounds(),juce::Justification::centredRight);}
 private:float level=0;
 };
 class Waveform : public juce::Component,public juce::SettableTooltipClient {
@@ -165,7 +172,7 @@ public:
         media.addAndMakeVisible(mediaInfo);Localisation::bindLabel(mediaInfo,"Collect copies samples beside the project and saves relative paths.\nRelink searches by content hash, or by a unique filename for older projects.\nOriginal samples are preserved.",false);
         Localisation::bind(tabs,[this]{const char* names[]{"SAMPLER","MIDI REC","BUS & SEND","MEDIA"};for(int i=0;i<4;++i)tabs.setTabName(i,tr(names[i]));});
         Localisation::bindItems(mode,{"Classic / gate","One-shot","Slices"});Localisation::bindItems(countIn,{"No count-in","1 bar count-in","2 bars count-in"});Localisation::bindItems(quantise,{"Quantise off","1/4 notes","1/8 notes","1/16 notes","1/32 notes"});Localisation::bindText(stopButton,"STOP");Localisation::bindText(monitor,"MONITOR");Localisation::bindText(overdub,"OVERDUB");
-        if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,500);keys.addListener(this);startTimerHz(15);refresh();restoreRecordingSettings();
+        for(auto* page:std::initializer_list<juce::Component*>{this,&sampler,&performance,&record,&buses,&media})protectScrollGestures(*page);if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,500);keys.addListener(this);startTimerHz(15);refresh();restoreRecordingSettings();
     }
     ~Panel()override{tabs.setLookAndFeel(nullptr);stopTimer();saveRecordingSettings();finish();releasePads();owner.setEnabled(true);owner.audio.setMidiMonitor(track,false);keys.removeListener(this);if(task)task->stopThread(10000);}
     bool verify(const juce::File& folder){
@@ -194,6 +201,13 @@ public:
         owner.select(1,owner.selectedSection);owner.trackInspector.refresh();detailsOk=detailsOk&&inspectorSampler&&!inspectorSampler->isVisible();showTab(1);detailsOk=detailsOk&&target.getNumItems()==(int)owner.project.tracks.size();const auto recordingTarget=owner.audio.startRecording(1,0);showTab(0);detailsOk=detailsOk&&recordingTarget.wasOk()&&track==1;stage("recording destination");if(owner.audio.isRecording())owner.audio.finishRecording();owner.audio.stop();owner.select(0,owner.selectedSection);showTab(0);
         const juce::Point<int> normalSize(getWidth(),getHeight());setSize(940,630);resized();bool layoutOk=samplerTab.getLocalBounds().contains(performance.getBounds())&&sampleKeyboard.getHeight()>50;for(auto* button:samplerButtons)layoutOk=layoutOk&&button->getWidth()>60&&sampler.getLocalBounds().contains(button->getBounds());setSize(normalSize.x,normalSize.y);resized();
         folder.getChildFile("studio-sampler-controls.txt").replaceWithText(detailsOk&&tipsOk&&layoutOk?"PASS inspector sampler entry; sample-only target IDs; wheel/pinch anchor and pan; transient/equal auto slicing and playable keyboard; sounding-note display; default reset preserves file/MIDI and supports Undo; detached tooltips; compact layout":"FAIL sampler controls: actions="+juce::String((int)detailsOk)+" tips="+juce::String((int)tipsOk)+" layout="+juce::String((int)layoutOk)+" first="+firstFailure);ok=ok&&detailsOk&&tipsOk&&layoutOk;
+        const auto wheelProject=juce::JSON::toString(projectJson(owner.project),false,17);const auto wheelUndos=owner.undoStack.size();bool wheelSafe=true;
+        auto wheelOver=[&](juce::Component& component){const auto now=juce::Time::getCurrentTime();const auto centre=component.getLocalBounds().getCentre().toFloat();juce::MouseEvent e(mouse,centre,{},1,0,0,0,0,&component,&component,now,centre,now,1,false);juce::MouseWheelDetails gesture{};gesture.deltaY=1;component.mouseWheelMove(e,gesture);};
+        for(auto& field:fields)wheelOver(*field.slider);for(auto* component:busControls)if(dynamic_cast<juce::Slider*>(component))wheelOver(*component);
+        for(auto* menu:{&target,&mode,&sliceMethod,&sliceBank,&route,&device,&sampleInput,&countIn,&quantise}){const int choice=menu->getSelectedId();wheelOver(*menu);wheelSafe=wheelSafe&&choice==menu->getSelectedId();}
+        wheelSafe=wheelSafe&&wheelProject==juce::JSON::toString(projectJson(owner.project),false,17)&&wheelUndos==owner.undoStack.size();samplerPort.setViewPosition(0,0);
+        StudioMeter meter;bool meterOk=meter.valueText()==tr("Silence");meter.setLevel(1);meterOk=meterOk&&meter.valueText()=="0.0 dB";meter.setLevel(.5f);meterOk=meterOk&&meter.valueText()=="-6.0 dB";
+        folder.getChildFile("studio-scroll-meter.txt").replaceWithText(wheelSafe&&meterOk?"PASS scrolling does not change sampler parameters, bus levels, routing or track selection; inactive meters show localized Silence and finite levels use plain numeric dB":"FAIL scrolling or meter labels: wheel="+juce::String((int)wheelSafe)+" meter="+juce::String((int)meterOk));ok=ok&&wheelSafe&&meterOk;
         auto snapshot=[&](int tab,const char* name){showTab(tab);resized();auto image=createComponentSnapshot(getLocalBounds());auto out=folder.getChildFile(name).createOutputStream();return out&&juce::PNGImageFormat().writeImageToStream(image,*out);};
         owner.audio.liveMidi(0,juce::MidiMessage::noteOn(1,37,.8f));owner.audio.audioDeviceIOCallbackWithContext(nullptr,0,input.getArrayOfWritePointers(),2,512,context);updateNotes();
         ok=snapshot(0,"studio-sampler.png")&&snapshot(1,"studio-recording.png")&&snapshot(2,"studio-buses.png")&&ok;

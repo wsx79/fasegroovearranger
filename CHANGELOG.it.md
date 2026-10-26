@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.3
+
+- I meter di Studio senza segnale mostrano Silenzio, al posto dei simboli meno/infinito; i livelli attivi restano numerici in dB.
+- Rotella e trackpad non modificano più involontariamente parametri, livelli dei bus, routing o selezioni di Studio. Restano zoom/scorrimento della forma d’onda e modifica esplicita con trascinamento o tastiera.
+- Verifica nativa dei gesti anche sulle schede inattive: progetto e Annulla restano invariati. Guida al recupero di un kick attenuato senza sostituire MIDI o campione.
+
 ## 0.22.2
 
 - Campionatore apribile dall’inspector, con menu limitato ai campioni; registrazione e bus conservano tutte le tracce.
