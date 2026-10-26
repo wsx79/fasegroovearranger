@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.1
+
+- Local Ollama is the initial AI composer service; no API key is requested for local models.
+- Automatically detect installed models with cancellable connection checks, normalize server addresses and explain missing models/server setup in the composer.
+- Show Ollama memory/server errors, exclude cloud models from the offline list and lower local context memory requirements.
+- Refresh IT/EN setup guides and privacy notes; add HTTP regressions for discovery, no-key requests and failures.
+
 ## 0.22.0
 
 - Studio sampler: waveform trim, loops, envelope, filter, portable presets, slicing and independent tempo/pitch synchronization.

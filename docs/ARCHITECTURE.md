@@ -103,3 +103,7 @@ Input overflow is reported and releases held voices.
 `StudioIO` stores relative paths for local media, collects content-addressed sample
 copies transactionally, and relinks by hash or unique basename. Presets include a
 verified neighbouring sample folder. The original sample files are never edited.
+
+### Local model setup (0.22.1)
+
+The composer initially selects Ollama (one-time preference migration). A cancellable worker requests `/api/tags` with an eight-second deadline when opened or refreshed, without sending musical context or credentials. The model menu lists installed non-cloud models, preserving a previous choice only if still available. Composition is disabled until discovery succeeds. Address normalization accepts bare hosts and common API suffixes. Native Ollama error bodies are bounded and displayed for model/memory failures; online error bodies are not exposed. Local generation uses a 16K context, up to 8192 output tokens and disables Qwen3 thinking. Opening/closing or changing the service invalidates discovery callbacks; generation still uses the existing validated preview and explicit Apply transaction.

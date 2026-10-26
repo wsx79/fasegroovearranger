@@ -6,8 +6,8 @@
 namespace fga {
 enum class AiProvider { openai, anthropic, gemini, ollama };
 struct AiOptions {
-    AiProvider provider=AiProvider::openai;
-    juce::String model="gpt-4.1",key,endpoint="http://127.0.0.1:11434",prompt;
+    AiProvider provider=AiProvider::ollama;
+    juce::String model,key,endpoint="http://127.0.0.1:11434",prompt;
     bool wholeSong=true;
     double seconds=0; // zero: requested in the prompt, otherwise six minutes by default
     std::vector<int> tracks;
@@ -17,6 +17,8 @@ juce::String aiSystemPrompt();
 juce::String aiContext(const Project&,const AiOptions&);
 juce::Result aiHttpRequest(const Project&,const AiOptions&,AiHttpRequest&);
 juce::Result aiResponse(AiProvider,const juce::var&,juce::String&);
+juce::Result aiOllamaEndpoint(const juce::String&,juce::String&);
+juce::Result aiOllamaModels(const juce::String&,juce::StringArray&,const std::function<bool()>& cancelled);
 juce::Result aiCompile(const Project&,const AiOptions&,const juce::String&,Project&,juce::String& summary);
 // No credentials, paths, plugin state or audio are sent in the musical context.
 // The worker is cancellable; it never mutates the live project.

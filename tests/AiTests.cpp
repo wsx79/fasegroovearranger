@@ -9,7 +9,7 @@ juce::String fixture(){return R"({"title":"Techno","summary":"Six minutes","bpm"
 }
 void runAiTests(){
     auto base=fga::newProject(1);base.tracks[4].instrument="plugin";base.tracks[4].instrumentPath="/PRIVATE/kick.vst3";base.tracks[4].instrumentId="PRIVATE-ID";base.tracks[4].instrumentState="PRIVATE-STATE";base.tracks[4].effectState="PRIVATE-FX";base.tracks[4].gain=.42;
-    fga::AiOptions o;o.tracks={4,17};o.prompt="Una canzone techno di 6 minuti";o.key="secret-key";
+    fga::AiOptions o;o.model="qwen3:8b";o.tracks={4,17};o.prompt="Una canzone techno di 6 minuti";o.key="secret-key";
     require(!fga::aiContext(base,o).contains("PRIVATE")&&!fga::aiContext(base,o).contains(o.key),"AI context excludes credentials, paths and plugin states");
     for(int i=0;i<4;++i){o.provider=(fga::AiProvider)i;fga::AiHttpRequest request;require(fga::aiHttpRequest(base,o,request).wasOk(),"provider request formats");require(request.body.contains("Six")||request.body.contains("task"),"musical request sent");require(!request.body.contains(o.key)&&!request.url.contains(o.key),"API keys absent from URL/body");require(request.body.contains("messages")||request.body.contains("contents"),"provider payload includes musical context");}
     fga::Project song;juce::String summary;require(fga::aiCompile(base,o,fixture(),song,summary).wasOk(),"valid AI composition compiles");require(song.settings.chordSteps==32&&song.settings.chordCount==4&&song.settings.degrees[1]==5,"AI harmony metadata matches its chord display");require(song.settings.freeTempo&&song.settings.bpm==138&&std::abs(song.length()*60/138-360)<.01,"six-minute techno retains 138 BPM beyond family presets");
@@ -29,10 +29,28 @@ void runAiTests(){
     require(song.tracks[4].clips[0]==edit.tracks[4].clips[0]&&song.tracks[0].clips==edit.tracks[0].clips,"locked clips and unselected tracks untouched");
     edit.detachTrack(4);const auto locked=edit.tracks[4].clips[0];require(fga::aiCompile(edit,o,juce::JSON::toString(bad),song,summary).wasOk(),"selected AI can rewrite independent timelines");const int li=song.clipAtBeat(4,1);require(li>=0&&song.tracks[4].clips[(size_t)li].locked&&song.tracks[4].clips[(size_t)li].notes==locked.notes,"locked independent clip notes retained exactly");
     o.provider=fga::AiProvider::openai;o.key="bad\nheader";fga::AiHttpRequest request;require(fga::aiHttpRequest(base,o,request).failed(),"header injection rejected");o.provider=fga::AiProvider::ollama;o.endpoint="file:///etc/passwd";require(fga::aiHttpRequest(base,o,request).failed(),"non-HTTP Ollama endpoint rejected");
+    juce::String address;
+    for(const auto& input:{"127.0.0.1:11434"," http://127.0.0.1:11434/ ","http://127.0.0.1:11434/api","http://127.0.0.1:11434/api/chat","http://127.0.0.1:11434/v1",""})
+        require(fga::aiOllamaEndpoint(input,address).wasOk()&&address=="http://127.0.0.1:11434","Ollama accepts common server address forms without duplicating API paths");
+    for(const auto& input:{"file:///etc/passwd","http://user:password@localhost:11434","http://localhost:11434?key=secret","http://local\nhost:11434"})
+        require(fga::aiOllamaEndpoint(input,address).failed(),"Ollama rejects credentials, query strings and unsafe addresses");
+    o.key.clear();o.endpoint="localhost:11434/api/chat";
+    require(fga::aiHttpRequest(base,o,request).wasOk()&&!request.headers.contains("Authorization")&&request.url=="http://localhost:11434/api/chat","local composition works without a key at normalized endpoint");
+    const auto payload=juce::JSON::parse(request.body);
+    require(payload.hasProperty("think")&&!(bool)payload["think"]&&(int)payload["options"]["num_ctx"]==16384,"local request limits memory and disables Qwen3 reasoning to produce MIDI JSON");
+    o.provider=fga::AiProvider::openai;require(fga::aiHttpRequest(base,o,request).failed(),"online services still require their API key");
     juce::String response;
     require(fga::aiResponse(fga::AiProvider::openai,juce::JSON::parse(R"({"choices":[{"finish_reason":"length","message":{"content":"partial"}}]})"),response).failed(),"truncated output cannot become a song");
     const std::array<juce::String,4> replies{R"({"choices":[{"message":{"content":"{}"}}]})",R"({"content":[{"type":"text","text":"{}"}]})",R"({"candidates":[{"content":{"parts":[{"text":"{}"}]}}]})",R"({"message":{"content":"{}"}})"};
     for(int i=0;i<4;++i)require(fga::aiResponse((fga::AiProvider)i,juce::JSON::parse(replies[(size_t)i]),response).wasOk()&&response=="{}","four provider response envelopes");
     std::cout<<"AI composition: real MIDI, arrangement duration, routing, locks, validation and provider envelopes passed\n";
 }
-int runAiHttpTest(const juce::String& endpoint,bool cancel){auto p=fga::newProject(1);fga::AiOptions o;o.provider=fga::AiProvider::ollama;o.endpoint=endpoint;o.tracks={4,17};o.prompt="techno 6 minutes";fga::Project out;juce::String summary;const auto started=juce::Time::getMillisecondCounterHiRes();auto r=fga::aiGenerate(p,o,out,summary,[=]{return cancel&&juce::Time::getMillisecondCounterHiRes()-started>200;});if(cancel){require(r.failed()&&r.getErrorMessage().contains("cancelled"),"cancel interrupted the HTTP request");return 0;}if(r.failed()){std::cerr<<r.getErrorMessage()<<"\n";return 1;}require(out.settings.bpm==138&&std::abs(out.length()*60/138-360)<.01,"HTTP model response writes six-minute MIDI");return 0;}
+int runAiHttpTest(const juce::String& endpoint,bool cancel){auto p=fga::newProject(1);fga::AiOptions o;o.provider=fga::AiProvider::ollama;o.model="qwen3:8b";o.endpoint=endpoint;o.tracks={4,17};o.prompt="techno 6 minutes";fga::Project out;juce::String summary;const auto started=juce::Time::getMillisecondCounterHiRes();auto r=fga::aiGenerate(p,o,out,summary,[=]{return cancel&&juce::Time::getMillisecondCounterHiRes()-started>200;});if(cancel){require(r.failed()&&r.getErrorMessage().contains("cancelled"),"cancel interrupted the HTTP request");return 0;}if(r.failed()){std::cerr<<r.getErrorMessage()<<"\n";return 1;}require(out.settings.bpm==138&&std::abs(out.length()*60/138-360)<.01,"HTTP model response writes six-minute MIDI");return 0;}
+
+int runAiModelsTest(const juce::String& endpoint,bool cancel){
+    juce::StringArray models;const auto started=juce::Time::getMillisecondCounterHiRes();
+    auto result=fga::aiOllamaModels(endpoint,models,[=]{return cancel&&juce::Time::getMillisecondCounterHiRes()-started>200;});
+    if(cancel){require(result.failed()&&result.getErrorMessage().contains("cancelled"),"model discovery cancels a stalled connection");return 0;}
+    if(result.failed()){require(models.isEmpty(),"failed discovery never supplies nonexistent models");std::cerr<<result.getErrorMessage()<<"\n";return 1;}
+    require(models==juce::StringArray{"qwen2.5:7b","qwen3:8b"},"discovery reads installed local models, deduplicates and excludes cloud models");return 0;
+}

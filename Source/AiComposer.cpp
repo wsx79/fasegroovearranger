@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <set>
+#include <cstring>
 namespace fga {
 namespace {
 juce::var object(std::initializer_list<std::pair<const char*,juce::var>> items){auto* d=new juce::DynamicObject;for(auto& kv:items)d->setProperty(kv.first,kv.second);return juce::var(d);}
@@ -63,7 +64,7 @@ juce::Result aiHttpRequest(const Project& p,const AiOptions& o,AiHttpRequest& ou
     else if(o.provider==AiProvider::gemini){out.url="https://generativelanguage.googleapis.com/v1beta/models/"+juce::URL::addEscapeChars(o.model,false)+":generateContent";out.headers+="x-goog-api-key: "+o.key.trim()+"\n";out.body=juce::JSON::toString(object({{"systemInstruction",object({{"parts",Array{object({{"text",system}})}}})},{"contents",Array{object({{"role","user"},{"parts",Array{object({{"text",user}})}}})}},{"generationConfig",object({{"responseMimeType","application/json"},{"maxOutputTokens",16384}})}}),true);}
     else {messages.insert(0,object({{"role","system"},{"content",system}}));auto body=object({{"model",o.model},{"messages",messages},{"stream",false}});
         if(o.provider==AiProvider::openai){out.url="https://api.openai.com/v1/chat/completions";out.headers+="Authorization: Bearer "+o.key.trim()+"\n";body.getDynamicObject()->setProperty("max_completion_tokens",16384);body.getDynamicObject()->setProperty("response_format",object({{"type","json_object"}}));}
-        else {const auto endpoint=o.endpoint.trim().trimCharactersAtEnd("/");const juce::URL u(endpoint);if((!endpoint.startsWithIgnoreCase("http://")&&!endpoint.startsWithIgnoreCase("https://"))||u.getDomain().isEmpty()||endpoint.containsAnyOf("\r\n?#@"))return juce::Result::fail("Enter the Ollama server address, for example http://127.0.0.1:11434.");out.url=endpoint+"/api/chat";body.getDynamicObject()->setProperty("format","json");body.getDynamicObject()->setProperty("options",object({{"num_predict",16384},{"num_ctx",32768}}));}
+        else {juce::String endpoint;auto normalised=aiOllamaEndpoint(o.endpoint,endpoint);if(normalised.failed())return normalised;out.url=endpoint+"/api/chat";body.getDynamicObject()->setProperty("format","json");body.getDynamicObject()->setProperty("options",object({{"num_predict",8192},{"num_ctx",16384}}));if(o.model.startsWithIgnoreCase("qwen3"))body.getDynamicObject()->setProperty("think",false);}
         out.body=juce::JSON::toString(body,true);
     }return juce::Result::ok();
 }
@@ -120,20 +121,66 @@ juce::Result aiCompile(const Project& base,const AiOptions& o,const juce::String
         p.normalise();count=0;for(const auto& t:p.tracks)for(const auto& c:t.clips)count+=c.notes.size();summary=get(root,"summary").toString().substring(0,2000)+"\n\n"+juce::String(p.settings.bpm,1)+juce::String::fromUTF8(" BPM  ·  ")+juce::String((int)std::lround(p.length()*60/p.settings.bpm))+juce::String::fromUTF8(" s  ·  ")+juce::String((int)p.sections.size())+juce::String::fromUTF8(" sections  ·  ")+juce::String((int)count)+" MIDI notes";output=std::move(p);return juce::Result::ok();
     }catch(const Invalid& e){return juce::Result::fail(e.message);}catch(...){return juce::Result::fail("The composition could not be read. Try a simpler request.");}
 }
-juce::Result aiGenerate(const Project& base,const AiOptions& options,Project& output,juce::String& summary,const std::function<bool()>& cancelled){
-    AiHttpRequest request;auto check=aiHttpRequest(base,options,request);if(check.failed())return check;if(cancelled())return juce::Result::fail("Generation cancelled.");
+namespace {
+juce::Result fetchJson(const AiHttpRequest& request,bool local,bool discovery,juce::var& envelope,const std::function<bool()>& cancelled){
+    if(cancelled())return juce::Result::fail("Generation cancelled.");
     // Native networking on Windows/macOS, libcurl on Linux. Request bodies and
     // credentials stay in memory: no shell, process arguments or temporary files.
-    const int limitSeconds=options.provider==AiProvider::ollama?900:240;
-    juce::WebInputStream stream(juce::URL(request.url).withPOSTData(request.body),true);
-    stream.withCustomRequestCommand("POST").withExtraHeaders(request.headers.replace("\n","\r\n")).withConnectionTimeout(limitSeconds*1000).withNumRedirectsToFollow(0);
+    const int limitSeconds=discovery?8:local?900:240;
+    juce::WebInputStream stream(discovery?juce::URL(request.url):juce::URL(request.url).withPOSTData(request.body),!discovery);
+    stream.withCustomRequestCommand(discovery?"GET":"POST").withExtraHeaders(request.headers.replace("\n","\r\n")).withConnectionTimeout(limitSeconds*1000).withNumRedirectsToFollow(0);
     std::atomic<bool> finished{false},timedOut{false};const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(limitSeconds);
     std::thread watcher([&]{while(!finished.load()){if(cancelled()||std::chrono::steady_clock::now()>=deadline){timedOut=std::chrono::steady_clock::now()>=deadline;stream.cancel();return;}juce::Thread::sleep(20);}});
     struct Finish{std::atomic<bool>& done;std::thread& thread;~Finish(){done=true;thread.join();}} finish{finished,watcher};
-    const bool connected=stream.connect(nullptr);if(cancelled())return juce::Result::fail("Generation cancelled.");if(timedOut)return juce::Result::fail("The model took too long. Try a smaller model or a simpler request.");
-    const int status=stream.getStatusCode();if(!connected&&status==0)return juce::Result::fail("Connection failed. Check the server address, network and system TLS support.");
-    if(status==401||status==403)return juce::Result::fail("The service rejected the API key or model access.");if(status==429)return juce::Result::fail("The service quota or rate limit was reached. Check API billing and retry later.");if(status<200||status>=300)return juce::Result::fail("The service returned HTTP "+juce::String(status)+". Check model availability and the server.");
+    stream.connect(nullptr);if(cancelled())return juce::Result::fail("Generation cancelled.");if(timedOut)return juce::Result::fail(discovery?"Ollama did not respond in time. Check that the server is running and try again.":"The model took too long. Try a smaller model or a simpler request.");
+    const int status=stream.getStatusCode();if(status<=0)return juce::Result::fail(local?"Cannot reach Ollama. Open the Ollama application (or run ollama serve), then check the server address and try again.":"Connection failed. Check the server address, network and system TLS support.");
     juce::MemoryOutputStream response;char buffer[8192];while(!stream.isExhausted()){if(cancelled())return juce::Result::fail("Generation cancelled.");const int n=stream.read(buffer,sizeof(buffer));if(n<=0)break;response.write(buffer,(size_t)n);if(response.getDataSize()>4194304)return juce::Result::fail("The response is too large.");}
-    if(timedOut||stream.isError())return juce::Result::fail("The connection ended before the composition was complete.");juce::var envelope;auto parse=juce::JSON::parse(response.toUTF8(),envelope);if(parse.failed())return juce::Result::fail("The service returned an unreadable response.");juce::String composition;auto result=aiResponse(options.provider,envelope,composition);if(result.failed())return result;return aiCompile(base,options,composition,output,summary);
+    if(cancelled())return juce::Result::fail("Generation cancelled.");
+    if(timedOut||stream.isError())return juce::Result::fail("The connection ended before the composition was complete.");
+    const auto parsed=juce::JSON::parse(response.toUTF8(),envelope);
+    if(status==401||status==403)return juce::Result::fail(local?"This Ollama server requires authentication. Use a local Ollama server for generation without an API key.":"The service rejected the API key or model access.");
+    if(status==429)return juce::Result::fail("The service quota or rate limit was reached. Check API billing and retry later.");
+    if(status<200||status>=300){
+        if(local&&status==404)return juce::Result::fail(discovery?"Ollama API not found. Enter the server address, normally http://127.0.0.1:11434.":"The selected model is not installed in Ollama. Refresh the model list or download the model in Ollama.");
+        // Only expose bounded Ollama error text; online providers may echo credentials.
+        const auto detail=local?get(envelope,"error").toString().substring(0,500):juce::String();
+        return juce::Result::fail("The service returned HTTP "+juce::String(status)+". "+detail);
+    }
+    if(parsed.failed())return juce::Result::fail("The service returned an unreadable response.");
+    if(local&&get(envelope,"error").toString().isNotEmpty())return juce::Result::fail(get(envelope,"error").toString().substring(0,500));
+    return juce::Result::ok();
+}
+}
+juce::Result aiOllamaEndpoint(const juce::String& input,juce::String& endpoint){
+    auto value=input.trim().trimCharactersAtEnd("/");
+    if(value.isEmpty())value="http://127.0.0.1:11434";
+    if(!value.contains("://"))value="http://"+value;
+    // Accept an address copied from common Ollama setup instructions.
+    for(const auto* suffix:{"/api/chat","/api/tags","/api","/v1"})
+        if(value.endsWithIgnoreCase(suffix)){value=value.dropLastCharacters((int)std::strlen(suffix)).trimCharactersAtEnd("/");break;}
+    const juce::URL url(value);
+    if((!value.startsWithIgnoreCase("http://")&&!value.startsWithIgnoreCase("https://"))||url.getDomain().isEmpty()||value.containsAnyOf("\r\n?#@ \t"))
+        return juce::Result::fail("Enter the Ollama server address, for example http://127.0.0.1:11434.");
+    endpoint=value;return juce::Result::ok();
+}
+juce::Result aiOllamaModels(const juce::String& address,juce::StringArray& models,const std::function<bool()>& cancelled){
+    models.clear();juce::String endpoint;auto result=aiOllamaEndpoint(address,endpoint);if(result.failed())return result;
+    juce::var root;result=fetchJson({endpoint+"/api/tags","Content-Type: application/json\n",{}},true,true,root,cancelled);if(result.failed())return result;
+    const auto items=get(root,"models");if(!items.isArray())return juce::Result::fail("This address did not return an Ollama model list. Check the server address.");
+    for(const auto& item:*items.getArray()){
+        const auto name=get(item,"name").toString().trim();
+        // Cloud-backed models require an account and are not offline models.
+        if(get(item,"remote_host").toString().isEmpty()&&get(item,"remote_model").toString().isEmpty()&&name.isNotEmpty()&&name.length()<=160&&!name.containsAnyOf("\r\n")&&!name.containsIgnoreCase(":cloud")&&!name.containsIgnoreCase("-cloud"))models.addIfNotAlreadyThere(name);
+    }
+    models.sort(true);
+    if(models.isEmpty())return juce::Result::fail("Ollama is connected but no local models are installed. Download a text model in Ollama, then refresh the list.");
+    return juce::Result::ok();
+}
+juce::Result aiGenerate(const Project& base,const AiOptions& options,Project& output,juce::String& summary,const std::function<bool()>& cancelled){
+    AiHttpRequest request;auto check=aiHttpRequest(base,options,request);if(check.failed())return check;
+    juce::var envelope;check=fetchJson(request,options.provider==AiProvider::ollama,false,envelope,cancelled);if(check.failed())return check;
+    juce::String composition;check=aiResponse(options.provider,envelope,composition);if(check.failed())return check;
+    if(cancelled())return juce::Result::fail("Generation cancelled.");
+    return aiCompile(base,options,composition,output,summary);
 }
 }

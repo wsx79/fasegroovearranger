@@ -25,7 +25,7 @@ Create a complete song with the original Piano, Drums, Guitar and Lead engines: 
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
 
-**AI COMPOSER** writes editable MIDI notes and a full arrangement from your request, using your assigned instruments. Choose OpenAI, Claude, Gemini or Ollama, review the preview, then APPLY with Undo. Online APIs need your own key; keys stay in memory. [AI guide](docs/GUIDE.md#compose-with-ai).
+**AI COMPOSER** writes editable MIDI notes and a full arrangement from your request, using your assigned instruments. Choose OpenAI, Claude, Gemini or Ollama, review the preview, then APPLY with Undo. Local Ollama is the initial choice: no API key, with automatic installed-model discovery and connection checks. Ollama and a downloaded text model must be available on your computer. Online APIs need your own key; keys stay in memory. [AI guide](docs/GUIDE.md#compose-with-ai).
 
 Separate instrument windows, a global Lead octave and handwritten MIDI tracks (**+ MIDI**, up to 32 tracks in total). Double-click inspector or mixer names to rename tracks. Piano regeneration selects more distinct rhythmic figures within the same genre.
 
@@ -111,7 +111,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.22.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.22.1** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: audio recording/editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

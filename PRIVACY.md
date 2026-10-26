@@ -1,6 +1,6 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.22.0 · 26 October 2026
+Version 0.22.1 · 26 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 
@@ -34,7 +34,7 @@ Plugin discovery reads the standard plugin folders and the custom folders you se
 
 AI COMPOSER supports OpenAI, Anthropic, Google Gemini and an Ollama server whose address you choose. Each COMPOSE action sends your written request, available track names/roles, section names/lengths, key, scale, chord names and limited MIDI excerpts used as musical context. Online providers receive ordinary connection metadata and your API key for authentication. Their own privacy, retention, billing and model policies apply. An Ollama server on your computer processes context locally; a remote Ollama address receives it on that server.
 
-No audio, samples, local file paths, plugin catalogue, serialised plugin/effect state or API keys are included in the musical context. The selected online provider receives its key only in an HTTPS header, with redirects disabled. Keys remain in process memory for the session; they are not saved to projects, preferences, temporary files, logs or subprocess arguments. Generation uses native HTTPS on Windows/macOS and libcurl on Linux. Only provider/model preferences and the Ollama address are saved locally. Closing the composer cancels a pending request; the provider may already have processed or billed it. No request starts automatically and there is no automatic fallback to another provider.
+No audio, samples, local file paths, plugin catalogue, serialised plugin/effect state or API keys are included in the musical context. The selected online provider receives its key only in an HTTPS header, with redirects disabled. Keys remain in process memory for the session; they are not saved to projects, preferences, temporary files, logs or subprocess arguments. Generation uses native HTTPS on Windows/macOS and libcurl on Linux. Only provider/model preferences and the Ollama address are saved locally. Closing the composer cancels a pending request; the provider may already have processed or billed it. Opening the composer with Ollama selected, selecting Ollama or pressing CHECK sends a model-list request to the configured server without musical context. No composition request starts automatically and there is no automatic fallback to another provider.
 
 Responses are validated as bounded musical data, never executed as code. A preview is applied only when you press APPLY; Undo restores the preceding project. The resulting MIDI and arrangement become ordinary project data and are saved/autosaved locally in the same way as manual music.
 

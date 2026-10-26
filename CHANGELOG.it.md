@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.1
+
+- Ollama locale come scelta iniziale del compositore IA, senza chiave API.
+- Rilevamento dei modelli installati, verifica annullabile della connessione, indirizzi normalizzati e istruzioni direttamente nell’anteprima.
+- Errori del server e della memoria visibili; modelli cloud esclusi dall’elenco locale e contesto ridotto per contenere la memoria richiesta.
+- Guide IT/EN e privacy aggiornate; test HTTP per rilevamento, richieste senza chiave ed errori.
+
 ## 0.22.0
 
 - Studio: campionatore con forma d’onda, tagli, loop, inviluppo, filtro, preset portatili e sincronizzazione indipendente di tempo/altezza.

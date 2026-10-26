@@ -1,6 +1,6 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.22.0 · 26 ottobre 2026
+Versione 0.22.1 · 26 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
@@ -47,7 +47,7 @@ La ricerca dei plugin legge le cartelle standard e quelle personali selezionate,
 
 CREA CON IA supporta OpenAI, Anthropic, Google Gemini e un server Ollama di cui scegli l’indirizzo. Ogni pressione di COMPONI invia richiesta scritta, nomi/ruoli delle tracce, nomi e durate delle sezioni, tonalità, scala, accordi e un estratto limitato del MIDI usato come contesto musicale. Il servizio online riceve normali dati di connessione e la propria chiave API per l’autenticazione; applica le sue condizioni su privacy, conservazione, modelli e fatturazione. Ollama sul tuo computer elabora localmente; un indirizzo remoto riceve il contesto su quel server.
 
-Il contesto musicale non contiene audio, campioni, percorsi locali, catalogo plugin, stati serializzati di strumenti/effetti o chiavi API. Il provider scelto riceve la chiave soltanto in un header HTTPS, con reindirizzamenti disattivati. Le chiavi restano nella memoria del processo per la sessione: non vengono salvate in progetti, preferenze, file temporanei, log o argomenti di processi esterni. La connessione usa HTTPS nativo su Windows/macOS e libcurl su Linux. Si salvano soltanto preferenze di servizio/modello e indirizzo Ollama. Chiudere la finestra annulla una richiesta in corso; il servizio potrebbe averla già elaborata o fatturata. Non partono richieste automatiche e non si passa automaticamente a un altro provider.
+Il contesto musicale non contiene audio, campioni, percorsi locali, catalogo plugin, stati serializzati di strumenti/effetti o chiavi API. Il provider scelto riceve la chiave soltanto in un header HTTPS, con reindirizzamenti disattivati. Le chiavi restano nella memoria del processo per la sessione: non vengono salvate in progetti, preferenze, file temporanei, log o argomenti di processi esterni. La connessione usa HTTPS nativo su Windows/macOS e libcurl su Linux. Si salvano soltanto preferenze di servizio/modello e indirizzo Ollama. Chiudere la finestra annulla una richiesta in corso; il servizio potrebbe averla già elaborata o fatturata. Aprire il compositore con Ollama selezionato, selezionare Ollama o premere VERIFICA invia al server configurato una richiesta di elenco modelli, senza contesto musicale. Non partono richieste di composizione automatiche e non si passa automaticamente a un altro provider.
 
 Le risposte sono convalidate come dati musicali limitati, senza eseguire codice. L’anteprima viene inserita soltanto con APPLICA; Annulla ripristina il progetto precedente. Il MIDI e l’arrangiamento diventano normali dati di progetto, salvati e autosalvati localmente come la musica scritta a mano.
 

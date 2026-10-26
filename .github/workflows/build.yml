@@ -71,6 +71,9 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
       - name: AI composition HTTP and cancellation integration
         run: python scripts/test-ai.py
+      - name: Native local AI composer flow
+        if: runner.os == 'Linux'
+        run: xvfb-run -a python3 scripts/test-ai.py --ui-output "$RUNNER_TEMP/ai-ui"
       - name: Standalone rendering smoke test
         if: runner.os == 'Linux' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: xvfb-run -a "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger" --smoke-test "$RUNNER_TEMP/arranger-smoke"
@@ -152,6 +155,7 @@ jobs:
           name: Arranger-validation
           path: |
             ${{ runner.temp }}/arranger-smoke/
+            ${{ runner.temp }}/ai-ui/
             ${{ runner.temp }}/club-audit/
             ${{ runner.temp }}/plugin-catalog/plugin-catalog.txt
       - uses: actions/upload-artifact@v4

@@ -1,5 +1,12 @@
 # Validation record
 
+## 0.22.1 — Local AI setup
+
+- Seven Linux CTest checks pass. Ollama HTTP fixtures verify installed-model discovery, duplicate/cloud/remote-alias exclusion, address normalization, empty/wrong servers, connection refusal, missing models, memory errors, no-key requests, blocked redirects and cancellation.
+- Native English/Italian UI checks run the actual model-list worker, choose an installed model, invoke COMPOSE and verify a six-minute 138 BPM MIDI preview. Changing duration invalidates APPLY. Existing Apply/Undo/stale-project checks and the full native UI suite pass.
+- These are controlled HTTP fixtures, not model inference: local model quality, speed and hardware fit still need testing on the user's computer.
+- Updated IT/EN setup manuals, privacy statements and native screenshots pass family-resource/translation checks and Linux/Windows packaging fixtures. CI additionally runs the native local-AI flow on Linux and HTTP checks on all three systems before release.
+
 ## 0.21.1 — Piano note-range feedback
 
 - All seven Linux CTest checks pass. Native UI checks now verify the Piano range control's actual painted handles at both limits, hit targets and real mouse-down/drag/up notifications. Both handles move to their new pitches; the old positions contain no ghost handles. The resulting MIDI changes, and Undo restores each range edit and the original notes.
