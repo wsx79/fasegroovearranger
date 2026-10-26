@@ -1,6 +1,6 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.21.0 · 25 ottobre 2026
+Versione 0.22.0 · 26 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
@@ -50,3 +50,7 @@ CREA CON IA supporta OpenAI, Anthropic, Google Gemini e un server Ollama di cui 
 Il contesto musicale non contiene audio, campioni, percorsi locali, catalogo plugin, stati serializzati di strumenti/effetti o chiavi API. Il provider scelto riceve la chiave soltanto in un header HTTPS, con reindirizzamenti disattivati. Le chiavi restano nella memoria del processo per la sessione: non vengono salvate in progetti, preferenze, file temporanei, log o argomenti di processi esterni. La connessione usa HTTPS nativo su Windows/macOS e libcurl su Linux. Si salvano soltanto preferenze di servizio/modello e indirizzo Ollama. Chiudere la finestra annulla una richiesta in corso; il servizio potrebbe averla già elaborata o fatturata. Non partono richieste automatiche e non si passa automaticamente a un altro provider.
 
 Le risposte sono convalidate come dati musicali limitati, senza eseguire codice. L’anteprima viene inserita soltanto con APPLICA; Annulla ripristina il progetto precedente. Il MIDI e l’arrangiamento diventano normali dati di progetto, salvati e autosalvati localmente come la musica scritta a mano.
+
+## Registrazione e raccolta in Studio
+
+Studio apre soltanto l’ingresso MIDI scelto per ascoltare e registrare note. Note, velocity e durate ricavate dal sustain restano nel progetto locale; ingresso e preferenze di registrazione sono salvati localmente. Studio non registra il microfono. Raccolta e preset portatili copiano i campioni scelti nella destinazione selezionata e ne verificano il contenuto sul dispositivo. Sincronizzazione e intonazione vengono elaborate localmente, senza caricare audio in rete.

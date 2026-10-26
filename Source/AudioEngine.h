@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include "core/Project.h"
+#include "Sampler.h"
+#include "MixerBuses.h"
+#include "MidiRecording.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../ThirdParty/fasegroovepiano/Source/GuideVoice.h"
 #include "../ThirdParty/fasegroovedrums/Source/GuideDrums.h"
@@ -17,12 +20,14 @@ struct TrackMix {
     VolumeAutomation volume,panAutomation;
     std::vector<ParameterAutomation> parameters; // copied on the message thread, only read by the audio thread
     double gain=.75,pan=0,tone=.5,reverb=.12,chorus=0,pump=0,pumpRelease=.2;
+    SamplerSettings sampler;int sampleRoot=60;
+    int group=-1;std::array<double,2> sends{};
     bool mute=false,solo=false;
     int sound=0,pumpRate=0,pumpSource=0,drumNote=36;
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
-struct MixState { std::array<TrackMix,maxTracks> tracks; VolumeAutomation masterAutomation; double master=.8,tempo=122; };
+struct MixState { std::array<TrackMix,maxTracks> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
 inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):(track<2||isManualTrack(track))?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
@@ -79,6 +84,7 @@ struct Instrument {
     double gain=.75,pan=0;
     juce::SmoothedValue<float> leftGain,rightGain;
     bool mute=false,solo=false;
+    int group=-1;std::array<double,2> sends{};
     int mode=0; // 0 original guide, 1 user sampler, 2 user plugin, 3 missing instrument (silence)
     std::size_t cursor=0;
     int outputs=2; // channels the instrument writes: a mono plugin feeds both sides
@@ -137,11 +143,24 @@ public:
     float masterLevel() const {return masterMeter.load();}
     // Per side (0 left, 1 right) peaks of the last block, for the stereo meters.
     float level(int track,int side) const {return sideMeters[(size_t)track][(size_t)(side&1)].load();}
+    float busLevel(int bus)const{return busGraph.level(bus);}
     float masterLevel(int side) const {return masterSides[(size_t)(side&1)].load();}
     bool hasClipped() const {return masterClip.load();}
     void clearClipping(){masterClip=false;}
     std::uint64_t noteOnsSent(int track) const {return instruments[(size_t)track]->noteOns;}
-    juce::Result loadSample(int,const juce::File&,int root);
+    juce::Result setMidiInput(const juce::String& identifier);
+    const juce::String& midiInput()const{return midiIdentifier;}
+    void setMidiMonitor(int track,bool enabled);
+    void liveMidi(int track,const juce::MidiMessage& message,bool recordable=true){capture.enqueue(track,message,recordable);}
+    juce::Result startRecording(int track,int countInBars);
+    MidiTake finishRecording();
+    void drainRecorded(std::vector<CapturedMidi>& events){capture.drain(events);}
+    bool isRecording()const{return capture.active.load();}
+    double countInRemaining()const{return capture.countIn.load();}
+    bool recordingOverflow()const{return capture.overflow.load();}
+    void setRecordOffset(double ms){capture.timingOffsetMs=std::clamp(ms,-200.,200.);}
+    juce::Result loadSample(int,const juce::File&,int root,const SamplerSettings& settings={});
+    std::shared_ptr<const SampleAsset> sampleAsset(int)const;
     void loadPlugin(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
     void loadEffect(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
     void clearEffect(int);
@@ -159,6 +178,15 @@ public:
     void audioDeviceStopped() override;
     void audioDeviceIOCallbackWithContext(const float* const*,int,float* const*,int,int,const juce::AudioIODeviceCallbackContext&) override;
 private:
+    MidiCapture capture;
+    juce::String midiIdentifier;bool ownsMidiInput=false;
+    MidiTake takeInfo;
+    std::array<std::array<unsigned char,16*128>,maxTracks> liveHeld{};
+    double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0;
+    int liveTail=0;bool chaseRecord=false;
+    void processLive(int count,double beat,bool capturing);
+    void chaseLiveRecord(double beat);
+    MixerBuses busGraph;
     juce::CriticalSection mutex; // transport and instrument changes; never held for long
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
     std::array<std::atomic<float>,maxTracks> meters;
@@ -190,8 +218,8 @@ private:
     void resetAt(double beat);
     void resyncAt(double beat);
     void flushIdle(int count);
-    void click(float* const* output,int channels,int count,double beat);
-    void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1);
+    void click(float* const* output,int channels,int count,double beat,bool force=false);
+    void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1,bool schedule=true);
     void applyParameterAutomation(Instrument&,double beat);
 };
 }

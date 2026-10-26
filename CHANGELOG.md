@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.0
+
+- Studio sampler: waveform trim, loops, envelope, filter, portable presets, slicing and independent tempo/pitch synchronization.
+- MIDI recording: input device and virtual keyboard, count-in, overdub/replacement, quantization and undo.
+- Two groups and two shared reverb/delay returns, using the same graph for playback and export.
+- Verified sample collection and relinking, with backward-compatible project loading.
+
+
 ## 0.21.2 — 2026-10-26
 
 - Pinned shared-module SHA and complete inventory checked offline and against its canonical source in CI; Lead included in default sync/check.

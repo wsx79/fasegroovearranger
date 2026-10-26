@@ -19,6 +19,9 @@ juce::Image guideImage(const juce::String& name){
     if(name.endsWith("guide_ai.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_ai_png,BinaryData::guide_ai_pngSize);
     if(name.endsWith("guide_ai_it.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_ai_it_png,BinaryData::guide_ai_it_pngSize);
     if(name.endsWith("guide_mixer.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_mixer_png,BinaryData::guide_mixer_pngSize);
+    if(name.endsWith("guide_sampler.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_sampler_png,BinaryData::guide_sampler_pngSize);
+    if(name.endsWith("guide_recording.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_recording_png,BinaryData::guide_recording_pngSize);
+    if(name.endsWith("guide_buses.png"))return juce::ImageCache::getFromMemory(BinaryData::guide_buses_png,BinaryData::guide_buses_pngSize);
     return {};
 }
 struct InlineText{juce::AttributedString styled;juce::String plain,target;};
@@ -124,7 +127,7 @@ public:
     void zoom(int delta){book.fontSize=std::clamp(book.fontSize+(float)delta,13.f,21.f);book.relayout();hits=book.find(search.getText());currentHit=-1;findNext(1);}
     void findNext(int direction){if(hits.empty()){result.setText(search.getText().isEmpty()?"":isEnglish?"No results":"Nessuno",juce::dontSendNotification);return;}currentHit=(currentHit+direction+(int)hits.size())%(int)hits.size();port.setViewPosition(0,hits[(size_t)currentHit]);result.setText(juce::String(currentHit+1)+" / "+juce::String((int)hits.size()),juce::dontSendNotification);}
     bool evidence(const juce::File& folder){
-        bool content=book.chapters.size()==9&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::image&&b.image.isValid();})==8&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::table;})>=10;
+        bool content=book.chapters.size()==9&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::image&&b.image.isValid();})==11&&std::count_if(book.blocks.begin(),book.blocks.end(),[](const auto& b){return b.kind==GuideBook::Kind::table;})>=10;
         for(const auto& b:book.blocks)if(b.kind==GuideBook::Kind::table){content=content&&!b.rows.empty()&&b.rows.front().size()>=2;for(const auto& row:b.rows)content=content&&row.size()==b.rows.front().size();}
         auto shot=[&](const char* name){auto file=folder.getChildFile(juce::String(name)+(isEnglish?"-en":"-it")+".png");if(auto out=file.createOutputStream()){juce::PNGImageFormat png;return png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}return false;};
         port.setViewPosition(0,0);bool ok=shot("guide-welcome");for(const auto& block:book.blocks)if(block.target.startsWithChar('#'))ok=book.positionFor(block.target.substring(1))>0&&ok;index.selectRow(2);ok=port.getViewArea().getY()>0&&shot("guide-chapter")&&ok;search.setText(isEnglish?"NEW ARRANGEMENT":juce::String::fromUTF8("NUOVO ARRANGIAMENTO"));search.onTextChange();ok=!hits.empty()&&shot("guide-search")&&ok;zoom(1);ok=book.fontSize==16&&ok;search.clear();return content&&ok;

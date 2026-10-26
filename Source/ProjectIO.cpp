@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "ProjectIO.h"
+#include "StudioIO.h"
 #include <cmath>
 namespace fga {
 namespace {
@@ -132,17 +133,18 @@ static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
     return juce::Result::ok();
 }
 juce::var projectJson(const Project& p){
-    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
+    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
     set(s,"guitarLead",c.guitarLead);set(s,"randomAutomation",c.randomAutomation);if(c.freeTempo)set(s,"freeTempo",true);
     set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
     juce::Array<juce::var> degrees,free;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);set(o,"settings",s);
-    set(o,"masterGain",p.masterGain);if(!p.masterAutomation.isDefault())set(o,"masterAutomation",envelopeJson(p.masterAutomation));set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
+    if(extendedProject(p))set(o,"buses",busesJson(p.buses));set(o,"masterGain",p.masterGain);if(!p.masterAutomation.isDefault())set(o,"masterAutomation",envelopeJson(p.masterAutomation));set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
     juce::Array<juce::var> sections,tracks;
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
+        if(!t.sampler.isDefault())set(a,"sampler",samplerJson(t.sampler));if(!t.sampleHash.empty())set(a,"sampleHash",t.sampleHash);if(t.group>=0)set(a,"group",t.group);if(t.sends[0]!=0||t.sends[1]!=0){juce::Array<juce::var> sends;for(auto v:t.sends)sends.add(v);set(a,"sends",sends);}
         set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
         set(a,"volumeAutomation",envelopeJson(t.volume));
         // Pan and plugin automation are written only when used: older projects save as before.
@@ -156,7 +158,7 @@ juce::var projectJson(const Project& p){
     }set(o,"tracks",tracks);return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
-    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2))return juce::Result::fail("Formato progetto non supportato.");
+    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
     if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<legacyTrackCount||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (17–32 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
@@ -165,10 +167,12 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",true);s.freeTempo=(bool)j.getProperty("freeTempo",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
+    if(auto r=readBuses(o["buses"],p.buses);r.failed())return r;
     p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
     for(const auto& a:*sections){if(!a.isObject())return juce::Result::fail("Sezione non valida.");p.sections.push_back({(Section)(int)num(a,"type",0),(int)num(a,"bars",8),str(a,"name","Main")});}
     size_t noteCount=0;
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
+        if(auto r=readSampler(a["sampler"],t.sampler);r.failed())return r;t.sampleHash=str(a,"sampleHash");t.group=(int)num(a,"group",-1);if(a.hasProperty("sends")){auto* sends=a["sends"].getArray();if(!sends||sends->size()!=2)return juce::Result::fail("Invalid send routing.");for(int i=0;i<2;++i)t.sends[(size_t)i]=(double)(*sends)[i];}
         readEngine(a["engine"],t.engine);
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
         if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
@@ -193,8 +197,8 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
 }
 // Store sub-tick humanisation with 17 fractional places, far beyond MIDI/audio
 // resolution and within JUCE's stable numeric parsing precision.
-juce::Result saveProject(const Project& p,const juce::File& file){juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(juce::JSON::toString(projectJson(p),false,17)))return juce::Result::fail("Scrittura progetto fallita.");return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");}
-juce::Result loadProject(const juce::File& file,Project& p){if(!file.existsAsFile()||file.getSize()>256*1024*1024)return juce::Result::fail("File mancante o superiore a 256 MB.");juce::var json;auto r=juce::JSON::parse(file.loadFileAsString(),json);return r.failed()?r:projectFromJson(json,p);}
+juce::Result saveProject(const Project& p,const juce::File& file){juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText([&]{auto json=projectJson(p);relativiseProjectMedia(json,file);return juce::JSON::toString(json,false,17);}()))return juce::Result::fail("Scrittura progetto fallita.");return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");}
+juce::Result loadProject(const juce::File& file,Project& p){if(!file.existsAsFile()||file.getSize()>256*1024*1024)return juce::Result::fail("File mancante o superiore a 256 MB.");juce::var json;auto r=juce::JSON::parse(file.loadFileAsString(),json);if(r.failed())return r;auto parsed=projectFromJson(json,p);if(parsed.wasOk())resolveProjectMedia(p,file);return parsed;}
 juce::Result importMidi(const juce::File& file,Clip& clip,double beats){
     auto in=file.createInputStream();if(!in)return juce::Result::fail("Impossibile aprire MIDI.");juce::MidiFile midi;if(!midi.readFrom(*in))return juce::Result::fail("File MIDI non valido.");const int ticks=midi.getTimeFormat();if(ticks<=0)return juce::Result::fail("MIDI SMPTE non supportato: usare PPQ.");
     Clip next=clip;next.notes.clear();next.loopSource.clear();next.loopLength=0;

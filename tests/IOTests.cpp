@@ -4,10 +4,11 @@
 #include <stdexcept>
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runAiTests();
+void runStudioIOTests();
 int runAiHttpTest(const juce::String&,bool);
 int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
-    runAiTests();
+    runAiTests();runStudioIOTests();
     {
         auto original=fga::newProject(1);int ti=original.addMidiTrack();original.tracks[(size_t)ti].name="MIDI – melodia";original.tracks[(size_t)ti].clips[0].notes={{2,.75,74,103,0}};original.tracks[(size_t)ti].instrument="sample";original.tracks[(size_t)ti].instrumentPath="melody.wav";original.tracks[fga::leadTrack].engine.globalOctave=-1;
         const auto json=juce::JSON::toString(fga::projectJson(original),false,17);fga::Project loaded;

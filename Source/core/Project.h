@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 #include "VolumeAutomation.h"
+#include "StudioSettings.h"
 
 namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
@@ -79,6 +80,10 @@ struct Track {
     VolumeAutomation volume;
     VolumeAutomation panAutomation;            // 0..1 (see panFromAutomation); replaces `pan` while active
     std::vector<ParameterAutomation> parameters; // hosted plugin parameters, at most maxParameterLanes
+    SamplerSettings sampler;
+    std::string sampleHash;
+    int group=-1;
+    std::array<double,2> sends{};
     EngineOptions engine;
     bool freeTimeline = false;
     std::vector<Clip> clips;
@@ -103,6 +108,7 @@ struct Project {
     Settings settings;
     std::vector<SongSection> sections;
     std::vector<Track> tracks;
+    std::array<BusSettings,4> buses=defaultBuses();
     double masterGain = .8;
     VolumeAutomation masterAutomation; // gain multiplier on the master, as a track's volume
     // Every automation envelope with its value ceiling (for edits that move or cut time).

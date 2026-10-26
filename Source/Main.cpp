@@ -90,6 +90,9 @@ public:
                 setApplicationReturnValue(0);quit();
             });return;
         }
+        if(args.size()==2&&args[0]=="--ui-test"){
+            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.writeUiEvidence(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==2&&args[0]=="--smoke-test"){
             window=std::make_unique<Window>();
             const auto folder=juce::File(args[1]);folder.createDirectory();

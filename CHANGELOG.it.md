@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.0
+
+- Studio: campionatore con forma d’onda, tagli, loop, inviluppo, filtro, preset portatili e sincronizzazione indipendente di tempo/altezza.
+- Registrazione MIDI con ingresso e tastiera virtuale, conteggio, sovraincisione/sostituzione, quantizzazione e Annulla.
+- Due gruppi e due ritorni condivisi, riverbero e delay sincronizzato; stesso percorso in ascolto ed esportazione.
+- Raccolta verificata dei campioni e ricollegamento; progetti precedenti compatibili.
+
+
 ## 0.21.2 — 2026-10-26
 
 - SHA e inventario completo del modulo comune verificati offline e contro la fonte canonica in CI; Lead incluso nel sync/check predefinito.

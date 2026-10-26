@@ -43,3 +43,10 @@ The six-language UI dictionaries and CircleOfFifths component are adapted from t
 Arranger 0.4.5 adds an optional centred-output constructor argument to the vendored Piano `GuideVoice`, used only by its dedicated bass track. Original callers retain keyboard spread by default. The synthesis algorithms remain the original family engines; Arranger applies its own genre presets, mix levels, musical layer scheduling and built-in bass low-pass after synthesis.
 
 Arranger 0.7.2 adds an optional `bassLineOverride` to the vendored Piano settings, renderer and resolved grid. Empty retains the original selected library figure. Arranger develops that figure for explicitly regenerated musical takes; synthesis is unchanged.
+
+## Signalsmith Stretch 1.4.0 and Signalsmith Linear 0.6.4
+
+The sampler uses Signalsmith Stretch for independent tempo and pitch changes.
+Copyright Geraint Luff / Signalsmith Audio, MIT license. Sources, version pins and
+full license texts are in `ThirdParty/signalsmith-stretch` and
+`ThirdParty/signalsmith-linear`. No network service is involved.

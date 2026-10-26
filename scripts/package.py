@@ -25,7 +25,7 @@ if source_app.is_dir():
 else:
     shutil.copy2(source_app, stage / 'Standalone' / app_name)
 
-files = {'LICENSE', 'README.md', 'README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md',
+files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-linear/LICENSE.txt', 'LICENSE', 'README.md', 'README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md',
          'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',

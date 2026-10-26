@@ -159,6 +159,31 @@ La qualità dipende dal modello. Per errori di autorizzazione verifica chiave e 
 
 Le cartelle vengono lette e le informazioni audio misurate in background: l'interfaccia resta reattiva anche con migliaia di file e il browser non consuma nulla quando è fermo.
 
+### Studio: campionatore, registrazione e bus
+
+**STUDIO**, accanto a **AI COMPOSER**, apre una finestra sempre in primo piano. Chiudila con la X; alla riapertura torna al centro. Seleziona la traccia nel menu superiore. Le quattro schede condividono la traccia selezionata.
+
+<p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
+
+**CAMPIONATORE.** Carica WAV, AIFF, FLAC, OGG o MP3 fino a 60 secondi. Trascina il bordo più vicino sulla forma d’onda per tagliare inizio o fine; zoom e posizione permettono interventi precisi. **PASSAGGIO PER LO ZERO** aggancia il taglio a un punto vicino allo zero. Inizio/fine sono frazioni del campione: 0 = inizio, 1 = fine. Le dissolvenze e i tempi dell’inviluppo sono in secondi.
+
+- **Classico / durata nota** segue il Note Off MIDI; **One-shot** suona fino alla fine del campione anche se la nota è corta. Per crash e piatti usa One-shot.
+- **LOOP** ripete la regione fra inizio e fine loop in modo classico. La dissolvenza del loop attenua la giunzione. **INVERTI** cambia la direzione di lettura.
+- Nota radice, trasposizione e intonazione regolano l’altezza; **VOCI = 1** rende lo strumento monofonico. Attacco, decadimento, sostegno e rilascio formano l’inviluppo. Il filtro passa-basso ha taglio e risonanza; **VELOCITY** regola la risposta alla forza delle note.
+- **SINCRONIZZA TEMPO** separa durata e altezza. Imposta i BPM originali del campione in **BPM DEL CAMPIONE**: il campione segue poi il tempo del progetto. Senza sincronizzazione la trasposizione cambia anche la velocità di lettura.
+- **RILEVA TAGLI** cerca i transienti. Maiusc-clic aggiunge un taglio; clic destro elimina il più vicino. **Tagli** assegna segmenti a note consecutive dalla **PRIMA NOTA DEI TAGLI**. I pad permettono l’ascolto dei tagli; il selettore del banco compare oltre 16 tagli. **SCRIVI MIDI DEI TAGLI** sostituisce le note del clip selezionato con i trigger, fino alla sua durata; Annulla ripristina il clip precedente.
+- **SALVA PRESET** crea un `.fgs` con una cartella dei campioni accanto. Sposta entrambi insieme. **APRI PRESET** ripristina campione, radice e parametri. I parametri sono salvati anche nel progetto e seguono Annulla/Ripristina.
+
+<p align="center"><img src="images/guide_recording.png" alt="Studio MIDI" width="980"></p>
+
+**REGISTRA MIDI.** Scegli un ingresso disponibile o usa la tastiera sullo schermo. AGGIORNA rileva anche i dispositivi collegati dopo l’apertura. **MONITOR** permette di ascoltare l’ingresso anche a trasporto fermo. Scegli nessun conteggio, una o due battute, quantizzazione disattivata o da quarti a trentaduesimi, e sovraincisione oppure sostituzione. La correzione in millisecondi compensa il ritardo dell’esecuzione. Premi **REGISTRA**, poi **TERMINA REGISTRAZIONE** per conservare la riproduzione o **STOP** per fermarla. Chiudere Studio termina la registrazione. Durante la registrazione la finestra principale è protetta dalle modifiche; la take viene applicata come un solo passo di Annulla. La quantizzazione sposta gli attacchi, conservando le durate; il pedale sustain viene trasformato in durate delle note. Sono registrati note e velocity, non curve di pitch bend o automazioni dei controller. Le tracce e i clip bloccati sono protetti.
+
+<p align="center"><img src="images/guide_buses.png" alt="Studio bus" width="980"></p>
+
+**BUS E MANDATE.** Instrada la traccia al master, al gruppo A o al gruppo B. Le due mandate alimentano un riverbero comune e un delay sincronizzato al tempo. I quattro canali hanno nome, livello, pan, mute e solo; i ritorni aggiungono i controlli dell’effetto. Le mandate seguono livello e gruppo della traccia. Il master controlla anche i ritorni. Esportazione e ascolto usano lo stesso percorso; gli stem includono il contributo dei propri effetti condivisi e hanno la stessa durata.
+
+**CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
+
 ### Navigazione e selezione
 
 - **Rotella sul righello** o **Ctrl/Cmd + rotella** sopra clip/note: zoom attorno al puntatore. **+ / −** usa il centro della vista. L’editor MIDI ha anche lo slider ZOOM.

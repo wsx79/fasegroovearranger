@@ -2,7 +2,7 @@
 
 The application is a native JUCE GUI executable, not a wrapper around the four plugin binaries. All four original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`, `fgl`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar and lead step adapters add a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
-`Project` holds musical settings, ordered sections and 18 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Legacy track IDs 0–16 stay fixed; Lead is appended at ID 17. Seventeen-track schema version 1/2 projects upgrade by adding an empty Lead track, and current saves retain the version 2 timeline format. Guide insertion/reordering/removal leaves audible clip positions intact; legacy whole-arrangement transforms remain separate APIs. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
+`Project` holds musical settings, ordered sections and 18 tracks. A clip has section-relative note starts/lengths, original guitar lane, velocity, seed and a generation lock. Legacy track IDs 0–16 stay fixed; Lead is appended at ID 17. Seventeen-track schema version 1/2 projects upgrade by adding an empty Lead track, and ordinary saves retain the legacy formats; Studio settings opt into version 3. Guide insertion/reordering/removal leaves audible clip positions intact; legacy whole-arrangement transforms remain separate APIs. Bounds/finite-value validation and same-pitch overlap reconciliation protect scheduling and MIDI export.
 
 Piano, bass and strings come from the Piano engine's distinct parts. Piano generation starts with an original genre-specific preset and uses its variation/intention generators. Drums and guitar use their original genre-aware random generators and arrangement renderers. Harmony is shared by scale degrees/free chord codes; guitar uses its original diatonic/code chord builders. Rich extensions outside the guitar's supported vocabulary are simplified to its supported chord colour.
 
@@ -75,3 +75,31 @@ Drum samples use a SamplerVoice variant that ignores tail-allowed note-off but r
 Models return compact MIDI patterns and section placements rather than executable generator commands. Compilation validates ranges, references, enabled tracks and resource bounds, fits the form to the nearest requested bar, enforces monophonic Lead, resolves percussion mappings and preserves the original track instruments/mix. Targeted editing restores locked independent clips over the newly written parts. The preview is private until APPLY; musical project comparison prevents stale results overwriting intervening edits, while plugin state captured at apply time stays current. A single checkpoint supports Undo.
 
 Optional `Settings::freeTempo` persists an AI composition’s 30–300 BPM without applying genre-preset working ranges. Legacy projects retain their previous policy; applying a genre clears the override. All original generation engines and presets remain unchanged.
+
+## Studio (0.22.0)
+
+`StudioWindow` uses the DAW theme and exposes four tabs targeting an existing track.
+`StudioSettings` is the bounded, serialisable model; default projects keep the old
+schema, while extended sampler or routing settings opt into schema 3. Loading
+supports schemas 1, 2 and 3. The canonical family module remains pinned unchanged.
+
+`SampleSynth` shares immutable decoded audio between live and offline engines.
+Voices and Signalsmith FFT state are prepared outside the audio callback. Classic
+playback uses interpolation; tempo sync uses independent pitch/time processing
+and participates in the existing latency compensation. Gate, one-shot and slice
+modes share crop, reverse, envelope, fades and filter processing. Drum slice
+triggers retain distinct pitches and use the pitched MIDI editor.
+
+`MixerBuses` applies two optional groups and post-group sends to shared reverb and
+tempo delay. Master and its automation act after the returns. Offline export uses
+the same graph and extends all stems equally for sampler and shared effect tails.
+
+`MidiCapture` has separate bounded device/UI input queues and an audio-to-UI queue.
+Large queue storage is heap allocated. The audio callback timestamps notes;
+message-thread assembly handles sustain, onset quantisation, loop splitting and
+non-destructive overdub or range replacement. A take is applied as one undo step.
+Input overflow is reported and releases held voices.
+
+`StudioIO` stores relative paths for local media, collects content-addressed sample
+copies transactionally, and relinks by hash or unique basename. Presets include a
+verified neighbouring sample folder. The original sample files are never edited.

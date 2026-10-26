@@ -140,3 +140,21 @@ The native `daw-navigation.txt` report checks pointer anchoring in scrolled time
 ## Family installers and upgrades (0.7.1)
 
 `family_updater` tests both changelog formats, platform/repository asset routing, corrupt download rejection, archive traversal rejection, staging, complete swaps and rollback at each transaction step. Windows also checks custom setup-folder detection. `scripts/test-installer.ps1` installs the actual setup, upgrades a simulated older binary, verifies the exact tested executable and bundled guides/source, then uninstalls while preserving a user-created project. `tests/test-packaging.py` verifies legacy and stable update layouts. Live UAC prompts, protected folders and user-specific security policies still depend on the target computer.
+
+## Studio 0.22.0
+
+New automated coverage verifies sampler/preset/routing schema round-trips, portable
+folder moves, deduplicated collection, cancellation and destination preservation,
+and refusal of ambiguous relinks. DSP tests exercise gated and one-shot note-offs,
+trim/reverse, filtering, loop seams and independent tempo/pitch changes using
+rendered frequency and duration. A long sample verifies natural export tails;
+private-copy and live-engine renders are byte-identical. MIDI tests drive the
+actual callback queue, count-in, velocity, duration, sustain, onset quantisation,
+loop splitting and track locks. Native UI evidence covers trim/Undo, drum slice
+pitches and editor, the four Studio panels and floating-window reopening.
+
+Run the existing seven CTest groups, native `--smoke-test`, `scripts/verify-audio.py`,
+family inventory/translation checks and platform release workflow. `--ui-test DIR`
+runs the native UI evidence without the audio export suite. A physical MIDI device
+and hardware round-trip latency require an actual audio/MIDI device; the cloud
+checks use the same callback with queued input and decoded PCM fixtures.

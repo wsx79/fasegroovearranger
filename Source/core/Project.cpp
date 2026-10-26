@@ -348,6 +348,7 @@ void Project::normalise() {
     while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind==leadTrack?"Lead":t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); if(t.kind==leadTrack){t.gain=.22;t.engine.density=.42;t.engine.roomForBand=false;t.engine.fillEvery=8;} tracks.push_back(t); }
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
+        t.sampler.normalise();t.group=std::clamp(t.group,-1,1);for(auto& send:t.sends)send=finite(send,0,0,1);if(t.sampleHash.size()>64)t.sampleHash.clear();
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
         t.volume.normalise(length());t.panAutomation.normalise(length(),1.);
         if(t.parameters.size()>(size_t)maxParameterLanes)t.parameters.resize((size_t)maxParameterLanes);
@@ -368,10 +369,11 @@ void Project::normalise() {
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneVolume[i]=finite(e.laneVolume[i],1,0,2);e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
         for(size_t k=0;k<t.clips.size();++k){auto& c=t.clips[k];c.role=std::clamp(c.role,-1,5);if(t.freeTimeline){c.position=finite(c.position,0,0,131072);if(c.role<0)c.role=(int)sections[(size_t)sectionAtBeat(c.position)].type;c.span=finite(c.span,4,1./960.,512);}c.span=finite(c.span,0,0,512);if(c.span>0)c.span=std::max(t.freeTimeline?1./960.:.25,c.span);c.loopLength=finite(c.loopLength,0,0,512);if(c.loopLength>0)c.loopLength=std::max(.25,c.loopLength);
-            if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
+            if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){if(!(t.instrument=="sample"&&t.sampler.mode==2))n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
+    for(auto& bus:buses)bus.normalise();
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }

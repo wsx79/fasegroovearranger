@@ -161,6 +161,31 @@ Quality depends on the model. For authentication errors, check the key and model
 
 Folders are read and audio headers measured in the background, so the interface stays responsive even with thousands of files; nothing runs while the browser is idle.
 
+### Studio: sampler, recording and buses
+
+**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. Choose the target track at the top. Four tabs share the selected track.
+
+<p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
+
+**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 60 seconds. Drag the nearest waveform edge to trim start/end; zoom and position allow precise edits. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
+
+- **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
+- **LOOP** repeats the loop region in Classic mode; crossfade softens the seam. **REVERSE** changes playback direction.
+- Root note, transpose and fine tuning set pitch; **VOICES = 1** makes the instrument monophonic. Attack, decay, sustain and release shape the envelope. The low-pass filter has cutoff and resonance; **VELOCITY** sets sensitivity to note strength.
+- **TEMPO SYNC** separates duration from pitch. Set the sample’s original **SOURCE BPM**; playback then follows project tempo. Without sync, transposition also changes playback speed.
+- **DETECT SLICES** finds transients. Shift-click adds a marker; right-click removes the nearest one. **Slices** maps regions to consecutive notes from **FIRST SLICE NOTE**. Audition slices with the pads; a bank selector appears for more than 16 slices. **WRITE SLICE MIDI** replaces the selected clip’s notes with triggers, up to its length; Undo restores the previous clip.
+- **SAVE PRESET** writes a `.fgs` and a neighbouring sample folder. Move both together. **OPEN PRESET** restores sample, root and settings. Project saving and Undo/Redo also preserve sampler settings.
+
+<p align="center"><img src="images/guide_recording.png" alt="Studio MIDI" width="980"></p>
+
+**MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
+
+<p align="center"><img src="images/guide_buses.png" alt="Studio bus" width="980"></p>
+
+**BUS & SEND.** Route the track directly to master or through group A/B. Two sends feed shared reverb and tempo delay. Four channels have editable name, level, pan, mute and solo; returns also expose effect controls. Sends follow track and group levels. Master controls returns too. Playback and export use the same graph; stems include their contributions to shared effects and have matching lengths.
+
+**MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
+
 ### Navigation and selection
 
 - **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The MIDI editor also has a ZOOM slider.

@@ -1,6 +1,6 @@
 # Privacy and permissions — Fase Groove Arranger
 
-Version 0.21.0 · 25 October 2026
+Version 0.22.0 · 26 October 2026
 
 Fase Groove Arranger is a desktop application in Fabio 'Pitch' Serra's FS Pitch ecosystem. Source and project contact: https://github.com/wsx79/fasegroovearranger.
 
@@ -37,3 +37,7 @@ AI COMPOSER supports OpenAI, Anthropic, Google Gemini and an Ollama server whose
 No audio, samples, local file paths, plugin catalogue, serialised plugin/effect state or API keys are included in the musical context. The selected online provider receives its key only in an HTTPS header, with redirects disabled. Keys remain in process memory for the session; they are not saved to projects, preferences, temporary files, logs or subprocess arguments. Generation uses native HTTPS on Windows/macOS and libcurl on Linux. Only provider/model preferences and the Ollama address are saved locally. Closing the composer cancels a pending request; the provider may already have processed or billed it. No request starts automatically and there is no automatic fallback to another provider.
 
 Responses are validated as bounded musical data, never executed as code. A preview is applied only when you press APPLY; Undo restores the preceding project. The resulting MIDI and arrangement become ordinary project data and are saved/autosaved locally in the same way as manual music.
+
+## Studio recording and sample collection
+
+Studio opens only the selected MIDI input for note monitoring and recording. Notes, velocity and sustain-derived durations stay in the local project; MIDI input selection and recording preferences are saved locally. Studio does not record microphone audio. Sample collection and portable presets copy chosen sample files to the selected destination and verify their content locally. Tempo and pitch processing runs on the device, without uploading audio.

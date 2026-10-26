@@ -45,6 +45,7 @@ Lo zoom segue il puntatore (rotella sul righello o Ctrl/Cmd+rotella); Maiusc+rot
 - Pannelli strumenti e piano roll grande separati: ogni batteria mostra solo lo strumento scelto, la chitarra tutte le sue parti. Il piano mantiene i controlli estesi, DNA, Morph, Voicing Coach, Varianti e circolo delle quinte.
 - Disegno, spostamento, durata e dinamica delle note, selezione multipla, quantizzazione, trasposizione e copia/incolla. Importazione MIDI PPQ.
 - Suoni guida originali, campioni personali, uno strumento VST3/AU e un effetto in insert per traccia. Editor e stato salvati nel progetto. Il browser è quello dei groove FaseGroove: prima i motori interni, poi i produttori, con la ricerca. All’avvio scansiona le cartelle VST3 predefinite e una cartella personale; l’elenco è un KnownPluginList di JUCE. Cartella in OPZIONI → IMPOSTAZIONI → PLUGIN.
+- **STUDIO**: campionatore con forma d’onda, tagli, preset portatili, sincronizzazione di tempo e altezza, registrazione di note MIDI, due gruppi e riverbero/delay comuni. Raccolta e ricollegamento dei campioni per progetti portatili. Vedi la [guida](docs/GUIDA.md).
 - Browser dei campioni (**B**): cartelle salvate e preferiti, percorso e cronologia, ricerca, filtro per tipo e ordinamento, informazioni sul file, ascolto e caricamento nel campionatore di una traccia con doppio clic o trascinandolo sulla traccia.
 - Progetti `.fga`, salvataggio atomico e autosave locale; volume, pan, mute, solo, meter e loop di brano o sezione.
 - Export MIDI multitraccia o separato, WAV stereo 24 bit e MP3 stereo 320 kbps, mix completo o singoli stem. L'encoder MP3 è incluso.
@@ -82,7 +83,7 @@ Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_B
 - [Architettura e provenienza](docs/ARCHITECTURE.md) · [Confronto UI famiglia](docs/FAMILY_ALIGNMENT.md)
 - [Licenze di terze parti](THIRD_PARTY_NOTICES.md) · [Verifiche](docs/VALIDATION.md)
 
-Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, automazioni di parametri diversi dal volume traccia, audio warping, catene di più effetti, bus/send, registrazione dei controller MIDI non sono implementati (la compensazione della latenza dei plugin sì). È disponibile un effetto in insert per traccia. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
+Questa versione è una workstation MIDI in sviluppo. Registrazione/editing audio, warping delle tracce audio, catene di più effetti e registrazione delle automazioni dei controller MIDI non sono implementati (la compensazione della latenza dei plugin sì). È disponibile un effetto in insert per traccia. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
 
 I suoni guida sono sintetizzati, non librerie commerciali campionate. Per la produzione finale puoi usare i tuoi strumenti. WAV è senza perdita; MP3 aggiunge il ritardo/padding del codec.
 

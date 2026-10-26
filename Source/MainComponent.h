@@ -12,6 +12,7 @@
 #include "PluginSettings.h"
 #include "PluginBrowser.h"
 #include "SampleBrowser.h"
+#include "StudioWindow.h"
 #include <set>
 #include <deque>
 namespace fga {
@@ -230,13 +231,17 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow();
+    void showStudio(int tab=0);
     void showAiComposer();
     juce::Result captureAiProject(Project&);
     juce::Result applyAiComposition(const Project&,const Project&,bool listen);
     bool verifyAiComposer(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);
 private:
+    friend class StudioWindow;
+    std::unique_ptr<StudioWindow> studioWindow;
     std::unique_ptr<AiComposerWindow> aiWindow;
+    juce::TextButton studioButton{"STUDIO"};
     IconButton aiComposeButton{IconButton::Icon::sparkles};
     DawLookAndFeel theme;
     OptionsOverlay options;
