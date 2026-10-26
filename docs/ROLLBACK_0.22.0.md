@@ -17,7 +17,7 @@ campioni fino a 60 secondi; la sincronizzazione non è un editor di tracce audio
 
 I test coprono audio e MIDI reali, sustain durante il conteggio e cambio ingresso,
 clip nelle zone vuote, loop, preset, percorsi spostati, raccolta annullata, code
-lunghe, copia privata del motore e pannelli nativi. I risultati delle compilazioni
+lunghe, copia privata del motore e pannelli nativi, con acquisizione della take prima della chiusura. I risultati delle compilazioni
 sono nel workflow associato al commit della release. La latenza di un dispositivo
 fisico richiede una prova sull’hardware effettivo.
 

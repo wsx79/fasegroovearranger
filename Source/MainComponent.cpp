@@ -1190,7 +1190,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
 
 // Save / Discard / Cancel, as in any DAW. An untitled project opens SAVE AS and keeps the
 // current song open: close again once it is saved.
-bool MainComponent::requestClose(){if(!dirty)return true;
+bool MainComponent::requestClose(){if(audio.isRecording()&&studioWindow)studioWindow->closeButtonPressed();if(!dirty)return true;
     const int choice=juce::AlertWindow::showYesNoCancelBox(juce::MessageBoxIconType::QuestionIcon,tr("Unsaved changes"),tr("The project has unsaved changes. Save them before closing?"),tr("SAVE"),tr("Discard"),tr("Cancel"),this);
     if(choice==2)return true;
     if(choice!=1)return false;
