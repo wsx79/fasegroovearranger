@@ -161,9 +161,9 @@ Quality depends on the model. For authentication errors, check the key and model
 
 Folders are read and audio headers measured in the background, so the interface stays responsive even with thousands of files; nothing runs while the browser is idle.
 
-### Studio: sampler, recording and buses
+### Studio: sampler, recording and media
 
-**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording, buses and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
+**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
 
 <p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
 
@@ -183,19 +183,28 @@ Folders are read and audio headers measured in the background, so the interface 
 
 **MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
 
-<p align="center"><img src="images/guide_buses.png" alt="Studio bus" width="980"></p>
-
-**BUS & SEND.** An idle meter reads **Silence**: that bus is receiving no signal, which does not necessarily mean it is muted. Other readings are numeric dB. Route the track directly to master or through group A/B. Two sends feed shared reverb and tempo delay. Four channels have editable name, level, pan, mute and solo; returns also expose effect controls. Sends follow track and group levels. Master controls returns too. Playback and export use the same graph; stems include their contributions to shared effects and have matching lengths.
-
 **MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
 
 **Sample audition.** Press **PLAY SAMPLE** to hear only the selected source with the current sampler settings, before track volume, mute, effects and buses. Song playback stops while retaining its position. **AUDITION LOOP** repeats the region for continuous filter, pitch, envelope and trim editing; it does not change the sampler LOOP parameter. **STOP** stops immediately. Without repeat, the region ends naturally; an enabled internal sampler loop continues until STOP. In Slices mode, audition plays the first slice; use pads or the keyboard for the others. The auditioned note is highlighted below. Changing sample or tab, closing Studio, starting the song or recording stops audition. These three controls do not change project data, MIDI or Undo history.
 
-**Sample tuner.** During isolated audition, MIDI keyboard playing or song playback, **DETECTED PITCH** measures the selected sampler audio before track effects and shows its nearest note, cents offset and frequency in Hz. **+** means sharp, **-** means flat; the reference is A = 440 Hz. Adjust **TRANSPOSE** in semitones and **FINE (cents)** for fine tuning: the reading follows the processed sample sound. Octave numbering matches the Studio keyboard. The existing PLAYING indication remains the MIDI trigger key, which can differ from the sample’s actual pitch. The tuner is intended for stable monophonic sounds, approximately 35–1600 Hz, with a short analysis window; noise, crashes, chords and transients may show **No stable pitch**. The last stable pitch is held for one second after playback ends, labelled **LAST PITCH**, so short samples remain readable; then a dash appears.
+**Sample tuner.** During isolated audition, MIDI keyboard playing or song playback, **DETECTED PITCH** measures the selected sampler audio before track effects and shows its nearest note, cents offset and frequency in Hz. **+** means sharp, **-** means flat; the reference is A = 440 Hz. Adjust **TRANSPOSE** in semitones and **FINE (cents)** for fine tuning: the reading follows the processed sample sound. Octave numbering matches the Studio keyboard. The MIDI NOTE indication remains the MIDI trigger key, which can differ from the sample’s actual pitch. The tuner is intended for stable monophonic sounds, approximately 35–1600 Hz, with a short analysis window; noise, crashes, chords and transients may show **No stable pitch**. The last stable pitch is held for one second after playback ends, labelled **LAST PITCH**, so short samples remain readable; then a dash appears.
 
 **Safe scrolling.** In Studio, wheel and trackpad gestures navigate the view without changing levels, parameters or menu choices underneath the pointer. Drag a control or type in its numeric field to edit a value. Waveform zoom and panning remain available.
 
 **If the kick becomes quiet after an edit.** Try **UNDO** first. For a sample source, select Kick and press **RESET SAMPLE**: it preserves the file, MIDI and mix. If it remains quiet, also check track volume, mute/solo, automation, routing and the assigned group level/mute, since sampler reset preserves the mix. Identifying the exact cause requires the project state; low level alone does not establish an audio-engine defect.
+
+### Mixer: groups and sends
+
+<p align="center"><img src="images/guide_buses.png" alt="Mixer groups and sends" width="980"></p>
+
+Open **BUS & SEND** from the mixer header. The panel stays on top, closes with X and reopens centred. Studio retains sampling, recording and media management; mixing controls are in the mixer.
+
+- Each channel’s **M / GA / GB** chooses its output: direct master, Group A or Group B. Groups collect routed tracks and have their own level, pan, mute and solo.
+- **A** toggles the shared reverb send; **B** toggles the shared delay send. A lit button means its send is above zero. The first activation uses 25%; subsequent activations restore the last level used in that session. The project saves the current level, including zero when off.
+- Select any track in the panel and adjust its two percentages independently. **A - REVERB** and **B - DELAY** are effect returns, separate from track Groups A/B. All four buses have editable name, level, pan, mute and solo; returns also expose room/damping and delay time/feedback controls.
+- An idle meter reads **Silence**: it is receiving no signal, which does not necessarily mean mute. Other readings are numeric dB. Wheel and trackpad gestures cannot change values accidentally.
+
+Sends follow track and group levels; master controls returns too. Use song Play or the track’s MIDI keyboard to hear them: opening Bus & Send stops isolated dry sample audition. Song playback does not start automatically. Routing, sends and bus controls support Undo and preserve MIDI. Playback and export retain the same audio graph; stems include their shared-effect contributions.
 
 ### Navigation and selection
 

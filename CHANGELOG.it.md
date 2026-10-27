@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.6
+
+- Sposta gruppi, bus e mandate da Studio a un pannello dedicato del mixer.
+- Aggiunge uscita M/GA/GB e pulsanti A/riverbero e B/delay sui canali. Nel pannello si regolano percentuali, livello/pan/mute/solo dei bus, nomi e parametri effetti.
+- Conserva formato progetti e percorso audio. Test nativi per mandate reali, Annulla, MIDI invariato, canali compatti e rotella sicura; guide IT/EN e tooltip nelle sei lingue aggiornati.
+
 ## 0.22.5
 
 - Accordatore di Studio: nota rilevata dall’audio del campione selezionato, scarto in cent e Hz durante ascolto, tastiera MIDI e brano.

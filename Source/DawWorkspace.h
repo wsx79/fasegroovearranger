@@ -61,7 +61,8 @@ private:
     bool updating=false,gainGesture=false,panGesture=false;
     juce::Label name;
     juce::Slider gain,pan;
-    juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"};
+    juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"},sendA{"A"},sendB{"B"},output{"M"};
+    std::array<double,2> sendMemory{.25,.25};
 };
 class DawMixer : public juce::Component,public juce::SettableTooltipClient {
 public:
@@ -69,6 +70,7 @@ public:
     void refresh();
     void tick();
     void reveal(int track);
+    bool verifySends(const juce::File&);
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;
@@ -85,6 +87,6 @@ private:
     juce::Component channels;
     std::vector<std::unique_ptr<MixerStrip>> strips;
     MixerStrip master;
-    juce::TextButton collapseButton{"COLLAPSE MIXER"};
+    juce::TextButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"};
 };
 }

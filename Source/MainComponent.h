@@ -13,6 +13,7 @@
 #include "PluginBrowser.h"
 #include "SampleBrowser.h"
 #include "StudioWindow.h"
+#include "MixerRoutingWindow.h"
 #include <set>
 #include <deque>
 namespace fga {
@@ -232,6 +233,7 @@ public:
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow();
     void showStudio(int tab=0);
+    void showMixerRouting(int track=-1);
     void showAiComposer();
     juce::Result captureAiProject(Project&);
     juce::Result applyAiComposition(const Project&,const Project&,bool listen);
@@ -239,7 +241,9 @@ public:
     bool verifyTimelineEditing(const juce::File&);
 private:
     friend class StudioWindow;
+    friend class MixerRoutingWindow;
     std::unique_ptr<StudioWindow> studioWindow;
+    std::unique_ptr<MixerRoutingWindow> mixerRoutingWindow;
     std::unique_ptr<AiComposerWindow> aiWindow;
     juce::TextButton studioButton{"STUDIO"};
     IconButton aiComposeButton{IconButton::Icon::sparkles};

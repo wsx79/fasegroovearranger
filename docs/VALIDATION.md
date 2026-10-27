@@ -1,5 +1,14 @@
 # Validation record
 
+## 0.22.6 — Mixer groups and A/B sends
+
+- All seven Linux CTest groups pass. The audio graph, project schema and MIDI engine are unchanged; this moves the existing routing controls and adds mixer entry points.
+- Native mixer tests change output group, send amount, group gain and return mute through actual callbacks, verify one-step Undo and byte-identical MIDI, then restore the original state.
+- Per-channel A/reverb and B/delay buttons change the real send values and their visible on/off states. Undo restores the prior amount. Controls fit 100/140/210/320 px strip heights.
+- The mixer header opens the dedicated always-on-top panel; hide/reopen restores centred placement. Real wheel callbacks preserve project JSON and Undo, and meter labels retain Silence/plain dB.
+- Existing sampler audition/tuner, MIDI recording, Studio window and workspace checks pass after removing Studio's bus tab. Native images update the mixer, sampler and recording guides.
+- Common theme/module/translations and package-layout checks pass locally. Native local checks used the updated source with the prior version resource; the official tagged workflow builds the final version on Windows/macOS/Linux and gates publication on all checks.
+
 ## 0.22.5 — Audio pitch measurement in Studio
 
 - All seven local Linux CTest groups pass. Controlled PCM checks cover 55–1568 Hz, detuned tones within four cents, a decaying tonal kick, a missing fundamental, silence, white noise and stereo anti-phase signals. Retargeting discards prior sample data.

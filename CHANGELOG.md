@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.6
+
+- Move bus/group and effect-send management from Studio into a dedicated mixer panel.
+- Add M/GA/GB output selection and A/reverb, B/delay send toggles to mixer channels. The panel adjusts send amounts, bus gain/pan/mute/solo, names and effect parameters.
+- Keep existing project/audio routing; native checks verify real send changes, Undo, unchanged MIDI, compact strips and safe scrolling. Refresh IT/EN guides and six-language tooltips.
+
 ## 0.22.5
 
 - Studio tuner measures the selected sample audio and displays detected note, cents and Hz during audition, MIDI input and song playback.
