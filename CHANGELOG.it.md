@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.2
+
+- Rinnova i pulsanti con icone vettoriali e aggiunge potenziometri volume/pan nell’inspector e master/densità/swing/feel nella home, conservando valori modificabili e Annulla.
+- Apre l’inspector con doppio clic sul nome della traccia, con chiusura compatta e impaginazione più raccolta. Evidenzia Studio, chitarra solista e comandi mixer con icone coerenti.
+- Prolunga il colore delle intestazioni lungo la sola linea iniziale delle sezioni. Aggiunge zoom e Adatta brano allineati a destra accanto ad Armonia.
+- Sostituisce la scritta del mixer chiuso con un meter stereo del master, dB e memoria dei picchi; riaprendo il mixer tornano le strip.
+- Un clic sulla posizione alterna battute e tempo trascorso con residuo. Il righello dell’arrangiamento segue la scelta; metrica, snap, MIDI e formato progetto restano invariati.
+- Aggiorna guide IT/EN, schermate native e suggerimenti nelle sei lingue. Aggiunge verifiche native per comandi, Annulla, audio reale del master, zoom e conversione del tempo.
+
 ## 0.23.1
 
 - Aggiorna le guide italiana e inglese all’Arranger attuale: campionatore, ascolto e accordatore, registrazione MIDI/audio, importazione take, render traccia, mandate del mixer e automazioni volume/pan/master/plugin.

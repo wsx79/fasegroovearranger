@@ -239,13 +239,14 @@ public:
     juce::Result applyAiComposition(const Project&,const Project&,bool listen);
     bool verifyAiComposer(const juce::File&);
     bool verifyTimelineEditing(const juce::File&);
+    bool verifyPresentation(const juce::File&);
 private:
     friend class StudioWindow;
     friend class MixerRoutingWindow;
     std::unique_ptr<StudioWindow> studioWindow;
     std::unique_ptr<MixerRoutingWindow> mixerRoutingWindow;
     std::unique_ptr<AiComposerWindow> aiWindow;
-    juce::TextButton studioButton{"STUDIO"};
+    ActionButton studioButton{"STUDIO"};
     IconButton aiComposeButton{IconButton::Icon::sparkles};
     DawLookAndFeel theme;
     OptionsOverlay options;
@@ -260,10 +261,19 @@ private:
     DawMixer mixer{*this};
     InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
     bool inspectorVisible=true,mixerVisible=true,followPlayhead=false;
+    bool timeDisplay=false;
+    juce::String positionLegend;
+    DisplayButton positionModeButton;
+    IconButton timelineZoomOut{IconButton::Icon::zoomOut},timelineZoomIn{IconButton::Icon::zoomIn};
+    ActionButton timelineFitButton{"FIT SONG"};
+    juce::Slider timelineZoom;
+    static juce::String timeText(double seconds,int decimals=0);
+    juce::String rulerText(double beat)const;
+    void toggleTimeDisplay();
     int mixerHeight=244,inspectorWidth=248;
     int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
-    IconButton inspectorCollapse{IconButton::Icon::inspector};
+    IconButton inspectorCollapse{IconButton::Icon::close};
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;
@@ -273,31 +283,31 @@ private:
     // Window layout: the control bar, the toolbar rows below it (two, three in the MIDI editor)
     // and the status bar.
     static constexpr int controlBarHeight=56,toolRowHeight=36,statusHeight=28;
-    int toolbarBottom()const{return controlBarHeight+(page==Page::editor?3:2)*toolRowHeight;}
+    int toolbarBottom()const{return controlBarHeight+(page==Page::editor?3:2)*toolRowHeight+(page==Page::arrangement?16:0);}
     juce::Rectangle<int> lcdArea;std::vector<int> lcdDividers;std::vector<juce::Rectangle<int>> toolbarDividers;
-    juce::TextButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
+    ActionButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     IconButton automationButton{IconButton::Icon::automation};
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
-    juce::TextButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
-    juce::TextButton addTrackButton { "+ MIDI" };
+    ActionButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    ActionButton addTrackButton { "+ MIDI" };
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
     juce::Slider tempoSlider,swingSlider,densitySlider,humanizeSlider,masterSlider,zoomSlider;
     juce::Label positionLabel,chordsLabel,statusLabel;
-    juce::TextButton soundButton{"INSTRUMENT"},pluginEditorButton{"OPEN VST"},sampleButton{"LOAD SAMPLE"},loadPluginButton{"LOAD VST3 / AU"};
+    ActionButton soundButton{"INSTRUMENT"},pluginEditorButton{"OPEN VST"},sampleButton{"LOAD SAMPLE"},loadPluginButton{"LOAD VST3 / AU"};
     juce::Slider gainSlider,panSlider,velocitySlider;
-    juce::TextButton muteButton{"MUTE"},soloButton{"SOLO"};
+    ActionButton muteButton{"MUTE"},soloButton{"SOLO"};
     juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
     juce::ComboBox soundBox,gridBox;
-    juce::TextButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
-    juce::TextButton fitNotesButton{"FIT"};
+    ActionButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
+    ActionButton fitNotesButton{"FIT"};
     IconButton drawTool{IconButton::Icon::pencil},selectTool{IconButton::Icon::pointer},eraseTool{IconButton::Icon::eraser},regenerateClipButton{IconButton::Icon::dice};
-    juce::TextButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
-    juce::TextButton sectionLoopButton{"LOOP CLIP"};
-    juce::TextButton chordEditButton{"EDIT CHORDS"};
+    ActionButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
+    ActionButton sectionLoopButton{"LOOP CLIP"};
+    ActionButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
     std::deque<Project> undoStack,redoStack;
     const void* lastCheckpointControl=nullptr;juce::uint32 lastCheckpointTime=0;

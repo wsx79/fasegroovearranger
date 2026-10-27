@@ -1,5 +1,13 @@
 # Validation record
 
+## 0.23.2 — workspace controls and time display
+
+- Inspector gain/pan and home master/density/swing/feel use rotary controls with the existing values, gestures and Undo. Labelled actions gain vector icons; compact inspector dismissal and double-click track-header opening retain transport position.
+- Section-start lines match header colours. Footer zoom/fit is aligned with Harmony, and the collapsed mixer shows a stereo master peak meter with dB and peak hold instead of the mixer caption.
+- Clicking the transport position switches bars and elapsed time with a remaining-time legend; arrangement labels convert beat positions using project BPM. Notes, snap, loops, project schema and musical timing remain unchanged. The preference is local.
+- Native presentation verification exercises real controls, rotary Undo, footer zoom/fit, readout conversion, unchanged MIDI/project/Undo and a compact meter driven by actual live guide audio. Existing native Studio, guide, MIDI editing, navigation and workspace regressions are retained.
+- Theme/font/shared-module and six-language checks pass. Italian and English manuals and screenshots are refreshed. Local build/logs/screenshots and reversible patches are in the review report; official cross-platform release outcomes are recorded in the release report.
+
 ## 0.23.1 — manual refresh
 
 - Both manuals retain nine chapters and eleven images; local anchor checks, family resources and Windows/Linux packaging checks pass. Updated native screenshots follow the current Arranger.

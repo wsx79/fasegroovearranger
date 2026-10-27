@@ -106,6 +106,8 @@ Without CMake, `bash scripts/test-core.sh` runs the arranging tests with g++.
 
 Generation settings affect the **next generation**. Existing editable MIDI stays as written when key, harmony or genre controls change. Tempo updates playback immediately. Apply a new harmony to all unlocked tracks together to keep them in tune.
 
+Rotary controls and vector icons refresh the inspector and home view. Double-click a track header to reveal its inspector; use zoom and Fit Song beside Harmony. A compact master meter appears with the mixer closed. Click the transport position to switch bars and elapsed/remaining time without changing musical timing.
+
 ## Guides, privacy and scope
 
 - [Guida italiana](docs/GUIDA.md) · [English guide](docs/GUIDE.md)
@@ -114,7 +116,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.23.1** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.23.2** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

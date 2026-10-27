@@ -79,6 +79,8 @@ Scarica da [Releases](https://github.com/wsx79/fasegroovearranger/releases/lates
 
 Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_BUILD_APP=OFF`.
 
+Potenziometri e icone rinnovano inspector e home. Doppio clic sul nome della traccia apre l’inspector; accanto ad Armonia trovi zoom e Adatta brano. Con mixer chiuso compare il meter master. Clicca la posizione per alternare battute e tempo trascorso/residuo, conservando la griglia musicale.
+
 ## Guide e privacy
 
 - [Guida italiana](docs/GUIDA.md) · [English guide](docs/GUIDE.md)

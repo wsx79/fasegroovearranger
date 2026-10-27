@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.2
+
+- Refine labelled actions with vector icons and add rotary inspector volume/pan and home master/density/swing/feel controls, retaining editable values and Undo.
+- Open the inspector by double-clicking a track header; use a compact close button and a tighter inspector layout. Highlight Studio, guitar-lead and mixer actions with matching icons.
+- Extend each section header’s colour down its start line. Add right-aligned arrangement zoom and Fit Song beside Harmony.
+- Replace the collapsed mixer caption with a stereo master meter, dB reading and peak hold; restore normal mixer strips when reopened.
+- Click the transport position to switch between bars and elapsed time with remaining time. Arrangement ruler labels follow that choice while musical timing, snap, MIDI and project format stay unchanged.
+- Update IT/EN guides, native screenshots and six-language hints. Add native checks for controls, Undo, real master audio, zoom and time conversion.
+
 ## 0.23.1
 
 - Refresh Italian and English manuals for the current Arranger: Studio sample editing/audition/tuning, MIDI/audio recording, take import, track bounce, mixer sends and volume/pan/master/plugin automation.

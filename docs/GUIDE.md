@@ -25,15 +25,16 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Sampler and Studio](#studio-sampler-recording-and-media)
 - [Mixer and sends](#mixer-groups-and-sends)
 - [Automation](#pan-master-and-vst-parameters)
+- [Bars and elapsed time](#bars-and-elapsed-time)
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 
-This guide is current for **0.23.1**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.23.2**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.23.1** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.23.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -112,6 +113,10 @@ Drag the **lower edge of a track header** to change that track’s height indepe
 
 **M** and **S** beside a track name mute and solo it without opening the panel. Click the section-name header to start playback from that point. **ZOOM** changes how much of the song you see.
 
+In the arrangement, **double-click a track name** (for example Kick) to select the track and reveal its inspector. Playback and the cursor stay where they are. The inspector’s compact **X** hides it; **I** or the top-toolbar icon restores it. To rename a track, use the name inside its inspector or mixer, or the right-click menu.
+
+The home screen’s **master volume**, **note density**, **Swing** and **Feel** use rotary controls: drag vertically/horizontally or edit their numeric values. Inspector **Volume** and **Pan** are also rotary, with values below; double-click restores 0 dB or centre. Their units and musical effects remain as described below.
+
 ### DAW workspace
 
 **DELETE MIDI TRACK** in the inspector, or **right-click → Delete MIDI track**, removes a track added with + MIDI. **UNDO** restores its notes, name, instrument and effect; following tracks keep their data. Generated instrument tracks cannot be deleted.
@@ -125,7 +130,13 @@ After regeneration the zoom fits automatically: the whole song in the arrangemen
 
 The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. The small **panel icon** at its top right hides it and returns its entire width to the arrangement. Reopen it with the **inspector icon in the top toolbar** or **I**. The toolbar icon remains available while scrolling. Drag the panel’s **right edge** to resize its width; double-click that edge to restore the default width. The chosen size is remembered. **INSPECTOR / I** also works. Scroll the inspector if vertical space is limited.
 
+At the right of the **HARMONY** row, above **BUS & SEND**, use **zoom − / slider / zoom +** and **FIT SONG**. Fit shows the complete song duration within the available timeline width, including with the browser open. These view controls do not change MIDI, snap or Undo. Track heights remain as you set them.
+
 The **MIXER** shows the tracks in musical order with a fixed master at the right. Track names (Kick, Snare, etc.) are at the top; the built-in/sample/VST selector is at the bottom. Faders affect audio only, preserving MIDI velocities. Meters clear on pause. The master **CLIP** indicator latches overloads; click it to reset. **COLLAPSE MIXER**, at the top right of the mixer, folds the faders away to give space back to the tracks. A slim bar keeps **SHOW MIXER** available to restore the previous height. **MIXER / F3** also works. Drag the mixer header to adjust its height; double-click restores the default height. The chosen size is remembered; channels scroll horizontally when needed.
+
+When the mixer is closed, its MIXER/levels caption is replaced by a **stereo master meter**, including a dB reading and peak hold. It follows real output audio. Reopening the mixer removes this compact meter and restores the strips and their master channel.
+
+**Coloured vertical lines at section starts** match each section header. They mark the entry of Intro, Main, Answer and the other parts without filling the whole section.
 
 - **Click a clip or the grid** to select without moving the cursor or interrupting playback. **Click the section-name header** to place the cursor and immediately listen from that position. The numbered ruler still positions the cursor and controls the loop. **Double-click** or **E** opens the full MIDI editor.
 - **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
@@ -171,7 +182,7 @@ Folders are read and audio headers measured in the background, so the interface 
 
 ### Studio: sampler, recording and media
 
-**STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
+**STUDIO**, with its waveform icon next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
 
 #### Prepare and edit a sample
 
@@ -264,6 +275,12 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 | **Position** | Bar : beat / song length in bars, next to the TRANSPORT title. |
 | **LOOP** | Repeats the chosen region; LOOP CLIP repeats the selected editor section. |
 | **CLICK** | Metronome while playing (live only, never exported); same as **C**. |
+
+### Bars and elapsed time
+
+Click the **position number or the small bar-count legend** next to the metronome. The transport alternates **bars.beats.ticks** and **minutes:seconds.milliseconds**. Time mode shows **remaining time** below in grey; durations above an hour also include hours.
+
+The **arrangement** ruler switches from bar numbers to song times calculated from the current BPM. Lines still follow bars and beats: **metre, snap, notes, loops and automation stay unchanged**. The piano roll retains its musical references. Time follows song position, so it moves back when a loop restarts. Click again to restore bars; the choice is remembered locally.
 
 Songs use **4/4**, with four beats per bar. The transport indicator is not a time-signature selector.
 

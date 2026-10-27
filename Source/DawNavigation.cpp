@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "Localisation.h"
 #include <cmath>
 #include <limits>
 
@@ -20,6 +21,18 @@ bool selectionRange(const MainComponent& owner,const std::set<int>& indices,bool
     }
     return to>from;
 }
+}
+
+juce::String MainComponent::timeText(double seconds,int decimals){
+    if(!std::isfinite(seconds))seconds=0;seconds=std::max(0.,seconds);decimals=std::clamp(decimals,0,3);
+    const auto factor=decimals==3?1000:decimals==2?100:decimals==1?10:1;
+    const auto ticks=(juce::int64)std::floor(seconds*factor+1e-6),whole=ticks/factor;
+    juce::String text=whole>=3600?juce::String(whole/3600)+":"+juce::String((whole/60)%60).paddedLeft('0',2)+":"+juce::String(whole%60).paddedLeft('0',2):juce::String(whole/60)+":"+juce::String(whole%60).paddedLeft('0',2);
+    if(decimals)text+="."+juce::String(ticks%factor).paddedLeft('0',decimals);return text;
+}
+juce::String MainComponent::rulerText(double beat)const{return timeDisplay?timeText(beat*60/project.settings.bpm,2):juce::String((int)std::llround(beat/4)+1);}
+void MainComponent::toggleTimeDisplay(){
+    timeDisplay=!timeDisplay;Localisation::setSetting("timelineTimeDisplay",timeDisplay?"1":"0");showPosition(timelinePosition());arrangement.repaint();repaint(lcdArea);
 }
 void MainComponent::suspendFollow(){followPlayhead=false;followButton.setToggleState(false,juce::dontSendNotification);}
 void MainComponent::zoomAt(bool editor,double factor,double viewportX){
@@ -188,4 +201,52 @@ bool MainComponent::verifyNavigation(const juce::File& folder){
     folder.getChildFile("daw-navigation.txt").replaceWithText(ok?"PASS anchored wheel zoom, scrolling, selection zoom/loop, MIDI nudge/transpose/duplicate/cut/paste, drum isolation, gesture safety and atomic undo":"FAIL "+failed);
     return ok;
 }
+// Native presentation regressions use the real controls. Navigation must not edit
+// musical data; the small master meter must be driven by actual callback audio.
+bool MainComponent::verifyPresentation(const juce::File& folder){
+    const auto saved=project;const auto undos=undoStack,redos=redoStack;const auto midi=midiFile(project);
+    const bool wasDirty=dirty,wasInspector=inspectorVisible,wasMixer=mixerVisible,wasTime=timeDisplay;
+    const int track=selectedTrack,section=selectedSection;const double zoom=arrangement.pixelsPerBar,cursor=editCursor,at=audio.position();const auto scroll=arrangementPort.getViewPosition();
+    const auto timeSetting=Localisation::setting("timelineTimeDisplay","0");
+    bool ok=true;juce::String failures;
+    auto stage=[&](const char* name,bool pass){if(!pass){ok=false;failures+=juce::String(name)+"; ";}};
+    auto snapshot=[&](const char* name){if(auto out=folder.getChildFile(name).createOutputStream())return juce::PNGImageFormat().writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);return false;};
+    auto json=[&]{return juce::JSON::toString(projectJson(project),false,17);};const auto original=json();
+    audio.stop();showArrangement();inspectorVisible=false;resized();arrangementPort.setViewPosition(0,0);
+    const auto source=juce::Desktop::getInstance().getMainMouseSource();const auto now=juce::Time::getCurrentTime();const juce::Point<float> pos(64.f,80.f);
+    arrangement.mouseDoubleClick(juce::MouseEvent(source,pos,juce::ModifierKeys::leftButtonModifier,1,0,0,0,0,&arrangement,&arrangement,now,pos,now,2,false));
+    stage("double-click track header reveals inspector",inspectorVisible&&selectedTrack==trackAtRow(0)&&page==Page::arrangement&&inspectorPort.getWidth()>0);
+    auto* gain=dynamic_cast<juce::Slider*>(trackInspector.findChildWithID("track-gain"));auto* pan=dynamic_cast<juce::Slider*>(trackInspector.findChildWithID("track-pan"));
+    stage("inspector rotaries have visible editable values",gain&&pan&&gain->getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag&&pan->getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag&&gain->getTextBoxPosition()==juce::Slider::TextBoxBelow&&gain->getHeight()>60);
+    if(gain){const auto before=project.tracks[(size_t)selectedTrack].gain;gain->setValue(3,juce::sendNotificationSync);stage("rotary gain changes audio without changing MIDI",std::abs(project.tracks[(size_t)selectedTrack].gain-juce::Decibels::decibelsToGain(3.))<1e-6&&midiFile(project)==midi);undo(false);stage("one undo restores rotary gain",std::abs(project.tracks[(size_t)selectedTrack].gain-before)<1e-9);}
+    if(pan){const double before=project.tracks[(size_t)selectedTrack].pan;pan->setValue(-25,juce::sendNotificationSync);stage("rotary pan uses the existing stereo range",std::abs(project.tracks[(size_t)selectedTrack].pan+.25)<1e-9);undo(false);stage("one undo restores rotary pan",std::abs(project.tracks[(size_t)selectedTrack].pan-before)<1e-9);}
+    for(auto* knob:{&masterSlider,&densitySlider,&swingSlider,&humanizeSlider})stage("home controls remain functional rotaries",knob->getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag&&knob->getBounds().getHeight()>=40);
+    // Show the song at a nonzero time. Only the display preference changes.
+    seekTimeline(std::min(32.,project.length()));timeDisplay=false;showPosition(timelinePosition());const auto beforeMode=json();const auto count=undoStack.size();const auto position=audio.position();const auto grid=timelineSnap;
+    positionModeButton.onClick();stage("clock mode preserves project, grid, undo and playhead",timeDisplay&&json()==beforeMode&&midiFile(project)==midi&&undoStack.size()==count&&audio.position()==position&&timelineSnap==grid&&positionLabel.getText()==timeText(timelinePosition()*60/project.settings.bpm,3));
+    stage("clock and ruler convert actual beat durations",timeText(61.234,3)=="1:01.234"&&timeText(3661.2)=="1:01:01"&&rulerText(4)==timeText(240/project.settings.bpm,2)&&positionLegend.startsWith("-"));
+    stage("elapsed-time workspace screenshot",snapshot("workspace-time.png"));
+    positionModeButton.onClick();stage("bar display is restored without edits",!timeDisplay&&json()==beforeMode&&undoStack.size()==count&&rulerText(4)=="2");
+    const double beforeZoom=arrangement.pixelsPerBar;timelineZoomIn.onClick();stage("footer zoom-in works",arrangement.pixelsPerBar>beforeZoom);timelineZoomOut.onClick();stage("footer zoom-out reverses scale",std::abs(arrangement.pixelsPerBar-beforeZoom)<1e-6);
+    timelineZoom.setValue(12,juce::sendNotificationSync);stage("footer zoom slider controls the timeline",std::abs(arrangement.pixelsPerBar-12)<1e-6);timelineFitButton.onClick();
+    stage("fit covers the complete song and keeps footer controls separate",216+project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth()&&arrangementPort.getViewPositionX()==0&&chordsLabel.getRight()<timelineZoomOut.getX()&&timelineFitButton.getRight()==mixer.getRight());
+    stage("view controls leave music and undo unchanged",json()==beforeMode&&midiFile(project)==midi&&undoStack.size()==count&&audio.position()==position);
+    stage("new workspace screenshot",snapshot("workspace-refined.png"));
+    mixerVisible=false;mixerToggle.setToggleState(false,juce::dontSendNotification);resized();mixer.tick();
+    bool hiddenPort=false;for(auto* child:mixer.getChildren())if(auto* port=dynamic_cast<juce::Viewport*>(child))hiddenPort=!port->isVisible();stage("collapsed mixer retains compact master display",mixer.isVisible()&&mixer.getHeight()==28&&hiddenPort);
+    // A real live guide note, through the main callback, drives the compact meter.
+    for(auto& t:project.tracks)t.solo=false;project.tracks[0].mute=false;project.tracks[0].gain=1;project.masterGain=.8;audio.collectGarbage();audio.updateMix(project);refreshControls();
+    audio.liveMidi(0,juce::MidiMessage::noteOn(1,69,.8f),false);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+    for(int i=0;i<12;++i){audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);mixer.tick();}
+    const auto image=mixer.createComponentSnapshot(mixer.getLocalBounds());const auto pixel=image.getPixelAt(80,7);
+    stage("compact meter follows real stereo master audio",audio.masterLevel()>.001f&&pixel.getGreen()>pixel.getRed()*1.2f);
+    stage("collapsed live master screenshot",snapshot("workspace-master-meter.png"));
+    audio.liveMidi(0,juce::MidiMessage::noteOff(1,69),false);audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);audio.stop();
+    mixerVisible=true;mixerToggle.setToggleState(true,juce::dontSendNotification);resized();bool shownPort=false;for(auto* child:mixer.getChildren())if(auto* port=dynamic_cast<juce::Viewport*>(child))shownPort=port->isVisible();stage("reopening mixer restores faders",shownPort&&mixer.getHeight()>28);
+    project=saved;timeDisplay=wasTime;Localisation::setSetting("timelineTimeDisplay",timeSetting);inspectorVisible=wasInspector;mixerVisible=wasMixer;inspectorToggle.setToggleState(wasInspector,juce::dontSendNotification);mixerToggle.setToggleState(wasMixer,juce::dontSendNotification);arrangement.pixelsPerBar=zoom;editCursor=cursor;
+    changed();audio.seek(at);undoStack=undos;redoStack=redos;dirty=wasDirty;select(track,section);resized();arrangementPort.setViewPosition(scroll);showPosition(timelinePosition());stage("test restores musical project",json()==original&&midiFile(project)==midi);
+    folder.getChildFile("presentation.txt").replaceWithText(ok?"PASS header double-click/inspector; rotary gain/pan Undo; home knobs; real master meter and mixer reopening; footer zoom/fit; elapsed/remaining time and beat-aligned ruler; unchanged MIDI, project, grid and Undo":"FAIL "+failures);
+    return ok;
+}
+
 }

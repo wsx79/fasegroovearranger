@@ -32,6 +32,9 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.75f);section.setInterceptsMouseClicks(false,false);
     gain.setComponentID("track-gain");pan.setComponentID("track-pan");sample.setComponentID("inspector-sample");loop.setComponentID("inspector-loop");
     slider(gain,-60,6.0," dB");slider(pan,-100,100,"%");
+    for(auto* knob:{&gain,&pan}){knob->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob->setTextBoxStyle(juce::Slider::TextBoxBelow,false,78,19);knob->setMouseDragSensitivity(170);}
+    instrument.setIcon(IconButton::Icon::gear);editor.setIcon(IconButton::Icon::pencil);regenerate.setIcon(IconButton::Icon::dice);loop.setIcon(IconButton::Icon::loop);
+    lockTrack.setIcon(IconButton::Icon::lock);lockClip.setIcon(IconButton::Icon::lock);pluginEditor.setIcon(IconButton::Icon::piano);samplerEditor.setIcon(IconButton::Icon::studio);deleteTrack.setIcon(IconButton::Icon::close);
     for(auto* b:{&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&loop})b->setClickingTogglesState(false);
     mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);
     // Actions read the selection when clicked; nothing is cached between refreshes.
@@ -70,7 +73,7 @@ void TrackInspector::refresh(){
     if(!gainGesture)gain.setValue(db(t.gain),juce::dontSendNotification);
     if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
     // An automated volume or pan reads in blue.
-    for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);}}
+    for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);slider->setColour(juce::Slider::rotarySliderFillColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);slider->removeColour(juce::Slider::rotarySliderFillColourId);}}
     const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
@@ -94,31 +97,31 @@ void TrackInspector::paint(juce::Graphics& g){
         g.drawText(juce::String(rowForTrack(owner.selectedTrack)+1).paddedLeft('0',2),badge,juce::Justification::centred);
         g.setColour(colour);g.fillRoundedRectangle(cards.front().toFloat().withHeight(2.f).reduced(10.f,0),1.f);
     }
-    for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim);
+    for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim,title.first=="Volume"||title.first=="Pan"?juce::Justification::centred:juce::Justification::centredLeft);
 }
 // Four compact cards share the workstation's type, spacing and colours. Actions
 // retain their component IDs and always operate on the current selection.
 int TrackInspector::layout(int width){
     cards.clear();captions.clear();const int margin=8,inset=20,w=std::max(120,width-inset*2),gap=6;
     const int half=(w-gap)/2;int y=8,cardStart=y;
-    auto title=[&](const char* text){captions.push_back({text,{inset,y+10,w,14}});y+=30;};
-    auto row=[&](juce::Component& c,int height=26){c.setBounds(inset,y,w,height);y+=height+4;};
-    auto pair=[&](juce::Component& a,juce::Component& b){a.setBounds(inset,y,half,26);b.setBounds(inset+half+gap,y,w-half-gap,26);y+=32;};
-    auto endCard=[&]{y+=8;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=8;cardStart=y;};
+    auto title=[&](const char* text){captions.push_back({text,{inset,y+6,w,14}});y+=22;};
+    auto row=[&](juce::Component& c,int height=24){c.setBounds(inset,y,w,height);y+=height+4;};
+    auto pair=[&](juce::Component& a,juce::Component& b){a.setBounds(inset,y,half,24);b.setBounds(inset+half+gap,y,w-half-gap,24);y+=28;};
+    auto endCard=[&]{y+=6;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=6;cardStart=y;};
     title("TRACK INSPECTOR");
-    name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+24,w,16);y+=46;
-    mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=30;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
+    name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+22,w,16);y+=40;
+    mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=28;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
     title("SOUND ASSIGNMENT");
     const int third=(w-gap*2)/3;
-    internal.setBounds(inset,y,third,26);sample.setBounds(inset+third+gap,y,third,26);plugin.setBounds(inset+2*(third+gap),y,w-2*(third+gap),26);y+=32;
+    internal.setBounds(inset,y,third,24);sample.setBounds(inset+third+gap,y,third,24);plugin.setBounds(inset+2*(third+gap),y,w-2*(third+gap),24);y+=28;
     row(instrument);
     const bool external=validTrack()&&(owner.audio.plugin(owner.selectedTrack)!=nullptr||owner.audio.effectPlugin(owner.selectedTrack)!=nullptr);
     pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
     const bool sampled=validTrack()&&owner.project.tracks[(size_t)owner.selectedTrack].instrument=="sample";samplerEditor.setVisible(sampled);if(sampled)row(samplerEditor);else samplerEditor.setBounds({});
     endCard();
     title("VOLUME / PAN");
-    captions.push_back({"Volume",{inset,y+5,44,14}});gain.setBounds(inset+46,y,w-46,24);y+=34;
-    captions.push_back({"Pan",{inset,y+5,44,14}});pan.setBounds(inset+46,y,w-46,24);y+=34;endCard();
+    gain.setBounds(inset,y,half,76);pan.setBounds(inset+half+gap,y,w-half-gap,76);
+    captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;endCard();
     title("SELECTED CLIP");
     row(section,18);pair(editor,regenerate);pair(loop,lockClip);endCard();
     return y;
@@ -188,7 +191,7 @@ void MixerStrip::resized(){const int w=getWidth(),h=getHeight();const bool maste
     if(compact){pan.setVisible(false);const int cell=(w-13)/4;mute.setBounds(4,32,cell,18);solo.setBounds(7+cell,32,cell,18);sendA.setBounds(10+cell*2,32,cell,18);sendB.setBounds(13+cell*3,32,cell,18);const int top=master?60:56;gain.setBounds(10,top,faderRight-10,std::max(18,h-top-(sourceVisible?40:22)));}
     else{pan.setVisible(!master);pan.setBounds(6,32,28,28);mute.setBounds(38,32,w-43,15);solo.setBounds(38,49,w-43,15);sendA.setBounds(5,73,(w-13)/2,18);sendB.setBounds(8+(w-13)/2,73,(w-13)/2,18);const int top=master?60:96;gain.setBounds(10,top,faderRight-10,std::max(20,h-top-40));}}
 void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
-DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize its height; double-click to restore the default.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);addAndMakeVisible(routingButton);routingButton.setComponentID("mixer-routing");routingButton.onClick=[this]{owner.showMixerRouting();};tip(routingButton,"Open mixer output groups and shared reverb/delay sends and returns.");collapseButton.setComponentID("mixer-collapse");
+DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize its height; double-click to restore the default.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);addAndMakeVisible(routingButton);routingButton.setIcon(IconButton::Icon::automation);collapseButton.setIcon(IconButton::Icon::mixer);routingButton.setComponentID("mixer-routing");routingButton.onClick=[this]{owner.showMixerRouting();};tip(routingButton,"Open mixer output groups and shared reverb/delay sends and returns.");collapseButton.setComponentID("mixer-collapse");
     tip(collapseButton,"Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.");
     collapseButton.onClick=[this]{owner.mixerVisible=!owner.mixerVisible;owner.mixerToggle.setToggleState(owner.mixerVisible,juce::dontSendNotification);owner.resized();};
     for(int row=0;row<trackCount;++row){auto strip=std::make_unique<MixerStrip>(m,trackAtRow(row));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}}
@@ -197,12 +200,25 @@ void DawMixer::refresh(){
     while((int)strips.size()>count)strips.pop_back();
     while((int)strips.size()<count){auto strip=std::make_unique<MixerStrip>(owner,trackAtRow((int)strips.size()));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}
     resized();for(auto& s:strips)s->refresh();master.refresh();}
-void DawMixer::tick(){for(auto& s:strips)s->tick();master.tick();}
+void DawMixer::tick(){
+    for(auto& s:strips)s->tick();master.tick();bool moved=false;
+    for(size_t side=0;side<2;++side){const float before=compactPeaks[side],held=compactHolds[side];compactPeaks[side]=std::max(owner.audio.masterLevel((int)side),before*.82f);
+        if(compactPeaks[side]>=held){compactHolds[side]=compactPeaks[side];compactHoldTicks[side]=24;}else if(--compactHoldTicks[side]<=0)compactHolds[side]=std::max(compactPeaks[side],held*.9f);
+        moved=moved||std::abs(Daw::meterPosition(before)-Daw::meterPosition(compactPeaks[side]))>.001f||std::abs(Daw::meterPosition(held)-Daw::meterPosition(compactHolds[side]))>.001f;}
+    if(!owner.mixerVisible&&moved)repaint(0,0,std::max(0,getWidth()-320),24);
+}
 bool DawMixer::verifySends(const juce::File& folder){const auto saved=owner.project;auto undos=owner.undoStack,redos=owner.redoStack;const bool dirty=owner.dirty;const auto midi=midiFile(owner.project);bool ok=!strips.empty();if(ok){const int ti=trackAtRow(0);for(int i=0;i<2;++i){auto* button=dynamic_cast<juce::Button*>(strips[0]->findChildWithID(i==0?"mixer-send-a":"mixer-send-b"));if(!button){ok=false;continue;}const double old=owner.project.tracks[(size_t)ti].sends[(size_t)i];const auto count=owner.undoStack.size();button->onClick();const double value=owner.project.tracks[(size_t)ti].sends[(size_t)i];ok=ok&&(old>0?value==0:value>0)&&button->getToggleState()==(value>0)&&owner.undoStack.size()==count+1&&midiFile(owner.project)==midi;owner.undo(false);ok=ok&&owner.project.tracks[(size_t)ti].sends[(size_t)i]==old;}for(int h:{100,140,210,320}){strips[0]->setSize(74,h);for(auto* c:strips[0]->getChildren())if(c->isVisible())ok=ok&&strips[0]->getLocalBounds().contains(c->getBounds())&&!c->getBounds().isEmpty();}}
     owner.project=saved;owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.dirty=dirty;owner.audio.updateMix(owner.project);owner.refreshControls();resized();folder.getChildFile("mixer-send-buttons.txt").replaceWithText(ok?"PASS mixer A/reverb and B/delay toggles update real sends, restore amounts with Undo, preserve MIDI and fit compact strips":"FAIL mixer send buttons");return ok;}
 void DawMixer::reveal(int track){const int x=rowForTrack(track)*channelWidth;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+channelWidth-4>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+channelWidth-4-port.getViewWidth(),0);}
 void DawMixer::paint(juce::Graphics& g){g.fillAll(Daw::base);g.setColour(Daw::chrome);g.fillRoundedRectangle(0,0,(float)getWidth(),24,Daw::radius);g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(juce::Rectangle<float>(0,0,(float)getWidth(),24).reduced(.5f),Daw::radius,1);
-    Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-430,24});
+    if(owner.mixerVisible){Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-430,24});}
+    else{
+        Daw::drawCaps(g,"MASTER",{12,0,54,24},Daw::textDim);const float left=78.f,width=(float)std::max(100,getWidth()-484);const int segments=std::clamp((int)(width/7),24,160);const float cell=width/segments;
+        for(size_t side=0;side<2;++side){const float y=side==0?6.f:14.f;const float level=Daw::meterPosition(compactPeaks[side]);
+            for(int part=0;part<segments;++part){const float value=(part+.5f)/segments;auto colour=value>.91f?Daw::meterHigh:value>.82f?Daw::meterMid:Daw::meterLow;g.setColour(value<=level?colour:colour.withAlpha(.09f));g.fillRoundedRectangle(left+part*cell,y,std::max(1.f,cell-1.f),4.f,1.f);}
+            if(compactHolds[side]>.001f){g.setColour(Daw::meterColour(compactHolds[side]));g.fillRect(left+std::min(width-1.f,width*Daw::meterPosition(compactHolds[side])),y,1.5f,4.f);}}
+        const float peak=std::max(compactPeaks[0],compactPeaks[1]);g.setColour(peak>=1?Daw::meterHigh:Daw::textDim);g.setFont(Daw::font(10.f,true));g.drawText(peak>.001f?juce::String(juce::Decibels::gainToDecibels(peak),1)+" dB":juce::String::fromUTF8("−∞ dB"),(int)(left+width+12),0,64,24,juce::Justification::centredLeft);
+    }
     if(owner.mixerVisible){g.setColour(Daw::textFaint.withAlpha(.6f));for(int dot=-2;dot<=2;++dot)g.fillEllipse(getWidth()*.5f+dot*7-1.5f,10.5f,3.f,3.f);}}
 void DawMixer::resized(){routingButton.setBounds(getWidth()-310,2,154,20);routingButton.setButtonText("BUS & SEND");translateControls(routingButton);collapseButton.setBounds(getWidth()-150,2,146,20);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;port.setBounds(0,29,getWidth()-112,getHeight()-29);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/std::max(1,(int)strips.size()),74,100);channels.setSize((int)strips.size()*channelWidth,height);for(int row=0;row<(int)strips.size();++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-3,height);master.setBounds(getWidth()-104,29,104,height);}
 void DawMixer::mouseDown(const juce::MouseEvent& e){if(e.y<25&&owner.mixerVisible){resizingMixer=true;resizeOrigin=e.getEventRelativeTo(&owner).position.y;resizeHeight=getHeight();}}

@@ -25,15 +25,16 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Campionatore e Studio](#studio-campionatore-registrazione-e-campioni)
 - [Mixer e mandate](#mixer-gruppi-e-mandate)
 - [Automazioni](#pan-master-e-parametri-vst)
+- [Battute e tempo trascorso](#battute-e-tempo-trascorso)
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 
-La guida è aggiornata alla **0.23.1**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.23.2**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.23.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.23.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -111,6 +112,10 @@ Trascina il **bordo inferiore del nome di una traccia** per cambiarne l’altezz
 
 **M** e **S** accanto al nome di una traccia fanno mute e solo senza aprirla. Il clic sui nomi delle sezioni avvia la riproduzione dal punto indicato. Lo **ZOOM** cambia quanto brano vedi.
 
+Nell’arrangiamento, **doppio clic sul nome di una traccia** (per esempio Kick) seleziona la traccia e apre l’inspector. Il cursore e la riproduzione non si spostano. La **X** compatta nell’angolo dell’inspector lo chiude; **I** o l’icona nella barra superiore lo riaprono. Per rinominare usa invece il nome dentro l’inspector o nel mixer, oppure il menu destro.
+
+Il **volume master**, la **densità delle note**, **Swing** e **Feel** nella schermata principale sono potenziometri: trascina in verticale/orizzontale o modifica il valore numerico. Nell’inspector anche **Volume** e **Pan** hanno potenziometri, con valori sotto; il doppio clic riporta il volume a 0 dB o il pan al centro. Le unità e l’effetto musicale dei controlli restano quelli descritti nelle sezioni seguenti.
+
 ### Spazio di lavoro DAW
 
 **ELIMINA TRACCIA MIDI** nell’inspector, o **tasto destro → Elimina traccia MIDI**, rimuove soltanto una traccia aggiunta con + MIDI. **ANNULLA** la ripristina con note, nome, suono ed effetto; le tracce successive mantengono i propri dati. Le tracce degli strumenti generativi non si eliminano.
@@ -124,7 +129,13 @@ Dopo una rigenerazione lo zoom si adatta automaticamente: il brano intero nell�
 
 L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La piccola **icona del pannello** nell’angolo superiore destro lo nasconde e restituisce tutta la larghezza all’arrangiamento. Per riaprirlo usa l’**icona inspector nella barra superiore** oppure **I**. L’icona nella barra superiore resta sempre disponibile. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Se lo spazio verticale è ridotto, scorri il pannello.
 
+Sulla riga **ARMONIA**, a destra sopra **BUS E MANDATE**, trovi **zoom − / cursore / zoom +** e **ADATTA BRANO**. Quest’ultimo inquadra tutta la durata del brano nella larghezza disponibile, anche quando il browser è aperto. Zoom e adattamento non modificano MIDI, snap o Annulla. Le altezze delle tracce restano come le hai impostate.
+
 Il **MIXER** mostra le tracce nell’ordine musicale e un master fisso a destra. I nomi (Kick, Snare, ecc.) sono in alto; la scelta suono guida/sample/VST è in basso. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; il doppio clic ripristina quella predefinita. La dimensione scelta viene ricordata; i canali scorrono orizzontalmente quando lo spazio non basta.
+
+Quando il mixer è chiuso, la scritta MIXER/livelli viene sostituita da un **meter stereo del master**, con livello in dB e memoria dei picchi. Segue il segnale audio effettivo; riaprendo il mixer scompare e tornano le strip con il proprio master.
+
+Le **linee verticali colorate all’inizio delle sezioni** riprendono il colore della relativa intestazione. Indicano soltanto il punto d’ingresso di Intro, Main, Answer e delle altre parti, senza riempire tutta la sezione.
 
 - **Clic nel clip o nella griglia**: seleziona senza spostare il cursore o interrompere l’ascolto. **Clic in alto sui nomi delle sezioni**: posiziona il cursore e avvia subito la riproduzione da quel punto. Il righello numerato resta disponibile per posizionare il cursore e gestire il loop. **Doppio clic** o **E** apre l’editor MIDI.
 - **Bordo destro del clip**: trascina per accorciare o estendere soltanto quel loop, a passi di un beat; **Maiusc** permette passi di un quarto di beat. Il MIDI si ripete senza cambiare velocità o dinamiche. Accorciare non cancella la sorgente: riallungando la recuperi. Puoi superare il confine della sezione; il clip esteso ha precedenza sulle parti coperte della stessa traccia, senza raddoppiare le note.
@@ -170,7 +181,7 @@ Le cartelle vengono lette e le informazioni audio misurate in background: l'inte
 
 ### Studio: campionatore, registrazione e campioni
 
-**STUDIO**, accanto a **CREA CON IA / AI COMPOSER**, apre una finestra sempre in primo piano. Chiudila con la X; alla riapertura torna al centro. Se il suono della traccia è **Campione**, nell’inspector compare **APRI CAMPIONATORE**. Nel menu del campionatore compaiono soltanto le tracce con campione, anche se il file è da ricollegare. Registrazione MIDI e media mantengono l’accesso a tutte le tracce; durante una take il cambio scheda non cambia la destinazione della registrazione.
+**STUDIO**, con l’icona della forma d’onda accanto a **CREA CON IA / AI COMPOSER**, apre una finestra sempre in primo piano. Chiudila con la X; alla riapertura torna al centro. Se il suono della traccia è **Campione**, nell’inspector compare **APRI CAMPIONATORE**. Nel menu del campionatore compaiono soltanto le tracce con campione, anche se il file è da ricollegare. Registrazione MIDI e media mantengono l’accesso a tutte le tracce; durante una take il cambio scheda non cambia la destinazione della registrazione.
 
 #### Preparare e modificare un campione
 
@@ -265,6 +276,12 @@ Le mandate seguono livello e gruppo della traccia; il master controlla anche i r
 | **CLICK** | Metronomo durante l'ascolto (mai nell'export); come il tasto **C**. |
 
 L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionato** in riquadri compatti. Strumento interno, sample e plugin condividono una riga; l'editor del plugin compare quando è assegnato uno strumento o effetto esterno. Mute, solo, blocchi, modifica MIDI, rigenerazione e loop conservano azioni e undo. Trascina il bordo per ridimensionarlo; il doppio clic ripristina 248 px.
+
+### Battute e tempo trascorso
+
+Clicca sul **numero di posizione o sulla piccola indicazione delle battute**, accanto al metronomo. Il trasporto alterna **battute.beat.tick** e **minuti:secondi.millisecondi**; in modalità tempo, sotto compare in grigio il **tempo residuo**. Per durate superiori a un’ora viene mostrata anche l’ora.
+
+Anche il righello dell’**arrangiamento** passa dai numeri di battuta ai tempi del brano, calcolati sul BPM corrente. Le linee continuano a seguire battute e beat: **metrica, snap, note, loop e automazioni non cambiano**. Il piano roll mantiene i propri riferimenti musicali. Il tempo segue la posizione nella canzone, quindi torna indietro quando il loop ricomincia. Clicca di nuovo per tornare alle battute; la scelta è ricordata nelle preferenze locali.
 
 Il brano usa **4/4**: una battuta contiene quattro beat. L’indicazione nel trasporto non è un selettore di metro.
 

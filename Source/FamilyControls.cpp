@@ -14,6 +14,11 @@ namespace
         filled = false;
         switch (icon)
         {
+            case I::studio:
+                p.startNewSubPath(.08f,.53f);p.lineTo(.08f,.7f);p.lineTo(.22f,.7f);p.lineTo(.22f,.3f);p.lineTo(.36f,.3f);p.lineTo(.36f,.86f);p.lineTo(.5f,.86f);p.lineTo(.5f,.14f);p.lineTo(.64f,.14f);p.lineTo(.64f,.68f);p.lineTo(.78f,.68f);p.lineTo(.78f,.4f);p.lineTo(.92f,.4f);p.lineTo(.92f,.53f);strokeWidth=.08f;break;
+            case I::zoomIn: case I::zoomOut:
+                p.addEllipse(.12f,.12f,.56f,.56f);p.startNewSubPath(.6f,.6f);p.lineTo(.9f,.9f);p.startNewSubPath(.25f,.4f);p.lineTo(.55f,.4f);
+                if(icon==I::zoomIn){p.startNewSubPath(.4f,.25f);p.lineTo(.4f,.55f);}strokeWidth=.075f;break;
             case I::sparkles:
                 for(auto star:{juce::Rectangle<float>(.12f,.22f,.55f,.66f),juce::Rectangle<float>(.66f,.06f,.25f,.32f)}){const auto c=star.getCentre();p.startNewSubPath(c.x,star.getY());p.quadraticTo(c.x, c.y,star.getRight(),c.y);p.quadraticTo(c.x,c.y,c.x,star.getBottom());p.quadraticTo(c.x,c.y,star.getX(),c.y);p.quadraticTo(c.x,c.y,c.x,star.getY());p.closeSubPath();}filled=true;break;
             case I::play:   p.addTriangle (0.28f, 0.18f, 0.28f, 0.82f, 0.82f, 0.5f); filled = true; break;
@@ -372,6 +377,24 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     g.setColour (ink);
     g.setFont (f);
     g.drawFittedText (label, area.toNearestInt(), juce::Justification::centredLeft, 1, 0.7f);
+}
+
+void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
+    const bool on=getToggleState(),featured=(bool)getProperties().getWithDefault("dawFeatured",false);
+    auto fill=findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
+    if(featured&&!on)fill=Daw::surfaceHi.interpolatedWith(Daw::accent,.09f);
+    if(over&&isEnabled())fill=fill.brighter(.07f);if(down)fill=fill.darker(.14f);
+    const float opacity=isEnabled()?1.f:.38f;auto r=getLocalBounds().toFloat().reduced(.5f);
+    g.beginTransparencyLayer(opacity);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
+    g.setColour(hasKeyboardFocus(true)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
+    if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
+    auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=bright?Daw::onAccent:Daw::text;
+    auto font=Daw::font(juce::jlimit(9.f,11.f,getHeight()*.4f),true);font.setExtraKerningFactor(.025f);
+    const float iconSize=std::min(16.f,area.getHeight()*.72f);const bool icon=glyph!=IconButton::Icon::none;
+    const float width=juce::GlyphArrangement::getStringWidth(font,getButtonText())+(icon?iconSize+6.f:0.f);
+    area=area.withSizeKeepingCentre(std::min(area.getWidth(),width),area.getHeight());
+    if(icon){IconButton::drawIcon(g,glyph,area.removeFromLeft(iconSize).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);area.removeFromLeft(6.f);}
+    g.setColour(ink);g.setFont(font);g.drawFittedText(getButtonText(),area.toNearestInt(),juce::Justification::centred,1,.65f);g.endTransparencyLayer();
 }
 
 }
