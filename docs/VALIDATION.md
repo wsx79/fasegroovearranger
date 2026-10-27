@@ -1,5 +1,11 @@
 # Validation record
 
+## 0.23.1 — manual refresh
+
+- Both manuals retain nine chapters and eleven images; local anchor checks, family resources and Windows/Linux packaging checks pass. Updated native screenshots follow the current Arranger.
+- The app rebuilt successfully with embedded manuals. Native UI verification passed for Italian/English manual rendering, navigation, search, zoom and the surrounding Studio/workspace flows.
+- Only documentation and release metadata change from 0.23.0. Audio code, MIDI generation, project schema and the official release workflow remain unchanged. Final cross-platform outcomes are recorded in the release report.
+
 ## 0.23.0 candidate — audit fixes (local, publication awaits approval)
 
 - Audit peer tests drive the real callback with a hosted test instance: live float headroom, processing without the control mutex, concurrent state snapshots/restores, automation boundary subdivision, MIDI offsets and per-subblock playhead, loop capture, latency subtraction and capacity reporting.

@@ -58,7 +58,7 @@ Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scro
 - Studio sample audition: isolated Play/Stop and optional repeat, with live sampler edits, MIDI note feedback and an audio tuner showing detected pitch, cents and Hz.
 - Sample browser (**B**): saved sample folders and favourites, breadcrumb and history, search, type filter and sorting, file info, preview, and loading into a track's sampler by double-click or drag onto the track.
 - Project files (`.fga`), atomic saves, periodic local autosave and missing-instrument relinking.
-- Multitrack MIDI and individual MIDI files; stereo 24-bit WAV and 320 kbps stereo MP3, for a mix, one track or all 17 stems. **The MP3 encoder is bundled.**
+- Multitrack MIDI and individual MIDI files; stereo 24-bit WAV and 320 kbps stereo MP3, for a mix, one track or all 18 generated-track stems plus any added MIDI tracks. **The MP3 encoder is bundled.**
 - Six original interface languages (English, Italian, Spanish, French, German and Portuguese), translated control tooltips with a saved on/off preference, and extended piano controls including step dynamics, inversions, independent riff/feel seeds and sustain/expression MIDI controllers.
 - Original piano DNA, Morph, Voicing Coach A/B, Chord Variation Lab and circle of fifths; MIDI harmony/rhythm analysis, opt-in keyboard chord learning and local track presets. Shared half/one/two/four-bar harmonic duration; guide-sound pump rate and tempo/Kick-MIDI source.
 - Family SETTINGS / ABOUT overlay, interface-size preference, optional GitHub release checks and the original family icon buttons.
@@ -114,7 +114,7 @@ Generation settings affect the **next generation**. Existing editable MIDI stays
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-Version **0.23.0** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+Version **0.23.1** is an initial MIDI arranging workstation. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, multi-effect chains, and controller automation recording are not implemented (plugin delay compensation is). One insert effect per track is available. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

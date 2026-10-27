@@ -3,7 +3,7 @@
 <h1 align="center">Fase Groove Arranger</h1>
 
 <p align="center">
-  <b>Il brano completo con i motori di Piano, Drums e Guitar, in un'unica app standalone.</b><br>
+  <b>Il brano completo con i motori di Piano, Drums, Guitar e Lead, in un'unica app standalone.</b><br>
   di <b>Fabio 'Pitch' Serra</b> · Windows, macOS &amp; Linux · gratuito e open source
 </p>
 

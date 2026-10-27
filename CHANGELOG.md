@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.1
+
+- Refresh Italian and English manuals for the current Arranger: Studio sample editing/audition/tuning, MIDI/audio recording, take import, track bounce, mixer sends and volume/pan/master/plugin automation.
+- Replace outdated arrangement, mixer, Piano, sampler and settings screenshots with native captures. Correct troubleshooting, audio-input instructions, supported sample formats, migration and track counts; add quick navigation.
+- Keep the family manual layout, embedded search and enlargeable images. Audio processing, MIDI generation and project format are unchanged.
+
 ## 0.23.0
 
 - Remove the global engine mutex from the audio callback; control-side changes wait for a quiescent callback. Prepare replacement plugins outside that gate and snapshot/restore hosted state without concurrent processing.

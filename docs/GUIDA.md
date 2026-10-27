@@ -20,15 +20,24 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 8. [Domande frequenti e problemi](#8-domande-frequenti-e-problemi)
 9. [Ascolta la mia musica](#9-ascolta-la-mia-musica)
 
+**Accesso rapido:**
+
+- [Campionatore e Studio](#studio-campionatore-registrazione-e-campioni)
+- [Mixer e mandate](#mixer-gruppi-e-mandate)
+- [Automazioni](#pan-master-e-parametri-vst)
+- [Esportazione](#4-esportare-midi-e-audio-nella-daw)
+
+La guida è aggiornata alla **0.23.1**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.21.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.23.1** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
-Apri **FaseGrooveArranger-Windows-Setup.exe**, scegli italiano o inglese e segui lo stesso wizard delle altre app Fase Groove. Installa l’app standalone, le guide, privacy/licenze e i collegamenti nel menu Start; il collegamento sul desktop è facoltativo. Arranger contiene già i tre motori: non servono i plugin Fase Groove o un’altra DAW. Solo il setup richiede i permessi di amministratore. Disinstalla dalle impostazioni di Windows: progetti, esportazioni e preferenze locali restano.
+Apri **FaseGrooveArranger-Windows-Setup.exe**, scegli italiano o inglese e segui lo stesso wizard delle altre app Fase Groove. Installa l’app standalone, le guide, privacy/licenze e i collegamenti nel menu Start; il collegamento sul desktop è facoltativo. Arranger contiene già i quattro motori Piano, Drums, Guitar e Lead: non servono i plugin Fase Groove o un’altra DAW. Solo il setup richiede i permessi di amministratore. Disinstalla dalle impostazioni di Windows: progetti, esportazioni e preferenze locali restano.
 
 ### Installazione manuale (tutti i sistemi)
 
@@ -48,7 +57,7 @@ Salva il progetto prima di **INSTALLA ORA**. Le copie Windows installate eseguon
 
 Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, oppure in Documents se Downloads non esiste. Progetti, campioni, esportazioni e autosave non vengono sostituiti. **0.7.0 e precedenti:** installa questa release una volta manualmente; il vecchio pulsante DOWNLOAD apre la pagina release. Dalle versioni successive funziona l’aggiornamento integrato. Su Linux verifica e download usano `curl` di sistema.
 
-**Al primo avvio:** premi **AUDIO**, scegli l'uscita che usi per ascoltare e un buffer adatto al tuo dispositivo. L'app usa l'uscita audio; non apre il microfono.
+**Al primo avvio:** clicca l’**icona altoparlante** in alto a destra, poi **Dispositivo audio / buffer**. Scegli uscita e buffer per ascoltare. L’ingresso audio si abilita da queste impostazioni oppure quando scegli di registrarlo in Studio; non viene aperto automaticamente all’avvio. Su macOS autorizza il microfono se vuoi registrare un ingresso.
 
 > Parti dal suono guida. Puoi ascoltare e costruire tutto il brano prima di scegliere i tuoi strumenti.
 
@@ -61,7 +70,7 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano**, apri l’ingranaggio ambra accanto a Solo e scegli un suono, un campione o il tuo VST.
+6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano** e, nell’inspector, scegli **BUILT-IN**, **CAMPIONE** o **VST / AU**. L’ingranaggio della traccia apre invece il pannello musicale originale.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
 Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
@@ -79,7 +88,7 @@ Le nuove rigenerazioni del piano confrontano gli attacchi della figura precedent
 ### Interfaccia attuale
 
 Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
-in rilievo = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
+attenuato = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
 l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
 Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio ambra accanto a Solo apre i parametri. Doppio clic sul clip per le note.
 
@@ -94,7 +103,7 @@ In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: 
 | **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
 | **Nome della traccia** | Seleziona la traccia; la rotella apre il pannello in una finestra separata, con groove, esecuzione, suono e mixer. |
 | **Doppio clic sul clip / E** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
-| **AUDIO · OPZIONI · GUIDA** | Dispositivo audio; informazioni, crediti e privacy; questa guida. |
+| **Altoparlante · ingranaggio · ?** | Audio e autosave; opzioni, lingua e crediti; guida. Le icone sono in alto a destra. |
 
 I colori seguono gli strumenti: **ambra** per piano e cassa, **azzurro** per basso e rullanti/clap, **verde** per i piatti, **viola** per le percussioni, **rosso** per archi e tom/crash. Nella chitarra ogni gruppo di pennate ha il suo colore.
 
@@ -113,7 +122,7 @@ Dopo una rigenerazione lo zoom si adatta automaticamente: il brano intero nell�
 
 **+ MIDI**, nell’angolo sopra le intestazioni delle tracce, aggiunge una traccia vuota e apre il piano roll. Scrivi le note a mano, assegna un suono guida, un campione o un VST/AU dall’inspector e usa clip, loop, effetti, automazioni ed export come sulle altre tracce. Sono disponibili fino a **32 tracce totali**. GENERA BRANO, i cambi di genere e gli accordi non riscrivono queste note. Doppio clic sul **nome nell’inspector o nel mixer** per rinominare qualsiasi traccia; resta disponibile anche il menu destro → Rinomina. **APRI VST** apre lo strumento o effetto esterno assegnato.
 
-L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La piccola **icona del pannello** nell’angolo superiore destro lo nasconde e restituisce tutta la larghezza all’arrangiamento. Per riaprirlo usa l’**icona inspector nella barra superiore** oppure **I**. L’icona nella barra superiore resta sempre disponibile. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Funzionano anche **INSPECTOR / I**. Se lo spazio verticale è ridotto, scorri il pannello.
+L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La piccola **icona del pannello** nell’angolo superiore destro lo nasconde e restituisce tutta la larghezza all’arrangiamento. Per riaprirlo usa l’**icona inspector nella barra superiore** oppure **I**. L’icona nella barra superiore resta sempre disponibile. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Se lo spazio verticale è ridotto, scorri il pannello.
 
 Il **MIXER** mostra le tracce nell’ordine musicale e un master fisso a destra. I nomi (Kick, Snare, ecc.) sono in alto; la scelta suono guida/sample/VST è in basso. Ogni fader cambia soltanto l’audio; le velocity MIDI restano invariate. I meter si spengono in pausa. L’indicatore **CLIP** del master segnala il superamento del livello massimo: cliccalo per azzerarlo. **ABBASSA MIXER**, in alto a destra nel mixer, richiude i fader e recupera spazio per le tracce; resta una barra con **RIAPRI MIXER**, che ripristina l’altezza precedente. Funzionano anche **MIXER / F3**. Trascina l’intestazione del mixer per regolarne l’altezza; il doppio clic ripristina quella predefinita. La dimensione scelta viene ricordata; i canali scorrono orizzontalmente quando lo spazio non basta.
 
@@ -161,13 +170,15 @@ Le cartelle vengono lette e le informazioni audio misurate in background: l'inte
 
 ### Studio: campionatore, registrazione e campioni
 
-**STUDIO**, accanto a **AI COMPOSER**, apre una finestra sempre in primo piano. Chiudila con la X; alla riapertura torna al centro. Se il suono della traccia è **Campione**, nell’inspector compare **APRI CAMPIONATORE**. Nel menu del campionatore compaiono soltanto le tracce con campione, anche se il file è da ricollegare. Registrazione MIDI e media mantengono l’accesso a tutte le tracce; durante una take il cambio scheda non cambia la destinazione della registrazione.
+**STUDIO**, accanto a **CREA CON IA / AI COMPOSER**, apre una finestra sempre in primo piano. Chiudila con la X; alla riapertura torna al centro. Se il suono della traccia è **Campione**, nell’inspector compare **APRI CAMPIONATORE**. Nel menu del campionatore compaiono soltanto le tracce con campione, anche se il file è da ricollegare. Registrazione MIDI e media mantengono l’accesso a tutte le tracce; durante una take il cambio scheda non cambia la destinazione della registrazione.
+
+#### Preparare e modificare un campione
 
 <p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
 
-- Una sola waveform a tutta larghezza mostra righello, marcatori numerati e maniglie inizio/fine. Rotella e pinch ingrandiscono nel punto indicato; scorrimento orizzontale o Maiusc-rotella spostano la vista. Il doppio clic torna al campione intero. La navigazione non modifica il progetto o Annulla. Trascina un file audio sulla waveform dal browser dell’app o dal sistema operativo.
+Trascina un file audio dal browser o dal sistema operativo sulla waveform, oppure premi **CARICA CAMPIONE**. I marcatori numerati individuano gli slice.
 
-**CAMPIONATORE.** Carica WAV, AIFF, FLAC, OGG o MP3 fino a 30 minuti e 512 MiB decodificati per file. Trascina il bordo più vicino sulla forma d’onda per tagliare inizio o fine; **rotella** e **pizzicamento sul trackpad** ingrandiscono attorno al puntatore; gesto orizzontale o **Maiusc+rotella** spostano la vista. Il **doppio clic** inquadra l’intero campione. **PASSAGGIO PER LO ZERO** aggancia il taglio a un punto vicino allo zero. Inizio/fine sono frazioni del campione: 0 = inizio, 1 = fine. Le dissolvenze e i tempi dell’inviluppo sono in secondi.
+**CAMPIONATORE.** Carica WAV, AIFF, FLAC o OGG fino a 30 minuti e 512 MiB decodificati per file. Trascina il bordo più vicino sulla forma d’onda per tagliare inizio o fine; **rotella** e **pizzicamento sul trackpad** ingrandiscono attorno al puntatore; gesto orizzontale o **Maiusc+rotella** spostano la vista. Il **doppio clic** inquadra l’intero campione. **PASSAGGIO PER LO ZERO** aggancia il taglio a un punto vicino allo zero. Inizio/fine sono frazioni del campione: 0 = inizio, 1 = fine. Le dissolvenze e i tempi dell’inviluppo sono in secondi.
 
 - **Classico / durata nota** segue il Note Off MIDI; **One-shot** suona fino alla fine del campione anche se la nota è corta. Per crash e piatti usa One-shot.
 - **LOOP** ripete la regione fra inizio e fine loop in modo classico. La dissolvenza del loop attenua la giunzione. **INVERTI** cambia la direzione di lettura.
@@ -179,27 +190,43 @@ Le cartelle vengono lette e le informazioni audio misurate in background: l'inte
 - I controlli sono divisi in cinque moduli: regione/loop, inviluppo ampiezza, intonazione e ascolto, filtro e slice/sync. Le manopole conservano i parametri originali e i valori numerici sotto sono modificabili. I tooltip descrivono l’effetto dei comandi e le unità: tieni il puntatore fermo sul controllo. Seguono l’opzione globale dei suggerimenti e funzionano anche nella finestra separata di Studio.
 - **SALVA PRESET** crea un `.fgs` con una cartella dei campioni accanto. Sposta entrambi insieme. **APRI PRESET** ripristina campione, radice e parametri. I parametri sono salvati anche nel progetto e seguono Annulla/Ripristina.
 
-<p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
+**Scorrimento sicuro.** In Studio rotella e trackpad fanno navigare la vista: non cambiano livelli, parametri o menu passando sopra i controlli. Per modificare un valore trascina il controllo oppure digita nella casella numerica. Sopra la forma d’onda restano attivi zoom e spostamento.
 
-**REGISTRA MIDI.** Scegli un ingresso disponibile o usa la tastiera sullo schermo. AGGIORNA rileva anche i dispositivi collegati dopo l’apertura. **MONITOR** permette di ascoltare l’ingresso anche a trasporto fermo. Scegli nessun conteggio, una o due battute, quantizzazione disattivata o da quarti a trentaduesimi, e sovraincisione oppure sostituzione. La correzione in millisecondi compensa il ritardo dell’esecuzione. Premi **REGISTRA**, poi **TERMINA REGISTRAZIONE** per conservare la riproduzione o **STOP** per fermarla. Chiudere Studio termina la registrazione. Durante la registrazione la finestra principale è protetta dalle modifiche; la take viene applicata come un solo passo di Annulla. La quantizzazione sposta gli attacchi, conservando le durate; il pedale sustain viene trasformato in durate delle note. Sono registrati note e velocity, non curve di pitch bend o automazioni dei controller. Le tracce e i clip bloccati sono protetti.
-
-**CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
+#### Ascoltare e accordare il campione
 
 **Ascolto del campione.** Premi **ASCOLTA CAMPIONE** per sentire soltanto la sorgente selezionata con i parametri del campionatore, prima di volume, mute, effetti e bus della traccia. Il brano si ferma conservando la posizione. **RIPETI ASCOLTO** ripete la regione per lavorare in continuo su filtro, intonazione, inviluppo e punti di taglio; non cambia il parametro LOOP del campionatore. **STOP** interrompe subito. Senza ripetizione la regione termina naturalmente; se il loop interno del campionatore è attivo, usa STOP per fermarlo. In modalità Slice viene ascoltata la prima slice: per le altre usa pad o tastiera. La nota ascoltata è evidenziata sotto. Cambiare campione o scheda, chiudere Studio, avviare il brano o registrare ferma l’ascolto. I tre comandi non modificano progetto, MIDI o cronologia Annulla.
 
 **Accordatore del campione.** Durante l’ascolto isolato, la tastiera MIDI o la riproduzione del brano, **INTONAZIONE** misura l’audio del campionatore selezionato prima degli effetti della traccia: mostra nota, scarto in cent e frequenza in Hz. **+** indica un suono crescente, **-** un suono calante rispetto alla nota più vicina; il riferimento è La = 440 Hz. Regola **TRASPOSIZIONE** per i semitoni e **FINE (cent)** per la correzione fine: la lettura si aggiorna con il suono elaborato. La numerazione delle ottave segue la tastiera di Studio. L’indicazione NOTA MIDI resta il tasto MIDI di comando, che può essere diverso dalla nota reale del campione. L’accordatore funziona su suoni monofonici stabili, indicativamente da 35 a 1600 Hz, con una breve finestra di analisi; rumori, crash, accordi e transienti possono mostrare **Nota non stabile**. L’ultima nota stabile resta visibile per un secondo dopo la fine, indicata come **ULTIMA NOTA**, così puoi leggere anche campioni brevi; poi compare un trattino.
 
-**Scorrimento sicuro.** In Studio rotella e trackpad fanno navigare la vista: non cambiano livelli, parametri o menu passando sopra i controlli. Per modificare un valore trascina il controllo oppure digita nella casella numerica. Sopra la forma d’onda restano attivi zoom e spostamento.
-
 **Se il kick diventa molto basso dopo una modifica.** Usa prima **ANNULLA**. Se la sorgente è un campione, seleziona Kick e premi **RIPRISTINA DEFAULT** nel campionatore: conserva file, MIDI e mix. Se resta basso, controlla anche volume, mute/solo, automazioni, routing e livello/mute del gruppo assegnato, perché il reset del campionatore conserva il mix. Per individuare la causa esatta serve lo stato del progetto; la sola attenuazione non identifica un difetto del motore audio.
 
-**AUDIO IN STUDIO.** Nella scheda Registrazione scegli **Ingresso audio** oppure **Mix master**, poi **REGISTRA AUDIO** e un file WAV. L’ingresso viene aperto soltanto su richiesta; il dispositivo e i canali si scelgono anche da Impostazioni → Dispositivo audio/buffer. La registrazione avvia il trasporto dalla posizione corrente. **TERMINA REGISTRAZIONE** completa il WAV senza azzerare la posizione; chiudere Studio termina la take e mantiene il file. Non registrare contemporaneamente una take MIDI e una audio.
+#### Registrare MIDI
 
-**USA TAKE AUDIO** crea una traccia campione con un clip nella posizione registrata e prolunga la guida, se necessario. La posizione comprende la latenza del dispositivo e dei plugin; l’eventuale pre-roll prima dello zero viene escluso tramite trim del sampler, conservando il WAV originale. La registrazione è continua anche attraverso i loop: per ascoltare linearmente una take lunga puoi disattivare il loop. È una sola operazione annullabile: Annulla rimuove la traccia, conservando il WAV. Le take del master partono mute per evitare di sommare due volte il brano; il WAV è post-master e la traccia importata segue poi il mix corrente. **RENDER TRACCIA** esporta il suono della traccia selezionata con effetti, code e compensazione della latenza. Le take oltre il limite del sampler restano WAV sul disco; Studio spiega perché l’importazione non è disponibile. Un cambio di frequenza o un errore della coda interrompe la take con un avviso, senza silenziare tutte le altre tracce.
+<p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
 
-La compensazione mostra i campioni usati e il limite di **262143 frame**: circa 5,46 s a 48 kHz, meno alle frequenze superiori. Un superamento viene segnalato. La cattura MIDI sottrae la latenza di uscita, quella dello strumento/insert e il ritardo di allineamento, usando un tempo continuo attraverso i loop; il conteggio non ammucchia le note all’inizio del giro. L’overflow dell’ingresso MIDI è segnalato senza panic globale. L’uscita live conserva la dinamica float oltre ±1; il meter indica il clipping, mentre i file PCM/MP3 vengono limitati in esportazione.
+**REGISTRA MIDI.** Scegli un ingresso disponibile o usa la tastiera sullo schermo. AGGIORNA rileva anche i dispositivi collegati dopo l’apertura. **MONITOR** permette di ascoltare l’ingresso anche a trasporto fermo. Scegli nessun conteggio, una o due battute, quantizzazione disattivata o da quarti a trentaduesimi, e sovraincisione oppure sostituzione. La correzione in millisecondi compensa il ritardo dell’esecuzione. Premi **REGISTRA**, poi **TERMINA REGISTRAZIONE** per conservare la riproduzione o **STOP** per fermarla. Chiudere Studio termina la registrazione. Durante la registrazione la finestra principale è protetta dalle modifiche; la take viene applicata come un solo passo di Annulla. La quantizzazione sposta gli attacchi, conservando le durate; il pedale sustain viene trasformato in durate delle note. Sono registrati note e velocity, non curve di pitch bend o automazioni dei controller. Le tracce e i clip bloccati sono protetti.
 
-Gli snapshot dei plugin vengono letti solo con elaborazione quiescente. Salvataggi, Annulla o snapshot per l’export possono quindi produrre una breve pausa; la durata dipende dal plugin. Creazione e preparazione della copia da esportare avvengono poi fuori da questa finestra e il rendering usa la copia privata. La registrazione da ingresso continua a conservare i campioni durante gli snapshot; quella del master conserva ciò che viene effettivamente ascoltato.
+#### Registrare audio e usare la take
+
+1. Apri **STUDIO → REGISTRAZIONE** e seleziona la traccia di destinazione nel menu superiore. Il riquadro **REGISTRAZIONE AUDIO** è separato da quello MIDI.
+2. Da **Ingresso audio / Mix master** scegli cosa catturare: il dispositivo d’ingresso oppure l’uscita udibile del brano. Prima configura un dispositivo audio dall’icona altoparlante → **Dispositivo audio / buffer**; per l’ingresso abilita i canali desiderati.
+3. Posiziona il cursore sul righello, premi **REGISTRA AUDIO** e scegli il WAV da scrivere. Parte anche il trasporto. Il file è stereo a 24 bit, alla frequenza del dispositivo.
+4. Premi **TERMINA REGISTRAZIONE** per completare il WAV; chiudere Studio completa comunque la take. La fine della take non riporta il brano all’inizio.
+5. Premi **USA TAKE AUDIO**: viene aggiunta una nuova traccia campione con un clip nella posizione registrata. Se occorre, si prolunga la guida delle sezioni. **ANNULLA** rimuove la traccia conservando il WAV sul disco.
+
+La take **Mix master** viene importata **muta** per evitare di raddoppiare il brano: attivala quando vuoi ascoltarla, tenendo conto del mix originale. Il WAV include già il trattamento del master; la traccia importata passa poi attraverso il mix corrente. La registrazione resta continua attraversando i loop: disattiva LOOP per riascoltare linearmente una take lunga.
+
+L’allineamento comprende la latenza dei plugin e, per l’ingresso, quella del dispositivo. Il pre-roll prima dello zero viene escluso con un trim del sampler, senza tagliare il WAV. Le take troppo brevi rispetto al pre-roll o oltre i limiti del sampler restano sul disco; lo Studio spiega perché **USA TAKE AUDIO** non è disponibile. Un cambio di dispositivo/frequenza o un errore di scrittura interrompe la take con un avviso. Registrazione MIDI e audio non possono funzionare contemporaneamente.
+
+**RENDER TRACCIA** salva in WAV il suono della traccia selezionata, con effetti, code e compensazione della latenza: è un bounce, non una nuova registrazione dall’ingresso.
+
+**Latenza e livello.** Studio mostra compensazione e capacità: **262143 campioni**, circa 5,46 s a 48 kHz. Se il plugin supera il limite compare un avviso. La correzione in millisecondi della registrazione MIDI serve a rifinire il timing della propria esecuzione. Un overflow dell’ingresso viene segnalato: controlla la take senza perdere l’ascolto delle altre tracce. Il master live conserva i picchi float; se compare **CLIP**, riduci i livelli prima di esportare in PCM o MP3.
+
+Il salvataggio dello stato di un VST può produrre una breve pausa, secondo il plugin. Durante tale pausa l’ingresso audio continua a essere acquisito; una registrazione del master conserva l’uscita effettivamente udibile, incluso il silenzio.
+
+#### Gestire campioni e progetti portatili
+
+**CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
 
 ### Mixer: gruppi e mandate
 
@@ -212,7 +239,7 @@ Apri **BUS E MANDATE** dall’intestazione del mixer. Il pannello è sempre in p
 - Nel pannello scegli qualsiasi traccia e regola separatamente le due percentuali. **A - RIVERBERO** e **B - DELAY** sono i ritorni effetti, distinti dai gruppi tracce A/B. I quattro bus hanno nome modificabile, livello, pan, mute e solo; i ritorni espongono anche stanza/smorzamento e tempo/feedback del delay.
 - Un meter fermo mostra **Silenzio**: non sta ricevendo segnale, senza implicare necessariamente mute. Gli altri valori sono numeri in dB. Rotella e trackpad non cambiano accidentalmente i parametri.
 
-Studio e Bus e mandate condividono superfici piatte scure, manopole, chip e un solo accento arancione. Nel sampler i parametri sono divisi in Regione/Loop, Inviluppo, Intonazione, Filtro e Slice/Sync. Le note assegnate agli slice hanno un segno arancione sulla tastiera anche prima di suonare. MIDI Rec e Media usano lo stesso tema.
+Studio e Bus e mandate condividono superfici piatte scure, manopole, chip e un solo accento arancione. Nel sampler i parametri sono divisi in Regione/Loop, Inviluppo, Intonazione, Filtro e Slice/Sync. Le note assegnate agli slice hanno un segno arancione sulla tastiera anche prima di suonare. Registrazione e Media usano lo stesso tema.
 
 Le quattro strip hanno un solo titolo modificabile, Pan a manopola, fader e meter verticali allineati in basso e pulsanti **M / S**. Arancione distingue i ritorni effetti e i valori attivi. Le manopole di Room/Damping e Crossfeed/Damping/Feedback/Delay sono sopra le strip Riverbero e Delay; i gruppi mantengono la stessa zona fader. Traccia, uscita e due mandate a manopola sono raccolte nel riquadro superiore.
 
@@ -232,12 +259,14 @@ Le mandate seguono livello e gruppo della traccia; il master controlla anche i r
 | Controllo | Cosa fa |
 |---|---|
 | **⏮ ▶/❚❚ ■** | Torna all’inizio, play / pausa, stop. La barra spaziatrice fa play / pausa. |
-| **TEMPO** | Cambia i BPM dell’intero brano nel range del genere scelto. La durata in minuti segue le battute. |
+| **TEMPO** | Cambia la velocità dell’intero brano. Normalmente usa il range del genere; i brani IA con tempo libero consentono 30–300 BPM. Le battute e le note restano uguali, cambia la durata in minuti. |
 | **Posizione** | Battuta : beat / lunghezza del brano in battute, accanto al titolo TRASPORTO. |
 | **LOOP** | Ripete la zona impostata; LOOP CLIP ripete la parte scelta nell’editor. |
 | **CLICK** | Metronomo durante l'ascolto (mai nell'export); come il tasto **C**. |
 
 L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionato** in riquadri compatti. Strumento interno, sample e plugin condividono una riga; l'editor del plugin compare quando è assegnato uno strumento o effetto esterno. Mute, solo, blocchi, modifica MIDI, rigenerazione e loop conservano azioni e undo. Trascina il bordo per ridimensionarlo; il doppio clic ripristina 248 px.
+
+Il brano usa **4/4**: una battuta contiene quattro beat. L’indicazione nel trasporto non è un selettore di metro.
 
 ### Progression, Harmony & Scales e Groove
 
@@ -291,7 +320,7 @@ Lead usa lo stesso motore melodico e i quattro timbri synth guida di [Fase Groov
 
 **Ottava generale** sposta tutta la melodia Lead da −2 a +2 ottave, mantenendo le ottave delle singole corsie. Il valore viene salvato nel progetto e usato anche per MIDI e audio esportati.
 
-I progetti precedenti a diciassette tracce si aprono con Lead vuoto aggiunto in fondo. ID delle tracce, note, plugin, mix e automazioni restano intatti. Rigenera esplicitamente Lead per aggiungere la melodia a un vecchio brano; le modifiche MIDI manuali restano libere come negli altri strumenti intonati.
+I progetti precedenti con diciassette tracce si aprono con Lead vuoto aggiunto in fondo. Anche i progetti con meno tracce vengono migrati: le parti salvate conservano la propria assegnazione e gli slot mancanti restano vuoti e muti. ID delle tracce, note, plugin, mix e automazioni restano intatti. Rigenera esplicitamente Lead per aggiungere la melodia a un vecchio brano; le modifiche MIDI manuali restano libere come negli altri strumenti intonati.
 
 ### Suoni per genere
 
@@ -390,7 +419,7 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 **SALVA / SALVA COME** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
 
-Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. ANNULLA conserva fino a quaranta passaggi mentre l'app è aperta.
+Ogni minuto viene scritta una copia di recupero se ci sono modifiche, tranne durante una registrazione o un export. **icona altoparlante → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. ANNULLA conserva fino a quaranta passaggi mentre l'app è aperta.
 
 ### Scorciatoie
 
@@ -408,6 +437,9 @@ Ogni minuto viene scritta una copia di recupero se ci sono modifiche. **AUDIO �
 | **L** | Loop sì / no. **Ctrl/Cmd + L** mette in loop la selezione. |
 | **C** | Metronomo sì / no (solo in ascolto, mai nell'export). |
 | **B** | Browser dei campioni sì / no. |
+| **I / F3** | Mostra/nasconde inspector e mixer. |
+| **F / Z** | Inquadra tutto il brano / la selezione. |
+| **Ctrl/Cmd + L** | Imposta il loop sulla selezione. |
 
 Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca passano tra i risultati; **A− / A+** cambia la dimensione del testo. Clicca una schermata per aprirla più grande.
 
@@ -463,7 +495,7 @@ Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
 
 La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro & Latin** dà spazio alle percussioni; **Funky & Disco** alterna strofe e ritornelli.
 
-I BPM sono scelti nel range del genere: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125. Il controllo tempo usa il range dello stile scelto. Le categorie Neo Soul / Broken e Chill / Pads mantengono un carattere da warm-up a BPM più bassi. La durata in secondi è `battute × 240 / BPM`.
+I BPM sono scelti nel range del genere: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125. Il controllo tempo usa normalmente il range dello stile scelto; con un brano IA a tempo libero il range diventa 30–300 BPM. Le categorie Neo Soul / Broken e Chill / Pads mantengono un carattere da warm-up a BPM più bassi. La durata in secondi è `battute × 240 / BPM`.
 
 Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, densità e ruoli. Le sezioni automatiche seguono frasi da otto battute anche con progressioni di tre, cinque o sette accordi; il ciclo armonico continua attraverso i confini invece di ripartire sempre dal primo accordo.
 
@@ -483,7 +515,7 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 | **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |
 | **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere, frasi armoniche e sviluppo del groove. Prima devi sbloccare tracce e clip. |
 
-**Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** apre un menu per scegliere la funzione della sezione da inserire dopo quella selezionata. Allungare una sezione lascia spazio vuoto: rigenera o scrivi le note per riempirlo. Accorciarla taglia le note oltre il nuovo confine.
+**Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** apre un menu per scegliere la funzione della sezione da inserire dopo quella selezionata. Trascinando il bordo dell’intestazione cambi la guida, conservando clip e automazioni nella loro posizione. Per allungare la musica usa il bordo del clip, duplica le parti oppure scrivi o rigenera le note.
 
 > Prova così: duplica il drop, cambia soltanto il basso della seconda copia, poi alleggerisci il piano. Mantieni un'idea riconoscibile e cambia chi la porta avanti.
 
@@ -502,6 +534,14 @@ Il valore è un moltiplicatore del fader: 0% = silenzio, 100% = volume invariato
 L’inviluppo si salva nel `.fga`, è indipendente dai BPM e dalla rigenerazione MIDI; inserendo, duplicando, eliminando o spostando sezioni anche i punti si spostano con esse. Cambiare la durata di una sezione o creare una nuova forma con NUOVO ARRANGIAMENTO mantiene invece i tempi assoluti dei punti e li limita alla nuova durata: ricontrolla la linea. I vecchi progetti si aprono con automazione spenta. La visibilità è una preferenza della sessione di lavoro e non è salvata nel progetto.
 
 L’automazione volume **non modifica le velocity e non viene convertita in CC MIDI**: resta un controllo audio della DAW. Le dinamiche espressive dei motori originali continuano a funzionare; le rampe extra di velocity aggiunte dall’arranger per simulare un fade sono rimosse. Per portare le curve fuori dall’app esporta l’audio; il MIDI contiene le note e i CC musicali originali.
+
+### Pan, master e parametri VST
+
+Apri una corsia con **A** sulla traccia, poi clicca il **nome del parametro a sinistra della corsia**. Il menu offre **Volume**, **Pan**, **Volume master** e i parametri esposti dallo strumento o dall’effetto in insert. Carica prima il VST/AU per vederne i parametri; i controlli interni non esposti dal plugin non compaiono. Ogni traccia può conservare fino a 8 corsie di parametri plugin.
+
+Disegna punti e curve come per il volume. **Pan** sposta da sinistra al centro e a destra; **Volume master** cambia l’uscita di tutto il brano. Il master è condiviso: selezionarlo da un’altra traccia mostra lo stesso inviluppo. I parametri plugin usano il loro intervallo normalizzato. Le curve si ascoltano anche negli export audio; il file MIDI non le trasporta a un altro strumento.
+
+Nel menu trovi **Automazione casuale per questa corsia/traccia**, **Blocca questa corsia** e **Scrivi automazione alla rigenerazione**. Controlla quest’ultima opzione prima di rigenerare se vuoi conservare curve scritte a mano; blocca la corsia da proteggere. I comandi sono annullabili. Per eliminare soltanto una corsia plugin scegli **Rimuovi questa corsia plugin**.
 
 ---
 
@@ -568,7 +608,7 @@ Hai preparato una nuova tonalità, mentre i clip contengono ancora le note prece
 
 **Non sento niente**
 
-Controlla **AUDIO**, l'uscita scelta, AVVIA, il livello master e MUTE/SOLO. Nel pannello della traccia premi **BUILT-IN** per ascoltare con il suono guida. Se quello funziona, controlla il campione o il VST assegnato.
+Controlla l’**icona altoparlante → Dispositivo audio / buffer**, l’uscita scelta, AVVIA, il livello master e MUTE/SOLO. Nel pannello della traccia premi **BUILT-IN** per ascoltare con il suono guida. Se quello funziona, controlla il campione o il VST assegnato.
 
 **Il VST o il campione non si trova più**
 
@@ -584,7 +624,19 @@ La forma dipende dal genere; il groove e il ciclo armonico stabiliscono lo svilu
 
 **Dove sono registrazione, automazioni e catene di effetti?**
 
-Questa versione lavora sull'arrangiamento MIDI. Registrazione audio/MIDI, automazioni diverse dal volume traccia, editing audio, bus/send, catene di effetti esterni e compensazione della latenza dei plugin non sono presenti. Puoi esportare MIDI e WAV per continuare il lavoro nella tua DAW. Alcuni controlli avanzati dei plugin Fase Groove non sono ancora riportati nell'Arranger.
+**STUDIO → REGISTRAZIONE** offre take MIDI e audio da ingresso o master, con importazione della take e bounce della traccia. Il mixer gestisce gruppi A/B e mandate riverbero/delay; le corsie dell’arrangiamento gestiscono volume, pan, master e parametri VST/AU. Ogni traccia dispone di uno strumento e un effetto in insert, con compensazione della latenza. Non sono disponibili catene di più insert, editing audio distruttivo, warping delle tracce audio o registrazione delle automazioni dei controller MIDI.
+
+**REGISTRA AUDIO è disabilitato o non entra segnale**
+
+Configura un dispositivo audio dall’icona altoparlante. Per **Ingresso audio**, controlla dispositivo, canali e permessi del sistema; **Mix master** registra invece ciò che esce dal brano. Termina prima eventuali take MIDI o export. Se **USA TAKE AUDIO** resta disabilitato, leggi il messaggio nello Studio: può mancare audio oltre il pre-roll o il file può superare i limiti del sampler.
+
+**Non sento la take dopo averla importata**
+
+Le take del master partono mute per evitare un raddoppio del mix. Seleziona la nuova traccia e controlla Mute, Solo, posizione del clip e loop del brano. Il file WAV rimane sul disco anche dopo Annulla.
+
+**Il Crash o un altro campione finisce troppo presto**
+
+Nello Studio scegli **One-shot** per suonare fino alla fine anche con un trigger MIDI breve. In **Classico / durata nota** la durata della nota comanda il rilascio: trascina il bordo destro della nota nel piano roll. Controlla anche fine della regione e inviluppo.
 
 **Il file MIDI non viene importato**
 

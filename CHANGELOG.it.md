@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.1
+
+- Aggiorna le guide italiana e inglese all’Arranger attuale: campionatore, ascolto e accordatore, registrazione MIDI/audio, importazione take, render traccia, mandate del mixer e automazioni volume/pan/master/plugin.
+- Sostituisce le schermate obsolete di arrangiamento, mixer, Piano, sampler e impostazioni con catture native. Corregge FAQ, ingresso audio, formati campione, migrazione e numero tracce; aggiunge accessi rapidi.
+- Conserva impaginazione della famiglia, ricerca integrata e immagini ingrandibili. Elaborazione audio, generazione MIDI e formato progetto restano invariati.
+
 ## 0.23.0
 
 - Rimuove il mutex globale dell’engine dal callback audio: le modifiche di controllo attendono una finestra quiescente. Prepara i plugin sostitutivi fuori da questa finestra e serializza/ripristina lo stato senza elaborazione concorrente.

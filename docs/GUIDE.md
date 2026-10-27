@@ -20,15 +20,24 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 8. [FAQ and troubleshooting](#8-faq-and-troubleshooting)
 9. [Listen to my music](#9-listen-to-my-music)
 
+**Quick access:**
+
+- [Sampler and Studio](#studio-sampler-recording-and-media)
+- [Mixer and sends](#mixer-groups-and-sends)
+- [Automation](#pan-master-and-vst-parameters)
+- [Export](#4-exporting-midi-and-audio-to-your-daw)
+
+This guide is current for **0.23.1**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
 ---
 
 ## 1. Installation
 
-This guide covers **v0.21.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.23.1** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
-Open **FaseGrooveArranger-Windows-Setup.exe**, choose English or Italian and follow the same setup wizard as the other Fase Groove apps. It installs the standalone app, guides, privacy/licence notices and Start menu shortcuts; the desktop shortcut is optional. Arranger includes all three engines, so no Fase Groove plugins or other DAW are required. Windows asks for administrator access for the setup only. Uninstall from Windows Settings; projects, exports and local preferences remain.
+Open **FaseGrooveArranger-Windows-Setup.exe**, choose English or Italian and follow the same setup wizard as the other Fase Groove apps. It installs the standalone app, guides, privacy/licence notices and Start menu shortcuts; the desktop shortcut is optional. Arranger includes the four Piano, Drums, Guitar and Lead engines, so no Fase Groove plugins or other DAW are required. Windows asks for administrator access for the setup only. Uninstall from Windows Settings; projects, exports and local preferences remain.
 
 ### Manual installation (all systems)
 
@@ -48,7 +57,7 @@ Save your project before **INSTALL NOW**. Installed Windows copies run the same 
 
 Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Documents if Downloads is unavailable. Projects, samples, exports and autosaves are not replaced by upgrades. **0.7.0 and earlier:** install this release once manually; their DOWNLOAD button opens the release page. Later versions use the integrated installer/update workflow. On Linux, the network check/download uses system `curl`.
 
-**First launch:** open **AUDIO**, choose your output and a buffer suited to the device. The app uses audio output; it does not open the microphone.
+**First launch:** click the **speaker icon** at the top right, then **Audio device / buffer**. Choose your output and buffer. Audio input is enabled from these settings or when you choose to record it in Studio; it is not opened automatically at startup. On macOS, allow microphone access if you want to record an input.
 
 > Start with the guide sound. You can hear and build the whole song before choosing your instruments.
 
@@ -61,7 +70,7 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
-6. Return with **< ARRANGEMENT**. Select the **Piano track**, click its amber gear beside Solo and choose a guide sound, sample or your own VST.
+6. Return with **< ARRANGEMENT**. Select **Piano** and choose **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector. The track gear opens its original musical controls.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
 Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
@@ -78,10 +87,9 @@ New piano regenerations compare the previous rhythmic attacks against draws from
 
 ### Current interface
 
-Every button of the interface is drawn the same way: **lit (filled) = on**, raised = off.
+Every button of the interface is drawn the same way: **lit (filled) = on**, dimmed = off.
 **Amber** marks the main actions, **cyan** transport and automation. Piano, bass, strings, guitar
-and drums keep their family colours. Every button has its tooltip. Click a track name for its
-parameters and double-click a clip for its notes.
+and drums keep their family colours. Every button has its tooltip. Click a track name to select it in the inspector, its gear to open the instrument panel, and double-click a clip to edit its notes.
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
@@ -94,7 +102,7 @@ The top contains project commands, transport and the controls shared by everyone
 | **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
 | **Track name** | Selects the track; its gear opens a separate instrument window with groove, playing, sound and mixer controls. |
 | **Double-click clip / E** | Opens the large MIDI editor for just that track and section. |
-| **AUDIO · OPTIONS · GUIDE** | Output device; information, credits and privacy; the guide. |
+| **Speaker · gear · ?** | Audio and autosave; options, language and credits; this guide. Icons sit at the top right. |
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
@@ -165,11 +173,13 @@ Folders are read and audio headers measured in the background, so the interface 
 
 **STUDIO**, next to **AI COMPOSER**, opens an always-on-top window. Close it with X; reopening centres it. When a track uses a **Sample**, its inspector shows **OPEN SAMPLER**. The sampler target menu lists only sample tracks, including samples needing relinking. MIDI recording and media retain access to all tracks; changing tabs during a take cannot change the recording destination.
 
+#### Prepare and edit a sample
+
 <p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
 
-- A single full-width waveform shows its ruler, numbered slice markers and trim handles. Wheel/pinch zoom at the pointer; horizontal gestures or Shift-wheel pan the view. Double-click fits the sample. Navigation leaves project and Undo unchanged. Drop audio from the app browser or operating system onto the waveform.
+Drop an audio file from the browser or operating system onto the waveform, or press **LOAD SAMPLE**. Numbered markers identify slices.
 
-**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 30 minutes and 512 MiB decoded per file. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
+**SAMPLER.** Load WAV, AIFF, FLAC or OGG samples up to 30 minutes and 512 MiB decoded per file. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
 - **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
 - **LOOP** repeats the loop region in Classic mode; crossfade softens the seam. **REVERSE** changes playback direction.
@@ -181,28 +191,43 @@ Folders are read and audio headers measured in the background, so the interface 
 - Controls are grouped into five modules: region/loop, amplitude envelope, tuning/playback, filter and slice/sync. Rotary controls retain the original parameters and their numeric values underneath remain editable. Tooltips explain actions and units when you rest the pointer over a control. They follow the global tooltip preference and work in Studio’s separate window.
 - **SAVE PRESET** writes a `.fgs` and a neighbouring sample folder. Move both together. **OPEN PRESET** restores sample, root and settings. Project saving and Undo/Redo also preserve sampler settings.
 
-<p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
+**Safe scrolling.** In Studio, wheel and trackpad gestures navigate the view without changing levels, parameters or menu choices underneath the pointer. Drag a control or type in its numeric field to edit a value. Waveform zoom and panning remain available.
 
-**MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
-
-
-**STUDIO AUDIO.** In Recording choose **Audio input** or **Master mix**, press **RECORD AUDIO**, and choose a WAV destination. Input opens only on request; choose its device/channels under Settings → Audio device/buffer. Recording starts transport at the current position. **FINISH TAKE** flushes the WAV without resetting song position; closing Studio also finishes the take and keeps its file. MIDI and audio takes cannot record together.
-
-**USE AUDIO TAKE** creates a sample track and a clip at the recorded position, extending the guide if necessary. Position includes device/plugin latency; preroll before zero is excluded using sampler trim while the original WAV is kept. Recording remains continuous through loops; disable the loop to hear a long take linearly. This is one undoable action; Undo keeps the WAV. Master takes start muted to avoid doubling the song: their files are post-master and an imported track subsequently follows the current mix. **BOUNCE TRACK** exports the selected track with effects, tails and latency compensation. Takes beyond the sampler limit remain WAVs on disk; Studio explains why import is unavailable. Rate changes or queue faults interrupt a take with a warning, without silencing unrelated tracks.
-
-Compensation displays the samples used and the **262143-frame** capacity: about 5.46 s at 48 kHz and less at higher rates. Exceeding the limit is indicated. MIDI capture subtracts device output, instrument/insert and alignment latency on a continuous clock through loop wraps. Input overflow is reported without a global panic. Live float output keeps headroom above ±1; the meter indicates clipping, while PCM/MP3 encoders limit exported samples.
-
-Plugin snapshots are read only with processing quiescent. Save, Undo and export snapshots can cause a short pause depending on the plugin; factory creation and preparation then run outside that window and export renders a private copy. Input recording keeps incoming samples during a snapshot; master recording retains what is actually audible.
-
-**MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
+#### Audition and tune the sample
 
 **Sample audition.** Press **PLAY SAMPLE** to hear only the selected source with the current sampler settings, before track volume, mute, effects and buses. Song playback stops while retaining its position. **AUDITION LOOP** repeats the region for continuous filter, pitch, envelope and trim editing; it does not change the sampler LOOP parameter. **STOP** stops immediately. Without repeat, the region ends naturally; an enabled internal sampler loop continues until STOP. In Slices mode, audition plays the first slice; use pads or the keyboard for the others. The auditioned note is highlighted below. Changing sample or tab, closing Studio, starting the song or recording stops audition. These three controls do not change project data, MIDI or Undo history.
 
 **Sample tuner.** During isolated audition, MIDI keyboard playing or song playback, **DETECTED PITCH** measures the selected sampler audio before track effects and shows its nearest note, cents offset and frequency in Hz. **+** means sharp, **-** means flat; the reference is A = 440 Hz. Adjust **TRANSPOSE** in semitones and **FINE (cents)** for fine tuning: the reading follows the processed sample sound. Octave numbering matches the Studio keyboard. The MIDI NOTE indication remains the MIDI trigger key, which can differ from the sample’s actual pitch. The tuner is intended for stable monophonic sounds, approximately 35–1600 Hz, with a short analysis window; noise, crashes, chords and transients may show **No stable pitch**. The last stable pitch is held for one second after playback ends, labelled **LAST PITCH**, so short samples remain readable; then a dash appears.
 
-**Safe scrolling.** In Studio, wheel and trackpad gestures navigate the view without changing levels, parameters or menu choices underneath the pointer. Drag a control or type in its numeric field to edit a value. Waveform zoom and panning remain available.
-
 **If the kick becomes quiet after an edit.** Try **UNDO** first. For a sample source, select Kick and press **RESET SAMPLE**: it preserves the file, MIDI and mix. If it remains quiet, also check track volume, mute/solo, automation, routing and the assigned group level/mute, since sampler reset preserves the mix. Identifying the exact cause requires the project state; low level alone does not establish an audio-engine defect.
+
+#### Record MIDI
+
+<p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
+
+**MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
+
+#### Record audio and use a take
+
+1. Open **STUDIO → RECORDING** and choose the target track in the top menu. The **AUDIO RECORDING** card is separate from MIDI recording.
+2. Choose **Audio input** or **Master mix**: capture the input device or the audible song output. First configure an audio device using the speaker icon → **Audio device / buffer**; enable the input channels you need.
+3. Position the cursor on the ruler, press **RECORD AUDIO**, and choose a WAV destination. Transport starts too. The file is stereo 24-bit at the device sample rate.
+4. Press **FINISH TAKE** to complete the WAV; closing Studio also finishes the take. Finishing does not return song position to the beginning.
+5. Press **USE AUDIO TAKE** to add a new sample track with a clip at the recorded position. The section guide is extended if needed. **UNDO** removes the track while keeping the WAV on disk.
+
+**Master mix** takes are imported **muted** to avoid doubling the song. Unmute when you want to hear the take, accounting for the original mix. Its WAV already includes master processing; the imported track then follows the current mix. Recording remains continuous through loop boundaries: disable LOOP to hear a long take linearly.
+
+Alignment includes plugin latency and, for input recording, device latency. Preroll before zero is excluded using sampler trim without cutting the WAV. Takes shorter than the latency preroll or larger than sampler limits remain on disk; Studio explains why **USE AUDIO TAKE** is unavailable. A device/rate change or write failure interrupts the take with a warning. MIDI and audio cannot record together.
+
+**BOUNCE TRACK** saves the selected track’s sound to WAV, with effects, tails and latency compensation. It renders the track rather than recording a new input take.
+
+**Latency and level.** Studio displays compensation and capacity: **262143 samples**, about 5.46 s at 48 kHz. Plugins exceeding the limit trigger a warning. MIDI recording’s millisecond correction fine-tunes your performance timing. Input overflow is reported: check the take without losing unrelated tracks’ playback. Live master output retains float peaks; if **CLIP** lights, lower levels before PCM or MP3 export.
+
+Saving a VST state can cause a short pause, depending on the plugin. Audio input continues to be captured during that pause; a master recording retains the actually audible output, including silence.
+
+#### Manage samples and portable projects
+
+**MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
 
 ### Mixer: groups and sends
 
@@ -215,7 +240,7 @@ Open **BUS & SEND** from the mixer header. The panel stays on top, closes with X
 - Select any track in the panel and adjust its two percentages independently. **A - REVERB** and **B - DELAY** are effect returns, separate from track Groups A/B. All four buses have editable name, level, pan, mute and solo; returns also expose room/damping and delay time/feedback controls.
 - An idle meter reads **Silence**: it is receiving no signal, which does not necessarily mean mute. Other readings are numeric dB. Wheel and trackpad gestures cannot change values accidentally.
 
-Studio and Bus & Send share flat dark surfaces, knobs, chips and a single orange accent. Mapped slice keys carry an orange mark before playback. MIDI Rec and Media use the same theme.
+Studio and Bus & Send share flat dark surfaces, knobs, chips and a single orange accent. Mapped slice keys carry an orange mark before playback. Recording and Media use the same theme.
 
 Each strip has one editable title, a Pan knob, bottom-aligned vertical fader/meter and **M / S** buttons. Amber identifies effect returns and active values. Room/Damping and Crossfeed/Damping/Feedback/Delay knobs sit above the Reverb and Delay strips; groups retain the same fader area. Track, output and two rotary sends share the upper source panel.
 
@@ -235,10 +260,12 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 | Control | What it does |
 |---|---|
 | **⏮ ▶/❚❚ ■** | Return to the start, play / pause, stop. The space bar toggles play / pause. |
-| **TEMPO** | Sets song BPM within the selected genre’s range. Duration follows the bar count. |
+| **TEMPO** | Changes song playback speed. Normally follows the genre range; AI songs with free tempo allow 30–300 BPM. Bars and notes remain unchanged while duration in minutes changes. |
 | **Position** | Bar : beat / song length in bars, next to the TRANSPORT title. |
 | **LOOP** | Repeats the chosen region; LOOP CLIP repeats the selected editor section. |
 | **CLICK** | Metronome while playing (live only, never exported); same as **C**. |
+
+Songs use **4/4**, with four beats per bar. The transport indicator is not a time-signature selector.
 
 ### Progression, Harmony & Scales and Groove
 
@@ -292,7 +319,7 @@ Lead uses the same melodic engine and four guide synth sounds as [Fase Groove Le
 
 **Global octave** shifts the entire Lead melody from −2 to +2 octaves, relative to each lane’s own octave. It is stored in the project and used for MIDI and audio export.
 
-Existing seventeen-track projects load with an empty Lead track appended. Existing track IDs, notes, plugins, mix and automation stay intact. Regenerate Lead explicitly to add a melody to an old song; manual MIDI edits remain editable like the other pitched instruments.
+Existing seventeen-track projects load with an empty Lead track appended. Projects with fewer tracks are migrated too: saved parts retain their instrument assignments and missing slots remain empty and muted. Existing track IDs, notes, plugins, mix and automation stay intact. Regenerate Lead explicitly to add a melody to an old song; manual MIDI edits remain editable like the other pitched instruments.
 
 ### Genre sound palettes
 
@@ -389,7 +416,7 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 
 **SAVE / SAVE AS** writes a `.fga` project: sections, notes, parameters, locks, mixer and VST state. Samples and plugins stay at their paths; keep the files used in the song.
 
-An autosave is written once a minute when work has changed. **AUDIO → restore autosave** opens it; **open autosave folder** shows its location. Save separately named copies for versions you want to keep. UNDO retains up to forty steps while the app is open.
+An autosave is written once a minute when work has changed, except during recording or export. **speaker icon → restore autosave** opens it; **open autosave folder** shows its location. Save separately named copies for versions you want to keep. UNDO retains up to forty steps while the app is open.
 
 ### Shortcuts
 
@@ -461,7 +488,7 @@ To continue in another DAW, use the MIDI or stems in chapter 4.
 
 The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro & Latin** develops its percussion; **Funky & Disco** moves between verses and choruses.
 
-Tempo is chosen within the genre range: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125 BPM. The tempo control uses the selected style’s range. Neo Soul / Broken and Chill / Pads retain their slower warm-up character. Duration in seconds is `bars × 240 / BPM`.
+Tempo is chosen within the genre range: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125 BPM. The tempo control normally uses the selected style’s range; AI songs with free tempo use 30–300 BPM. Neo Soul / Broken and Chill / Pads retain their slower warm-up character. Duration in seconds is `bars × 240 / BPM`.
 
 The song keeps its base groove across sections, changing performance, density and roles. Generated sections follow eight-bar phrases even with three, five or seven chords; the harmonic cycle continues across section boundaries instead of always restarting at chord one.
 
@@ -481,7 +508,7 @@ The song keeps its base groove across sections, changing performance, density an
 | **REGENERATE CLIP** | Just the selected track in this section. |
 | **NEW ARRANGEMENT** | Rebuilds the form and notes from genre, harmonic phrases and groove development. Unlock tracks and clips first. |
 
-**Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** opens a menu to choose the role of the section inserted after the selected one. Extending a section leaves room to fill: regenerate or write the extra notes. Shortening it trims notes at its new end.
+**Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** opens a menu to choose the role of the section inserted after the selected one. Dragging a section-header edge changes the guide while preserving clips and automation at their musical positions. To extend the music, resize a clip loop, duplicate parts, write notes or regenerate.
 
 > Try this: duplicate a drop, change only the bass in the second copy, then make the piano sparser. Keep a recognisable idea and change who carries it.
 
@@ -500,6 +527,14 @@ Values multiply the track fader: 0% is silence, 100% leaves the level unchanged,
 Envelopes are saved in `.fga` projects, independently of BPM and MIDI regeneration. Inserting, duplicating, deleting or moving sections moves their points too. Changing section length or using NEW ARRANGEMENT keeps absolute point times, clamped to the new song length: review the envelope afterwards. Old projects open with automation bypassed. Lane visibility belongs to the current editing session and is not saved in the project.
 
 Volume automation **does not change note velocities or export MIDI CC**: it is DAW audio gain. Original engine dynamics still work; extra arranger velocity ramps previously used to imitate fades are removed. Export audio to carry the curves into another application; MIDI retains musical notes and original CC.
+
+### Pan, master and VST parameters
+
+Open a lane using the track’s **A** button, then click the **parameter name at the left of the lane**. Choose **Volume**, **Pan**, **Master volume**, or a parameter exposed by the instrument or insert effect. Load a VST/AU first to see its parameters; controls the plugin does not expose are unavailable. Each track can keep up to 8 plugin parameter lanes.
+
+Draw points and curves as for volume. **Pan** moves from left through centre to right; **Master volume** controls the whole song’s output. The master envelope is shared: selecting it from another track shows the same curve. Plugin parameters use their normalised range. Curves affect audio exports; MIDI files do not transfer them to another instrument.
+
+The menu also offers **Random automation for this lane/track**, **Lock this lane**, and **Write automation when regenerating**. Check the latter before regenerating if you want to retain hand-drawn curves; lock the lane you need to protect. Edits support Undo. To remove only a plugin lane, choose **Remove this plugin lane**.
 
 ---
 
@@ -566,7 +601,7 @@ You have prepared a new key while the clips still contain their previous notes. 
 
 **I cannot hear anything**
 
-Check **AUDIO**, output device, PLAY, master level and MUTE/SOLO. Click **BUILT-IN** in the track panel to try the guide sound. If that works, check the assigned sample or VST.
+Check the **speaker icon → Audio device / buffer**, output device, PLAY, master level and MUTE/SOLO. Click **BUILT-IN** in the track panel to try the guide sound. If that works, check the assigned sample or VST.
 
 **A VST or sample cannot be found**
 
@@ -582,7 +617,19 @@ Genre sets the musical form; the groove and harmonic cycle determine its develop
 
 **Where are recording, automation and effect chains?**
 
-This version works on MIDI arrangements. Audio/MIDI recording, automation beyond track volume, audio editing, buses/sends, external effect chains and plugin delay compensation are not present. Export MIDI and WAV to continue in your DAW. Some advanced Fase Groove plugin controls have not yet been brought into the Arranger.
+**STUDIO → RECORDING** provides MIDI and input/master audio takes, take import and track bounce. The mixer provides groups A/B and reverb/delay sends; arrangement lanes automate volume, pan, master and VST/AU parameters. Each track has an instrument and one insert effect, with latency compensation. Multi-insert chains, destructive audio editing, audio-track warping and MIDI controller automation recording are not implemented.
+
+**RECORD AUDIO is disabled, or no input is captured**
+
+Configure an audio device using the speaker icon. For **Audio input**, check the device, channels and system permissions; **Master mix** captures the audible song output instead. Finish any MIDI take or export first. If **USE AUDIO TAKE** stays disabled, read Studio’s message: the take may lack audio after latency preroll or exceed sampler limits.
+
+**I cannot hear an imported take**
+
+Master takes start muted to avoid doubling the mix. Select the new track and check Mute, Solo, clip position and the song loop. Its WAV remains on disk after Undo.
+
+**A Crash or another sample stops too soon**
+
+Choose **One-shot** in Studio to play to the end with a short MIDI trigger. In **Classic / gate**, note length controls release: drag the note’s right edge in the piano roll. Also check the region end and envelope.
 
 **My MIDI file will not import**
 
