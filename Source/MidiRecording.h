@@ -22,8 +22,8 @@ public:
     bool pop(LiveMidiEvent&);
     void append(CapturedMidi); // audio producer
     void drain(std::vector<CapturedMidi>&); // message-thread consumer
-    void resetRecordQueue(); // audio suspended by the engine mutex
-    std::atomic<int> target{-1};std::atomic<bool> monitor{false},active{false},overflow{false},panic{false};
+    void resetRecordQueue(); // audio producer quiescent under the engine control gate
+    std::atomic<int> target{-1};std::atomic<bool> monitor{false},active{false},overflow{false},inputOverflow{false};
     std::atomic<double> elapsed{0},countIn{0},timingOffsetMs{0};
 private:
     static constexpr int inputCapacity=8192,recordCapacity=32768;

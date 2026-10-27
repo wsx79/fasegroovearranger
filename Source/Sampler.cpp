@@ -9,7 +9,7 @@ namespace fga {
 juce::Result readSampleAsset(const juce::File& file,std::shared_ptr<const SampleAsset>& result){
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
     if(!reader||reader->lengthInSamples<2||reader->sampleRate<8000||reader->sampleRate>384000)return juce::Result::fail("Sample audio cannot be read.");
-    if(reader->lengthInSamples>reader->sampleRate*60)return juce::Result::fail("Use samples up to 60 seconds.");
+    if(!fitsSampleMemory(reader->lengthInSamples,reader->sampleRate,(int)reader->numChannels))return juce::Result::fail("Sampler limit: 30 minutes and 512 MiB of decoded audio per file.");
     auto asset=std::make_shared<SampleAsset>();asset->file=file;asset->rate=reader->sampleRate;asset->frames=(int)reader->lengthInSamples;
     asset->audio.setSize(std::min(2,(int)reader->numChannels),asset->frames+4);asset->audio.clear();
     if(!reader->read(&asset->audio,0,asset->frames,0,true,true))return juce::Result::fail("Sample decoding failed.");

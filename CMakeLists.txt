@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.22.7 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.23.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -69,7 +69,8 @@ if(FGA_BUILD_APP)
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"
         COMPANY_NAME "FS Pitch" BUNDLE_ID "com.fspitch.fasegroovearranger"
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
-        MICROPHONE_PERMISSION_ENABLED FALSE
+        MICROPHONE_PERMISSION_ENABLED TRUE
+        MICROPHONE_PERMISSION_TEXT "Record audio only when you choose audio input recording in Studio."
         PLIST_TO_MERGE "<plist><dict><key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict><key>NSLocalNetworkUsageDescription</key><string>Connect to your selected Ollama server to compose MIDI.</string></dict></plist>")
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
         Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png docs/images/guide_sampler.png docs/images/guide_recording.png docs/images/guide_buses.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
@@ -96,7 +97,7 @@ if(FGA_BUILD_APP)
         target_compile_definitions(fga_update_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_APPLICATION_VERSION_STRING="${PROJECT_VERSION}")
         add_test(NAME family_updater COMMAND fga_update_tests)
         juce_add_console_app(fga_engine_tests PRODUCT_NAME "Arranger engine tests")
-        target_sources(fga_engine_tests PRIVATE tests/EngineTests.cpp tests/StudioEngineTests.cpp Source/AudioEngine.cpp Source/Sampler.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp)
+        target_sources(fga_engine_tests PRIVATE tests/EngineTests.cpp tests/StudioEngineTests.cpp tests/EngineAuditTests.cpp Source/AudioEngine.cpp Source/Sampler.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp)
         target_include_directories(fga_engine_tests PRIVATE ThirdParty/signalsmith-stretch ThirdParty/signalsmith-linear/include)
         target_link_libraries(fga_engine_tests PRIVATE fga_core fga_mp3 juce::juce_audio_utils juce::juce_dsp juce::juce_cryptography)
         target_compile_definitions(fga_engine_tests PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_PLUGINHOST_VST3=0)

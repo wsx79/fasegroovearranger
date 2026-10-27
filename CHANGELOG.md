@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.0
+
+- Remove the global engine mutex from the audio callback; control-side changes wait for a quiescent callback. Prepare replacement plugins outside that gate and snapshot/restore hosted state without concurrent processing.
+- Record MIDI on a continuous clock through loop wraps, compensate device/plugin/alignment latency, preserve per-callback event positions across fragments and report queue overflow without a global panic. Bound guitar/lead and dense MIDI event storage/work.
+- Publish playhead rate/loop data atomically; derive bar/click/count-in timing from the engine meter (the current project format remains 4/4).
+- Apply snapped bus delays immediately and wrap interpolated delay reads. Keep live float headroom; sanitize non-finite values on every output route and clamp integer exports only.
+- Add Studio stereo input/master WAV recording, finish/import/Undo, non-destructive latency trim, track bounce and six-language feedback. Audio input is opt-in and restored after the take. Extend sampler imports to 30 minutes/512 MiB decoded per file.
+- Process hosted automation at exact breakpoint boundaries with bounded ramp intervals, preserving MIDI timing and plugin playhead positions. Extend and display PDC capacity to 262143 frames, with an exceeded-limit indicator.
+- Migrate short/sparse legacy track arrays into silent stable slots while preserving notes and plugin assignments; reject ambiguous duplicate IDs and unsupported future schemas. Refresh guides, privacy and native regression coverage.
+
 ## 0.22.7
 
 - Rebuild Studio to follow the supplied drawing: one full-width waveform, compact source/preset toolbar and slice/toggle row, two rows of five modules, knob/value/caption order and a lower keyboard.

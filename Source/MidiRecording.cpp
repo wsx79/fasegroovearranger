@@ -2,17 +2,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MidiRecording.h"
 namespace fga {
-void MidiCapture::push(juce::AbstractFifo& fifo,std::array<LiveMidiEvent,inputCapacity>& events,LiveMidiEvent e){auto slot=fifo.write(1);if(slot.blockSize1)events[(size_t)slot.startIndex1]=e;else if(slot.blockSize2)events[(size_t)slot.startIndex2]=e;else {overflow=true;panic=true;}}
-void MidiCapture::handleIncomingMidiMessage(juce::MidiInput*,const juce::MidiMessage& message){if(message.getRawDataSize()>3||message.getRawDataSize()<1)return;LiveMidiEvent e;e.size=message.getRawDataSize();std::copy_n(message.getRawData(),e.size,e.bytes.begin());e.time=message.getTimeStamp()>0?message.getTimeStamp():juce::Time::getMillisecondCounterHiRes()*.001;e.offset=-1;push(deviceFifo,*deviceEvents,e);}
+void MidiCapture::push(juce::AbstractFifo& fifo,std::array<LiveMidiEvent,inputCapacity>& events,LiveMidiEvent e){auto slot=fifo.write(1);if(slot.blockSize1)events[(size_t)slot.startIndex1]=e;else if(slot.blockSize2)events[(size_t)slot.startIndex2]=e;else {inputOverflow=true;}}
+void MidiCapture::handleIncomingMidiMessage(juce::MidiInput*,const juce::MidiMessage& message){if(message.getRawDataSize()>3||message.getRawDataSize()<1)return;LiveMidiEvent e;e.size=message.getRawDataSize();std::copy_n(message.getRawData(),e.size,e.bytes.begin());e.time=std::isfinite(message.getTimeStamp())&&message.getTimeStamp()>0?message.getTimeStamp():juce::Time::getMillisecondCounterHiRes()*.001;e.offset=-1;push(deviceFifo,*deviceEvents,e);}
 void MidiCapture::enqueue(int track,const juce::MidiMessage& message,bool recordable,int offset){if(message.getRawDataSize()>3||message.getRawDataSize()<1)return;LiveMidiEvent e;e.track=track;e.size=message.getRawDataSize();std::copy_n(message.getRawData(),e.size,e.bytes.begin());e.time=juce::Time::getMillisecondCounterHiRes()*.001;e.recordable=recordable;e.offset=offset;push(uiFifo,*uiEvents,e);}
 bool MidiCapture::pop(LiveMidiEvent& e){for(auto* fifo:{&deviceFifo,&uiFifo}){auto read=fifo->read(1);auto& events=*(fifo==&deviceFifo?deviceEvents:uiEvents);if(read.blockSize1){e=events[(size_t)read.startIndex1];return true;}if(read.blockSize2){e=events[(size_t)read.startIndex2];return true;}}return false;}
 void MidiCapture::append(CapturedMidi e){auto write=recordFifo.write(1);if(write.blockSize1)(*recorded)[(size_t)write.startIndex1]=e;else if(write.blockSize2)(*recorded)[(size_t)write.startIndex2]=e;else overflow=true;}
 void MidiCapture::drain(std::vector<CapturedMidi>& events){auto read=recordFifo.read(recordFifo.getNumReady());for(int i=0;i<read.blockSize1;++i)events.push_back((*recorded)[(size_t)(read.startIndex1+i)]);for(int i=0;i<read.blockSize2;++i)events.push_back((*recorded)[(size_t)(read.startIndex2+i)]);}
-void MidiCapture::resetRecordQueue(){recordFifo.reset();overflow=false;elapsed=0;}
+void MidiCapture::resetRecordQueue(){recordFifo.reset();overflow=false;inputOverflow=false;elapsed=0;}
 namespace {
 struct Held {double beat=0,elapsed=0;int velocity=0;bool released=false;};
 void appendNote(MidiTake& take,const Held& h,int pitch,double end,double grid){if(h.velocity==0)return;double duration=std::max(1./960.,end-h.elapsed),position=grid>0?std::round(h.beat/grid)*grid:h.beat;position=std::max(0.,position);
-    if(take.looping&&take.loopEnd>take.loopStart&&position>=take.loopEnd)position=take.loopStart+std::fmod(position-take.loopStart,take.loopEnd-take.loopStart);
+    if(take.looping&&take.loopEnd>take.loopStart&&position>=take.loopEnd){const double span=take.loopEnd-take.loopStart;position=take.loopStart+std::fmod(std::fmod(position-take.loopStart,span)+span,span);}
     for(int segments=0;duration>1.e-8&&segments<8192;++segments){double length=duration;if(take.looping&&position<take.loopEnd)length=std::min(length,take.loopEnd-position);if(length>1.e-8)take.notes.push_back({position,length,pitch,h.velocity});duration-=length;if(!take.looping||length<=1.e-8)break;position=take.loopStart;}
 }
 }

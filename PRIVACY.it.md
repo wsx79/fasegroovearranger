@@ -1,6 +1,6 @@
 # Privacy e permessi — Fase Groove Arranger
 
-Versione 0.22.7 · 27 ottobre 2026
+Versione 0.23.0 · 27 ottobre 2026
 
 Fase Groove Arranger è un'app desktop dell'ecosistema FS Pitch, creato da Fabio 'Pitch' Serra. Il codice sorgente e il contatto del progetto sono disponibili su https://github.com/wsx79/fasegroovearranger.
 
@@ -20,7 +20,7 @@ Puoi eliminare i progetti/esportazioni dal file manager e cancellare l'autosave 
 
 ## Permessi
 
-- Uscita audio: necessaria per ascolto e anteprima. L'app non apre ingressi audio, non usa il microfono e non registra l'ambiente.
+- Uscita audio: necessaria per ascolto e anteprima. L’app non abilita ingressi audio o microfono all’avvio. Puoi abilitarli esplicitamente nelle impostazioni audio oppure avviando una registrazione audio in Studio dopo aver scelto il file WAV. Alla fine viene ripristinata la configurazione dell’ingresso abilitato per quella take; le impostazioni già abilitate o cambiate successivamente dall’utente sono conservate.
 - File: lettura dei file scelti; scrittura delle destinazioni di salvataggio/esportazione e dell'autosave locale.
 - Plugin nativi: il caricamento di VST3/AU esegue codice del plugin nel processo dell'app. Plugin e relativi servizi possono avere rete, file e licenze proprie, fuori dal controllo dell'arranger.
 - Browser: usato soltanto per collegamenti esterni scelti dall'utente.
@@ -53,4 +53,4 @@ Le risposte sono convalidate come dati musicali limitati, senza eseguire codice.
 
 ## Registrazione e raccolta in Studio
 
-Studio apre soltanto l’ingresso MIDI scelto per ascoltare e registrare note. Note, velocity e durate ricavate dal sustain restano nel progetto locale; ingresso e preferenze di registrazione sono salvati localmente. Studio non registra il microfono. Raccolta e preset portatili copiano i campioni scelti nella destinazione selezionata e ne verificano il contenuto sul dispositivo. Sincronizzazione e intonazione vengono elaborate localmente, senza caricare audio in rete.
+Studio registra note dall’ingresso MIDI scelto e, separatamente, può registrare l’ingresso audio stereo o il mix master udibile in un WAV locale selezionato. Note, velocity e durate ricavate dal sustain restano nel progetto locale; ingresso e preferenze di registrazione sono salvati localmente. La registrazione audio è esplicita e termina su comando o chiudendo Studio. Codifica e scrittura su disco avvengono in un thread dedicato. USA TAKE AUDIO aggiunge il WAV come traccia campione; Annulla conserva il WAV. Nessun audio registrato viene caricato in rete. Raccolta e preset portatili copiano i campioni scelti nella destinazione selezionata e ne verificano il contenuto sul dispositivo. Sincronizzazione e intonazione vengono elaborate localmente, senza caricare audio in rete.

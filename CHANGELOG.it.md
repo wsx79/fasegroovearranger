@@ -1,5 +1,15 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.0
+
+- Rimuove il mutex globale dell’engine dal callback audio: le modifiche di controllo attendono una finestra quiescente. Prepara i plugin sostitutivi fuori da questa finestra e serializza/ripristina lo stato senza elaborazione concorrente.
+- Registra MIDI su un tempo continuo attraverso i loop, compensa latenza di dispositivo/plugin/allineamento e conserva gli offset fra frammenti del callback. Segnala overflow senza panic globale e limita memoria/lavoro per eventi guitar/lead e sequenze MIDI troppo dense.
+- Pubblica posizione, frequenza e loop in atomici; playhead, click e conteggio usano il metro dell’engine. Il formato attuale dei brani resta in 4/4.
+- Applica subito il delay dei bus allo snap e avvolge gli indici di lettura. Conserva la dinamica float live, elimina valori non finiti su tutti i percorsi e limita soltanto gli export interi.
+- Aggiunge registrazione WAV stereo da ingresso/mix in Studio, fine take/importazione/Annulla, trim non distruttivo della latenza, render traccia e feedback in sei lingue. Ingresso audio esplicito e ripristinato dopo la take. Import sampler fino a 30 minuti/512 MiB decodificati per file.
+- Suddivide l’elaborazione dei plugin sui breakpoint di automazione con intervalli limitati sulle rampe, preservando tempi MIDI e playhead. Estende e mostra il limite PDC a 262143 frame, indicando i superamenti.
+- Migra progetti precedenti con poche tracce o slot sparsi, aggiungendo slot muti e conservando note e assegnazioni dei plugin. Rifiuta ID duplicati ambigui e versioni future sconosciute. Aggiorna guide, privacy e regressioni native.
+
 ## 0.22.7
 
 - Rifai Studio seguendo il disegno fornito: waveform unica a tutta larghezza, barra sorgente/preset e riga tagli/toggle compatte, cinque moduli su due righe, ordine manopola/valore/etichetta e tastiera più bassa.

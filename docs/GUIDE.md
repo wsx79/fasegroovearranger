@@ -169,7 +169,7 @@ Folders are read and audio headers measured in the background, so the interface 
 
 - A single full-width waveform shows its ruler, numbered slice markers and trim handles. Wheel/pinch zoom at the pointer; horizontal gestures or Shift-wheel pan the view. Double-click fits the sample. Navigation leaves project and Undo unchanged. Drop audio from the app browser or operating system onto the waveform.
 
-**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 60 seconds. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. Zoom and position sliders follow these gestures. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
+**SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 30 minutes and 512 MiB decoded per file. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
 - **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
 - **LOOP** repeats the loop region in Classic mode; crossfade softens the seam. **REVERSE** changes playback direction.
@@ -181,9 +181,18 @@ Folders are read and audio headers measured in the background, so the interface 
 - Controls are grouped into five modules: region/loop, amplitude envelope, tuning/playback, filter and slice/sync. Rotary controls retain the original parameters and their numeric values underneath remain editable. Tooltips explain actions and units when you rest the pointer over a control. They follow the global tooltip preference and work in Studio’s separate window.
 - **SAVE PRESET** writes a `.fgs` and a neighbouring sample folder. Move both together. **OPEN PRESET** restores sample, root and settings. Project saving and Undo/Redo also preserve sampler settings.
 
-<p align="center"><img src="images/guide_recording.png" alt="Studio MIDI" width="980"></p>
+<p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
 
 **MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
+
+
+**STUDIO AUDIO.** In Recording choose **Audio input** or **Master mix**, press **RECORD AUDIO**, and choose a WAV destination. Input opens only on request; choose its device/channels under Settings → Audio device/buffer. Recording starts transport at the current position. **FINISH TAKE** flushes the WAV without resetting song position; closing Studio also finishes the take and keeps its file. MIDI and audio takes cannot record together.
+
+**USE AUDIO TAKE** creates a sample track and a clip at the recorded position, extending the guide if necessary. Position includes device/plugin latency; preroll before zero is excluded using sampler trim while the original WAV is kept. Recording remains continuous through loops; disable the loop to hear a long take linearly. This is one undoable action; Undo keeps the WAV. Master takes start muted to avoid doubling the song: their files are post-master and an imported track subsequently follows the current mix. **BOUNCE TRACK** exports the selected track with effects, tails and latency compensation. Takes beyond the sampler limit remain WAVs on disk; Studio explains why import is unavailable. Rate changes or queue faults interrupt a take with a warning, without silencing unrelated tracks.
+
+Compensation displays the samples used and the **262143-frame** capacity: about 5.46 s at 48 kHz and less at higher rates. Exceeding the limit is indicated. MIDI capture subtracts device output, instrument/insert and alignment latency on a continuous clock through loop wraps. Input overflow is reported without a global panic. Live float output keeps headroom above ±1; the meter indicates clipping, while PCM/MP3 encoders limit exported samples.
+
+Plugin snapshots are read only with processing quiescent. Save, Undo and export snapshots can cause a short pause depending on the plugin; factory creation and preparation then run outside that window and export renders a private copy. Input recording keeps incoming samples during a snapshot; master recording retains what is actually audible.
 
 **MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
 
@@ -308,7 +317,7 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 | Button | What you choose |
 |---|---|
 | **BUILT-IN** | Return to the guide sound. Piano and bass have seven keyboard tones; strings, four guitars and four drum kits have their own sounds. |
-| **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 60 seconds. The file stays on disk; the project remembers its path. The sample browser (**B**) does the same with preview and drag & drop. |
+| **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 30 minutes and 512 MiB decoded per file. The file stays on disk; the project remembers its path. The sample browser (**B**) does the same with preview and drag & drop. |
 | **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or one insert effect. |
 | **OPEN VST** | The loaded instrument's own interface. When an effect is also loaded, choose instrument or effect. |
 

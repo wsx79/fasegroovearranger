@@ -4,8 +4,12 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <string>
 namespace fga {
+constexpr double maxSampleSeconds=1800.;
+constexpr std::int64_t maxDecodedSampleBytes=512ll*1024*1024;
+inline bool fitsSampleMemory(std::int64_t frames,double rate,int channels){return frames>=2&&channels>0&&std::isfinite(rate)&&rate>=8000&&rate<=384000&&frames<=rate*maxSampleSeconds&&(frames+4)<=maxDecodedSampleBytes/(std::clamp(channels,1,2)*(int)sizeof(float));}
 inline double bounded(double v,double fallback,double lo,double hi){return std::isfinite(v)?std::clamp(v,lo,hi):fallback;}
 struct SamplerSettings {
     // -1 preserves the old track-dependent gate/one-shot behaviour on legacy projects.

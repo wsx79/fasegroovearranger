@@ -1148,7 +1148,7 @@ void MainComponent::timerCallback(){
         else arrangement.repaint();
         lastPlayX=playX;
         if(page==Page::editor)piano.repaint();if(instrumentIsOpen())instrumentPanel.repaintMeters();}audio.collectGarbage();
-    if(++ticks%1200==0&&dirty&&!loadingPlugin){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
+    if(++ticks%1200==0&&dirty&&!loadingPlugin&&!audio.isRecording()&&!audio.isAudioRecording()&&!audio.isExporting()){audio.capturePluginStates(project);auto path=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");path.getParentDirectory().createDirectory();auto result=saveProject(project,path);if(result.failed())message(result.getErrorMessage(),true);}
 }
 // The display reads bars.beats.ticks (960 ticks per beat).
 void MainComponent::showPosition(double beat){const int ticksIn=std::clamp((int)std::floor((beat-std::floor(beat))*960+1e-6),0,959);positionLabel.setText(juce::String((int)beat/4+1)+"."+juce::String((int)beat%4+1)+"."+juce::String(ticksIn).paddedLeft('0',3),juce::dontSendNotification);}
@@ -1192,7 +1192,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
 
 // Save / Discard / Cancel, as in any DAW. An untitled project opens SAVE AS and keeps the
 // current song open: close again once it is saved.
-bool MainComponent::requestClose(){if(audio.isRecording()&&studioWindow)studioWindow->closeButtonPressed();if(!dirty)return true;
+bool MainComponent::requestClose(){if((audio.isRecording()||audio.isAudioRecording())&&studioWindow)studioWindow->closeButtonPressed();if(!dirty)return true;
     const int choice=juce::AlertWindow::showYesNoCancelBox(juce::MessageBoxIconType::QuestionIcon,tr("Unsaved changes"),tr("The project has unsaved changes. Save them before closing?"),tr("SAVE"),tr("Discard"),tr("Cancel"),this);
     if(choice==2)return true;
     if(choice!=1)return false;

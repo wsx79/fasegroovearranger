@@ -340,7 +340,7 @@ private:
     void showPluginMenu(juce::Component* anchor=nullptr);
     void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>);
     void exportMenu();
-    void exportFile(int type,int track);
+    void exportFile(int type,int track,const juce::File& destination={});
     void loadSampleFile(int,const juce::File&);
     void showAbout();
     void showGuide(bool english=false);

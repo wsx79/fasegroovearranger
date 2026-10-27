@@ -160,7 +160,7 @@ juce::var projectJson(const Project& p){
 juce::Result projectFromJson(const juce::var& o,Project& result){
     if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
-    if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<legacyTrackCount||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (17–32 tracce, 1–64 sezioni)."));
+    if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<1||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (1–32 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
@@ -170,8 +170,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     if(auto r=readBuses(o["buses"],p.buses);r.failed())return r;
     p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
     for(const auto& a:*sections){if(!a.isObject())return juce::Result::fail("Sezione non valida.");p.sections.push_back({(Section)(int)num(a,"type",0),(int)num(a,"bars",8),str(a,"name","Main")});}
+    const bool migrateSlots=tracks->size()<legacyTrackCount;std::array<bool,maxTracks> usedSlots{};
     size_t noteCount=0;
-    for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
+    for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.kind=(int)p.tracks.size();if(migrateSlots){const double id=num(a,"kind",t.kind);if(id<0||id>=maxTracks||std::floor(id)!=id||usedSlots[(size_t)(int)id])return juce::Result::fail("Invalid or duplicate legacy track slot.");t.kind=(int)id;usedSlots[(size_t)t.kind]=true;}t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         if(auto r=readSampler(a["sampler"],t.sampler);r.failed())return r;t.sampleHash=str(a,"sampleHash");t.group=(int)num(a,"group",-1);if(a.hasProperty("sends")){auto* sends=a["sends"].getArray();if(!sends||sends->size()!=2)return juce::Result::fail("Invalid send routing.");for(int i=0;i<2;++i)t.sends[(size_t)i]=(double)(*sends)[i];}
         readEngine(a["engine"],t.engine);
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
@@ -192,6 +193,12 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
                 for(const auto& n:*source){if(!n.isArray()||n.size()<4)return juce::Result::fail("Invalid loop MIDI event.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Invalid loop MIDI time.");c.loopSource.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}}
             t.clips.push_back(std::move(c));
         }p.tracks.push_back(std::move(t));
+    }
+    // Sparse legacy arrays retain explicit stable IDs, including hosted instruments.
+    // Missing slots are silent placeholders, never newly generated music.
+    if(migrateSlots){auto saved=std::move(p.tracks);Project defaults;defaults.sections=p.sections;defaults.settings=p.settings;defaults.normalise();size_t count=trackCount;for(const auto& track:saved)count=std::max(count,(size_t)track.kind+1);p.tracks=std::move(defaults.tracks);p.tracks.resize(count);
+        for(size_t i=0;i<count;++i){auto& track=p.tracks[i];track.kind=(int)i;track.mute=true;if(track.name.empty())track.name="MIDI "+std::to_string((int)i-trackCount+1);}
+        for(auto& track:saved){const auto index=(size_t)track.kind;p.tracks[index]=std::move(track);}
     }
     p.normalise();result=std::move(p);return juce::Result::ok();
 }

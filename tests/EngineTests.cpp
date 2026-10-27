@@ -8,10 +8,11 @@
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runStudioEngineTests();
+void runEngineAuditTests();
 int main(){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
-        runStudioEngineTests();
+        runStudioEngineTests();runEngineAuditTests();
         fga::AudioEngine engine;engine.devices.closeAudioDevice(); // drive the callback by hand
         {
             auto manual=fga::newProject(1);manual.sections={{fga::Section::main,4,"Main"}};manual.normalise();

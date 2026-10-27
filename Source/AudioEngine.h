@@ -6,14 +6,17 @@
 #include "SamplePitchMonitor.h"
 #include "MixerBuses.h"
 #include "MidiRecording.h"
+#include "AudioTake.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../ThirdParty/fasegroovepiano/Source/GuideVoice.h"
 #include "../ThirdParty/fasegroovedrums/Source/GuideDrums.h"
 #include "../ThirdParty/fasegrooveguitar/Source/GuideGuitar.h"
 #include "../ThirdParty/fasegroovelead/Source/GuideLead.h"
 #include <atomic>
+#include <optional>
 #include <juce_dsp/juce_dsp.h>
 namespace fga {
+static_assert(std::atomic<bool>::is_always_lock_free&&std::atomic<double>::is_always_lock_free,"Audio callback atomics require a lock-free 64-bit target");
 // Everything the audio thread plays, built on the message thread and handed over without a
 // lock (see Handoff). Schedules and automation are read in place: the audio thread never
 // copies, allocates or frees them.
@@ -49,6 +52,14 @@ template<class T> struct Handoff {
     void collect(){delete retired.exchange(nullptr);}
     T* adopt(){if(retired.load()!=nullptr)return nullptr;T* next=pending.exchange(nullptr);if(next==nullptr)return nullptr;retired.store(current);current=next;return next;}
 };
+// Keeps the family renderer's vector interface, but its audio producer cannot grow it.
+template<class Event> class RealtimeEvents : public std::vector<Event> {
+public:
+    static constexpr size_t limit=16384;bool dropped=false;
+    void prepare(){std::vector<Event>::reserve(limit);}
+    void push_back(Event event)noexcept{if(this->size()<limit&&this->size()<this->capacity())std::vector<Event>::push_back(event);else dropped=true;}
+    void clear()noexcept{std::vector<Event>::clear();dropped=false;}
+};
 struct Instrument {
     explicit Instrument(int track);
     void prepare(double rate,int block);
@@ -69,10 +80,10 @@ struct Instrument {
     std::array<float,fgd::numLanes> drumLevels{};
     std::array<float,fgg::numLanes> guitarLevels{};
     std::array<bool,fgg::numLanes> guitarMuted{};
-    std::vector<GuideGuitar::Event> guitarEvents;
-    std::vector<GuideLead::Event> leadEvents;
-    juce::AudioBuffer<float> scratch;
-    juce::MidiBuffer midi,effectMidi;
+    RealtimeEvents<GuideGuitar::Event> guitarEvents;
+    RealtimeEvents<GuideLead::Event> leadEvents;
+    juce::AudioBuffer<float> scratch,automationBlock;
+    juce::MidiBuffer midi,effectMidi,automationMidi;
     std::unique_ptr<juce::AudioPluginInstance> plugin,effect;
     juce::PluginDescription pluginDescription,effectDescription; // as loaded: re-creates them for a private export
     const std::vector<TimedEvent>* schedule=nullptr; // inside the adopted ScheduleState
@@ -98,7 +109,7 @@ struct Instrument {
     std::uint64_t noteOns=0; // diagnostics and tests
     // Plugin delay compensation: every track is delayed to line up with the slowest one.
     // The line is allocated once here, never on the audio thread.
-    static constexpr int maxDelay=1<<15;
+    static constexpr int maxDelay=1<<18;
     juce::AudioBuffer<float> delayLine{2,maxDelay};
     int delayWrite=0,latency=0,delay=0;
     bool delayUsed=false;
@@ -126,7 +137,7 @@ public:
     explicit AudioEngine(Offline); // no audio device: a private copy used to render exports
     ~AudioEngine() override;
     // Message thread: a copy of the current instruments (samples shared, plugins re-created from
-    // their state) that renders an export while this engine keeps playing. nullptr when a plugin
+    // their state) that renders exports independently. State capture briefly quiesces this engine. nullptr when a plugin
     // cannot be duplicated: exportAudio on this engine is then the fallback.
     std::unique_ptr<AudioEngine> offlineCopy();
     // Sample browser audition, mixed after the master and independent of the transport.
@@ -148,12 +159,18 @@ public:
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
     void collectGarbage(){schedules.collect();mixes.collect();previews.collect();}
+    // Meter uses MIDI quarter-note units, including non-quarter-note denominators.
+    void setTimeSignature(int numerator,int denominator);
+    bool latencyIsLimited()const{return latencyLimited.load();}
+    int latencySamples()const{return reportedLatency.load();}
+    int latencyCapacity()const{return Instrument::maxDelay-1;}
     void setMetronome(bool on){metronome=on;}
     bool metronomeOn() const {return metronome.load();}
     void play(bool);
     void stop();
     void seek(double beat);
     void setLoop(bool enabled,double from,double to);
+    bool isExporting()const{return exporting.load();}
     bool isPlaying() const {return playing.load();}
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
@@ -170,11 +187,18 @@ public:
     void setMidiMonitor(int track,bool enabled);
     std::array<bool,128> activeNotes(int track)const;
     void liveMidi(int track,const juce::MidiMessage& message,bool recordable=true){capture.enqueue(track,message,recordable);}
+    enum class AudioSource {input,master};
+    juce::Result startAudioRecording(const juce::File&,AudioSource);
+    AudioTake finishAudioRecording();
+    bool audioRecordingFailed()const{return audioRecordFault.load();}
+    bool isAudioRecording()const{return recordingAudio.load();}
+    double audioRecordingSeconds()const{return recordedAudioSeconds.load();}
     juce::Result startRecording(int track,int countInBars);
     MidiTake finishRecording();
     void drainRecorded(std::vector<CapturedMidi>& events){capture.drain(events);}
     bool isRecording()const{return capture.active.load();}
     double countInRemaining()const{return capture.countIn.load();}
+    bool midiInputOverflow()const{return capture.inputOverflow.load();}
     bool recordingOverflow()const{return capture.overflow.load();}
     void setRecordOffset(double ms){capture.timingOffsetMs=std::clamp(ms,-200.,200.);}
     juce::Result loadSample(int,const juce::File&,int root,const SamplerSettings& settings={});
@@ -196,19 +220,49 @@ public:
     void audioDeviceStopped() override;
     void audioDeviceIOCallbackWithContext(const float* const*,int,float* const*,int,int,const juce::AudioIODeviceCallbackContext&) override;
 private:
+    friend struct EngineAuditTests;
     MidiCapture capture;
+    std::unique_ptr<AudioTakeRecorder> audioRecorder;
+    std::atomic<bool> recordingAudio{false},audioRecordFault{false};std::atomic<unsigned> recordingReaders{0};std::atomic<double> recordedAudioSeconds{0};
+    AudioSource audioSource=AudioSource::input;AudioTake lastAudioTake;
+    std::optional<juce::AudioDeviceManager::AudioDeviceSetup> audioInputRestore,audioInputActivated;
+    juce::AudioBuffer<float> audioInputScratch{2,512};
+    void captureAudio(const float* const*,int,int,AudioSource);
+    void finalizeOutput(float* const*,int,int);
+
     juce::String midiIdentifier;bool ownsMidiInput=false;
     MidiTake takeInfo;
     std::array<std::array<unsigned char,16*128>,maxTracks> liveHeld{}; // high bit: key released under sustain
     std::array<std::array<bool,16>,maxTracks> livePedal{};
-    double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0;
+    struct PendingLive {LiveMidiEvent event;int sample=0,order=0;};
+    std::unique_ptr<std::array<PendingLive,16384>> pendingLive=std::make_unique<std::array<PendingLive,16384>>();
+    int pendingLiveCount=0,pendingLiveCursor=0,inputCallbackCount=0,inputSegmentOffset=0;
+    double previousInputBlockTime=0;
+    void prepareLiveInput(int count);
+    double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0,deviceInputLatency=0;
     int liveTail=0;bool chaseRecord=false;
     void processLive(int count,double beat,bool capturing);
+    void refreshLatencies();
     void publishActiveNotes(int track);
     std::array<std::array<std::atomic<std::uint64_t>,2>,maxTracks> activeKeyMasks{};
     void chaseLiveRecord(double beat);
     MixerBuses busGraph;
-    juce::CriticalSection mutex; // transport and instrument changes; never held for long
+    // Only control threads acquire this mutex. The audio callback uses a bounded atomic
+    // entry protocol and never waits for it; controls wait for the current callback to end.
+    juce::CriticalSection mutex;
+    std::atomic<bool> processing{false},maintenance{false};int controlDepth=0;
+    struct EngineControlLock {
+        AudioEngine& engine;
+        explicit EngineControlLock(AudioEngine& e):engine(e){e.mutex.enter();if(++e.controlDepth==1){e.maintenance.store(true);while(e.processing.load())juce::Thread::yield();}}
+        ~EngineControlLock(){if(--engine.controlDepth==0)engine.maintenance.store(false);engine.mutex.exit();}
+    };
+    struct ProcessingScope {std::atomic<bool>& active;~ProcessingScope(){active.store(false);}};
+    std::atomic<double> positionRate{44100},positionLoopFrom{0},positionLoopTo{0};
+    std::atomic<bool> positionLooping{false},positionLoopSetting{false};std::atomic<unsigned> positionRevision{0};
+    std::atomic<int> timeNumerator{4},timeDenominator{4},reportedLatency{0},hostedCount{0};std::atomic<bool> latencyLimited{false};
+    std::atomic<double> pluginBeatOffset{0};
+    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;positionLoopFrom=loopFrom;positionLoopTo=loopTo;positionLooping=looping&&!loopBypassed;positionLoopSetting=looping;positionRevision.fetch_add(1);}
+
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
     std::array<std::atomic<float>,maxTracks> meters;
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
@@ -246,6 +300,7 @@ private:
     void flushIdle(int count);
     void click(float* const* output,int channels,int count,double beat,bool force=false);
     void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1,bool schedule=true);
-    void applyParameterAutomation(Instrument&,double beat);
+    void applyParameterAutomation(Instrument&,double beat,int slot);
+    void processHosted(Instrument&,juce::AudioPluginInstance&,juce::AudioBuffer<float>&,juce::MidiBuffer&,double beat,int slot);
 };
 }

@@ -1,5 +1,15 @@
 # Validation record
 
+## 0.23.0 candidate — audit fixes (local, publication awaits approval)
+
+- Audit peer tests drive the real callback with a hosted test instance: live float headroom, processing without the control mutex, concurrent state snapshots/restores, automation boundary subdivision, MIDI offsets and per-subblock playhead, loop capture, latency subtraction and capacity reporting.
+- Queues are bounded; overflow leaves unrelated tracks sounding. Input timestamps are mapped once per physical callback, and prepared guitar/lead queues cannot grow on the audio thread.
+- Native PCM tests cover snapped/long bus delay, stereo WAV capture/finalization, input capture during engine maintenance, long sample imports and non-destructive take import. Short/sparse legacy-project tests preserve existing data and reject duplicate IDs.
+- The native Studio verifier exercises actual audio start/finish/import callbacks and one-step Undo with retained WAVs. Source input opens only on explicit user recording/settings; macOS microphone purpose text and privacy notices are updated.
+- The project model is still 4/4; engine playhead/metronome/count-in support configured meters. Hosted automation ramps update at at most 64 frames with exact breakpoint cuts. PDC storage is bounded at 262143 frames and an exceeded limit is shown.
+- Plugin state snapshots quiesce processing and may briefly silence output depending on vendor serialization time; factory creation and replacement preparation occur outside that window. Input recording retains frames during maintenance; master takes record audible output, including silence.
+- Physical microphones/drivers and official Windows/macOS binaries are not tested by the local PCM fixtures. Final command logs, outcomes, patch reversibility and images are in the local audit report.
+
 ## 0.22.7 candidate — single waveform and compact PDF composition (local)
 
 - One full-width waveform replaces the overview/detail split. Separate zoom/position sliders, the extra ADSR diagram and stacked mode buttons are removed. Native checks exercise wheel/pinch/fit without project or Undo changes, real file/browser drops, modes and parameter edits with Undo.
