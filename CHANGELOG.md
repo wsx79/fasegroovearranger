@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.5
+
+- Studio tuner measures the selected sample audio and displays detected note, cents and Hz during audition, MIDI input and song playback.
+- Transpose and Fine edits are reflected in the reading; the MIDI trigger indication remains separate. Silence/noise have no fabricated note.
+- Pitch analysis runs outside the audio callback; six-language tooltips and IT/EN guides explain tuning and source limits.
+
 ## 0.22.4
 
 - Isolated Studio sample audition with Play, Stop and optional repeat; current sampler edits are heard live without changing song position or MIDI.

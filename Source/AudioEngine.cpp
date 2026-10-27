@@ -207,6 +207,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         if(i.mode==2&&i.plugin)i.plugin->processBlock(block,i.midi);
         else if(i.mode==1){if(i.sampler)i.sampler->renderNextBlock(block,i.midi,0,count);}
         else if(i.mode==0){if(ti<3||isManualTrack(ti))i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
+        if(i.mode==1)pitchMonitor.push(ti,block.getReadPointer(0),block.getNumChannels()>1?block.getReadPointer(1):nullptr,count,sampleRate);
         publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
@@ -386,6 +387,7 @@ void AudioEngine::mixSampleAudition(float* const* output,int channels,int count)
         }
         auditionNote=note;const int n=std::min(64,count-at);a->buffer.clear(0,n);
         a->synth->renderNextBlock(a->buffer,a->midi,0,n);
+        pitchMonitor.push(a->track,a->buffer.getReadPointer(0),a->buffer.getReadPointer(1),n,deviceRate);
         for(int ch=0;ch<std::min(2,channels);++ch)if(output[ch])
             juce::FloatVectorOperations::addWithMultiply(output[ch]+at,a->buffer.getReadPointer(ch),.8f,n);
         at+=n;

@@ -2,6 +2,23 @@
 #include "../Source/AudioEngine.h"
 #include <stdexcept>
 namespace {void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}}
+static void testSamplePitch(){
+    using namespace fga;std::array<float,2048> source{};
+    for(double hz:{55.,110.,261.625565,440.*std::pow(2.,17./1200.),880.,1568.}){
+        for(int i=0;i<2048;++i)source[(size_t)i]=.4f*(float)std::sin(2*juce::MathConstants<double>::pi*hz*i/11025.);
+        const auto reading=estimateSamplePitch(source.data(),2048,11025);require(reading.midi>=0&&std::abs(1200*std::log2(reading.hz/hz))<4,"tuner measures bass, melodic notes and detuned tones within four cents");
+    }
+    for(int i=0;i<2048;++i)source[(size_t)i]=.4f*(float)(std::sin(2*juce::MathConstants<double>::pi*55*i/11025.)*std::exp(-3.*i/2048.));
+    auto reading=estimateSamplePitch(source.data(),2048,11025);require(reading.midi>=0&&std::abs(reading.hz-55)<1,"tuner detects a decaying tonal kick body");
+    for(int i=0;i<2048;++i)source[(size_t)i]=.4f*(float)(.7*std::sin(2*juce::MathConstants<double>::pi*220*i/11025.)+.4*std::sin(2*juce::MathConstants<double>::pi*330*i/11025.));
+    reading=estimateSamplePitch(source.data(),2048,11025);require(reading.midi>=0&&std::abs(reading.hz-110)<1,"tuner follows the fundamental rather than the strongest harmonic");
+    source.fill(0);require(estimateSamplePitch(source.data(),2048,11025).midi<0,"silence has no fabricated note");
+    std::uint32_t random=47;for(auto& v:source){random=random*1664525u+1013904223u;v=(float)((random>>8)/16777216.-.5);}require(estimateSamplePitch(source.data(),2048,11025).midi<0,"noise has no fabricated note");
+    SamplePitchMonitor monitor;monitor.select(0);std::array<float,512> left{},right{};
+    for(int block=0;block<30;++block){for(int i=0;i<512;++i){left[(size_t)i]=.3f*(float)std::sin(2*juce::MathConstants<double>::pi*440*(block*512+i)/44100.);right[(size_t)i]=-left[(size_t)i];}monitor.push(0,left.data(),right.data(),512,44100);reading=monitor.poll();}
+    require(reading.midi==69&&std::abs(reading.cents)<4,"stereo anti-phase sources remain measurable after real-time decimation");
+    monitor.select(1);require(monitor.poll().midi<0,"retargeting discards old sample pitch");monitor.push(0,left.data(),right.data(),512,44100);require(monitor.poll().midi<0,"unselected track cannot contaminate tuner");
+}
 static void testSampleAudition(){
     using namespace fga;
     auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-audition", ".wav");
@@ -26,6 +43,7 @@ static void testSampleAudition(){
     engine.useInternal(0);tick();require(!engine.isSampleAuditioning(),"instrument replacement stops audition");
 }
 void runStudioEngineTests(){
+    testSamplePitch();
     testSampleAudition();
     {fga::MixerBuses graph;graph.prepare(48000,512);auto settings=fga::defaultBuses();settings[0].gain=.5;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{0,0});juce::AudioBuffer<float> out(2,512);out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(std::abs(out.getSample(0,0)-.25)<1e-6,"group and master gain apply once");settings[1].solo=true;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"group solo excludes other groups and their sends");graph.reset();settings[1].solo=false;graph.configure(settings,120,0,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"master silences dry and shared returns");}
     {fga::AudioEngine recorder;recorder.devices.closeAudioDevice();auto project=fga::newProject(81);project.sections={{fga::Section::main,1,"Main"}};project.normalise();for(auto& track:project.tracks)for(auto& clip:track.clips)clip.notes.clear();recorder.publish(project);require(recorder.startRecording(0,1).wasOk(),"start actual MIDI capture");juce::AudioBuffer<float> audio(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{recorder.audioDeviceIOCallbackWithContext(nullptr,0,audio.getArrayOfWritePointers(),2,512,context);};callback();require(recorder.position()==0&&recorder.countInRemaining()>0,"count-in holds the song cursor");for(int i=0;i<1000&&recorder.countInRemaining()>0;++i)callback();recorder.liveMidi(0,juce::MidiMessage::noteOn(1,67,(juce::uint8)107));for(int i=0;i<20;++i)callback();recorder.liveMidi(0,juce::MidiMessage::noteOff(1,67));callback();auto captured=recorder.finishRecording();fga::assembleMidiTake(captured,0);require(captured.notes.size()==1&&captured.notes[0].pitch==67&&captured.notes[0].velocity==107&&captured.notes[0].length>.1,"audio callback records queued MIDI with duration and velocity");recorder.stop();require(recorder.startRecording(0,1).wasOk(),"start sustained count-in recording");recorder.liveMidi(0,juce::MidiMessage::controllerEvent(1,64,127));recorder.liveMidi(0,juce::MidiMessage::noteOn(1,69,(juce::uint8)91));callback();recorder.liveMidi(0,juce::MidiMessage::noteOff(1,69));callback();for(int i=0;i<1000&&recorder.countInRemaining()>0;++i)callback();for(int i=0;i<20;++i)callback();recorder.liveMidi(0,juce::MidiMessage::controllerEvent(1,64,0));callback();auto sustained=recorder.finishRecording();fga::assembleMidiTake(sustained,0);require(sustained.notes.size()==1&&sustained.notes[0].pitch==69&&sustained.notes[0].length>.1,"sustained note from count-in is captured until pedal release");recorder.stop();}

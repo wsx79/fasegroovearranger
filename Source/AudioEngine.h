@@ -3,6 +3,7 @@
 #pragma once
 #include "core/Project.h"
 #include "Sampler.h"
+#include "SamplePitchMonitor.h"
 #include "MixerBuses.h"
 #include "MidiRecording.h"
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -132,6 +133,8 @@ public:
     void startPreview(juce::AudioBuffer<float>&& audio,double rate);
     void stopPreview();
     bool isPreviewing() const {return previewing.load();}
+    void monitorSamplePitch(int track,bool restart=false){pitchMonitor.select(track,restart);}
+    SamplePitchReading samplePitch(){return pitchMonitor.poll();}
     bool startSampleAudition(int track,bool repeat);
     void stopSampleAudition(){auditioning=false;}
     void setSampleAuditionLoop(bool repeat){auditionLoop=repeat;}
@@ -218,6 +221,7 @@ private:
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
     Handoff<MixState> mixes;
+    SamplePitchMonitor pitchMonitor;
     std::unique_ptr<SampleAudition> sampleAudition; // protected by mutex
     std::atomic<bool> auditioning{false},auditionLoop{false};
     std::atomic<int> auditionTrack{-1},auditionNote{-1};

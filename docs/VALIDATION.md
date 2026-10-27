@@ -1,5 +1,13 @@
 # Validation record
 
+## 0.22.5 — Audio pitch measurement in Studio
+
+- All seven local Linux CTest groups pass. Controlled PCM checks cover 55–1568 Hz, detuned tones within four cents, a decaying tonal kick, a missing fundamental, silence, white noise and stereo anti-phase signals. Retargeting discards prior sample data.
+- The native Studio test measures the actual 440 Hz sample independently of its MIDI root, then measures 880 Hz after live octave transposition and verifies the displayed text. Play/Stop/repeat, project/Undo preservation, sampler controls, scrolling, MIDI recording and floating-window checks continue to pass.
+- The callback only filters/decimates the selected sample stream into a bounded SPSC queue. YIN analysis and UI formatting run on the message thread. Readings are independent of track mute/gain and reflect the sampler before track effects. No automatic parameter, MIDI or project changes are made.
+- The dedicated pitch label uses the same octave convention as the Studio keyboard; the previous indicator explicitly says MIDI NOTE. The last stable pitch is held for one second with a distinct label, then cleared. New sources reset measurement history. Unstable/noisy sources may have no note; this is a monophonic tuner, approximately 35–1600 Hz.
+- The six-language dictionaries and common module/theme/font checks pass; IT/EN guides and a native image document the readout. Local UI/audio tests used updated source with the prior version resource; the official pipeline builds and tests the final tagged version. Physical audio hardware is outside this environment.
+
 ## 0.22.4 — Isolated Studio sample audition
 
 - Seven local Linux CTest groups pass. New audio callbacks verify isolated audible output despite track mute/zero gain, preserved transport position, natural one-pass completion, repeated regions, live filter edits, trim/reverse/root changes and first-slice mapping.

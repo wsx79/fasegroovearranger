@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.5
+
+- Accordatore di Studio: nota rilevata dall’audio del campione selezionato, scarto in cent e Hz durante ascolto, tastiera MIDI e brano.
+- La lettura segue Trasposizione e Fine; resta separata dal tasto MIDI di comando. Silenzio e rumore non ricevono una nota inventata.
+- Analisi fuori dal callback audio, tooltip nelle sei lingue e guide IT/EN per accordatura e limiti delle sorgenti.
+
 ## 0.22.4
 
 - Ascolto isolato del campione in Studio con Play, Stop e ripetizione opzionale; le modifiche al campionatore si sentono subito, senza cambiare posizione del brano o MIDI.
