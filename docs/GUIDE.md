@@ -167,6 +167,8 @@ Folders are read and audio headers measured in the background, so the interface 
 
 <p align="center"><img src="images/guide_sampler.png" alt="Studio sampler" width="980"></p>
 
+- A single full-width waveform shows its ruler, numbered slice markers and trim handles. Wheel/pinch zoom at the pointer; horizontal gestures or Shift-wheel pan the view. Double-click fits the sample. Navigation leaves project and Undo unchanged. Drop audio from the app browser or operating system onto the waveform.
+
 **SAMPLER.** Load WAV, AIFF, FLAC, OGG or MP3 samples up to 60 seconds. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. Zoom and position sliders follow these gestures. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
 - **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
@@ -176,7 +178,7 @@ Folders are read and audio headers measured in the background, so the interface 
 - **AUTO SLICE** immediately maps playable slices. Choose **Transients** or **4 / 8 / 16 / 32 / 64 equal slices**; slicing respects the trimmed region and maps consecutive pitches from **FIRST SLICE NOTE**. Selecting **Slices** with no markers detects them automatically. Shift-click adds a marker; right-click removes the nearest. Pads and keyboard remain visible together; unmapped keys are dimmed. Banks contain 16 pads. **WRITE SLICE MIDI** replaces clip notes with triggers at their original rhythmic positions; Undo restores the clip.
 - **RESET SAMPLE** restores trim, loop, envelope, filter, pitch and slices to defaults, resets the root and eight-voice limit and fits the waveform. It preserves the sample file, MIDI notes and track mix as one undoable action. Sample instruments on drum tracks preserve played MIDI pitches in every mode.
 - The keyboard stays at the bottom when the controls scroll. Play with the mouse or **A W S E D F T G Y H U J K** after focusing it. For a hardware keyboard, select its input and enable **MIDI INPUT**. Song MIDI, keyboard and pad notes light up and their names appear on the right. The indication also follows one-shot tails after key release.
-- Controls are grouped into region/loop, pitch/envelope and filter/slices. Tooltips explain actions and units when you rest the pointer over a control. They follow the global tooltip preference and work in Studio’s separate window.
+- Controls are grouped into five modules: region/loop, amplitude envelope, tuning/playback, filter and slice/sync. Rotary controls retain the original parameters and their numeric values underneath remain editable. Tooltips explain actions and units when you rest the pointer over a control. They follow the global tooltip preference and work in Studio’s separate window.
 - **SAVE PRESET** writes a `.fgs` and a neighbouring sample folder. Move both together. **OPEN PRESET** restores sample, root and settings. Project saving and Undo/Redo also preserve sampler settings.
 
 <p align="center"><img src="images/guide_recording.png" alt="Studio MIDI" width="980"></p>
@@ -203,6 +205,12 @@ Open **BUS & SEND** from the mixer header. The panel stays on top, closes with X
 - **A** toggles the shared reverb send; **B** toggles the shared delay send. A lit button means its send is above zero. The first activation uses 25%; subsequent activations restore the last level used in that session. The project saves the current level, including zero when off.
 - Select any track in the panel and adjust its two percentages independently. **A - REVERB** and **B - DELAY** are effect returns, separate from track Groups A/B. All four buses have editable name, level, pan, mute and solo; returns also expose room/damping and delay time/feedback controls.
 - An idle meter reads **Silence**: it is receiving no signal, which does not necessarily mean mute. Other readings are numeric dB. Wheel and trackpad gestures cannot change values accidentally.
+
+Studio and Bus & Send share flat dark surfaces, knobs, chips and a single orange accent. Mapped slice keys carry an orange mark before playback. MIDI Rec and Media use the same theme.
+
+Each strip has one editable title, a Pan knob, bottom-aligned vertical fader/meter and **M / S** buttons. Amber identifies effect returns and active values. Room/Damping and Crossfeed/Damping/Feedback/Delay knobs sit above the Reverb and Delay strips; groups retain the same fader area. Track, output and two rotary sends share the upper source panel.
+
+Faders display dB: **0 dB = unity gain**, bottom = silence; double-click restores 0 dB. Stored values remain linear and are not changed by opening or refreshing the panel. The reading below the meter is the measured signal level, distinct from fader position. Pan displays **C** at centre and **L/R** as percentages: type **L25**, **R25** or **C** in its value. Values below the knobs and faders remain editable.
 
 Sends follow track and group levels; master controls returns too. Use song Play or the track’s MIDI keyboard to hear them: opening Bus & Send stops isolated dry sample audition. Song playback does not start automatically. Routing, sends and bus controls support Undo and preserve MIDI. Playback and export retain the same audio graph; stems include their shared-effect contributions.
 

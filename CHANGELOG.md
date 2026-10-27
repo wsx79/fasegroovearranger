@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.22.7
+
+- Rebuild Studio to follow the supplied drawing: one full-width waveform, compact source/preset toolbar and slice/toggle row, two rows of five modules, knob/value/caption order and a lower keyboard.
+- Remove the second waveform, separate zoom/position sliders and extra envelope diagram. Keep wheel/pinch/fit, trim, drop loading, every sampler parameter, audition/tuner, playable slices and Undo.
+- Share the PDF’s flat palette, Inter, knobs and chips across Studio pages and Bus & Send. Use four mixer strips with aligned vertical dB faders/meters, Pan, M/S and dedicated return knobs.
+- Refresh guides and native checks for single-wave navigation, functional controls, compact geometry, dB conversion, preserved MIDI and Undo.
+
 ## 0.22.6
 
 - Move bus/group and effect-send management from Studio into a dedicated mixer panel.

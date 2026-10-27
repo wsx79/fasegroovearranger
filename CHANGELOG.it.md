@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.22.7
+
+- Rifai Studio seguendo il disegno fornito: waveform unica a tutta larghezza, barra sorgente/preset e riga tagli/toggle compatte, cinque moduli su due righe, ordine manopola/valore/etichetta e tastiera più bassa.
+- Rimuovi seconda waveform, slider separati di zoom/posizione e grafico aggiuntivo dell’inviluppo. Conserva rotella/pinch/fit, trim, caricamento drag-and-drop, tutti i parametri, ascolto/accordatore, slice suonabili e Annulla.
+- Condividi palette piatta del PDF, Inter, manopole e chip fra le tab Studio e Bus e mandate. Mixer a quattro strip con fader in dB e meter verticali allineati, Pan, M/S e manopole dei ritorni.
+- Aggiorna guide e prove native per navigazione sull’onda unica, controlli reali, geometria compatta, conversione dB, MIDI invariato e Annulla.
+
 ## 0.22.6
 
 - Sposta gruppi, bus e mandate da Studio a un pannello dedicato del mixer.

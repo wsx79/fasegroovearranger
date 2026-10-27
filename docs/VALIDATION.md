@@ -1,5 +1,14 @@
 # Validation record
 
+## 0.22.7 candidate — single waveform and compact PDF composition (local)
+
+- One full-width waveform replaces the overview/detail split. Separate zoom/position sliders, the extra ADSR diagram and stacked mode buttons are removed. Native checks exercise wheel/pinch/fit without project or Undo changes, real file/browser drops, modes and parameter edits with Undo.
+- Five modules follow the reference in two rows (region/envelope, tuning/filter/slice-sync), with knob/value/caption order. Source/preset controls sit above the tabs; slicing actions and chips share the row under the wave. The shorter keyboard retains mapped-key and playing-note highlights, pads, audition, input and tuner.
+- Native checks verify all parameter/caption bounds and usable slice button sizes at minimum window size, visible keyboard, 440/880 Hz tuner, audition, recording and workspace regressions.
+- Shared scoped StudioTheme uses the six PDF colours, Inter, 11 px labels, 12 px values and flat controls. The family and global DAW themes remain unchanged. Bus/send checks retain dB conversion, silent floor, typed Pan, M/S, Undo and identical MIDI.
+- All seven CTest groups passed before these subsequent UI-only adjustments; DSP, MIDI generation and project format remain unchanged. Local build/native tests and repository/package checks are included in the review report.
+- Metadata is 0.22.7 locally. No commit, push, tag, workflow or release without explicit user approval; official Windows/macOS builds await the approved pipeline.
+
 ## 0.22.6 — Mixer groups and A/B sends
 
 - All seven Linux CTest groups pass. The audio graph, project schema and MIDI engine are unchanged; this moves the existing routing controls and adds mixer entry points.
