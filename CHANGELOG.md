@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.3
+
+- Hand the pointer back to the arranger when Studio closes.
+
 ## 0.23.2
 
 - Refine labelled actions with vector icons and add rotary inspector volume/pan and home master/density/swing/feel controls, retaining editable values and Undo.
@@ -8,7 +12,6 @@
 - Replace the collapsed mixer caption with a stereo master meter, dB reading and peak hold; restore normal mixer strips when reopened.
 - Click the transport position to switch between bars and elapsed time with remaining time. Arrangement ruler labels follow that choice while musical timing, snap, MIDI and project format stay unchanged.
 - Update IT/EN guides, native screenshots and six-language hints. Add native checks for controls, Undo, real master audio, zoom and time conversion.
-- Return the pointer to the arranger when Studio closes: the window releases the mouse capture and hands hover and focus back to the main window, so REGENERATE and the other controls answer the first click.
 
 ## 0.23.1
 
