@@ -8,6 +8,7 @@
 - Sostituisce la scritta del mixer chiuso con un meter stereo del master, dB e memoria dei picchi; riaprendo il mixer tornano le strip.
 - Un clic sulla posizione alterna battute e tempo trascorso con residuo. Il righello dell’arrangiamento segue la scelta; metrica, snap, MIDI e formato progetto restano invariati.
 - Aggiorna guide IT/EN, schermate native e suggerimenti nelle sei lingue. Aggiunge verifiche native per comandi, Annulla, audio reale del master, zoom e conversione del tempo.
+- Restituisce il puntatore all’arranger alla chiusura di Studio: la finestra rilascia la cattura del mouse e riporta hover e focus alla finestra principale, così RIGENERA e gli altri comandi rispondono al primo clic.
 
 ## 0.23.1
 

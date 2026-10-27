@@ -13,6 +13,7 @@ public:
     bool verify(const juce::File& folder);
 private:
     class Panel;
+    MainComponent& owner;
     Panel* panel=nullptr;
 };
 }
