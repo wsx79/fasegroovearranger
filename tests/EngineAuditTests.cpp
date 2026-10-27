@@ -39,7 +39,8 @@ private:AuditGain* gain=nullptr;
 }
 struct EngineAuditTests {
     static void run(){
-        AudioEngine engine;engine.devices.closeAudioDevice();auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
+        // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
+        AudioEngine engine(AudioEngine::Offline{});for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();
         auto probe=std::make_unique<AuditPlugin>();auto* plugin=probe.get();{const AudioEngine::EngineControlLock lock(engine);auto& i=*engine.instruments[0];i.plugin=std::move(probe);engine.hostedCount=1;i.mode=2;i.plugin->setPlayHead(&engine);i.prepare(44100,512);}
         engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
