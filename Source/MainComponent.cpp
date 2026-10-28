@@ -729,14 +729,16 @@ bool MainComponent::verifyAuditRepairs(const juce::File& folder){
     selectedTrack=oldTrack;selectedSection=oldSection;selectedClip=-1;noClipSelection=false;restoreInstruments();updateEditingAvailability();refreshControls();if(oldPage==Page::editor)showEditor();else showArrangement();
     folder.getChildFile("audit-repairs.txt").replaceWithText(details);return ok;
 }
-bool MainComponent::verifyPluginWindow(){
+bool MainComponent::verifyPluginWindow(const juce::File& folder){
     select(0,0);pluginEditorButton.onClick();
     if(!pluginWindow)return false;
+    juce::String evidence;bool ok=true;
+    auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
-    bool ok=pluginWindow->isVisible()&&pluginWindow->isAlwaysOnTop()&&centred();
-    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();ok=ok&&!pluginWindow->isVisible()&&hasKeyboardFocus(false);
-    pluginEditorButton.onClick();ok=ok&&pluginWindow&&pluginWindow->isVisible()&&pluginWindow->isAlwaysOnTop()&&centred();
-    pluginWindow.reset();return ok;
+    check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());
+    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
+    pluginEditorButton.onClick();check("VST editor reopened",pluginWindow&&pluginWindow->isVisible());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
+    folder.getChildFile("plugin-window.txt").replaceWithText(evidence);pluginWindow.reset();return ok;
 }
 
 int ArrangementView::totalHeight() const {return rowY((int)owner.project.tracks.size());}
@@ -859,7 +861,7 @@ MainComponent::MainComponent(){
     addSectionButton.onClick=[this]{showAddSectionMenu();};
     saveButton.onClick=[this]{save(false);};saveAsButton.onClick=[this]{save(true);};
     openButton.onClick=[this]{chooseFile("Apri progetto Fase Groove Arranger","*.fga",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){open(f);});};
-    newButton.onClick=[this]{requestClose([safe=juce::Component::SafePointer<MainComponent>(this)]{if(safe)safe->createNewProject();});};
+    newButton.onClick=[this]{juce::Component::SafePointer<MainComponent> safe(this);requestClose([safe]{if(safe)safe->createNewProject();});};
     exportButton.onClick=[this]{exportMenu();};settingsButton.onClick=[this]{showAudioSettings();};aboutButton.onClick=[this]{showAbout();};helpButton.onClick=[this]{showGuide(Localisation::current()!=Localisation::Language::italian);};
     playButton.onColour=Daw::play;loopButton.onColour=Daw::accent;metronomeButton.onColour=Daw::accent;
     // Icon-only actions: the tooltip names them (translated with the rest of the interface).
@@ -890,7 +892,8 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     options.onCheckUpdates=[this]{options.checkUpdatesButton.setEnabled(false);options.checkUpdatesButton.setButtonText(tr("CHECKING..."));updater.start(true);};
     updateOverlay.onInstall=[this](const Updater::Result& result){
         if(loadingPlugin){message(tr("Wait for the instrument to finish loading."),true);return;}
-        requestClose([safe=juce::Component::SafePointer<MainComponent>(this),result]{
+        juce::Component::SafePointer<MainComponent> safe(this);
+        requestClose([safe,result]{
         if(!safe)return;auto& updateOverlay=safe->updateOverlay;
         const auto report=Updater::install(result);
         if(!report.done){safe->message(tr("The files could not be replaced automatically: the download is shown, copy it as the first time."),true);return;}

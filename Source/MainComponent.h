@@ -237,7 +237,7 @@ public:
     bool writeUiEvidence(const juce::File&);
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
-    bool verifyPluginWindow();
+    bool verifyPluginWindow(const juce::File&);
     void dismissAuxiliaryWindow(juce::Component&);
     bool verifyWindowFocus(const juce::File&);
     bool verifyAuditRepairs(const juce::File&);

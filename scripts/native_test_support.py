@@ -38,7 +38,20 @@ def run_application(build, *arguments, timeout=300):
         if not shutil.which('xvfb-run'):
             raise SystemExit('Install xvfb or set DISPLAY before running native GUI tests.')
         command = ['xvfb-run', '-a', *command]
-    subprocess.run(command, check=True, timeout=timeout)
+    try:
+        subprocess.run(command, check=True, timeout=timeout)
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        # Keep native assertions visible even when artifacts cannot be downloaded.
+        # Every native test passes its evidence folder as the final argument.
+        folder = Path(arguments[-1]) if arguments else None
+        if folder and folder.is_dir():
+            for report in sorted(folder.rglob('*.txt')):
+                if report.stat().st_size > 1024 * 1024:
+                    continue
+                content = report.read_text(encoding='utf-8', errors='replace')
+                if 'FAIL' in content or 'error' in report.name.lower():
+                    print(f'Native evidence: {report.relative_to(folder)}\n{content}', flush=True)
+        raise
 
 
 def output_folder(name, requested=None):
