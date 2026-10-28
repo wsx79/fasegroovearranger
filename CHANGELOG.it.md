@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## 0.23.4
+## 0.23.5
 
 - Ripristina lo stato del mouse JUCE, hover, attivazione e focus della DAW dopo la chiusura di Studio, Mixer, Crea con IA, pannelli strumenti ed editor VST, perché il clic successivo agisca sul comando.
 - Aggiorna subito alla chiusura di Studio la disponibilità della DAW secondo lo stato di registrazione e importazione, senza dipendere dal timer del pannello nascosto.

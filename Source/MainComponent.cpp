@@ -16,6 +16,7 @@
  #include <windows.h>
  #undef min
  #undef max
+ #undef small
 #endif
 namespace fga {
 namespace {

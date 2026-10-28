@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## 0.23.4
+## 0.23.5
 
 - Recover a missed JUCE mouse release, hover, DAW activation and keyboard focus immediately after closing Studio, Mixer, AI Composer, instrument panels and VST editors, so the next click reaches its control.
 - Restore Studio recording/import availability synchronously on close, using the same state rules as its audio controls instead of relying on the hidden panel timer.

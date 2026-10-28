@@ -28,13 +28,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Battute e tempo trascorso](#battute-e-tempo-trascorso)
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 
-La guida è aggiornata alla **0.23.4**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.23.5**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.23.4** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.23.5** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
