@@ -215,7 +215,7 @@ Trascina un file audio dal browser o dal sistema operativo sulla waveform, oppur
 
 <p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
 
-**REGISTRA MIDI.** Scegli un ingresso disponibile o usa la tastiera sullo schermo. AGGIORNA rileva anche i dispositivi collegati dopo l’apertura. **MONITOR** permette di ascoltare l’ingresso anche a trasporto fermo. Scegli nessun conteggio, una o due battute, quantizzazione disattivata o da quarti a trentaduesimi, e sovraincisione oppure sostituzione. La correzione in millisecondi compensa il ritardo dell’esecuzione. Premi **REGISTRA**, poi **TERMINA REGISTRAZIONE** per conservare la riproduzione o **STOP** per fermarla. Chiudere Studio termina la registrazione. Durante la registrazione la finestra principale è protetta dalle modifiche; la take viene applicata come un solo passo di Annulla. La quantizzazione sposta gli attacchi, conservando le durate; il pedale sustain viene trasformato in durate delle note. Sono registrati note e velocity, non curve di pitch bend o automazioni dei controller. Le tracce e i clip bloccati sono protetti.
+**REGISTRA MIDI.** Scegli un ingresso disponibile o usa la tastiera sullo schermo. AGGIORNA rileva anche i dispositivi collegati dopo l’apertura. **MONITOR** permette di ascoltare l’ingresso anche a trasporto fermo. Scegli nessun conteggio, una o due battute, quantizzazione disattivata o da quarti a trentaduesimi, e sovraincisione oppure sostituzione. La correzione in millisecondi compensa il ritardo dell’esecuzione. Premi **REGISTRA**, poi **TERMINA REGISTRAZIONE** per conservare la riproduzione o **STOP** per fermarla. Chiudere Studio termina la registrazione. Durante la registrazione i comandi di modifica sono protetti; **STOP** nella finestra principale e **Spazio** restano disponibili per terminare la take. Puoi riaprire Studio dal suo pulsante; la take viene applicata come un solo passo di Annulla. La quantizzazione sposta gli attacchi, conservando le durate; il pedale sustain viene trasformato in durate delle note. Sono registrati note e velocity, non curve di pitch bend o automazioni dei controller. Le tracce e i clip bloccati sono protetti.
 
 #### Registrare audio e usare la take
 
@@ -233,11 +233,11 @@ L’allineamento comprende la latenza dei plugin e, per l’ingresso, quella del
 
 **Latenza e livello.** Studio mostra compensazione e capacità: **262143 campioni**, circa 5,46 s a 48 kHz. Se il plugin supera il limite compare un avviso. La correzione in millisecondi della registrazione MIDI serve a rifinire il timing della propria esecuzione. Un overflow dell’ingresso viene segnalato: controlla la take senza perdere l’ascolto delle altre tracce. Il master live conserva i picchi float; se compare **CLIP**, riduci i livelli prima di esportare in PCM o MP3.
 
-Il salvataggio dello stato di un VST può produrre una breve pausa, secondo il plugin. Durante tale pausa l’ingresso audio continua a essere acquisito; una registrazione del master conserva l’uscita effettivamente udibile, incluso il silenzio.
+Il backup automatico attende che il trasporto sia fermo e l’audio quieto. Il salvataggio esplicito dello stato di un VST può produrre una breve pausa, secondo il plugin. Durante tale pausa l’ingresso audio continua a essere acquisito; una registrazione del master conserva l’uscita effettivamente udibile, incluso il silenzio.
 
 #### Gestire campioni e progetti portatili
 
-**CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
+**CAMPIONI.** **RACCOGLI E SALVA** crea un progetto portatile e una cartella `.media` accanto, copiando e verificando i campioni senza modificare gli originali. I file identici sono deduplicati. Sposta progetto e cartella insieme. **RICOLLEGA CAMPIONI** cerca in una cartella e sottocartelle: usa l’impronta del contenuto se disponibile, altrimenti solo un nome file univoco. I campioni non trovati restano da ricollegare. Quando un vecchio progetto può essere ricollegato solo per nome, un avviso indica che il contenuto non è verificato: ascolta il campione prima di conservare la modifica. **Annulla** richiede un arresto sicuro della raccolta o della ricerca; una raccolta interrotta conserva il progetto precedente e rimuove le copie parziali. I percorsi relativi dei campioni e dei preset devono restare nella propria cartella; i campioni esterni possono essere salvati con percorso assoluto. I plugin esterni non vengono copiati: occorre installarli sul computer di destinazione.
 
 ### Mixer: gruppi e mandate
 
@@ -378,6 +378,8 @@ La verifica dei plugin avviene in un processo separato, con un limite di tempo. 
 
 Per un campione intonato, la radice iniziale è MIDI 60. Per la batteria è la nota del pezzo. **Tasto destro sul nome → Radice campione** la cambia. È un campione trasposto sulle note della traccia, non una libreria multisample.
 
+**MIDI Learn:** dopo otto accordi ricomincia dal primo slot mantenendo la progressione completa. Nel **Voicing Coach**, il pulsante **APPLICA A / APPLICA B** indica la scelta corrente; cambiare un menu aggiorna subito la scelta, anche dopo un confronto in ascolto.
+
 ### Piano roll e griglia ritmica
 
 Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP CLIP** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
@@ -403,7 +405,7 @@ Nei **Drums**, trascina il bordo destro del colpo per cambiarne la durata MIDI. 
 
 Quantise e trasposizione lavorano sulla selezione; senza selezione, su tutto il clip. Lo **ZOOM** ingrandisce i dettagli nel tempo. **Esc** torna all'arrangiamento.
 
-**IMPORTA MIDI**, oppure un `.mid` trascinato sulla finestra, sostituisce le note del clip scelto. Il tempo del progetto resta quello dell'Arranger. Nel kick o in un altro pezzo di batteria, le note importate vengono assegnate al solo pezzo scelto. **ANNULLA** recupera il clip precedente.
+**IMPORTA MIDI** sostituisce le note del clip scelto. Trascinando un `.mid` su una riga della timeline usi il clip sotto il puntatore; su una corsia vuota si crea un clip in quel punto. Trascinando un campione cambi lo strumento della riga di destinazione. Questi trascinamenti non spostano la testina né interrompono la riproduzione. Il tempo del progetto resta quello dell'Arranger. Nel kick o in un altro pezzo di batteria, le note importate vengono assegnate al solo pezzo scelto. **ANNULLA** recupera il clip precedente.
 
 ### Parte di chitarra e mixer
 
@@ -436,7 +438,11 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 **SALVA / SALVA COME** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
 
-Ogni minuto viene scritta una copia di recupero se ci sono modifiche, tranne durante una registrazione o un export. **icona altoparlante → Recupera autosave** la apre; **Apri cartella autosave** mostra dove si trova. Salva copie con nomi diversi quando vuoi conservare versioni del brano. ANNULLA conserva fino a quaranta passaggi mentre l'app è aperta.
+L’autosave viene programmato circa ogni minuto quando ci sono modifiche. Se stai ascoltando, registrando o esportando, aspetta il primo momento sicuro a trasporto fermo; la scrittura prosegue senza bloccare i comandi. **Icona altoparlante → Recupera autosave** lo apre come lavoro da salvare con un altro nome. Annulla conserva fino a quaranta passi durante la sessione.
+
+Chiudendo l’app, aprendo un altro progetto o creando un nuovo brano, **Annulla** lascia intatta anche una registrazione in corso. Scegliendo **Salva**, se manca il nome viene chiesta la destinazione: l’azione continua solo a salvataggio riuscito. Annullare la scelta del file annulla il cambio di progetto; un errore di scrittura lascia il lavoro aperto.
+
+I progetti accettano fino a **256 MB** e **2 milioni di note** complessive; l’import MIDI è limitato a **64 MB** e alle note ancora disponibili nel progetto. Preset e file con strutture troppo annidate o percorsi relativi esterni vengono rifiutati senza sostituire il lavoro corrente.
 
 ### Scorciatoie
 
@@ -480,11 +486,13 @@ Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca
 | **WAV** | Mix, singola traccia o tutti gli stem, stereo a 24 bit. È il formato da usare per continuare il mixaggio. |
 | **MP3** | Mix, singola traccia o tutti gli stem, stereo a 320 kbps / 44,1 kHz. L'encoder è incluso. |
 
-Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono tre secondi di coda. Anche una traccia vuota produce un file allineato. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
+Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono le code dei suoni e degli effetti. Anche una traccia vuota produce un file allineato. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
 
 > Per riportare gli stem in una DAW scegli WAV. L'MP3 aggiunge il ritardo del codec: va bene per ascoltare e condividere, non per l'allineamento preciso delle tracce.
 
 ---
+
+Con più di quindici tracce melodiche, il MIDI multitraccia usa una seconda porta per mantenere separati i canali. Le corsie Drums condividono il canale GM 10. Se il programma di destinazione ignora le porte MIDI, esporta le tracce in file separati.
 
 ## 5. Usare gli strumenti in tempo reale
 

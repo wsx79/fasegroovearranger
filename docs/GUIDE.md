@@ -216,7 +216,7 @@ Drop an audio file from the browser or operating system onto the waveform, or pr
 
 <p align="center"><img src="images/guide_recording.png" alt="Studio recording" width="980"></p>
 
-**MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. The main window is protected from editing during recording; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
+**MIDI REC.** Select an available MIDI input or use the on-screen keyboard. REFRESH discovers devices connected after opening Studio. **MONITOR** auditions input with transport stopped. Select zero, one or two count-in bars, quantisation off or quarter through thirty-second notes, and overdub or replacement. Millisecond correction compensates recording timing. Press **RECORD**, then **FINISH TAKE** to keep playing or **STOP** to stop. Closing Studio finishes the take. Editing commands are protected during recording; main-window **STOP** and **Space** remain available to finish the take. The Studio button can reopen its window; the take is one undo step. Quantisation moves onsets while preserving durations; sustain pedal becomes note duration. Notes and velocity are recorded; pitch-bend curves and controller automation are not recorded. Locked tracks and clips are protected.
 
 #### Record audio and use a take
 
@@ -234,11 +234,13 @@ Alignment includes plugin latency and, for input recording, device latency. Prer
 
 **Latency and level.** Studio displays compensation and capacity: **262143 samples**, about 5.46 s at 48 kHz. Plugins exceeding the limit trigger a warning. MIDI recording’s millisecond correction fine-tunes your performance timing. Input overflow is reported: check the take without losing unrelated tracks’ playback. Live master output retains float peaks; if **CLIP** lights, lower levels before PCM or MP3 export.
 
-Saving a VST state can cause a short pause, depending on the plugin. Audio input continues to be captured during that pause; a master recording retains the actually audible output, including silence.
+Automatic backup waits for stopped transport and quiet audio. Explicitly saving a VST state can cause a short pause, depending on the plugin. Audio input continues to be captured during that pause; a master recording retains the actually audible output, including silence.
 
 #### Manage samples and portable projects
 
 **MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
+
+A legacy project relinked by filename alone displays an unverified-content warning: audition the sample before keeping the change. **Cancel** requests a safe stop during collection or search; an interrupted collection preserves the previous project and removes partial copies. Relative project/preset sample paths stay inside their own folder; external samples can use absolute paths.
 
 ### Mixer: groups and sends
 
@@ -375,6 +377,8 @@ Plugin inspection runs in a separate process, with a timeout. Failed or interrup
 
 A pitched sample starts with root MIDI 60; drums use the piece's note. **Right-click the track name → sample root** changes it. This is a single sample transposed across the track's notes, not a multisample library.
 
+**MIDI Learn:** after eight chords, learning returns to the first slot while retaining the full progression. In **Voicing Coach**, **APPLY A / APPLY B** identifies the current choice; changing either menu updates it immediately, including after an audition.
+
 ### Piano roll and rhythm grid
 
 Double-click a **clip** to open the full editor. Choose which part to edit in the section menu; **LOOP CLIP** repeats it while you work. Each editor shows only its own track. A drum piece has one row.
@@ -400,7 +404,7 @@ In **Drums**, drag a hit’s right edge to change its MIDI duration. Handwritten
 
 Quantise and transpose affect the selection, or the whole clip when nothing is selected. **ZOOM** opens up timing detail. **Escape** returns to the arrangement.
 
-**IMPORT MIDI**, or dropping a `.mid` onto the window, replaces the selected clip's notes. Project tempo stays as set in the Arranger. In a drum track, imported notes are mapped to just that piece. **UNDO** restores the previous clip.
+**IMPORT MIDI** replaces notes in the selected clip. Dropping a `.mid` onto a timeline row targets its clip, or creates a clip at the drop position in an empty lane. A sample drop changes the destination row’s instrument. These drops do not seek or stop playback. Project tempo stays as set in the Arranger. In a drum track, imported notes are mapped to just that piece. **UNDO** restores the previous clip.
 
 ### Guitar part and mixer
 
@@ -433,7 +437,11 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 
 **SAVE / SAVE AS** writes a `.fga` project: sections, notes, parameters, locks, mixer and VST state. Samples and plugins stay at their paths; keep the files used in the song.
 
-An autosave is written once a minute when work has changed, except during recording or export. **speaker icon → restore autosave** opens it; **open autosave folder** shows its location. Save separately named copies for versions you want to keep. UNDO retains up to forty steps while the app is open.
+Autosave becomes due about once a minute after edits. During playback, recording or export it waits for a safe stopped moment, then writes without blocking the controls. **speaker icon → restore autosave** opens it as work to save under another name. UNDO retains up to forty steps during the session.
+
+When closing the app, opening a project or starting a new song, **Cancel** leaves an active take untouched. **Save** asks for a destination when needed; the requested action continues only after a successful save. Cancelling the file selection cancels navigation; a write error leaves your work open.
+
+Projects accept up to **256 MB** and **2 million notes** in total. MIDI import is limited to **64 MB** and the project’s remaining note budget. Overly nested documents and relative sample paths outside their project/preset folder are rejected without replacing your current work.
 
 ### Shortcuts
 
@@ -478,6 +486,8 @@ All WAV stems start at the song's beginning, have the same length and include a 
 > Choose WAV to bring stems into a DAW. MP3 adds codec delay: useful for listening and sharing, rather than precise track alignment.
 
 ---
+
+With more than fifteen melodic tracks, multitrack MIDI uses a second port to keep channels separate. Drum lanes share GM channel 10. If the receiving program ignores MIDI ports, export the tracks as separate files.
 
 ## 5. Using instruments in real time
 

@@ -263,7 +263,7 @@ int main(int argc,char** argv){try{
         check(p.length()*60/p.settings.bpm<480,"genre forms remain musically bounded");
         check(p.sections.front().type==fga::Section::intro&&p.sections.back().type==fga::Section::outro,"intro and outro belong to form");
         check(fga::trackAtRow(0)==4&&fga::trackAtRow(13)==1&&fga::trackAtRow(14)==0&&fga::trackAtRow(16)==3,"musical track order");
-        check(p.length()>0,"song duration");check(fga::chordNames(p.settings).size()==4||p.settings.chordCount!=4,"harmony");
+        check(p.length()>0,"song duration");check(fga::chordNames(p.settings).size()==(size_t)p.settings.chordCount,"harmony");
         for(size_t ti=0;ti<p.tracks.size();++ti)for(size_t si=0;si<p.sections.size();++si)for(auto n:p.tracks[ti].clips[si].notes){check(n.start>=0&&n.start+n.length<=p.sections[si].bars*4.+1e-6,"section bounds");check(n.length>0&&n.pitch>=0&&n.pitch<128&&n.velocity>0&&n.velocity<128,"valid MIDI");}
         fga::generate(p);for(size_t ti=0;ti<p.tracks.size();++ti)check(p.tracks[ti].clips==original.tracks[ti].clips,"repeatable stored seeds");
         fga::generate(p,fga::Scope::clip,0,4,9876);
@@ -525,7 +525,7 @@ int main(int argc,char** argv){try{
         const auto keep=p.tracks[(size_t)second];const auto factory=p.tracks[0].clips;
         check(!p.deleteMidiTrack(0)&&!p.deleteMidiTrack(fga::leadTrack)&&!p.deleteMidiTrack(99),"only handwritten MIDI tracks can be deleted");
         check(p.deleteMidiTrack(first)&&p.tracks.size()==fga::trackCount+1,"delete a handwritten MIDI track");
-        const auto& moved=p.tracks[(size_t)first];check(moved.name==keep.name&&moved.clips==keep.clips&&moved.instrumentState==keep.instrumentState&&moved.effectState==keep.effectState&&moved.kind==first&&p.tracks[0].clips==factory,"later manual notes, name, plugin and effect state follow their compacted routing ID");
+        const auto& moved=p.tracks[(size_t)first];check(moved.sessionId==keep.sessionId,"compaction preserves track session identity");check(moved.name==keep.name&&moved.clips==keep.clips&&moved.instrumentState==keep.instrumentState&&moved.effectState==keep.effectState&&moved.kind==first&&p.tracks[0].clips==factory,"later manual notes, name, plugin and effect state follow their compacted routing ID");
         check(p.addMidiTrack()==second,"a deleted slot can be reused");
         auto names=fga::newProject(1);const int deleted=names.addMidiTrack();names.addMidiTrack();names.deleteMidiTrack(deleted);const auto added=names.addMidiTrack();
         check(names.tracks[(size_t)deleted].name!=names.tracks[(size_t)added].name,"default MIDI track names remain distinct after deletion and addition");

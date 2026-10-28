@@ -43,6 +43,12 @@ static void testSampleAudition(){
     engine.useInternal(0);tick();require(!engine.isSampleAuditioning(),"instrument replacement stops audition");
 }
 void runStudioEngineTests(){
+    {
+        auto asset=std::make_shared<fga::SampleAsset>();asset->audio.setSize(1,256);asset->audio.clear();asset->frames=256;fga::SamplerSettings initial;initial.mode=1;
+        fga::SampleSynth synth(asset,initial,60,false);
+        {auto external=std::make_unique<fga::SamplerSettings>(initial);external->start=.25;synth.configure(*external,60,120);external->start=.75;require(synth.settings().start==.25,"sampler settings belong to the synth, not a retiring publisher");}
+        auto next=initial;next.start=.25;require(!synth.configure(next,60,120)&&synth.settings().start==.25,"reconfigure compares a live owned snapshot after publisher reclamation");
+    }
     testSamplePitch();
     testSampleAudition();
     {fga::MixerBuses graph;graph.prepare(48000,512);auto settings=fga::defaultBuses();settings[0].gain=.5;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{0,0});juce::AudioBuffer<float> out(2,512);out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(std::abs(out.getSample(0,0)-.25)<1e-6,"group and master gain apply once");settings[1].solo=true;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"group solo excludes other groups and their sends");graph.reset();settings[1].solo=false;graph.configure(settings,120,0,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"master silences dry and shared returns");}

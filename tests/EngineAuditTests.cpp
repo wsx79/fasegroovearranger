@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/AudioEngine.h"
+#include "../Source/RetiredJobs.h"
 #include <thread>
 #include <stdexcept>
 namespace fga {
@@ -46,7 +47,7 @@ struct EngineAuditTests {
         engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
         auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};callback();requireAudit(block.getMagnitude(0,512)>1.1f,"live floating-point output must retain headroom above unity");
         // Holding a control mutex alone cannot block the audio callback anymore.
-        const int before=plugin->calls;engine.mutex.enter();std::thread independent(callback);independent.join();engine.mutex.exit();requireAudit(plugin->calls>before,"processBlock must run without acquiring the control mutex");
+        const int before=plugin->calls;engine.mutex.enter();juce::WaitableEvent returned;std::thread independent([&]{callback();returned.signal();});const bool nonblocking=returned.wait(10000);engine.mutex.exit();independent.join();requireAudit(nonblocking&&plugin->calls>before,"processBlock must run without acquiring the control mutex (bounded wait)");
         plugin->slow=true;std::atomic<bool> running{true};std::thread audio([&]{while(running)callback();});
         for(int n=0;n<20;++n){engine.capturePluginStates(project);engine.restorePluginState(0,"AAAAAA==");}running=false;audio.join();plugin->slow=false;requireAudit(!plugin->overlap&&!project.tracks[0].instrumentState.empty(),"plugin state snapshot executes without overlapping processBlock");
         engine.stop();project.tracks[0].parameters.clear();ParameterAutomation lane;lane.index=0;lane.curve.enabled=true;const double point=141.*120/(44100*60);lane.curve.points={{0,0,0},{point,1,0},{1,1,0}};project.tracks[0].parameters.push_back(lane);
@@ -79,4 +80,14 @@ struct EngineAuditTests {
     }
 };
 }
-void runEngineAuditTests(){fga::EngineAuditTests::run();}
+void runEngineAuditTests(){
+    struct DelayedJob:juce::Thread{juce::WaitableEvent& entered;juce::WaitableEvent& release;std::atomic<bool>& destroyed;
+        DelayedJob(juce::WaitableEvent& e,juce::WaitableEvent& r,std::atomic<bool>& d):Thread("cancellation ownership test"),entered(e),release(r),destroyed(d){}
+        ~DelayedJob()override{signalThreadShouldExit();waitForThreadToExit(-1);destroyed=true;}
+        void run()override{entered.signal();release.wait(-1);}
+    };
+    juce::WaitableEvent entered,release;std::atomic<bool> destroyed{false};
+    {fga::RetiredJobs pending;auto job=std::make_unique<DelayedJob>(entered,release,destroyed);auto* worker=job.get();job->startThread();if(!entered.wait(10000)){release.signal();throw std::runtime_error("worker startup deadline");}
+     pending.retire(std::move(job));const bool retained=!destroyed&&worker->isThreadRunning()&&worker->threadShouldExit();release.signal();const bool returned=worker->waitForThreadToExit(10000);if(!retained||!returned)throw std::runtime_error("cancel must return before a worker's outstanding I/O and keep it alive");}
+    if(!destroyed)throw std::runtime_error("retired job must be reclaimed after cooperative shutdown");
+fga::EngineAuditTests::run();}

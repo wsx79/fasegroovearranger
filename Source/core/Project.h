@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
+#include <atomic>
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -69,7 +70,9 @@ struct EngineOptions {
     std::array<int,12> laneOctave {};
     std::array<bool,12> laneMute {};
 };
+inline std::uint64_t nextTrackSessionId(){static std::atomic<std::uint64_t> next{1};return next.fetch_add(1,std::memory_order_relaxed);}
 struct Track {
+    std::uint64_t sessionId=nextTrackSessionId(); // transient identity; copied by Undo, never serialized or used for MIDI routing
     std::string name;
     int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead, 18..31 handwritten MIDI
     double gain = .75, pan = 0;

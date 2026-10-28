@@ -21,7 +21,7 @@ class SampleSynth : public juce::Synthesiser {
 public:
     SampleSynth(std::shared_ptr<const SampleAsset>,const SamplerSettings&,int root,bool drum);
     ~SampleSynth()override;
-    bool configure(const SamplerSettings&,int root,double bpm); // audio thread, points into immutable MixState
+    bool configure(const SamplerSettings&,int root,double bpm); // audio thread, copies a fixed-size settings snapshot (no allocation)
     const SamplerSettings& settings()const{return *parameters;}
     const SampleAsset& asset()const{return *data;}
     std::shared_ptr<const SampleAsset> sharedAsset()const{return data;}

@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.6
+
+- Annulla i lavori IA e sui campioni in modo cooperativo, conservandoli fino al termine; rende le impostazioni del sampler indipendenti dagli stati di mix ritirati.
+- Mantiene accessibili Stop e Studio durante la registrazione e verifica le selezioni di Studio/IA dopo cancellazioni, spostamenti degli indici e blocchi delle tracce.
+- Riprende Nuovo, Apri, recupero e installazione aggiornamenti dopo Salva con nome. Annullare la chiusura o la scelta del file lascia intatta una take in corso.
+- Rinvia l’autosave a trasporto fermo e audio quieto e scrive una copia indipendente in background. Limita profondità/elementi JSON, file MIDI e note complessive; rifiuta percorsi relativi esterni alla cartella.
+- Conserva tutti gli otto slot di MIDI Learn, indica la scelta di APPLICA nel Coach, corregge Annulla per velocity/gomma e separa i canali degli export MIDI con molte tracce. Segnala i ricollegamenti legacy non verificati.
+- Aggiunge test con scadenze, verifica dei motori incorporati e controlli nativi VST/audio offline completi su Linux, Windows e macOS.
+
 ## 0.23.5
 
 - Ripristina lo stato del mouse JUCE, hover, attivazione e focus della DAW dopo la chiusura di Studio, Mixer, Crea con IA, pannelli strumenti ed editor VST, perché il clic successivo agisca sul comando.

@@ -22,7 +22,7 @@ public:
         };
         const float saved=Localisation::setting("uiScale","1").getFloatValue();if(saved>0&&saved!=1.f)content->main.onScaleChosen(saved);
     }
-    void closeButtonPressed()override{if(content->main.requestClose())juce::JUCEApplication::getInstance()->quit();}
+    void closeButtonPressed()override{content->main.requestClose([]{juce::JUCEApplication::getInstance()->quit();});}
     ScaledContent* content=nullptr;
 };
 class Application:public juce::JUCEApplication {
@@ -47,7 +47,7 @@ public:
             setApplicationReturnValue(ok?0:1);quit();return;
         }
         if(args.size()==3&&args[0]=="--host-smoke-test"){
-            window=std::make_unique<Window>();auto& audio=window->content->main.audio;
+            window=std::make_unique<Window>();auto& audio=window->content->main.audio;audio.devices.closeAudioDevice();
             const auto folder=juce::File(args[2]);folder.createDirectory();
             juce::OwnedArray<juce::PluginDescription> types;
             for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(types,args[1]);
@@ -94,7 +94,7 @@ public:
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.writeUiEvidence(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
         }
         if(args.size()==2&&args[0]=="--smoke-test"){
-            window=std::make_unique<Window>();
+            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();
             const auto folder=juce::File(args[1]);folder.createDirectory();
             auto image=window->content->main.createComponentSnapshot(window->content->main.getLocalBounds());
             if(auto stream=folder.getChildFile("interface.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}

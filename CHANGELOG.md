@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.6
+
+- Cancel AI and project-media work cooperatively, retaining workers until they finish; keep sampler settings alive independently of retired mix snapshots.
+- Keep transport Stop and Studio accessible during recording, and validate Studio/AI selections across track deletion, reindexing and locks.
+- Resume New, Open, recovery and update installation after successful Save As. Cancelling close or file selection leaves an active take untouched.
+- Defer autosave until stopped/quiet and write an owned snapshot in the background. Bound JSON nesting/elements, MIDI input and project note totals; reject escaping relative sample paths.
+- Preserve all eight MIDI Learn slots, show the Coach APPLY target, keep velocity/eraser Undo clean, and route large MIDI exports without channel collisions. Flag unverified legacy sample matches.
+- Add bounded regression tests, pinned vendored-engine checks, and native VST/full offline audio audits on Linux, Windows and macOS.
+
 ## 0.23.5
 
 - Recover a missed JUCE mouse release, hover, DAW activation and keyboard focus immediately after closing Studio, Mixer, AI Composer, instrument panels and VST editors, so the next click reaches its control.

@@ -105,9 +105,7 @@ void MainComponent::showAbout(){
 }
 void MainComponent::showAudioSettings(){
     juce::PopupMenu menu;menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));menu.addSeparator();menu.addItem(5,tr("Metronome (C)"),true,audio.metronomeOn());juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton),[safe](int id){if(safe==nullptr)return;if(id==5){safe->toggleMetronome();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,2,0,2,false,false,true,false);selector->setSize(680,500);o.content.setOwned(selector);o.launchAsync();}
-        if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else{const auto autosave=folder.getChildFile("autosave.fga");safe->open(autosave);
-            // A recovered song is unsaved work: SAVE must ask where to keep it, never overwrite the autosave slot.
-            if(safe!=nullptr&&safe->projectFile==autosave){safe->projectFile=juce::File();safe->dirty=true;safe->repaint();}}}
+        if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else{const auto autosave=folder.getChildFile("autosave.fga");safe->open(autosave,true);}}
     });
 }
 void MainComponent::exportMenu(){

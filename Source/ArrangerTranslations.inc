@@ -853,3 +853,43 @@
 { "Fit the complete song to the available timeline width. Shortcut: F.", "Adatta tutto il brano alla larghezza disponibile nella timeline. Scorciatoia: F.", "Ajusta toda la canción al ancho disponible de la línea de tiempo. Atajo: F.", "Ajustez le morceau entier à la largeur disponible de la timeline. Raccourci : F.", "Den gesamten Song in die verfügbare Timeline-Breite einpassen. Taste: F.", "Ajuste a música inteira à largura disponível da linha do tempo. Atalho: F." },
 { "Sampler, MIDI/audio recording and project samples", "Campionatore, registrazione MIDI/audio e campioni del progetto", "Sampler, grabación MIDI/audio y muestras del proyecto", "Sampler, enregistrement MIDI/audio et échantillons du projet", "Sampler, MIDI-/Audioaufnahme und Projekt-Samples", "Sampler, gravação MIDI/áudio e amostras do projeto" },
 { "Double-click a track name to show its inspector.", "Fai doppio clic sul nome di una traccia per aprire il suo inspector.", "Haz doble clic en el nombre de una pista para abrir su inspector.", "Double-cliquez sur le nom d’une piste pour ouvrir son inspecteur.", "Doppelklick auf einen Spurnamen öffnet den Inspector.", "Clique duas vezes no nome de uma faixa para abrir seu inspetor." },
+
+{ "Finish recording or wait for the media operation before editing the project.", "Termina la registrazione o attendi il completamento dell’operazione sui campioni prima di modificare il progetto.", "Finaliza la grabación o espera a que termine la operación de muestras antes de editar el proyecto.", "Terminez l’enregistrement ou attendez la fin de l’opération sur les échantillons avant de modifier le projet.", "Beende die Aufnahme oder warte auf den Abschluss der Sample-Verarbeitung, bevor du das Projekt bearbeitest.", "Termine a gravação ou aguarde a operação de amostras antes de editar o projeto." },
+
+{ "The selected track changed. Choose a track and try again.", "La traccia selezionata è cambiata. Scegli una traccia e riprova.", "La pista seleccionada ha cambiado. Elige una pista e inténtalo de nuevo.", "La piste sélectionnée a changé. Choisissez une piste et réessayez.", "Die ausgewählte Spur hat sich geändert. Wähle eine Spur und versuche es erneut.", "A faixa selecionada mudou. Escolha uma faixa e tente novamente." },
+
+{ "Relinked: {found}; missing: {missing}", "Ricollegati: {found}; mancanti: {missing}", "Vinculados: {found}; ausentes: {missing}", "Retrouvés : {found} ; manquants : {missing}", "Neu verknüpft: {found}; fehlend: {missing}", "Vinculados: {found}; ausentes: {missing}" },
+
+{ "Matched by name; content not verified:", "Corrispondenze per nome, contenuto non verificato:", "Coincidencias por nombre, contenido sin verificar:", "Correspondances par nom, contenu non vérifié :", "Nur nach Namen zugeordnet, Inhalt ungeprüft:", "Correspondências por nome, conteúdo não verificado:" },
+
+{ "Cannot start media worker.", "Impossibile avviare l’operazione sui campioni.", "No se puede iniciar la operación de muestras.", "Impossible de démarrer l’opération sur les échantillons.", "Sample-Verarbeitung konnte nicht gestartet werden.", "Não foi possível iniciar a operação de amostras." },
+
+{ "Automatic backup could not start. Save the project manually.", "Impossibile avviare il backup automatico. Salva il progetto manualmente.", "No se pudo iniciar la copia automática. Guarda el proyecto manualmente.", "La sauvegarde automatique n’a pas pu démarrer. Enregistrez le projet manuellement.", "Die automatische Sicherung konnte nicht starten. Speichere das Projekt manuell.", "Não foi possível iniciar a cópia automática. Salve o projeto manualmente." },
+
+{ "JSON file is missing or too large.", "Il file JSON è mancante o troppo grande.", "El archivo JSON no existe o es demasiado grande.", "Le fichier JSON est introuvable ou trop volumineux.", "Die JSON-Datei fehlt oder ist zu groß.", "O arquivo JSON não existe ou é muito grande." },
+
+{ "Cannot read JSON file.", "Impossibile leggere il file JSON.", "No se puede leer el archivo JSON.", "Impossible de lire le fichier JSON.", "Die JSON-Datei kann nicht gelesen werden.", "Não foi possível ler o arquivo JSON." },
+
+{ "JSON nesting exceeds 48 levels.", "Il file JSON supera 48 livelli di annidamento.", "El archivo JSON supera 48 niveles de anidamiento.", "Le fichier JSON dépasse 48 niveaux d’imbrication.", "Die JSON-Verschachtelung überschreitet 48 Ebenen.", "O arquivo JSON excede 48 níveis de aninhamento." },
+
+{ "Invalid JSON structure.", "Struttura JSON non valida.", "Estructura JSON no válida.", "Structure JSON invalide.", "Ungültige JSON-Struktur.", "Estrutura JSON inválida." },
+
+{ "JSON contains too many elements.", "Il file JSON contiene troppi elementi.", "El archivo JSON contiene demasiados elementos.", "Le fichier JSON contient trop d’éléments.", "Die JSON-Datei enthält zu viele Elemente.", "O arquivo JSON contém elementos demais." },
+
+{ "MIDI file is missing or exceeds 64 MB.", "Il file MIDI è mancante o supera 64 MB.", "El archivo MIDI no existe o supera 64 MB.", "Le fichier MIDI est introuvable ou dépasse 64 Mo.", "Die MIDI-Datei fehlt oder überschreitet 64 MB.", "O arquivo MIDI não existe ou excede 64 MB." },
+
+{ "MIDI import exceeds the project note limit (2 million notes).", "L’importazione MIDI supera il limite del progetto: 2 milioni di note.", "La importación MIDI supera el límite del proyecto: 2 millones de notas.", "L’import MIDI dépasse la limite du projet : 2 millions de notes.", "Der MIDI-Import überschreitet die Projektgrenze von 2 Millionen Noten.", "A importação MIDI excede o limite do projeto: 2 milhões de notas." },
+
+{ "Relative sample path leaves the project folder.", "Il percorso relativo del campione esce dalla cartella del progetto.", "La ruta relativa de la muestra sale de la carpeta del proyecto.", "Le chemin relatif de l’échantillon sort du dossier du projet.", "Der relative Sample-Pfad verlässt den Projektordner.", "O caminho relativo da amostra sai da pasta do projeto." },
+
+{ "Preset sample path leaves the preset folder.", "Il percorso del campione esce dalla cartella del preset.", "La ruta de la muestra sale de la carpeta del preset.", "Le chemin de l’échantillon sort du dossier du preset.", "Der Sample-Pfad verlässt den Preset-Ordner.", "O caminho da amostra sai da pasta do preset." },
+
+{ "Collection cancelled.", "Raccolta annullata.", "Recopilación cancelada.", "Collecte annulée.", "Sammlung abgebrochen.", "Coleta cancelada." },
+
+{ "Relink cancelled.", "Ricollegamento annullato.", "Vinculación cancelada.", "Recherche annulée.", "Neu-Verknüpfung abgebrochen.", "Vinculação cancelada." },
+
+{ "APPLY A", "APPLICA A", "APLICAR A", "APPLIQUER A", "A ANWENDEN", "APLICAR A" },
+{ "APPLY B", "APPLICA B", "APLICAR B", "APPLIQUER B", "B ANWENDEN", "APLICAR B" },
+
+{ "Project exceeds the note limit (2 million notes).", "Il progetto supera il limite di 2 milioni di note.", "El proyecto supera el límite de 2 millones de notas.", "Le projet dépasse la limite de 2 millions de notes.", "Das Projekt überschreitet die Grenze von 2 Millionen Noten.", "O projeto excede o limite de 2 milhões de notas." },
+{ "Project exceeds the file size limit (256 MB).", "Il progetto supera il limite di 256 MB.", "El proyecto supera el límite de 256 MB.", "Le projet dépasse la limite de 256 Mo.", "Das Projekt überschreitet die Grenze von 256 MB.", "O projeto excede o limite de 256 MB." },

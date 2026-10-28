@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
+#include "RetiredJobs.h"
 #include "AudioEngine.h"
 #include "ProjectIO.h"
 #include "DawTheme.h"
@@ -118,6 +119,7 @@ public:
     float velocityHeight()const{return (float)getHeight()-velocityTop()-18;}
     bool ownerTrackIsDrum()const;
     void editVelocity(juce::Point<float>);
+    void eraseAt(juce::Point<float>);
     bool laneView() const;
     float noteY(const Note&) const;
     float noteHeight() const;
@@ -134,7 +136,7 @@ private:
     std::vector<Note> before;
     std::vector<Note> gestureOriginal;
     juce::Point<float> anchor;
-    bool resizing=false,velocityDrag=false,editingVelocity=false;
+    bool resizing=false,velocityDrag=false,editingVelocity=false,velocityCheckpoint=false,erasing=false,eraseCheckpoint=false;
     int hit(juce::Point<float>) const;
     void retainSelection(const std::vector<Note>&);
     double beat(float x) const {return std::max(0.,(x-leftMargin())/pixelsPerBeat);}
@@ -164,7 +166,11 @@ public:
     Project project;
     int selectedTrack=0,selectedSection=0,selectedClip=-1;
     AudioEngine audio;
+    RetiredJobs retiredJobs;
     PluginCatalog pluginCatalog;
+    bool editingRestricted()const;
+    void updateEditingAvailability();
+    void stopPlaybackAndRecording();
     void checkpoint();
     // onlyTrack: just that track's notes changed (its schedule alone is rebuilt).
     void changed(bool schedule=true,int onlyTrack=-1);
@@ -186,7 +192,7 @@ public:
     const Clip& clip()const{const auto& clips=project.tracks[(size_t)selectedTrack].clips;const int i=clipIndex();return i>=0&&i<(int)clips.size()?clips[(size_t)i]:emptyClip;}
     double clipLength()const{return project.clipLength(selectedTrack,clipIndex());}
     double clipStart()const{return clipIndex()<0?timelinePosition():project.clipStart(selectedTrack,clipIndex());}
-    void selectClip(int track,int clip,bool keepSelection=false);
+    void selectClip(int track,int clip,bool keepSelection=false,double at=-1);
     void timelineCommand(int command);
     void moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy);
     void ensureTimelineClip(bool addUndo=true);
@@ -195,7 +201,7 @@ public:
     void togglePlayback();
     void toggleMetronome();
     void regenerate(Scope,bool newTake=true);
-    bool requestClose();
+    void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();
     void showPianoTools(int);
@@ -234,6 +240,7 @@ public:
     bool verifyPluginWindow();
     void dismissAuxiliaryWindow(juce::Component&);
     bool verifyWindowFocus(const juce::File&);
+    bool verifyAuditRepairs(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
     void showAiComposer();
@@ -243,6 +250,7 @@ public:
     bool verifyTimelineEditing(const juce::File&);
     bool verifyPresentation(const juce::File&);
 private:
+    friend bool verifyPianoTools(MainComponent&,const juce::File&);
     friend class StudioWindow;
     friend class MixerRoutingWindow;
     std::unique_ptr<StudioWindow> studioWindow;
@@ -342,7 +350,18 @@ private:
     void updateSizes();
     void undo(bool redo);
     void save(bool saveAs);
-    void open(const juce::File&);
+    void createNewProject();
+    bool writeProjectFile(const juce::File&);
+    void completeCloseChoice(int,std::function<void()>);
+    void finishPendingSave(const juce::File&,std::function<void()>);
+    bool closePending=false,mediaBusy=false,availabilityUpdating=false;
+    std::vector<std::pair<juce::Component::SafePointer<juce::Component>,bool>> restrictedComponents;
+    class AutosaveJob;
+    std::unique_ptr<AutosaveJob> autosaveJob;
+    bool autosaveDue=false;
+    int autosaveRequestId=0;
+    void autosaveIfIdle(const juce::File& target={});
+    void open(const juce::File&,bool recovered=false);
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
     void loadPluginDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
@@ -350,7 +369,7 @@ private:
     void loadEffectDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
     void chooseBrowserRow(const PluginCatalog::BrowserRow&);
     void showPluginMenu(juce::Component* anchor=nullptr);
-    void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>);
+    void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>,std::function<void()> cancelled={});
     void exportMenu();
     void exportFile(int type,int track,const juce::File& destination={});
     void loadSampleFile(int,const juce::File&);
@@ -364,7 +383,7 @@ private:
     void message(const juce::String&,bool error=false);
     void showPosition(double beat);
     void timerCallback() override;
-    void importFile(const juce::File&);
+    void importFile(const juce::File&,double placeAt=-1);
     void modifySelected(std::function<void(Clip&)>);
     friend class ArrangementView;
     friend class PianoRoll;

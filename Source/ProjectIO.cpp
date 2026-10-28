@@ -185,11 +185,11 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
         t.freeTimeline=(int)o["version"]>=2&&(bool)a.getProperty("freeTimeline",false);
         auto* clips=a["clips"].getArray();if(!clips||(t.freeTimeline?clips->size()>4096:clips->size()!=sections->size()))return juce::Result::fail("Clip e sezioni non corrispondono.");
         for(const auto& b:*clips){Clip c;c.motifSeed=(std::uint32_t)(juce::int64)b.getProperty("motifSeed",0);c.seed=(std::uint32_t)(juce::int64)b.getProperty("seed",1);c.locked=(bool)b["locked"];auto* notes=b["notes"].getArray();if(!notes)return juce::Result::fail("Note mancanti.");
-            noteCount+=(size_t)notes->size();if(noteCount>2000000)return juce::Result::fail("Progetto troppo grande (massimo 2 milioni di note).");
+            noteCount+=(size_t)notes->size();if(noteCount>maxProjectNotes)return juce::Result::fail("Progetto troppo grande (massimo 2 milioni di note).");
             for(const auto& n:*notes){if(!n.isArray()||n.size()<4)return juce::Result::fail("Evento MIDI non valido.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Tempo MIDI non valido.");c.notes.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}
             if(t.freeTimeline){const auto pos=b["position"],span=b["span"];if(!(pos.isDouble()||pos.isInt()||pos.isInt64())||!(span.isDouble()||span.isInt()||span.isInt64())||!std::isfinite((double)pos)||!std::isfinite((double)span)||(double)pos<0||(double)pos>131072||(double)span<1./960.||(double)span>512)return juce::Result::fail("Invalid timeline clip position or duration.");c.position=(double)pos;c.role=(int)num(b,"role",-1);}
             c.span=num(b,"span",0);c.loopLength=num(b,"loopLength",0);if(!std::isfinite(c.span)||!std::isfinite(c.loopLength))return juce::Result::fail("Invalid loop duration.");
-            if(b.hasProperty("loopSource")){auto* source=b["loopSource"].getArray();if(!source)return juce::Result::fail("Invalid loop source.");noteCount+=(size_t)source->size();if(noteCount>2000000)return juce::Result::fail("Project loop source is too large.");
+            if(b.hasProperty("loopSource")){auto* source=b["loopSource"].getArray();if(!source)return juce::Result::fail("Invalid loop source.");noteCount+=(size_t)source->size();if(noteCount>maxProjectNotes)return juce::Result::fail("Project loop source is too large.");
                 for(const auto& n:*source){if(!n.isArray()||n.size()<4)return juce::Result::fail("Invalid loop MIDI event.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Invalid loop MIDI time.");c.loopSource.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}}
             t.clips.push_back(std::move(c));
         }p.tracks.push_back(std::move(t));
@@ -202,14 +202,45 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     }
     p.normalise();result=std::move(p);return juce::Result::ok();
 }
+// Validate nesting and container budgets before JUCE allocates a recursive var tree.
+juce::Result readBoundedJson(const juce::File& file,juce::var& json,juce::int64 maxBytes){
+    if(!file.existsAsFile()||file.getSize()>maxBytes)return juce::Result::fail("JSON file is missing or too large.");
+    auto input=file.createInputStream();if(!input)return juce::Result::fail("Cannot read JSON file.");
+    juce::MemoryOutputStream validated;std::array<char,65536> buffer;juce::int64 bytes=0;
+    while(!input->isExhausted()){
+        const int count=input->read(buffer.data(),(int)buffer.size());if(count<=0)break;if((bytes+=count)>maxBytes)return juce::Result::fail("JSON file is too large.");validated.write(buffer.data(),(size_t)count);
+    }
+    if(input->getStatus().failed())return juce::Result::fail("Cannot read JSON file.");
+    // Keep the previous reader's UTF-8/UTF-16 BOM handling, and validate exactly
+    // the decoded immutable document that will be given to the JSON parser.
+    const auto document=juce::String::createStringFromData(validated.getData(),(int)validated.getDataSize());
+    auto characters=document.getCharPointer();int depth=0;size_t elements=0;bool quoted=false,escaped=false;
+    while(!characters.isEmpty()){const auto ch=characters.getAndAdvance();
+        if(quoted){if(escaped)escaped=false;else if(ch=='\\')escaped=true;else if(ch=='"')quoted=false;continue;}
+        if(ch=='"'){quoted=true;continue;}
+        if(ch=='{'||ch=='['){if(++depth>48)return juce::Result::fail("JSON nesting exceeds 48 levels.");++elements;}
+        else if(ch=='}'||ch==']'){if(--depth<0)return juce::Result::fail("Invalid JSON structure.");}
+        else if(ch==',')++elements;
+        if(elements>14000000)return juce::Result::fail("JSON contains too many elements.");
+    }
+    if(quoted||depth!=0)return juce::Result::fail("Invalid JSON structure.");
+    return juce::JSON::parse(document,json);
+}
 // Store sub-tick humanisation with 17 fractional places, far beyond MIDI/audio
 // resolution and within JUCE's stable numeric parsing precision.
-juce::Result saveProject(const Project& p,const juce::File& file){juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText([&]{auto json=projectJson(p);relativiseProjectMedia(json,file);return juce::JSON::toString(json,false,17);}()))return juce::Result::fail("Scrittura progetto fallita.");return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");}
-juce::Result loadProject(const juce::File& file,Project& p){if(!file.existsAsFile()||file.getSize()>256*1024*1024)return juce::Result::fail("File mancante o superiore a 256 MB.");juce::var json;auto r=juce::JSON::parse(file.loadFileAsString(),json);if(r.failed())return r;auto parsed=projectFromJson(json,p);if(parsed.wasOk())resolveProjectMedia(p,file);return parsed;}
-juce::Result importMidi(const juce::File& file,Clip& clip,double beats){
-    auto in=file.createInputStream();if(!in)return juce::Result::fail("Impossibile aprire MIDI.");juce::MidiFile midi;if(!midi.readFrom(*in))return juce::Result::fail("File MIDI non valido.");const int ticks=midi.getTimeFormat();if(ticks<=0)return juce::Result::fail("MIDI SMPTE non supportato: usare PPQ.");
+juce::Result saveProject(const Project& p,const juce::File& file){
+    size_t notes=0;for(const auto& track:p.tracks)for(const auto& clip:track.clips){notes+=clip.notes.size()+clip.loopSource.size();if(notes>maxProjectNotes)return juce::Result::fail("Project exceeds the note limit (2 million notes).");}
+    auto json=projectJson(p);relativiseProjectMedia(json,file);const auto text=juce::JSON::toString(json,false,17);
+    if((juce::int64)text.getNumBytesAsUTF8()>maxProjectBytes)return juce::Result::fail("Project exceeds the file size limit (256 MB).");
+    juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(text))return juce::Result::fail("Scrittura progetto fallita.");
+    return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");
+}
+juce::Result loadProject(const juce::File& file,Project& p){juce::var json;auto r=readBoundedJson(file,json);if(r.failed())return r;Project next;auto parsed=projectFromJson(json,next);if(parsed.failed())return parsed;if(auto resolved=resolveProjectMedia(next,file);resolved.failed())return resolved;p=std::move(next);return juce::Result::ok();}
+juce::Result importMidi(const juce::File& file,Clip& clip,double beats,size_t maxNotes){
+    if(!file.existsAsFile()||file.getSize()>maxMidiBytes)return juce::Result::fail("MIDI file is missing or exceeds 64 MB.");maxNotes=std::min(maxNotes,maxProjectNotes);
+    auto in=file.createInputStream();if(!in)return juce::Result::fail("Impossibile aprire MIDI.");juce::SubregionStream bounded(in.get(),0,maxMidiBytes,false);juce::MidiFile midi;if(!midi.readFrom(bounded))return juce::Result::fail("File MIDI non valido.");const int ticks=midi.getTimeFormat();if(ticks<=0)return juce::Result::fail("MIDI SMPTE non supportato: usare PPQ.");
     Clip next=clip;next.notes.clear();next.loopSource.clear();next.loopLength=0;
-    for(int ti=0;ti<midi.getNumTracks();++ti){auto sequence=*midi.getTrack(ti);sequence.updateMatchedPairs();for(int i=0;i<sequence.getNumEvents();++i){auto* e=sequence.getEventPointer(i);if(e->message.isNoteOn()&&e->noteOffObject){auto start=e->message.getTimeStamp()/ticks;auto length=(e->noteOffObject->message.getTimeStamp()-e->message.getTimeStamp())/ticks;if(start<beats)next.notes.push_back({start,length,e->message.getNoteNumber(),e->message.getVelocity(),0});}}}
+    for(int ti=0;ti<midi.getNumTracks();++ti){auto sequence=*midi.getTrack(ti);sequence.updateMatchedPairs();for(int i=0;i<sequence.getNumEvents();++i){auto* e=sequence.getEventPointer(i);if(e->message.isNoteOn()&&e->noteOffObject){auto start=e->message.getTimeStamp()/ticks;auto length=(e->noteOffObject->message.getTimeStamp()-e->message.getTimeStamp())/ticks;if(start<beats){if(next.notes.size()>=maxNotes)return juce::Result::fail("MIDI import exceeds the project note limit (2 million notes).");next.notes.push_back({start,length,e->message.getNoteNumber(),e->message.getVelocity(),0});}}}}
     tidyNotes(next,beats);if(next.notes.empty())return juce::Result::fail("Nessuna nota nella durata della sezione selezionata.");clip=std::move(next);return juce::Result::ok();
 }
 }

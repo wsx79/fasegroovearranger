@@ -11,7 +11,7 @@ namespace fga {
 // Only original built-in instruments are used; no installed plugins are needed.
 inline bool writeClubAudioAudit(const juce::File& folder){
     if(folder.createDirectory().failed())return false;
-    AudioEngine audio;audio.devices.closeAudioDevice();
+    AudioEngine audio(AudioEngine::Offline{});
     juce::AudioFormatManager formats;formats.registerBasicFormats();
     juce::String report="genre\tbpm\tbars\tseconds\tpeak\traw_peak\trms\tmin_phrase_rms\tfirst_phrase_rms\tlast_phrase_rms\n";
     bool ok=true;

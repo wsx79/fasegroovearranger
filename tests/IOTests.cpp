@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/ProjectIO.h"
 #include <iostream>
+#include <set>
 #include <stdexcept>
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runAiTests();
@@ -11,6 +12,23 @@ int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
     runAiTests();runStudioIOTests();
+    {
+        auto project=fga::newProject(19);while(project.tracks.size()<fga::maxTracks)project.addMidiTrack();
+        for(auto& track:project.tracks)for(auto& c:track.clips)c.notes.clear();
+        for(auto& track:project.tracks)track.clips[0].notes={{0,.5,60,100,0}};
+        auto bytes=fga::midiFile(project);juce::MemoryInputStream stream(bytes.data(),bytes.size(),false);juce::MidiFile midi;check(midi.readFrom(stream),"read multi-port MIDI export");
+        std::set<std::pair<int,int>> melodic;int melodicTracks=0;
+        for(int ti=1;ti<midi.getNumTracks();++ti){int port=0;for(int i=0;i<midi.getTrack(ti)->getNumEvents();++i){const auto& message=midi.getTrack(ti)->getEventPointer(i)->message;
+            if(message.isMetaEvent()&&message.getMetaEventType()==0x21&&message.getMetaEventLength()==1)port=message.getMetaEventData()[0];
+            if(message.isNoteOn()&&message.getChannel()!=10){++melodicTracks;check(melodic.insert({port,message.getChannel()}).second,"melodic tracks never share a MIDI port/channel");break;}
+        }}check(melodicTracks==19&&melodic.size()==19,"all 19 melodic instruments are separately routed");
+        auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-midi-budget",".mid");
+        struct Cleanup{juce::File file;~Cleanup(){file.deleteFile();}} cleanup{file};auto small=fga::midiFile(project,0);file.replaceWithData(small.data(),small.size());
+        fga::Clip imported;imported.notes={{2,1,71,80,0}};const auto previous=imported.notes;
+        check(fga::importMidi(file,imported,4,0).failed()&&imported.notes==previous,"MIDI budget failure keeps the original clip");check(fga::importMidi(file,imported,4,1).wasOk()&&imported.notes.size()==1,"MIDI import obeys the remaining project note budget");
+        auto oversized=fga::newProject(1);oversized.tracks[0].clips[0].notes.assign(fga::maxProjectNotes+1,{0,1,60,100,0});file.replaceWithText("KEEP");check(fga::saveProject(oversized,file).failed()&&file.loadFileAsString()=="KEEP","oversized project cannot replace a readable destination");
+    }
+
     {auto project=fga::newProject(72);auto& track=project.tracks[4];track.instrument="sample";track.instrumentPath="drum-fixture.wav";track.sampler.mode=1;track.clips[0].notes={{0,.25,36,100,0},{.5,.25,37,100,0}};project.normalise();fga::Project loaded;check(track.clips[0].notes[1].pitch==37&&fga::projectFromJson(fga::projectJson(project),loaded).wasOk()&&loaded.tracks[4].clips[0].notes[1].pitch==37,"sample drum MIDI pitches survive normalisation, recording and project round-trip outside slice mode");track.instrument="internal";project.normalise();check(track.clips[0].notes[0].pitch==track.clips[0].notes[1].pitch,"built-in drum guides keep their existing fixed MIDI mapping");}
 
     {

@@ -3,15 +3,17 @@
 // Audio engine: edits while playing touch only what changed, loop wraps and stops release
 // notes, publishing never waits for the audio thread, MP3 export is gapless.
 #include "../Source/AudioEngine.h"
+#include "../Source/ArrangementAudit.h"
 #include "../Source/core/Mp3Encoder.h"
 #include <iostream>
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runStudioEngineTests();
 void runEngineAuditTests();
-int main(){
+int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
+        if(argc==3&&juce::String(argv[1])=="--club-audit")return fga::writeClubAudioAudit(juce::File(argv[2]))?0:1;
         runStudioEngineTests();runEngineAuditTests();
         fga::AudioEngine engine;engine.devices.closeAudioDevice(); // drive the callback by hand
         {

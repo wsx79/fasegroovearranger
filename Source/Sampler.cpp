@@ -116,7 +116,7 @@ private:
 }
 SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);}
 SampleSynth::~SampleSynth()=default;
-bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){const auto& old=*parameters;const bool restart=old.mode!=p.mode||old.sync!=p.sync||old.reverse!=p.reverse||old.start!=p.start||old.end!=p.end||old.sliceCount!=p.sliceCount||old.slices!=p.slices;if(restart)allNotesOff(0,false);parameters=&p;rootNote=root;bpm=tempo;return restart;}
+bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){const auto& old=*parameters;const bool restart=old.mode!=p.mode||old.sync!=p.sync||old.reverse!=p.reverse||old.start!=p.start||old.end!=p.end||old.sliceCount!=p.sliceCount||old.slices!=p.slices;if(restart)allNotesOff(0,false);fallback=p;parameters=&fallback;rootNote=root;bpm=tempo;return restart;}
 void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(rate);}
 void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;

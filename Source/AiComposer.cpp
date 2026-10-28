@@ -56,6 +56,7 @@ juce::Result aiHttpRequest(const Project& p,const AiOptions& o,AiHttpRequest& ou
     if(o.prompt.trim().isEmpty()||o.prompt.length()>6000)return juce::Result::fail("Write a musical request (up to 6000 characters).");
     if(o.model.trim().isEmpty()||o.model.length()>160||o.model.containsAnyOf("\r\n"))return juce::Result::fail("Choose a valid model.");
     if(o.tracks.empty())return juce::Result::fail("Select at least one instrument.");
+    for(int track:o.tracks)if(!juce::isPositiveAndBelow(track,(int)p.tracks.size())||p.tracks[(size_t)track].locked)return juce::Result::fail("An enabled track is locked or unavailable.");
     if(o.wholeSong&&anyLock(p))return juce::Result::fail("Unlock tracks and clips for a new song, or choose selected-track editing.");
     if(o.provider!=AiProvider::ollama&&(o.key.trim().isEmpty()||o.key.containsAnyOf("\r\n")||o.key.length()>2048))return juce::Result::fail("Enter the API key for the selected service.");
     const auto system=aiSystemPrompt(),user=aiContext(p,o);out.headers="Content-Type: application/json\n";
