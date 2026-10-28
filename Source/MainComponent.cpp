@@ -624,6 +624,18 @@ public:
     PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);centreWithSize(getWidth(),getHeight());setVisible(true);}
     void closeButtonPressed()override{owner.dismissAuxiliaryWindow(*this);}
 };
+namespace {
+void settleNativeFocus(juce::Component& component){
+   #if JUCE_MAC
+    // Cocoa delivers key-window activation through its event loop. Let those
+    // native notifications arrive before injecting the next synthetic click.
+    const auto until=juce::Time::getMillisecondCounterHiRes()+200.;
+    while(!component.hasKeyboardFocus(false)&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+   #else
+    juce::ignoreUnused(component);
+   #endif
+}
+}
 bool MainComponent::verifyWindowFocus(const juce::File& folder){
     if(!folder.createDirectory())return false;
     const auto saved=project;const auto undos=undoStack,redos=redoStack;const bool wasDirty=dirty;
@@ -634,7 +646,7 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
         auto source=juce::Desktop::getInstance().getMainMouseSource();
         if(auto* peer=window.getPeer())peer->handleMouseEvent(source.getType(),{4.f,4.f},juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
         const bool pressed=source.isDragging();window.closeButtonPressed();
-        const bool released=!source.isDragging();
+        const bool released=!source.isDragging();settleNativeFocus(*this);
         const bool focused=!window.isVisible()&&isEnabled()&&hasKeyboardFocus(false);
         const auto before=undoStack.size();const auto seed=project.settings.seed;
         const auto pos=getTopLevelComponent()->getLocalPoint(&songButton,songButton.getLocalBounds().getCentre()).toFloat();
@@ -736,7 +748,7 @@ bool MainComponent::verifyPluginWindow(const juce::File& folder){
     auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
     check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());
-    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
+    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
     pluginEditorButton.onClick();check("VST editor reopened",pluginWindow&&pluginWindow->isVisible());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
     folder.getChildFile("plugin-window.txt").replaceWithText(evidence);pluginWindow.reset();return ok;
 }

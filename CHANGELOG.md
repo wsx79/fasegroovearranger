@@ -1,6 +1,9 @@
 # Changelog — Fase Groove Arranger
 
-## 0.23.6
+## 0.23.7
+
+- Commit final Piano range values before ending a drag, including a quick mouse release; preserve one Undo per gesture and ignore duplicate queued notifications.
+- Make asynchronous close continuations portable to MSVC, initialise Cocoa focus tests in the foreground, and expose individual native failures in CI logs and annotations.
 
 - Cancel AI and project-media work cooperatively, retaining workers until they finish; keep sampler settings alive independently of retired mix snapshots.
 - Keep transport Stop and Studio accessible during recording, and validate Studio/AI selections across track deletion, reindexing and locks.

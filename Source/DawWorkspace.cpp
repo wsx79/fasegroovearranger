@@ -431,26 +431,29 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
         bool controlsReady=false;juce::MessageManager::callAsync([&controlsReady]{controlsReady=true;});
         while(!controlsReady)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
         juce::Slider* range=nullptr;for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="Range")range=dynamic_cast<juce::Slider*>(child);
+        juce::String rangeEvidence;
+        auto rangeCheck=[&](const char* name,bool passed){rangeEvidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
         if(range){
             // Pixel checks catch the old stationary thumb; value-only tests miss it.
             const auto hasThumb=[&](double note){const auto image=range->createComponentSnapshot(range->getLocalBounds());return image.getPixelAt(juce::roundToInt(range->getPositionOfValue(note)),range->getHeight()/2-3).getBrightness()>.6f;};
-            ok=ok&&range->getSliderStyle()==juce::Slider::TwoValueHorizontal&&hasThumb(range->getMinValue())&&hasThumb(range->getMaxValue());
+            rangeCheck("two-value slider style",range->getSliderStyle()==juce::Slider::TwoValueHorizontal);rangeCheck("initial low thumb visible",hasThumb(range->getMinValue()));rangeCheck("initial high thumb visible",hasThumb(range->getMaxValue()));
             const auto drag=[&](double from,double to){
                 const juce::Point<float> start(range->getPositionOfValue(from),range->getHeight()*.5f),end(range->getPositionOfValue(to),start.y);
                 const auto event=[&](juce::Point<float> point,bool dragged){return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),point,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,range,range,juce::Time::getCurrentTime(),start,juce::Time::getCurrentTime(),1,dragged);};
-                ok=ok&&instrumentPanel.getComponentAt(range->getPosition()+start.toInt())==range;
+                rangeCheck("range is the hit-test target",instrumentPanel.getComponentAt(range->getPosition()+start.toInt())==range);
                 range->mouseDown(event(start,false));range->mouseDrag(event(end,true));
-                juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+                // A quick release must commit before the queued JUCE notification.
                 range->mouseUp(event(end,true));instrumentPanel.flushRender();
             };
             const auto beforeRange=project.tracks[0].clips[0].notes;
-            drag(range->getMinValue(),72);ok=ok&&range->getMinValue()==72&&project.tracks[0].engine.rangeLow==72&&hasThumb(72);
-            drag(range->getMaxValue(),84);ok=ok&&range->getMaxValue()==84&&project.tracks[0].engine.rangeHigh==84&&hasThumb(72)&&hasThumb(84)&&!hasThumb(24)&&!hasThumb(108);
-            ok=ok&&project.tracks[0].clips[0].notes!=beforeRange;
+            drag(range->getMinValue(),72);rangeCheck("low slider moved to 72",range->getMinValue()==72);rangeCheck("low MIDI setting committed at release",project.tracks[0].engine.rangeLow==72);rangeCheck("low thumb visible at 72",hasThumb(72));
+            drag(range->getMaxValue(),84);rangeCheck("high slider moved to 84",range->getMaxValue()==84);rangeCheck("high MIDI setting committed at release",project.tracks[0].engine.rangeHigh==84);rangeCheck("both moved thumbs visible",hasThumb(72)&&hasThumb(84));rangeCheck("old thumb positions cleared",!hasThumb(24)&&!hasThumb(108));
+            rangeCheck("range changes real MIDI",project.tracks[0].clips[0].notes!=beforeRange);
             if(auto output=folder.getChildFile("piano-range.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()),*output)&&ok;}else ok=false;
-            undo(false);ok=ok&&project.tracks[0].engine.rangeLow==72&&project.tracks[0].engine.rangeHigh==108;
-            undo(false);ok=ok&&project.tracks[0].engine.rangeLow==24&&project.tracks[0].engine.rangeHigh==108&&project.tracks[0].clips[0].notes==beforeRange;
-        }else ok=false;
+            undo(false);rangeCheck("one Undo restores high bound",project.tracks[0].engine.rangeLow==72&&project.tracks[0].engine.rangeHigh==108);
+            undo(false);rangeCheck("second Undo restores both bounds and MIDI",project.tracks[0].engine.rangeLow==24&&project.tracks[0].engine.rangeHigh==108&&project.tracks[0].clips[0].notes==beforeRange);
+        }else rangeCheck("range control exists",false);
+        folder.getChildFile("piano-range-gesture.txt").replaceWithText(rangeEvidence);
         stage("piano note range draws both real thumbs, follows mouse drags and updates MIDI");
         if(auto* floating=dynamic_cast<juce::DocumentWindow*>(instrumentPort.getTopLevelComponent())){
             ok=ok&&floating->isAlwaysOnTop();floating->setTopLeftPosition(37,46);floating->closeButtonPressed();ok=ok&&!floating->isVisible();showInstrument();

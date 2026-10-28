@@ -1,6 +1,9 @@
 # Novità — Fase Groove Arranger
 
-## 0.23.6
+## 0.23.7
+
+- Conferma i valori finali dell’estensione note Piano prima di chiudere il trascinamento, anche con rilascio veloce; conserva un solo Annulla per gesto e ignora notifiche duplicate in coda.
+- Rende le continuazioni di chiusura compatibili con MSVC, avvia i test di focus Cocoa in primo piano e riporta i singoli errori nativi nei log e nelle annotazioni CI.
 
 - Annulla i lavori IA e sui campioni in modo cooperativo, conservandoli fino al termine; rende le impostazioni del sampler indipendenti dagli stati di mix ritirati.
 - Mantiene accessibili Stop e Studio durante la registrazione e verifica le selezioni di Studio/IA dopo cancellazioni, spostamenti degli indici e blocchi delle tracce.

@@ -51,6 +51,12 @@ def run_application(build, *arguments, timeout=300):
                 content = report.read_text(encoding='utf-8', errors='replace')
                 if 'FAIL' in content or 'error' in report.name.lower():
                     print(f'Native evidence: {report.relative_to(folder)}\n{content}', flush=True)
+                    if os.environ.get('GITHUB_ACTIONS') == 'true':
+                        for line in content.splitlines():
+                            if line.startswith('FAIL') or 'error' in report.name.lower():
+                                message = f'{report.relative_to(folder)}: {line}'
+                                message = message.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+                                print(f'::error title=Native test evidence::{message}', flush=True)
         raise
 
 

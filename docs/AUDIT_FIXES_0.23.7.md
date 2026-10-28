@@ -2,7 +2,7 @@
 
 Base pubblicata: v0.23.5, commit `f04db0b8c3b3842cbc5c23c78bab173b10546493`.
 Riferimento: `docs/bug da verificare.pdf`, audit del 27 ottobre, 20 rilievi.
-Versione candidata: 0.23.6. Pubblicazione autorizzata dall’utente dopo la verifica locale. Esiti multipiattaforma disponibili nella CI del tag v0.23.6.
+Versione candidata: 0.23.7. Pubblicazione autorizzata dall’utente dopo la verifica locale. Esiti multipiattaforma disponibili nella CI del tag v0.23.7.
 
 ## Interventi e prove
 
@@ -33,7 +33,7 @@ Il percorso del primo click introdotto in v0.23.5 resta coperto dalle regression
 
 ## Compatibilità e limiti
 
-Nessun cambio al formato del progetto: l'identità runtime non è serializzata. Guide IT/EN, changelog di preparazione e sei lingue aggiornati. Versione aggiornata a 0.23.6 per la pubblicazione autorizzata.
+Nessun cambio al formato del progetto: l'identità runtime non è serializzata. Guide IT/EN, changelog di preparazione e sei lingue aggiornati. Versione aggiornata a 0.23.7 per la pubblicazione autorizzata.
 
 Le prove UI automatizzano le continuazioni di Salva con nome, non il selettore file nativo di ciascun sistema. Nessuna sessione fisica con driver Windows/macOS e nessuna esecuzione sanitizer viene dichiarata. Il limite dei percorsi relativi non è una sandbox per link simbolici; i percorsi assoluti restano supportati.
 
@@ -41,6 +41,12 @@ L'audit audio completo copre 13 generi, canzoni di circa 4–7 minuti, preview, 
 
 ## Ripristino
 
-Per tornare all'app pubblicata, reinstallare v0.23.5 dopo aver conservato i progetti. Per tornare ai sorgenti precedenti, usare `reverse.patch` dopo il controllo descritto in ROLLBACK.md. Le patch includono anche i nuovi file, non soltanto quelli già tracciati. Non utilizzare reset o push forzati.
+Per tornare all'app pubblicata, reinstallare v0.23.5 dopo aver conservato i progetti. Per tornare ai sorgenti precedenti seguire [ROLLBACK_0.23.7.md](ROLLBACK_0.23.7.md). Le patch complete del report locale includono anche i nuovi file, non soltanto quelli già tracciati. Non utilizzare reset o push forzati.
 
-Per test e ripristino della versione pubblicata vedere [ROLLBACK_0.23.6.md](ROLLBACK_0.23.6.md). Le patch complete e i log locali sono conservati nel report di lavoro consegnato all’utente.
+Per test e ripristino della versione pubblicata vedere [ROLLBACK_0.23.7.md](ROLLBACK_0.23.7.md). Le patch complete e i log locali sono conservati nel report di lavoro consegnato all’utente.
+
+## Correzioni emerse dalla CI multipiattaforma
+
+La candidata 0.23.6 non è stata rilasciata: Windows ha rilevato una cattura annidata non portabile a MSVC e macOS errori nei test nativi. Le catture sono state rese esplicite e la build Windows è successivamente passata. Un ulteriore test Windows ha isolato la barra di estensione note: JUCE notifica i due valori in modo asincrono. Il valore finale viene ora confermato prima della chiusura del gesto, evitando aggiornamenti tardivi e Undo aggiuntivi. Il test conserva i controlli sui pixel, sul MIDI e sui due Undo e verifica un rilascio immediato senza attendere notifiche.
+
+I test macOS da terminale attivano esplicitamente l’app e attendono brevemente la consegna delle notifiche native di focus prima di iniettare il primo clic. Le verifiche di focus restano obbligatorie. I risultati finali della candidata 0.23.7 sono nella relativa esecuzione CI: non si dichiara un esito positivo prima del suo completamento.

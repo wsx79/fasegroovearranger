@@ -35,6 +35,13 @@ public:
         auto args=getCommandLineParameterArray();
        #if JUCE_MAC
         if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
+        // Launching the executable from a terminal does not activate a Cocoa app.
+        // Native input/focus tests must start with the same foreground state as
+        // an application opened normally, before synthesising JUCE mouse events.
+        if(args.contains("--smoke-test")||args.contains("--host-smoke-test")||args.contains("--ui-test")){
+            juce::Process::makeForegroundProcess();const auto until=juce::Time::getMillisecondCounterHiRes()+2000.;
+            while(!juce::Process::isForegroundProcess()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        }
        #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){
             setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;
