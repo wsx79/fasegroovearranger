@@ -60,7 +60,12 @@ void MainComponent::showAddSectionMenu(){
 void MainComponent::addSongSection(Section type){
     if(loadingPlugin||project.sections.size()>=64)return;
     instrumentPanel.flushRender();checkpoint();const int at=std::clamp(selectedSection+1,0,(int)project.sections.size());
-    project.insertGuide(at,{type,8,sectionName(type)});selectedSection=at;changed();select(selectedTrack,at);
+    // Insert a real clip per track (empty ones) and fill the new section in the same
+    // undo step: detaching every track left the section silent.
+    project.insertSection(at,{type,8,sectionName(type)},-1);selectedSection=at;
+    generate(project,Scope::section,selectedTrack,at);
+    changed();select(selectedTrack,at);
+    message(tr("Section added and generated. REGENERATE rewrites it; Undo removes it."));
 }
 void MainComponent::showTrackMenu(int track){
     juce::PopupMenu menu;const auto& t=project.tracks[(size_t)track];menu.addSectionHeader(u(t.name));menu.addItem(1,tr("Rinomina"));menu.addItem(2,tr("Muto"),true,t.mute);menu.addItem(3,tr("Solo"),true,t.solo);menu.addItem(4,tr("Blocca generazione"),true,t.locked);menu.addSeparator();menu.addItem(5,tr("Suoni originali Fase Groove"),!loadingPlugin);menu.addItem(6,tr("Rigenera traccia"),!isManualTrack(track));menu.addSeparator();menu.addItem(7,tr("Add MIDI track"),project.tracks.size()<maxTracks);if(isManualTrack(track))menu.addItem(8,tr("Delete MIDI track"),!loadingPlugin);
