@@ -305,6 +305,8 @@ private:
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
     IconButton inspectorCollapse{IconButton::Icon::close};
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
+    // Full screen drops the native title bar, so the arranger reaches the screen edges.
+    IconButton fullScreenButton{IconButton::Icon::fullScreen};
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;
     InstrumentPanel instrumentPanel{*this};

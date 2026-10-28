@@ -811,6 +811,13 @@ MainComponent::MainComponent(){
     addAndMakeVisible(chordEditButton);chordEditButton.onClick=[this]{showChordMenu();};
     inspectorPort.setViewedComponent(&trackInspector,false);inspectorPort.setScrollBarsShown(true,false);addAndMakeVisible(inspectorPort);addAndMakeVisible(mixer);
     for(auto* button:{&inspectorToggle,&mixerToggle,&followButton}){addAndMakeVisible(button);button->setClickingTogglesState(true);}
+    addAndMakeVisible(fullScreenButton);fullScreenButton.setClickingTogglesState(false);
+    fullScreenButton.onClick=[this]{
+        auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(!top)return;
+        top->setFullScreen(!top->isFullScreen());
+        const bool full=top->isFullScreen();fullScreenButton.setToggleState(full,juce::dontSendNotification);
+        fullScreenButton.setIcon(full?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);
+    };
     addAndMakeVisible(inspectorResizer);addChildComponent(browserResizer);addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
     inspectorCollapse.quiet=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
     inspectorCollapse.onClick=[this]{inspectorVisible=!inspectorVisible;inspectorToggle.setToggleState(inspectorVisible,juce::dontSendNotification);resized();};
@@ -846,7 +853,7 @@ MainComponent::MainComponent(){
     zoomSelectionButton.onClick=[this]{zoomSelection();};loopSelectionButton.onClick=[this]{loopSelection();};
     zoomSelectionButton.getProperties().set("fgaTip","Zoom to the selected clips or notes. Shortcut: Z.");
     loopSelectionButton.getProperties().set("fgaTip","Set the playback loop to the selected clips or notes. Shortcut: Ctrl/Cmd+L.");
-    inspectorToggle.getProperties().set("fgaTip","Show track volume, pan, sound assignment and clip actions.");mixerToggle.getProperties().set("fgaTip","Show the mixer. Shortcut: F3.");fitSongButton.getProperties().set("fgaTip","Fit the complete song in the arrangement view.");followButton.getProperties().set("fgaTip","Scroll the arrangement to follow playback.");
+    inspectorToggle.getProperties().set("fgaTip","Show track volume, pan, sound assignment and clip actions.");mixerToggle.getProperties().set("fgaTip","Show the mixer. Shortcut: F3.");fitSongButton.getProperties().set("fgaTip","Fit the complete song in the arrangement view.");followButton.getProperties().set("fgaTip","Scroll the arrangement to follow playback.");fullScreenButton.getProperties().set("fgaTip","Fill the screen with the arranger, without the window title bar. Shortcut: F11.");
     arrangement.getProperties().set("fgaTip","Wheel on ruler: zoom. Ctrl/Cmd+wheel: zoom at pointer. Shift+wheel: horizontal scroll.");piano.getProperties().set("fgaTip","Wheel on ruler: zoom. Ctrl/Cmd+wheel: zoom at pointer. Shift+wheel: horizontal scroll.");
     arrangementPort.setViewedComponent(&arrangement,false);pianoPort.setViewedComponent(&piano,false);arrangementPort.setScrollBarsShown(true,true);pianoPort.setScrollBarsShown(true,true);addAndMakeVisible(arrangementPort);addAndMakeVisible(pianoPort);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&playButton,&stopButton,&rewindButton,&undoButton,&redoButton,&loopButton,&songButton,&generateMenuButton,&trackButton,&sectionButton,&clipButton,&harmonyButton,&addSectionButton,&genreBox,&keyBox,&scaleBox,&extensionBox,&voicingBox,&progressionBox,&bassBox,&stringsBox,&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&zoomSlider,&positionLabel,&chordsLabel,&statusLabel,&soundButton,&pluginEditorButton,&sampleButton,&loadPluginButton,&gainSlider,&panSlider,&velocitySlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&soundBox,&gridBox,&quantiseButton,&transposeUp,&transposeDown,&deleteNotes,&importButton,&copyButton,&pasteButton,&sectionLoopButton,&inspectorLabel,&editorLabel})addAndMakeVisible(c);
@@ -918,8 +925,8 @@ MainComponent::MainComponent(){
     playButton.onColour=Daw::play;loopButton.onColour=Daw::accent;metronomeButton.onColour=Daw::accent;
     // Icon-only actions: the tooltip names them (translated with the rest of the interface).
     for(const auto& entry:std::initializer_list<std::pair<IconButton*,const char*>>{{&newButton,"Start a new song project."},{&openButton,"Open a local .fga project."},{&saveButton,"Save the song and all instrument settings in a project."},{&saveAsButton,"SAVE AS"},{&exportButton,"Export the mix or separate tracks as MIDI, WAV or MP3."},{&settingsButton,"Choose the audio output and buffer size."},{&aboutButton,"Choose the language, control tooltips, credits and privacy."},{&helpButton,"GUIDE"},{&automationButton,"Show or hide the selected track's volume automation. Playback is controlled by ON / BYPASS in the lane."}})entry.first->getProperties().set("fgaTip",entry.second);
-    for(auto* b:{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&inspectorToggle,&mixerToggle,&browserToggle,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})b->quiet=true;
-    for(auto* b:{&inspectorToggle,&mixerToggle,&browserToggle,&followButton,&automationButton})b->onColour=b==&automationButton?Daw::automation:Daw::accent;
+    for(auto* b:{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&inspectorToggle,&mixerToggle,&browserToggle,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton,&fullScreenButton})b->quiet=true;
+    for(auto* b:{&inspectorToggle,&mixerToggle,&browserToggle,&followButton,&automationButton,&fullScreenButton})b->onColour=b==&automationButton?Daw::automation:Daw::accent;
     tempoSlider.setSliderStyle(juce::Slider::LinearBarVertical);tempoSlider.setTextValueSuffix("");tempoSlider.setTextBoxStyle(juce::Slider::TextBoxLeft,false,82,26);tempoSlider.setColour(juce::Slider::textBoxTextColourId,Daw::text);tempoSlider.setMouseDragSensitivity(400);tempoSlider.setVelocityBasedMode(false);tempoSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
     for(auto* box:{&keyBox,&scaleBox}){box->setColour(juce::ComboBox::backgroundColourId,juce::Colours::transparentBlack);box->setColour(juce::ComboBox::textColourId,Daw::text);box->getProperties().set("dawDisplay",box==&keyBox?17.f:13.f);}
     masterSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,58,22);masterSlider.setDoubleClickReturnValue(true,0);
@@ -1274,7 +1281,7 @@ void MainComponent::resized(){
     place(tempoSlider,x+136,lcdArea.getY()+2,78,26);lcdDividers.push_back(x+218);lcdDividers.push_back(x+258);
     place(keyBox,x+260,lcdArea.getY()+3,60,24);place(scaleBox,x+322,lcdArea.getY()+3,lcdWidth-326,24);
     // Right: master level, settings and help, then the panel switches.
-    x=w-14;for(auto* b:{&mixerToggle,&browserToggle,&inspectorToggle}){x-=30;place(*b,x,barY,30);x-=2;}divider(x-4,barY+4,20);x-=10;
+    x=w-14;for(auto* b:{&fullScreenButton,&mixerToggle,&browserToggle,&inspectorToggle}){x-=30;place(*b,x,barY,30);x-=2;}divider(x-4,barY+4,20);x-=10;
     for(auto* b:{&helpButton,&aboutButton,&settingsButton}){x-=30;place(*b,x,barY,30);x-=2;}divider(x-4,barY+4,20);x-=12;
     place(masterSlider,x-152,8,152,40);
     // Arrangement toolbars: generation on the first row, harmony and feel on the second.
@@ -1419,6 +1426,10 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 }
 void MainComponent::timerCallback(){
+    // The OS can leave full screen on its own (window manager, Escape in some shells):
+    // keep the button's icon and state in step without repainting when nothing changed.
+    if(auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent())){const bool full=top->isFullScreen();
+        if(full!=fullScreenButton.getToggleState()){fullScreenButton.setToggleState(full,juce::dontSendNotification);fullScreenButton.setIcon(full?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);}}
     const double beat=timelinePosition();showPosition(beat);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);playButton.setToggleState(audio.isPlaying(),juce::dontSendNotification);mixer.tick();
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
     // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):
@@ -1455,9 +1466,10 @@ void MainComponent::showPosition(double beat){
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
+    if(k.getKeyCode()==juce::KeyPress::F11Key){fullScreenButton.onClick();return true;}
     if(pluginSettings.isVisible()){if(k==juce::KeyPress::escapeKey)pluginSettings.setVisible(false);return true;}
     if(pluginBrowser.isVisible()){if(k==juce::KeyPress::escapeKey)pluginBrowser.setVisible(false);return true;}
-    if(k==juce::KeyPress::escapeKey){if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
+    if(k==juce::KeyPress::escapeKey){auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(top&&top->isFullScreen()){top->setFullScreen(false);return true;}if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
     if(k==juce::KeyPress::spaceKey){if(audio.isRecording()||audio.isAudioRecording())stopPlaybackAndRecording();else togglePlayback();return true;}
     if(editingRestricted())return true;
     if(k==juce::KeyPress::homeKey){seekTimeline(0);return true;}
