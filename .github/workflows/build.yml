@@ -110,16 +110,18 @@ jobs:
         if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: if ! command -v ffmpeg >/dev/null; then brew install ffmpeg; fi
       - name: Native UI and PCM/MP3 rendering smoke test
+        id: nativesmoke
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-render.py
       - name: Native VST3 instrument integration
+        id: nativehost
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-host.py
       - name: Recursive isolated plugin catalogue integration
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-plugin-catalog.py
       - name: Complete offline club arrangements and independent audio audit
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && steps.nativesmoke.outcome == ''success'' && steps.nativehost.outcome == ''success'''
         run: python scripts/test-offline-audio.py
       - name: Sign macOS app as in the family
         if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'

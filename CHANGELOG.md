@@ -2,6 +2,8 @@
 
 ## 0.23.7
 
+- Read actual macOS session mouse buttons when recovering a hidden window’s missed release; JUCE’s cached mouse flags cannot detect that release. Keep active gestures and independently disabled windows protected.
+
 - Commit final Piano range values before ending a drag, including a quick mouse release; preserve one Undo per gesture and ignore duplicate queued notifications.
 - Make asynchronous close continuations portable to MSVC, initialise Cocoa focus tests in the foreground, and expose individual native failures in CI logs and annotations.
 

@@ -18,6 +18,9 @@
  #undef max
  #undef small
 #endif
+#if JUCE_MAC
+ #include <CoreGraphics/CoreGraphics.h>
+#endif
 namespace fga {
 namespace {
 juce::Colour colour(int t){return Daw::trackColour(t);}
@@ -25,6 +28,17 @@ juce::Colour guitarColour(int lane){return lane<=1?Palette::accent:lane<=4?Palet
 juce::String utf(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void label(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size=12,juce::Colour c=Daw::text){g.setColour(c);g.setFont(Daw::font(size));g.drawText(tr(s),r,juce::Justification::centredLeft);}
 constexpr int trackHeight=40,headerWidth=216,rulerHeight=60;
+juce::ModifierKeys physicalMouseModifiers(){
+    auto result=juce::ModifierKeys::getCurrentModifiersRealtime();
+   #if JUCE_MAC
+    // JUCE refreshes Cocoa keyboard modifiers but retains the last mouse event's
+    // buttons. A missed mouse-up therefore needs the actual session button state.
+    result=result.withoutMouseButtons();
+    const int flags[]{juce::ModifierKeys::leftButtonModifier,juce::ModifierKeys::rightButtonModifier,juce::ModifierKeys::middleButtonModifier,juce::ModifierKeys::backButtonModifier,juce::ModifierKeys::forwardButtonModifier};
+    for(int button=0;button<5;++button)if(CGEventSourceButtonState(kCGEventSourceStateCombinedSessionState,static_cast<CGMouseButton>(button)))result=result.withFlags(flags[button]);
+   #endif
+    return result;
+}
 }
 ArrangementView::ArrangementView(MainComponent& m):owner(m){
     setWantsKeyboardFocus(true);trackHeights.fill(trackHeight);
@@ -645,7 +659,7 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
         // Reproduce a missed mouse-up when the native tool window disappears.
         auto source=juce::Desktop::getInstance().getMainMouseSource();
         if(auto* peer=window.getPeer())peer->handleMouseEvent(source.getType(),{4.f,4.f},juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
-        const bool pressed=source.isDragging();window.closeButtonPressed();
+        const bool pressed=source.isDragging();auto* down=source.getComponentUnderMouse();const bool owned=down&&(down==&window||window.isParentOf(down));const bool physicalDown=physicalMouseModifiers().isAnyMouseButtonDown();window.closeButtonPressed();
         const bool released=!source.isDragging();settleNativeFocus(*this);
         const bool focused=!window.isVisible()&&isEnabled()&&hasKeyboardFocus(false);
         const auto before=undoStack.size();const auto seed=project.settings.seed;
@@ -655,7 +669,7 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
             peer->handleMouseEvent(source.getType(),pos,{},juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
         }
         const bool clicked=undoStack.size()==std::min(size_t(40),before+1)&&project.settings.seed!=seed;
-        details+=juce::String(pressed&&released&&focused&&clicked?"PASS ":"FAIL ")+name+": source-released="+juce::String((int)released)+", focus="+juce::String((int)focused)+", first-click generation="+juce::String((int)clicked)+"\n";
+        details+=juce::String(pressed&&released&&focused&&clicked?"PASS ":"FAIL ")+name+": pressed="+juce::String((int)pressed)+", owned="+juce::String((int)owned)+", physical-buttons="+juce::String((int)physicalDown)+", source-released="+juce::String((int)released)+", focus="+juce::String((int)focused)+", first-click generation="+juce::String((int)clicked)+"\n";
         ok=pressed&&released&&focused&&clicked&&ok;if(clicked)undo(false);
     };
     showArrangement();
@@ -945,7 +959,7 @@ void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
             if(captured&&(captured==native||::IsChild(native,captured)))::ReleaseCapture();
            #endif
             auto source=juce::Desktop::getInstance().getMainMouseSource();
-            const auto modifiers=juce::ModifierKeys::getCurrentModifiersRealtime();
+            const auto modifiers=physicalMouseModifiers();
             auto* pressed=source.getComponentUnderMouse();
             if(source.isDragging()&&!modifiers.isAnyMouseButtonDown()&&pressed&&(pressed==safe.getComponent()||safe->isParentOf(pressed))){
                 // Cancel a missed release without invoking a hidden button's action.

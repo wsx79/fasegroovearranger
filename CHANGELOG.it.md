@@ -2,6 +2,8 @@
 
 ## 0.23.7
 
+- Legge lo stato effettivo dei pulsanti del mouse su macOS per recuperare un rilascio perso alla chiusura delle finestre; i flag memorizzati da JUCE non possono rilevarlo. Conserva le protezioni per i gesti attivi e le finestre disabilitate indipendentemente.
+
 - Conferma i valori finali dell’estensione note Piano prima di chiudere il trascinamento, anche con rilascio veloce; conserva un solo Annulla per gesto e ignora notifiche duplicate in coda.
 - Rende le continuazioni di chiusura compatibili con MSVC, avvia i test di focus Cocoa in primo piano e riporta i singoli errori nativi nei log e nelle annotazioni CI.
 
