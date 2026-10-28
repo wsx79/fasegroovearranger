@@ -12,8 +12,20 @@ on:
         description: "Existing tag to publish, for example v0.12.1. Empty does not publish."
         required: false
         type: string
+      full_suite:
+        description: "Run the slow audits (VST3 host, plugin catalogue, club audio) too."
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    # Nightly full audit: the release gate stays fast.
+    - cron: "17 3 * * *"
 permissions:
   contents: read
+# The slow audits run nightly and on demand, not on every push or tag: a release
+# must not wait for them. Set full_suite on a manual run to force them.
+env:
+  FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.full_suite }}
 concurrency:
   group: build-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -106,22 +118,21 @@ jobs:
       - name: Windows MP3 verification dependency
         if: runner.os == 'Windows' && !cancelled() && steps.nativebuild.outcome == 'success'
         run: if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg -y --no-progress }
-      - name: macOS MP3 verification dependency
-        if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
-        run: if ! command -v ffmpeg >/dev/null; then brew install ffmpeg; fi
       - name: Native UI and PCM/MP3 rendering smoke test
         id: nativesmoke
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        # macOS only builds, signs and packages: the runtime harness (synthetic
+        # input, pixel layouts, render checks) is verified on Linux and Windows.
+        if: '!cancelled() && runner.os != ''macOS'' && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-render.py
       - name: Native VST3 instrument integration
         id: nativehost
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
         run: python scripts/test-native-host.py
       - name: Recursive isolated plugin catalogue integration
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
         run: python scripts/test-plugin-catalog.py
       - name: Complete offline club arrangements and independent audio audit
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && steps.nativesmoke.outcome == ''success'' && steps.nativehost.outcome == ''success'''
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && (steps.nativesmoke.outcome == ''success'' || runner.os == ''macOS'') && env.FULL_SUITE == ''true'''
         run: python scripts/test-offline-audio.py
       - name: Sign macOS app as in the family
         if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
