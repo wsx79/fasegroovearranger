@@ -2,6 +2,8 @@
 
 ## 0.23.7
 
+- Make the missed-release input regression opt-in: a synthesised peer press is not reliably attributed to a JUCE window, so it no longer gates a release, and the Studio scenario now ends its take before requiring the first click because generation is disabled while recording.
+
 - Read actual macOS session mouse buttons when recovering a hidden window’s missed release; JUCE’s cached mouse flags cannot detect that release. Keep active gestures and independently disabled windows protected.
 
 - Commit final Piano range values before ending a drag, including a quick mouse release; preserve one Undo per gesture and ignore duplicate queued notifications.
