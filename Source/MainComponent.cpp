@@ -656,9 +656,12 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
     bool ok=true;juce::String details;
     auto check=[&](const char* name,juce::DocumentWindow& window){
         window.grabKeyboardFocus();
-        // Reproduce a missed mouse-up when the native tool window disappears.
+        // The native rounded corner is outside Cocoa's JUCE content view. Use a
+        // neutral child inside the client area so the missed press has an owner.
+        juce::Component dragTarget;window.addAndMakeVisible(dragTarget);dragTarget.setBounds(window.getLocalBounds().withSizeKeepingCentre(24,24));dragTarget.toFront(false);
+        const auto press=window.getLocalPoint(&dragTarget,dragTarget.getLocalBounds().getCentre()).toFloat();
         auto source=juce::Desktop::getInstance().getMainMouseSource();
-        if(auto* peer=window.getPeer())peer->handleMouseEvent(source.getType(),{4.f,4.f},juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
+        if(auto* peer=window.getPeer())peer->handleMouseEvent(source.getType(),press,juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
         const bool pressed=source.isDragging();auto* down=source.getComponentUnderMouse();const bool owned=down&&(down==&window||window.isParentOf(down));const bool physicalDown=physicalMouseModifiers().isAnyMouseButtonDown();window.closeButtonPressed();
         const bool released=!source.isDragging();settleNativeFocus(*this);
         const bool focused=!window.isVisible()&&isEnabled()&&hasKeyboardFocus(false);
@@ -669,8 +672,8 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
             peer->handleMouseEvent(source.getType(),pos,{},juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
         }
         const bool clicked=undoStack.size()==std::min(size_t(40),before+1)&&project.settings.seed!=seed;
-        details+=juce::String(pressed&&released&&focused&&clicked?"PASS ":"FAIL ")+name+": pressed="+juce::String((int)pressed)+", owned="+juce::String((int)owned)+", physical-buttons="+juce::String((int)physicalDown)+", source-released="+juce::String((int)released)+", focus="+juce::String((int)focused)+", first-click generation="+juce::String((int)clicked)+"\n";
-        ok=pressed&&released&&focused&&clicked&&ok;if(clicked)undo(false);
+        details+=juce::String(pressed&&owned&&released&&focused&&clicked?"PASS ":"FAIL ")+name+": pressed="+juce::String((int)pressed)+", owned="+juce::String((int)owned)+", physical-buttons="+juce::String((int)physicalDown)+", source-released="+juce::String((int)released)+", focus="+juce::String((int)focused)+", first-click generation="+juce::String((int)clicked)+"\n";
+        ok=pressed&&owned&&released&&focused&&clicked&&ok;if(clicked)undo(false);
     };
     showArrangement();
     for(int repeat=0;repeat<3;++repeat){
