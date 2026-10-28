@@ -817,8 +817,30 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
 }
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
+// Every section that starts after a filled one gets a crash on its first beat. Each
+// section is rendered on its own, so the kit never announced the next one; the fill
+// on the last bar (added above) needs this answer on the downbeat.
+static void addSectionCrashes(Project& p){
+    constexpr int crashLane=12;
+    for(int ti=4;ti<(int)p.tracks.size();++ti){
+        auto& t=p.tracks[(size_t)ti];
+        if(!isDrumTrack(ti)||ti-4!=crashLane||t.locked||t.freeTimeline)continue;
+        if(!t.engine.afterFill)continue;
+        for(int si=1;si<(int)p.sections.size()&&si<(int)t.clips.size();++si){
+            auto& clip=t.clips[(size_t)si];
+            if(clip.locked)continue;
+            const auto previous=p.sections[(size_t)si-1].type;
+            if(previous==Section::intro||previous==Section::outro)continue;
+            const double at=p.sectionStart(si)-p.clipStart(ti,si);
+            if(at<0||at>=p.clipLength(ti,si))continue;
+            const bool present=std::any_of(clip.notes.begin(),clip.notes.end(),[at](const Note& n){return std::abs(n.start-at)<1e-6;});
+            if(!present)clip.notes.push_back({at,.25,fgd::defaultNote(crashLane),110,crashLane});
+        }
+    }
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateNotes(p,scope,track,section,seed);
+    if(scope==Scope::song||scope==Scope::section)addSectionCrashes(p);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
 }
