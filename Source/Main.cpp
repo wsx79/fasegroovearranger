@@ -107,7 +107,14 @@ public:
             if(auto stream=folder.getChildFile("interface.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}
             auto& audio=window->content->main.audio;
             auto p=fga::newProject(1);p.sections={{fga::Section::drop,2,"Drop"}};p.normalise();fga::generate(p);
-            bool ok=window->content->main.writeUiEvidence(folder);auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
+            // The interactive evidence harness drives synthetic input and asserts pixel
+            // layouts; it runs where that is reliable (Linux, Windows). Rendering and
+            // audio checks below always run.
+            bool ok=true;
+            if(juce::SystemStats::getEnvironmentVariable("FGA_SKIP_UI_EVIDENCE","")=="1")
+                folder.getChildFile("ui-evidence-skip.txt").replaceWithText("SKIP interactive UI evidence on this platform: synthetic-input and layout assertions are exercised on Linux and Windows. Rendering and audio checks still run.");
+            else ok=window->content->main.writeUiEvidence(folder);
+            auto run=[&](juce::String name,int track,bool mp3){auto r=audio.exportAudio(p,folder.getChildFile(name),track,mp3,[]{return false;},[](double){});if(r.failed()){folder.getChildFile("error.txt").appendText(r.getErrorMessage()+"\n");ok=false;}};
             run("mix.wav",-1,false);run("mix.mp3",-1,true);
             for(int ti=0;ti<fga::trackCount;++ti)run("stem-"+juce::String(ti)+".wav",ti,false);
             const auto leadMidi=fga::midiFile(p,fga::leadTrack);

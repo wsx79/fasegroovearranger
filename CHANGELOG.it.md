@@ -3,6 +3,7 @@
 ## 0.23.7
 
 - La verifica del rilascio perso diventa opt-in: un press sintetico non viene attribuito in modo affidabile a una finestra JUCE, quindi non blocca più la release, e lo scenario Studio chiude la take prima di richiedere il primo clic, perché durante la registrazione la generazione è disabilitata.
+- Su macOS l'evidenza UI interattiva (input sintetico, focus delle finestre native, asserzioni di layout) viene saltata; restano attivi render, PCM/MP3, hosting VST3, catalogo plugin e audit audio completo.
 
 - Legge lo stato effettivo dei pulsanti del mouse su macOS per recuperare un rilascio perso alla chiusura delle finestre; i flag memorizzati da JUCE non possono rilevarlo. Conserva le protezioni per i gesti attivi e le finestre disabilitate indipendentemente.
 

@@ -3,6 +3,7 @@
 ## 0.23.7
 
 - Make the missed-release input regression opt-in: a synthesised peer press is not reliably attributed to a JUCE window, so it no longer gates a release, and the Studio scenario now ends its take before requiring the first click because generation is disabled while recording.
+- On macOS the interactive UI evidence (synthetic input, native window focus, layout assertions) is skipped; rendering, PCM/MP3, VST3 hosting, plugin catalogue and the full audio audit still run there.
 
 - Read actual macOS session mouse buttons when recovering a hidden window’s missed release; JUCE’s cached mouse flags cannot detect that release. Keep active gestures and independently disabled windows protected.
 
