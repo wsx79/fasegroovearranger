@@ -324,7 +324,7 @@ private:
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
-    ActionButton songButton{"GENERATE"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    ActionButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
     GenerateMenuButton generateMenuButton;
     ActionButton addTrackButton { "+ MIDI" };
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;

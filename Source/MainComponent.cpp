@@ -522,7 +522,7 @@ void PianoRoll::mouseDown(const juce::MouseEvent& e){
     int index=hit(e.position);if(tool==1&&index<0&&!e.mods.isPopupMenu()){selecting=true;anchor=e.position;marquee={};if(!e.mods.isShiftDown())selected.clear();repaint();return;}if(e.mods.isPopupMenu()||tool==2){erasing=true;eraseCheckpoint=false;eraseAt(e.position);return;}
     gestureOriginal=owner.clip().notes;anchor=e.position;resizing=false;velocityDrag=e.mods.isAltDown();before=owner.clip().notes;
     if(index>=0){if(e.mods.isShiftDown()){if(selected.count(index))selected.erase(index);else selected.insert(index);}else if(!selected.count(index)){selected.clear();selected.insert(index);if(laneView()&&owner.selectedTrack==3){const auto hitNote=before[(size_t)index];for(size_t k=0;k<before.size();++k)if(before[k].lane==hitNote.lane&&std::abs(before[k].start-hitNote.start)<.18)selected.insert((int)k);}}const auto& n=before[(size_t)index];resizing=(!laneView()||ownerTrackIsDrum())&&e.x>=leftMargin()+n.start*pixelsPerBeat+noteWidth(n)-std::min(6.f,noteWidth(n)*.4f)&&!velocityDrag;}
-    else{if(!e.mods.isShiftDown())selected.clear();double start=std::floor(beat(e.position.x)/grid)*grid;if(start>=owner.clipLength())return;if(laneView()&&owner.selectedTrack==3){const int lane=laneAt(e.position.y);const auto& settings=owner.project.settings;const int slot=((int)(start/(settings.chordSteps*.25)))%settings.chordCount;auto chord=settings.freeChords[(size_t)slot]>=0?fgg::codeChord(settings.key,settings.freeChords[(size_t)slot],std::min(2,settings.extension)):fgg::diatonicChord(settings.key,settings.scale,settings.degrees[(size_t)slot],std::min(2,settings.extension));auto notes=fgg::laneNotes((fgg::Lane)lane,fgg::tonesOf(chord),(int)(start*4)%16);for(int note:notes){owner.clip().notes.push_back({start,std::min(grid,owner.clipLength()-start),note,brushVelocity,lane});selected.insert((int)owner.clip().notes.size()-1);}}
+    else{if(!e.mods.isShiftDown())selected.clear();double start=std::floor(beat(e.position.x)/grid)*grid;if(start>=owner.clipLength())return;if(laneView()&&owner.selectedTrack==3){const int lane=laneAt(e.position.y);const auto& settings=owner.project.settings;const double chordBeats=settings.chordSteps*.25;const int slot=((int)((owner.clipStart()+start)/chordBeats))%settings.chordCount;auto chord=settings.freeChords[(size_t)slot]>=0?fgg::codeChord(settings.key,settings.freeChords[(size_t)slot],std::min(2,settings.extension)):fgg::diatonicChord(settings.key,settings.scale,settings.degrees[(size_t)slot],std::min(2,settings.extension));auto notes=fgg::laneNotes((fgg::Lane)lane,fgg::tonesOf(chord),(int)(start*4)%16);for(int note:notes){owner.clip().notes.push_back({start,std::min(grid,owner.clipLength()-start),note,brushVelocity,lane});selected.insert((int)owner.clip().notes.size()-1);}}
         else{owner.clip().notes.push_back({start,std::min(ownerTrackIsDrum()?defaultDrumNoteLength(owner.selectedTrack):grid,owner.clipLength()-start),pitch(e.position.y),ownerTrackIsDrum()?brushVelocity:(int)owner.velocitySlider.getValue(),ownerTrackIsDrum()?owner.selectedTrack-4:0});selected.insert((int)owner.clip().notes.size()-1);}if(laneView()&&flamBrush&&owner.clip().notes.size()>before.size()){auto note=owner.clip().notes.back();note.start=std::max(0.,note.start-.08);note.length=.04;note.velocity=45;owner.clip().notes.push_back(note);}before=owner.clip().notes;}
     repaint();
 }
@@ -613,9 +613,19 @@ public:
     ~InstrumentWindow()override{clearContentComponent();setLookAndFeel(nullptr);}
     void refresh(){body->refresh();setName(tr("Instrument panel")+" / "+utf(owner.project.tracks[(size_t)owner.selectedTrack].name));}
     // Each instrument panel reports its own height; the window follows it instead of
-    // leaving a large dead area under short panels. Re-fits only when the content
-    // changes, so a manual resize is kept while the same panel stays open.
-    void fitToContent(){const int content=44+owner.instrumentPanel.getHeight()+2;if(content==lastFit)return;lastFit=content;setSize(getWidth(),juce::jlimit(420,1000,content));}
+    // leaving a large dead area under short panels. The centre is kept, otherwise the
+    // window grows downwards and looks off-centre, and the height is clamped to the
+    // display so a tall panel cannot fall off the screen.
+    void fitToContent(){
+        const auto* display=juce::Desktop::getInstance().getDisplays().getDisplayForRect(getScreenBounds());
+        const int maxHeight=display?std::max(420,display->userArea.getHeight()-40):900;
+        const int content=44+owner.instrumentPanel.getHeight()+2;
+        const int height=juce::jlimit(420,maxHeight,content);
+        if(height==lastFit)return;lastFit=height;
+        const auto centre=getBounds().getCentre();
+        setSize(getWidth(),height);
+        setCentrePosition(centre);
+    }
 private:
     int lastFit=-1;
 public:
@@ -1178,7 +1188,8 @@ void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.canc
 void MainComponent::showGenerateMenu(){
     if(editingRestricted())return;
     juce::PopupMenu menu;
-    menu.addItem(1,tr("GENERATE SONG"),true,false);
+    // The main button already generates the song: the menu lists the other scopes.
+    menu.addSectionHeader(tr("GENERATE SONG"));
     menu.addItem(2,tr("REGENERATE TRACK"),true,false);
     menu.addItem(3,tr("REGENERATE SECTION"),true,false);
     menu.addItem(4,tr("REGENERATE CLIP"),true,false);

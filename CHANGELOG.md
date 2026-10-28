@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.9
+
+- GENERATE is labelled GENERATE SONG again and the caret lists the other scopes, so the main button states what it rewrites.
+- Adding a section now generates it immediately instead of leaving it silent, and the guitar lane draws on the chord that actually plays at that point.
+- Instrument windows keep their centre while fitting their content, never exceed the display, and the path that could crash when a window had no display is gone.
+- The dark Windows title bar is applied only to real windows, and a crash log now records the stack.
+
 ## 0.23.8
 
 - Restyled arranger: captions at 4.76:1 instead of 3.06:1, visible scrollbar thumbs, one GENERATE split button with a scope menu instead of four amber buttons, one primary action per row, signed dB scale in the mixer with the selected strip outlined, clearer piano-roll bar numbers, octave labels and velocity guides, instrument windows sized to their content and no truncated sidechain/genre labels.

@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.9
+
+- Il pulsante torna a chiamarsi GENERATE SONG (GENERA BRANO) e il caret elenca gli altri scope, così è chiaro cosa riscrive l'azione principale.
+- Aggiungere una sezione la genera subito invece di lasciarla muta, e la lane chitarra disegna sull'accordo che suona davvero in quel punto.
+- Le finestre strumento mantengono il centro mentre si adattano al contenuto, non superano lo schermo, e il percorso che poteva andare in crash quando una finestra non aveva un display è stato rimosso.
+- La title bar scura su Windows viene applicata solo alle finestre vere, e un crash log registra lo stack.
+
 ## 0.23.8
 
 - Restyling dell'arranger: didascalie a 4,76:1 invece di 3,06:1, thumb delle scrollbar visibili, un solo pulsante GENERATE con menu degli scope al posto di quattro pulsanti ambra, una sola azione primaria per riga, scala dB con segno nel mixer e strip selezionata bordata, numeri di battuta, etichette delle ottave e guide velocity più leggibili nel piano roll, finestre strumento dimensionate sul contenuto e nessuna etichetta sidechain/genere troncata.
