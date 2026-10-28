@@ -232,6 +232,8 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow();
+    void dismissAuxiliaryWindow(juce::Component&);
+    bool verifyWindowFocus(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
     void showAiComposer();

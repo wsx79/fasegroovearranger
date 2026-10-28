@@ -158,11 +158,11 @@ private:
         const int id=++requestId;juce::Component::SafePointer<AiComposerPanel> safe(this);job=std::make_unique<CompositionJob>(base,std::move(options),[safe,id](juce::Result result,Project p,juce::String summary){if(!safe||id!=safe->requestId)return;safe->job.reset();safe->ready=result.wasOk();if(result.wasOk()){safe->composition=std::move(p);juce::String report=summary+"\n\n";for(const auto& section:safe->composition.sections)report+=juce::String::fromUTF8(section.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String(section.bars)+" "+tr("bars")+"\n";report+="\n";for(const auto& track:safe->composition.tracks){size_t count=0;for(const auto& c:track.clips)count+=c.notes.size();if(count)report+=juce::String::fromUTF8(track.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String((int)count)+" MIDI\n";}safe->preview.setText(report);safe->status.setText(text("Ready. Review the composition, then apply it.","Pronta. Controlla la composizione, poi applicala."),juce::dontSendNotification);}else{safe->preview.setText(tr(result.getErrorMessage()));safe->status.setText(text("Generation failed. Your project is unchanged.","Generazione non riuscita. Il progetto è invariato."),juce::dontSendNotification);}safe->setBusy(false);});job->startThread();
     }
 };
-AiComposerWindow::AiComposerWindow(MainComponent& owner):DocumentWindow("Fase Groove Arranger / "+text("Create with AI","Crea con IA"),Daw::base,DocumentWindow::closeButton),panel(std::make_unique<AiComposerPanel>(owner)){
+AiComposerWindow::AiComposerWindow(MainComponent& m):DocumentWindow("Fase Groove Arranger / "+text("Create with AI","Crea con IA"),Daw::base,DocumentWindow::closeButton),owner(m),panel(std::make_unique<AiComposerPanel>(m)){
     setUsingNativeTitleBar(true);setAlwaysOnTop(true);setContentNonOwned(panel.get(),true);setResizable(true,false);setResizeLimits(920,700,1200,1000);const auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();centreWithSize(960,display?std::clamp(display->userArea.getHeight()-72,700,800):800);
 }
 AiComposerWindow::~AiComposerWindow(){clearContentComponent();panel.reset();}
-void AiComposerWindow::closeButtonPressed(){panel->cancelJob();setVisible(false);}
+void AiComposerWindow::closeButtonPressed(){panel->cancelJob();owner.dismissAuxiliaryWindow(*this);}
 void AiComposerWindow::show(){panel->refreshTracks();panel->refreshLocal();if(!isVisible())centreWithSize(getWidth(),getHeight());setVisible(true);toFront(true);}
 bool AiComposerWindow::verify(const juce::File& f){return panel->verify(f)&&isAlwaysOnTop();}
 }

@@ -95,9 +95,9 @@ private:
     }
     void timerCallback()override{if(!isShowing())return;for(int i=0;i<4;++i){auto& meter=meters[(size_t)i];float level=owner.audio.busLevel(i);if(meter.level!=level){meter.level=level;meter.repaint();repaint(signalReadouts[(size_t)i]);}}if(!juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown()&&!dynamic_cast<juce::TextEditor*>(juce::Component::getCurrentlyFocusedComponent())&&!target.isPopupActive()&&!route.isPopupActive())refresh();}
 };
-MixerRoutingWindow::MixerRoutingWindow(MainComponent& owner):DocumentWindow("FASE GROOVE - MIXER",StudioStyle::base,juce::DocumentWindow::closeButton){setLookAndFeel(&owner.theme);setUsingNativeTitleBar(true);panel=new Panel(owner);setContentOwned(panel,true);setResizable(true,false);setResizeLimits(940,600,1600,1000);setSize(1020,720);setAlwaysOnTop(true);}
+MixerRoutingWindow::MixerRoutingWindow(MainComponent& m):DocumentWindow("FASE GROOVE - MIXER",StudioStyle::base,juce::DocumentWindow::closeButton),owner(m){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);setContentOwned(panel,true);setResizable(true,false);setResizeLimits(940,600,1600,1000);setSize(1020,720);setAlwaysOnTop(true);}
 MixerRoutingWindow::~MixerRoutingWindow(){clearContentComponent();setLookAndFeel(nullptr);}
 void MixerRoutingWindow::open(){panel->refresh();if(!isVisible())centreWithSize(getWidth(),getHeight());setAlwaysOnTop(true);setVisible(true);toFront(true);}
-void MixerRoutingWindow::closeButtonPressed(){setVisible(false);}
+void MixerRoutingWindow::closeButtonPressed(){owner.dismissAuxiliaryWindow(*this);}
 bool MixerRoutingWindow::verify(const juce::File& folder){bool ok=panel->verify(folder);setTopLeftPosition(7,9);closeButtonPressed();open();ok=ok&&isAlwaysOnTop()&&getPosition()!=juce::Point<int>(7,9);return ok;}
 }

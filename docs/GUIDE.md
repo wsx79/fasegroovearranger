@@ -28,13 +28,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Bars and elapsed time](#bars-and-elapsed-time)
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 
-This guide is current for **0.23.2**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.23.4**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.23.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.23.4** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 

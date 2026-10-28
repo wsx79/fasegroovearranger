@@ -9,6 +9,14 @@
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <BinaryData.h>
 #include <cmath>
+#if JUCE_WINDOWS
+ #ifndef NOMINMAX
+  #define NOMINMAX 1
+ #endif
+ #include <windows.h>
+ #undef min
+ #undef max
+#endif
 namespace fga {
 namespace {
 juce::Colour colour(int t){return Daw::trackColour(t);}
@@ -573,7 +581,7 @@ public:
     }
     ~InstrumentWindow()override{clearContentComponent();setLookAndFeel(nullptr);}
     void refresh(){body->refresh();setName(tr("Instrument panel")+" / "+utf(owner.project.tracks[(size_t)owner.selectedTrack].name));}
-    void closeButtonPressed()override{owner.instrumentPanel.flushRender();setVisible(false);}
+    void closeButtonPressed()override{owner.instrumentPanel.flushRender();owner.dismissAuxiliaryWindow(*this);}
     bool keyPressed(const juce::KeyPress& key)override{return owner.keyPressed(key);}
 };
 bool MainComponent::instrumentIsOpen()const{return instrumentWindow&&instrumentWindow->isVisible();}
@@ -595,15 +603,65 @@ void MainComponent::addMidiTrack(){
 }
 class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
-    explicit PluginWindow(juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);centreWithSize(getWidth(),getHeight());setVisible(true);}
-    void closeButtonPressed()override{setVisible(false);}
+    MainComponent& owner;
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);centreWithSize(getWidth(),getHeight());setVisible(true);}
+    void closeButtonPressed()override{owner.dismissAuxiliaryWindow(*this);}
 };
+bool MainComponent::verifyWindowFocus(const juce::File& folder){
+    if(!folder.createDirectory())return false;
+    const auto saved=project;const auto undos=undoStack,redos=redoStack;const bool wasDirty=dirty;
+    bool ok=true;juce::String details;
+    auto check=[&](const char* name,juce::DocumentWindow& window){
+        window.grabKeyboardFocus();
+        // Reproduce a missed mouse-up when the native tool window disappears.
+        auto source=juce::Desktop::getInstance().getMainMouseSource();
+        if(auto* peer=window.getPeer())peer->handleMouseEvent(source.getType(),{4.f,4.f},juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
+        const bool pressed=source.isDragging();window.closeButtonPressed();
+        const bool released=!source.isDragging();
+        const bool focused=!window.isVisible()&&isEnabled()&&hasKeyboardFocus(false);
+        const auto before=undoStack.size();const auto seed=project.settings.seed;
+        const auto pos=getTopLevelComponent()->getLocalPoint(&songButton,songButton.getLocalBounds().getCentre()).toFloat();
+        if(auto* peer=getPeer()){
+            peer->handleMouseEvent(source.getType(),pos,juce::ModifierKeys::leftButtonModifier,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
+            peer->handleMouseEvent(source.getType(),pos,{},juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
+        }
+        const bool clicked=undoStack.size()==std::min(size_t(40),before+1)&&project.settings.seed!=seed;
+        details+=juce::String(pressed&&released&&focused&&clicked?"PASS ":"FAIL ")+name+": source-released="+juce::String((int)released)+", focus="+juce::String((int)focused)+", first-click generation="+juce::String((int)clicked)+"\n";
+        ok=pressed&&released&&focused&&clicked&&ok;if(clicked)undo(false);
+    };
+    showArrangement();
+    for(int repeat=0;repeat<3;++repeat){
+        showStudio();setEnabled(false);check("Studio (including disabled main window)",*studioWindow);
+        showMixerRouting();check("Mixer",*mixerRoutingWindow);
+        showAiComposer();check("AI",*aiWindow);
+        showInstrument();check("Instrument",*instrumentWindow);
+    }
+    // Recovery must cancel a hidden pressed button without firing its action,
+    // and must leave a gesture in a different visible window alone.
+    juce::TextButton probeButton("Input recovery probe");int actions=0;probeButton.onClick=[&]{++actions;};
+    juce::DocumentWindow probe("Input recovery",Daw::base,0);probe.setUsingNativeTitleBar(true);probe.setContentNonOwned(&probeButton,false);probe.centreWithSize(160,64);probe.setVisible(true);
+    auto source=juce::Desktop::getInstance().getMainMouseSource();
+    auto probeEvent=[&](juce::ModifierKeys mods){if(auto* peer=probe.getPeer())peer->handleMouseEvent(source.getType(),{80.f,32.f},mods,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());};
+    probeEvent(juce::ModifierKeys::leftButtonModifier);const bool down=source.isDragging()&&probeButton.isDown();dismissAuxiliaryWindow(probe);
+    const bool cancelled=down&&!source.isDragging()&&actions==0;ok=cancelled&&ok;
+    details+=juce::String(cancelled?"PASS ":"FAIL ")+"stale release cancels hidden button without invoking its action\n";
+    probe.setVisible(true);showMixerRouting();probeEvent(juce::ModifierKeys::leftButtonModifier);const bool begun=source.isDragging();mixerRoutingWindow->closeButtonPressed();
+    const bool kept=source.isDragging()&&actions==0;probeEvent({});
+    const bool independent=begun&&kept&&!source.isDragging();ok=independent&&ok;
+    details+=juce::String(independent?"PASS ":"FAIL ")+"closing a tool preserves a gesture in another visible window (begun="+juce::String((int)begun)+", retained="+juce::String((int)kept)+")\n";
+    dismissAuxiliaryWindow(probe);probe.clearContentComponent();
+    showMixerRouting();setEnabled(false);mixerRoutingWindow->closeButtonPressed();
+    const bool guarded=!isEnabled()&&!mixerRoutingWindow->isVisible();ok=guarded&&ok;
+    details+=juce::String(guarded?"PASS ":"FAIL ")+"closing a tool preserves an independently disabled DAW\n";setEnabled(true);
+    showArrangement();project=saved;undoStack=undos;redoStack=redos;changed(false);dirty=wasDirty;
+    folder.getChildFile("window-focus.txt").replaceWithText(details);return ok;
+}
 bool MainComponent::verifyPluginWindow(){
     select(0,0);pluginEditorButton.onClick();
     if(!pluginWindow)return false;
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
     bool ok=pluginWindow->isVisible()&&pluginWindow->isAlwaysOnTop()&&centred();
-    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();ok=ok&&!pluginWindow->isVisible();
+    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();ok=ok&&!pluginWindow->isVisible()&&hasKeyboardFocus(false);
     pluginEditorButton.onClick();ok=ok&&pluginWindow&&pluginWindow->isVisible()&&pluginWindow->isAlwaysOnTop()&&centred();
     pluginWindow.reset();return ok;
 }
@@ -722,7 +780,7 @@ MainComponent::MainComponent(){
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{useBuiltInSound(selectedTrack);};
     sampleButton.onClick=[this]{browseSamplesFor(selectedTrack);};
     loadPluginButton.onClick=[this]{showPluginMenu();};
-    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;auto* inst=audio.plugin(selectedTrack);auto* fx=audio.effectPlugin(selectedTrack);if(!inst&&!fx){message("Nessun plugin caricato su questa traccia.");return;}if(inst&&fx){juce::PopupMenu menu;menu.addItem(1,tr("OPEN INSTRUMENT"));menu.addItem(2,tr("OPEN EFFECT"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe](int id){if(!safe||id==0)return;auto* p=id==2?safe->audio.effectPlugin(safe->selectedTrack):safe->audio.plugin(safe->selectedTrack);if(!p)return;safe->pluginWindow.reset();safe->pluginWindow=std::make_unique<PluginWindow>(*p);});return;}pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*(inst?inst:fx));};
+    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;auto* inst=audio.plugin(selectedTrack);auto* fx=audio.effectPlugin(selectedTrack);if(!inst&&!fx){message("Nessun plugin caricato su questa traccia.");return;}if(inst&&fx){juce::PopupMenu menu;menu.addItem(1,tr("OPEN INSTRUMENT"));menu.addItem(2,tr("OPEN EFFECT"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe](int id){if(!safe||id==0)return;auto* p=id==2?safe->audio.effectPlugin(safe->selectedTrack):safe->audio.plugin(safe->selectedTrack);if(!p)return;safe->pluginWindow.reset();safe->pluginWindow=std::make_unique<PluginWindow>(*safe,*p);});return;}pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*this,*(inst?inst:fx));};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
     importButton.onClick=[this]{chooseFile("Importa note nella sezione selezionata","*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
     addSectionButton.onClick=[this]{showAddSectionMenu();};
@@ -785,6 +843,32 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto."));startTimerHz(20);
 }
 MainComponent::~MainComponent(){studioWindow.reset();aiWindow.reset();updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();mixerRoutingWindow.reset();studioWindow.reset();instrumentWindow.reset();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
+// A native close may hide a peer before JUCE receives the matching mouse-up.
+// Recover only that hidden window, never a real held button or another gesture.
+void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
+    window.setVisible(false);
+    auto release=[safe=juce::Component::SafePointer<juce::Component>(&window)]{
+        if(!safe||safe->isShowing())return;
+        if(auto* peer=safe->getPeer()){
+           #if JUCE_WINDOWS
+            const auto native=static_cast<HWND>(peer->getNativeHandle());const auto captured=::GetCapture();
+            if(captured&&(captured==native||::IsChild(native,captured)))::ReleaseCapture();
+           #endif
+            auto source=juce::Desktop::getInstance().getMainMouseSource();
+            const auto modifiers=juce::ModifierKeys::getCurrentModifiersRealtime();
+            auto* pressed=source.getComponentUnderMouse();
+            if(source.isDragging()&&!modifiers.isAnyMouseButtonDown()&&pressed&&(pressed==safe.getComponent()||safe->isParentOf(pressed))){
+                // Cancel a missed release without invoking a hidden button's action.
+                const bool enabled=safe->isEnabled();safe->setEnabled(false);
+                peer->handleMouseEvent(source.getType(),peer->globalToLocal(source.getRawScreenPosition()),modifiers,juce::MouseInputSource::defaultPressure,0,juce::Time::currentTimeMillis());
+                if(safe)safe->setEnabled(enabled);
+            }
+        }
+        juce::Desktop::getInstance().getMainMouseSource().triggerFakeMove();
+    };
+    release();juce::MessageManager::callAsync(release);
+    if(isShowing()&&isEnabled()){getTopLevelComponent()->toFront(true);grabKeyboardFocus();}
+}
 void MainComponent::closePluginEditor(){pluginWindow.reset();}
 void MainComponent::showAiComposer(){if(loadingPlugin)return;if(!aiWindow)aiWindow=std::make_unique<AiComposerWindow>(*this);aiWindow->show();}
 juce::Result MainComponent::captureAiProject(Project& base){if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");instrumentPanel.flushRender();trackInspector.finishNameEdit();audio.capturePluginStates(project);base=project;return juce::Result::ok();}
@@ -1110,6 +1194,7 @@ juce::StringArray MainComponent::iconButtonsWithoutTips(){
     scan(*this,"main");return missing;
 }
 bool MainComponent::writeUiEvidence(const juce::File& folder){
+    if(!verifyWindowFocus(folder))return false;
     showStudio();const bool studioOk=studioWindow->verify(folder);studioWindow->closeButtonPressed();if(!studioOk)return false;
     if(auto* busButton=dynamic_cast<juce::Button*>(mixer.findChildWithID("mixer-routing"))){busButton->onClick();if(!mixerRoutingWindow||!mixerRoutingWindow->verify(folder))return false;mixerRoutingWindow->closeButtonPressed();}else return false;
     if(!mixer.verifySends(folder))return false;

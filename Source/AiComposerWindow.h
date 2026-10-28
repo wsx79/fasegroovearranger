@@ -13,6 +13,7 @@ public:
     void show();
     bool verify(const juce::File&);
 private:
+    MainComponent& owner;
     std::unique_ptr<AiComposerPanel> panel;
 };
 }

@@ -5,14 +5,6 @@
 #include "StudioIO.h"
 #include "Localisation.h"
 #include "StudioTheme.h"
-#if JUCE_WINDOWS
- #ifndef NOMINMAX
-  #define NOMINMAX 1
- #endif
- #include <windows.h>
- #undef min
- #undef max
-#endif
 namespace fga {
 namespace {
 juce::String studioTip(const juce::String& name){
@@ -262,7 +254,7 @@ public:
         owner.project=std::move(before);owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.selectedTrack=selectedTrack;owner.dirty=wasDirty;owner.restoreInstruments();owner.refreshControls();owner.showArrangement();track=selectedTrack;refresh();
         folder.getChildFile("studio.txt").replaceWithText(ok?"PASS native Studio panels, sampler load, trim and undo":"FAIL Studio panels");return ok;
     }
-    void endSession(){owner.audio.monitorSamplePitch(-1);owner.audio.stopSampleAudition();finish();finishAudioTake();releasePads();keys.allNotesOff(0);owner.setEnabled(!busy);}
+    void endSession(){owner.audio.monitorSamplePitch(-1);owner.audio.stopSampleAudition();finish();finishAudioTake();releasePads();keys.allNotesOff(0);refreshAudioControls();}
     void showTab(int n){owner.audio.stopSampleAudition();if(!owner.audio.isRecording())track=std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1);tabs.setCurrentTabIndex(std::clamp(n,0,2));resized();refresh();if(!owner.audio.isRecording())owner.audio.setMidiMonitor(track,monitor.getToggleState());}
     void paint(juce::Graphics& g)override{g.fillAll(StudioStyle::base);}
     void resized()override{
@@ -403,19 +395,9 @@ private:
         if(++inputPoll>=15&&!owner.audio.isRecording()){inputPoll=0;const auto available=juce::MidiInput::getAvailableDevices();bool changed=available.size()!=midiDevices.size();if(!changed)for(int i=0;i<available.size();++i)if(available[i].identifier!=midiDevices[i].identifier||available[i].name!=midiDevices[i].name){changed=true;break;}if(changed)refreshMidiInputs();}
         if((tooltips!=nullptr)!=Localisation::tipsEnabled()){if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,500);else tooltips.reset();}refreshAudioControls();const bool audioRecording=owner.audio.isAudioRecording();updateNotes();if(lastTab!=tabs.getCurrentTabIndex()){owner.audio.stopSampleAudition();lastTab=tabs.getCurrentTabIndex();refresh();}if(owner.audio.isRecording()){owner.audio.drainRecorded(pending);if(!owner.audio.isPlaying()||owner.audio.recordingOverflow())finish();}bool recording=owner.audio.isRecording();if(recording||busy)for(int i=0;i<4;++i)samplerButtons[(size_t)i]->setEnabled(false);target.setEnabled(!recording&&!audioRecording&&target.getNumItems()>0);countIn.setEnabled(!recording);quantise.setEnabled(!recording);overdub.setEnabled(!recording);device.setEnabled(!recording);refreshInput.setEnabled(!recording);recordButton.setButtonText(tr(recording?"FINISH TAKE":"RECORD"));recordStatus.setText(owner.audio.midiInputOverflow()?tr("MIDI input events dropped"):recording?tr("Recording")+" · "+tr("Count-in")+": "+juce::String(owner.audio.countInRemaining(),1):tr("Notes, velocity and sustain are recorded. Quantisation preserves note lengths."),juce::dontSendNotification);if(!juce::ModifierKeys::getCurrentModifiersRealtime().isAnyMouseButtonDown()&&!recording&&!dynamic_cast<juce::TextEditor*>(juce::Component::getCurrentlyFocusedComponent()))refresh();}
 };
-StudioWindow::StudioWindow(MainComponent& mainComponent):DocumentWindow("FASE GROOVE - STUDIO",StudioStyle::base,juce::DocumentWindow::closeButton),owner(mainComponent){setLookAndFeel(&owner.theme);setUsingNativeTitleBar(true);panel=new Panel(owner);setContentOwned(panel,true);setResizable(true,false);setResizeLimits(940,660,1600,1200);const auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();setSize(display?std::clamp(display->userArea.getWidth()-48,940,1100):1100,display?std::clamp(display->userArea.getHeight()-48,660,780):780);setAlwaysOnTop(true);}
+StudioWindow::StudioWindow(MainComponent& m):DocumentWindow("FASE GROOVE - STUDIO",StudioStyle::base,juce::DocumentWindow::closeButton),owner(m){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);setContentOwned(panel,true);setResizable(true,false);setResizeLimits(940,660,1600,1200);const auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();setSize(display?std::clamp(display->userArea.getWidth()-48,940,1100):1100,display?std::clamp(display->userArea.getHeight()-48,660,780):780);setAlwaysOnTop(true);}
 StudioWindow::~StudioWindow(){clearContentComponent();setLookAndFeel(nullptr);}
-// A hidden window can still own the thread's mouse capture, and Windows keeps routing every
-// client mouse event to it: the arranger would stop highlighting and swallow the next click
-// until a mouse-up released the capture. Drop the capture as soon as the window is gone, and
-// once more after the click that closed it has been fully handled, then give the arranger
-// back the pointer and the focus.
-void StudioWindow::closeButtonPressed(){panel->endSession();setVisible(false);
-    #if JUCE_WINDOWS
-    if(::GetCapture()!=nullptr)::ReleaseCapture();
-    juce::MessageManager::callAsync([]{if(::GetCapture()!=nullptr)::ReleaseCapture();});
-    #endif
-    if(auto* top=owner.getTopLevelComponent())if(top->isVisible())top->toFront(true);juce::Desktop::getInstance().getMainMouseSource().triggerFakeMove();}
+void StudioWindow::closeButtonPressed(){panel->endSession();owner.dismissAuxiliaryWindow(*this);}
 bool StudioWindow::verify(const juce::File& folder){bool ok=panel->verify(folder);setTopLeftPosition(7,9);closeButtonPressed();ok=!isVisible()&&getName()=="FASE GROOVE - STUDIO"&&ok;open(0);ok=isAlwaysOnTop()&&isVisible()&&getPosition()!=juce::Point<int>(7,9)&&ok;folder.getChildFile("studio.txt").replaceWithText(ok?"PASS native Studio panels, sample load/trim/undo, MIDI routing and take recovery on close, drum slice pitches/editor, always-on-top and centred reopening":"FAIL Studio integration");return ok;}
 void StudioWindow::open(int tab){panel->showTab(tab);if(!isVisible())centreWithSize(getWidth(),getHeight());setAlwaysOnTop(true);setVisible(true);toFront(true);}
 }

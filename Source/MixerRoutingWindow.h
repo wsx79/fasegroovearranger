@@ -12,6 +12,7 @@ public:
     void closeButtonPressed()override;
     bool verify(const juce::File&);
 private:
+    MainComponent& owner;
     class Panel;Panel* panel=nullptr;
 };
 }

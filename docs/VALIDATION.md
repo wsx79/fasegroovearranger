@@ -1,5 +1,11 @@
 # Validation record
 
+## 0.23.4 — auxiliary-window close and first-click actions
+
+- All owned non-modal tool windows explicitly return activation and keyboard focus to the main DAW after hiding. Studio ends auditions and takes, then synchronously refreshes recording/import availability; its hidden timer is not responsible for restoring controls. Existing busy guards remain in place.
+- Native UI coverage repeats Studio, Mixer, AI and instrument-panel closure three times each forces a missing mouse-up in each tool peer and sends one mouse-down/up pair through the main native peer to Generate Song, checking focus, enabled state, a changed generation seed and exactly one Undo checkpoint. Additional assertions keep disabled owners disabled, cancel a hidden pressed button without invoking its action and preserve a gesture in another visible window. The new input regression fails before JUCE input recovery and passes after it. Existing host coverage checks focus after VST editor closure.
+- Build, local native UI/host results and official release outcomes are recorded in the release report.
+
 ## 0.23.2 — workspace controls and time display
 
 - Inspector gain/pan and home master/density/swing/feel use rotary controls with the existing values, gestures and Undo. Labelled actions gain vector icons; compact inspector dismissal and double-click track-header opening retain transport position.
