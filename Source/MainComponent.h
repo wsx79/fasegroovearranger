@@ -20,6 +20,25 @@
 namespace fga {
 class MainComponent;
 bool verifyPianoTools(MainComponent&,const juce::File&);
+
+// The narrow half of the GENERATE split button: it opens the scope menu (song, track,
+// section, clip) so the four generation scopes share one slot instead of four buttons.
+class GenerateMenuButton : public juce::Button {
+public:
+    GenerateMenuButton():juce::Button("generate-scope"){setWantsKeyboardFocus(false);setMouseCursor(juce::MouseCursor::PointingHandCursor);}
+    void paintButton(juce::Graphics& g,bool over,bool down)override{
+        const auto r=getLocalBounds().toFloat().reduced(.5f);
+        // Same disabled fade as the labelled action next to it: during a take the whole
+        // generation block dims together instead of leaving an active-looking caret.
+        g.beginTransparencyLayer(isEnabled()?1.f:.38f);
+        g.setColour(down?Daw::accent.darker(.12f):over&&isEnabled()?Daw::accent.brighter(.06f):Daw::accent);g.fillRoundedRectangle(r,Daw::radius);
+        g.setColour(juce::Colours::black.withAlpha(.35f));g.drawRoundedRectangle(r,Daw::radius,1.f);
+        const float cx=r.getCentreX(),cy=r.getCentreY();juce::Path caret;
+        caret.startNewSubPath(cx-3.5f,cy-1.5f);caret.lineTo(cx,cy+2.f);caret.lineTo(cx+3.5f,cy-1.5f);
+        g.setColour(Daw::onAccent);g.strokePath(caret,juce::PathStrokeType(1.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+        g.endTransparencyLayer();
+    }
+};
 class ArrangementView : public juce::Component, public juce::SettableTooltipClient {
 public:
     explicit ArrangementView(MainComponent&);
@@ -201,6 +220,7 @@ public:
     void togglePlayback();
     void toggleMetronome();
     void regenerate(Scope,bool newTake=true);
+    void showGenerateMenu();
     void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();
@@ -302,7 +322,8 @@ private:
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
-    ActionButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    ActionButton songButton{"GENERATE"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    GenerateMenuButton generateMenuButton;
     ActionButton addTrackButton { "+ MIDI" };
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
     juce::Slider tempoSlider,swingSlider,densitySlider,humanizeSlider,masterSlider,zoomSlider;

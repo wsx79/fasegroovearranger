@@ -94,7 +94,7 @@ void ArrangementView::paint(juce::Graphics& g){
             const float titleHeight=h>=34&&cell.getWidth()>18?13.f:0.f;
             if(titleHeight>0){juce::Path bar;bar.addRoundedRectangle(cell.getX(),cell.getY(),cell.getWidth(),titleHeight,Daw::radius,Daw::radius,true,true,false,false);g.setColour(ink.withAlpha(sel?.95f:hover?.82f:.7f));g.fillPath(bar);
                 if(cell.getWidth()>28){const int guide=std::clamp(p.sectionAtBeat(begin),0,(int)p.sections.size()-1);auto title=cell.withHeight(titleHeight).reduced(5.f,0);if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,title.removeFromRight(10.f).withSizeKeepingCentre(9.f,9.f),Daw::onAccent);title.removeFromRight(3.f);}
-                    g.setColour(Daw::onAccent);g.setFont(Daw::font(9.5f,true));g.drawText(utf(p.sections[(size_t)guide].name),title,juce::Justification::centredLeft,true);}}
+                    g.setColour(Daw::onAccent);g.setFont(Daw::font(10.f,true));g.drawText(utf(p.sections[(size_t)guide].name),title,juce::Justification::centredLeft,true);}}
             else if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,{cell.getRight()-13.f,cell.getY()+3.f,10.f,10.f},ink);}
             const auto notesArea=cell.withTrimmedTop(titleHeight).reduced(3.f,3.f);
             if(cell.getWidth()>6&&notesArea.getHeight()>3){g.saveState();g.reduceClipRegion(notesArea.toNearestInt());g.setColour(ink.brighter(.35f).withAlpha(muted?.5f:.92f));
@@ -141,7 +141,10 @@ void ArrangementView::paint(juce::Graphics& g){
         auto pill=[&](const char* text,float px,bool on,juce::Colour c){const juce::Rectangle<float> r(px,(float)y+9,17,16);g.setColour(on?c:Daw::control);g.fillRoundedRectangle(r,Daw::radius);
             g.setColour(on?c.darker(.3f):juce::Colours::black.withAlpha(.45f));g.drawRoundedRectangle(r.reduced(.5f),Daw::radius,1);g.setColour(on?Daw::onAccent:Daw::textDim);g.setFont(Daw::font(9.5f,true));g.drawText(text,r,juce::Justification::centred);};
         const bool anyAutomation=t.volume.enabled||t.panAutomation.enabled||std::any_of(t.parameters.begin(),t.parameters.end(),[](const ParameterAutomation& l){return l.curve.enabled;});
-        pill("A",(float)hx+133,anyAutomation||volumeVisible[(size_t)ti],anyAutomation?Daw::automation:Daw::textDim);pill("M",(float)hx+153,t.mute,Daw::mute);pill("S",(float)hx+173,t.solo,Daw::solo);
+        // A is lit only while the lane is open; existing automation is a small dot instead of a
+        // second switch, so a generated project does not light every track.
+        pill("A",(float)hx+133,volumeVisible[(size_t)ti],Daw::automation);pill("M",(float)hx+153,t.mute,Daw::mute);pill("S",(float)hx+173,t.solo,Daw::solo);
+        if(anyAutomation&&!volumeVisible[(size_t)ti]){g.setColour(Daw::automation);g.fillEllipse((float)hx+145.f,(float)y+21.f,3.5f,3.5f);}
         IconButton::drawIcon(g,IconButton::Icon::gear,{(float)hx+195,(float)y+9,16,16},current?Daw::accent:Daw::textFaint);
         g.setColour(juce::Colours::black.withAlpha(.5f));g.drawHorizontalLine(y+h-1,(float)hx,(float)hx+headerWidth);g.drawVerticalLine(hx+headerWidth-1,(float)y,(float)(y+h));
         if(volumeVisible[(size_t)ti]){const int top=y+h;g.setColour(Daw::chrome);g.fillRect(hx,top,headerWidth,80);g.setColour(Daw::automation.withAlpha(.5f));g.fillRect(hx,top,4,79);const auto& shown=envelope(ti);const int target=laneTarget[(size_t)ti];
@@ -471,7 +474,7 @@ void PianoRoll::paint(juce::Graphics& g){
         for(int n=lowNote;n<=highNote;++n){const float y=48+(highNote-n)*rowHeight();const auto key=juce::Rectangle<float>((float)vx,y,left-2,rowHeight());
             if(!blackKey(n)){g.setColour(juce::Colour(0xffd6d9de));g.fillRect(key);g.setColour(juce::Colour(0xff9da3ab));if(n%12==0||n%12==5)g.fillRect(key.getX(),key.getBottom()-1,key.getWidth(),1.f);}
             else{g.setColour(juce::Colour(0xffd6d9de));g.fillRect(key);g.setColour(juce::Colour(0xff1c1f24));g.fillRoundedRectangle(key.withWidth(key.getWidth()*.6f).reduced(0,.5f),1.5f);}
-            if(n%12==0){g.setColour(juce::Colour(0xff3b4048));g.setFont(Daw::font(9.5f,true));g.drawText(juce::MidiMessage::getMidiNoteName(n,true,true,4),key.reduced(4,0),juce::Justification::centredRight);}}
+            if(n%12==0){g.setColour(juce::Colour(0xff2a2d33));g.setFont(Daw::font(10.f,true));g.drawText(juce::MidiMessage::getMidiNoteName(n,true,true,4),key.reduced(4,0),juce::Justification::centredRight);}}
         g.setColour(juce::Colours::black.withAlpha(.6f));g.drawVerticalLine(vx+(int)left-2,48.f,velocityTop());
     }
     // The original Piano chord strip and velocity lane, bound to this track's MIDI.
@@ -480,11 +483,14 @@ void PianoRoll::paint(juce::Graphics& g){
         for(double b=0;b<owner.clipLength();b+=1){const float x=left+(float)(b*pixelsPerBeat);if(x<view.getX()+left||x>view.getRight())continue;label(g,juce::String((int)b%4+1),{(int)x+3,23,40,14},10,(int)b%4==0?Daw::accent:Daw::textFaint);if((int)b%4==0)label(g,tr("Bar")+" "+juce::String((int)b/4+1),{(int)x+3,2,140,18},10,Daw::text);}
     }else{
         auto names=chordNames(owner.project.settings);const double chordBeats=owner.project.settings.chordSteps*.25;
-        for(double b=0;b<owner.clipLength();b+=chordBeats){const int x=leftMargin()+(int)(b*pixelsPerBeat);if(x+(int)(chordBeats*pixelsPerBeat)<view.getX()+left||x>view.getRight())continue;auto r=juce::Rectangle<int>(x+1,3,(int)(chordBeats*pixelsPerBeat)-2,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);label(g,utf(names[(size_t)((int)((owner.clipStart()+b)/chordBeats)%names.size())]),r.reduced(8,0),11,Daw::text);label(g,juce::String((int)(b/4)+1),{x+3,24,50,14},10,Daw::textFaint);}
+        for(double b=0;b<owner.clipLength();b+=chordBeats){const int x=leftMargin()+(int)(b*pixelsPerBeat);if(x+(int)(chordBeats*pixelsPerBeat)<view.getX()+left||x>view.getRight())continue;auto r=juce::Rectangle<int>(x+1,3,(int)(chordBeats*pixelsPerBeat)-2,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);label(g,utf(names[(size_t)((int)((owner.clipStart()+b)/chordBeats)%names.size())]),r.reduced(8,0),11,Daw::text);const double local=owner.audio.position()-owner.clipStart();const bool currentBar=local>=b&&local<b+4.;g.setFont(Daw::font(10.f,true));g.setColour(currentBar?Daw::accent:Daw::textDim);g.drawText(juce::String((int)(b/4)+1),x+4,24,50,14,juce::Justification::centredLeft);}
     }
     g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(39,(float)vx,(float)view.getRight());
     g.setColour(Daw::chrome);g.fillRect(vx,0,leftMargin(),40);
-    g.setColour(Daw::chrome);g.fillRect(vx,(int)velocityTop(),view.getWidth(),getHeight()-(int)velocityTop());label(g,"VELOCITY",{vx+6,(int)velocityTop(),leftMargin()-8,(int)velocityHeight()},9,Daw::textFaint);
+    g.setColour(Daw::chrome);g.fillRect(vx,(int)velocityTop(),view.getWidth(),getHeight()-(int)velocityTop());
+    // Three guides (0, 64, 127) make the lane readable without a numeric scale.
+    for(int v:{0,64,127}){const float y=velocityTop()+velocityHeight()*(1.f-v/127.f);g.setColour(juce::Colours::white.withAlpha(v==64?.09f:.05f));g.drawHorizontalLine((int)y,left,(float)view.getRight());}
+    label(g,"VELOCITY",{vx+6,(int)velocityTop(),leftMargin()-8,(int)velocityHeight()},10,Daw::textDim);
     g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine((int)velocityTop(),(float)vx,(float)view.getRight());
     if(ownerTrackIsDrum())for(double b=0;b<owner.clipLength();b+=grid){const float x=left+(float)(b*pixelsPerBeat);if(x<view.getX()+left||x>view.getRight())continue;auto column=juce::Rectangle<float>(x+1,velocityTop()+8,std::max(3.f,(float)(pixelsPerBeat*grid)-3),velocityHeight()-4);g.setColour(juce::Colours::white.withAlpha(((int)(b*4)/4)%2==0?.05f:.03f));g.fillRoundedRectangle(column,Daw::radius);}
     for(size_t i=0;i<notes.size();++i){const auto& n=notes[i];const float x=left+(float)(n.start*pixelsPerBeat);if(x<vx+left||x>view.getRight())continue;float h=n.velocity/127.f*velocityHeight();g.setColour(selected.count((int)i)?Daw::text:colour(owner.selectedTrack).withAlpha(.85f));g.fillRect(x-1.f,getHeight()-12-h,2.f,h);g.fillEllipse(x-3,getHeight()-15-h,6,6);}
@@ -605,6 +611,13 @@ public:
     }
     ~InstrumentWindow()override{clearContentComponent();setLookAndFeel(nullptr);}
     void refresh(){body->refresh();setName(tr("Instrument panel")+" / "+utf(owner.project.tracks[(size_t)owner.selectedTrack].name));}
+    // Each instrument panel reports its own height; the window follows it instead of
+    // leaving a large dead area under short panels. Re-fits only when the content
+    // changes, so a manual resize is kept while the same panel stays open.
+    void fitToContent(){const int content=44+owner.instrumentPanel.getHeight()+2;if(content==lastFit)return;lastFit=content;setSize(getWidth(),juce::jlimit(420,1000,content));}
+private:
+    int lastFit=-1;
+public:
     void closeButtonPressed()override{owner.instrumentPanel.flushRender();owner.dismissAuxiliaryWindow(*this);}
     bool keyPressed(const juce::KeyPress& key)override{return owner.keyPressed(key);}
 };
@@ -816,7 +829,9 @@ MainComponent::MainComponent(){
     browserVisible=Localisation::setting("sampleBrowserVisible","0")=="1";browserToggle.setToggleState(browserVisible,juce::dontSendNotification);
     addAndMakeVisible(metronomeButton);metronomeButton.onClick=[this]{toggleMetronome();};
     metronomeButton.getProperties().set("fgaTip","Metronome while playing (never exported). Shortcut: C.");
-    positionLabel.setFont(Daw::font(Daw::display,true));positionLabel.setColour(juce::Label::textColourId,Daw::text);positionLabel.setJustificationType(juce::Justification::centredLeft);positionLabel.setInterceptsMouseClicks(false,false);
+    // Monospaced digits: the transport keeps a fixed width while it counts, so the bar/beat
+    // readout never jitters and the surrounding LCD blocks never shift.
+    positionLabel.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(),Daw::display,juce::Font::bold));positionLabel.setColour(juce::Label::textColourId,Daw::text);positionLabel.setJustificationType(juce::Justification::centredLeft);positionLabel.setInterceptsMouseClicks(false,false);
     timeDisplay=Localisation::setting("timelineTimeDisplay","0")=="1";
     addAndMakeVisible(positionModeButton);positionModeButton.onClick=[this]{toggleTimeDisplay();};
     positionModeButton.getProperties().set("fgaTip","Click to switch bars and elapsed time. The musical grid and MIDI timing stay unchanged.");
@@ -834,7 +849,7 @@ MainComponent::MainComponent(){
     inspectorToggle.getProperties().set("fgaTip","Show track volume, pan, sound assignment and clip actions.");mixerToggle.getProperties().set("fgaTip","Show the mixer. Shortcut: F3.");fitSongButton.getProperties().set("fgaTip","Fit the complete song in the arrangement view.");followButton.getProperties().set("fgaTip","Scroll the arrangement to follow playback.");
     arrangement.getProperties().set("fgaTip","Wheel on ruler: zoom. Ctrl/Cmd+wheel: zoom at pointer. Shift+wheel: horizontal scroll.");piano.getProperties().set("fgaTip","Wheel on ruler: zoom. Ctrl/Cmd+wheel: zoom at pointer. Shift+wheel: horizontal scroll.");
     arrangementPort.setViewedComponent(&arrangement,false);pianoPort.setViewedComponent(&piano,false);arrangementPort.setScrollBarsShown(true,true);pianoPort.setScrollBarsShown(true,true);addAndMakeVisible(arrangementPort);addAndMakeVisible(pianoPort);
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&playButton,&stopButton,&rewindButton,&undoButton,&redoButton,&loopButton,&songButton,&trackButton,&sectionButton,&clipButton,&harmonyButton,&addSectionButton,&genreBox,&keyBox,&scaleBox,&extensionBox,&voicingBox,&progressionBox,&bassBox,&stringsBox,&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&zoomSlider,&positionLabel,&chordsLabel,&statusLabel,&soundButton,&pluginEditorButton,&sampleButton,&loadPluginButton,&gainSlider,&panSlider,&velocitySlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&soundBox,&gridBox,&quantiseButton,&transposeUp,&transposeDown,&deleteNotes,&importButton,&copyButton,&pasteButton,&sectionLoopButton,&inspectorLabel,&editorLabel})addAndMakeVisible(c);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&playButton,&stopButton,&rewindButton,&undoButton,&redoButton,&loopButton,&songButton,&generateMenuButton,&trackButton,&sectionButton,&clipButton,&harmonyButton,&addSectionButton,&genreBox,&keyBox,&scaleBox,&extensionBox,&voicingBox,&progressionBox,&bassBox,&stringsBox,&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&zoomSlider,&positionLabel,&chordsLabel,&statusLabel,&soundButton,&pluginEditorButton,&sampleButton,&loadPluginButton,&gainSlider,&panSlider,&velocitySlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&soundBox,&gridBox,&quantiseButton,&transposeUp,&transposeDown,&deleteNotes,&importButton,&copyButton,&pasteButton,&sectionLoopButton,&inspectorLabel,&editorLabel})addAndMakeVisible(c);
     auto slider=[this](juce::Slider& s,double lo,double hi,double step,const juce::String& suffix){s.setRange(lo,hi,step);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,64,22);s.setTextValueSuffix(suffix);s.onDragStart=[this]{checkpoint();};};
     addAndMakeVisible(automationButton);automationButton.setClickingTogglesState(true);
     automationButton.onClick=[this]{auto& visible=arrangement.volumeVisible[(size_t)selectedTrack];visible=!visible;updateSizes();arrangement.repaint();};
@@ -875,8 +890,14 @@ MainComponent::MainComponent(){
     loopButton.getProperties().set("fgaTip","Loop playback on or off. Shortcut: L. Ctrl/Cmd+L loops the selection; again removes it. Double-click the loop strip to clear it.");
     sectionLoopButton.onClick=[this]{toggleClipLoop();};sectionLoopButton.getProperties().set("fgaTip","Loop the selected clip; click again to remove the loop.");
     addAndMakeVisible(studioButton);studioButton.setIcon(IconButton::Icon::studio);studioButton.getProperties().set("dawFeatured",true);Localisation::bindTip(studioButton,"Sampler, MIDI/audio recording and project samples");studioButton.onClick=[this]{showStudio();};
-    addAndMakeVisible(aiComposeButton);aiComposeButton.primary=true;aiComposeButton.setButtonText("AI COMPOSER");aiComposeButton.getProperties().set("fgaTip","Compose MIDI notes and an arrangement with your selected AI service.");aiComposeButton.onClick=[this]{showAiComposer();};
+    addAndMakeVisible(aiComposeButton);aiComposeButton.primary=false;aiComposeButton.setButtonText("AI COMPOSER");aiComposeButton.getProperties().set("fgaTip","Compose MIDI notes and an arrangement with your selected AI service.");aiComposeButton.onClick=[this]{showAiComposer();};
     songButton.onClick=[this]{regenerate(Scope::song);};trackButton.onClick=[this]{regenerate(Scope::track,page!=Page::instrument);};sectionButton.onClick=[this]{regenerate(Scope::section);};clipButton.onClick=[this]{regenerate(Scope::clip,page!=Page::instrument);};
+    // One slot for the four generation scopes: the main button still generates the song with a
+    // single click, the caret opens track / section / clip. The three old buttons stay in the
+    // component (their callbacks and shortcuts are unchanged) but are no longer laid out.
+    generateMenuButton.onClick=[this]{showGenerateMenu();};
+    generateMenuButton.getProperties().set("fgaTip","Choose what GENERATE rewrites: the song, the selected track, the section or the clip.");
+    for(auto* b:{&trackButton,&sectionButton,&clipButton})b->setVisible(false);
     harmonyButton.onClick=[this]{checkpoint();randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(project);changed();message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");};
     undoButton.onClick=[this]{undo(false);};redoButton.onClick=[this]{undo(true);};
     quantiseButton.onClick=[this]{modifySelected([this](Clip& c){quantise(c,piano.grid,1,clipLength());});};transposeUp.onClick=[this]{modifySelected([](Clip& c){transpose(c,12);});};transposeDown.onClick=[this]{modifySelected([](Clip& c){transpose(c,-12);});};deleteNotes.onClick=[this]{piano.deleteSelected();};
@@ -904,7 +925,7 @@ MainComponent::MainComponent(){
     masterSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,58,22);masterSlider.setDoubleClickReturnValue(true,0);
 playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("Stop playback and return to the beginning."));rewindButton.setTooltip(tr("Back to the beginning."));undoButton.setTooltip(tr("Undo"));redoButton.setTooltip(tr("Redo"));
     rewindButton.setConnectedEdges(juce::Button::ConnectedOnRight);playButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);stopButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
-    for(auto* b:{&songButton,&clipButton}){b->setColour(juce::TextButton::buttonColourId,Palette::accent);b->setColour(juce::TextButton::textColourOffId,Palette::background);}
+    for(auto* b:{&songButton}){b->setColour(juce::TextButton::buttonColourId,Palette::accent);b->setColour(juce::TextButton::textColourOffId,Palette::background);}
     for(const auto& entry:std::initializer_list<std::pair<juce::Component*,const char*>>{{&genreBox,"GROOVE"},{&keyBox,"KEY"},{&scaleBox,"Scale / mode"},{&extensionBox,"Extensions"},{&voicingBox,"Voicing"},{&progressionBox,"PROGRESSION"},{&tempoSlider,"TEMPO"},{&swingSlider,"SWING"},{&densitySlider,"DENSITY"},{&humanizeSlider,"HUMANIZE"},{&masterSlider,"Volume"},{&gainSlider,"Volume"},{&panSlider,"PAN"},{&velocitySlider,"VELOCITY"},{&zoomSlider,"ZOOM"},{&durationLabel,"NEW ARRANGEMENT"}})entry.first->getProperties().set("fgaControl",entry.second);
     piano.getProperties().set("fgaTip","Draw notes, drag to move, drag the edge for duration; Alt-drag changes velocity.");
 
@@ -1109,6 +1130,7 @@ void MainComponent::showInstrument(){
     if(!instrumentWindow)instrumentWindow=std::make_unique<InstrumentWindow>(*this);
     instrumentWindow->refresh();
     if(!instrumentWindow->isVisible())instrumentWindow->centreWithSize(instrumentWindow->getWidth(),instrumentWindow->getHeight());
+    instrumentWindow->fitToContent();
     instrumentWindow->setAlwaysOnTop(true);instrumentWindow->setVisible(true);instrumentPort.setVisible(true);instrumentPort.setViewPosition(0,0);instrumentWindow->toFront(true);
 }
 void MainComponent::showEditor(){ensureTimelineClip();page=Page::editor;zoomSlider.setValue(piano.pixelsPerBeat,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);piano.grabKeyboardFocus();repaint();}
@@ -1145,6 +1167,23 @@ void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.canc
     // Same instruments: bring each plugin back to the sound it had in that snapshot.
     if(instrumentsChanged)restoreInstruments();else for(size_t i=0;i<project.tracks.size();++i){const auto& t=project.tracks[i];if(t.instrument=="plugin"&&!t.instrumentState.empty()&&t.instrumentState!=before.tracks[i].instrumentState)audio.restorePluginState((int)i,juce::String::fromUTF8(t.instrumentState.c_str()));if(!t.effectState.empty()&&t.effectState!=before.tracks[i].effectState)audio.restoreEffectState((int)i,juce::String::fromUTF8(t.effectState.c_str()));}
     piano.clearSelection();changed();if(instrumentIsOpen())instrumentPanel.rebuild();}
+void MainComponent::showGenerateMenu(){
+    if(editingRestricted())return;
+    juce::PopupMenu menu;
+    menu.addItem(1,tr("GENERATE SONG"),true,false);
+    menu.addItem(2,tr("REGENERATE TRACK"),true,false);
+    menu.addItem(3,tr("REGENERATE SECTION"),true,false);
+    menu.addItem(4,tr("REGENERATE CLIP"),true,false);
+    juce::Component::SafePointer<MainComponent> safe(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&generateMenuButton).withMinimumWidth(generateMenuButton.getWidth()),
+        [safe](int id){
+            if(!safe||id==0)return;
+            if(id==1)safe->regenerate(Scope::song);
+            else if(id==2)safe->regenerate(Scope::track,safe->page!=Page::instrument);
+            else if(id==3)safe->regenerate(Scope::section);
+            else safe->regenerate(Scope::clip,safe->page!=Page::instrument);
+        });
+}
 void MainComponent::regenerate(Scope scope,bool newTake){
     if(editingRestricted())return;
     if(loadingPlugin)return;
@@ -1204,7 +1243,7 @@ void MainComponent::resized(){
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&trackButton,&sectionButton,&clipButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&durationLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&generateMenuButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&durationLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
     aiComposeButton.setVisible(song);studioButton.setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineZoomOut,&timelineZoomIn,&timelineFitButton,&timelineZoom})c->setVisible(song);
     zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
@@ -1243,10 +1282,12 @@ void MainComponent::resized(){
     for(auto* b:{&zoomSelectionButton,&loopSelectionButton})b->setVisible(song);timelineGrid.setVisible(song);
     if(song){
 
+        // The three scope buttons are only used by the instrument page (APPLY TRACK / CLIP)
+        // since the arrangement folds them into GENERATE.
+        for(auto* b:{&trackButton,&sectionButton,&clipButton})b->setVisible(false);
         x=12;place(genreBox,x,rowA,170);x+=176;place(durationLabel,x,rowA,48);x+=52;divider(x,rowA+4,20);x+=9;
-        place(arrangeButton,x,rowA,156);x+=160;place(songButton,x,rowA,140);x+=144;divider(x+4,rowA+4,20);x+=13;
-        place(trackButton,x,rowA,146);x+=150;place(sectionButton,x,rowA,160);x+=164;place(clipButton,x,rowA,140);x+=144;divider(x+4,rowA+4,20);x+=13;
-        place(addSectionButton,x,rowA,100);
+        place(arrangeButton,x,rowA,170);x+=176;place(songButton,x,rowA,150);place(generateMenuButton,x+150,rowA,26);x+=180;divider(x+4,rowA+4,20);x+=13;
+        place(addSectionButton,x,rowA,120);
         place(leadButton,w-12-140,rowA,140);
         x=12;place(progressionBox,x,rowB,206);x+=212;place(harmonyButton,x,rowB,118);x+=122;place(chordEditButton,x,rowB,118);x+=122;divider(x+4,rowB+4,20);x+=13;
         place(extensionBox,x,rowB,112);x+=116;place(voicingBox,x,rowB,124);x+=128;divider(x+4,rowB+4,20);x+=13;

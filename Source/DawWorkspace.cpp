@@ -136,7 +136,7 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     setComponentID("mixer-track-"+juce::String(track));sendA.setComponentID("mixer-send-a");sendB.setComponentID("mixer-send-b");output.setComponentID("mixer-output");
     for(int i=0;i<2;++i){auto& button=i==0?sendA:sendB;button.setColour(juce::TextButton::buttonOnColourId,Daw::accent);button.onClick=[this,i]{if(track<0||track>=(int)owner.project.tracks.size())return;owner.checkpoint();auto& value=owner.project.tracks[(size_t)track].sends[(size_t)i];if(value>0){sendMemory[(size_t)i]=value;value=0;}else value=sendMemory[(size_t)i];owner.mixChanged();};tip(button,i==0?"Toggle send A to shared reverb. Adjust its amount in Bus & Send.":"Toggle send B to shared delay. Adjust its amount in Bus & Send.");}
     tip(output,"Output: M is master, GA is Group A, GB is Group B. Click to change routing.");output.onClick=[this]{if(track<0)return;juce::PopupMenu menu;const int group=owner.project.tracks[(size_t)track].group;menu.addItem(1,tr("Direct to master"),true,group<0);menu.addItem(2,tr("GROUP A"),true,group==0);menu.addItem(3,tr("GROUP B"),true,group==1);juce::Component::SafePointer<MainComponent> safe(&owner);const int ti=track;menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&output),[safe,ti](int id){if(safe&&id>0&&ti<(int)safe->project.tracks.size()){safe->checkpoint();safe->project.tracks[(size_t)ti].group=id-2;safe->mixChanged();}});};
-    name.setEditable(false,track>=0,false);name.onEditorShow=[this]{if(track>=0&&track<(int)owner.project.tracks.size())if(auto* editor=name.getCurrentTextEditor())editor->setText(text(owner.project.tracks[(size_t)track].name),false);};name.onTextChange=[this]{if(updating||track<0||track>=(int)owner.project.tracks.size())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)track];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");name.setFont(Daw::font(10.5f,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.65f);
+    name.setEditable(false,track>=0,false);name.onEditorShow=[this]{if(track>=0&&track<(int)owner.project.tracks.size())if(auto* editor=name.getCurrentTextEditor())editor->setText(text(owner.project.tracks[(size_t)track].name),false);};name.onTextChange=[this]{if(updating||track<0||track>=(int)owner.project.tracks.size())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)track];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");name.setFont(Daw::font(10.f,true));name.setJustificationType(juce::Justification::centred);name.setMinimumHorizontalScale(.5f);
     // A mixer fader: -60 to +6 dB with 0 dB at three quarters of its travel, its value shown
     // below it; the pan is a knob.
     slider(gain,-60,6," dB");gain.setSliderStyle(juce::Slider::LinearVertical);gain.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);gain.setSkewFactor(2.2);
@@ -163,13 +163,14 @@ float MixerStrip::faderY(double db)const{return (float)gain.getY()+(float)gain.g
 juce::Rectangle<int> MixerStrip::meterBounds()const{const bool master=track<0;const int width=master?14:9;const int top=(int)std::floor(faderY(6)),bottom=(int)std::ceil(faderY(-60));return {getWidth()-width-8,top,width,std::max(4,bottom-top)};}
 void MixerStrip::paint(juce::Graphics& g){
     const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth(),h=getHeight();
-    const auto body=getLocalBounds().toFloat().reduced(.5f);g.setColour(master?Daw::surfaceHi:current?Daw::surfaceHi.brighter(.03f):Daw::surface);g.fillRoundedRectangle(body,Daw::radius);
+    const auto body=getLocalBounds().toFloat().reduced(.5f);g.setColour(master||current?Daw::surfaceHi:Daw::surface);g.fillRoundedRectangle(body,Daw::radius);
     g.setColour(colour.withAlpha(master?.0f:.9f));g.fillRect(2.f,1.f,(float)w-4.f,3.f);
     // dB scale beside the fader, meters on the right (two sides with peak hold).
     if(gain.isVisible()&&gain.getHeight()>40){
-        const int left=gain.getX()+gain.getWidth()/2-14;g.setFont(Daw::font(8.5f));
-        for(double db:{6.,0.,-6.,-12.,-24.,-48.}){const float y=faderY(db);g.setColour(db==0?Daw::textDim:Daw::textFaint);g.fillRect((float)left+9.f,y,4.f,1.f);
-            if(gain.getHeight()>90||db==0||db==-24)g.drawText(juce::String((int)std::abs(db)),juce::Rectangle<float>((float)left-12.f,y-5.f,19.f,10.f),juce::Justification::centredRight);}
+        const int left=gain.getX()+gain.getWidth()/2-14;g.setFont(Daw::font(10.f));
+        for(double db:{6.,0.,-6.,-12.,-24.,-48.}){const float y=faderY(db);g.setColour(db==0?Daw::textDim:Daw::textFaint);g.fillRect((float)left+11.f,y,4.f,1.f);
+            // A 4 px gap keeps the tick from reading as a minus sign after the number.
+            if(gain.getHeight()>90||db==0||db==-24)g.drawText(juce::String(db>0?"+":"")+juce::String((int)db),juce::Rectangle<float>((float)left-19.f,y-6.f,24.f,12.f),juce::Justification::centredRight);}
         const auto meter=meterBounds().toFloat();g.setColour(juce::Colours::black.withAlpha(.6f));g.fillRoundedRectangle(meter.expanded(1.f),1.5f);
         const float sideWidth=(meter.getWidth()-1.f)*.5f;const float top=faderY(6),bottom=faderY(-60);
         juce::ColourGradient gradient=juce::ColourGradient::vertical(Daw::meterHigh,top,Daw::meterLow,bottom);auto at=[&](double db){return std::clamp((faderY(db)-top)/std::max(1.f,bottom-top),0.f,1.f);};gradient.addColour(at(0),Daw::meterHigh);gradient.addColour(at(-6),Daw::meterMid);gradient.addColour(at(-14),Daw::meterLow);
@@ -181,10 +182,11 @@ void MixerStrip::paint(juce::Graphics& g){
         // The fader's value under it.
         const auto value=juce::Rectangle<float>(4.f,(float)gain.getBottom()+2.f,(float)w-8.f,15.f);g.setColour(Daw::well);g.fillRoundedRectangle(value,2.f);
         const float db=(float)gain.getValue();g.setColour(gain.isMouseOverOrDragging()?Daw::text:Daw::textDim);g.setFont(Daw::font(10.f,true));g.drawText(db<=-59.9f?juce::String::fromUTF8("-\xe2\x88\x9e"):juce::String(db,1),value,juce::Justification::centred);}
-    if(pan.isVisible()){const double value=pan.getValue();g.setColour(Daw::textFaint);g.setFont(Daw::font(8.5f));g.drawText(std::abs(value)<.5?juce::String("C"):(value<0?"L":"R")+juce::String((int)std::round(std::abs(value))),juce::Rectangle<int>(pan.getX()-6,pan.getBottom(),pan.getWidth()+12,10),juce::Justification::centred);}
+    if(pan.isVisible()){const double value=pan.getValue();g.setColour(Daw::textFaint);g.setFont(Daw::font(10.f));g.drawText(std::abs(value)<.5?juce::String("C"):(value<0?"L":"R")+juce::String((int)std::round(std::abs(value))),juce::Rectangle<int>(pan.getX()-6,pan.getBottom(),pan.getWidth()+12,12),juce::Justification::centred);}
     // Name at the foot, on a band of the track colour.
-    const auto band=juce::Rectangle<float>(2.f,6.f,(float)w-4.f,22.f);g.setColour(master?Daw::control:colour.withAlpha(current?.4f:.2f));g.fillRoundedRectangle(band,2.f);
-    g.setColour(current?Daw::text:juce::Colours::black.withAlpha(.6f));g.drawRoundedRectangle(body,Daw::radius,current?1.2f:1.f);
+    const auto band=juce::Rectangle<float>(2.f,6.f,(float)w-4.f,22.f);g.setColour(master?Daw::control:colour.withAlpha(current?.55f:.2f));g.fillRoundedRectangle(band,2.f);
+    if(current){g.setColour(Daw::accent);g.drawRoundedRectangle(body.reduced(.75f),Daw::radius,1.5f);}
+    else{g.setColour(juce::Colours::black.withAlpha(.6f));g.drawRoundedRectangle(body,Daw::radius,1.f);}
 }
 void MixerStrip::resized(){const int w=getWidth(),h=getHeight();const bool master=track<0,compact=h<170;name.setBounds(3,8,w-(master?6:27),18);output.setBounds(w-23,8,20,18);output.setVisible(!master);
     const int meterWidth=master?14:9,faderRight=w-meterWidth-10;const bool sourceVisible=!master&&h>=120;instrument.setVisible(sourceVisible);instrument.setBounds(5,h-22,w-10,18);clip.setBounds(6,32,w-12,18);

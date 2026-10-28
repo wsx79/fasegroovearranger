@@ -20,10 +20,15 @@ inline const juce::Colour lcd       {0xff0b0d0f};   // transport display
 // Lines.
 inline const juce::Colour line      {0xff2c3037};   // panel borders, separators
 inline const juce::Colour lineStrong{0xff3c414b};   // control outlines, section edges
-// Text: primary, secondary, disabled or faint.
+// Interactive small parts (scrollbar thumbs, slider grooves): they must stay visible on the
+// wells, so they sit above 3:1 instead of borrowing lineStrong.
+inline const juce::Colour lineActive{0xff5f6774};
+// Text: primary, secondary, disabled or faint. Faint is kept above 4.5:1 on every
+// surface it is used on: it carries captions and secondary labels, which must stay legible
+// at 10 px.
 inline const juce::Colour text      {0xffe4e6ea};
 inline const juce::Colour textDim   {0xff9aa1ac};
-inline const juce::Colour textFaint {0xff676e79};
+inline const juce::Colour textFaint {0xff868e9a};
 // One accent (the family's amber) for selection, active state and the main actions.
 inline const juce::Colour accent    {Palette::accent};
 inline const juce::Colour onAccent  {0xff16130f};   // text and icons on the accent
@@ -37,7 +42,7 @@ inline const juce::Colour meterMid  {0xffe7c34a};
 inline const juce::Colour meterHigh {0xffe85d5d};
 inline const juce::Colour playhead  {0xfff2f3f5};
 // Sizes: one font in three sizes, a 4 px grid and two radii.
-constexpr float small=10.f,body=12.f,title=14.f,display=21.f;
+constexpr float small=10.5f,body=12.f,title=14.f,display=21.f;
 constexpr float radius=3.f,panelRadius=5.f;
 constexpr int unit=4,controlHeight=24,toolbarHeight=28;
 
@@ -208,7 +213,7 @@ public:
     void drawScrollbar(juce::Graphics& g,juce::ScrollBar&,int x,int y,int width,int height,bool vertical,int thumbStart,int thumbSize,bool over,bool down) override{
         g.setColour(Daw::well);g.fillRect(x,y,width,height);
         auto thumb=vertical?juce::Rectangle<float>((float)x,(float)thumbStart,(float)width,(float)thumbSize):juce::Rectangle<float>((float)thumbStart,(float)y,(float)thumbSize,(float)height);
-        g.setColour(down?Daw::accent.withAlpha(.8f):over?Daw::lineStrong.brighter(.35f):Daw::lineStrong);g.fillRoundedRectangle(thumb.reduced(2.5f),3.f);
+        g.setColour(down?Daw::accent.withAlpha(.8f):over?Daw::lineActive.brighter(.3f):Daw::lineActive);g.fillRoundedRectangle(thumb.reduced(2.5f),3.f);
     }
     int getDefaultScrollbarWidth() override{return 10;}
     void drawTooltip(juce::Graphics& g,const juce::String& s,int width,int height) override{
