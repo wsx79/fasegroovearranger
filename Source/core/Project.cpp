@@ -478,8 +478,25 @@ void chooseProgression(Project& p,int preset) {
     for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void randomiseHarmony(Project& p,std::uint32_t seed) {
-    auto degrees=sgk::randomProgression(seed,4,p.settings.scale,p.settings.genre); p.settings.chordCount=4; p.settings.freeChords.fill(-1);
-    std::copy(degrees.begin(),degrees.end(),p.settings.degrees.begin());
+    // Keep the progression length and any chord chosen by hand: only the diatonic
+    // slots are rerolled, from the genre vocabulary rather than four fixed degrees.
+    const int count=std::clamp(p.settings.chordCount,1,8);
+    const auto& all=sgk::progressionPresets();
+    std::vector<int> candidates;
+    for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==p.settings.scale)candidates.push_back(i);
+    if(candidates.empty()){
+        auto degrees=sgk::randomProgression(seed,count,p.settings.scale,p.settings.genre);
+        for(int i=0;i<count;++i)if(p.settings.freeChords[(size_t)i]<0)p.settings.degrees[(size_t)i]=degrees[(size_t)i];
+        return;
+    }
+    const int preset=candidates[(size_t)(mix(seed)%candidates.size())];
+    const auto slots=sgk::presetSlots(all[(size_t)preset],p.settings.extension);
+    if(slots.empty())return;
+    const int shift=(int)(mix(seed+17U)%(std::uint32_t)slots.size());
+    for(int i=0;i<count;++i){
+        if(p.settings.freeChords[(size_t)i]>=0)continue;
+        p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)((i+shift)%(int)slots.size())].degree);
+    }
 }
 void applyGenre(Project& p,int genre) {
     p.settings.freeTempo=false;
@@ -700,10 +717,26 @@ void varySongFeel(Project& p,std::uint32_t seed) {
     const bool jackinHouse=s.genre==4;
     for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
 }
+// The form must answer the Harmonic cycle and the groove, not a random list: every
+// section length is a multiple of this phrase, as arrangeSong already assumes.
+static int formPhraseBars(const Project& p){
+    const int steps=std::max(1,p.settings.chordSteps);
+    const int harmonic=std::max(1,(std::max(1,p.settings.chordCount)*steps)/16);
+    int motif=1;for(const auto& t:p.tracks)motif=std::max(motif,t.engine.grooveBars);
+    int phrase=8;
+    for(int g:{harmonic,motif}){int a=phrase,b=g;while(b){const int r=a%b;a=b;b=r;}phrase=phrase/std::max(1,a)*g;}
+    return std::clamp(phrase,4,48);
+}
 void varyForm(Project& p,std::uint32_t seed) {
     const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
     const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;});
     if(locked||free||p.sections.empty())return;
+    const int phrase=formPhraseBars(p);
+    auto pickLength=[&](const int* choices,int count,int index)->int{
+        std::vector<int> valid;for(int i=0;i<count;++i)if(choices[i]%phrase==0)valid.push_back(choices[i]);
+        if(valid.empty())return std::clamp(phrase,8,48);
+        return valid[(size_t)(mix(seed+(std::uint32_t)index*97U)%valid.size())];
+    };
     std::vector<int> next;int before=0,after=0;
     for(size_t i=0;i<p.sections.size();++i){
         const auto type=p.sections[i].type;
@@ -711,7 +744,7 @@ void varyForm(Project& p,std::uint32_t seed) {
         const int* choices=body;int count=5;
         if(type==Section::intro||type==Section::outro){choices=io;count=3;}
         else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
-        const int pick=choices[mix(seed+(std::uint32_t)i*97U)%(unsigned)count];
+        const int pick=pickLength(choices,count,(int)i);
         next.push_back(pick);before+=p.sections[i].bars;after+=pick;
     }
     if(after==before){
@@ -720,7 +753,7 @@ void varyForm(Project& p,std::uint32_t seed) {
         const int* choices=body;int count=5;
         if(type==Section::intro||type==Section::outro){choices=io;count=3;}
         else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
-        for(int k=0;k<count;++k)if(choices[k]!=next.back()){next.back()=choices[k];break;}
+        for(int k=0;k<count;++k)if(choices[k]!=next.back()&&choices[k]%phrase==0){next.back()=choices[k];break;}
     }
     for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)p.resizeSection((int)i,next[i]);
 }
@@ -862,6 +895,9 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(mixing){ps.fillEveryBars=0;ps.variationEvery=0;}
             if(ti<3) {
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
+                // The kit turns the corner at every section end; give the harmony the
+                // same last-bar fill instead of one every 16 bars counted from the clip.
+                if(!mixing&&renderBars>=2){ps.forcedFillBar=renderBars-1;ps.forcedFillStyle=-1;}
                 auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,renderBars,clip.seed,-1}});
                 if(ti==0&&s.guitarLead)all=sgk::Comping::comping(all,clip.seed*7919u+1u,ps,beats);
                 clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
