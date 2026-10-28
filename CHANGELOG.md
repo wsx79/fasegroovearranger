@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.8
+
+- Restyled arranger: captions at 4.76:1 instead of 3.06:1, visible scrollbar thumbs, one GENERATE split button with a scope menu instead of four amber buttons, one primary action per row, signed dB scale in the mixer with the selected strip outlined, clearer piano-roll bar numbers, octave labels and velocity guides, instrument windows sized to their content and no truncated sidechain/genre labels.
+- Full screen toggle (F11, Escape to leave) drops the window title bar, and Windows title bars now follow the dark theme on every window.
+- Track names are project data and are no longer translated in the mixer.
+
 ## 0.23.7
 
 - Make the missed-release input regression opt-in: a synthesised peer press is not reliably attributed to a JUCE window, so it no longer gates a release, and the Studio scenario now ends its take before requiring the first click because generation is disabled while recording.

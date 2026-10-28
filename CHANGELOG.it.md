@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.8
+
+- Restyling dell'arranger: didascalie a 4,76:1 invece di 3,06:1, thumb delle scrollbar visibili, un solo pulsante GENERATE con menu degli scope al posto di quattro pulsanti ambra, una sola azione primaria per riga, scala dB con segno nel mixer e strip selezionata bordata, numeri di battuta, etichette delle ottave e guide velocity più leggibili nel piano roll, finestre strumento dimensionate sul contenuto e nessuna etichetta sidechain/genere troncata.
+- Pulsante schermo intero (F11, Esc per uscire) che elimina la barra del titolo, e barre del titolo scure su Windows in tutte le finestre.
+- I nomi delle tracce sono dati del progetto e non vengono più tradotti nel mixer.
+
 ## 0.23.7
 
 - La verifica del rilascio perso diventa opt-in: un press sintetico non viene attribuito in modo affidabile a una finestra JUCE, quindi non blocca più la release, e lo scenario Studio chiude la take prima di richiedere il primo clic, perché durante la registrazione la generazione è disabilitata.

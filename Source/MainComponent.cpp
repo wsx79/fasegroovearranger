@@ -6,6 +6,7 @@
 #include "AiComposerWindow.h"
 #include "AiComposer.h"
 #include "UiText.h"
+#include "DarkTitleBar.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <BinaryData.h>
 #include <cmath>
@@ -1426,6 +1427,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 }
 void MainComponent::timerCallback(){
+    fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
     // keep the button's icon and state in step without repainting when nothing changed.
     if(auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent())){const bool full=top->isFullScreen();

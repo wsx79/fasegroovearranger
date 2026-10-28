@@ -3,6 +3,7 @@
 #include "MainComponent.h"
 #include "Localisation.h"
 #include "ArrangementAudit.h"
+#include "DarkTitleBar.h"
 #include <cmath>
 namespace {
 class ScaledContent:public juce::Component {
