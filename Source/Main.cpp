@@ -6,6 +6,16 @@
 #include "DarkTitleBar.h"
 #include <cmath>
 namespace {
+// A crash handler that leaves the stack on disk: the Windows event log names only
+// the executable, which is not enough to find the fault.
+void writeCrashLog(void*){
+    const auto file=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
+                        .getChildFile("FS Pitch/Fase Groove Arranger/crash.txt");
+    file.getParentDirectory().createDirectory();
+    file.replaceWithText(juce::String("Fase Groove Arranger crash\n")
+        +juce::Time::getCurrentTime().toString(true,true,true,true)+"\n\n"
+        +juce::SystemStats::getStackBacktrace());
+}
 class ScaledContent:public juce::Component {
 public:
     ScaledContent(){addAndMakeVisible(main);setSize(1440,980);}
@@ -33,6 +43,7 @@ public:
     bool moreThanOneInstanceAllowed()override{return getCommandLineParameterArray().contains("--scan-plugin")||getCommandLineParameterArray().contains("--plugin-catalog-test");}
     void initialise(const juce::String&)override{
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
+        juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if JUCE_MAC
         if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);

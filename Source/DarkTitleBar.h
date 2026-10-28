@@ -35,9 +35,12 @@ inline void applyDarkTitleBarToAll(){
     static std::set<void*> seen;
     for(int i=0;i<juce::TopLevelWindow::getNumTopLevelWindows();++i)
         if(auto* window=juce::TopLevelWindow::getTopLevelWindow(i))
-            if(auto* peer=window->getPeer())
-                if(void* handle=peer->getNativeHandle())
-                    if(seen.insert(handle).second)applyDarkTitleBar(*window);
+            // Only real windows: popup menus and tooltips are transient peers and get
+            // their own drawing, they must not reach DWM from the UI timer.
+            if(dynamic_cast<juce::DocumentWindow*>(window)!=nullptr)
+                if(auto* peer=window->getPeer())
+                    if(void* handle=peer->getNativeHandle())
+                        if(seen.insert(handle).second)applyDarkTitleBar(*window);
    #endif
 }
 }
