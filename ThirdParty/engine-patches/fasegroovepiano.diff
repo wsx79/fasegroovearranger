@@ -179,7 +179,27 @@
  
  void GrooveEngine::voiceProgression (const GrooveSettings& s,
                                       std::array<Chord, maxProgressionLength>& chords,
-@@ -2006,7 +1987,7 @@
+@@ -1646,8 +1627,18 @@
+             return (holdLength (line, pos) + 1) * stepLength + 0.06;
+ 
+         const double gate = std::clamp (s.gate, 0.05f, 1.0f);
++        // A held chord must not ring through the next chord change: a breakdown with
++        // half-bar chords would otherwise sound the old chord over the new one.
++        auto clampToChord = [&] (double beats)
++        {
++            if (s.stepsPerChord < 2)
++                return beats;
++            const long long slotStart = floorDiv (step, s.stepsPerChord) * s.stepsPerChord;
++            const double untilNext = (double) (s.stepsPerChord - (step - slotStart)) * stepLength;
++            return std::min (beats, std::max (0.04, untilNext * 0.98));
++        };
+         if (const int hold = holdLength (line, pos); hold > 0 || line[(size_t) pos] == 'g')
+-            return std::max (0.04, (hold + (hold > 0 ? gate : 0.6 * gate)) * stepLength);
++            return clampToChord (std::max (0.04, (hold + (hold > 0 ? gate : 0.6 * gate)) * stepLength));
+ 
+         // Like a pianist, a hit rings into the space before the next one: Gate is the share of
+         // that space it fills (a stab three 16ths before the next rings about two 16ths).
+@@ -2006,7 +1997,7 @@
          // bass, and intro, outro and breakdown have no bass anyway.
          if (s.section == Section::main || s.section == Section::drop)
          {
@@ -188,7 +208,7 @@
              return;
          }
          bassMode = BassMode::root;
-@@ -2214,7 +2195,7 @@
+@@ -2214,7 +2205,7 @@
      int gap = 1;
      while (gap < n && (line[(size_t) ((pos + gap) % n)] == '.' || line[(size_t) ((pos + gap) % n)] == '='))
          ++gap;
@@ -197,7 +217,7 @@
      const double steps = symbol == 'G' ? 0.3
                         : hold > 0      ? hold + gate
                                         : std::max (std::min ({ gate * gap, 4.0, gap - 0.08 }), std::min (gate, 0.9));
-@@ -2521,11 +2502,7 @@
+@@ -2521,11 +2512,7 @@
      if (mode == StringsMode::off)
          return;
      if (stringsFollowPiano (mode))
@@ -210,7 +230,7 @@
  
      const int spc = std::max (1, s.stepsPerChord);
      const double t = (double) step * stepLength;
-@@ -2656,13 +2633,7 @@
+@@ -2656,13 +2643,7 @@
  
      // The strings' pad starts with each chord; starting (or turning them on) in the middle of a
      // chord, it comes in at once for the rest of it.
@@ -225,7 +245,7 @@
      {
          const int spc = std::max (1, s.stepsPerChord);
          const auto now = (long long) std::floor (startPpq / stepLength + 1.0e-9);
-@@ -2677,33 +2648,11 @@
+@@ -2677,33 +2658,11 @@
              }
      }
  
@@ -264,7 +284,7 @@
      }
  
      pending.erase (std::remove_if (pending.begin(), pending.end(),
-@@ -2734,7 +2683,7 @@
+@@ -2734,7 +2693,7 @@
      {
          flushOffsUpTo (p.ppq, true, out);
  
@@ -273,7 +293,7 @@
          auto& off = offTime[k];
  
          if (off >= 0.0)
-@@ -2779,169 +2728,4 @@
+@@ -2779,169 +2738,4 @@
  }
  
  
