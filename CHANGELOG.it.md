@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.0
+
+- Il binario di release non include più i test di interfaccia. Si riattivano con FGA_SELF_TESTS.
+- Chitarra e lead condividono scale e accordi. L'arranger collega solo i file di famiglia che usa.
+- Il riconoscimento degli accordi distingue diminuiti, semidiminuiti, aumentati e sospesi, e i voicing restano nel MIDI 0–127.
+- Le pentatoniche di Locrio, maggiore armonica, Misolidio b6 e Frigio dominante restano dentro la scala.
+
 ## 0.24.0
 
 - Chitarra e lead seguono le estensioni del piano per sezione (sus, 6/9, 11, dominanti alterati e funky) invece di ridurle a 7 o 9.

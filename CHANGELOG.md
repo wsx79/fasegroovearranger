@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.0
+
+- The release build no longer contains the UI evidence harness. Turn it back on with FGA_SELF_TESTS.
+- Guitar and lead share one scale and chord module. The arranger links only the family files it uses.
+- Chord naming recognizes diminished, half-diminished, augmented and suspended sets, and voicings stay inside MIDI 0–127.
+- Pentatonic tones for Locrian, harmonic major, Mixolydian b6 and Phrygian dominant stay inside those scales.
+
 ## 0.24.0
 
 - Guitar and lead follow the piano's section extensions (sus, 6/9, 11, altered and funky dominants) instead of collapsing them to 7ths or 9ths.
