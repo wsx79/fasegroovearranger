@@ -27,7 +27,7 @@ PluginBrowser::PluginBrowser(PluginCatalog& c):catalog(c){
     categories.setViewedComponent(&column,false);
     categories.setScrollBarsShown(true,false);
     addAndMakeVisible(categories);
-    list.setModel(this);list.setRowHeight(36);list.addMouseListener(this,false);list.setMouseMoveSelectsRows(false);
+    list.setModel(this);list.setRowHeight(36);list.addMouseListener(this,true);list.setMouseMoveSelectsRows(false);
     list.setColour(juce::ListBox::backgroundColourId,Palette::background);
     list.setColour(juce::ListBox::outlineColourId,Palette::panelEdge);
     list.setOutlineThickness(1);
@@ -140,12 +140,14 @@ void PluginBrowser::returnKeyPressed(int){setVisible(false);}
 bool PluginBrowser::keyPressed(const juce::KeyPress& key){if(key==juce::KeyPress::escapeKey){setVisible(false);return true;}return false;}
 void PluginBrowser::mouseUp(const juce::MouseEvent& e){if(e.eventComponent!=this)return;if(!card().contains(e.position))setVisible(false);}
 void PluginBrowser::mouseMove(const juce::MouseEvent& e){
-    if(e.eventComponent!=&list)return;
-    const int row=list.getRowContainingPosition(e.x,e.y);
+    // ListBox rows live inside its viewport, so the event can come from a child.
+    if(e.eventComponent!=&list&&!list.isParentOf(e.eventComponent))return;
+    const auto p=e.getEventRelativeTo(&list).position;
+    const int row=list.getRowContainingPosition((int)p.x,(int)p.y);
     if(row!=hoverRow){const int previous=hoverRow;hoverRow=row;if(previous>=0)list.repaintRow(previous);if(hoverRow>=0)list.repaintRow(hoverRow);}
 }
 void PluginBrowser::mouseExit(const juce::MouseEvent& e){
-    if(e.eventComponent!=&list)return;
+    if(e.eventComponent!=&list&&!list.isParentOf(e.eventComponent))return;
     if(hoverRow>=0){const int previous=hoverRow;hoverRow=-1;list.repaintRow(previous);}
 }
 void PluginBrowser::resized(){
