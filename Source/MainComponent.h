@@ -293,6 +293,7 @@ private:
     std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};
     juce::Viewport arrangementPort,pianoPort,instrumentPort,inspectorPort;
+    IconButton inspectorCollapse{IconButton::Icon::close};
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
     InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
@@ -313,7 +314,6 @@ private:
     bool chordNameCacheReady=false;
     double songLengthCache=-1;
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
-    IconButton inspectorCollapse{IconButton::Icon::close};
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     // Full screen drops the native title bar, so the arranger reaches the screen edges.
     IconButton fullScreenButton{IconButton::Icon::fullScreen};

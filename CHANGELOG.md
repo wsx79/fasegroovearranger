@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.5
+
+- The inspector close button is laid out with the track card, so every supported width, including Lead, still fits.
+- The AI test ignores ALSA's missing-sound-device warning.
+
 ## 0.25.4
 
 - The inspector close button sits inside the track card header: a 24 px rounded icon, subtle background, orange hover and a 2 px X.

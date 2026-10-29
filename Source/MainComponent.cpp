@@ -1368,7 +1368,7 @@ void MainComponent::resized(){
         for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,top,inspectorVisible?inspectorWidth:0,std::max(60,footer-top));trackInspector.setSize(inspectorWidth-16,trackInspector.preferredHeight());
-        inspectorCollapse.setBounds(trackInspector.getWidth()-40,9,24,24);inspectorCollapse.setVisible(inspectorVisible);inspectorCollapse.toFront(false);
+        inspectorCollapse.setVisible(inspectorVisible);inspectorCollapse.toFront(false);
         inspectorResizer.setBounds(12+inspectorWidth,top,8,std::max(60,footer-top));inspectorResizer.toFront(false);
         mixer.setBounds(12,footer+36,right-12,dockHeight);
         const int tools=right-336;

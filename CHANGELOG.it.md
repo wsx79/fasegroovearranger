@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.5
+
+- Il pulsante di chiusura dell'inspector segue la card, così ogni larghezza prevista, Lead compreso, resta dentro i margini.
+- Il test dell'IA ignora l'avviso ALSA quando manca la scheda audio.
+
 ## 0.25.4
 
 - La chiusura dell'inspector sta nell'intestazione della card: icona arrotondata da 24 px, sfondo leggero, hover arancione e X da 2 px.

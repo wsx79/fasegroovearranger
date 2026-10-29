@@ -71,12 +71,16 @@ server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
 thread = threading.Thread(target=server.serve_forever, daemon=True)
 thread.start()
 endpoint = f'http://127.0.0.1:{server.server_port}'
+def quiet(stderr):
+    # ALSA complains when /dev/snd is missing; that is not a test failure.
+    return '\n'.join(line for line in stderr.splitlines() if 'ALSA lib' not in line and '/dev/snd/' not in line)
 try:
     for mode, expected in [('ok', ''), ('auth', 'requires authentication'), ('quota', 'quota'), ('invalid', 'unreadable'), ('redirect', 'HTTP 307'), ('missing', 'not installed'), ('memory', 'more system memory')]:
         Handler.mode = mode
         result = subprocess.run([str(binary), '--ai-http-test', endpoint], capture_output=True, text=True, timeout=15)
-        assert (result.returncode == 0) == (mode == 'ok'), (mode, result.stderr)
-        assert expected in result.stderr, (mode, result.stderr)
+        err = quiet(result.stderr)
+        assert (result.returncode == 0) == (mode == 'ok'), (mode, err)
+        assert expected in err, (mode, err)
     assert len(Handler.seen) == 7
     for path, body in Handler.seen:
         assert body['model'] == 'qwen3:8b' and body['think'] is False
@@ -88,26 +92,27 @@ try:
         Handler.mode = mode
         # Accept the frequently pasted /api endpoint, avoiding /api/api/tags.
         result = subprocess.run([str(binary), '--ai-models-test', endpoint + '/api'], capture_output=True, text=True, timeout=15)
-        assert (result.returncode == 0) == (mode == 'ok'), (mode, result.stderr)
-        assert expected in result.stderr, (mode, result.stderr)
+        err = quiet(result.stderr)
+        assert (result.returncode == 0) == (mode == 'ok'), (mode, err)
+        assert expected in err, (mode, err)
     with socket.socket() as unused:
         unused.bind(('127.0.0.1', 0))
         closed_port = unused.getsockname()[1]
     result = subprocess.run([str(binary), '--ai-models-test', f'http://127.0.0.1:{closed_port}'], capture_output=True, text=True, timeout=15)
-    assert result.returncode != 0 and 'Cannot reach Ollama' in result.stderr, result.stderr
+    assert result.returncode != 0 and 'Cannot reach Ollama' in quiet(result.stderr), quiet(result.stderr)
     Handler.mode = 'stall'
     start = time.monotonic()
     result = subprocess.run([str(binary), '--ai-models-cancel', endpoint], capture_output=True, text=True, timeout=8)
-    assert result.returncode == 0 and time.monotonic() - start < 5, result.stderr
+    assert result.returncode == 0 and time.monotonic() - start < 5, quiet(result.stderr)
     Handler.mode = 'stall'
     start = time.monotonic()
     result = subprocess.run([str(binary), '--ai-http-cancel', endpoint], capture_output=True, text=True, timeout=8)
-    assert result.returncode == 0 and time.monotonic() - start < 5, result.stderr
+    assert result.returncode == 0 and time.monotonic() - start < 5, quiet(result.stderr)
     if args.ui_output:
         Handler.mode = 'ok'
         app = root / args.build_dir / 'FaseGrooveArranger_artefacts' / 'Release' / 'Fase Groove Arranger'
         result = subprocess.run([str(app), '--ui-test', str(Path(args.ui_output).resolve())], env={**os.environ, 'FGA_AI_TEST_SERVER': endpoint}, capture_output=True, text=True, timeout=120)
-        assert result.returncode == 0, result.stderr[-4000:]
+        assert result.returncode == 0, quiet(result.stderr)[-4000:]
         for subdir in ['', 'ai-it']:
             evidence = Path(args.ui_output) / subdir / 'ai-local-http.txt'
             assert evidence.read_text().startswith('PASS'), evidence
