@@ -127,7 +127,9 @@ struct SampleAudition {
     SamplerSettings settings;
     juce::AudioBuffer<float> buffer{2,512};
     juce::MidiBuffer midi;
-    int track=0,note=60;
+    int track=0,note=60,seenRoot=-1;
+    double seenTempo=-1;
+    void* source=nullptr;
     bool started=false;
 };
 class AudioEngine : public juce::AudioIODeviceCallback, public juce::AudioPlayHead {
@@ -287,7 +289,8 @@ private:
     std::atomic<bool> previewing{false};
     void mixPreview(float* const* output,int channels,int count);
     void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
-    double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;
+    double sampleRate=44100,master=.8;
+    std::atomic<double> length{0},loopFrom{0},loopTo{0};
     // Serialised plugin state, reused until something invalidates it.
     std::vector<std::string> cachedInstrumentStates,cachedEffectStates;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
@@ -296,7 +299,7 @@ private:
     int blockSize=512;
     double deviceRate=44100;
     int deviceBlock=512;
-    bool looping=false,loopBypassed=false,needsReset=true,needsChase=false,needsResync=false,hardReset=true;
+    std::atomic<bool> looping{false},loopBypassed{false},needsReset{true},needsChase{false},needsResync{false},hardReset{true};
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
     void adoptState();
     void adoptWhileStopped();

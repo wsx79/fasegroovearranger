@@ -11,8 +11,9 @@ public:
                       loop, metronome, newFile, save, saveAs, exportFile, speaker, help, mixer, inspector, browser,
                       zoomSelection, fitWidth, follow, automation, loopSelection, piano, bass, strings, guitar, drum, lead, sparkles, studio, zoomIn, zoomOut };
 
-    explicit IconButton (Icon i = Icon::none) : juce::Button ({}), icon (i) {}
-    void setIcon (Icon i) { if (i != icon) { icon = i; repaint(); } }
+    explicit IconButton (Icon i = Icon::none) : juce::Button ({}), icon (i) { setTitle (iconTitle (i)); }
+    void setIcon (Icon i) { if (i != icon) { icon = i; setTitle (iconTitle (i)); repaint(); } }
+    static const char* iconTitle (Icon);
     void paintButton (juce::Graphics&, bool highlighted, bool down) override;
     static void drawIcon (juce::Graphics&, Icon, juce::Rectangle<float>, juce::Colour);
 

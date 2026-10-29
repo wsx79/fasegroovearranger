@@ -148,6 +148,34 @@ const char* scaleName (int scale) noexcept          { return scaleNames[mod (sca
 const std::array<int, 7>& scaleIntervals (int scale) noexcept { return scales[(size_t) mod (scale, numScales)]; }
 const char* noteName (int pitchClass) noexcept      { return noteNames[mod (pitchClass, 12)]; }
 
+bool keySpellsFlats (int keyRoot, int scale) noexcept
+{
+    // Spell from the parent major of the mode, so A major uses C# and F major uses Bb.
+    int parent = mod (keyRoot, 12);
+    switch (mod (scale, numScales))
+    {
+        case 1: parent = mod (keyRoot - 2, 12); break;                 // Dorian
+        case 2: case 6: case 7: parent = mod (keyRoot + 3, 12); break; // minor family
+        case 3: case 11: parent = mod (keyRoot + 5, 12); break;        // Mixolydian
+        case 4: case 10: parent = mod (keyRoot - 5, 12); break;        // Lydian
+        case 5: case 12: parent = mod (keyRoot - 4, 12); break;        // Phrygian
+        case 8: parent = mod (keyRoot + 1, 12); break;                  // Locrian
+        default: break;
+    }
+    switch (parent)
+    {
+        case 1: case 3: case 5: case 6: case 8: case 10: return true;   // Db F Gb Ab Bb Eb
+        default: return false;
+    }
+}
+
+const char* spelledNote (int pitchClass, int keyRoot, int scale) noexcept
+{
+    static const char* const sharp[12] { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+    static const char* const flat[12]  { "C", "Db", "D", "Eb", "E", "F", "Gb", "G", "Ab", "A", "Bb", "B" };
+    return (keySpellsFlats (keyRoot, scale) ? flat : sharp)[mod (pitchClass, 12)];
+}
+
 const char* extensionName (int ext) noexcept
 {
     static const char* const names[numExtensions] { "Triads", "7ths", "9ths", "11ths / 13ths",
@@ -202,7 +230,7 @@ Chord buildChord (int keyRoot, int scale, int degree, Extension ext) noexcept
         c.seventh = above (6) % 12;
 
     // Gospel / soulful dominant on degree V, whatever the scale says.
-    const bool alteredV = ext == Extension::alteredDominant && degree == 4;
+    const bool alteredV = ext == Extension::alteredDominant && degree == 4 && s[4] == 7;
     if (alteredV)
     {
         c.third = 4;
@@ -277,9 +305,9 @@ Chord buildChord (int keyRoot, int scale, int degree, Extension ext) noexcept
     return c;
 }
 
-std::string chordName (const Chord& c)
+std::string chordName (const Chord& c, int keyRoot, int scale)
 {
-    const std::string root = noteName (c.rootPc);
+    const std::string root = keyRoot < 0 ? noteName (c.rootPc) : spelledNote (c.rootPc, keyRoot, scale);
 
     if (c.suspended)
     {
@@ -392,6 +420,7 @@ std::string chromaticNumeral (int keyRoot, const Chord& c)
 
     std::string r = c.third == 3 ? lower[semis] : upper[semis];
     if (c.third == 3 && c.fifth == 6)  r += (c.seventh == 10 ? "\xc3\xb8" : "\xc2\xb0");
+    if (c.third == 4 && c.fifth == 8)  r += "+";
     return r;
 }
 

@@ -169,7 +169,7 @@ private:
     }
 };
 AiComposerWindow::AiComposerWindow(MainComponent& m):DocumentWindow("Fase Groove Arranger / "+text("Create with AI","Crea con IA"),Daw::base,DocumentWindow::closeButton),owner(m),panel(std::make_unique<AiComposerPanel>(m)){
-    setUsingNativeTitleBar(true);setAlwaysOnTop(true);setContentNonOwned(panel.get(),true);setResizable(true,false);setResizeLimits(920,700,1200,1000);const auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();centreWithSize(960,display?std::clamp(display->userArea.getHeight()-72,700,800):800);
+    setUsingNativeTitleBar(true);setContentNonOwned(panel.get(),true);setResizable(true,false);setResizeLimits(920,700,1200,1000);const auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();centreWithSize(960,display?std::clamp(display->userArea.getHeight()-72,700,800):800);
 }
 AiComposerWindow::~AiComposerWindow(){clearContentComponent();panel.reset();}
 void AiComposerWindow::closeButtonPressed(){panel->cancelJob();owner.dismissAuxiliaryWindow(*this);}
