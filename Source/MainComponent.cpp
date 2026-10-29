@@ -1000,8 +1000,8 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     };
     if(Updater::autoCheckEnabled()&&Updater::firstAutoCheckThisSession()&&!juce::JUCEApplication::getCommandLineParameters().contains("smoke-test"))updater.start(false);
     for(auto* s:{&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&gainSlider,&panSlider}){
-        auto callback=s->onValueChange;trackGesture(*s);
-        s->onValueChange=[this,s,callback]{if(!refreshing&&!inGesture(*s))checkpoint(s);if(callback)callback();};
+        auto callback=s->onValueChange;const bool mix=s==&masterSlider||s==&gainSlider||s==&panSlider;trackGesture(*s,{},mix);
+        s->onValueChange=[this,s,callback,mix]{if(!refreshing&&!inGesture(*s)){if(mix)checkpointMix(s);else checkpoint(s);}if(callback)callback();};
     }
     arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);trackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
@@ -1095,8 +1095,8 @@ juce::String MainComponent::sourceWithEffect(int track){
 const juce::String& MainComponent::cachedSourceName(int track){
     const auto i=(size_t)std::clamp(track,0,(int)project.tracks.size()-1);if(!sourceNameCached[i]){sourceNames[i]=soundSourceName(track);sourceNameCached[i]=true;}return sourceNames[i];
 }
-void MainComponent::trackGesture(juce::Slider& s,std::function<void()> onEnd){
-    s.onDragStart=[this,&s]{s.getProperties().set("fgaGesture",true);checkpoint();};
+void MainComponent::trackGesture(juce::Slider& s,std::function<void()> onEnd,bool mix){
+    s.onDragStart=[this,&s,mix]{s.getProperties().set("fgaGesture",true);if(mix)checkpointMix();else checkpoint();};
     s.onDragEnd=[&s,onEnd]{s.getProperties().set("fgaGesture",false);if(onEnd)onEnd();};
 }
 void MainComponent::useBuiltInSound(int track){
@@ -1147,6 +1147,7 @@ void MainComponent::updateEditingAvailability(){
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
 void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)audio.capturePluginStates(project);undoStack.push_back(project);if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back(project);if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
     const auto now=juce::Time::getMillisecondCounter();

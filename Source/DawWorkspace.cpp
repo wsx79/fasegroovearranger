@@ -36,10 +36,10 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m){
     for(auto* b:{&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&loop})b->setClickingTogglesState(false);
     mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);
     // Actions read the selection when clicked; nothing is cached between refreshes.
-    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;refresh();};
-    gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
-    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;refresh();};
-    pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
+    gain.onDragStart=[this]{gainGesture=true;owner.checkpointMix();};gain.onDragEnd=[this]{gainGesture=false;refresh();};
+    gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpointMix(&gain);owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
+    pan.onDragStart=[this]{panGesture=true;owner.checkpointMix();};pan.onDragEnd=[this]{panGesture=false;refresh();};
+    pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
     deleteTrack.setComponentID("delete-midi-track");deleteTrack.onClick=[this]{owner.deleteMidiTrack(owner.selectedTrack);};tip(deleteTrack,"Delete this handwritten MIDI track. Undo restores its notes and sound.");
     instrument.onClick=[this]{owner.showInstrument();};editor.onClick=[this]{owner.showEditor();};
     mute.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
@@ -141,10 +141,10 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     slider(gain,-60,6," dB");gain.setSliderStyle(juce::Slider::LinearVertical);gain.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);gain.setSkewFactor(2.2);
     slider(pan,-100,100,"%");pan.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);pan.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);pan.setMouseDragSensitivity(160);
     instrument.setColour(juce::TextButton::buttonColourId,Daw::surfaceHi);mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);clip.setColour(juce::TextButton::buttonOnColourId,Daw::meterHigh);
-    gain.onDragStart=[this]{gainGesture=true;owner.checkpoint();};gain.onDragEnd=[this]{gainGesture=false;};
-    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpoint();if(track<0)owner.project.masterGain=amplitude(gain.getValue());else owner.project.tracks[(size_t)track].gain=amplitude(gain.getValue());owner.mixChanged();};
-    pan.onDragStart=[this]{panGesture=true;owner.checkpoint();};pan.onDragEnd=[this]{panGesture=false;};
-    pan.onValueChange=[this]{if(updating||track<0)return;if(!panGesture)owner.checkpoint();owner.project.tracks[(size_t)track].pan=pan.getValue()/100.;owner.mixChanged();};
+    gain.onDragStart=[this]{gainGesture=true;owner.checkpointMix();};gain.onDragEnd=[this]{gainGesture=false;};
+    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpointMix(&gain);if(track<0)owner.project.masterGain=amplitude(gain.getValue());else owner.project.tracks[(size_t)track].gain=amplitude(gain.getValue());owner.mixChanged();};
+    pan.onDragStart=[this]{panGesture=true;owner.checkpointMix();};pan.onDragEnd=[this]{panGesture=false;};
+    pan.onValueChange=[this]{if(updating||track<0)return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)track].pan=pan.getValue()/100.;owner.mixChanged();};
     mute.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.mute=!t.mute;owner.mixChanged();};solo.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.solo=!t.solo;owner.mixChanged();};
     instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();

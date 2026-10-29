@@ -213,6 +213,9 @@ public:
     juce::AudioPluginInstance* plugin(int);
     juce::AudioPluginInstance* effectPlugin(int);
     void capturePluginStates(Project&);
+    // Undo for a mix edit (volume, pan, sends). Copies the last snapshot if one exists and
+    // never calls getStateInformation or takes the audio lock: that lock silences playback.
+    void reusePluginStates(Project&);
     // Call when a plugin's own state may have changed (load, restore, editor closed):
     // the next capture re-serialises it, otherwise the cached blob is reused.
     void invalidatePluginStates(){++pluginStateGeneration;}

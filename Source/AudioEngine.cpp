@@ -103,7 +103,7 @@ void AudioEngine::applyMix(const MixState& m,bool snap){
     busGraph.configure(m.buses,m.tempo,m.master,snap);
     master=m.master;masterAutomation=&m.masterAutomation;
     for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];const auto& t=m.tracks[ti];
-        if(i.parameters!=&t.parameters)i.parameterSent.fill(-1.f);   // other lanes: set every parameter again
+        if(i.parameters!=&t.parameters){bool same=i.parameters!=nullptr&&i.parameters->size()==t.parameters.size();for(size_t lane=0;same&&lane<t.parameters.size();++lane){const auto& was=(*i.parameters)[lane];const auto& now=t.parameters[lane];same=was.slot==now.slot&&was.index==now.index&&was.curve.enabled==now.curve.enabled&&was.curve.points.size()==now.curve.points.size();}if(!same)i.parameterSent.fill(-1.f);}   // a new lane list must be sent again; a gain edit is not one
         if(auto* sampler=dynamic_cast<SampleSynth*>(i.sampler.get()))if(sampler->configure(t.sampler,t.sampleRoot,m.tempo)&&playing){i.sounding.fill(false);i.resync=true;needsResync=true;}
         i.group=t.group;i.sends=t.sends;
         i.volume=&t.volume;i.panAutomation=&t.panAutomation;i.parameters=&t.parameters;i.gain=t.gain;i.pan=t.pan;mixTargets(i,master,snap);i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.tone;
@@ -474,6 +474,10 @@ void AudioEngine::capturePluginStates(Project& p){
         if(auto* effect=instruments[ti]->effect.get()){juce::MemoryBlock state;effect->getStateInformation(state);cachedEffectStates[ti]=state.toBase64Encoding().toStdString();p.tracks[ti].effectState=cachedEffectStates[ti];}
     }
     pluginStateCaptured=pluginStateGeneration;
+}
+void AudioEngine::reusePluginStates(Project& p){
+    if(pluginStateCaptured!=pluginStateGeneration)return;
+    for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){p.tracks[ti].instrumentState=cachedInstrumentStates[ti];p.tracks[ti].effectState=cachedEffectStates[ti];}
 }
 void AudioEngine::restoreHosted(int track,const juce::String& state,bool effect){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;juce::MemoryBlock data;if(data.fromBase64Encoding(state))if(auto* p=effect?instruments[(size_t)track]->effect.get():instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}
 void AudioEngine::restorePluginState(int track,const juce::String& state){restoreHosted(track,state,false);}

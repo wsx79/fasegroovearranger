@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.26.1
+
+- Muovere il volume di una traccia VST o del master durante la riproduzione non zittisce più l'audio. Il fader non scatta lo stato del plugin sul thread audio, e il livello resta sfumato.
+
 ## 0.26.0
 
 - Lo Studio disegna l'inviluppo di volume sulla forma d'onda e lo aggiorna con le manopole. Si trascinano inizio, fine, i fade e i punti di attack, decay, sustain e release; trascinando un tratto si piega la curva. FORMA scala la forma d'onda. Le manopole restano allineate e la modifica si annulla.

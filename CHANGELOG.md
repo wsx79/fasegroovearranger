@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.26.1
+
+- Moving a VST track or master volume during playback no longer silences the audio. The fader does not take a plugin-state snapshot on the audio thread, and the level still ramps.
+
 ## 0.26.0
 
 - Studio draws the volume envelope on the sample waveform and follows the knobs live. Drag the start, end, fades and the attack, decay, sustain and release points; drag a segment to bend it. SHAPE scales the waveform by the envelope. Knobs stay in sync and the edits undo.

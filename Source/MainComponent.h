@@ -191,6 +191,7 @@ public:
     void updateEditingAvailability();
     void stopPlaybackAndRecording();
     void checkpoint();
+    void checkpointMix(const void* control=nullptr);
     // onlyTrack: just that track's notes changed (its schedule alone is rebuilt).
     void changed(bool schedule=true,int onlyTrack=-1);
     void mixChanged();
@@ -249,7 +250,7 @@ public:
     juce::String sourceWithEffect(int track);
     const juce::String& cachedSourceName(int track);
     // Drag start/end of a slider: one undo step per gesture.
-    void trackGesture(juce::Slider&,std::function<void()> onEnd={});
+    void trackGesture(juce::Slider&,std::function<void()> onEnd={},bool mix=false);
     static bool inGesture(const juce::Component& c){return (bool)c.getProperties()["fgaGesture"];}
     void checkpoint(const void* control);
     void repaintHeader();

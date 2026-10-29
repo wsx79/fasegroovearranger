@@ -18,7 +18,7 @@ private:std::atomic<float> value{.75f};
 class AuditPlugin final : public juce::AudioPluginInstance {
 public:
     AuditPlugin():AudioPluginInstance(BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
-    std::atomic<bool> inside{false},overlap{false};bool slow=false;int calls=0,samples=0,lastMidi=-1;
+    std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false;int calls=0,samples=0,lastMidi=-1;
     std::array<int,1024> sizes{},starts{};std::array<float,1024> values{};std::array<double,1024> positions{};
     const juce::String getName()const override{return "Audit probe";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description.name=getName();}
@@ -33,7 +33,7 @@ public:
     double getTailLengthSeconds()const override{return 0;}int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Audit";}void changeProgramName(int,const juce::String&)override{}
     bool hasEditor()const override{return false;}juce::AudioProcessorEditor* createEditor()override{return nullptr;}
-    void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
+    void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
     void setStateInformation(const void*,int)override{if(inside)overlap=true;}
 private:AuditGain* gain=nullptr;
 };
@@ -50,6 +50,11 @@ struct EngineAuditTests {
         const int before=plugin->calls;engine.mutex.enter();juce::WaitableEvent returned;std::thread independent([&]{callback();returned.signal();});const bool nonblocking=returned.wait(10000);engine.mutex.exit();independent.join();requireAudit(nonblocking&&plugin->calls>before,"processBlock must run without acquiring the control mutex (bounded wait)");
         plugin->slow=true;std::atomic<bool> running{true};std::thread audio([&]{while(running)callback();});
         for(int n=0;n<20;++n){engine.capturePluginStates(project);engine.restorePluginState(0,"AAAAAA==");}running=false;audio.join();plugin->slow=false;requireAudit(!plugin->overlap&&!project.tracks[0].instrumentState.empty(),"plugin state snapshot executes without overlapping processBlock");
+        plugin->stateReads=0;plugin->calls=0;engine.play(true);running=true;std::thread playing([&]{while(running)callback();});
+        const int callsBefore=plugin->calls;const auto started=juce::Time::getMillisecondCounterHiRes();
+        for(int n=0;n<40;++n){project.tracks[0].gain=.2+.01*(n%4);engine.updateMix(project);engine.reusePluginStates(project);}
+        const double spent=juce::Time::getMillisecondCounterHiRes()-started;juce::Thread::sleep(20);const int callsAfter=plugin->calls;const int states=plugin->stateReads.load();running=false;playing.join();engine.stop();
+        requireAudit(states==0&&spent<80&&callsAfter>callsBefore,"volume changes stay lock-free: no plugin snapshot and processBlock keeps running");
         engine.stop();project.tracks[0].parameters.clear();ParameterAutomation lane;lane.index=0;lane.curve.enabled=true;const double point=141.*120/(44100*60);lane.curve.points={{0,0,0},{point,1,0},{1,1,0}};project.tracks[0].parameters.push_back(lane);
         plugin->calls=plugin->samples=0;plugin->lastMidi=-1;engine.publish(project);engine.play(true);engine.liveMidi(0,juce::MidiMessage::noteOn(1,65,.8f),false); // zero-offset UI input
         // An explicitly timed live event must retain its position through plugin subblocks.
