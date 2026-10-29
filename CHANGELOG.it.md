@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.12
+
+- La finestra riempie di nuovo la larghezza invece di lasciare bande vuote su schermi grandi, con un pavimento a 700 px perché le finestre molto basse non sovrappongano le righe.
+- I pulsanti si restringono fino all'85% prima di usare i puntini, così etichette come GENERATE SONG restano leggibili.
+- Nomi degli accordi e durata del brano sono in cache e si invalidano al cambiamento, invece di essere ricostruiti dal progetto a ogni frame e a ogni tick del timer.
+
 ## 0.23.11
 
 - La finestra scala sull'asse più corto e centra il canvas 1440x980: a 1280x720 o su ultra-wide il layout non viene più tagliato né deformato.

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.12
+
+- The window fills the width again instead of leaving empty bands on a large screen, with a 700 px floor so very short windows cannot overlap their rows.
+- Action buttons shrink to 85% before using an ellipsis, so labels such as GENERATE SONG stay readable.
+- Chord names and the song length are cached and invalidated on change instead of being rebuilt from the project on every frame and timer tick.
+
 ## 0.23.11
 
 - The window scales on the smaller axis and centres the 1440x980 canvas: a 1280x720 or ultra-wide window no longer clips the layout or stretches it out of proportion.
