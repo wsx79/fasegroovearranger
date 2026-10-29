@@ -660,10 +660,11 @@ class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
     MainComponent& owner;
     PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
-        // The native peer can size the window while showing it, so centre once it is on
-        // screen or the first open lands wherever Cocoa/Win32 left it.
-        centreWithSize(getWidth(),getHeight());}
-    void closeButtonPressed()override{owner.dismissAuxiliaryWindow(*this);}
+        // The native peer can size the window while showing it; centre on the next
+        // message-loop turn, when the final size is known.
+        juce::Component::SafePointer<PluginWindow> safe(this);
+        juce::MessageManager::callAsync([safe]{if(safe)safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
+    void closeButtonPressed()override{owner.audio.invalidatePluginStates();owner.dismissAuxiliaryWindow(*this);}
 };
 namespace {
 void settleNativeFocus(juce::Component& component){

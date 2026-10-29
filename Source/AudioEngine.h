@@ -210,6 +210,9 @@ public:
     juce::AudioPluginInstance* plugin(int);
     juce::AudioPluginInstance* effectPlugin(int);
     void capturePluginStates(Project&);
+    // Call when a plugin's own state may have changed (load, restore, editor closed):
+    // the next capture re-serialises it, otherwise the cached blob is reused.
+    void invalidatePluginStates(){++pluginStateGeneration;}
     void restorePluginState(int,const juce::String&);
     void restoreEffectState(int,const juce::String&);
     // Same processing graph for playback and export. Export temporarily owns the engine.
@@ -285,6 +288,9 @@ private:
     void mixPreview(float* const* output,int channels,int count);
     void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
     double sampleRate=44100,length=0,loopFrom=0,loopTo=0,master=.8;
+    // Serialised plugin state, reused until something invalidates it.
+    std::vector<std::string> cachedInstrumentStates,cachedEffectStates;
+    std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
     int blockSize=512;

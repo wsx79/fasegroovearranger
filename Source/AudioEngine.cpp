@@ -348,6 +348,7 @@ juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root,c
     if(oldPlugin)oldPlugin->releaseResources();return juce::Result::ok();
 }
 void AudioEngine::swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription& description){
+    invalidatePluginStates();
     for(;;){double rate=0;int block=0;{const EngineControlLock lock(*this);rate=sampleRate;block=blockSize;}
         next->setPlayHead(this);next->setRateAndBufferSizeDetails(rate,block);next->prepareToPlay(rate,block);
         std::unique_ptr<juce::AudioPluginInstance> old;std::unique_ptr<juce::Synthesiser> oldSampler;bool retry=false;
@@ -457,9 +458,27 @@ juce::AudioPluginInstance* AudioEngine::plugin(int track){return instruments[(si
 juce::AudioPluginInstance* AudioEngine::effectPlugin(int track){return instruments[(size_t)track]->effect.get();}
 // State serialization/restoration is control-thread work and cannot overlap processing.
 // The callback never waits on the control mutex; it emits silence during this short snapshot.
-void AudioEngine::capturePluginStates(Project& p){if(hostedCount.load()==0||exporting.load())return;const EngineControlLock lock(*this);if(exporting)return;for(size_t ti=0;ti<instruments.size()&&ti<p.tracks.size();++ti){if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);p.tracks[ti].instrumentState=state.toBase64Encoding().toStdString();}if(auto* effect=instruments[ti]->effect.get()){juce::MemoryBlock state;effect->getStateInformation(state);p.tracks[ti].effectState=state.toBase64Encoding().toStdString();}}}
-void AudioEngine::restorePluginState(int track,const juce::String& state){const EngineControlLock lock(*this);if(exporting)return;juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
-void AudioEngine::restoreEffectState(int track,const juce::String& state){const EngineControlLock lock(*this);if(exporting)return;juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->effect.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
+void AudioEngine::capturePluginStates(Project& p){
+    if(hostedCount.load()==0||exporting.load())return;
+    // getStateInformation runs under the engine lock, which interrupts the audio: reuse the
+    // serialised blob until something invalidates it (load, restore, editor closed).
+    if(pluginStateCaptured==pluginStateGeneration){
+        for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){
+            p.tracks[ti].instrumentState=cachedInstrumentStates[ti];
+            p.tracks[ti].effectState=cachedEffectStates[ti];
+        }
+        return;
+    }
+    const EngineControlLock lock(*this);if(exporting)return;
+    cachedInstrumentStates.resize(instruments.size());cachedEffectStates.resize(instruments.size());
+    for(size_t ti=0;ti<instruments.size()&&ti<p.tracks.size();++ti){
+        if(auto* plugin=instruments[ti]->plugin.get()){juce::MemoryBlock state;plugin->getStateInformation(state);cachedInstrumentStates[ti]=state.toBase64Encoding().toStdString();p.tracks[ti].instrumentState=cachedInstrumentStates[ti];}
+        if(auto* effect=instruments[ti]->effect.get()){juce::MemoryBlock state;effect->getStateInformation(state);cachedEffectStates[ti]=state.toBase64Encoding().toStdString();p.tracks[ti].effectState=cachedEffectStates[ti];}
+    }
+    pluginStateCaptured=pluginStateGeneration;
+}
+void AudioEngine::restorePluginState(int track,const juce::String& state){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->plugin.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
+void AudioEngine::restoreEffectState(int track,const juce::String& state){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;juce::MemoryBlock data;if(data.fromBase64Encoding(state)){if(auto* p=instruments[(size_t)track]->effect.get())p->setStateInformation(data.getData(),(int)data.getSize());}}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}
 juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak){
     if(isAudioRecording())return juce::Result::fail("Finish audio recording before exporting.");
