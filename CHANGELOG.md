@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.24.0
+
+- Guitar and lead follow the piano's section extensions (sus, 6/9, 11, altered and funky dominants) instead of collapsing them to 7ths or 9ths.
+- Chord names and the key menu use the key signature, so A major shows C#m7 rather than Dbm7. The circle of fifths keeps the current mode.
+- Altered V is skipped when the scale has no perfect fifth. Chromatic numerals mark augmented chords.
+- Transposing a selection does nothing if any note would leave MIDI 0–127.
+- Export no longer adopts a half-edited project mid-render. Plugin state is not read from the audio lock while playing. Seek, play and loop no longer silence the callback. Sample audition skips repeated setup. A clipped export reports the peak.
+- UI: minimum scale 0.85, repaint only while the arrangement or piano is clicked, fainter static 4/4, mixer name tooltips, shorter sampler readouts, icon names for assistive tech, and the composer window no longer stays above other dialogs.
+
 ## 0.23.15
 
 - The first note of a section is visible again: the clip's inner margin no longer culls or covers it, and the section divider sits under the clips as a 1 px line on the exact boundary.

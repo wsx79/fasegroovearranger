@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.24.0
+
+- Chitarra e lead seguono le estensioni del piano per sezione (sus, 6/9, 11, dominanti alterati e funky) invece di ridurle a 7 o 9.
+- I nomi degli accordi e il menu tonalità usano l'armatura: in La maggiore si legge C#m7, non Dbm7. Il circolo delle quinte conserva il modo.
+- Il V alterato non scatta se la scala non ha la quinta giusta. I numeri cromatici segnano gli aumentati.
+- Il transpose di una selezione non fa nulla se una nota uscirebbe da MIDI 0–127.
+- L'export non adotta un progetto a metà render. Lo stato dei plugin non si legge sotto il lock audio durante il play. Seek, play e loop non zittiscono più la callback. L'ascolto del campione evita il setup ripetuto. Un export che clippa segnala il picco.
+- UI: scala minima 0,85, ridisegno solo con il mouse su arrangiamento o piano, 4/4 statico più tenue, tooltip sui nomi del mixer, cifre più corte nel sampler, nomi per le icone e la finestra del compositore non resta più sopra gli altri dialoghi.
+
 ## 0.23.15
 
 - La prima nota di una sezione si vede di nuovo: il margine interno del clip non la scarta più e il divisore di sezione sta sotto i clip, 1 px sul confine esatto.
