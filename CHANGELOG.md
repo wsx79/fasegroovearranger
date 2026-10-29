@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.10
+
+- The kit answers every section that follows a filled one with a crash on its downbeat, and rebuilding with the stored seeds still produces the same take.
+- Track names are project data: a track called Lead stays Lead in the mixer and inspector instead of being translated to Solista.
+- Mixer strips created during the session get their tooltips like the ones built at startup.
+- The status line, chord strip, editor title and song length use the theme's body size instead of JUCE's 15 px default.
+- The user guide window fits screens smaller than 1100x800.
+
 ## 0.23.9
 
 - GENERATE is labelled GENERATE SONG again and the caret lists the other scopes, so the main button states what it rewrites.

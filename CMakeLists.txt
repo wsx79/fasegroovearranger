@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.23.9 LANGUAGES C CXX)
+﻿cmake_minimum_required(VERSION 3.22)
+project(FaseGrooveArranger VERSION 0.23.10 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)

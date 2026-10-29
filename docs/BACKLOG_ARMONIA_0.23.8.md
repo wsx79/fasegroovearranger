@@ -15,6 +15,7 @@ Aggiornato: 29 ottobre 2026.
 
 ## Provato e annullato
 
+- **Accordo unico piano/chitarra/lead**: palette estesa (6/9, Sus, 11ths, 13ths, 7#9) nei due motori vendored e mappatura unica in `Project.cpp`; compilava e i test passavano, ma all'ascolto il risultato non è piaciuto. Annullato senza toccare i repo dei motori: si riparte solo se si decide una direzione diversa.
 - **Fold dell'ottava del lead**: il fold a 96 viola il contratto coperto dal test `arranger_core`, "global lead octave = +12 esatto su ogni nota" (`tests/CoreTests.cpp:520`). Revert upstream in `fasegroovelead` `31af807`, pin invariato. Va ripreso solo dopo aver deciso se il contratto cambia; in alternativa si limita la somma ottava globale + ottava lane nell'arranger (Source), senza toccare il motore.
 
 ## Da fare, in quest'ordine

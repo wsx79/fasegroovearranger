@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.10
+
+- La batteria risponde a ogni sezione che segue un fill con un crash sul downbeat, e ricostruendo con i seed salvati la take resta identica.
+- I nomi delle tracce sono dati del progetto: una traccia chiamata Lead resta Lead nel mixer e nell'inspector invece di diventare Solista.
+- Le strip del mixer create durante la sessione hanno i tooltip come quelle costruite all'avvio.
+- Barra di stato, striscia accordi, titolo editor e durata usano il corpo del tema invece dei 15 px predefiniti di JUCE.
+- La finestra della guida sta negli schermi più piccoli di 1100x800.
+
 ## 0.23.9
 
 - Il pulsante torna a chiamarsi GENERATE SONG (GENERA BRANO) e il caret elenca gli altri scope, così è chiaro cosa riscrive l'azione principale.

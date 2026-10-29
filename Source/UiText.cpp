@@ -109,6 +109,8 @@ juce::String controlTip(const juce::String& key){
 }
 
 void translateControls(juce::Component& c){
+    // Track and clip names are project data: a track called "Lead" must stay Lead.
+    if(c.getProperties().contains("fgaRawText"))return;
     auto& properties=c.getProperties();
     auto text=[&](const juce::String& current,const juce::String& name){
         auto source=name+"Source",last=name+"Last";
