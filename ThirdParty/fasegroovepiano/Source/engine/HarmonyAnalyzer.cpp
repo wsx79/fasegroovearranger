@@ -26,16 +26,20 @@ namespace
         // Chord tones count; colour tones a pianist adds (9ths, 6ths, maj7 / m7, 11ths) are free;
         // anything else counts against the chord.
         struct Kind { int tones[4]; double weights[4]; int numTones; int colours[3]; };
-        static constexpr Kind kinds[3] {
+        static constexpr Kind kinds[] {
             { { 0, 4, 7, 0 },  { 1.0, 1.0, 0.7, 0.0 }, 3, { 2, 9, 11 } },   // major (add9, 6, maj7)
             { { 0, 3, 7, 0 },  { 1.0, 1.0, 0.7, 0.0 }, 3, { 2, 10, 5 } },   // minor (9, m7, 11)
             { { 0, 4, 7, 10 }, { 1.0, 1.0, 0.6, 0.9 }, 4, { 1, 3, 9 } },    // dominant 7 (b9, #9, 13)
+            { { 0, 3, 6, 0 },  { 1.0, 1.0, 0.8, 0.0 }, 3, { 9, 10, 0 } },   // diminished (dim7, m7)
+            { { 0, 3, 6, 10 }, { 1.0, 1.0, 0.7, 0.8 }, 4, { 0, 0, 0 } },    // half-diminished
+            { { 0, 4, 8, 0 },  { 1.0, 1.0, 0.8, 0.0 }, 3, { 0, 0, 0 } },    // augmented
+            { { 0, 5, 7, 0 },  { 1.0, 1.0, 0.7, 0.0 }, 3, { 10, 2, 0 } },   // sus4 (b7, 9)
         };
 
         WindowChord best;
         double bestScore = -1.0e9;
         for (int root = 0; root < 12; ++root)
-            for (int k = 0; k < 3; ++k)
+            for (int k = 0; k < (int) (sizeof (kinds) / sizeof (kinds[0])); ++k)
             {
                 const auto& kind = kinds[k];
                 bool used[12] {};

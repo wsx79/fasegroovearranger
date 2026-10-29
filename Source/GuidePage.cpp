@@ -145,5 +145,9 @@ private:
 }
 std::unique_ptr<juce::Component> createGuidePage(bool english){return std::make_unique<GuidePage>(english);}
 std::unique_ptr<juce::Component> createReferencePage(const juce::String& title,const juce::String& markdown){return std::make_unique<GuidePage>(title,markdown);}
-bool verifyGuidePages(const juce::File& folder){GuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, eight images including AI/Lead/cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;}
+bool verifyGuidePages(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#elseGuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, eight images including AI/Lead/cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;#endif
+}
 }

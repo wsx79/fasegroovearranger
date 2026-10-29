@@ -833,6 +833,9 @@ VoicedChord voiceChord (const Chord& chord, Voicing voicing, int centre,
     }
 
     v.rightHand = best;
+    auto clampMidi = [] (NoteSet& notes) { for (int i = 0; i < notes.size; ++i) notes.notes[(size_t) i] = std::clamp (notes.notes[(size_t) i], 0, 127); };
+    clampMidi (v.rightHand);
+    clampMidi (v.leftHand);
     return v;
 }
 
@@ -884,16 +887,19 @@ float transitionScore (const Chord& a, const VoicedChord& va, const Chord& b, co
 
 NoteSet pentatonicNotes (int keyRoot, int scale, int low, int high) noexcept
 {
-    // Minor-third scales use 1 b3 4 5 b7, major-third scales 1 2 3 5 6.
-    static constexpr int minorDegrees[5] { 0, 2, 3, 4, 6 };
-    static constexpr int majorDegrees[5] { 0, 1, 2, 4, 5 };
-
-    const auto& s = scaleIntervals (scale);
-    const int* degrees = scaleIsMinor (scale) ? minorDegrees : majorDegrees;
-
+    // Five scale tones, not a walk of diatonic degrees (that walks off the pentatonic
+    // on Locrian, harmonic major, Mixolydian b6 and Phrygian dominant).
+    // Major and natural minor match the usual 1 2 3 5 6 and 1 b3 4 5 b7 sets.
+    static constexpr int tones[numScales][5] {
+        { 0, 2, 4, 7, 9 }, { 0, 3, 5, 7, 10 }, { 0, 3, 5, 7, 10 }, { 0, 2, 4, 7, 9 },
+        { 0, 2, 4, 7, 9 }, { 0, 3, 5, 7, 10 }, { 0, 3, 5, 7, 8 }, { 0, 3, 5, 7, 11 },
+        { 0, 1, 3, 6, 10 }, { 0, 2, 4, 7, 11 }, { 0, 2, 4, 7, 9 }, { 0, 2, 4, 7, 10 },
+        { 0, 1, 4, 7, 10 }
+    };
+    const auto& row = tones[mod (scale, numScales)];
     bool isMember[12] {};
     for (int i = 0; i < 5; ++i)
-        isMember[mod (keyRoot + s[(size_t) degrees[i]], 12)] = true;
+        isMember[mod (keyRoot + row[i], 12)] = true;
 
     NoteSet out;
     for (int n = low; n <= high; ++n)

@@ -34,8 +34,8 @@ bool isChordLane (int lane) noexcept;
 //==============================================================================
 /** Chord qualities, as the chord slots show them. */
 enum class ChordType { maj7 = 0, m7, dom7, m9, maj9, dom9, m11, dom13, sus4, sixNine, major, minor,
-                       halfDim, dim, aug };   // (new types are appended: saved projects keep theirs)
-constexpr int numChordTypes = 15;
+                       halfDim, dim, aug, mMaj7, dim7, dom7b9 };   // (new types are appended: saved projects keep theirs)
+constexpr int numChordTypes = 18;
 const char* chordTypeName (int type) noexcept;   // "maj7", "m7", "7" ... ("" for a major triad)
 /** The intervals of a chord type, as a bit mask over the 12 semitones above the root. */
 unsigned chordTypeMask (int type) noexcept;

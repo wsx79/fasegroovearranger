@@ -139,6 +139,9 @@ bool PianoRoll::editKeys(const juce::KeyPress& key){
 }
 
 bool MainComponent::verifyNavigation(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto saved=project;const auto savedUndo=undoStack,savedRedo=redoStack;const auto board=clipboard;
     const int track=selectedTrack,section=selectedSection;const double oldZoom=arrangement.pixelsPerBar,oldPianoZoom=piano.pixelsPerBeat;
     const bool savedDirty=dirty;audio.stop();editCursor=-1;
@@ -200,10 +203,14 @@ bool MainComponent::verifyNavigation(const juce::File& folder){
     undoStack=savedUndo;redoStack=savedRedo;dirty=savedDirty;refreshControls();
     folder.getChildFile("daw-navigation.txt").replaceWithText(ok?"PASS anchored wheel zoom, scrolling, selection zoom/loop, MIDI nudge/transpose/duplicate/cut/paste, drum isolation, gesture safety and atomic undo":"FAIL "+failed);
     return ok;
+#endif
 }
 // Native presentation regressions use the real controls. Navigation must not edit
 // musical data; the small master meter must be driven by actual callback audio.
 bool MainComponent::verifyPresentation(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto saved=project;const auto undos=undoStack,redos=redoStack;const auto midi=midiFile(project);
     const bool wasDirty=dirty,wasInspector=inspectorVisible,wasMixer=mixerVisible,wasTime=timeDisplay;
     const int track=selectedTrack,section=selectedSection;const double zoom=arrangement.pixelsPerBar,cursor=editCursor,at=audio.position();const auto scroll=arrangementPort.getViewPosition();
@@ -247,6 +254,7 @@ bool MainComponent::verifyPresentation(const juce::File& folder){
     changed();audio.seek(at);undoStack=undos;redoStack=redos;dirty=wasDirty;select(track,section);resized();arrangementPort.setViewPosition(scroll);showPosition(timelinePosition());stage("test restores musical project",json()==original&&midiFile(project)==midi);
     folder.getChildFile("presentation.txt").replaceWithText(ok?"PASS header double-click/inspector; rotary gain/pan Undo; home knobs; real master meter and mixer reopening; footer zoom/fit; elapsed/remaining time and beat-aligned ruler; unchanged MIDI, project, grid and Undo":"FAIL "+failures);
     return ok;
+#endif
 }
 
 }

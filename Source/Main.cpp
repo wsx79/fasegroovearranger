@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
 #include "Localisation.h"
+#if FGA_SELF_TESTS
 #include "ArrangementAudit.h"
+#endif
 #include "DarkTitleBar.h"
 #include <cmath>
 namespace {
@@ -54,6 +56,7 @@ public:
         auto args=getCommandLineParameterArray();
        #if JUCE_MAC
         if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
+       #if FGA_SELF_TESTS
         // Launching the executable from a terminal does not activate a Cocoa app.
         // Native input/focus tests must start with the same foreground state as
         // an application opened normally, before synthesising JUCE mouse events.
@@ -62,12 +65,14 @@ public:
             while(!juce::Process::isForegroundProcess()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
         }
        #endif
+       #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){
             setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;
         }
         if(args.size()==3&&args[0]=="--plugin-catalog-test"){
             const bool ok=fga::PluginCatalog::verify(juce::File(args[1]),juce::File(args[2]));setApplicationReturnValue(ok?0:1);quit();return;
         }
+#if FGA_SELF_TESTS
         if(args.size()==2&&args[0]=="--club-audit"){
             const bool ok=fga::writeClubAudioAudit(juce::File(args[1]));
             setApplicationReturnValue(ok?0:1);quit();return;
@@ -242,6 +247,7 @@ public:
             }
             setApplicationReturnValue(ok?0:1);quit();return;
         }
+#endif
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
         window->content->main.openFromCommandLine(getCommandLineParameters());
     }

@@ -76,6 +76,9 @@ private:
 };
 }
 bool verifyPianoTools(MainComponent& owner,const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto original=owner.project;auto undos=owner.undoStack,redos=owner.redoStack;const bool wasDirty=owner.dirty;
     bool ok=true;const char* names[]{"piano-dna","piano-morph","piano-coach","piano-variants","piano-circle"};
     for(int kind=1;kind<=5;++kind){MusicalTools page(owner,kind);if(kind==3)ok=page.verifyCoachChoice()&&ok;auto image=page.createComponentSnapshot(page.getLocalBounds());if(auto out=folder.getChildFile(juce::String(names[kind-1])+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*out)&&ok;}else ok=false;}
@@ -83,6 +86,7 @@ bool verifyPianoTools(MainComponent& owner,const juce::File& folder){
     owner.project=original;owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.changed(false);owner.dirty=wasDirty;
     folder.getChildFile("piano-tools.txt").replaceWithText(ok?"PASS original DNA/Morph/Voicing Coach/Chord Variants/Circle rendered; MIDI Learn retains eight slots after ten chords; Coach APPLY follows the selected voicing":"FAIL piano musical tools or MIDI Learn");
     return ok;
+#endif
 }
 void MainComponent::randomPianoMaterial(bool velocities,bool bass){checkpoint();auto& e=project.tracks[(size_t)selectedTrack].engine;auto source=playingPattern(*this);const auto seed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});auto target=sgk::makeRandomPattern(seed,(float)(e.density<0?project.settings.density:e.density),project.settings.genre);if(!velocities){for(int i=0;i<4;++i)if(e.segmentLocked[(size_t)i])sgk::copySegment(target,source,i);if(bass)target.rightHand=source.rightHand;else target.leftHand=source.leftHand;sgk::repairHolds(target.rightHand);sgk::repairHolds(target.leftHand);e.segments={0,1,2,3};setPianoPattern(e,target);}else {if(e.pattern!=sgk::userPatternIndex())setPianoPattern(e,source);auto& row=selectedTrack==1?e.userVelLeft:e.userVelRight;for(size_t i=0;i<32;++i)if(!e.segmentLocked[i/8])row[i]=(unsigned char)juce::Random::getSystemRandom().nextInt({45,128});}applyInstrumentSettings(selectedTrack,false);}
 void MainComponent::showPianoTools(int type){

@@ -41,6 +41,7 @@ HarmonyAnalysis analyzeHarmony (const std::vector<AnalyzedNote>& notes, int beat
     chords' rhythm on the right hand, the bass's (low notes under the chords) on the left, with
     accents, ghost notes and holds. Steps that play in at least half of the two-bar rounds count.
     Empty (length 0) when it can't be read: not 4/4, or fewer than three chord hits. */
+// Not called by the arranger (the plugin uses it). Kept so the vendored analyzer stays whole.
 GroovePattern grooveFromNotes (const std::vector<AnalyzedNote>& notes, int beatsPerBar = 4);
 
 } // namespace sgk

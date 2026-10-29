@@ -62,6 +62,9 @@ void MainComponent::timelineCommand(int command){
     message("Timeline edited. Undo restores the previous clips.");
 }
 bool MainComponent::verifyTimelineEditing(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto saved=project;const int savedTrack=selectedTrack,savedSection=selectedSection;const auto savedZoom=arrangement.pixelsPerBar;const auto board=timelineClipboard;
     audio.stop();editCursor=-1;project.sections={{Section::main,4,"Main"},{Section::breakdown,4,"Break"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(2,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0},{4,.25,36,90,0},{8,.25,36,80,0},{12,.25,36,70,0}};
     arrangement.pixelsPerBar=64;selectedClip=-1;arrangement.selectedClips.clear();showArrangement();selectClip(4,0);changed();arrangementPort.setViewPosition(0,0);bool ok=true;juce::String failed;
@@ -93,6 +96,7 @@ bool MainComponent::verifyTimelineEditing(const juce::File& folder){
     project.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"},{Section::outro,4,"Outro"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(3,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[2].notes={{0,.25,36,55,0}};project.resizeClipLoop(4,0,32);selectClip(4,2);project.resizeGuide(0,6);changed();ok=ok&&selectedClip==1&&clipStart()==32&&clip().notes.size()==1&&clip().notes[0].velocity==55;stage("selected clip survives materialisation of fully covered legacy blocks");
     project=saved;editCursor=-1;selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();timelineClipboard=board;arrangement.pixelsPerBar=savedZoom;select(savedTrack,savedSection);showArrangement();changed();undoStack.clear();redoStack.clear();refreshControls();
     folder.getChildFile("timeline-editing.txt").replaceWithText(ok?"PASS clip split, copy/cut/paste, duplicate/delete, cross-track drag, drum remapping, Undo, editable guide, independent MIDI editor, project round trip and empty-track editing":"FAIL timeline editing: "+failed);return ok;
+#endif
 }
 
 }
