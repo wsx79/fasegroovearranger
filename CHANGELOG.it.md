@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.13
+
+- Messaggi di stato, salvataggio, apertura e plugin, più i titoli delle finestre di scelta file, sono tradotti: erano fissi in italiano per tutte le lingue.
+- Il crash che risponde a una sezione con fill arriva anche sulle tracce staccate dagli editing della timeline, non solo sulla forma fissa.
+
 ## 0.23.12
 
 - La finestra riempie di nuovo la larghezza invece di lasciare bande vuote su schermi grandi, con un pavimento a 700 px perché le finestre molto basse non sovrappongano le righe.

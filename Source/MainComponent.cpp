@@ -929,12 +929,12 @@ MainComponent::MainComponent(){
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{useBuiltInSound(selectedTrack);};
     sampleButton.onClick=[this]{browseSamplesFor(selectedTrack);};
     loadPluginButton.onClick=[this]{showPluginMenu();};
-    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;auto* inst=audio.plugin(selectedTrack);auto* fx=audio.effectPlugin(selectedTrack);if(!inst&&!fx){message("Nessun plugin caricato su questa traccia.");return;}if(inst&&fx){juce::PopupMenu menu;menu.addItem(1,tr("OPEN INSTRUMENT"));menu.addItem(2,tr("OPEN EFFECT"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe](int id){if(!safe||id==0)return;auto* p=id==2?safe->audio.effectPlugin(safe->selectedTrack):safe->audio.plugin(safe->selectedTrack);if(!p)return;safe->pluginWindow.reset();safe->pluginWindow=std::make_unique<PluginWindow>(*safe,*p);});return;}pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*this,*(inst?inst:fx));};
+    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;auto* inst=audio.plugin(selectedTrack);auto* fx=audio.effectPlugin(selectedTrack);if(!inst&&!fx){message("No plugin loaded on this track.");return;}if(inst&&fx){juce::PopupMenu menu;menu.addItem(1,tr("OPEN INSTRUMENT"));menu.addItem(2,tr("OPEN EFFECT"));juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe](int id){if(!safe||id==0)return;auto* p=id==2?safe->audio.effectPlugin(safe->selectedTrack):safe->audio.plugin(safe->selectedTrack);if(!p)return;safe->pluginWindow.reset();safe->pluginWindow=std::make_unique<PluginWindow>(*safe,*p);});return;}pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*this,*(inst?inst:fx));};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
-    importButton.onClick=[this]{chooseFile("Importa note nella sezione selezionata","*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
+    importButton.onClick=[this]{chooseFile(tr("Import notes into the selected section"),"*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
     addSectionButton.onClick=[this]{showAddSectionMenu();};
     saveButton.onClick=[this]{save(false);};saveAsButton.onClick=[this]{save(true);};
-    openButton.onClick=[this]{chooseFile("Apri progetto Fase Groove Arranger","*.fga",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){open(f);});};
+    openButton.onClick=[this]{chooseFile(tr("Open Fase Groove Arranger project"),"*.fga",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){open(f);});};
     newButton.onClick=[this]{juce::Component::SafePointer<MainComponent> safe(this);requestClose([safe]{if(safe)safe->createNewProject();});};
     exportButton.onClick=[this]{exportMenu();};settingsButton.onClick=[this]{showAudioSettings();};aboutButton.onClick=[this]{showAbout();};helpButton.onClick=[this]{showGuide(Localisation::current()!=Localisation::Language::italian);};
     playButton.onColour=Daw::play;loopButton.onColour=Daw::accent;metronomeButton.onColour=Daw::accent;
@@ -992,7 +992,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     }
     arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);trackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
-    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Pronto · Spazio: play/pausa · Tasto destro: opzioni · Autosave ogni minuto."));startTimerHz(20);
+    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));startTimerHz(20);
 }
 MainComponent::~MainComponent(){++autosaveRequestId;retiredJobs.retire(std::move(autosaveJob));studioWindow.reset();aiWindow.reset();updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();mixerRoutingWindow.reset();studioWindow.reset();instrumentWindow.reset();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
 // A native close may hide a peer before JUCE receives the matching mouse-up.
@@ -1549,7 +1549,7 @@ void MainComponent::completeCloseChoice(int choice,std::function<void()> accepte
     if(choice!=1){closePending=false;return;}
     if(projectFile==juce::File()){
         juce::Component::SafePointer<MainComponent> safe(this);
-        chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,
+        chooseFile(tr("Save project"),"*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,
             [safe,accepted=std::move(accepted)](juce::File file)mutable{if(safe)safe->finishPendingSave(file,std::move(accepted));},[safe]{if(safe)safe->closePending=false;});
     }else finishPendingSave(projectFile,std::move(accepted));
 }
@@ -1562,15 +1562,15 @@ void MainComponent::finishPendingSave(const juce::File& file,std::function<void(
 bool MainComponent::writeProjectFile(const juce::File& target){
     audio.capturePluginStates(project);auto next=project;next.name=target.getFileNameWithoutExtension().toStdString();auto result=saveProject(next,target);
     if(result.failed()){message(result.getErrorMessage(),true);return false;}
-    projectFile=target;project.name=next.name;dirty=false;message("Progetto salvato: "+projectFile.getFullPathName());repaint();return true;
+    projectFile=target;project.name=next.name;dirty=false;message(tr("Project saved")+": "+projectFile.getFullPathName());repaint();return true;
 }
 void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback,std::function<void()> cancelled){
     chooser=std::make_unique<juce::FileChooser>(tr(title),projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),filter,true,false,studioWindow&&studioWindow->isVisible()?static_cast<juce::Component*>(studioWindow.get()):getTopLevelComponent());
     juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback=std::move(callback),cancelled=std::move(cancelled)](const juce::FileChooser& fc){if(!safe)return;auto file=fc.getResult();if(file!=juce::File())callback(file);else if(cancelled)cancelled();});
 }
 void MainComponent::save(bool as){
-    if(loadingPlugin){message("Attendi il caricamento dello strumento.");return;}
-    if(as||projectFile==juce::File()){juce::Component::SafePointer<MainComponent> safe(this);chooseFile("Salva progetto","*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[safe](juce::File file){if(safe)safe->writeProjectFile(file.withFileExtension("fga"));});}
+    if(loadingPlugin){message("Please wait for the instrument to load.");return;}
+    if(as||projectFile==juce::File()){juce::Component::SafePointer<MainComponent> safe(this);chooseFile(tr("Save project"),"*.fga",juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting,[safe](juce::File file){if(safe)safe->writeProjectFile(file.withFileExtension("fga"));});}
     else writeProjectFile(projectFile);
 }
 void MainComponent::open(const juce::File& file,bool recovered){
@@ -1590,11 +1590,11 @@ void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::
     if(auto xml=juce::XmlDocument::parse(id)){
         juce::PluginDescription description;
         if(description.loadFromXml(*xml)){
-            if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+            if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin missing: use LOAD VST3 / AU to relink it.",true);return;}
             loadPluginDescription(track,description,state,true);return;
         }
     }
-    if(!file.exists()){message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+    if(!file.exists()){message("Plugin missing on "+utf(project.tracks[(size_t)track].name)+": use LOAD VST3 / AU to relink it.",true);return;}
     juce::OwnedArray<juce::PluginDescription> found;
     for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
     juce::PluginDescription* selected=nullptr,*effect=nullptr;
@@ -1604,8 +1604,8 @@ void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::
     loadPluginDescription(track,*selected,state,id.isNotEmpty());
 }
 void MainComponent::loadEffectFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
-    if(id.isNotEmpty())if(auto xml=juce::XmlDocument::parse(id)){juce::PluginDescription description;if(description.loadFromXml(*xml)){if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.",true);return;}loadEffectDescription(track,description,state,true);return;}}
-    if(!file.exists()){message("Plugin mancante su "+utf(project.tracks[(size_t)track].name)+": usa LOAD VST3 / AU per ricollegarlo.",true);return;}
+    if(id.isNotEmpty())if(auto xml=juce::XmlDocument::parse(id)){juce::PluginDescription description;if(description.loadFromXml(*xml)){if(description.pluginFormatName=="VST3"&&!juce::File(description.fileOrIdentifier).exists()){message("Plugin missing: use LOAD VST3 / AU to relink it.",true);return;}loadEffectDescription(track,description,state,true);return;}}
+    if(!file.exists()){message("Plugin missing on "+utf(project.tracks[(size_t)track].name)+": use LOAD VST3 / AU to relink it.",true);return;}
     juce::OwnedArray<juce::PluginDescription> found;for(int i=0;i<audio.formats.getNumFormats();++i)audio.formats.getFormat(i)->findAllTypesForFile(found,file.getFullPathName());
     juce::PluginDescription* selected=nullptr;for(auto* d:found)if(!d->isInstrument){selected=d;break;}if(selected==nullptr&&!found.isEmpty())selected=found.getFirst();
     if(!selected){message("Nessuno strumento compatibile trovato. Scegli il bundle VST3.",true);return;}
@@ -1680,7 +1680,7 @@ void MainComponent::itemDropped(const SourceDetails& details){
 }
 bool MainComponent::isInterestedInFileDrag(const juce::StringArray& files){if(editingRestricted())return false;for(auto f:files)if(juce::File(f).hasFileExtension("fga;mid;midi;wav;aif;aiff;flac;ogg"))return true;return false;}
 void MainComponent::filesDropped(const juce::StringArray& files,int x,int y){
-    if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}
+    if(loadingPlugin){message("Please wait for the plugins to load.");return;}
     juce::File file;for(const auto& path:files)if(isInterestedInFileDrag(juce::StringArray(path))){file=juce::File(path);break;}if(file==juce::File())return;
     if(file.hasFileExtension("fga")){open(file);return;}
     double dropBeat=-1;

@@ -825,20 +825,28 @@ static void addSectionCrashes(Project& p){
     constexpr int crashLane=12;
     for(int ti=4;ti<(int)p.tracks.size();++ti){
         auto& t=p.tracks[(size_t)ti];
-        if(!isDrumTrack(ti)||ti-4!=crashLane||t.locked||t.freeTimeline)continue;
+        if(!isDrumTrack(ti)||ti-4!=crashLane||t.locked)continue;
         if(!t.engine.afterFill)continue;
-        for(int si=1;si<(int)p.sections.size()&&si<(int)t.clips.size();++si){
-            auto& clip=t.clips[(size_t)si];
-            if(clip.locked)continue;
+        for(int si=1;si<(int)p.sections.size();++si){
             const auto previous=p.sections[(size_t)si-1].type;
             if(previous==Section::intro||previous==Section::outro)continue;
-            const double at=p.sectionStart(si)-p.clipStart(ti,si);
-            if(at<0||at>=p.clipLength(ti,si))continue;
-            clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),
-                [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1e-6;}),clip.notes.end());
-            const auto place=std::upper_bound(clip.notes.begin(),clip.notes.end(),at,
-                [](double value,const Note& n){return value<n.start;});
-            clip.notes.insert(place,{at,.25,fgd::defaultNote(crashLane),110,crashLane});
+            const double beat=p.sectionStart(si);
+            // Works for the fixed form and for tracks detached by timeline edits:
+            // find the clip that actually covers the downbeat.
+            for(size_t ci=0;ci<t.clips.size();++ci){
+                auto& clip=t.clips[ci];
+                if(clip.locked)continue;
+                const double start=p.clipStart(ti,(int)ci);
+                const double length=p.clipLength(ti,(int)ci);
+                if(beat<start||beat>=start+length)continue;
+                const double at=beat-start;
+                clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),
+                    [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1e-6;}),clip.notes.end());
+                const auto place=std::upper_bound(clip.notes.begin(),clip.notes.end(),at,
+                    [](double value,const Note& n){return value<n.start;});
+                clip.notes.insert(place,{at,.25,fgd::defaultNote(crashLane),110,crashLane});
+                break;
+            }
         }
     }
 }

@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.13
+
+- Status, save, open and plugin messages plus the file dialog titles are translated: they were fixed in Italian for every language.
+- The crash that answers a filled section also lands on tracks detached by timeline edits, not only on the fixed form.
+
 ## 0.23.12
 
 - The window fills the width again instead of leaving empty bands on a large screen, with a 700 px floor so very short windows cannot overlap their rows.
