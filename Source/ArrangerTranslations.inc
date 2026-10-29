@@ -14,7 +14,6 @@
 { "Plugin missing: use LOAD VST3 / AU to relink it.", "Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.", "Plugin ausente: usa LOAD VST3 / AU para reconectarlo.", "Plugin manquant : utilisez LOAD VST3 / AU pour le relier.", "Plugin fehlt: mit LOAD VST3 / AU neu verknüpfen.", "Plugin ausente: use LOAD VST3 / AU para religá-lo." },
 { "Import notes into the selected section", "Importa note nella sezione selezionata", "Importar notas en la sección seleccionada", "Importer des notes dans la section", "Noten in den Abschnitt importieren", "Importar notas na secção selecionada" },
 { "Open Fase Groove Arranger project", "Apri progetto Fase Groove Arranger", "Abrir proyecto Fase Groove Arranger", "Ouvrir un projet Fase Groove Arranger", "Fase Groove Arranger Projekt öffnen", "Abrir projeto Fase Groove Arranger" },
-{ "Save project", "Salva progetto", "Guardar proyecto", "Enregistrer le projet", "Projekt speichern", "Guardar projeto" },
 { "NEW TRACK", "NUOVA TRACCIA", "NUEVA PISTA", "NOUVELLE PISTE", "NEUE SPUR", "NOVA FAIXA" },
 { "NEW SECTION", "NUOVA SEZIONE", "NUEVA SECCIÓN", "NOUVELLE SECTION", "NEUER ABSCHNITT", "NOVA SEÇÃO" },
 { "Section added and generated. REGENERATE rewrites it; Undo removes it.", "Sezione aggiunta e generata. RIGENERA la riscrive; Annulla la rimuove.", "Sección añadida y generada. REGENERAR la reescribe; Deshacer la elimina.", "Section ajoutée et générée. RÉGÉNÉRER la réécrit ; Annuler la supprime.", "Abschnitt hinzugefügt und erzeugt. NEU ERZEUGEN schreibt ihn neu; Rückgängig entfernt ihn.", "Secção adicionada e gerada. REGERAR reescreve-a; Desfazer remove-a." },
@@ -121,12 +120,10 @@
 { "Mute", "Muto", "Silenciar", "Muet", "Stumm", "Silenciar" },
 { "Lock generation", "Blocca generazione", "Bloquear generación", "Verrouiller la génération", "Generierung sperren", "Bloquear geração" },
 { "Original Fase Groove sounds", "Suoni originali Fase Groove", "Sonidos originales Fase Groove", "Sons originaux Fase Groove", "Originale Fase-Groove-Klänge", "Sons originais Fase Groove" },
-{ "Regenerate track", "Rigenera traccia", "Regenerar pista", "Régénérer la piste", "Spur neu erzeugen", "Gerar faixa novamente" },
 { "Sample root", "Radice campione", "Raíz de la muestra", "Fondamentale de l'échantillon", "Sample-Grundton", "Nota raiz da amostra" },
 { "Duplicate with MIDI", "Duplica con MIDI", "Duplicar con MIDI", "Dupliquer avec le MIDI", "Mit MIDI duplizieren", "Duplicar com MIDI" },
 { "Move left", "Sposta a sinistra", "Mover a la izquierda", "Déplacer à gauche", "Nach links verschieben", "Mover para a esquerda" },
 { "Move right", "Sposta a destra", "Mover a la derecha", "Déplacer à droite", "Nach rechts verschieben", "Mover para a direita" },
-{ "Regenerate section", "Rigenera sezione", "Regenerar sección", "Régénérer la section", "Abschnitt neu erzeugen", "Gerar seção novamente" },
 { "Duration", "Durata", "Duración", "Durée", "Dauer", "Duração" },
 { "Musical function", "Funzione musicale", "Función musical", "Fonction musicale", "Musikalische Funktion", "Função musical" },
 { "Regenerate this clip only", "Rigenera solo questo clip", "Regenerar solo este clip", "Régénérer ce clip uniquement", "Nur diesen Clip neu erzeugen", "Gerar apenas este clipe novamente" },
@@ -157,8 +154,6 @@
 { "MIDI copied. PASTE inserts it in the selected section.", "MIDI copiato. PASTE inserisce nella sezione selezionata.", "MIDI copiado. PEGAR lo inserta en la sección seleccionada.", "MIDI copié. COLLER l'insère dans la section sélectionnée.", "MIDI kopiert. EINFÜGEN setzt es in den gewählten Abschnitt.", "MIDI copiado. COLAR insere na seção selecionada." },
 { "Personal sample", "Campione personale", "Muestra personal", "Échantillon personnel", "Eigenes Sample", "Amostra pessoal" },
 { "Save project", "Salva progetto", "Guardar proyecto", "Enregistrer le projet", "Projekt speichern", "Salvar projeto" },
-{ "Open Fase Groove Arranger project", "Apri progetto Fase Groove Arranger", "Abrir proyecto Fase Groove Arranger", "Ouvrir un projet Fase Groove Arranger", "Fase-Groove-Arranger-Projekt öffnen", "Abrir projeto Fase Groove Arranger" },
-{ "Import notes into the selected section", "Importa note nella sezione selezionata", "Importar notas en la sección seleccionada", "Importer des notes dans la section sélectionnée", "Noten in den gewählten Abschnitt importieren", "Importar notas na seção selecionada" },
 { "MIDI imported into the selected clip.", "MIDI importato nel clip selezionato.", "MIDI importado en el clip seleccionado.", "MIDI importé dans le clip sélectionné.", "MIDI in den gewählten Clip importiert.", "MIDI importado no clipe selecionado." },
 { "Open a local .fga project.", "Apre un progetto .fga sul computer.", "Abre un proyecto .fga local.", "Ouvre un projet .fga local.", "Öffnet ein lokales .fga-Projekt.", "Abre um projeto .fga local." },
 { "Start a new song project.", "Inizia un nuovo progetto musicale.", "Inicia un nuevo proyecto musical.", "Crée un nouveau projet musical.", "Startet ein neues Songprojekt.", "Inicia um novo projeto musical." },
@@ -448,7 +443,6 @@
 { "Lead", "Lead", "Lead", "Lead", "Lead", "Lead" },
 { "Built-in lead", "Lead interno", "Lead interno", "Lead intégré", "Interner Lead", "Lead interno" },
 { "LEAD PART", "PARTE SOLISTA", "PARTE SOLISTA", "PARTIE SOLISTE", "LEAD-STIMME", "PARTE SOLISTA" },
-{ "Lead part", "Parte solista", "Parte solista", "Partie soliste", "Lead-Stimme", "Parte solista" },
 { "LEAD / GROOVE", "LEAD / GROOVE", "LEAD / GROOVE", "LEAD / GROOVE", "LEAD / GROOVE", "LEAD / GROOVE" },
 { "LEAD / LANE MIXER", "LEAD / MIXER CORSIE", "LEAD / MEZCLADOR", "LEAD / MIXEUR", "LEAD / SPURMIXER", "LEAD / MIXER" },
 { "ATTACK DELAY", "RITARDO ATTACCO", "RETARDO ATAQUE", "RETARD ATTAQUE", "ANSCHLAGVERZÖGERUNG", "ATRASO ATAQUE" },
@@ -460,7 +454,6 @@
 { "Staccato", "Staccato", "Staccato", "Staccato", "Staccato", "Staccato" },
 { "Pulse", "Pulsazione", "Pulso", "Pulsation", "Puls", "Pulso" },
 { "Ghost", "Fantasma", "Fantasma", "Fantôme", "Geisternote", "Fantasma" },
-{ "Approach", "Appoggiatura", "Aproximación", "Approche", "Annäherung", "Aproximação" },
 { "Long note", "Nota lunga", "Nota larga", "Note longue", "Lange Note", "Nota longa" },
 { "Run", "Passaggio", "Pasaje", "Trait", "Lauf", "Passagem" },
 { "High motif", "Motivo alto", "Motivo agudo", "Motif aigu", "Hohes Motiv", "Motivo agudo" },
@@ -621,7 +614,6 @@
 
 { "PLAYING", "IN RIPRODUZIONE", "SONANDO", "EN LECTURE", "WIRD GESPIELT", "TOCANDO" },
 
-{ "MIDI INPUT", "INGRESSO MIDI", "ENTRADA MIDI", "ENTRÉE MIDI", "MIDI-EINGANG", "ENTRADA MIDI" },
 
 { "Load a sample to edit its waveform.", "Carica un campione per modificarne la forma d’onda.", "Carga una muestra para editar su onda.", "Chargez un échantillon pour modifier sa forme d’onde.", "Ein Sample laden, um seine Wellenform zu bearbeiten.", "Carregue uma amostra para editar sua forma de onda." },
 
@@ -819,7 +811,6 @@
 
 { "SLICE & SYNC", "SLICE E SYNC", "SLICE Y SYNC", "DÉCOUPE ET SYNC", "SLICES UND SYNC", "SLICE E SYNC" },
 
-{ "RECORDING", "REGISTRAZIONE", "GRABACIÓN", "ENREGISTREMENT", "AUFNAHME", "GRAVAÇÃO" },
 { "AUDIO RECORDING", "REGISTRAZIONE AUDIO", "GRABACIÓN DE AUDIO", "ENREGISTREMENT AUDIO", "AUDIOAUFNAHME", "GRAVAÇÃO DE ÁUDIO" },
 { "Audio input", "Ingresso audio", "Entrada de audio", "Entrée audio", "Audioeingang", "Entrada de áudio" },
 { "Master mix", "Mix master", "Mezcla máster", "Mix master", "Master-Mix", "Mix master" },
