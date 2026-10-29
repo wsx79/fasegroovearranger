@@ -12,6 +12,7 @@
 { "Please wait for the instrument to load.", "Attendi il caricamento dello strumento.", "Espera a que cargue el instrumento.", "Attendez le chargement de l'instrument.", "Warte, bis das Instrument geladen ist.", "Aguarde o carregamento do instrumento." },
 { "Please wait for the plugins to load.", "Attendi il caricamento dei plugin.", "Espera a que carguen los plugins.", "Attendez le chargement des plugins.", "Warte, bis die Plugins geladen sind.", "Aguarde o carregamento dos plugins." },
 { "Plugin missing: use LOAD VST3 / AU to relink it.", "Plugin mancante: usa LOAD VST3 / AU per ricollegarlo.", "Plugin ausente: usa LOAD VST3 / AU para reconectarlo.", "Plugin manquant : utilisez LOAD VST3 / AU pour le relier.", "Plugin fehlt: mit LOAD VST3 / AU neu verknüpfen.", "Plugin ausente: use LOAD VST3 / AU para religá-lo." },
+{ "Plugin ready", "Plugin pronto", "Plugin listo", "Plugin prêt", "Plugin bereit", "Plugin pronto" },
 { "Import notes into the selected section", "Importa note nella sezione selezionata", "Importar notas en la sección seleccionada", "Importer des notes dans la section", "Noten in den Abschnitt importieren", "Importar notas na secção selecionada" },
 { "Open Fase Groove Arranger project", "Apri progetto Fase Groove Arranger", "Abrir proyecto Fase Groove Arranger", "Ouvrir un projet Fase Groove Arranger", "Fase Groove Arranger Projekt öffnen", "Abrir projeto Fase Groove Arranger" },
 { "NEW TRACK", "NUOVA TRACCIA", "NUEVA PISTA", "NOUVELLE PISTE", "NEUE SPUR", "NOVA FAIXA" },

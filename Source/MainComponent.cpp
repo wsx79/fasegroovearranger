@@ -659,7 +659,10 @@ private:Project snapshot;juce::File target;std::function<void(juce::Result)> com
 class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
     MainComponent& owner;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);centreWithSize(getWidth(),getHeight());setVisible(true);}
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
+        // The native peer can size the window while showing it, so centre once it is on
+        // screen or the first open lands wherever Cocoa/Win32 left it.
+        centreWithSize(getWidth(),getHeight());}
     void closeButtonPressed()override{owner.dismissAuxiliaryWindow(*this);}
 };
 namespace {
@@ -1648,7 +1651,10 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
         t.instrumentState=state.toStdString();
         if(state.isNotEmpty())safe->audio.restorePluginState(track,state);
         if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
-        safe->message("Plugin pronto: "+description.name);
+        safe->message(tr("Plugin ready")+": "+description.name);
+        // A freshly loaded instrument opens its editor straight away, centred; the user
+        // closes it when done, as the other tools behave.
+        if(!restoring)safe->pluginEditorButton.onClick();
     });
 }
 void MainComponent::showPluginMenu(juce::Component*){
