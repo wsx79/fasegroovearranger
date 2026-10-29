@@ -63,9 +63,9 @@ namespace
                 break;
             }
             case I::close:
-                p.startNewSubPath (0.28f, 0.28f); p.lineTo (0.72f, 0.72f);
-                p.startNewSubPath (0.72f, 0.28f); p.lineTo (0.28f, 0.72f);
-                strokeWidth = 0.08f;
+                p.startNewSubPath (0.30f, 0.30f); p.lineTo (0.70f, 0.70f);
+                p.startNewSubPath (0.70f, 0.30f); p.lineTo (0.30f, 0.70f);
+                strokeWidth = 0.14f;
                 break;
             case I::fullScreen:
             case I::exitFullScreen:
@@ -313,7 +313,10 @@ void IconButton::drawIcon (juce::Graphics& g, Icon icon, juce::Rectangle<float> 
     if (filled)
         g.fillPath (p);
     else
-        g.strokePath (p, juce::PathStrokeType (juce::jmax (1.2f, stroke * s), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    {
+        const float px = icon == Icon::close ? 2.f : juce::jmax (1.2f, stroke * s);
+        g.strokePath (p, juce::PathStrokeType (px, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
 }
 
 const char* IconButton::iconTitle (Icon i)
@@ -353,7 +356,8 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     else
     {
         auto fillColour = filled ? onColour : Daw::control;
-        if (down)             fillColour = fillColour.darker (0.18f);
+        if (accentHover && highlighted && isEnabled()) fillColour = down ? Daw::accent.darker (0.12f) : Daw::accent;
+        else if (down)        fillColour = fillColour.darker (0.18f);
         else if (highlighted) fillColour = filled ? fillColour.brighter (0.08f) : Daw::controlHi;
         if (! isEnabled())    fillColour = fillColour.withMultipliedAlpha (0.45f);
         g.setColour (fillColour);
@@ -367,7 +371,7 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
         g.strokePath (shape, juce::PathStrokeType (1.0f));
     }
 
-    auto ink = filled ? Daw::onAccent : quiet && on ? onColour : Daw::text.withAlpha (quiet ? 0.82f : 0.92f);
+    auto ink = (filled || (accentHover && highlighted)) ? Daw::onAccent : quiet && on ? onColour : Daw::text.withAlpha (quiet ? 0.82f : 0.92f);
     if (quiet && highlighted && ! on) ink = Daw::text;
     if (! isEnabled())
         ink = ink.withMultipliedAlpha (0.35f);

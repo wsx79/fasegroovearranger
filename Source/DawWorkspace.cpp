@@ -106,7 +106,7 @@ int TrackInspector::layout(int width){
     auto row=[&](juce::Component& c,int height=24){c.setBounds(inset,y,w,height);y+=height+4;};
     auto pair=[&](juce::Component& a,juce::Component& b){a.setBounds(inset,y,half,24);b.setBounds(inset+half+gap,y,w-half-gap,24);y+=28;};
     auto endCard=[&]{y+=6;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=6;cardStart=y;};
-    captions.push_back({"TRACK INSPECTOR",{inset,y+6,w-36,14}});y+=22;
+    captions.push_back({"TRACK INSPECTOR",{inset,y+6,w-52,14}});y+=22;
     name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+22,w,16);y+=40;
     mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=28;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
     title("SOUND ASSIGNMENT");

@@ -842,8 +842,8 @@ MainComponent::MainComponent(){
     for(auto* button:{&inspectorToggle,&mixerToggle,&followButton}){addAndMakeVisible(button);button->setClickingTogglesState(true);}
     addAndMakeVisible(fullScreenButton);fullScreenButton.setClickingTogglesState(false);
     fullScreenButton.onClick=[this]{applyFullScreen(!appFullScreen);};
-    addAndMakeVisible(inspectorResizer);addChildComponent(browserResizer);addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
-    inspectorCollapse.quiet=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
+    addAndMakeVisible(inspectorResizer);addChildComponent(browserResizer);trackInspector.addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
+    inspectorCollapse.quiet=false;inspectorCollapse.accentHover=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
     inspectorCollapse.onClick=[this]{inspectorVisible=!inspectorVisible;inspectorToggle.setToggleState(inspectorVisible,juce::dontSendNotification);resized();};
     addAndMakeVisible(fitSongButton);inspectorToggle.setToggleState(true,juce::dontSendNotification);mixerToggle.setToggleState(true,juce::dontSendNotification);
     inspectorToggle.onClick=[this]{inspectorVisible=inspectorToggle.getToggleState();resized();};
@@ -1368,7 +1368,7 @@ void MainComponent::resized(){
         for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,top,inspectorVisible?inspectorWidth:0,std::max(60,footer-top));trackInspector.setSize(inspectorWidth-16,trackInspector.preferredHeight());
-        const int close=28;const int titleCentre=top+21;inspectorCollapse.setBounds(12+inspectorWidth-8-close,titleCentre-close/2,close,close);inspectorCollapse.toFront(false);
+        inspectorCollapse.setBounds(trackInspector.getWidth()-40,9,24,24);inspectorCollapse.setVisible(inspectorVisible);inspectorCollapse.toFront(false);
         inspectorResizer.setBounds(12+inspectorWidth,top,8,std::max(60,footer-top));inspectorResizer.toFront(false);
         mixer.setBounds(12,footer+36,right-12,dockHeight);
         const int tools=right-336;
@@ -1481,29 +1481,49 @@ return false;
 #endif
 }
 void MainComponent::applyFullScreen(bool on){
-    auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(!top||on==appFullScreen)return;
+    if(on==appFullScreen)return;
     appFullScreen=on;
-    if(on){
-        fullScreenRestore=top->getBounds();
-        top->setUsingNativeTitleBar(false);
-        top->setTitleBarHeight(0);
-        top->setFullScreen(true);
-        juce::Desktop::getInstance().setKioskModeComponent(top,false);
-    }else{
-        if(juce::Desktop::getInstance().getKioskModeComponent()==top)juce::Desktop::getInstance().setKioskModeComponent(nullptr,false);
-        top->setFullScreen(false);
-        top->setUsingNativeTitleBar(true);
-        if(!fullScreenRestore.isEmpty())top->setBounds(fullScreenRestore);
-    }
     fullScreenButton.setToggleState(on,juce::dontSendNotification);
     fullScreenButton.setIcon(on?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);
+    if(fullScreenApplying)return;
+    fullScreenApplying=true;
+    juce::Component::SafePointer<MainComponent> safe(this);
+    // Defer past this click: switching the native title bar destroys the peer.
+    juce::MessageManager::callAsync([safe]{
+        if(safe==nullptr)return;
+        const bool enter=safe->appFullScreen;
+        auto* window=dynamic_cast<juce::DocumentWindow*>(safe->getTopLevelComponent());
+        if(window==nullptr){safe->fullScreenApplying=false;return;}
+        if(enter){
+            if(safe->fullScreenRestore.isEmpty())safe->fullScreenRestore=window->getBounds();
+            window->setUsingNativeTitleBar(false);
+            window->setTitleBarHeight(0);
+            auto* display=juce::Desktop::getInstance().getDisplays().getDisplayForRect(safe->fullScreenRestore);
+            if(display==nullptr)display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+            const auto area=display!=nullptr?display->totalArea:safe->fullScreenRestore;
+           #if JUCE_WINDOWS
+            window->setBounds(area);
+           #else
+            window->setBounds(area);
+            window->setFullScreen(true);
+            juce::Desktop::getInstance().setKioskModeComponent(window,false);
+           #endif
+        }else{
+            if(juce::Desktop::getInstance().getKioskModeComponent()==window)juce::Desktop::getInstance().setKioskModeComponent(nullptr,false);
+            window->setFullScreen(false);
+            window->setUsingNativeTitleBar(true);
+            const auto back=safe->fullScreenRestore;safe->fullScreenRestore={};
+            juce::MessageManager::callAsync([safe,back]{if(safe==nullptr)return;if(auto* w=dynamic_cast<juce::DocumentWindow*>(safe->getTopLevelComponent()))if(!back.isEmpty())w->setBounds(back);safe->fullScreenApplying=false;if(safe->appFullScreen)safe->applyFullScreen(true);});
+            return;
+        }
+        safe->fullScreenApplying=false;
+        if(safe->appFullScreen!=enter)safe->applyFullScreen(safe->appFullScreen);
+    });
 }
 void MainComponent::timerCallback(){
     fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
     // keep the button's icon and state in step without repainting when nothing changed.
-    if(auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent())){const bool full=top->isFullScreen();
-        if(full!=appFullScreen)applyFullScreen(full);}
     const double beat=timelinePosition();showPosition(beat);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);playButton.setToggleState(audio.isPlaying(),juce::dontSendNotification);mixer.tick();
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
     // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):

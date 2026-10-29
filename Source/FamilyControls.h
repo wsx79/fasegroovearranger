@@ -21,6 +21,7 @@ public:
     juce::Colour iconColour;   // when set: the icon's own colour while off (the dice are amber)
     bool primary = false;      // filled with onColour even when off (the main action of a panel)
     bool quiet = false;        // toolbar style: no body until hovered; on = tinted with onColour
+    bool accentHover = false;  // hover fills with the accent (inspector close)
 
 private:
     Icon icon;

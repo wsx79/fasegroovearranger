@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.4
+
+- The inspector close button sits inside the track card header: a 24 px rounded icon, subtle background, orange hover and a 2 px X.
+- Full screen on Windows drops the native title bar instead of flickering back. F11 and the toolbar button share one toggle.
+
 ## 0.25.3
 
 - Plugin state snapshots wait until processBlock has finished, including while the transport is playing.

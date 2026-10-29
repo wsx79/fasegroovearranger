@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.4
+
+- La chiusura dell'inspector sta nell'intestazione della card: icona arrotondata da 24 px, sfondo leggero, hover arancione e X da 2 px.
+- Lo schermo intero su Windows toglie la barra nativa invece di lampeggiare. F11 e il pulsante usano lo stesso comando.
+
 ## 0.25.3
 
 - Lo snapshot dello stato dei plugin aspetta la fine di processBlock, anche durante la riproduzione.
