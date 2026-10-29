@@ -19,7 +19,14 @@ void writeCrashLog(void*){
 class ScaledContent:public juce::Component {
 public:
     ScaledContent(){addAndMakeVisible(main);setSize(1440,980);}
-    void resized()override{float scale=getWidth()/1440.f;main.setTransform(juce::AffineTransform::scale(scale));main.setBounds(0,0,1440,juce::roundToInt(getHeight()/scale));}
+    void resized()override{
+        // Scale on the smaller axis and centre the 1440x980 canvas, so a shorter or
+        // wider window does not cut the layout or stretch it out of proportion.
+        const float scale=juce::jmin(getWidth()/1440.f,getHeight()/980.f);
+        main.setTransform(juce::AffineTransform::scale(scale));
+        main.setBounds(0,0,1440,980);
+        main.setTopLeftPosition(juce::roundToInt((getWidth()-1440*scale)*.5f),juce::roundToInt((getHeight()-980*scale)*.5f));
+    }
     fga::MainComponent main;
 };
 class Window:public juce::DocumentWindow {

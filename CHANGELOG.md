@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.11
+
+- The window scales on the smaller axis and centres the 1440x980 canvas: a 1280x720 or ultra-wide window no longer clips the layout or stretches it out of proportion.
+- Action buttons keep the theme's minimum text size and truncate with an ellipsis instead of shrinking below it.
+
 ## 0.23.10
 
 - The kit answers every section that follows a filled one with a crash on its downbeat, and rebuilding with the stored seeds still produces the same take.

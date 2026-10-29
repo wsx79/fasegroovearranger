@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.11
+
+- La finestra scala sull'asse più corto e centra il canvas 1440x980: a 1280x720 o su ultra-wide il layout non viene più tagliato né deformato.
+- I pulsanti mantengono la dimensione minima del testo del tema e troncano con i puntini invece di rimpicciolirsi sotto quella soglia.
+
 ## 0.23.10
 
 - La batteria risponde a ogni sezione che segue un fill con un crash sul downbeat, e ricostruendo con i seed salvati la take resta identica.
