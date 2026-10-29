@@ -10,8 +10,6 @@ juce::Colour ink(int track){return Daw::trackColour(track);}
 float db(double gain){return gain<=.001?-60.f:juce::Decibels::gainToDecibels((float)gain,-60.f);}
 double amplitude(double value){return value<=-59.99?0.:juce::Decibels::decibelsToGain(value);}
 void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){Daw::drawCaps(g,tr(s),bounds,Daw::textFaint);}
-// A section title with a hairline running to the panel's edge.
-void sectionTitle(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds){const auto text=tr(s).toUpperCase();Daw::drawCaps(g,text,bounds,Daw::textDim);const int used=(int)juce::GlyphArrangement::getStringWidth(Daw::caps(),text)+8;if(used<bounds.getWidth()){g.setColour(Daw::line);g.fillRect(bounds.getX()+used,bounds.getCentreY(),bounds.getWidth()-used,1);}}
 void slider(juce::Slider& s,double low,double high,const char* suffix){s.setRange(low,high,.1);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,60,20);s.setTextValueSuffix(suffix);s.setDoubleClickReturnValue(true,0);}
 void tip(juce::Component& c,const char* s){c.getProperties().set("fgaTip",s);}
 }
@@ -231,6 +229,9 @@ void DawMixer::mouseDoubleClick(const juce::MouseEvent& e){if(e.y<25&&owner.mixe
 void DawMixer::mouseMove(const juce::MouseEvent& e){setMouseCursor(e.y<25&&owner.mixerVisible?juce::MouseCursor::UpDownResizeCursor:juce::MouseCursor::NormalCursor);}
 
 bool MainComponent::verifyDawWorkspace(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto saved=project;const int track=selectedTrack,section=selectedSection;const auto zoom=arrangement.pixelsPerBar;
     showArrangement();audio.stop();bool ok=inspectorPort.isVisible()&&mixer.isVisible()&&!arrangementPort.getBounds().intersects(inspectorPort.getBounds())&&!arrangementPort.getBounds().intersects(mixer.getBounds());
     juce::String firstFailure;auto stage=[&](const char* name){if(!ok&&firstFailure.isEmpty())firstFailure=name;};stage("initial dock layout");
@@ -469,6 +470,7 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
     }
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
     folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor, visible Piano range thumbs with mouse dragging, MIDI update and Undo":"FAIL DAW workspace regression: "+firstFailure);return ok;
+#endif
 }
 
 
@@ -476,6 +478,9 @@ bool MainComponent::verifyDawWorkspace(const juce::File& folder){
 // filters and sorting, info, preview, unsupported and missing files, double-click import into
 // the selected track, drag onto another track, layout and persistence. Headless (smoke test).
 bool MainComponent::verifySampleBrowser(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     bool ok=true;juce::String firstFailure;auto stage=[&](const char* name,bool value){if(!value&&firstFailure.isEmpty())firstFailure=name;ok=ok&&value;};
     const auto savedSetting=Localisation::setting("sampleBrowser");const bool savedVisible=browserVisible;const auto savedProject=project;const int savedTrack=selectedTrack;
     auto library=folder.getChildFile("browser-library");library.deleteRecursively();auto kicks=library.getChildFile("Drums").getChildFile("Kicks");kicks.createDirectory();
@@ -539,5 +544,6 @@ bool MainComponent::verifySampleBrowser(const juce::File& folder){
     Localisation::setSetting("sampleBrowser",savedSetting);showSampleBrowser(savedVisible);library.deleteRecursively();message(tr("Ready"));
     folder.getChildFile("sample-browser.txt").replaceWithText(ok?"PASS sample browser: saved folders/favourites, folders-first listing, type filter, search, sort by length/name, breadcrumb, back/forward/up, file info, preview start/stop, unsupported and unavailable files, Enter/double-click import with Undo, drag onto a track with highlight, saved preferences":"FAIL sample browser: "+firstFailure);
     return ok;
+#endif
 }
 }

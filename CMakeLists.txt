@@ -15,6 +15,7 @@ endif()
 option(FGA_BUILD_APP "Build the standalone JUCE application" ON)
 option(FGA_BUILD_TESTS "Build tests" ON)
 option(FGA_BUILD_HOST_TEST_PLUGIN "Build a test-only VST3 instrument for host integration checks" OFF)
+option(FGA_SELF_TESTS "Compile UI evidence and CLI self-tests into the application" OFF)
 file(GLOB SHINE_SOURCES CONFIGURE_DEPENDS ThirdParty/shine/src/lib/*.c)
 add_library(shine STATIC ${SHINE_SOURCES})
 if(MSVC)
@@ -78,6 +79,9 @@ if(FGA_BUILD_APP)
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)
     target_include_directories(FaseGrooveArranger PRIVATE ThirdParty/fasegroove-common ThirdParty/signalsmith-stretch ThirdParty/signalsmith-linear/include)
+    if(FGA_SELF_TESTS)
+        target_compile_definitions(FaseGrooveArranger PRIVATE FGA_SELF_TESTS=1)
+    endif()
     target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=1 JUCE_LOAD_CURL_SYMBOLS_LAZILY=1 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1
         JUCE_APPLICATION_NAME_STRING="$<TARGET_PROPERTY:FaseGrooveArranger,JUCE_PRODUCT_NAME>"

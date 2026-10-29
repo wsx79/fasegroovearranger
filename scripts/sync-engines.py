@@ -20,7 +20,9 @@ Usage: scripts/sync-engines.py [--check | --record [--synced]] [--worktree] [--r
   --worktree   take the plugin's working tree (changes not committed yet) instead of HEAD;
                nothing is recorded: after committing the plugin, run --record --synced
   --repos DIR  folder with the plugin repos (default: the folder holding this repo)
-Plugins: piano, drums, guitar, lead (default: all four). After applying, build and check the MIDI
+Plugins: piano, drums, guitar, lead (default: all four). The arranger links only the family
+files listed in ThirdParty/fasegroove-common.lock.json "products.arranger"; the rest of the
+module stays vendored for the canonical lock but is not compiled. After applying, build and check the MIDI
 (ctest, scripts/verify-midi.py) before committing.
 """
 from pathlib import Path

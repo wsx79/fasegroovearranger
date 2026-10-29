@@ -681,6 +681,9 @@ void settleNativeFocus(juce::Component& component){
 }
 }
 bool MainComponent::verifyWindowFocus(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     if(!folder.createDirectory())return false;
     const auto saved=project;const auto undos=undoStack,redos=redoStack;const bool wasDirty=dirty;
     bool ok=true;juce::String details;
@@ -733,8 +736,12 @@ bool MainComponent::verifyWindowFocus(const juce::File& folder){
     details+=juce::String(guarded?"PASS ":"FAIL ")+"closing a tool preserves an independently disabled DAW\n";setEnabled(true);
     showArrangement();project=saved;undoStack=undos;redoStack=redos;changed(false);dirty=wasDirty;
     folder.getChildFile("window-focus.txt").replaceWithText(details);return ok;
+#endif
 }
 bool MainComponent::verifyAuditRepairs(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     const auto saved=project;const auto savedUndo=undoStack,savedRedo=redoStack;const auto savedFile=projectFile;
     const bool savedDirty=dirty,savedDue=autosaveDue;const int savedTicks=ticks,oldTrack=selectedTrack,oldSection=selectedSection;
     const auto oldPage=page;bool ok=true;juce::String details;
@@ -789,8 +796,12 @@ bool MainComponent::verifyAuditRepairs(const juce::File& folder){
     audio.stop();project=saved;projectFile=savedFile;undoStack=savedUndo;redoStack=savedRedo;dirty=savedDirty;autosaveDue=savedDue;ticks=savedTicks;closePending=false;
     selectedTrack=oldTrack;selectedSection=oldSection;selectedClip=-1;noClipSelection=false;restoreInstruments();updateEditingAvailability();refreshControls();if(oldPage==Page::editor)showEditor();else showArrangement();
     folder.getChildFile("audit-repairs.txt").replaceWithText(details);return ok;
+#endif
 }
 bool MainComponent::verifyPluginWindow(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     select(0,0);pluginEditorButton.onClick();
     if(!pluginWindow)return false;
     juce::String evidence;bool ok=true;
@@ -800,6 +811,7 @@ bool MainComponent::verifyPluginWindow(const juce::File& folder){
     pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
     pluginEditorButton.onClick();check("VST editor reopened",pluginWindow&&pluginWindow->isVisible());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
     folder.getChildFile("plugin-window.txt").replaceWithText(evidence);pluginWindow.reset();return ok;
+#endif
 }
 
 int ArrangementView::totalHeight() const {return rowY((int)owner.project.tracks.size());}
@@ -1041,12 +1053,16 @@ juce::Result MainComponent::applyAiComposition(const Project& base,const Project
     project=std::move(next);selectedTrack=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);selectedSection=0;selectedClip=-1;noClipSelection=false;editCursor=-1;selectionBeat=0;arrangement.selectedClips.clear();piano.clearSelection();changed();showArrangement();fitGeneratedView();if(instrumentIsOpen())instrumentPanel.rebuild();if(listen)audio.play(true);return juce::Result::ok();
 }
 bool MainComponent::verifyAiComposer(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     showAiComposer();bool ok=aiComposeButton.isVisible()&&aiComposeButton.getTooltip().isNotEmpty()&&aiWindow->verify(folder);aiWindow->closeButtonPressed();
     const auto language=Localisation::current();aiWindow.reset();Localisation::setCurrent(Localisation::Language::italian);showAiComposer();const auto itFolder=folder.getChildFile("ai-it");itFolder.createDirectory();ok=aiWindow->verify(itFolder)&&ok;aiWindow->closeButtonPressed();aiWindow.reset();Localisation::setCurrent(language);
     const auto saved=project;AiOptions o;o.tracks={4,leadTrack};o.prompt="6 minute techno";
     const juce::String json=R"({"title":"AI techno","summary":"Six-minute composition","bpm":138,"key":0,"scale":1,"genre":12,"target_seconds":360,"sections":[{"name":"Intro","type":"intro","bars":16},{"name":"Drop","type":"drop","bars":32},{"name":"Outro","type":"outro","bars":16}],"patterns":[{"id":"kick","track":4,"beats":4,"notes":[[0,36,0.5,110],[1,36,0.5,100],[2,36,0.5,110],[3,36,0.5,100]]},{"id":"lead","track":17,"beats":4,"notes":[[0,60,0.5,100],[1,63,0.5,90],[2,67,1,100]]}],"clips":[{"section":0,"pattern":"kick"},{"section":1,"pattern":"kick"},{"section":1,"pattern":"lead"},{"section":2,"pattern":"kick"}]})";
     Project result;juce::String summary;ok=aiCompile(project,o,json,result,summary).wasOk()&&ok;ok=applyAiComposition(saved,result,true).wasOk()&&ok;ok=ok&&audio.isPlaying()&&project.settings.bpm==138&&tempoSlider.getValue()==138&&durationLabel.getText()=="6:00"&&std::abs(project.length()*60/138-360)<.01&&!project.tracks[leadTrack].clips[1].notes.empty();undo(false);ok=ok&&midiFile(project)==midiFile(saved);project.settings.density+=.01;ok=ok&&applyAiComposition(saved,result,false).failed();project=saved;audio.stop();changed();
     folder.getChildFile("ai-composer.txt").replaceWithText(ok?"PASS composer window, provider choices, masked session key, real six-minute MIDI insertion, 138 BPM persistence, playback, Undo and stale-result protection":"FAIL AI composer");return ok;
+#endif
 }
 
 void MainComponent::fitGeneratedView(){
@@ -1410,6 +1426,9 @@ juce::StringArray MainComponent::iconButtonsWithoutTips(){
     scan(*this,"main");return missing;
 }
 bool MainComponent::writeUiEvidence(const juce::File& folder){
+#if !FGA_SELF_TESTS
+return false;
+#else
     // A synthesised peer press is only attributed to a JUCE component on some window
     // stacks (it depends on which peer owns the pointer), so this regression runs
     // opt-in for a local check and never gates a release by itself.
@@ -1464,6 +1483,7 @@ bool MainComponent::writeUiEvidence(const juce::File& folder){
         if(!missing.isEmpty())fail="icon buttons without a tooltip: "+missing.joinIntoString(", ");ok=mark("icon-tips",missing.isEmpty())&&ok;}
     ok=mark("presentation",verifyPresentation(folder))&&ok;
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
+#endif
 }
 void MainComponent::timerCallback(){
     fga::applyDarkTitleBarToAll();

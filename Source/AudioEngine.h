@@ -64,6 +64,7 @@ struct Instrument {
     explicit Instrument(int track);
     void prepare(double rate,int block);
     void reset();
+    void releaseVoices();
     int kind;
     std::atomic<float> tone{.5f}, sound{0};
     juce::Synthesiser synth;                    // built-in guide voices (tracks 0-2)
@@ -301,6 +302,10 @@ private:
     int deviceBlock=512;
     std::atomic<bool> looping{false},loopBypassed{false},needsReset{true},needsChase{false},needsResync{false},hardReset{true};
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
+    void prepareBuses(double rate,int block);
+    void detachSource(int track,int mode,std::unique_ptr<juce::Synthesiser> sampler,std::unique_ptr<juce::AudioPluginInstance>& oldPlugin,std::unique_ptr<juce::Synthesiser>& oldSampler);
+    void loadHosted(int track,const juce::PluginDescription&,bool effect,std::function<void(juce::Result)>);
+    void restoreHosted(int track,const juce::String& state,bool effect);
     void adoptState();
     void adoptWhileStopped();
     void applyMix(const MixState&,bool snap);

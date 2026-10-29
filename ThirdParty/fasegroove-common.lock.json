@@ -30,6 +30,13 @@
     "Updater.h": "ff448e0923a7aaf404aba797f3101d76ae8a0952420c4d681580317764844081",
     "VerifyModule.py": "a6e81f096eb837f0dc667ad441557c016bec289ee650c78fe16e0038d93cc0dd"
   },
+  "products": {
+    "arranger": [
+      "Branding.cpp", "Branding.h", "CheckTranslations.py", "CircleOfFifths.cpp", "CircleOfFifths.h",
+      "CommonTranslations.inc", "FamilyTheme.h", "Localisation.cpp", "Localisation.h", "ProductInfo.h",
+      "Updater.cpp", "Updater.h", "VerifyModule.py"
+    ]
+  },
   "repository": "https://github.com/wsx79/fasegroove",
   "revision": "abdd734523d727ac700817882f762188b64e7602",
   "schema": 1
