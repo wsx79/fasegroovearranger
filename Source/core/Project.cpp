@@ -817,8 +817,34 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
 }
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
+// Every section that follows a filled one gets a crash on its first beat: each
+// section is rendered on its own, so the fill on the last bar had no answer.
+// The note is inserted in order (not appended) and replaces any crash already on
+// that beat, so rebuilding with the stored seeds produces exactly the same clip.
+static void addSectionCrashes(Project& p){
+    constexpr int crashLane=12;
+    for(int ti=4;ti<(int)p.tracks.size();++ti){
+        auto& t=p.tracks[(size_t)ti];
+        if(!isDrumTrack(ti)||ti-4!=crashLane||t.locked||t.freeTimeline)continue;
+        if(!t.engine.afterFill)continue;
+        for(int si=1;si<(int)p.sections.size()&&si<(int)t.clips.size();++si){
+            auto& clip=t.clips[(size_t)si];
+            if(clip.locked)continue;
+            const auto previous=p.sections[(size_t)si-1].type;
+            if(previous==Section::intro||previous==Section::outro)continue;
+            const double at=p.sectionStart(si)-p.clipStart(ti,si);
+            if(at<0||at>=p.clipLength(ti,si))continue;
+            clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),
+                [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1e-6;}),clip.notes.end());
+            const auto place=std::upper_bound(clip.notes.begin(),clip.notes.end(),at,
+                [](double value,const Note& n){return value<n.start;});
+            clip.notes.insert(place,{at,.25,fgd::defaultNote(crashLane),110,crashLane});
+        }
+    }
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateNotes(p,scope,track,section,seed);
+    if(scope==Scope::song||scope==Scope::section)addSectionCrashes(p);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
 }
