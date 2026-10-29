@@ -97,7 +97,7 @@ void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
 void AudioEngine::updateMix(const Project& p){tempo=p.settings.bpm;mixes.post(mixState(p));adoptWhileStopped();}
 // Stopped, the output is silent anyway: take the new state at once, so transport calls made
 // right after an edit (seek, loop, length) already see it, with or without a running device.
-void AudioEngine::adoptWhileStopped(){if(playing.load())return;const EngineControlLock lock(*this);if(playing.load())return;collectGarbage();adoptState();collectGarbage();}
+void AudioEngine::adoptWhileStopped(){if(playing.load()||exporting.load())return;const EngineControlLock lock(*this);if(playing.load()||exporting.load())return;collectGarbage();adoptState();collectGarbage();}
 void AudioEngine::applyMix(const MixState& m,bool snap){
     busGraph.configure(m.buses,m.tempo,m.master,snap);
     master=m.master;masterAutomation=&m.masterAutomation;
@@ -117,18 +117,18 @@ void AudioEngine::adoptState(){
     // The replaced state is parked for the message thread to free: read its hashes before.
     const bool hadOld=schedules.current!=nullptr;std::array<std::uint64_t,maxTracks> oldHashes{};if(hadOld)oldHashes=schedules.current->hashes;
     if(auto* s=schedules.adopt()){
-        length=s->length;looping=s->looping;loopFrom=std::clamp(s->loopFrom,0.,length);loopTo=std::clamp(s->loopTo,loopFrom,length);
-        currentBeat=std::min(currentBeat.load(),length);loopBypassed=currentBeat>=loopTo;publishTransport();
+        length=s->length;looping=s->looping;loopFrom=std::clamp(s->loopFrom,0.,length.load());loopTo=std::clamp(s->loopTo,loopFrom.load(),length.load());
+        currentBeat=std::min(currentBeat.load(),length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();
         for(size_t ti=0;ti<instruments.size();++ti){auto& i=*instruments[ti];i.schedule=&s->schedules[ti];
             if(hadOld&&oldHashes[ti]==s->hashes[ti])continue; // same events: the cursor still points at the same place
             i.cursor=cursorAt(i,currentBeat);if(playing){i.resync=true;needsResync=true;}}
     }
 }
-void AudioEngine::play(bool enabled){stopSampleAudition();const EngineControlLock lock(*this);if(enabled&&currentBeat>=length){currentBeat=looping?loopFrom:0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
+void AudioEngine::play(bool enabled){stopSampleAudition();if(enabled&&currentBeat.load()>=length.load()){currentBeat=looping.load()?loopFrom.load():0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
 void AudioEngine::stop(){play(false);seek(0);capture.inputOverflow=false;}
 // An explicit seek beyond the loop must remain audible there until the song ends.
-void AudioEngine::seek(double beat){const EngineControlLock lock(*this);currentBeat=std::clamp(beat,0.0,length);loopBypassed=currentBeat>=loopTo;publishTransport();needsReset=true;needsChase=playing;}
-void AudioEngine::setLoop(bool enabled,double from,double to){const auto revision=positionRevision.load();if(!(revision&1)&&positionLoopSetting.load()==enabled&&positionLoopFrom.load()==from&&positionLoopTo.load()==to&&revision==positionRevision.load())return;const EngineControlLock lock(*this);looping=enabled;loopFrom=std::clamp(from,0.0,length);loopTo=std::clamp(to,loopFrom,length);loopBypassed=currentBeat>=loopTo;publishTransport();}
+void AudioEngine::seek(double beat){currentBeat=std::clamp(beat,0.0,length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();needsReset=true;needsChase=playing.load();}
+void AudioEngine::setLoop(bool enabled,double from,double to){const auto revision=positionRevision.load();if(!(revision&1)&&positionLoopSetting.load()==enabled&&positionLoopFrom.load()==from&&positionLoopTo.load()==to&&revision==positionRevision.load())return;looping=enabled;loopFrom=std::clamp(from,0.0,length.load());loopTo=std::clamp(to,loopFrom.load(),length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();}
 void AudioEngine::resetAt(double beat){
     // Stopped or starting: a full reset (silent anyway). Playing (loop wrap, seek): release the
     // sounding notes with their natural release and keep effect tails, so the jump is click-free.
@@ -291,7 +291,7 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* input,int
     int done=0;
     while(!audition&&done<count&&playing){double beat=currentBeat;
         if(capture.active&&capture.countIn>0){const double remaining=capture.countIn.load();const int n=std::min({blockSize,count-done,std::max(1,(int)std::ceil(remaining*sampleRate*60/tempo.load()))});float* pointers[2]{};const int used=std::min(2,channels);for(int c=0;c<used;++c)pointers[c]=output[c]?output[c]+done:nullptr;inputSegmentOffset=done;processLive(n,beat,false);render(pointers,used,n,beat,-1,false);click(pointers,used,n,-remaining,true);capture.countIn=std::max(0.,remaining-n*tempo.load()/(sampleRate*60));done+=n;if(capture.countIn<=0){recordWallStart=juce::Time::getMillisecondCounterHiRes()*.001;chaseRecord=true;}continue;}
-        const bool hasLoop=looping&&!loopBypassed&&loopTo-loopFrom>=1./960.;double boundary=hasLoop?loopTo:length;
+        const bool hasLoop=looping.load()&&!loopBypassed.load()&&loopTo.load()-loopFrom.load()>=1./960.;double boundary=hasLoop?loopTo.load():length.load();
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom;needsChase=true;resetAt(loopFrom);continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
         const int remain=std::max(1,(int)std::ceil((boundary-beat)*sampleRate*60./tempo.load()));int n=std::min({count-done,blockSize,remain});
         float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;
@@ -409,16 +409,17 @@ bool AudioEngine::startSampleAudition(int track,bool repeat){
     stopPreview();
     {const EngineControlLock lock(*this);if(isRecording()||exporting)return false;
         playing=false;needsReset=true;hardReset=true;auditionLoop=repeat;
-        clearMeters();sampleAudition.swap(next);auditionTrack=track;auditionNote=-1;auditioning=true;}
+        clearMeters();next->source=instruments[(size_t)track]->sampler.get();sampleAudition.swap(next);auditionTrack=track;auditionNote=-1;auditioning=true;}
     return true;
 }
 void AudioEngine::mixSampleAudition(float* const* output,int channels,int count){
-    auto* a=sampleAudition.get();if(!a||!mixes.current||instruments[(size_t)a->track]->mode!=1
-        ||sampleAsset(a->track)!=a->synth->sharedAsset()){auditioning=false;return;}
+    auto* a=sampleAudition.get();if(!a||!mixes.current||instruments[(size_t)a->track]->mode!=1){auditioning=false;return;}
+    if(a->source!=instruments[(size_t)a->track]->sampler.get()){auditioning=false;return;}
     const auto& mix=mixes.current->tracks[(size_t)a->track];
     // Keep the synth's parameter pointer owned here, independent of retired mix states.
-    bool restart=a->synth->configure(mix.sampler,mix.sampleRoot,mixes.current->tempo);
-    a->settings=mix.sampler;a->synth->configure(a->settings,mix.sampleRoot,mixes.current->tempo);
+    const bool mixChanged=a->seenTempo!=mixes.current->tempo||a->seenRoot!=mix.sampleRoot||!(a->settings==mix.sampler);
+    bool restart=false;
+    if(mixChanged){restart=a->synth->configure(mix.sampler,mix.sampleRoot,mixes.current->tempo);a->settings=mix.sampler;a->seenTempo=mixes.current->tempo;a->seenRoot=mix.sampleRoot;a->synth->configure(a->settings,a->seenRoot,a->seenTempo);}
     const int note=a->synth->mode()==2?a->settings.sliceBase:mix.sampleRoot;
     if(note!=a->note){a->synth->allNotesOff(0,false);restart=true;}a->note=note;
     if(restart)a->started=false;
@@ -462,7 +463,8 @@ void AudioEngine::capturePluginStates(Project& p){
     if(hostedCount.load()==0||exporting.load())return;
     // getStateInformation runs under the engine lock, which interrupts the audio: reuse the
     // serialised blob until something invalidates it (load, restore, editor closed).
-    if(pluginStateCaptured==pluginStateGeneration){
+    // While the transport is moving, never call into the plugin: keep the last snapshot.
+    if(playing.load()||pluginStateCaptured==pluginStateGeneration){
         for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){
             p.tracks[ti].instrumentState=cachedInstrumentStates[ti];
             p.tracks[ti].effectState=cachedEffectStates[ti];

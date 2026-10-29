@@ -22,8 +22,8 @@ public:
     void resized()override{
         // Fill the width, as before, but never squeeze the logical layout below 700 px
         // (very short or ultra-wide windows) so rows cannot overlap.
-        float scale=getWidth()/1440.f;
-        scale=juce::jmin(scale,getHeight()/700.f);
+        float scale=juce::jmin(getWidth()/1440.f,getHeight()/700.f);
+        scale=juce::jmax(.85f,scale);
         main.setTransform(juce::AffineTransform::scale(scale));
         main.setBounds(0,0,1440,juce::roundToInt(getHeight()/scale));
     }
@@ -31,11 +31,11 @@ public:
 };
 class Window:public juce::DocumentWindow {
 public:
-    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);setIcon(juce::ImageCache::getFromMemory(BinaryData::arranger_png,BinaryData::arranger_pngSize));content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(864,588,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);
+    Window():DocumentWindow(juce::String::fromUTF8("Fase Groove Arranger · FS Pitch"),juce::Colour(0xff0d0f13),DocumentWindow::allButtons){setUsingNativeTitleBar(true);setIcon(juce::ImageCache::getFromMemory(BinaryData::arranger_png,BinaryData::arranger_pngSize));content=new ScaledContent;setContentOwned(content,true);setResizable(true,false);setResizeLimits(1224,700,2880,1960);auto area=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;centreWithSize(std::min(1440,area.getWidth()-60),std::min(980,area.getHeight()-70));setVisible(true);
         content->main.onScaleChosen=[this](float scale){
             auto screen=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()->userArea;
-            int width=juce::jlimit(864,std::max(864,screen.getWidth()-60),juce::roundToInt(1440*scale));
-            int height=juce::jlimit(588,std::max(588,screen.getHeight()-70),juce::roundToInt(980*scale));
+            int width=juce::jlimit(1224,std::max(1224,screen.getWidth()-60),juce::roundToInt(1440*scale));
+            int height=juce::jlimit(700,std::max(700,screen.getHeight()-70),juce::roundToInt(980*scale));
             centreWithSize(width,height);Localisation::setSetting("uiScale",width/1440.f);
         };
         const float saved=Localisation::setting("uiScale","1").getFloatValue();if(saved>0&&saved!=1.f)content->main.onScaleChosen(saved);

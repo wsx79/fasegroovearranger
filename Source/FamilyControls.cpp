@@ -316,9 +316,27 @@ void IconButton::drawIcon (juce::Graphics& g, Icon icon, juce::Rectangle<float> 
         g.strokePath (p, juce::PathStrokeType (juce::jmax (1.2f, stroke * s), juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
 }
 
+const char* IconButton::iconTitle (Icon i)
+{
+    switch (i)
+    {
+        case Icon::play: return "Play"; case Icon::pause: return "Pause"; case Icon::stop: return "Stop";
+        case Icon::rewind: return "Rewind"; case Icon::dice: return "Randomise"; case Icon::undo: return "Undo";
+        case Icon::redo: return "Redo"; case Icon::gear: return "Settings"; case Icon::close: return "Close";
+        case Icon::fullScreen: return "Full screen"; case Icon::exitFullScreen: return "Exit full screen";
+        case Icon::lock: return "Lock"; case Icon::unlock: return "Unlock"; case Icon::left: return "Previous";
+        case Icon::right: return "Next"; case Icon::loop: return "Loop"; case Icon::metronome: return "Metronome";
+        case Icon::save: return "Save"; case Icon::help: return "Help"; case Icon::mixer: return "Mixer";
+        case Icon::inspector: return "Inspector"; case Icon::zoomIn: return "Zoom in"; case Icon::zoomOut: return "Zoom out";
+        case Icon::follow: return "Follow"; case Icon::automation: return "Automation"; case Icon::studio: return "Studio";
+        default: return "Button";
+    }
+}
+
 void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
     auto r = getLocalBounds().toFloat().reduced (0.5f);
+    if (hasKeyboardFocus (true)) { g.setColour (Daw::accent); g.drawRoundedRectangle (r.reduced (1.f), Daw::radius, 1.5f); }
     const bool on = getToggleState();
     const bool filled = (on && ! quiet) || primary;
     const bool flatLeft = isConnectedOnLeft(), flatRight = isConnectedOnRight();

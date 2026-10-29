@@ -15,11 +15,11 @@ public:
     :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),owned(std::move(copy)),engine(owned?*owned:e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),callback(std::move(done)){}
     void run()override{
         for(size_t i=0;i<tracks.size();++i){int track=tracks[i];auto file=tracks.size()>1?target.getChildFile(juce::String(rowForTrack(track)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)track].name))+(isMp3?".mp3":".wav")):target;
-            setStatusMessage(file.getFileName());result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());});if(result.failed())return;
+            setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());},&blockPeak);peak=std::max(peak,blockPeak);if(result.failed())return;
         }
     }
-    void threadComplete(bool cancelled)override{owned.reset();callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
-private:std::unique_ptr<AudioEngine> owned;AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();
+    void threadComplete(bool cancelled)override{owned.reset();if(!cancelled&&result.wasOk()&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
+private:std::unique_ptr<AudioEngine> owned;AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();double peak=0;
 };
 }
 juce::File MainComponent::projectInCommandLine(const juce::String& commandLine){

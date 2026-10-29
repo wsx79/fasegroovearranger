@@ -194,7 +194,17 @@ void verifyLeadIntegration(){
         for(int duration:{8,16,32,64}){p=original;p.settings.chordSteps=duration;applyInstrumentChange(p,leadTrack,true);check(!p.tracks[leadTrack].clips[0].notes.empty(),"Lead supports every shared harmonic duration");}
     }
 }
+void verifyAuditFixes(){
+    fga::Settings s;s.key=9;s.scale=0;s.extension=1;s.chordCount=1;s.degrees[0]=2;s.freeChords[0]=-1;
+    auto names=fga::chordNames(s);check(!names.empty()&&names[0].find("C#")!=std::string::npos&&names[0].find("Db")==std::string::npos,"A major spells iii as C#");
+    check(std::string(sgk::spelledNote(6,5,0))=="Gb","F major spells Gb");
+    auto altered=sgk::buildChord(11,8,4,sgk::Extension::alteredDominant);check(altered.seventh!=10,"Locrian degree 5 is not forced to a dominant seventh");
+    auto sus=sgk::buildChord(0,0,0,sgk::Extension::sus);check(sus.suspended,"C major sus replaces the third");
+    fga::Clip clip;clip.notes={{0,1,120,100,0},{1,1,60,100,0}};fga::transpose(clip,12);check(clip.notes[0].pitch==120&&clip.notes[1].pitch==60,"transpose rejects the whole selection at the MIDI edge");
+    fga::transpose(clip,-12);check(clip.notes[0].pitch==108&&clip.notes[1].pitch==48,"transpose applies when every note stays in range");
+}
 int main(int argc,char** argv){try{
+    verifyAuditFixes();
     verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
@@ -282,7 +292,7 @@ int main(int argc,char** argv){try{
         if(argc>1&&genre==1){auto pedal=original;pedal.tracks[0].engine.pedalCC=true;auto cc=fga::midiFile(pedal,0);std::ofstream ccFile(std::string(argv[1])+"/test-piano-cc.mid",std::ios::binary);ccFile.write((const char*)cc.data(),(std::streamsize)cc.size());std::ofstream f(std::string(argv[1])+"/test-song.mid",std::ios::binary);f.write((const char*)midi.data(),(std::streamsize)midi.size());std::ofstream g(std::string(argv[1])+"/test-kick.mid",std::ios::binary);g.write((const char*)stem.data(),(std::streamsize)stem.size());}
         std::cout<<"PASS "<<fga::genres()[(size_t)genre]<<" / "<<(int)(p.length()*60/p.settings.bpm)/60<<":"<<(int)(p.length()*60/p.settings.bpm)%60<<" / "<<p.length()/4<<" bars\n";
     }
-    fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25&&c.notes[0].length==.5,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==72&&c.notes[1].pitch==127,"transpose clamp");
+    fga::Clip c; c.notes={{.13,.5,60,96,0},{.3,.2,127,100,0}};fga::quantise(c,.25);check(c.notes[0].start==.25&&c.notes[0].length==.5,"quantise");fga::transpose(c,12);check(c.notes[0].pitch==60&&c.notes[1].pitch==127,"transpose rejects when one note would leave MIDI");
     fga::Clip held;held.notes={{.13,.5,60,80,0}};fga::quantise(held,.25,0);check(held.notes[0].start==.13,"quantise strength zero keeps the note");
     fga::Clip inside;inside.notes={{3.9,.2,60,90,0}};fga::quantise(inside,1,1,4);fga::tidyNotes(inside,4);check(inside.notes.size()==1&&inside.notes[0].start<4,"quantise stays inside the clip");
     fga::Clip plain;plain.notes={{1,.5,60,80,0}};auto untouched=plain;fga::humanize(plain,0,99,4);check(plain.notes==untouched.notes,"humanize zero is a no-op");

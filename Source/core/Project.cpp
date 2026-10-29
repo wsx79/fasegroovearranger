@@ -624,7 +624,7 @@ Project newProject(int genre) {
 }
 std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;
-    for(int i=0;i<s.chordCount;++i) out.push_back(sgk::chordName(sgk::GrooveEngine::chordForSlot(settings,i)));
+    for(int i=0;i<s.chordCount;++i) out.push_back(sgk::chordName(sgk::GrooveEngine::chordForSlot(settings,i),s.key,s.scale));
     return out;
 }
 namespace {
@@ -817,6 +817,26 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
 }
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
+// Guitar and lead share the piano's section colour. Their engines only have a few
+// chord types, so each piano chord is reduced to the nearest one that does not
+// put a third against a sus, or a natural 9 against b9/#9.
+fgg::Chord bandChord(int key,int scale,int degree,int free,sgk::Extension ext){
+    sgk::Chord c;
+    if(free>=0){sgk::GrooveSettings g;g.keyRoot=key;g.scale=scale;g.extension=ext;g.progressionLength=1;g.freeChords[0]=free;g.progression[0]=0;c=sgk::GrooveEngine::chordForSlot(g,0);}
+    else c=sgk::buildChord(key,scale,degree,ext);
+    using T=fgg::ChordType;int type=(int)T::major;
+    if(c.suspended)type=(int)T::sus4;
+    else if(c.sixth>=0&&c.seventh<0&&c.third==4&&c.fifth==7)type=(int)T::sixNine;
+    else if(c.third==3&&c.fifth==6)type=(int)(c.seventh==10?T::halfDim:T::dim);
+    else if(c.third==4&&c.fifth==8)type=(int)T::aug;
+    else if(c.third==3&&c.eleventh==5)type=(int)T::m11;
+    else if(c.third==4&&c.seventh==10&&c.thirteenth==9&&c.ninth!=1&&c.ninth!=3)type=(int)T::dom13;
+    else if(c.third==3)type=c.seventh<0?(int)T::minor:(c.ninth==2?(int)T::m9:(int)T::m7);
+    else if(c.seventh<0)type=(int)T::major;
+    else if(c.seventh==11)type=c.ninth==2?(int)T::maj9:(int)T::maj7;
+    else if(c.seventh==10)type=c.ninth==2?(int)T::dom9:(int)T::dom7;
+    return {c.rootPc,type};
+}
 // Every section that follows a filled one gets a crash on its first beat: each
 // section is rendered on its own, so the fill on the last bar had no answer.
 // The note is inserted in order (not appended) and replaces any crash already on
@@ -951,7 +971,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=s.chordCount; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
                 gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
                 for(size_t l=0;l<12;++l){gs.levels[l]=(float)e.laneLevel[l];gs.laneSwing[l]=(float)e.laneSwing[l];gs.laneShift[l]=(float)e.laneShift[l];gs.octaves[l]=e.laneOctave[l];gs.muted[l]=e.laneMute[l];}
-                for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgg::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgg::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
+                sgk::GrooveSettings colour;colour.extension=(sgk::Extension)s.extension;colour.section=(sgk::Section)engineType;const auto ext=sgk::GrooveEngine::sectionExtension(colour);
+                for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=bandChord(s.key,s.scale,s.degrees[(size_t)i],s.freeChords[(size_t)i],ext);
                 std::rotate(gs.chords.begin(),gs.chords.begin()+chordOffset,gs.chords.begin()+s.chordCount);
                 if(mixing){gs.fillEveryBars=0;gs.variationEvery=0;}
                 auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,renderBars,clip.seed,-1}});
@@ -968,7 +989,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 ls.velocity=e.velocity;ls.accentGroove=(float)e.accent;ls.attackMs=(float)(e.strum*80);ls.grooveBars=e.grooveBars;
                 ls.segmentOrder=e.segments;ls.letRing=e.letRing;ls.roomForBand=e.roomForBand;ls.pushChanges=e.pushChanges;ls.resolveAfterFill=e.afterFill;
                 for(size_t l=0;l<12;++l){ls.levels[l]=(float)e.laneLevel[l];ls.laneSwing[l]=(float)e.laneSwing[l];ls.laneShift[l]=(float)e.laneShift[l];ls.octaves[l]=e.laneOctave[l];ls.muted[l]=e.laneMute[l];}
-                for(int i=0;i<s.chordCount;++i)ls.chords[(size_t)i]=s.freeChords[(size_t)i]>=0?fgl::codeChord(s.key,s.freeChords[(size_t)i],std::min(s.extension,2)):fgl::diatonicChord(s.key,s.scale,s.degrees[(size_t)i],std::min(s.extension,2));
+                sgk::GrooveSettings colour;colour.extension=(sgk::Extension)s.extension;colour.section=(sgk::Section)engineType;const auto ext=sgk::GrooveEngine::sectionExtension(colour);
+                for(int i=0;i<s.chordCount;++i){auto chord=bandChord(s.key,s.scale,s.degrees[(size_t)i],s.freeChords[(size_t)i],ext);ls.chords[(size_t)i]={chord.root,chord.type};}
                 std::rotate(ls.chords.begin(),ls.chords.begin()+chordOffset,ls.chords.begin()+s.chordCount);
                 auto all=fgl::GrooveEngine::renderArrangement(ls,{{(fgl::Section)engineType,renderBars,clip.seed,-1}});
                 clip.notes=notesFrom(all,beats,[](const fgl::NoteEvent& event){return !event.isController()&&event.lane<fgl::numLanes;});
@@ -1111,7 +1133,7 @@ void tidyNotes(Clip& c,double beats) {
         last[(size_t)n.pitch]=(int)clean.size();clean.push_back(n);}
     c.notes=std::move(clean);
 }
-void transpose(Clip& c,int semitones) {for(auto& n:c.notes)n.pitch=std::clamp(n.pitch+semitones,0,127);}
+void transpose(Clip& c,int semitones) {if(semitones==0)return;for(const auto& n:c.notes){const int pitch=n.pitch+semitones;if(pitch<0||pitch>127)return;}for(auto& n:c.notes)n.pitch+=semitones;}
 void quantise(Clip& c,double grid,double strength,double limit) {
     if(!std::isfinite(grid)||grid<=0)return;
     strength=std::clamp(strength,0.0,1.0);

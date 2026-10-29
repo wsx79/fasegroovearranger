@@ -887,7 +887,7 @@ MainComponent::MainComponent(){
     densitySlider.setComponentID("song-density");swingSlider.setComponentID("song-swing");humanizeSlider.setComponentID("song-feel");masterSlider.setComponentID("master-gain");
     slider(zoomSlider,.05,160,.05," zoom");slider(gainSlider,-60,6,.1," dB");slider(panSlider,-100,100,1," pan");slider(velocitySlider,1,127,1," vel");velocitySlider.setValue(96);
     for(size_t i=0;i<genres().size();++i)genreBox.addItem(utf(genres()[i]),(int)i+1);
-    for(int i=0;i<12;++i)keyBox.addItem(sgk::noteName(i),i+1);
+    for(int i=0;i<12;++i)keyBox.addItem(sgk::spelledNote(i,9,0),i+1);
     for(int i=0;i<13;++i)scaleBox.addItem(sgk::scaleName(i),i+1);
     for(int i=0;i<11;++i){extensionBox.addItem(sgk::extensionName(i),i+1);voicingBox.addItem(sgk::voicingName(i),i+1);}
     const auto& progressions=sgk::progressionPresets();for(size_t i=0;i<progressions.size();++i)progressionBox.addItem(progressions[i].name,(int)i+1);progressionBox.setTextWhenNothingSelected("PROGRESSION");
@@ -1118,7 +1118,7 @@ void MainComponent::applyInstrumentSettings(int track,bool harmony){
     applyInstrumentChange(project,track,harmony);piano.clearSelection();changed(true,harmony?-1:track);
 }
 // Plugin states are part of the snapshot, so undoing an instrument change brings back its sound.
-bool MainComponent::editingRestricted()const{return mediaBusy||audio.isRecording()||audio.isAudioRecording();}
+bool MainComponent::editingRestricted()const{return mediaBusy||audio.isRecording()||audio.isAudioRecording()||audio.isExporting();}
 void MainComponent::updateEditingAvailability(){
     if(availabilityUpdating||!isEnabled())return;juce::ScopedValueSetter<bool> updating(availabilityUpdating,true);
     if(editingRestricted()){
@@ -1186,6 +1186,7 @@ void MainComponent::refreshControls(){
     refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
+    for(int i=0;i<12&&keyBox.getNumItems()==12;++i){auto name=juce::String::fromUTF8(sgk::spelledNote(i,s.key,s.scale));if(keyBox.getItemText(i)!=name)keyBox.changeItemText(i+1,name);}
     sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
     tempoSlider.setValue(s.bpm,juce::dontSendNotification);swingSlider.setValue(s.swing*100,juce::dontSendNotification);densitySlider.setValue(s.density*100,juce::dontSendNotification);humanizeSlider.setValue(s.humanize*100,juce::dontSendNotification);masterSlider.setValue(juce::Decibels::gainToDecibels(project.masterGain,-60.),juce::dontSendNotification);loopButton.setToggleState(project.loop,juce::dontSendNotification);
     juce::StringArray chords;for(const auto& name:cachedChordNames())chords.add(utf(name));chordsLabel.setText(tr("HARMONY")+"   "+chords.joinIntoString("    /    "),juce::dontSendNotification);
@@ -1270,7 +1271,7 @@ void MainComponent::paint(juce::Graphics& g){
     const int legendY=lcdArea.getBottom()-15;
     Daw::drawCaps(g,positionLegend,{positionLabel.getX()+2,legendY,positionLabel.getWidth(),12});
     Daw::drawCaps(g,tr("TEMPO"),{tempoSlider.getX()+2,legendY,tempoSlider.getWidth(),12});
-    g.setColour(Daw::text);g.setFont(Daw::font(Daw::display-4,true));g.drawText("4/4",juce::Rectangle<int>(lcdDividers.size()>1?lcdDividers[1]:0,lcdArea.getY()+4,lcdDividers.size()>2?lcdDividers[2]-lcdDividers[1]:0,24),juce::Justification::centred);
+    g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::body,true));g.drawText("4/4",juce::Rectangle<int>(lcdDividers.size()>1?lcdDividers[1]:0,lcdArea.getY()+8,lcdDividers.size()>2?lcdDividers[2]-lcdDividers[1]:0,16),juce::Justification::centred);
     Daw::drawCaps(g,tr("KEY"),{keyBox.getX()+4,legendY,keyBox.getWidth()+scaleBox.getWidth(),12});
     // The master section's caption.
     Daw::drawCaps(g,tr("MASTER"),{masterSlider.getRight()-58,3,58,12});
@@ -1474,7 +1475,7 @@ void MainComponent::timerCallback(){
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
     // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):
     // an idle arranger uses no CPU for drawing.
-    const bool mouseDown=juce::ModifierKeys::currentModifiers.isAnyMouseButtonDown();
+    const bool mouseDown=arrangement.isMouseButtonDown(true)||piano.isMouseButtonDown(true);
     const bool moving=audio.isPlaying()||beat!=lastTimerBeat||audio.masterLevel()>0||mouseDown;lastTimerBeat=beat;
     if(moving){
         // Playing hands-off, only the playhead strip and the track headers (meters) move.
