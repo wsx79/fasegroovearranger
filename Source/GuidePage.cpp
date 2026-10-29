@@ -148,6 +148,8 @@ std::unique_ptr<juce::Component> createReferencePage(const juce::String& title,c
 bool verifyGuidePages(const juce::File& folder){
 #if !FGA_SELF_TESTS
 return false;
-#elseGuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, eight images including AI/Lead/cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;#endif
+#else
+GuidePage italian(false),english(true);const bool ok=italian.evidence(folder)&&english.evidence(folder);folder.getChildFile("guide.txt").replaceWithText(ok?"PASS Piano-family manuals: nine chapters, eight images including AI/Lead/cover/settings, tables, navigation, search and zoom":"FAIL guide rendering");return ok;
+#endif
 }
 }

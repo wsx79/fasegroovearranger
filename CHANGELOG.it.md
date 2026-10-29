@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.2
+
+- Il pulsante di chiusura dell'inspector è centrato nell'intestazione, della stessa misura e con lo stesso hover delle altre icone, e una X vettoriale pulita.
+- Lo schermo intero nasconde la barra del sistema su Windows, macOS e Linux. F11 lo attiva e disattiva; uscendo torna la finestra.
+- Corretto il build Linux con GCC: gli atomic del trasporto si leggono con load(), senza copiarli l'uno nell'altro.
+
 ## 0.25.1
 
 - Prima release pubblicata delle modifiche 0.24.0 e 0.25.0 (armonia, audio, UI, teoria condivisa, test fuori dal binario). Le modifiche ai motori piano, chitarra e lead sono registrate e il controllo dei plugin torna allineato.

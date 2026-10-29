@@ -267,7 +267,7 @@ private:
     std::atomic<bool> positionLooping{false},positionLoopSetting{false};std::atomic<unsigned> positionRevision{0};
     std::atomic<int> timeNumerator{4},timeDenominator{4},reportedLatency{0},hostedCount{0};std::atomic<bool> latencyLimited{false};
     std::atomic<double> pluginBeatOffset{0};
-    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;positionLoopFrom=loopFrom;positionLoopTo=loopTo;positionLooping=looping&&!loopBypassed;positionLoopSetting=looping;positionRevision.fetch_add(1);}
+    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;positionLoopFrom=loopFrom.load();positionLoopTo=loopTo.load();positionLooping=looping.load()&&!loopBypassed.load();positionLoopSetting=looping.load();positionRevision.fetch_add(1);}
 
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
     std::array<std::atomic<float>,maxTracks> meters;

@@ -317,6 +317,8 @@ private:
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     // Full screen drops the native title bar, so the arranger reaches the screen edges.
     IconButton fullScreenButton{IconButton::Icon::fullScreen};
+    void applyFullScreen(bool on);
+    bool appFullScreen=false;juce::Rectangle<int> fullScreenRestore;
     SampleBrowser sampleBrowser{audio};
     bool browserVisible=false;
     InstrumentPanel instrumentPanel{*this};

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.2
+
+- The inspector close button sits centred in the header, with the same size and hover as the other icons and a clean vector X.
+- Full screen hides the system title bar on Windows, macOS and Linux. F11 toggles it; leaving full screen restores the window.
+- Fix the Linux GCC build: transport atomics are read with load() instead of copied into each other.
+
 ## 0.25.1
 
 - First published build of the 0.24.0 and 0.25.0 changes (harmony, audio races, UI, shared chord theory, release self-tests). Record the vendored piano, guitar and lead edits so the engine check matches the plugins.

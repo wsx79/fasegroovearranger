@@ -63,9 +63,9 @@ namespace
                 break;
             }
             case I::close:
-                p.startNewSubPath (0.24f, 0.24f); p.lineTo (0.76f, 0.76f);
-                p.startNewSubPath (0.76f, 0.24f); p.lineTo (0.24f, 0.76f);
-                strokeWidth = 0.1f;
+                p.startNewSubPath (0.28f, 0.28f); p.lineTo (0.72f, 0.72f);
+                p.startNewSubPath (0.72f, 0.28f); p.lineTo (0.28f, 0.72f);
+                strokeWidth = 0.08f;
                 break;
             case I::fullScreen:
             case I::exitFullScreen:

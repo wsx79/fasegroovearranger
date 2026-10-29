@@ -841,12 +841,7 @@ MainComponent::MainComponent(){
     inspectorPort.setViewedComponent(&trackInspector,false);inspectorPort.setScrollBarsShown(true,false);addAndMakeVisible(inspectorPort);addAndMakeVisible(mixer);
     for(auto* button:{&inspectorToggle,&mixerToggle,&followButton}){addAndMakeVisible(button);button->setClickingTogglesState(true);}
     addAndMakeVisible(fullScreenButton);fullScreenButton.setClickingTogglesState(false);
-    fullScreenButton.onClick=[this]{
-        auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(!top)return;
-        top->setFullScreen(!top->isFullScreen());
-        const bool full=top->isFullScreen();fullScreenButton.setToggleState(full,juce::dontSendNotification);
-        fullScreenButton.setIcon(full?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);
-    };
+    fullScreenButton.onClick=[this]{applyFullScreen(!appFullScreen);};
     addAndMakeVisible(inspectorResizer);addChildComponent(browserResizer);addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
     inspectorCollapse.quiet=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
     inspectorCollapse.onClick=[this]{inspectorVisible=!inspectorVisible;inspectorToggle.setToggleState(inspectorVisible,juce::dontSendNotification);resized();};
@@ -1373,7 +1368,7 @@ void MainComponent::resized(){
         for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,top,inspectorVisible?inspectorWidth:0,std::max(60,footer-top));trackInspector.setSize(inspectorWidth-16,trackInspector.preferredHeight());
-        inspectorCollapse.setBounds(inspectorWidth-22,top+13,20,20);inspectorCollapse.toFront(false);
+        const int close=28;const int titleCentre=top+21;inspectorCollapse.setBounds(12+inspectorWidth-8-close,titleCentre-close/2,close,close);inspectorCollapse.toFront(false);
         inspectorResizer.setBounds(12+inspectorWidth,top,8,std::max(60,footer-top));inspectorResizer.toFront(false);
         mixer.setBounds(12,footer+36,right-12,dockHeight);
         const int tools=right-336;
@@ -1485,12 +1480,30 @@ return false;
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 #endif
 }
+void MainComponent::applyFullScreen(bool on){
+    auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(!top||on==appFullScreen)return;
+    appFullScreen=on;
+    if(on){
+        fullScreenRestore=top->getBounds();
+        top->setUsingNativeTitleBar(false);
+        top->setTitleBarHeight(0);
+        top->setFullScreen(true);
+        juce::Desktop::getInstance().setKioskModeComponent(top,false);
+    }else{
+        if(juce::Desktop::getInstance().getKioskModeComponent()==top)juce::Desktop::getInstance().setKioskModeComponent(nullptr,false);
+        top->setFullScreen(false);
+        top->setUsingNativeTitleBar(true);
+        if(!fullScreenRestore.isEmpty())top->setBounds(fullScreenRestore);
+    }
+    fullScreenButton.setToggleState(on,juce::dontSendNotification);
+    fullScreenButton.setIcon(on?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);
+}
 void MainComponent::timerCallback(){
     fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
     // keep the button's icon and state in step without repainting when nothing changed.
     if(auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent())){const bool full=top->isFullScreen();
-        if(full!=fullScreenButton.getToggleState()){fullScreenButton.setToggleState(full,juce::dontSendNotification);fullScreenButton.setIcon(full?IconButton::Icon::exitFullScreen:IconButton::Icon::fullScreen);}}
+        if(full!=appFullScreen)applyFullScreen(full);}
     const double beat=timelinePosition();showPosition(beat);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);playButton.setToggleState(audio.isPlaying(),juce::dontSendNotification);mixer.tick();
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
     // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):
@@ -1527,10 +1540,10 @@ void MainComponent::showPosition(double beat){
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
-    if(k.getKeyCode()==juce::KeyPress::F11Key){fullScreenButton.onClick();return true;}
+    if(k.getKeyCode()==juce::KeyPress::F11Key){applyFullScreen(!appFullScreen);return true;}
     if(pluginSettings.isVisible()){if(k==juce::KeyPress::escapeKey)pluginSettings.setVisible(false);return true;}
     if(pluginBrowser.isVisible()){if(k==juce::KeyPress::escapeKey)pluginBrowser.setVisible(false);return true;}
-    if(k==juce::KeyPress::escapeKey){auto* top=dynamic_cast<juce::DocumentWindow*>(getTopLevelComponent());if(top&&top->isFullScreen()){top->setFullScreen(false);return true;}if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
+    if(k==juce::KeyPress::escapeKey){if(appFullScreen){applyFullScreen(false);return true;}if(updateOverlay.isVisible()){updateOverlay.setVisible(false);return true;}if(options.isVisible()){options.setVisible(false);return true;}showArrangement();return true;}
     if(k==juce::KeyPress::spaceKey){if(audio.isRecording()||audio.isAudioRecording())stopPlaybackAndRecording();else togglePlayback();return true;}
     if(editingRestricted())return true;
     if(k==juce::KeyPress::homeKey){seekTimeline(0);return true;}
