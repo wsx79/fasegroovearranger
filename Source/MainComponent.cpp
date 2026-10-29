@@ -483,7 +483,7 @@ void PianoRoll::paint(juce::Graphics& g){
     if(ownerTrackIsDrum()){
         for(double b=0;b<owner.clipLength();b+=1){const float x=left+(float)(b*pixelsPerBeat);if(x<view.getX()+left||x>view.getRight())continue;label(g,juce::String((int)b%4+1),{(int)x+3,23,40,14},10,(int)b%4==0?Daw::accent:Daw::textFaint);if((int)b%4==0)label(g,tr("Bar")+" "+juce::String((int)b/4+1),{(int)x+3,2,140,18},10,Daw::text);}
     }else{
-        auto names=chordNames(owner.project.settings);const double chordBeats=owner.project.settings.chordSteps*.25;
+        const auto& names=owner.cachedChordNames();const double chordBeats=owner.project.settings.chordSteps*.25;
         for(double b=0;b<owner.clipLength();b+=chordBeats){const int x=leftMargin()+(int)(b*pixelsPerBeat);if(x+(int)(chordBeats*pixelsPerBeat)<view.getX()+left||x>view.getRight())continue;auto r=juce::Rectangle<int>(x+1,3,(int)(chordBeats*pixelsPerBeat)-2,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);label(g,utf(names[(size_t)((int)((owner.clipStart()+b)/chordBeats)%names.size())]),r.reduced(8,0),11,Daw::text);const double local=owner.audio.position()-owner.clipStart();const bool currentBar=local>=b&&local<b+4.;g.setFont(Daw::font(10.f,true));g.setColour(currentBar?Daw::accent:Daw::textDim);g.drawText(juce::String((int)(b/4)+1),x+4,24,50,14,juce::Justification::centredLeft);}
     }
     g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(39,(float)vx,(float)view.getRight());
@@ -1140,9 +1140,20 @@ void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshCont
 // Only the window header (display legends, page title) and the status bar (project name and
 // length) are painted by the window itself.
 void MainComponent::repaintHeader(){repaint(0,0,getWidth(),toolbarBottom()+1);repaint(0,getHeight()-statusHeight,getWidth(),statusHeight);}
-void MainComponent::changed(bool schedule,int onlyTrack){project.normalise();dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
-void MainComponent::applyLanguage(){
-    if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
+void MainComponent::changed(bool schedule,int onlyTrack){project.normalise();songLengthCache=-1;chordNameCacheReady=false;dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
+// Derived data asked for by paint() and the 20 Hz timer: recomputed only when the
+// harmony settings (chord names) or the form (length) change.
+const std::vector<std::string>& MainComponent::cachedChordNames(){
+    auto& s=project.settings;
+    std::uint32_t key=2166136261u;
+    auto fold=[&key](int value){key=(key^(std::uint32_t)value)*16777619u;};
+    fold((int)s.seed);fold(s.key);fold(s.scale);fold(s.extension);fold(s.chordSteps);fold(s.chordCount);
+    for(int i=0;i<s.chordCount&&i<8;++i){fold(s.degrees[(size_t)i]);fold(s.freeChords[(size_t)i]+2);}
+    if(!chordNameCacheReady||key!=chordNameCacheKey){chordNameCache=chordNames(s);chordNameCacheKey=key;chordNameCacheReady=true;}
+    return chordNameCache;
+}
+double MainComponent::songLength(){if(songLengthCache<0)songLengthCache=project.length();return songLengthCache;}
+void MainComponent::applyLanguage(){    if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
     refreshControls();if(instrumentIsOpen())instrumentPanel.rebuild();
     options.refreshText();pluginSettings.refreshText();pluginBrowser.refreshText();updateOverlay.refreshText();translateControls(*this);repaint();
 }
@@ -1165,7 +1176,7 @@ void MainComponent::refreshControls(){
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
     tempoSlider.setValue(s.bpm,juce::dontSendNotification);swingSlider.setValue(s.swing*100,juce::dontSendNotification);densitySlider.setValue(s.density*100,juce::dontSendNotification);humanizeSlider.setValue(s.humanize*100,juce::dontSendNotification);masterSlider.setValue(juce::Decibels::gainToDecibels(project.masterGain,-60.),juce::dontSendNotification);loopButton.setToggleState(project.loop,juce::dontSendNotification);
-    juce::StringArray chords;for(auto name:chordNames(s))chords.add(utf(name));chordsLabel.setText(tr("HARMONY")+"   "+chords.joinIntoString("    /    "),juce::dontSendNotification);
+    juce::StringArray chords;for(const auto& name:cachedChordNames())chords.add(utf(name));chordsLabel.setText(tr("HARMONY")+"   "+chords.joinIntoString("    /    "),juce::dontSendNotification);
     addTrackButton.setEnabled(project.tracks.size()<maxTracks&&!loadingPlugin);addSectionButton.setEnabled(project.sections.size()<64&&!loadingPlugin);
     undoButton.setEnabled(!undoStack.empty());redoButton.setEnabled(!redoStack.empty());showPosition(timelinePosition());refreshing=false;refreshTrack();if(instrumentIsOpen()){instrumentPanel.refreshFromProject();instrumentWindow->refresh();}updateSizes();updateEditingAvailability();
 }
@@ -1478,7 +1489,7 @@ void MainComponent::autosaveIfIdle(const juce::File& target){
 void MainComponent::showPosition(double beat){
     const int ticksIn=std::clamp((int)std::floor((beat-std::floor(beat))*960+1e-6),0,959);
     positionLabel.setText(timeDisplay?timeText(beat*60/project.settings.bpm,3):juce::String((int)beat/4+1)+"."+juce::String((int)beat%4+1)+"."+juce::String(ticksIn).paddedLeft('0',3),juce::dontSendNotification);
-    const auto legend=timeDisplay?"-"+timeText(std::max(0.,project.length()-beat)*60/project.settings.bpm)+" "+tr("remaining"):"/ "+juce::String((int)project.length()/4)+" "+tr("bars");
+    const auto length=songLength();const auto legend=timeDisplay?"-"+timeText(std::max(0.,length-beat)*60/project.settings.bpm)+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
     if(positionLegend!=legend){positionLegend=legend;repaint(lcdArea.withWidth(132));}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}

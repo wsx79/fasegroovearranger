@@ -221,6 +221,10 @@ public:
     void toggleMetronome();
     void regenerate(Scope,bool newTake=true);
     void showGenerateMenu();
+    // Cached views of derived song data: chord names and length are asked for from
+    // paint() and the 20 Hz timer, and both were rebuilt from scratch every time.
+    const std::vector<std::string>& cachedChordNames();
+    double songLength();
     void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();
@@ -302,6 +306,10 @@ private:
     void toggleTimeDisplay();
     int mixerHeight=244,inspectorWidth=248;
     int sampleBrowserWidth=0;   // 0: automatic (a quarter of the window); else dragged by its left edge (saved)
+    std::vector<std::string> chordNameCache;
+    std::uint32_t chordNameCacheKey=0;
+    bool chordNameCacheReady=false;
+    double songLengthCache=-1;
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
     IconButton inspectorCollapse{IconButton::Icon::close};
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
