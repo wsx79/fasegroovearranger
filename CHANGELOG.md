@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.15
+
+- The first note of a section is visible again: the clip's inner margin no longer culls or covers it, and the section divider sits under the clips as a 1 px line on the exact boundary.
+- The selected clip is a brighter fill without the white border around it.
+- The AUDIO / MIDI menu (device, autosave folder, recover, metronome) has a header, 30 px rows and a minimum width; the audio device window is 920x640 and opens centred on the main window.
+
 ## 0.23.14
 
 - A loaded plugin opens its editor automatically and centred; closing it is left to the user, and reopening a project still opens nothing.

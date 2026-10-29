@@ -77,6 +77,10 @@ void ArrangementView::paint(juce::Graphics& g){
     }
     // Clips: rounded bodies in the track colour, a title bar with the section name and the
     // notes drawn inside (a pitch outline for melodic parts, velocity ticks for drums).
+    // Section dividers sit under the clips: a 1 px line on the exact boundary, so the first
+    // note of a section (crash, kick) is never covered.
+    for(size_t section=0;section<p.sections.size();++section){const float x=std::round(beatX(p.sectionStart((int)section)));
+        if(x>=lanesLeft&&x<lanesRight){g.setColour(Daw::sectionColour((int)p.sections[section].type).withAlpha(.85f));const float top=(float)rulerHeight;g.fillRect(x,top,1.f,std::max(0.f,(float)getHeight()-top));}}
     for(int row=0;row<(int)owner.project.tracks.size();++row){const int ti=trackAtRow(row),y=rowY(row),h=rowHeight(row);if(y>dirtyArea.getBottom())break;if(y+h<dirtyArea.getY())continue;
         const auto& t=p.tracks[(size_t)ti];const bool muted=t.mute;auto ink=colour(ti);if(muted)ink=ink.withSaturation(.08f).withMultipliedBrightness(.7f);
         double occupied=0,sectionBegin=0;
@@ -97,15 +101,15 @@ void ArrangementView::paint(juce::Graphics& g){
                 if(cell.getWidth()>28){const int guide=std::clamp(p.sectionAtBeat(begin),0,(int)p.sections.size()-1);auto title=cell.withHeight(titleHeight).reduced(5.f,0);if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,title.removeFromRight(10.f).withSizeKeepingCentre(9.f,9.f),Daw::onAccent);title.removeFromRight(3.f);}
                     g.setColour(Daw::onAccent);g.setFont(Daw::font(10.f,true));g.drawText(utf(p.sections[(size_t)guide].name),title,juce::Justification::centredLeft,true);}}
             else if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,{cell.getRight()-13.f,cell.getY()+3.f,10.f,10.f},ink);}
-            const auto notesArea=cell.withTrimmedTop(titleHeight).reduced(3.f,3.f);
-            if(cell.getWidth()>6&&notesArea.getHeight()>3){g.saveState();g.reduceClipRegion(notesArea.toNearestInt());g.setColour(ink.brighter(.35f).withAlpha(muted?.5f:.92f));
-                const float from=std::max(notesArea.getX(),(float)dirtyArea.getX())-2,to=std::min(notesArea.getRight(),(float)dirtyArea.getRight())+2;
-                if(isDrumTrack(ti)){for(const auto& n:c.notes){const float nx=beatX(begin+n.start);if(nx<from||nx>to)continue;const float tick=notesArea.getHeight()*(.3f+.7f*n.velocity/127.f);g.fillRect(nx,notesArea.getBottom()-tick,std::max(1.f,std::min(2.f,(float)(n.length/4*pixelsPerBar))),tick);}}
+            const auto notesArea=cell.withTrimmedTop(titleHeight).reduced(1.f,3.f);
+            if(cell.getWidth()>6&&notesArea.getHeight()>3){g.saveState();g.reduceClipRegion(notesArea.withLeft(cell.getX()-1.f).toNearestInt());g.setColour(ink.brighter(.35f).withAlpha(muted?.5f:.92f));
+                const float from=std::max(cell.getX(),(float)dirtyArea.getX())-2,to=std::min(cell.getRight(),(float)dirtyArea.getRight())+2;
+                if(isDrumTrack(ti)){for(const auto& n:c.notes){const float nx=std::max(notesArea.getX(),beatX(begin+n.start));if(nx<from||nx>to)continue;const float tick=notesArea.getHeight()*(.3f+.7f*n.velocity/127.f);g.fillRect(nx,notesArea.getBottom()-tick,std::max(1.f,std::min(2.f,(float)(n.length/4*pixelsPerBar))),tick);}}
                 else{int low=127,high=0;for(const auto& n:c.notes){low=std::min(low,n.pitch);high=std::max(high,n.pitch);}const float span=std::max(1.f,notesArea.getHeight()-2.f);const float noteH=juce::jlimit(1.5f,4.f,span/(float)std::max(6,high-low+1));
                     for(const auto& n:c.notes){const float nx=beatX(begin+n.start),nw=std::max(1.5f,(float)(n.length/4*pixelsPerBar)-.5f);if(nx+nw<from||nx>to)continue;const float ny=notesArea.getBottom()-noteH-(float)((n.pitch-low)/(double)std::max(1,high-low))*(span-noteH);g.fillRect(nx,ny,nw,noteH);}}
                 g.restoreState();}
             if(c.loopLength>0&&duration>c.loopLength){g.setColour(juce::Colours::black.withAlpha(.45f));for(double at=begin+c.loopLength;at<end-1e-9;at+=c.loopLength)if(at>=visible){const float lx=beatX(at);g.fillRect(lx-.5f,cell.getY()+titleHeight,1.f,cell.getHeight()-titleHeight);g.setColour(ink.withAlpha(.6f));g.fillEllipse(lx-2.f,cell.getBottom()-6.f,4.f,4.f);g.setColour(juce::Colours::black.withAlpha(.45f));}}
-            g.setColour(sel?Daw::text:hover?ink.brighter(.3f):juce::Colours::black.withAlpha(.55f));g.drawRoundedRectangle(cell.reduced(.5f),Daw::radius,sel?1.5f:1.f);
+            if(!sel){g.setColour(hover?ink.brighter(.3f):juce::Colours::black.withAlpha(.55f));g.drawRoundedRectangle(cell.reduced(.5f),Daw::radius,1.f);}
             if(sel||hover){g.setColour(sel?Daw::text.withAlpha(.8f):ink.brighter(.3f).withAlpha(.8f));g.fillRoundedRectangle(cell.getRight()-4.f,cell.getCentreY()-6.f,2.f,12.f,1.f);}
         }
     }
@@ -177,8 +181,6 @@ void ArrangementView::paint(juce::Graphics& g){
         g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(y+32,(float)view.getX(),(float)view.getRight());g.drawHorizontalLine(y+rulerHeight-1,(float)view.getX(),(float)view.getRight());
         g.setColour(Daw::chrome);g.fillRect(view.getX(),y,headerWidth,rulerHeight);g.setColour(juce::Colours::black.withAlpha(.6f));g.drawVerticalLine(view.getX()+headerWidth-1,(float)y,(float)y+rulerHeight);g.drawHorizontalLine(y+rulerHeight-1,(float)view.getX(),(float)view.getX()+headerWidth);
     }
-    for(size_t section=0;section<p.sections.size();++section){const float x=beatX(p.sectionStart((int)section))+1.f;
-        if(x>=lanesLeft&&x<lanesRight){g.setColour(Daw::sectionColour((int)p.sections[section].type).withAlpha(.85f));g.fillRect(x,(float)y+rulerHeight,1.5f,std::max(0.f,bottom-y-rulerHeight));}}
     if(dropTrack>=0){const int row=rowForTrack(dropTrack);const juce::Rectangle<float> target((float)view.getX()+1,(float)rowY(row)+1,(float)view.getWidth()-2,(float)rowHeight(row)-2);
         g.setColour(Daw::accent.withAlpha(.1f));g.fillRect(target);g.setColour(Daw::accent);g.drawRect(target,1.5f);}
     const float playX=std::round(beatX(owner.timelinePosition()));if(playX>=lanesLeft&&playX<view.getRight()){g.setColour(Daw::playhead.withAlpha(.9f));g.fillRect(playX,(float)y+33,1.f,(float)view.getHeight()-33);

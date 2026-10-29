@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.15
+
+- La prima nota di una sezione si vede di nuovo: il margine interno del clip non la scarta più e il divisore di sezione sta sotto i clip, 1 px sul confine esatto.
+- La clip selezionata è un riempimento più chiaro, senza il bordo bianco attorno.
+- Il menu AUDIO / MIDI (dispositivo, cartella autosave, recupero, metronomo) ha un'intestazione, righe da 30 px e una larghezza minima; la finestra del dispositivo audio è 920x640 e si apre centrata sulla finestra principale.
+
 ## 0.23.14
 
 - Un plugin caricato apre da solo il suo editor, centrato; a chiuderlo pensi tu, e riaprendo un progetto non si apre nulla.

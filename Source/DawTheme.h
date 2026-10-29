@@ -67,7 +67,7 @@ inline juce::Colour sectionColour(int kind){
     return juce::Colour(colours[std::clamp(kind,0,5)]);
 }
 // A clip's body: the track colour sunk into the well, so the notes drawn on it stay readable.
-inline juce::Colour clipBody(juce::Colour c,bool selected){return well.interpolatedWith(c,selected?.36f:.24f);}
+inline juce::Colour clipBody(juce::Colour c,bool selected){return well.interpolatedWith(c,selected?.52f:.24f);}
 // Meter colour for a linear peak level.
 inline juce::Colour meterColour(float peak){return peak>=1.f?meterHigh:peak>.5f?meterMid:meterLow;}
 // Meter position for a linear peak: 0 at -60 dB, 1 at +6 dB, as the faders.
