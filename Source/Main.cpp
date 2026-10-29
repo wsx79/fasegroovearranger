@@ -247,6 +247,10 @@ public:
             }
             setApplicationReturnValue(ok?0:1);quit();return;
         }
+#else
+        if(!args.isEmpty()&&(args[0]=="--smoke-test"||args[0]=="--ui-test"||args[0]=="--host-smoke-test"||args[0]=="--club-audit")){
+            setApplicationReturnValue(1);quit();return;
+        }
 #endif
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
         window->content->main.openFromCommandLine(getCommandLineParameters());

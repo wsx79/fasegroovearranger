@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.3
+
+- Lo snapshot dello stato dei plugin aspetta la fine di processBlock, anche durante la riproduzione.
+- `--smoke-test` resta nell'app distribuita. Un build senza i test esce subito, invece di aprire la finestra e restare in attesa.
+
 ## 0.25.2
 
 - Il pulsante di chiusura dell'inspector è centrato nell'intestazione, della stessa misura e con lo stesso hover delle altre icone, e una X vettoriale pulita.

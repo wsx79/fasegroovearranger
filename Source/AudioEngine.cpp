@@ -459,8 +459,8 @@ void AudioEngine::capturePluginStates(Project& p){
     if(hostedCount.load()==0||exporting.load())return;
     // getStateInformation runs under the engine lock, which interrupts the audio: reuse the
     // serialised blob until something invalidates it (load, restore, editor closed).
-    // While the transport is moving, never call into the plugin: keep the last snapshot.
-    if(playing.load()||pluginStateCaptured==pluginStateGeneration){
+    // A fresh snapshot still waits until processBlock has left the plugin.
+    if(pluginStateCaptured==pluginStateGeneration){
         for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){
             p.tracks[ti].instrumentState=cachedInstrumentStates[ti];
             p.tracks[ti].effectState=cachedEffectStates[ti];

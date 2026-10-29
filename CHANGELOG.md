@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.3
+
+- Plugin state snapshots wait until processBlock has finished, including while the transport is playing.
+- `--smoke-test` stays in the shipped app. A build without the harness exits instead of opening the window and hanging.
+
 ## 0.25.2
 
 - The inspector close button sits centred in the header, with the same size and hover as the other icons and a clean vector X.
