@@ -48,10 +48,9 @@ inline void verifyRegeneration(){
             check(p.settings.key==take.settings.key&&sameHarmony(p.settings,take.settings)&&p.settings.bpm==take.settings.bpm&&p.length()==take.length(),"apply retains harmony, tempo and form");
             for(int ti=0;ti<fga::trackCount;++ti)check(p.tracks[ti].clips==take.tracks[ti].clips,"new musical takes must be reproducible without a new seed");
             // The kit answers a filled section with a crash on its first beat.
+            p.normalise();
             if(p.tracks[16].engine.afterFill){
                 for(size_t si=1;si<p.sections.size()&&si<p.tracks[16].clips.size();++si){
-                    const auto previous=p.sections[si-1].type;
-                    if(previous==fga::Section::intro||previous==fga::Section::outro)continue;
                     const double at=p.sectionStart((int)si)-p.clipStart(16,(int)si);
                     const auto& notes=p.tracks[16].clips[si].notes;
                     check(std::any_of(notes.begin(),notes.end(),[at](const fga::Note& n){return std::abs(n.start-at)<1e-6;}),"the kit answers a filled section with a crash on its downbeat");

@@ -828,8 +828,6 @@ static void addSectionCrashes(Project& p){
         if(!isDrumTrack(ti)||ti-4!=crashLane||t.locked)continue;
         if(!t.engine.afterFill)continue;
         for(int si=1;si<(int)p.sections.size();++si){
-            const auto previous=p.sections[(size_t)si-1].type;
-            if(previous==Section::intro||previous==Section::outro)continue;
             const double beat=p.sectionStart(si);
             // Works for the fixed form and for tracks detached by timeline edits:
             // find the clip that actually covers the downbeat.
