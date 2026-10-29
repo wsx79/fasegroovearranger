@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.26.0
+
+- Lo Studio disegna l'inviluppo di volume sulla forma d'onda e lo aggiorna con le manopole. Si trascinano inizio, fine, i fade e i punti di attack, decay, sustain e release; trascinando un tratto si piega la curva. FORMA scala la forma d'onda. Le manopole restano allineate e la modifica si annulla.
+- Il Jackin' House va a 122–128 BPM, centro 125 (prima 120–127, centro 125). Un brano salvato sotto 122 sale a 122 all'apertura.
+
 ## 0.25.5
 
 - Il pulsante di chiusura dell'inspector segue la card, così ogni larghezza prevista, Lead compreso, resta dentro i margini.

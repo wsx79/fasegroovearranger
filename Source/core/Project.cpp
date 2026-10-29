@@ -257,7 +257,7 @@ const GenreProfile& genreProfile(int genre) {
         {118,125,122,32,false}, // Soulful: a musical lift, not a rave roll
         {115,125,120,32,false}, // Deep: gradual development
         {118,125,123,16,false}, // Gospel: soulful-house working range
-        {120,127,125,32,false}, // Jackin': 120–127, shuffle not speed garage
+        {122,128,125,32,false}, // Jackin' House: 122–128, centre 125, shuffle not speed garage
         {124,130,126,32,true},  // Jackin' Piano
         {130,135,132,32,true},  // Garage / UK
         {115,125,122,32,false}, // Afro / Latin: percussion-led lift

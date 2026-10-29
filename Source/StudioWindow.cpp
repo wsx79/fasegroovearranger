@@ -27,6 +27,7 @@ juce::String studioTip(const juce::String& name){
         {"CROSSFADE (s)","Blend the loop edges over this many seconds to soften the seam."},
         {"FADE IN (s)","Fade in each sample or slice over this many seconds."},
         {"FADE OUT (s)","Fade out near the end of each sample or slice."},
+        {"SHAPE","Scale the waveform by the volume envelope. The envelope line stays visible either way."},
         {"ROOT NOTE","MIDI note that plays the sample at its original pitch."},
         {"TRANSPOSE","Transpose the sample and all slices by semitones."},
         {"FINE (cents)","Fine-tune pitch in cents. 100 cents equals one semitone."},
@@ -80,31 +81,81 @@ public:
 };
 class Waveform : public juce::Component,public juce::SettableTooltipClient,public juce::FileDragAndDropTarget,public juce::DragAndDropTarget {
 public:
+    enum class Grip { start, end, fadeIn, fadeOut, attack, decay, sustain, release };
     std::shared_ptr<const SampleAsset> asset;
     SamplerSettings settings;
-    double zoom=1,scroll=0;bool dragHighlight=false;
+    double zoom=1,scroll=0;bool dragHighlight=false,shapeWave=true,gate=true,fadeOutActive=true;
     std::function<void(juce::File)> onDrop;
     std::array<bool,128> playing{};
-    std::function<void(double,double)> onRegion;
+    std::function<void(const SamplerSettings&)> onEdit;
     std::function<void()> onGesture;
     std::function<void(double,bool)> onMarker;
+    bool gripPosition(Grip grip,float& x,float& y) const {
+        if(!asset)return false;const double sec=fileSeconds();
+        auto place=[&](double fraction,float yy){x=xOf(fraction);y=yy;return true;};
+        switch(grip){
+        case Grip::start:return place(settings.start,(plotTop()+plotBottom())*.5f);
+        case Grip::end:return place(settings.end,(plotTop()+plotBottom())*.5f);
+        case Grip::fadeIn:return place(std::clamp(settings.start+settings.fadeIn/sec,settings.start,settings.end),(float)plotBottom());
+        case Grip::fadeOut:if(!fadeOutActive)return false;return place(std::clamp(settings.end-settings.fadeOut/sec,settings.start,settings.end),(float)plotBottom());
+        case Grip::attack:{const double f=std::clamp(settings.start+settings.attack/sec,settings.start,settings.end);return place(f,yGain(previewGain(f)));}
+        case Grip::decay:{const double f=std::clamp(settings.start+(settings.attack+settings.decay)/sec,settings.start,settings.end);return place(f,yGain(previewGain(f)));}
+        case Grip::release:if(!gate)return false;{const double f=std::clamp(settings.end-settings.release/sec,settings.start,settings.end);return place(f,yGain(previewGain(f)));}
+        case Grip::sustain:{const double from=std::clamp(settings.start+(settings.attack+settings.decay)/sec,settings.start,settings.end);const double to=gate?std::clamp(settings.end-settings.release/sec,from,settings.end):settings.end;const double f=(from+to)*.5;return place(f,yGain(previewGain(f)));}
+        }
+        return false;
+    }
+    void beginPointer(juce::Point<float> p,juce::ModifierKeys mods){
+        armed=false;gestured=false;edit=Edit::none;if(!asset)return;
+        if(shapeBounds().contains(p)&&!mods.isRightButtonDown()&&!mods.isShiftDown()){shapeWave=!shapeWave;repaint();return;}
+        if((mods.isShiftDown()||mods.isRightButtonDown())&&onMarker){onMarker(position(p.x),mods.isRightButtonDown());return;}
+        if(p.y<26)return;edit=hit(p);if(edit==Edit::none)return;armed=true;press=p;anchorCurve=curveOf(edit);
+    }
+    void dragPointer(juce::Point<float> p,bool moved){
+        if(!armed||edit==Edit::none||!asset||!onEdit)return;
+        if(!moved&&std::hypot(p.x-press.x,p.y-press.y)<4.)return;
+        if(!gestured){gestured=true;if(onGesture)onGesture();}
+        auto next=settings;const double sec=fileSeconds();double f=position(p.x);
+        if(next.snap&&(edit==Edit::start||edit==Edit::end))f=snapSamplePoint(*asset,f);
+        const auto q=[](double v,double step){return std::round(v/step)*step;};
+        const double bent=std::clamp(anchorCurve+(press.y-p.y)/72.,-1.,1.);
+        switch(edit){
+        case Edit::start:next.start=q(f,.00001);break;case Edit::end:next.end=q(f,.00001);break;
+        case Edit::fadeIn:next.fadeIn=std::clamp(q((f-next.start)*sec,.001),0.,2.);break;
+        case Edit::fadeOut:next.fadeOut=std::clamp(q((next.end-f)*sec,.001),0.,2.);break;
+        case Edit::attack:next.attack=std::clamp(q((f-next.start)*sec,.001),0.,10.);break;
+        case Edit::decay:next.decay=std::clamp(q((f-next.start)*sec-next.attack,.001),0.,10.);break;
+        case Edit::release:next.release=std::clamp(q((next.end-f)*sec,.001),.001,20.);break;
+        case Edit::sustain:next.sustain=std::clamp(q(gainAtY(p.y),.01),0.,1.);break;
+        case Edit::bendFadeIn:next.fadeInCurve=bent;break;case Edit::bendFadeOut:next.fadeOutCurve=bent;break;
+        case Edit::bendAttack:next.attackCurve=bent;break;case Edit::bendDecay:next.decayCurve=bent;break;case Edit::bendRelease:next.releaseCurve=bent;break;
+        case Edit::none:break;
+        }
+        next.normalise();settings=next;onEdit(next);
+    }
     void paint(juce::Graphics& g)override{
         g.fillAll(StudioStyle::well);if(dragHighlight){g.setColour(StudioStyle::accent);g.drawRect(getLocalBounds(),2);}
         if(!asset||asset->peaks.empty()){g.setColour(StudioStyle::textDim);g.setFont(StudioStyle::font(13));g.drawText(tr("Drop an audio file here or choose Load Sample."),getLocalBounds(),juce::Justification::centred);return;}
-        auto x=[&](double p){return float((p-scroll)*zoom*getWidth());};
         const int top=26,bottom=getHeight()-8,height=bottom-top;const float centre=(top+bottom)*.5f;
         g.setColour(StudioStyle::chrome);g.fillRect(0,0,getWidth(),top);
         const int ticks=getWidth()<520?4:8;for(int i=0;i<=ticks;++i){const int px=i*getWidth()/ticks;const double sec=(scroll+(double)i/(ticks*zoom))*asset->seconds();g.setColour(StudioStyle::line);g.drawVerticalLine(px,(float)top,(float)bottom);g.setColour(StudioStyle::textDim);g.setFont(StudioStyle::font(11));g.drawText(juce::String(sec,sec<10?2:1)+" s",px+5,3,std::max(1,getWidth()/ticks-8),18,juce::Justification::centredLeft);}
+        auto shape=shapeBounds();g.setColour(shapeWave?StudioStyle::accent:StudioStyle::control);g.fillRoundedRectangle(shape,StudioStyle::radius);g.setColour(shapeWave?StudioStyle::accent:StudioStyle::line);g.drawRoundedRectangle(shape,StudioStyle::radius,1);g.setColour(shapeWave?StudioStyle::onAccent:StudioStyle::text);g.setFont(StudioStyle::font(11));g.drawFittedText(tr("SHAPE"),shape.getSmallestIntegerContainer().reduced(4,0),juce::Justification::centred,1);
         g.setColour(StudioStyle::lineStrong);g.drawHorizontalLine((int)centre,0,(float)getWidth());
-        if(settings.mode==2)for(int i=0;i<settings.sliceCount;++i)if(playing[(size_t)(settings.sliceBase+i)]){g.setColour(StudioStyle::accent.withAlpha(.25f));const double end=i+1<settings.sliceCount?settings.slices[(size_t)i+1]:settings.end;g.fillRect(x(settings.slices[(size_t)i]),(float)top,x(end)-x(settings.slices[(size_t)i]),(float)height);}
-        g.setColour(StudioStyle::accent);for(int pixel=0;pixel<getWidth();++pixel){const size_t i=std::min(asset->peaks.size()-1,(size_t)(std::clamp(scroll+(double)pixel/(zoom*std::max(1,getWidth())),0.,1.)*(asset->peaks.size()-1)));const auto peak=asset->peaks[i];g.drawVerticalLine(pixel,centre-.44f*height*peak[1],centre-.44f*height*peak[0]);}
-        if(settings.loop){g.setColour(StudioStyle::solo.withAlpha(.8f));g.drawRect(x(settings.loopStart),(float)top+5,x(settings.loopEnd)-x(settings.loopStart),(float)height-10,1.5f);}
-        g.setFont(StudioStyle::font(10,true));for(int i=0;i<settings.sliceCount;++i){const float px=x(settings.slices[(size_t)i]);g.setColour(StudioStyle::textDim);g.drawVerticalLine((int)px,(float)top,(float)bottom);if(settings.sliceCount/zoom<32){g.setColour(StudioStyle::text);g.fillRect(px,(float)top,16.f,13.f);g.setColour(StudioStyle::base);g.drawText(juce::String(i+1),(int)px,top,16,13,juce::Justification::centred);}}
-        for(double point:{settings.start,settings.end}){const float raw=x(point);if(raw< -3||raw>getWidth()+3)continue;const float px=std::clamp(raw,1.f,getWidth()-2.f);g.setColour(StudioStyle::accent);g.drawVerticalLine((int)px,(float)top,(float)bottom);g.fillRect(px-3,(float)top,6.f,6.f);}
-
+        if(settings.mode==2)for(int i=0;i<settings.sliceCount;++i)if(playing[(size_t)(settings.sliceBase+i)]){g.setColour(StudioStyle::accent.withAlpha(.25f));const double end=i+1<settings.sliceCount?settings.slices[(size_t)i+1]:settings.end;g.fillRect(xOf(settings.slices[(size_t)i]),(float)top,xOf(end)-xOf(settings.slices[(size_t)i]),(float)height);}
+        for(int pass=0;pass<(shapeWave?2:1);++pass)for(int pixel=0;pixel<getWidth();++pixel){const double frac=std::clamp(scroll+(double)pixel/(zoom*std::max(1,getWidth())),0.,1.);const bool inside=frac>=settings.start&&frac<=settings.end;if(shapeWave&&pass==0&&inside)continue;if(shapeWave&&pass==1&&!inside)continue;const size_t i=std::min(asset->peaks.size()-1,(size_t)(frac*(asset->peaks.size()-1)));const auto peak=asset->peaks[i];const float env=shapeWave&&inside?(float)previewGain(frac):1.f;g.setColour(shapeWave&&pass==0?StudioStyle::accent.withAlpha(.28f):StudioStyle::accent);g.drawVerticalLine(pixel,centre-.44f*height*peak[1]*env,centre-.44f*height*peak[0]*env);}
+        if(settings.loop){g.setColour(StudioStyle::solo.withAlpha(.8f));g.drawRect(xOf(settings.loopStart),(float)top+5,xOf(settings.loopEnd)-xOf(settings.loopStart),(float)height-10,1.5f);}
+        g.setFont(StudioStyle::font(10,true));for(int i=0;i<settings.sliceCount;++i){const float px=xOf(settings.slices[(size_t)i]);g.setColour(StudioStyle::textDim);g.drawVerticalLine((int)px,(float)top,(float)bottom);if(settings.sliceCount/zoom<32){g.setColour(StudioStyle::text);g.fillRect(px,(float)top,16.f,13.f);g.setColour(StudioStyle::base);g.drawText(juce::String(i+1),(int)px,top,16,13,juce::Justification::centred);}}
+        juce::Path env;bool drawing=false;g.setColour(StudioStyle::accent.withAlpha(.16f));
+        for(int pixel=0;pixel<getWidth();++pixel){const double frac=position((float)pixel);if(frac<settings.start||frac>settings.end){drawing=false;continue;}const float y=yGain(previewGain(frac));g.drawVerticalLine(pixel,y,(float)plotBottom());if(!drawing){env.startNewSubPath((float)pixel,y);drawing=true;}else env.lineTo((float)pixel,y);}
+        g.setColour(StudioStyle::accent);g.strokePath(env,juce::PathStrokeType(1.6f));
+        g.setColour(StudioStyle::lineStrong);g.drawLine(xOf(settings.start),(float)plotBottom(),xOf(settings.end),(float)plotBottom(),1.f);
+        for(double point:{settings.start,settings.end}){const float raw=xOf(point);if(raw<-3||raw>getWidth()+3)continue;const float px=std::clamp(raw,1.f,getWidth()-2.f);g.setColour(StudioStyle::accent);g.drawVerticalLine((int)px,(float)top,(float)bottom);g.fillRect(px-3,(float)top,6.f,6.f);}
+        for(auto grip:{Grip::fadeIn,Grip::fadeOut,Grip::attack,Grip::decay,Grip::sustain,Grip::release})drawGrip(g,grip);
     }
-    void mouseDown(const juce::MouseEvent& e)override{if(!asset)return;anchor=position(e.x);if((e.mods.isShiftDown()||e.mods.isRightButtonDown())&&onMarker){onMarker(anchor,e.mods.isRightButtonDown());return;}trimming=false;dragEnd=std::abs(anchor-settings.end)<std::abs(anchor-settings.start);}
-    void mouseDrag(const juce::MouseEvent& e)override{if(!asset||!onRegion||e.mods.isShiftDown()||e.mods.isRightButtonDown()||!e.mouseWasDraggedSinceMouseDown())return;if(!trimming){trimming=true;if(onGesture)onGesture();}double p=position(e.x);if(settings.snap)p=snapSamplePoint(*asset,p);onRegion(dragEnd?settings.start:p,dragEnd?p:settings.end);}
+    void mouseMove(const juce::MouseEvent& e)override{const auto kind=e.y<26?Edit::none:hit(e.position);const bool vertical=kind==Edit::sustain||kind==Edit::bendFadeIn||kind==Edit::bendFadeOut||kind==Edit::bendAttack||kind==Edit::bendDecay||kind==Edit::bendRelease;setMouseCursor(shapeBounds().contains(e.position)?juce::MouseCursor::PointingHandCursor:vertical?juce::MouseCursor::UpDownResizeCursor:kind==Edit::none?juce::MouseCursor::NormalCursor:juce::MouseCursor::LeftRightResizeCursor);}
+    void mouseDown(const juce::MouseEvent& e)override{beginPointer(e.position,e.mods);}
+    void mouseDrag(const juce::MouseEvent& e)override{if(e.mods.isShiftDown()||e.mods.isRightButtonDown())return;dragPointer(e.position,e.mouseWasDraggedSinceMouseDown()||e.getDistanceFromDragStart()>=4);}
+    void mouseUp(const juce::MouseEvent&)override{armed=false;edit=Edit::none;}
     void zoomAt(double factor,float pointer){const double fraction=std::clamp((double)pointer/std::max(1,getWidth()),0.,1.),anchor=scroll+fraction/zoom;zoom=std::clamp(zoom*factor,1.,32.);scroll=std::clamp(anchor-fraction/zoom,0.,1.-1./zoom);repaint();}
     void mouseWheelMove(const juce::MouseEvent& e,const juce::MouseWheelDetails& wheel)override{
         if(!asset)return;
@@ -112,7 +163,7 @@ public:
         else zoomAt(std::exp(std::clamp(wheel.deltaY*2.5f,-1.f,1.f)),e.position.x);
     }
     void mouseMagnify(const juce::MouseEvent& e,float scale)override{if(asset&&std::isfinite(scale)&&scale>0)zoomAt(scale,e.position.x);}
-    void mouseDoubleClick(const juce::MouseEvent&)override{zoom=1;scroll=0;repaint();}
+    void mouseDoubleClick(const juce::MouseEvent&)override{zoom=1;scroll=0;armed=false;edit=Edit::none;repaint();}
     bool isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& d)override{auto text=d.description.toString();return text.startsWith(SampleBrowser::dragPrefix)&&isInterestedInFileDrag({text.substring((int)juce::String(SampleBrowser::dragPrefix).length())});}
     void itemDragEnter(const juce::DragAndDropTarget::SourceDetails&)override{dragHighlight=true;repaint();}
     void itemDragExit(const juce::DragAndDropTarget::SourceDetails&)override{dragHighlight=false;repaint();}
@@ -122,8 +173,40 @@ public:
     void fileDragExit(const juce::StringArray&)override{dragHighlight=false;repaint();}
     void filesDropped(const juce::StringArray& files,int,int)override{dragHighlight=false;repaint();if(isInterestedInFileDrag(files))onDrop(juce::File(files[0]));}
 private:
-    double anchor=0;bool dragEnd=false,trimming=false;
-    double position(int x)const{return std::clamp(scroll+(double)x/(zoom*std::max(1,getWidth())),0.,1.);}
+    enum class Edit { none, start, end, fadeIn, fadeOut, attack, decay, sustain, release, bendFadeIn, bendFadeOut, bendAttack, bendDecay, bendRelease };
+    Edit edit=Edit::none;bool armed=false,gestured=false;juce::Point<float> press;double anchorCurve=0;
+    double fileSeconds()const{return std::max(asset->seconds(),1e-9);}
+    float xOf(double p)const{return (float)((p-scroll)*zoom*std::max(1,getWidth()));}
+    double position(float x)const{return std::clamp(scroll+(double)x/(zoom*std::max(1,getWidth())),0.,1.);}
+    int plotTop()const{return 30;}
+    int plotBottom()const{return std::max(plotTop()+8,getHeight()-12);}
+    float yGain(double gain)const{gain=std::clamp(gain,0.,1.);return (float)plotBottom()-(float)(gain*(plotBottom()-plotTop()));}
+    double gainAtY(float y)const{return std::clamp(((double)plotBottom()-y)/std::max(1,plotBottom()-plotTop()),0.,1.);}
+    juce::Rectangle<float> shapeBounds()const{return {(float)getWidth()-62.f,4.f,56.f,18.f};}
+    double previewGain(double fraction)const{
+        if(!asset)return 0;const double sec=fileSeconds(),a=settings.start*sec,b=settings.end*sec,D=b-a,t=fraction*sec;if(D<=1e-9||t<a||t>b)return 0;const double u=t-a,sustain=std::clamp(settings.sustain,0.,1.);
+        auto rise=[&](double x){if(settings.attack>1e-6&&x<settings.attack)return sampleEnvelopeCurve(x/settings.attack,settings.attackCurve);const double dec=settings.attack+settings.decay;if(settings.decay>1e-6&&x<dec)return 1.+(sustain-1.)*sampleEnvelopeCurve((x-settings.attack)/settings.decay,settings.decayCurve);return sustain;};
+        double amp=rise(u);
+        if(gate&&settings.release>1e-6){const double off=std::max(0.,D-settings.release);if(u>=off)amp=rise(off)*(1.-sampleEnvelopeCurve((u-off)/settings.release,settings.releaseCurve));}
+        if(settings.fadeIn>1e-6)amp*=sampleEnvelopeCurve(std::clamp(u/settings.fadeIn,0.,1.),settings.fadeInCurve);
+        if(fadeOutActive&&settings.fadeOut>1e-6)amp*=sampleEnvelopeCurve(std::clamp((D-u)/settings.fadeOut,0.,1.),settings.fadeOutCurve);
+        return std::clamp(amp,0.,1.);
+    }
+    Edit segmentAt(double fraction)const{
+        if(!asset||fraction<=settings.start||fraction>=settings.end)return Edit::none;const double sec=fileSeconds(),u=(fraction-settings.start)*sec,D=(settings.end-settings.start)*sec;
+        struct Piece { Edit edit; double from,to; };Piece pieces[5];int count=0;auto add=[&](Edit e,double from,double to){if(to-from>1e-4&&count<5)pieces[count++]={e,from,to};};
+        if(settings.fadeIn>1e-4)add(Edit::bendFadeIn,0,settings.fadeIn);if(settings.attack>1e-4)add(Edit::bendAttack,0,settings.attack);if(settings.decay>1e-4)add(Edit::bendDecay,settings.attack,settings.attack+settings.decay);
+        if(gate&&settings.release>1e-4)add(Edit::bendRelease,std::max(0.,D-settings.release),D);if(fadeOutActive&&settings.fadeOut>1e-4)add(Edit::bendFadeOut,std::max(0.,D-settings.fadeOut),D);
+        Edit best=Edit::none;double bestLen=1e9;for(int i=0;i<count;++i)if(u>=pieces[i].from-1e-4&&u<=pieces[i].to+1e-4){const double len=std::max(1e-4,pieces[i].to-pieces[i].from);if(len<bestLen){bestLen=len;best=pieces[i].edit;}}
+        if(best!=Edit::none)return best;const double from=settings.attack+settings.decay,to=gate?std::max(from,D-settings.release):D;return u>=from&&u<=to?Edit::sustain:Edit::none;
+    }
+    Edit hit(juce::Point<float> p)const{
+        if(!asset||p.y<26)return Edit::none;float x=0,y=0;auto near=[&](Grip g){return gripPosition(g,x,y)&&std::hypot(p.x-x,p.y-y)<=9.;};
+        if(near(Grip::fadeIn))return Edit::fadeIn;if(near(Grip::fadeOut))return Edit::fadeOut;if(near(Grip::attack))return Edit::attack;if(near(Grip::decay))return Edit::decay;if(near(Grip::sustain))return Edit::sustain;if(near(Grip::release))return Edit::release;
+        if(std::abs(p.x-xOf(settings.start))<=6.f)return Edit::start;if(std::abs(p.x-xOf(settings.end))<=6.f)return Edit::end;return segmentAt(position(p.x));
+    }
+    double curveOf(Edit e)const{switch(e){case Edit::bendFadeIn:return settings.fadeInCurve;case Edit::bendFadeOut:return settings.fadeOutCurve;case Edit::bendAttack:return settings.attackCurve;case Edit::bendDecay:return settings.decayCurve;case Edit::bendRelease:return settings.releaseCurve;default:return 0;}}
+    void drawGrip(juce::Graphics& g,Grip grip)const{float x=0,y=0;if(!gripPosition(grip,x,y)||x<-12||x>getWidth()+12)return;const bool hot=armed&&((grip==Grip::fadeIn&&edit==Edit::fadeIn)||(grip==Grip::fadeOut&&edit==Edit::fadeOut)||(grip==Grip::attack&&edit==Edit::attack)||(grip==Grip::decay&&edit==Edit::decay)||(grip==Grip::sustain&&edit==Edit::sustain)||(grip==Grip::release&&edit==Edit::release));auto r=juce::Rectangle<float>(grip==Grip::sustain?14.f:8.f,8.f).withCentre({x,y});g.setColour(hot?StudioStyle::text:StudioStyle::accent);g.fillRoundedRectangle(r,2.f);g.setColour(StudioStyle::onAccent);g.drawRoundedRectangle(r.reduced(.5f),2.f,1.f);}
 };
 struct MediaTask : juce::Thread,private juce::Timer {
     Project source,result;juce::File destination;bool collect;RelinkResult relink;
@@ -160,7 +243,7 @@ public:
         sampleRepeat.onClick=[this]{owner.audio.setSampleAuditionLoop(sampleRepeat.getToggleState());};
         performance.addAndMakeVisible(sampleKeyboard);performance.addAndMakeVisible(sampleNote);performance.addAndMakeVisible(samplePitch);performance.addAndMakeVisible(sampleInput);performance.addAndMakeVisible(sampleMonitor);sampler.addAndMakeVisible(wave);sampler.addAndMakeVisible(sampleIdentity);sampler.addAndMakeVisible(sampleDetails);sampleIdentity.setFont(StudioStyle::font(12,true));sampleDetails.setFont(StudioStyle::font(11));sampleDetails.setColour(juce::Label::textColourId,StudioStyle::textDim);sampleDetails.setJustificationType(juce::Justification::centredLeft);
         wave.onDrop=[this](juce::File file){if(!selected()||owner.audio.isRecording()||owner.audio.isAudioRecording()||busy)return;owner.loadSampleFile(track,file);refresh();};
-        Localisation::bindTip(wave,"Wheel or pinch to zoom at the pointer; swipe horizontally or Shift-wheel to scroll. Double-click fits the sample. Drag trims; Shift-click adds a slice, right-click removes one.");wave.onMarker=[this](double point,bool remove){if(!wave.asset)return;owner.checkpoint();auto& settings=selected()->sampler;if(remove&&settings.sliceCount>0){auto first=settings.slices.begin(),last=first+settings.sliceCount;auto it=std::min_element(first,last,[point](double a,double b){return std::abs(a-point)<std::abs(b-point);});std::move(it+1,last,it);--settings.sliceCount;}else if(!remove&&settings.sliceCount<128-settings.sliceBase){settings.slices[(size_t)settings.sliceCount++]=settings.snap?snapSamplePoint(*wave.asset,point):point;}settings.mode=2;commit();};wave.onGesture=[this]{if(selected())owner.checkpoint();};wave.onRegion=[this](double a,double b){if(!selected())return;auto& s=selected()->sampler;s.start=std::min(a,b-.000001);s.end=std::max(b,a+.000001);s.normalise();commit();};
+        Localisation::bindTip(wave,"Wheel or pinch to zoom at the pointer; swipe horizontally or Shift-wheel to scroll. Double-click fits the sample. Drag the start and end lines, the fade handles and the envelope points; drag a segment to bend it. Shift-click adds a slice, right-click removes one. SHAPE scales the waveform by the envelope.");wave.onMarker=[this](double point,bool remove){if(!wave.asset)return;owner.checkpoint();auto& settings=selected()->sampler;if(remove&&settings.sliceCount>0){auto first=settings.slices.begin(),last=first+settings.sliceCount;auto it=std::min_element(first,last,[point](double a,double b){return std::abs(a-point)<std::abs(b-point);});std::move(it+1,last,it);--settings.sliceCount;}else if(!remove&&settings.sliceCount<128-settings.sliceBase){settings.slices[(size_t)settings.sliceCount++]=settings.snap?snapSamplePoint(*wave.asset,point):point;}settings.mode=2;commit();};wave.onGesture=[this]{if(selected())owner.checkpoint();};wave.onEdit=[this](const SamplerSettings& next){if(!selected())return;selected()->sampler=next;commit();};
         button(sampler,"LOAD SAMPLE",[this]{choose("LOAD SAMPLE","*.wav;*.aif;*.aiff;*.flac;*.ogg;*.mp3",false,[this](juce::File f){owner.loadSampleFile(track,f);refresh();});});
         button(sampler,"OPEN PRESET",[this]{choose("OPEN PRESET","*.fgs",false,[this](juce::File f){if(!selected())return;SamplerPreset p;auto r=loadSamplerPreset(f,p);if(r.wasOk())r=owner.audio.loadSample(track,p.file,p.root,p.settings);if(r.failed()){owner.message(r.getErrorMessage(),true);return;}owner.checkpoint();auto& t=*selected();t.instrument="sample";t.instrumentPath=p.file.getFullPathName().toStdString();t.sampleHash=p.hash.toStdString();t.sampleRoot=p.root;t.sampler=p.settings;t.instrumentId.clear();t.instrumentState.clear();commit();});});
         button(sampler,"SAVE PRESET",[this]{if(!owner.audio.sampleAsset(track))return;choose("SAVE PRESET","*.fgs",true,[this](juce::File f){if(!selected())return;SamplerPreset p{selected()->sampler,selected()->sampleRoot,sampleFile(*selected()),juce::String(selected()->sampleHash)};auto r=saveSamplerPreset(p,f.withFileExtension("fgs"));owner.message(r.wasOk()?"Preset saved":r.getErrorMessage(),r.failed());});});
@@ -228,6 +311,7 @@ public:
         juce::MouseEvent fitEvent(mouse,point,{},1,0,0,0,0,&wave,&wave,time,point,time,1,false);wave.mouseDoubleClick(fitEvent);instrumentOk=instrumentOk&&wave.zoom==1&&wave.scroll==0;
         const int oldMode=selected()->sampler.mode;sampleMode.setSelectedId(2,juce::sendNotificationSync);instrumentOk=instrumentOk&&selected()->sampler.mode==1&&sampleMode.getSelectedId()==2;owner.undo(false);refresh();instrumentOk=instrumentOk&&selected()->sampler.mode==oldMode;
         const auto attackBefore=selected()->sampler.attack;fields[11].slider->setValue(.27,juce::sendNotificationSync);instrumentOk=instrumentOk&&std::abs(selected()->sampler.attack-.27)<1e-9;owner.undo(false);refresh();instrumentOk=instrumentOk&&selected()->sampler.attack==attackBefore;
+        bool envelopeOk=true;juce::String envelopeFail;{const auto baseline=selected()->sampler;owner.checkpoint();auto mark=[&](const char* why,bool value){if(!value&&envelopeFail.isEmpty())envelopeFail=why;envelopeOk=envelopeOk&&value;};auto& env=selected()->sampler;env.attack=.25;env.decay=.2;env.sustain=.4;env.release=.3;env.fadeIn=.1;env.fadeOut=.15;env.attackCurve=env.decayCurve=env.releaseCurve=env.fadeInCurve=env.fadeOutCurve=0;commit();float ax,ay,fx,fy;mark("grips",wave.gripPosition(Waveform::Grip::attack,ax,ay)&&wave.gripPosition(Waveform::Grip::fadeIn,fx,fy));wave.beginPointer({ax,ay},{});wave.dragPointer({ax+50.f,ay},true);mark("attack drag",selected()->sampler.attack>.27);mark("attack knob",std::abs(fields[11].slider->getValue()-selected()->sampler.attack)<1e-6);wave.beginPointer({fx,fy},{});wave.dragPointer({fx+40.f,fy},true);mark("fade drag",selected()->sampler.fadeIn>.12);mark("fade knob",std::abs(fields[5].slider->getValue()-selected()->sampler.fadeIn)<1e-6);const double bendFrac=selected()->sampler.start+(selected()->sampler.fadeIn+selected()->sampler.attack)*.5/wave.asset->seconds();const float bx=(float)((bendFrac-wave.scroll)*wave.zoom*wave.getWidth());wave.beginPointer({bx,80.f},{});wave.dragPointer({bx,20.f},true);mark("curve",selected()->sampler.attackCurve>.4);fields[11].slider->setValue(.55,juce::sendNotificationSync);float kx,ky;mark("knob grip",wave.gripPosition(Waveform::Grip::attack,kx,ky)&&std::abs(kx-.55f*(float)wave.getWidth())<3.f);float sx,sy;mark("start grip",wave.gripPosition(Waveform::Grip::start,sx,sy));wave.beginPointer({sx,sy},{});wave.dragPointer({sx+36.f,sy},true);mark("start drag",selected()->sampler.start>baseline.start);for(int n=0;n<8&&!(selected()->sampler==baseline);++n)owner.undo(false);refresh();mark("undo",selected()->sampler==baseline);const auto undos=owner.undoStack.size();const auto json=juce::JSON::toString(projectJson(owner.project),false,17);wave.beginPointer({(float)wave.getWidth()-20.f,10.f},{});mark("shape",!wave.shapeWave&&owner.undoStack.size()==undos&&json==juce::JSON::toString(projectJson(owner.project),false,17));wave.beginPointer({(float)wave.getWidth()-20.f,10.f},{});mark("shape restore",wave.shapeWave);}folder.getChildFile("studio-envelope.txt").replaceWithText(envelopeOk?"PASS waveform envelope overlay, handles, curve, knob sync, undo and shape toggle":"FAIL envelope editor: "+envelopeFail);instrumentOk=instrumentOk&&envelopeOk;
         juce::MouseEvent event(mouse,point,{},1,0,0,0,0,&wave,&wave,time,point,time,1,false);juce::MouseWheelDetails wheel{};wheel.deltaY=.2f;
         wave.mouseWheelMove(event,wheel);const double zoomed=wave.zoom,anchored=wave.scroll+.5/wave.zoom;detailsOk=detailsOk&&zoomed>1&&std::abs(anchored-.5)<1e-6;stage("wheel anchor");
         wave.mouseMagnify(event,1.5f);detailsOk=detailsOk&&wave.zoom>zoomed&&std::abs(wave.scroll+.5/wave.zoom-.5)<1e-6;stage("pinch anchor");
@@ -381,7 +465,7 @@ private:
         target.setTextWhenNothingSelected(tr("No sample tracks"));target.setSelectedId(std::find(ids.begin(),ids.end(),track)!=ids.end()?track+1:0,juce::dontSendNotification);target.setEnabled(!ids.empty()&&!owner.audio.isRecording());
         auto& s=selected()->sampler;for(int id=2;id<=6;++id)sliceMethod.setItemEnabled(id,(1<<id)<=128-s.sliceBase);if(sliceMethod.getSelectedId()>1&&(1<<sliceMethod.getSelectedId())>128-s.sliceBase)sliceMethod.setSelectedId(1,juce::dontSendNotification);auto asset=owner.audio.sampleAsset(track);if(asset!=wave.asset){owner.audio.monitorSamplePitch(-1);owner.audio.stopSampleAudition();releasePads();keys.allNotesOff(0);wave.zoom=1;wave.scroll=0;lastKeyboardBase=-1;}wave.asset=std::move(asset);const bool hasSample=wave.asset!=nullptr;owner.audio.monitorSamplePitch(hasSample&&tabs.getCurrentTabIndex()==0?track:-1);
         const bool audition=owner.audio.isSampleAuditioning();samplePlay.setEnabled(hasSample&&!audition&&!owner.audio.isRecording()&&!owner.audio.isAudioRecording());sampleStop.setEnabled(audition);sampleRepeat.setEnabled(hasSample&&!owner.audio.isRecording());sampleMode.setEnabled(hasSample);for(auto* flag:flags)flag->setEnabled(hasSample);for(auto& field:fields)field.slider->setEnabled(hasSample);for(size_t i=0;i<samplerButtons.size();++i)samplerButtons[i]->setEnabled((i<2||hasSample)&&!owner.audio.isRecording()&&!owner.audio.isAudioRecording()&&!busy);wave.settings=s;
-        sampleIdentity.setText(hasSample?wave.asset->file.getFileName():tr("NO SAMPLE"),juce::dontSendNotification);sampleIdentity.setColour(juce::Label::textColourId,hasSample?StudioStyle::text:StudioStyle::textDim);sampleIdentity.setTooltip(hasSample?wave.asset->file.getFullPathName():juce::String());sampleDetails.setText(hasSample?juce::String(wave.asset->seconds(),2)+" s / "+juce::String(wave.asset->rate/1000.,1)+" kHz / "+juce::String(wave.asset->audio.getNumChannels())+" ch":juce::String(),juce::dontSendNotification);wave.repaint();const int modeId=(s.mode<0?(isDrumTrack(track)?1:0):s.mode)+1;sampleMode.setSelectedId(modeId,juce::dontSendNotification);
+        sampleIdentity.setText(hasSample?wave.asset->file.getFileName():tr("NO SAMPLE"),juce::dontSendNotification);sampleIdentity.setColour(juce::Label::textColourId,hasSample?StudioStyle::text:StudioStyle::textDim);sampleIdentity.setTooltip(hasSample?wave.asset->file.getFullPathName():juce::String());sampleDetails.setText(hasSample?juce::String(wave.asset->seconds(),2)+" s / "+juce::String(wave.asset->rate/1000.,1)+" kHz / "+juce::String(wave.asset->audio.getNumChannels())+" ch":juce::String(),juce::dontSendNotification);const int modeId=(s.mode<0?(isDrumTrack(track)?1:0):s.mode)+1;wave.gate=modeId==1;wave.fadeOutActive=!(s.loop&&modeId==1);wave.repaint();sampleMode.setSelectedId(modeId,juce::dontSendNotification);
         for(size_t i=0;i<flags.size();++i)flags[i]->setToggleState(s.*flagMembers[i],juce::dontSendNotification);
         for(auto& f:fields){f.slider->setValue(f.real?s.*f.real:f.root?selected()->sampleRoot:s.*f.integer,juce::dontSendNotification);const bool loopControl=f.real==&SamplerSettings::loopStart||f.real==&SamplerSettings::loopEnd||f.real==&SamplerSettings::crossfade;f.slider->setEnabled(hasSample&&(!loopControl||(s.loop&&modeId==1))&&(!f.root||modeId!=3)&&(f.real!=&SamplerSettings::fadeOut||!(s.loop&&modeId==1))&&(f.real!=&SamplerSettings::release||modeId==1)&&(f.real!=&SamplerSettings::sensitivity||sliceMethod.getSelectedId()<=1)&&((f.real!=&SamplerSettings::cutoff&&f.real!=&SamplerSettings::resonance)||s.filter));}
         flags[1]->setEnabled(hasSample&&modeId==1);sampleKeyboard.setVisible(true);sampleKeyboard.setEnabled(hasSample&&(modeId!=3||s.sliceCount>0));sampleKeyboard.setAvailableRange(0,127);sampleKeyboard.setKeyWidth(30);sampleKeyboard.mappedRange(modeId==3?s.sliceBase:0,modeId==3?s.sliceBase+s.sliceCount-1:127,modeId==3);const int banks=std::max(1,(s.sliceCount+15)/16);if(sliceBank.getNumItems()!=banks){sliceBank.clear(juce::dontSendNotification);for(int b=0;b<banks;++b)sliceBank.addItem(juce::String(b*16+1)+" – "+juce::String(std::min(s.sliceCount,(b+1)*16)),b+1);sliceBank.setSelectedId(1,juce::dontSendNotification);}for(int b=0;b<banks;++b)sliceBank.changeItemText(b+1,juce::String(b*16+1)+" – "+juce::String(std::min(s.sliceCount,(b+1)*16)));sliceBank.setVisible(hasSample&&modeId==3);sliceBank.setEnabled(banks>1);for(int i=0;i<16;++i){int index=std::max(0,sliceBank.getSelectedId()-1)*16+i;auto* pad=pads[(size_t)i];pad->setVisible(hasSample&&modeId==3&&index<s.sliceCount);pad->setButtonText(juce::MidiMessage::getMidiNoteName(s.sliceBase+index,true,true,3)+" · "+juce::String(index+1));pad->setTooltip(tr("Play this slice. Its MIDI note is shown on the pad.")+" "+juce::String(index+1));pad->setEnabled(hasSample);}sampleMonitor.setToggleState(monitor.getToggleState(),juce::dontSendNotification);sampleMonitor.setEnabled(hasSample&&sampleInput.getSelectedId()>1);sampleInput.setEnabled(!owner.audio.isRecording());

@@ -50,11 +50,11 @@ public:
         const auto& p=owner.settings();data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
         begin=p.start*data->frames;finish=p.end*data->frames;
         if(owner.mode()==2){int index=note-p.sliceBase;if(index<0||index>=p.sliceCount){clearCurrentNote();data=nullptr;return;}begin=p.slices[(size_t)index]*data->frames;finish=(index+1<p.sliceCount?p.slices[(size_t)index+1]:p.end)*data->frames;}
-        updateParameters();envelope.reset();envelope.noteOn();warp.reset();
+        updateParameters();envelope.reset();envelope.noteOn();shaped.noteOn(p,getSampleRate());warp.reset();
         if(p.sync){Reader reader{*this,0};const int seek=warp.inputLatency();warp.seek(reader,seek,speed());sourcePos=seek;}
     }
     void stopNote(float,bool allowTailOff)override{
-        if(!allowTailOff){envelope.reset();clearCurrentNote();data=nullptr;return;}
+        if(!allowTailOff){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;return;}
         if(owner.mode()==0&&releaseAt<0)releaseAt=elapsed+owner.latencySamples();
     }
     void pitchWheelMoved(int value)override{pitchWheel=value;}
@@ -68,13 +68,14 @@ public:
             const int lag=owner.latencySamples();
             const bool looping=p.loop&&owner.mode()==0;
             for(int i=0;i<n&&data;++i,++elapsed){
-                if(releaseAt>=0&&elapsed>=releaseAt&&!released){envelope.noteOff();released=true;}
+                if(releaseAt>=0&&elapsed>=releaseAt&&!released){envelope.noteOff();shaped.noteOff();released=true;}
                 if(elapsed<lag)continue;
                 const auto at=elapsed-lag;
-                if(!looping&&playedSource>=finish-begin){envelope.reset();clearCurrentNote();data=nullptr;break;}
-                float gain=envelope.getNextSample()*level;
-                if(p.fadeIn>0)gain*=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);
-                if(!looping&&p.fadeOut>0)gain*=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);
+                if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
+                const float linear=envelope.getNextSample(),bent=shaped.next();
+                float gain=(shaped.curved()?bent:linear)*level;
+                if(p.fadeIn>0){const float lin=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);gain*=std::abs(p.fadeInCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeInCurve);}
+                if(!looping&&p.fadeOut>0){const float lin=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);gain*=std::abs(p.fadeOutCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeOutCurve);}
                 float l=left[i],r=right[i];if(p.filter){l=filter.processSample(0,l);r=filter.processSample(1,r);}l*=gain;r*=gain;
                 output.addSample(0,start+done+i,l);if(output.getNumChannels()>1)output.addSample(1,start+done+i,r);
                 playedSource+=data->rate/getSampleRate()*speed();
@@ -83,14 +84,35 @@ public:
         }
     }
 private:
+    struct ShapedEnvelope {
+        enum class Stage { idle, attack, decay, sustain, release };
+        Stage stage=Stage::idle;
+        double sr=44100,phase=0,level=0,releaseFrom=0,attack=0,decay=0,sustain=1,release=.1,attackCurve=0,decayCurve=0,releaseCurve=0;
+        void reset(){stage=Stage::idle;phase=0;level=0;}
+        void apply(const SamplerSettings& p,double rate){if(rate>0)sr=rate;attack=p.attack;decay=p.decay;sustain=p.sustain;release=p.release;attackCurve=p.attackCurve;decayCurve=p.decayCurve;releaseCurve=p.releaseCurve;}
+        void noteOn(const SamplerSettings& p,double rate){apply(p,rate);phase=0;if(attack>0){stage=Stage::attack;level=0;}else if(decay>0&&sustain<1){stage=Stage::decay;level=1;}else{stage=Stage::sustain;level=sustain;}}
+        void noteOff(){if(stage==Stage::idle)return;releaseFrom=level;phase=0;if(release>0)stage=Stage::release;else{stage=Stage::idle;level=0;}}
+        bool curved()const{return std::abs(attackCurve)>1e-6||std::abs(decayCurve)>1e-6||std::abs(releaseCurve)>1e-6;}
+        float next(){
+            const double dt=1./std::max(1.,sr);
+            switch(stage){
+            case Stage::attack:{phase+=dt;level=sampleEnvelopeCurve(attack>0?std::min(1.,phase/attack):1.,attackCurve);if(phase>=attack){phase=0;level=1;stage=(decay>0&&sustain<1)?Stage::decay:Stage::sustain;if(stage==Stage::sustain)level=sustain;}break;}
+            case Stage::decay:{phase+=dt;level=1.+(sustain-1.)*sampleEnvelopeCurve(decay>0?std::min(1.,phase/decay):1.,decayCurve);if(phase>=decay){stage=Stage::sustain;level=sustain;}break;}
+            case Stage::sustain:level=sustain;break;
+            case Stage::release:{phase+=dt;level=releaseFrom*(1.-sampleEnvelopeCurve(release>0?std::min(1.,phase/release):1.,releaseCurve));if(phase>=release||level<=0){level=0;stage=Stage::idle;}break;}
+            case Stage::idle:level=0;break;
+            }
+            return (float)level;
+        }
+    };
     SampleSynth& owner;const SampleAsset* data=nullptr;
     signalsmith::stretch::SignalsmithStretch<float> warp{0};
-    juce::ADSR envelope;juce::dsp::StateVariableTPTFilter<float> filter;
+    juce::ADSR envelope;ShapedEnvelope shaped;juce::dsp::StateVariableTPTFilter<float> filter;
     double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0;int pitch=60,pitchWheel=8192;
     int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false;
     double semitones()const{return (owner.mode()==2?0:pitch-owner.root())+owner.settings().transpose+owner.settings().fine*.01+(pitchWheel-8192)/8192.*2.;}
     double speed()const{return owner.settings().sync?owner.tempo()/owner.settings().sourceBpm:std::pow(2.,semitones()/12.);}
-    void updateParameters(){const auto& p=owner.settings();envelope.setParameters({(float)p.attack,(float)p.decay,(float)p.sustain,(float)p.release});filter.setCutoffFrequency((float)std::clamp(p.cutoff,20.,getSampleRate()*.45));filter.setResonance((float)(.5+p.resonance*8));warp.setTransposeSemitones((float)semitones());}
+    void updateParameters(){const auto& p=owner.settings();envelope.setParameters({(float)p.attack,(float)p.decay,(float)p.sustain,(float)p.release});shaped.apply(p,getSampleRate());filter.setCutoffFrequency((float)std::clamp(p.cutoff,20.,getSampleRate()*.45));filter.setResonance((float)(.5+p.resonance*8));warp.setTransposeSemitones((float)semitones());}
     float raw(int channel,double pos)const{if(pos<begin||pos>=finish)return 0;const int i=std::clamp((int)pos,0,data->frames-1);const float frac=(float)(pos-i);auto* a=data->audio.getReadPointer(std::min(channel,data->audio.getNumChannels()-1));return a[i]+frac*(a[i+1]-a[i]);}
     float read(int channel,double input)const{
         const auto& p=owner.settings();double progress=input*(p.sync?data->rate/getSampleRate():1.);bool wrapped=false;

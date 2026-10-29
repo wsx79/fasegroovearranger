@@ -465,7 +465,7 @@ int main(int argc,char** argv){try{
             if(eN>0)check(aVel/aN>eVel/eN+15,what);
         };
         auto tempo=[&](const fga::Project& p,const char* what){
-            check(p.settings.bpm>=120&&p.settings.bpm<=127,what);
+            check(p.settings.bpm>=122&&p.settings.bpm<=128,what);
             check(p.settings.swing>=0.36&&p.settings.swing<=0.72f,what);
         };
         for(std::uint32_t seed=1;seed<=12;++seed){
@@ -477,7 +477,7 @@ int main(int argc,char** argv){try{
             jackBody(song,findSection(song,fga::Section::outro),"Jackin factory outro starts on the jack groove");
             check(song.tracks[4].clips[(size_t)findSection(song,fga::Section::breakdown)].notes.empty(),"Jackin break has no kick and no two-step");
             fga::generate(song,fga::Scope::song,0,0,seed);
-            tempo(song,"Jackin song regenerate stays at 120-127 and a 56-62% shuffle");
+            tempo(song,"Jackin song regenerate stays at 122-128 and a 56-62% shuffle");
             jackBody(song,findSection(song,fga::Section::main),"regenerated Jackin main keeps the jack groove");
             jackBody(song,findSection(song,fga::Section::drop),"regenerated Jackin drop keeps the jack groove");
             jackBody(song,findSection(song,fga::Section::buildup),"regenerated Jackin lift does not become a garage roll");

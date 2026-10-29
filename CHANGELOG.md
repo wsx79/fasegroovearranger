@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.26.0
+
+- Studio draws the volume envelope on the sample waveform and follows the knobs live. Drag the start, end, fades and the attack, decay, sustain and release points; drag a segment to bend it. SHAPE scales the waveform by the envelope. Knobs stay in sync and the edits undo.
+- Jackin' House tempo is 122–128 BPM, centre 125 (was 120–127, centre 125). A saved song below 122 rises to 122 when opened.
+
 ## 0.25.5
 
 - The inspector close button is laid out with the track card, so every supported width, including Lead, still fits.

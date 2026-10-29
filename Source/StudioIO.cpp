@@ -53,14 +53,14 @@ juce::Result copyMedia(const juce::File& from,const juce::File& folder,juce::Fil
 juce::var samplerJson(const SamplerSettings& p){auto o=object();
     #define S(k) set(o,#k,p.k)
     S(mode);S(polyphony);S(transpose);S(sliceBase);S(loop);S(reverse);S(snap);S(filter);S(sync);
-    S(start);S(end);S(loopStart);S(loopEnd);S(crossfade);S(fadeIn);S(fadeOut);S(attack);S(decay);S(sustain);S(release);S(fine);S(velocity);S(cutoff);S(resonance);S(sourceBpm);S(sensitivity);
+    S(start);S(end);S(loopStart);S(loopEnd);S(crossfade);S(fadeIn);S(fadeOut);S(attack);S(decay);S(sustain);S(release);S(fine);S(velocity);S(cutoff);S(resonance);S(sourceBpm);S(sensitivity);S(fadeInCurve);S(fadeOutCurve);S(attackCurve);S(decayCurve);S(releaseCurve);
     #undef S
     juce::Array<juce::var> slices;for(int i=0;i<p.sliceCount;++i)slices.add(p.slices[(size_t)i]);set(o,"slices",slices);return o;
 }
 juce::Result readSampler(const juce::var& o,SamplerSettings& p){
     if(o.isVoid())return juce::Result::ok();if(!o.isObject())return juce::Result::fail("Invalid sampler settings.");
     #define N(k) p.k=(decltype(p.k))number(o,#k,p.k)
-    p.mode=(int)std::clamp(number(o,"mode",p.mode),-1.,2.);p.polyphony=(int)std::clamp(number(o,"polyphony",p.polyphony),1.,32.);p.transpose=(int)std::clamp(number(o,"transpose",p.transpose),-48.,48.);p.sliceBase=(int)std::clamp(number(o,"sliceBase",p.sliceBase),0.,127.);N(start);N(end);N(loopStart);N(loopEnd);N(crossfade);N(fadeIn);N(fadeOut);N(attack);N(decay);N(sustain);N(release);N(fine);N(velocity);N(cutoff);N(resonance);N(sourceBpm);N(sensitivity);
+    p.mode=(int)std::clamp(number(o,"mode",p.mode),-1.,2.);p.polyphony=(int)std::clamp(number(o,"polyphony",p.polyphony),1.,32.);p.transpose=(int)std::clamp(number(o,"transpose",p.transpose),-48.,48.);p.sliceBase=(int)std::clamp(number(o,"sliceBase",p.sliceBase),0.,127.);N(start);N(end);N(loopStart);N(loopEnd);N(crossfade);N(fadeIn);N(fadeOut);N(attack);N(decay);N(sustain);N(release);N(fine);N(velocity);N(cutoff);N(resonance);N(sourceBpm);N(sensitivity);N(fadeInCurve);N(fadeOutCurve);N(attackCurve);N(decayCurve);N(releaseCurve);
     #undef N
     #define B(k) p.k=(bool)o.getProperty(#k,p.k)
     B(loop);B(reverse);B(snap);B(filter);B(sync);
