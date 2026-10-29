@@ -27,7 +27,7 @@ PluginBrowser::PluginBrowser(PluginCatalog& c):catalog(c){
     categories.setViewedComponent(&column,false);
     categories.setScrollBarsShown(true,false);
     addAndMakeVisible(categories);
-    list.setModel(this);list.setRowHeight(36);
+    list.setModel(this);list.setRowHeight(36);list.addMouseListener(this,false);list.setMouseMoveSelectsRows(false);
     list.setColour(juce::ListBox::backgroundColourId,Palette::background);
     list.setColour(juce::ListBox::outlineColourId,Palette::panelEdge);
     list.setOutlineThickness(1);
@@ -121,6 +121,7 @@ void PluginBrowser::paintListBoxItem(int row,juce::Graphics& g,int width,int hei
     const auto& e=entries[(size_t)row];
     auto r=juce::Rectangle<int>(0,0,width,height).reduced(4,2).toFloat();
     if(selected){g.setColour(Palette::accent.withAlpha(.22f));g.fillRoundedRectangle(r,5.f);g.setColour(Palette::accent);g.drawRoundedRectangle(r,5.f,1.2f);}
+    else if(row==hoverRow){g.setColour(Palette::accent.withAlpha(.09f));g.fillRoundedRectangle(r,5.f);g.setColour(Palette::accent.withAlpha(.45f));g.drawRoundedRectangle(r,5.f,1.f);}
     auto star=r.removeFromLeft((float)starWidth-4.f);
     if(e.key.isNotEmpty()){g.setColour(isFavourite(e)?Palette::accent:Palette::dim.withAlpha(.5f));g.setFont(FamilyTheme::font(17.f,true));g.drawText(juce::String::fromUTF8(isFavourite(e)?"\xe2\x98\x85":"\xe2\x98\x86"),star,juce::Justification::centred);}
     auto text=r.reduced(6.f,0.f);auto aside=text.removeFromRight(juce::jmin(220.f,text.getWidth()*.42f));
@@ -137,7 +138,16 @@ void PluginBrowser::listBoxItemClicked(int row,const juce::MouseEvent& e){if(e.x
 void PluginBrowser::listBoxItemDoubleClicked(int row,const juce::MouseEvent& e){if(e.x<starWidth)return;choose(row);setVisible(false);}
 void PluginBrowser::returnKeyPressed(int){setVisible(false);}
 bool PluginBrowser::keyPressed(const juce::KeyPress& key){if(key==juce::KeyPress::escapeKey){setVisible(false);return true;}return false;}
-void PluginBrowser::mouseUp(const juce::MouseEvent& e){if(!card().contains(e.position))setVisible(false);}
+void PluginBrowser::mouseUp(const juce::MouseEvent& e){if(e.eventComponent!=this)return;if(!card().contains(e.position))setVisible(false);}
+void PluginBrowser::mouseMove(const juce::MouseEvent& e){
+    if(e.eventComponent!=&list)return;
+    const int row=list.getRowContainingPosition(e.x,e.y);
+    if(row!=hoverRow){const int previous=hoverRow;hoverRow=row;if(previous>=0)list.repaintRow(previous);if(hoverRow>=0)list.repaintRow(hoverRow);}
+}
+void PluginBrowser::mouseExit(const juce::MouseEvent& e){
+    if(e.eventComponent!=&list)return;
+    if(hoverRow>=0){const int previous=hoverRow;hoverRow=-1;list.repaintRow(previous);}
+}
 void PluginBrowser::resized(){
     auto inner=card().toNearestInt().reduced(24,18);
     auto top=inner.removeFromTop(44);

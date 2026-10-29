@@ -260,7 +260,7 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         owner.changed(false);return;
     }
     if(e.x<v.getX()+headerWidth&&e.x>=v.getX()+132&&e.x<v.getX()+151){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}
-    if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else if(e.x>=v.getX()+194&&e.x<v.getX()+214)owner.showInstrument();return;}
+    if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else if(e.x>=v.getX()+194&&e.x<v.getX()+214)owner.openInstrumentFor(ti);return;}
     const int edge=e.mods.isPopupMenu()?-1:edgeAt(ti,e.position.x),hit=clipAt(ti,e.position.x),index=edge>=0?edge:hit;
 
     const bool sameTrack=owner.selectedTrack==ti;const auto previous=selectedClips;
@@ -1162,6 +1162,12 @@ void MainComponent::applyLanguage(){    if(Localisation::tipsEnabled())tooltips=
     options.refreshText();pluginSettings.refreshText();pluginBrowser.refreshText();updateOverlay.refreshText();translateControls(*this);repaint();
 }
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);repaint();}
+void MainComponent::openInstrumentFor(int track){
+    if(track<0||track>=(int)project.tracks.size())return;
+    select(track,selectedSection);
+    if(audio.plugin(track)||audio.effectPlugin(track)){pluginEditorButton.onClick();return;}
+    showInstrument();
+}
 void MainComponent::showInstrument(){
     instrumentPanel.flushRender();instrumentPanel.setSize(1180,instrumentPanel.getHeight());instrumentPanel.rebuild();
     if(!instrumentWindow)instrumentWindow=std::make_unique<InstrumentWindow>(*this);

@@ -16,6 +16,8 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void mouseUp(const juce::MouseEvent&) override;
+    void mouseMove(const juce::MouseEvent&) override;
+    void mouseExit(const juce::MouseEvent&) override;
     bool keyPressed(const juce::KeyPress&) override;
     void visibilityChanged() override;
     bool verifyLayout() const;
@@ -28,6 +30,7 @@ private:
     juce::TextEditor search;
     juce::TextButton closeButton,rescanButton,settingsButton,openButton;
     juce::ListBox list;
+    int hoverRow=-1;
     std::vector<PluginCatalog::BrowserRow> entries;
     juce::StringArray favouriteKeys;
     juce::String currentKey,listStamp;

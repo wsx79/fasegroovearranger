@@ -225,6 +225,8 @@ public:
     // paint() and the 20 Hz timer, and both were rebuilt from scratch every time.
     const std::vector<std::string>& cachedChordNames();
     double songLength();
+    // The guide gear: the VST editor when the track hosts one, the instrument panel otherwise.
+    void openInstrumentFor(int track);
     void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();

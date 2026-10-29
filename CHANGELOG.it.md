@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.23.14
+
+- Un plugin caricato apre da solo il suo editor, centrato; a chiuderlo pensi tu, e riaprendo un progetto non si apre nulla.
+- L'ingranaggio della traccia apre il VST se la traccia ne ha uno, altrimenti il pannello strumento.
+- Il browser dei plugin evidenzia la riga sotto il puntatore.
+- Lo stato dei plugin viene serializzato una volta e riusato finché non cambia: muovere un controllo o l'autosave da fermo non fa più tick nell'audio (il primo gesto dopo un caricamento cattura ancora una volta).
+
 ## 0.23.13
 
 - Messaggi di stato, salvataggio, apertura e plugin, più i titoli delle finestre di scelta file, sono tradotti: erano fissi in italiano per tutte le lingue.

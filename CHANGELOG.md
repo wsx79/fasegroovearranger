@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.23.14
+
+- A loaded plugin opens its editor automatically and centred; closing it is left to the user, and reopening a project still opens nothing.
+- The guide gear opens the VST editor when the track hosts one, and the instrument panel otherwise.
+- The plugin browser highlights the row under the pointer.
+- Plugin state is serialised once and reused until it changes, so moving a control or the idle autosave no longer ticks the audio (the first gesture after a load still captures once).
+
 ## 0.23.13
 
 - Status, save, open and plugin messages plus the file dialog titles are translated: they were fixed in Italian for every language.
