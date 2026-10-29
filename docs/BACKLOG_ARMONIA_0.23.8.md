@@ -1,34 +1,35 @@
-# Backlog armonia e arrangiamento — 0.23.8
+# Armonia e arrangiamento — stato e piano
 
-Questo lavoro è **separato dalla UI** e va nella seconda release.
+Aggiornato: 29 ottobre 2026.
 
-Regole:
+## Fatto
 
-- ogni voce è un commit a sé, con messaggio che inizia con `harmony:`;
-- nessun commit di questo backlog tocca file di sola UI (tema, layout, testi, pannelli);
-- `git revert <sha>` di un singolo commit deve ripristinare il comportamento musicale precedente **senza** toccare la UI;
-- ogni voce va verificata con lo stesso seed e lo stesso progetto, confrontando l'export WAV prima/dopo (e con un ascolto A/B), non solo a orecchio;
-- il seed resta invariato: a parità di seed, prima/dopo devono cambiare solo le note previste dalla voce.
+| Voce | Dove | Commit |
+| --- | --- | --- |
+| Sezione nuova generata subito (non più muta) | `Source/Menus.cpp` | `5a2ab80` |
+| NEW CHORDS conserva lunghezza e accordi scelti a mano, pesca dal vocabolario del genere | `Source/core/Project.cpp` | `5d7975d` |
+| Forma allineata al phrase (ciclo armonico + groove) | `Source/core/Project.cpp` | `5d7975d` |
+| Fill armonico sull'ultima battuta di ogni sezione | `Source/core/Project.cpp` | `5d7975d` |
+| Accordo tenuto rilasciato al cambio successivo | `fasegroovepiano` `aece955` (motore condiviso, ri-pinnato) | `5538e4c` |
+| Crash sul downbeat della sezione che segue un fill, con test di riproducibilità | `Source/core/Project.cpp`, `tests/RegenerationChecks.h` | `cd0ff7e` |
 
-## Voci previste
+## Provato e annullato
 
-Ordine consigliato: prima i difetti oggettivi (1, 2, 3, 6, 10), poi le scelte musicali (4, 5, 7, 8, 9).
+- **Fold dell'ottava del lead**: il fold a 96 viola il contratto coperto dal test `arranger_core`, "global lead octave = +12 esatto su ogni nota" (`tests/CoreTests.cpp:520`). Revert upstream in `fasegroovelead` `31af807`, pin invariato. Va ripreso solo dopo aver deciso se il contratto cambia; in alternativa si limita la somma ottava globale + ottava lane nell'arranger (Source), senza toccare il motore.
 
-1. **Una sola descrizione dell'accordo per slot.** Piano usa `sgk::buildChord` (estensione completa), chitarra e lead ricevono l'estensione ridotta a `{triadi, settime, none}` — con sus/alterata/soul il piano e la chitarra suonano accordi diversi (nona minore contro nona naturale). Riferimenti: `Source/core/Project.cpp:886`, `:903`, `fasegroovepiano/Theory.cpp:205-260`, `fasegroovelead/Lead.h:125`.
-2. **Fill e crash al cambio sezione.** Ogni clip è renderizzata da sola, quindi `afterSectionFill` è sempre falso e il crash sul primo beat della sezione successiva non arriva mai. Riferimenti: `Project.cpp:917`, `fasegroovedrums/GrooveEngine.cpp:735-739`, `:877-890`.
-3. **ADD SECTION non deve creare una sezione muta.** `insertGuide` stacca tutte le tracce e non crea clip; la sezione resta silenziosa. Riferimenti: `Source/Timeline.cpp:70`, `MainComponent.cpp:62-63`, `Project.cpp:414-429`.
-4. **`varyForm` deve rispettare il `phrase`** calcolato da `arrangeSong`, altrimenti il drop parte su un accordo arbitrario (progressione da 3 battute, drop da 32). Riferimenti: `Project.cpp:581-593`, `:710-715`, `:812`.
-5. **Fill armonici alla fine di ogni sezione** (oggi ogni 16 battute fisse), allineati ai fill della batteria. Riferimenti: `GenreSound.h:38`, `GrooveEngine.cpp:1657`, `:1664-1672`.
-6. **Gli accordi tenuti non devono suonare oltre il cambio** sulla griglia a ½ battuta (`DurationFor` non clampa allo slot successivo). Riferimenti: `GrooveEngine.cpp:1626-1641`, `Generators.cpp:167`, `Comping.cpp:162-166`.
-7. **Registri separati** per piano, archi, chitarra, lead (oggi tutti intorno a 55-84, archi in unisono col piano). Riferimenti: `Theory.cpp:787`, `GrooveEngine.cpp:2401`, `Guitar.cpp:407`, `Lead.cpp:201-224`.
-8. **Lead: fold dell'ottava invece del clamp** (con +2 globale e +2 di lane la melodia collassa su una nota pedale). Riferimenti: `Lead.cpp:224-225`, `Guitar.cpp:394`.
-9. **NEW CHORDS**: mantenere il numero di accordi, non cancellare gli accordi liberi e attingere al vocabolario del genere (oggi solo diatonico e massimo 4 slot). Riferimenti: `Project.cpp:480-483`, `Generators.cpp:1107-1179`.
-10. **Pennello della lane chitarra**: usare lo slot assoluto come la striscia accordi, non quello locale al clip. Riferimenti: `MainComponent.cpp:524` contro `:486`.
+## Da fare, in quest'ordine
 
-## Note di verifica
+1. **Stessa qualità di accordo per piano, chitarra e lead.**
+   Oggi il piano usa `sgk::buildChord` (11 estensioni) mentre chitarra e lead ricevono `std::min(extension,2)` su un enum di tre soli valori: con sus, dominante alterata, 11ths/13ths il piano e la chitarra suonano accordi diversi (nona minore contro nona naturale).
+   Progetto: estendere `ChordColour` in `fasegrooveguitar` e `fasegroovelead` con `sixNine`, `sus`, `elevenths`, `thirteenths`, `sharpNine` (i `ChordType` esistono già tranne `7#9`), mappare in `Project.cpp` l'indice di estensione al colore corrispondente, aggiornare `chordColourName`/`numChordColours`. Va fatto upstream nei due motori, con i loro test, poi ri-pin.
+   Rischio: alto (cambia il suono di ogni brano) — richiede ascolto A/B.
 
-- clash semitonici: nessuna coppia di note a distanza 1 o 2 semitoni tra piano/chitarra/lead nello stesso slot;
-- transizioni: presenza di fill sull'ultima battuta e crash sul downbeat della sezione seguente;
-- forma: lunghezza di ogni sezione multipla del `phrase`;
-- registro: nessun unisono esatto piano/archi, lead sopra il comping;
-- determinismo: stesso seed ⇒ stesse note, e diff limitato alla voce in prova.
+2. **Registri separati** per piano, archi, chitarra e lead: oggi stanno tutti intorno a 55-84 e gli archi raddoppiano il piano all'unisono. È una scelta di mix (bande: basso ≤47, piano 48-79, chitarra ≥67, archi sopra o sotto il piano, lead ≥79): va ascoltata prima di spedire.
+
+3. **Pulizia**: normalizzare i fine riga di `ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.cpp` (il re-pin ha gonfiato il diff) e rigenerare la patch registrata.
+
+## Regole
+
+- Un commit per voce, prefisso `fix motore:` per le modifiche ai motori condivisi.
+- Nessuna patch locale ai motori: si modifica il repo del motore e si ri-pinna con `sync-engines.py --record --synced`.
+- Ogni voce si verifica con `ctest` (arranger_core) e con lo smoke test, più un ascolto A/B dello stesso seed.
