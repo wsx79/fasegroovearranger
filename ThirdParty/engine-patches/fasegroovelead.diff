@@ -45,3 +45,143 @@
      int key = 0;
      int scale = 0;
      int pattern = 0;
+--- a/Source/engine/Lead.cpp
++++ b/Source/engine/Lead.cpp
+@@ -35,7 +35,7 @@
+ //==============================================================================
+ const char* chordTypeName (int type) noexcept
+ {
+-    static const char* names[] { "maj7", "m7", "7", "m9", "maj9", "9", "m11", "13", "7sus4", "6/9", "", "m", "m7b5", "dim", "aug" };
++    static const char* names[] { "maj7", "m7", "7", "m9", "maj9", "9", "m11", "13", "7sus4", "6/9", "", "m", "m7b5", "dim", "aug", "m(maj7)", "dim7", "7b9" };
+     return type >= 0 && type < numChordTypes ? names[type] : "";
+ }
+ 
+@@ -64,6 +64,9 @@
+         case ChordType::halfDim: return bits ({ 0, 3, 6, 10 });
+         case ChordType::dim:     return bits ({ 0, 3, 6 });
+         case ChordType::aug:     return bits ({ 0, 4, 8 });
++        case ChordType::mMaj7:   return bits ({ 0, 3, 7, 11 });
++        case ChordType::dim7:    return bits ({ 0, 3, 6, 9 });
++        case ChordType::dom7b9:  return bits ({ 0, 4, 7, 10, 13 });
+         case ChordType::m7:
+         default:                 return bits ({ 0, 3, 7, 10 });
+     }
+@@ -234,104 +237,7 @@
+ 
+ //==============================================================================
+ //==============================================================================
+-const char* scaleName (int scale) noexcept
+-{
+-    static const char* names[numScales] { "Major (Ionian)", "Dorian", "Minor (Aeolian)", "Mixolydian", "Lydian", "Phrygian",
+-                                          "Harmonic Minor", "Melodic Minor", "Locrian", "Harmonic Major", "Lydian Dominant",
+-                                          "Mixolydian b6", "Phrygian Dominant" };
+-    return names[std::clamp (scale, 0, numScales - 1)];
+-}
+-
+-const std::array<int, 7>& scaleIntervals (int scale) noexcept
+-{
+-    static const std::array<std::array<int, 7>, numScales> scales {{
+-        { 0, 2, 4, 5, 7, 9, 11 }, { 0, 2, 3, 5, 7, 9, 10 }, { 0, 2, 3, 5, 7, 8, 10 }, { 0, 2, 4, 5, 7, 9, 10 },
+-        { 0, 2, 4, 6, 7, 9, 11 }, { 0, 1, 3, 5, 7, 8, 10 }, { 0, 2, 3, 5, 7, 8, 11 }, { 0, 2, 3, 5, 7, 9, 11 },
+-        { 0, 1, 3, 5, 6, 8, 10 }, { 0, 2, 4, 5, 7, 8, 11 }, { 0, 2, 4, 6, 7, 9, 10 }, { 0, 2, 4, 5, 7, 8, 10 },
+-        { 0, 1, 4, 5, 7, 8, 10 } }};
+-    return scales[(size_t) std::clamp (scale, 0, numScales - 1)];
+-}
+-
+-bool scaleIsMinor (int scale) noexcept { return scaleIntervals (scale)[2] == 3; }
+-
+-const char* chordColourName (int colour) noexcept
+-{
+-    static const char* names[numChordColours] { "Triads", "7ths", "9ths" };
+-    return names[std::clamp (colour, 0, numChordColours - 1)];
+-}
+-
+-namespace
+-{
+-    /** The type of a chord from its 3rd, 5th, 7th and 9th (semitones above the root, -1: none). */
+-    ChordType typeOf (int third, int fifth, int seventh, int ninth, int colour)
+-    {
+-        const bool sevenths = colour >= (int) ChordColour::sevenths, ninths = colour >= (int) ChordColour::ninths && ninth == 2;
+-        if (third == 4 && fifth == 8) return ChordType::aug;
+-        if (third == 3 && fifth == 6) return sevenths && seventh == 10 ? ChordType::halfDim : ChordType::dim;
+-        if (third == 3)
+-            return ! sevenths || seventh != 10 ? ChordType::minor : ninths ? ChordType::m9 : ChordType::m7;
+-        if (! sevenths) return ChordType::major;
+-        if (seventh == 11) return ninths ? ChordType::maj9 : ChordType::maj7;
+-        if (seventh == 10) return ninths ? ChordType::dom9 : ChordType::dom7;
+-        return ChordType::major;
+-    }
+-}
+-
+-Chord diatonicChord (int key, int scale, int degree, int colour)
+-{
+-    const auto& s = scaleIntervals (scale);
+-    degree = ((degree % 7) + 7) % 7;
+-    auto above = [&] (int steps) { return mod12 (s[(size_t) ((degree + steps) % 7)] - s[(size_t) degree]); };
+-    return { mod12 (key + s[(size_t) degree]), (int) typeOf (above (2), above (4), above (6), above (1), colour) };
+-}
+-
+-Chord codeChord (int key, int code, int colour)
+-{
+-    const int root = mod12 (key + code % 12), kind = std::clamp (code / 12, 0, 2);
+-    const bool sevenths = colour >= (int) ChordColour::sevenths, ninths = colour >= (int) ChordColour::ninths;
+-    ChordType t;
+-    if (kind == 1)      t = ! sevenths ? ChordType::minor : ninths ? ChordType::m9 : ChordType::m7;
+-    else if (kind == 2) t = ninths ? ChordType::dom9 : ChordType::dom7;   // a dominant keeps its 7th
+-    else                t = ! sevenths ? ChordType::major : ninths ? ChordType::maj9 : ChordType::maj7;
+-    return { root, (int) t };
+-}
+-
+-std::vector<Chord> circleOfFifthsProgression (std::uint32_t seed, int key, int scale, int length, int colour)
+-{
+-    // Small, repeatable random numbers.
+-    auto next = [&seed] { seed = seed * 1664525u + 1013904223u; return (int) (seed >> 8); };
+-    length = std::clamp (length, 1, maxChords);
+-    // Each chord a fifth below the one before (three scale steps up), landing on the tonic or,
+-    // now and then, on the dominant (an open end that turns round).
+-    const int last = next() % 4 == 0 ? 4 : 0;
+-    const int first = ((last - 3 * (length - 1)) % 7 + 7 * length) % 7;
+-    std::vector<Chord> chords;
+-    for (int i = 0; i < length; ++i)
+-        chords.push_back (diatonicChord (key, scale, first + 3 * i, colour));
+-    // A secondary dominant: the chord before another one becomes its V7 (a fifth above it).
+-    if (length >= 3 && next() % 3 != 0)
+-    {
+-        const int at = next() % (length - 1);
+-        chords[(size_t) at] = { mod12 (chords[(size_t) at + 1].root + 7), (int) (colour >= (int) ChordColour::ninths ? ChordType::dom9 : ChordType::dom7) };
+-    }
+-    return chords;
+-}
+-
+-float transitionScore (const Chord& a, const Chord& b) noexcept
+-{
+-    const auto ta = tonesOf (a), tb = tonesOf (b);
+-    int shared = 0, sizeB = 0;
+-    for (int pc = 0; pc < 12; ++pc)
+-    {
+-        const bool inA = (ta.mask >> (unsigned) mod12 (pc - ta.root)) & 1u, inB = (tb.mask >> (unsigned) mod12 (pc - tb.root)) & 1u;
+-        shared += inA && inB ? 1 : 0;
+-        sizeB += inB ? 1 : 0;
+-    }
+-    const int move = mod12 (b.root - a.root);
+-    const float root = move == 5 ? 1.0f : move == 7 ? 0.75f : move == 2 || move == 10 ? 0.6f : move == 3 || move == 4 || move == 8 || move == 9 ? 0.55f
+-                     : move == 0 ? 0.5f : move == 6 ? 0.1f : 0.35f;
+-    return std::clamp (0.55f * root + 0.45f * (float) shared / (float) std::max (1, sizeB) + 0.15f, 0.0f, 1.0f);
+-}
++#include "../../../engine-theory/BandTheory.inl"
+ 
+ const std::vector<Progression>& progressions()
+ {
+--- a/Source/engine/Lead.h
++++ b/Source/engine/Lead.h
+@@ -30,8 +30,8 @@
+ //==============================================================================
+ /** Chord qualities, as the chord slots show them. */
+ enum class ChordType { maj7 = 0, m7, dom7, m9, maj9, dom9, m11, dom13, sus4, sixNine, major, minor,
+-                       halfDim, dim, aug };   // (new types are appended: saved projects keep theirs)
+-constexpr int numChordTypes = 15;
++                       halfDim, dim, aug, mMaj7, dim7, dom7b9 };   // (new types are appended: saved projects keep theirs)
++constexpr int numChordTypes = 18;
+ const char* chordTypeName (int type) noexcept;   // "maj7", "m7", "7" ... ("" for a major triad)
+ /** The intervals of a chord type, as a bit mask over the 12 semitones above the root. */
+ unsigned chordTypeMask (int type) noexcept;

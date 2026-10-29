@@ -17,6 +17,8 @@
 - `GuideVoice`: optional centred-output constructor argument, used only by the bass track (the plugin's callers keep the keyboard spread).
 - Not vendored (only the plugin's processor and editor use them; `sameSettings` would not compile here): the piano-roll edited loop (`LoopNote`, `editedLoop`, `playsEditedLoop`, `carryEdits`), `stabBassLine`, `bassGate`, `bassFeelName`, `GrooveEngine::sameSettings`.
 - Comments: `riffGenre`, the genre preset in `Generators.h`.
+- Chord names follow the key signature (`spelledNote`, `chordName` takes the key). Altered V only when the scale's fifth is perfect. Chromatic numerals mark augmented chords. `pentatonicNotes` is an explicit five-note set per scale. Voicings are clamped to MIDI 0–127. `grooveFromNotes` is unused by the arranger and marked as such.
+- `bestChord` also matches diminished, half-diminished, augmented and suspended chords.
 
 ## Drums (`fgd`)
 
@@ -26,6 +28,7 @@
 ## Guitar (`fgg`)
 
 - `GrooveSettings::stepsPerChord`: shared harmonic duration (8/16/32/64 steps per chord); the chord, its voicing, the push to the next chord and the loop length follow it. 16 is the plugin's one chord per bar.
+- Scale table, `diatonicChord`, `codeChord`, `circleOfFifthsProgression` and `transitionScore` live in `ThirdParty/engine-theory/BandTheory.inl` (same text as lead). Chord types `mMaj7`, `dim7` and `dom7b9` are appended so minor-major sevenths, diminished sevenths and flat nines are not collapsed.
 - Not vendored (unused here): `makeRandomLane`, `defaultArrangement`.
 
 ## All
@@ -35,3 +38,4 @@
 ## Lead (`fgl`)
 
 - `LeadSettings::stepsPerChord`: shared harmonic duration (8/16/32/64 sixteenth steps). The current harmonic slot, anticipation and loop length follow it; standalone defaults to 16. All melodic phrase generation and the guide synth are vendored from Lead.
+- The same shared `BandTheory.inl` and the appended `mMaj7`, `dim7` and `dom7b9` chord types as the guitar.

@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.25.1
+
+- Prima release pubblicata delle modifiche 0.24.0 e 0.25.0 (armonia, audio, UI, teoria condivisa, test fuori dal binario). Le modifiche ai motori piano, chitarra e lead sono registrate e il controllo dei plugin torna allineato.
+
 ## 0.25.0
 
 - Il binario di release non include più i test di interfaccia. Si riattivano con FGA_SELF_TESTS.

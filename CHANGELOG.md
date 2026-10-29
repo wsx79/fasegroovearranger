@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.25.1
+
+- First published build of the 0.24.0 and 0.25.0 changes (harmony, audio races, UI, shared chord theory, release self-tests). Record the vendored piano, guitar and lead edits so the engine check matches the plugins.
+
 ## 0.25.0
 
 - The release build no longer contains the UI evidence harness. Turn it back on with FGA_SELF_TESTS.
