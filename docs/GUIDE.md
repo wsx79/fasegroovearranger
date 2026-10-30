@@ -119,6 +119,12 @@ The home screen’s **master volume**, **note density**, **Swing** and **Feel** 
 
 ### DAW workspace
 
+**+ MIDI → VOCAL CHOPS** adds a separate sparse lead part, especially suited to chopped voices in Jackin’ House. A guide sound plays before a sample is assigned. **LOAD SAMPLE** prepares slices automatically; open **STUDIO** to refine transients with **AUTO SLICE**, markers, tuning and envelopes. MIDI keys select individual slices.
+
+**DENSITY**, **GATE** and **HUMANIZE** control note count, MIDI duration and timing variation. **RND LANE** and the normal regeneration commands write another phrase, with more space in intros, breaks and outros. Slices play to their audio end: shape that duration in Studio; Gate controls the MIDI note length. Track/clip locks preserve notes. Changing the slice count or first key remaps unlocked MIDI and loop sources without changing rhythm, lengths or velocity. Undo restores the edits.
+
+Rename or delete this optional track as usual. Ordinary handwritten MIDI tracks remain protected from automatic generation; Vocal chops follows song regeneration. Existing Lead and instrument routing IDs are preserved.
+
 **DELETE MIDI TRACK** in the inspector, or **right-click → Delete MIDI track**, removes a track added with + MIDI. **UNDO** restores its notes, name, instrument and effect; following tracks keep their data. Generated instrument tracks cannot be deleted.
 
 **+ SECTION** opens a small menu: choose Main, Intro, Breakdown, Build-up, Drop or Outro. The chosen section is inserted after the selected section; UNDO restores the previous form.

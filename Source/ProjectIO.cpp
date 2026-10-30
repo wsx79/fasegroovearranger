@@ -145,7 +145,7 @@ juce::var projectJson(const Project& p){
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
         if(!t.sampler.isDefault())set(a,"sampler",samplerJson(t.sampler));if(!t.sampleHash.empty())set(a,"sampleHash",t.sampleHash);if(t.group>=0)set(a,"group",t.group);if(t.sends[0]!=0||t.sends[1]!=0){juce::Array<juce::var> sends;for(auto v:t.sends)sends.add(v);set(a,"sends",sends);}
-        set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
+        if(t.vocalChops)set(a,"vocalChops",true);set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
         set(a,"volumeAutomation",envelopeJson(t.volume));
         // Pan and plugin automation are written only when used: older projects save as before.
         if(!t.panAutomation.isDefault())set(a,"panAutomation",envelopeJson(t.panAutomation));
@@ -174,7 +174,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     size_t noteCount=0;
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.kind=(int)p.tracks.size();if(migrateSlots){const double id=num(a,"kind",t.kind);if(id<0||id>=maxTracks||std::floor(id)!=id||usedSlots[(size_t)(int)id])return juce::Result::fail("Invalid or duplicate legacy track slot.");t.kind=(int)id;usedSlots[(size_t)t.kind]=true;}t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         if(auto r=readSampler(a["sampler"],t.sampler);r.failed())return r;t.sampleHash=str(a,"sampleHash");t.group=(int)num(a,"group",-1);if(a.hasProperty("sends")){auto* sends=a["sends"].getArray();if(!sends||sends->size()!=2)return juce::Result::fail("Invalid send routing.");for(int i=0;i<2;++i)t.sends[(size_t)i]=(double)(*sends)[i];}
-        readEngine(a["engine"],t.engine);
+        t.vocalChops=(bool)a.getProperty("vocalChops",false);readEngine(a["engine"],t.engine);
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
         if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
         if(a.hasProperty("parameterAutomation")){auto* lanes=a["parameterAutomation"].getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");

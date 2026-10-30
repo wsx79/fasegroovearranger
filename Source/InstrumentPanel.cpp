@@ -146,8 +146,20 @@ void InstrumentPanel::rebuild(){
     rebuildPending=false;flushRender();builtTrack=owner.selectedTrack;builtGrid=usesPianoGrid(owner.project,owner.selectedTrack);builtInternal=owner.project.tracks[(size_t)owner.selectedTrack].instrument=="internal";
     controls.clear();headings.clear();const int track=owner.selectedTrack;const auto e=owner.project.tracks[(size_t)track].engine;const bool piano=track==0,bass=track==1,strings=track==2,lead=track==leadTrack,guitar=track==3||lead,drum=isDrumTrack(track);
     if(isManualTrack(track)){
-        circle.setVisible(false);heading("GUIDE SOUND");
+        circle.setVisible(false);if(builtInternal||!owner.project.tracks[(size_t)track].vocalChops)heading("GUIDE SOUND");
         if(builtInternal){juce::StringArray sounds;for(int i=0;i<builtInSoundCount(track);++i)sounds.add(builtInSoundName(track,i));sharedChoice("Sound",sounds,owner.project.tracks[(size_t)track].sound,[this](int v){owner.project.tracks[(size_t)owner.selectedTrack].sound=v;});knob("TONE",0,100,1,e.tone*100,[](auto& o,double v){o.tone=v/100;}," %");knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");}
+        if(owner.project.tracks[(size_t)track].vocalChops){
+            heading("VOCAL CHOPS");knob("DENSITY",0,100,1,e.density*100,[](auto& o,double v){o.density=v/100;}," %");knob("GATE",12.5,150,1,e.gate*100,[](auto& o,double v){o.gate=v/100;}," %");knob("HUMANIZE",0,100,1,std::max(0.,e.humanize)*100,[](auto& o,double v){o.humanize=v/100;}," %");
+            action("LOAD SAMPLE",[this]{owner.browseSamplesFor(owner.selectedTrack);});action("STUDIO",[this]{if(owner.audio.sampleAsset(owner.selectedTrack))owner.showStudio();else owner.browseSamplesFor(owner.selectedTrack);});action("RND LANE",[this]{owner.regenerate(Scope::track);});
+            for(auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();juce::String tip;
+                if(name=="DENSITY")tip="Number of short vocal triggers per phrase; zero leaves silence.";
+                if(name=="GATE")tip="MIDI note duration. Edit slice audio length in Studio.";
+                if(name=="RND LANE")tip="Write another sparse vocal phrase.";
+                if(name=="LOAD SAMPLE")tip="Choose a voice sample and prepare its slices.";
+                if(name=="STUDIO")tip="Edit vocal slices, tuning and envelopes in Studio.";
+                if(tip.isNotEmpty()){c.component->getProperties().set("fgaTip",tip);if(auto* client=dynamic_cast<juce::SettableTooltipClient*>(c.component.get()))client->setTooltip(tr(tip));}
+            }
+        }
         action("EDIT MIDI",[this]{owner.showEditor();});translateControls(*this);resized();refreshFromProject();return;
     }
     if(lead)choice("Global octave",{"-2","-1","0","+1","+2"},e.globalOctave+2,[](auto& o,int v){o.globalOctave=v-2;});
@@ -306,7 +318,11 @@ void InstrumentPanel::resized(){
     };
     auto tool=[&](const juce::String& name,int x,int y,int w){put(name,x,y,w,24);};
     if(isManualTrack(track)){
-        card("GUIDE SOUND",18,18,W-36,180);put("Sound",32,64,220);put("TONE",274,60,100,80);put("REVERB",392,60,100,80);tool("EDIT MIDI",32,148,220);setSize(W,220);return;
+        if(owner.project.tracks[(size_t)track].vocalChops){
+            card("VOCAL CHOPS",18,18,W-36,180);put("DENSITY",32,54,100,80);put("GATE",150,54,100,80);put("HUMANIZE",268,54,100,80);
+            tool("LOAD SAMPLE",390,70,140);tool("STUDIO",546,70,130);tool("RND LANE",692,70,100);tool("EDIT MIDI",808,70,180);
+            if(builtInternal){card("GUIDE SOUND",18,214,W-36,150);put("Sound",32,258,220);put("TONE",274,250,100,80);put("REVERB",392,250,100,80);setSize(W,384);}else setSize(W,218);
+        }else{card("GUIDE SOUND",18,18,W-36,180);put("Sound",32,64,220);put("TONE",274,60,100,80);put("REVERB",392,60,100,80);tool("EDIT MIDI",32,148,220);setSize(W,220);}return;
     }
     const int progHeight=track<3?138:0;
     if(track<3){

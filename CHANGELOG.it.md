@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.28.0
+
+- Aggiunge una parte opzionale Vocal chops da + MIDI: poche note sincopate, rigenerazione compatibile con le slice, Density/Gate/Humanize, slicing automatico della voce, rimappatura che conserva il MIDI e contesto IA con i tasti corretti. Mantiene routing degli strumenti e MIDI manuale.
+- Corregge riferimenti alla traccia dopo i tagli ai confini di sezione, doppi checkpoint Annulla nella rigenerazione da menu e la risoluzione del campione Studio prima dell’identità della traccia. Allinea il test del centramento VST alla callback asincrona già presente.
+
 ## 0.27.1
 
 - Il pulsante di automazione nell'intestazione è quello che il test preme. Un clic a vuoto non legge più oltre la fine di una corsia vuota: era il crash dello smoke test su Windows e l'interruzione su Linux.

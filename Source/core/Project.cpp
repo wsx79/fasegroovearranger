@@ -347,7 +347,7 @@ void Project::normalise() {
     if(tracks.size()>maxTracks) tracks.resize(maxTracks);
     while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind==leadTrack?"Lead":t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); if(t.kind==leadTrack){t.gain=.22;t.engine.density=.42;t.engine.roomForBand=false;t.engine.fillEvery=8;} tracks.push_back(t); }
     for(size_t i=0;i<tracks.size();++i) {
-        auto& t=tracks[i]; t.kind=(int)i; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
+        auto& t=tracks[i]; t.kind=(int)i; if(!isManualTrack(t.kind))t.vocalChops=false; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.sampler.normalise();t.group=std::clamp(t.group,-1,1);for(auto& send:t.sends)send=finite(send,0,0,1);if(t.sampleHash.size()>64)t.sampleHash.clear();
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
         t.volume.normalise(length());t.panAutomation.normalise(length(),1.);
@@ -870,6 +870,7 @@ static void addSectionCrashes(Project& p){
 }
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateNotes(p,scope,track,section,seed);
+    generateVocalChops(p,scope,track,section,seed);
     if(scope==Scope::song||scope==Scope::section)addSectionCrashes(p);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
@@ -878,7 +879,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
     p.normalise();
     if(isManualTrack(track)&&(scope==Scope::track||scope==Scope::clip))return;
     if(track<0||track>=(int)p.tracks.size()||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
-    if(scope==Scope::section){const double start=p.sectionStart(section),end=p.sectionStart(section+1);for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(!t.freeTimeline||t.locked)continue;for(double boundary:{start,end}){const int at=p.clipAtBeat(ti,boundary);if(at>=0&&!t.clips[(size_t)at].locked&&p.clipStart(ti,at)<boundary)p.splitClip(ti,at,boundary);}}}
+    if(scope==Scope::section){const double start=p.sectionStart(section),end=p.sectionStart(section+1);for(int ti=0;ti<trackCount;++ti){if(!p.tracks[(size_t)ti].freeTimeline||p.tracks[(size_t)ti].locked)continue;for(double boundary:{start,end}){const int at=p.clipAtBeat(ti,boundary);if(at>=0&&!p.tracks[(size_t)ti].clips[(size_t)at].locked&&p.clipStart(ti,at)<boundary)p.splitClip(ti,at,boundary);}}}
     sgk::GroovePattern previousPiano;
     if(seed&&!p.tracks[0].locked&&(scope==Scope::song||scope==Scope::section||track==0)){
         const auto& piano=p.tracks[0];
@@ -1022,7 +1023,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
 }
 void applyInstrumentChange(Project& p,int track,bool harmony) {
     p.normalise();
-    if(track<0||track>=trackCount)return;
+    if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return;
+    if(p.tracks[(size_t)track].vocalChops){generate(p,Scope::track,track,0,0);return;}
     for(int ti=0;ti<trackCount;++ti){
         if(ti!=track&&!(harmony&&isHarmonicTrack(ti)))continue;
         if(p.tracks[(size_t)ti].locked||p.tracks[(size_t)ti].clips.empty())continue;
@@ -1030,7 +1032,7 @@ void applyInstrumentChange(Project& p,int track,bool harmony) {
     }
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
-    if(track<0||track>=trackCount)return false;
+    if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
     auto& t=p.tracks[(size_t)track];
     if(t.locked||clip<0||clip>=(int)t.clips.size()||t.clips[(size_t)clip].locked)return false;
     auto& c=t.clips[(size_t)clip];

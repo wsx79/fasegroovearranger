@@ -199,7 +199,8 @@ public:
     void mixChanged();
     void select(int track,int section);
     void showTrackMenu(int);
-    void addMidiTrack();
+    void showAddTrackMenu();
+    void addMidiTrack(bool vocal=false);
     void deleteMidiTrack(int);
     void showAddSectionMenu();
     void addSongSection(Section);

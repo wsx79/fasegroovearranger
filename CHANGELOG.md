@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.28.0
+
+- Add an optional sparse Vocal chops part from + MIDI, with slice-aware regeneration, Density/Gate/Humanize controls, automatic voice slicing, MIDI-preserving slice remapping and AI slice-key context. Existing instrument routing and handwritten MIDI remain unchanged.
+- Fix stale track references when splitting across section boundaries, duplicate track-regeneration Undo checkpoints, and Studio resolving sample assets before the selected track identity. Align the VST centring test with its existing asynchronous callback.
+
 ## 0.27.1
 
 - The track-header automation button is the control the self-test clicks. A missed click no longer reads past the end of an empty lane, which crashed the Windows smoke test and stopped the Linux UI run.

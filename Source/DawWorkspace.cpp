@@ -398,7 +398,7 @@ return false;
     arrangement.trackHeights=savedHeights;arrangement.volumeVisible=savedLanes;arrangement.saveTrackHeights();updateSizes();
     {
         const auto before=project;const auto count=project.tracks.size();
-        addTrackButton.onClick();const int added=selectedTrack;
+        addMidiTrack();const int added=selectedTrack;
         ok=ok&&added==(int)count&&project.tracks.size()==count+1&&page==Page::editor&&!piano.laneView()&&clip().notes.empty();stage("add manual MIDI track opens a blank piano roll");
         undo(false);ok=ok&&project.tracks.size()==count&&selectedTrack<(int)count;
         undo(true);ok=ok&&project.tracks.size()==count+1;select(added,0);
@@ -418,7 +418,7 @@ return false;
         const auto generatedCount=project.tracks.size();deleteMidiTrack(0);ok=ok&&project.tracks.size()==generatedCount;
         stage("delete manual track with later-track routing and undo/redo; generated tracks protected");
         const auto capacityBefore=project;while(project.tracks.size()<maxTracks)project.addMidiTrack();changed();resized();ok=ok&&!addTrackButton.isEnabled();
-        deleteMidiTrack(maxTracks-1);ok=ok&&addTrackButton.isEnabled();addTrackButton.onClick();ok=ok&&project.tracks.size()==maxTracks&&!addTrackButton.isEnabled();undo(false);ok=ok&&addTrackButton.isEnabled();
+        deleteMidiTrack(maxTracks-1);ok=ok&&addTrackButton.isEnabled();addMidiTrack();ok=ok&&project.tracks.size()==maxTracks&&!addTrackButton.isEnabled();undo(false);ok=ok&&addTrackButton.isEnabled();
         project=capacityBefore;selectedTrack=0;selectedClip=-1;changed();resized();stage("delete frees track capacity and re-enables add MIDI, including after undo");
         for(int type=0;type<6;++type){const auto formBefore=project;const int at=selectedSection+1;addSongSection((Section)type);ok=ok&&project.sections[(size_t)at].type==(Section)type&&project.sections.size()==formBefore.sections.size()+1;undo(false);ok=ok&&project.sections.size()==formBefore.sections.size();}
         stage("all six section menu choices insert the chosen role and undo");

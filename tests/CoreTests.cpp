@@ -207,6 +207,28 @@ int main(int argc,char** argv){try{
     verifyAuditFixes();
     verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
+        auto vocal=fga::newProject(4);vocal.sections={{fga::Section::main,16,"Main"},{fga::Section::drop,8,"Drop"},{fga::Section::intro,8,"Intro"}};vocal.normalise();
+        const auto lead=vocal.tracks[fga::leadTrack].clips;const int manual=vocal.addMidiTrack();vocal.tracks[(size_t)manual].clips[0].notes={{1,.5,72,100,0}};
+        const int index=vocal.addVocalChopsTrack();check(index==fga::trackCount+1&&vocal.tracks[fga::leadTrack].clips==lead,"vocal part preserves lead and manual routing");
+        auto& t=vocal.tracks[(size_t)index];check(t.vocalChops&&fga::hasGenerator(t)&&!t.freeTimeline,"optional vocal generator follows sections");
+        check(t.clips[0].notes.size()>=4&&t.clips[0].notes.size()<=12,"default vocal leaves space: sparse four-bar calls");
+        for(const auto& c:t.clips)for(size_t n=0;n<c.notes.size();++n){check(c.notes[n].length<=.75&&c.notes[n].length>0,"short vocal gates");if(n)check(c.notes[n-1].start+c.notes[n-1].length<=c.notes[n].start,"vocal remains monophonic");}
+        const auto original=t.clips;fga::generate(vocal,fga::Scope::track,index,0,0);check(t.clips==original,"vocal APPLY is deterministic");
+        fga::generate(vocal,fga::Scope::clip,index,1,4321);check(t.clips[0]==original[0]&&t.clips[2]==original[2],"clip regeneration preserves other vocal sections");
+        std::set<std::vector<double>> rhythms;for(unsigned seed=2;seed<14;++seed){fga::generate(vocal,fga::Scope::track,index,0,seed);std::vector<double> onsets;for(const auto& n:t.clips[0].notes)onsets.push_back(n.start);rhythms.insert(onsets);}check(rhythms.size()>3,"vocal regeneration draws different sparse rhythms");
+        t.clips[0].locked=true;const auto locked=t.clips[0];fga::generate(vocal,fga::Scope::track,index,0,999);check(t.clips[0]==locked,"vocal clip lock survives generation");t.clips[0].locked=false;
+        t.instrument="sample";t.sampler=fga::vocalSamplerSettings();fga::generate(vocal,fga::Scope::track,index,0,300);
+        for(const auto& c:t.clips)for(const auto& n:c.notes)check(n.pitch>=60&&n.pitch<68,"vocal triggers actual slice keys");
+        const auto old=t.sampler;auto before=t.clips[0].notes;t.clips[0].loopSource=before;t.sampler.sliceBase=124;t.sampler.sliceCount=3;fga::remapVocalChops(vocal,index,old);
+        for(size_t n=0;n<before.size();++n){const auto& mapped=t.clips[0].notes[n];check(mapped.pitch>=124&&mapped.pitch<=126&&mapped.start==before[n].start&&mapped.length==before[n].length&&mapped.velocity==before[n].velocity,"changing slices keeps timing, duration and velocity");check(t.clips[0].loopSource[n].pitch==mapped.pitch,"loop source follows slice mapping");}
+        t.engine.density=0;fga::generate(vocal,fga::Scope::track,index,0,0);check(t.clips[0].notes.empty(),"zero vocal density writes no notes");
+        const auto identity=t.sessionId;check(vocal.deleteMidiTrack(manual)&&vocal.tracks[(size_t)manual].vocalChops&&vocal.tracks[(size_t)manual].sessionId==identity,"vocal generator follows routing compaction");
+        check(vocal.deleteMidiTrack(manual),"optional vocal track can be removed");
+        auto split=fga::newProject(4);split.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"},{fga::Section::outro,4,"C"}};split.normalise();const int vc=split.addVocalChopsTrack();
+        for(int ti:{0,vc}){auto& part=split.tracks[(size_t)ti];part.freeTimeline=true;fga::Clip c;c.span=48;c.notes={{5,.25,60,100,0},{20,.25,62,100,0},{40,.25,64,100,0}};part.clips={c};}
+        fga::generate(split,fga::Scope::section,vc,1,221);for(int ti:{0,vc}){const auto& clips=split.tracks[(size_t)ti].clips;check(clips.size()==3&&clips[0].notes.size()==1&&clips[0].notes[0].start==5&&clips[2].notes.size()==1&&clips[2].notes[0].start==8,"section boundary splits retain outer notes without dangling track references");}
+    }
+    {
         auto p=fga::newProject();p.sections={{fga::Section::main,4,"A"},{fga::Section::drop,4,"B"}};p.normalise();
         for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();
         p.tracks[4].clips[0].notes={{0,.25,36,100,0},{8,2,36,70,0}};p.tracks[4].clips[1].notes={{1,.25,36,50,0}};p.normalise();

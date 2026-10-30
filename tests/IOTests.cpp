@@ -13,6 +13,13 @@ int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
     runAiTests();runStudioIOTests();
     {
+        auto vocal=fga::newProject(4);const int index=vocal.addVocalChopsTrack();fga::Project loaded;
+        check(fga::projectFromJson(fga::projectJson(vocal),loaded).wasOk()&&loaded.tracks[(size_t)index].vocalChops&&loaded.tracks[(size_t)index].clips==vocal.tracks[(size_t)index].clips,"vocal generator role, seeds and MIDI round trip");
+        auto legacy=fga::projectJson(vocal);legacy["tracks"].getArray()->getReference(index).getDynamicObject()->removeProperty("vocalChops");
+        check(fga::projectFromJson(legacy,loaded).wasOk()&&!loaded.tracks[(size_t)index].vocalChops,"legacy manual MIDI remains manual");
+        vocal.tracks[0].vocalChops=true;vocal.normalise();check(!vocal.tracks[0].vocalChops,"vocal role cannot replace fixed instrument routing");
+    }
+    {
         auto project=fga::newProject(19);while(project.tracks.size()<fga::maxTracks)project.addMidiTrack();
         for(auto& track:project.tracks)for(auto& c:track.clips)c.notes.clear();
         for(auto& track:project.tracks)track.clips[0].notes={{0,.5,60,100,0}};

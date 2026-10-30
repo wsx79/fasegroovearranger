@@ -118,7 +118,13 @@ Il **volume master**, la **densità delle note**, **Swing** e **Feel** nella sch
 
 ### Spazio di lavoro DAW
 
-**ELIMINA TRACCIA MIDI** nell’inspector, o **tasto destro → Elimina traccia MIDI**, rimuove soltanto una traccia aggiunta con + MIDI. **ANNULLA** la ripristina con note, nome, suono ed effetto; le tracce successive mantengono i propri dati. Le tracce degli strumenti generativi non si eliminano.
+**+ MIDI → VOCAL CHOPS** aggiunge una seconda linea solista, separata dal Lead, con poche note sincopate e pause di quattro battute. È pensata soprattutto per una voce tagliata nella Jackin’ House. Prima del campione usa un suono guida; carica la voce con **LOAD SAMPLE** e apri **STUDIO**: vengono preparate automaticamente le slice, che puoi rifinire con **AUTO SLICE**, marker, intonazione e inviluppo. Ogni nota MIDI seleziona una slice.
+
+Nel pannello Vocal chops, **DENSITY** decide quante note scrivere, **GATE** la loro durata MIDI e **HUMANIZE** le piccole variazioni temporali. **RND LANE** e i consueti comandi Rigenera scrivono un’altra frase; le pause maggiori in intro, break e outro lasciano spazio al mix. In modalità Slices la porzione audio suona fino al suo termine: rifiniscila in Studio, mentre Gate resta la durata MIDI. I blocchi di traccia/clip proteggono le note. Un cambio di numero o tasto iniziale delle slice rimappa le note sbloccate conservando ritmo, durate e velocity, anche nella sorgente dei loop. Il preset e Annulla mantengono questa associazione.
+
+La traccia si può rinominare ed eliminare come una traccia aggiunta manualmente. Le tracce MIDI normali restano escluse dalla generazione automatica; le tracce Vocal chops partecipano alla rigenerazione del brano. Il Lead e gli ID degli strumenti esistenti restano quelli del progetto.
+
+**ELIMINA TRACCIA MIDI** nell’inspector, o **tasto destro → Elimina traccia MIDI**, rimuove soltanto una traccia aggiunta con + MIDI. **ANNULLA** la ripristina con note, nome, suono ed effetto; le tracce successive mantengono i propri dati. Le tracce fisse degli strumenti generativi non si eliminano; la parte opzionale Vocal chops si può rimuovere.
 
 **+ SEZIONE** apre un piccolo menu: scegli Main, Intro, Breakdown, Build-up, Drop oppure Outro. La sezione scelta viene inserita dopo quella selezionata; ANNULLA ripristina la forma precedente.
 

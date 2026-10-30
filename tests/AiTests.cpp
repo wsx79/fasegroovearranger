@@ -8,6 +8,16 @@ void require(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 juce::String fixture(){return R"({"title":"Techno","summary":"Six minutes","bpm":138,"key":0,"scale":1,"genre":12,"degrees":[0,5,3,4],"chord_steps":32,"target_seconds":360,"sections":[{"name":"Intro","type":"intro","bars":16},{"name":"Drop","type":"drop","bars":32},{"name":"Outro","type":"outro","bars":16}],"patterns":[{"id":"kick","track":4,"beats":4,"notes":[[0,36,0.5,110],[1,36,0.5,100],[2,36,0.5,110],[3,36,0.5,100]]},{"id":"lead","track":17,"beats":4,"notes":[[0,60,1.5,100],[1,63,0.5,90],[2,67,1,100]]}],"clips":[{"section":0,"pattern":"kick"},{"section":1,"pattern":"kick"},{"section":1,"pattern":"lead"},{"section":2,"pattern":"kick"}]})";}
 }
 void runAiTests(){
+    {
+        auto project=fga::newProject(4);const int track=project.addVocalChopsTrack();auto& vocal=project.tracks[(size_t)track];vocal.instrument="sample";vocal.sampler.sliceBase=72;vocal.sampler.sliceCount=3;
+        fga::AiOptions options;options.tracks={track};options.wholeSong=false;options.model="test";options.prompt="sparse vocal chops";
+        const auto context=juce::JSON::parse(fga::aiContext(project,options));const auto item=context["enabled_tracks"][0];
+        require(item["role"].toString()=="vocal_chops"&&(int)item["low"]==72&&(int)item["high"]==74,"AI receives vocal slice role and actual key range");
+        auto plan=juce::JSON::parse(fixture());plan["patterns"].getArray()->getReference(1).getDynamicObject()->setProperty("track",track);options.wholeSong=true;options.tracks={4,track};fga::Project result;result.name="KEEP";juce::String summary;
+        auto invalid=fga::aiCompile(project,options,juce::JSON::toString(plan),result,summary);require(invalid.failed()&&invalid.getErrorMessage().contains("mapped slice keys")&&result.name=="KEEP","AI rejects unmapped vocal triggers atomically");
+        auto& notes=*plan["patterns"].getArray()->getReference(1)["notes"].getArray();for(int i=0;i<notes.size();++i)notes.getReference(i).getArray()->getReference(1)=72+i;
+        require(fga::aiCompile(project,options,juce::JSON::toString(plan),result,summary).wasOk(),"AI accepts mapped vocal triggers");
+    }
     {auto project=fga::newProject(31);fga::AiOptions options;options.model="test-model";options.prompt="test melody";options.wholeSong=false;options.tracks={0};project.tracks[0].locked=true;fga::AiHttpRequest request;if(fga::aiHttpRequest(project,options,request).wasOk())throw std::runtime_error("locked track must be rejected before HTTP");project.tracks[0].locked=false;options.tracks={(int)project.tracks.size()};if(fga::aiHttpRequest(project,options,request).wasOk())throw std::runtime_error("missing track must be rejected before HTTP");}
 
     auto base=fga::newProject(1);base.tracks[4].instrument="plugin";base.tracks[4].instrumentPath="/PRIVATE/kick.vst3";base.tracks[4].instrumentId="PRIVATE-ID";base.tracks[4].instrumentState="PRIVATE-STATE";base.tracks[4].effectState="PRIVATE-FX";base.tracks[4].gain=.42;

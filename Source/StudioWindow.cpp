@@ -428,7 +428,7 @@ private:
         for(int i=0;i<16;++i){const int note=selected()->sampler.sliceBase+std::max(0,sliceBank.getSelectedId()-1)*16+i;pads[(size_t)i]->setToggleState(note<128&&notes[(size_t)note],juce::dontSendNotification);}
     }
     void sliceSample(bool checkpoint){
-        const auto asset=owner.audio.sampleAsset(track);if(!selected()||!asset)return;if(checkpoint)owner.checkpoint();releasePads();keys.allNotesOff(0);auto& settings=selected()->sampler;
+        if(!selected())return;const auto asset=owner.audio.sampleAsset(track);if(!asset)return;if(checkpoint)owner.checkpoint();releasePads();keys.allNotesOff(0);auto& settings=selected()->sampler;
         std::vector<double> points;const int limit=128-settings.sliceBase;
         if(sliceMethod.getSelectedId()<=1)points=detectSampleSlices(*asset,settings.start,settings.end,settings.sensitivity,limit);
         else{const int count=std::min(limit,1<<sliceMethod.getSelectedId());for(int i=0;i<count;++i)points.push_back(settings.start+(settings.end-settings.start)*i/count);}
@@ -436,7 +436,7 @@ private:
     }
     void resetSample(){
         if(!selected()||!owner.audio.sampleAsset(track))return;owner.checkpoint();releasePads();keys.allNotesOff(0);owner.audio.liveMidi(track,juce::MidiMessage::allSoundOff(1),false);
-        auto& target=*selected();target.sampler={};target.sampler.mode=isDrumTrack(track)?1:0;target.sampler.polyphony=8;target.sampleRoot=isDrumTrack(track)?(target.engine.midiNote>=0?target.engine.midiNote:fgd::defaultNote(track-4)):60;
+        auto& target=*selected();target.sampler=target.vocalChops?vocalSamplerSettings():SamplerSettings{};if(!target.vocalChops){target.sampler.mode=isDrumTrack(track)?1:0;target.sampler.polyphony=8;}target.sampleRoot=isDrumTrack(track)?(target.engine.midiNote>=0?target.engine.midiNote:fgd::defaultNote(track-4)):60;
         wave.zoom=1;wave.scroll=0;sliceMethod.setSelectedId(1,juce::dontSendNotification);commit();
     }
     Track* selected(){
@@ -452,7 +452,7 @@ private:
     void scalar(juce::String name,double SamplerSettings::*member,double lo,double hi,double step){auto f=makeField(name,lo,hi,step);f.real=member;auto* slider=f.slider;slider->onValueChange=[this,slider,member]{if(updating||!selected())return;owner.checkpoint(slider);selected()->sampler.*member=slider->getValue();commit();};fields.push_back(f);}
     void integer(juce::String name,int SamplerSettings::*member,int lo,int hi){auto f=makeField(name,lo,hi,1);f.integer=member;f.root=!member;auto* slider=f.slider;slider->onValueChange=[this,slider,member]{if(updating||!selected())return;owner.checkpoint(slider);if(member)selected()->sampler.*member=(int)slider->getValue();else selected()->sampleRoot=(int)slider->getValue();commit();};fields.push_back(f);}
     void releasePads(){for(int i=0;i<16;++i)if(padHeld[(size_t)i]){padHeld[(size_t)i]=false;owner.audio.liveMidi(padTracks[(size_t)i],juce::MidiMessage::noteOff(1,padNotes[(size_t)i]));}}
-    void commit(){if(!selected())return;selected()->sampler.normalise();owner.changed(false);refresh();}
+    void commit(){if(!selected())return;selected()->sampler.normalise();remapVocalChops(owner.project,track,wave.settings);owner.changed(false);refresh();}
     void choose(juce::String title,juce::String filter,bool save,std::function<void(juce::File)> fn,bool directory=false){const auto identity=trackSessionId;chooser=std::make_unique<juce::FileChooser>(tr(title),juce::File(),filter,true,false,this);juce::Component::SafePointer<Panel> safe(this);chooser->launchAsync((save?juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::warnAboutOverwriting:juce::FileBrowserComponent::openMode)|(directory?juce::FileBrowserComponent::canSelectDirectories:juce::FileBrowserComponent::canSelectFiles),[safe,fn,identity](const juce::FileChooser& c){if(!safe||c.getResult()==juce::File())return;if(!safe->selected()||safe->trackSessionId!=identity){safe->owner.message(tr("The selected track changed. Choose a track and try again."),true);return;}fn(c.getResult());});}
     void refresh(){
         if(owner.project.tracks.empty())return;updating=true;

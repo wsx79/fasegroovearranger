@@ -74,7 +74,7 @@ inline std::uint64_t nextTrackSessionId(){static std::atomic<std::uint64_t> next
 struct Track {
     std::uint64_t sessionId=nextTrackSessionId(); // transient identity; copied by Undo, never serialized or used for MIDI routing
     std::string name;
-    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead, 18..31 handwritten MIDI
+    int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead, 18..31 optional MIDI/vocal parts
     double gain = .75, pan = 0;
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
@@ -88,9 +88,11 @@ struct Track {
     int group=-1;
     std::array<double,2> sends{};
     EngineOptions engine;
+    bool vocalChops = false; // optional generated sample part; keeps legacy routing IDs
     bool freeTimeline = false;
     std::vector<Clip> clips;
 };
+inline bool hasGenerator(const Track& t){return !isManualTrack(t.kind)||t.vocalChops;}
 struct Settings {
     int genre = 1, key = 9, scale = 1, extension = 2, voicing = 0;
     double bpm = 122, swing = .2, density = .55, humanize = .2;
@@ -141,7 +143,8 @@ struct Project {
     void removeGuide(int section);
     void moveGuide(int from, int to);
     void normalise();
-    bool deleteMidiTrack(int track); // generated instrument tracks cannot be removed
+    bool deleteMidiTrack(int track); // fixed instrument tracks cannot be removed
+    int addVocalChopsTrack();
     int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
     void insertSection(int index, SongSection section, int copyFrom = -1);
     bool duplicateSection(int index);
@@ -175,6 +178,9 @@ void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 
 // track. Harmony edits (key, scale, chords, voicing...) also re-render the other
 // harmonic parts that follow the chords: piano, bass, strings and guitar. Locks hold.
 void applyInstrumentChange(Project&, int track, bool harmony);
+SamplerSettings vocalSamplerSettings();
+void generateVocalChops(Project&,Scope,int track,int section,std::uint32_t seed);
+void remapVocalChops(Project&,int track,const SamplerSettings& previous,bool force=false);
 // A new performance take of one clip from the current instrument settings: groove,
 // riff and pattern choices are kept, only the clip's variation seed changes.
 // Returns false (and changes nothing) for a locked track or clip.
