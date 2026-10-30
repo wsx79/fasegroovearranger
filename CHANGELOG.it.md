@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.27.0
+
+- I pulsanti del suono nell'inspector prendono la larghezza dall'etichetta: Suono guida resta intero e non diventa più "SUONO G…". Didascalie, azioni della barra, sezioni e titoli dei clip si rimpiccioliscono prima dei puntini.
+- L'intestazione della traccia e la riga Armonia tengono il nome intero, ripetuto nel suggerimento. I nomi nel mixer, e titolo e suono nell'inspector, si riducono così Closed Hat, Tambourine e un plugin lungo restano leggibili.
+- Il meter del master chiuso e i dB si fermano prima di Bus e mandate. Un'azione disabilitata resta attenuata e l'etichetta si legge ancora.
+
 ## 0.26.1
 
 - Muovere il volume di una traccia VST o del master durante la riproduzione non zittisce più l'audio. Il fader non scatta lo stato del plugin sul thread audio, e il livello resta sfumato.

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.27.0
+
+- Inspector sound buttons take their width from the label, so Built-in stays whole in every language (Italian Suono guida no longer collapses to "SUONO G…"). Captions, toolbar actions, section chips and clip titles shrink before they ellipsize.
+- Track headers and the harmony strip keep the full name, and the tooltip repeats it. Mixer strip names, and the inspector title and sound, scale down so Closed Hat, Tambourine and a long plugin name still read.
+- The collapsed master meter and its dB readout stop before Bus & Send. A disabled action stays dim, and its label stays readable.
+
 ## 0.26.1
 
 - Moving a VST track or master volume during playback no longer silences the audio. The fader does not take a plugin-state snapshot on the audio thread, and the level still ramps.
