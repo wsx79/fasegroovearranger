@@ -14,7 +14,7 @@ public:
     bool acceptsMidi()const override{return false;}bool producesMidi()const override{return false;}bool isMidiEffect()const override{return false;}
     double getTailLengthSeconds()const override{return 0;}int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}const juce::String getProgramName(int)override{return {}; }void changeProgramName(int,const juce::String&)override{}
     bool hasEditor()const override{return true;}juce::AudioProcessorEditor* createEditor()override{return new juce::GenericAudioProcessorEditor(*this);}
-    void getStateInformation(juce::MemoryBlock& data)override{const float values[]{gain->get(),offset->get()};data.replaceWith(values,sizeof(values));}
+    void getStateInformation(juce::MemoryBlock& data)override{juce::Thread::sleep(20);const float values[]{gain->get(),offset->get()};data.replaceWith(values,sizeof(values));}
     void setStateInformation(const void* data,int size)override{if(size!=(int)(sizeof(float)*2))return;float values[2];std::memcpy(values,data,sizeof(values));gain->setValueNotifyingHost(gain->convertTo0to1(values[0]));offset->setValueNotifyingHost(offset->convertTo0to1(values[1]));}
 private:juce::AudioParameterFloat *gain=nullptr,*offset=nullptr;
 };

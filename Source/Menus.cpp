@@ -3,23 +3,27 @@
 #include "MainComponent.h"
 #include "GuidePage.h"
 #include "UiText.h"
+#include "ExportSupport.h"
 #include <BinaryData.h>
 namespace fga {
 namespace {
 juce::String u(const std::string& s){return juce::String::fromUTF8(s.c_str());}
+AudioExportOptions exportSettings(){const auto requested=Localisation::setting("exportSampleRate","48000").getIntValue();const int rates[]{44100,48000,88200,96000,192000};const bool known=std::find(std::begin(rates),std::end(rates),requested)!=std::end(rates);return {known?(double)requested:48000.,Localisation::setting("exportBitDepth","24")=="16"?16:24};}
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
 class ExportTask:public juce::ThreadWithProgressWindow {
 public:
-    // `copy`, when given, is a private engine: the export renders there and playback goes on.
-    ExportTask(AudioEngine& e,std::unique_ptr<AudioEngine> copy,Project p,juce::File path,std::vector<int> selected,bool mp3,std::function<void(juce::Result)> done)
-    :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),owned(std::move(copy)),engine(owned?*owned:e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),callback(std::move(done)){}
+    ExportTask(AudioEngine& e,Project p,juce::File path,std::vector<int> selected,bool mp3,bool batch,AudioExportOptions settings,std::function<void(juce::Result)> done)
+    :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),engine(e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),stems(batch),options(settings),callback(std::move(done)){}
     void run()override{
-        for(size_t i=0;i<tracks.size();++i){int track=tracks[i];auto file=tracks.size()>1?target.getChildFile(juce::String(rowForTrack(track)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)track].name))+(isMp3?".mp3":".wav")):target;
-            setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());},&blockPeak);peak=std::max(peak,blockPeak);if(result.failed())return;
+        // Write the arrangement map first, so it also accompanies any stems completed
+        // before cancellation. Audio files themselves use atomic temporary-file writes.
+        if(stems&&!writeExportArrangement(target,project)){result=juce::Result::fail("Cannot write the arrangement text file.");return;}
+        for(size_t i=0;i<tracks.size();++i){const int track=tracks[i];const auto file=stems?exportStemFile(target,project,track,isMp3?"mp3":"wav"):target;
+            setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());},&blockPeak,options);peak=std::max(peak,blockPeak);if(result.failed())return;
         }
     }
-    void threadComplete(bool cancelled)override{owned.reset();if(!cancelled&&result.wasOk()&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
-private:std::unique_ptr<AudioEngine> owned;AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();double peak=0;
+    void threadComplete(bool cancelled)override{if(!cancelled&&result.wasOk()&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
+private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3,stems;AudioExportOptions options;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();double peak=0;
 };
 }
 juce::File MainComponent::projectInCommandLine(const juce::String& commandLine){
@@ -114,20 +118,66 @@ void MainComponent::showAudioSettings(){
     });
 }
 void MainComponent::exportMenu(){
-    if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}juce::PopupMenu m;m.addItem(20,"STUDIO - SAMPLER / MIDI / MEDIA");m.addSeparator();m.addSectionHeader(juce::String::fromUTF8("MIDI · note modificabili"));m.addItem(1,tr("Canzone multitraccia (.mid)"));m.addItem(2,tr("Traccia selezionata (.mid)"));m.addItem(3,tr("Tutte le tracce MIDI separate"));m.addSectionHeader(juce::String::fromUTF8("WAV · 24 bit stereo / frequenza dispositivo"));m.addItem(4,tr("Mix completo WAV"));m.addItem(5,tr("Traccia selezionata WAV"));m.addItem(6,tr("Tutti gli stem WAV"));m.addSectionHeader(juce::String::fromUTF8("MP3 · 320 kbps / 44.1 kHz / stereo"));m.addItem(7,tr("Mix completo MP3"));m.addItem(8,tr("Traccia selezionata MP3"));m.addItem(9,tr("Tutti gli stem MP3"));juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&exportButton),[safe](int id){if(safe!=nullptr&&id==20)safe->showStudio();else if(safe!=nullptr&&id>0)safe->exportFile(id,safe->selectedTrack);});
+    if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}juce::PopupMenu m;m.addItem(20,"STUDIO - SAMPLER / MIDI / MEDIA");m.addSeparator();m.addSectionHeader(juce::String::fromUTF8("MIDI · note modificabili"));m.addItem(1,tr("Canzone multitraccia (.mid)"));m.addItem(2,tr("Traccia selezionata (.mid)"));m.addItem(3,tr("Tutte le tracce MIDI separate"));m.addSectionHeader(juce::String::fromUTF8("WAV · ")+tr("Sample rate / bit depth"));m.addItem(4,tr("Mix completo WAV"));m.addItem(5,tr("Traccia selezionata WAV"));m.addItem(6,tr("Tutti gli stem WAV"));m.addSectionHeader(juce::String::fromUTF8("MP3 · 320 kbps / 44.1 kHz / stereo"));m.addItem(7,tr("Mix completo MP3"));m.addItem(8,tr("Traccia selezionata MP3"));m.addItem(9,tr("Tutti gli stem MP3"));juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&exportButton),[safe](int id){if(safe!=nullptr&&id==20)safe->showStudio();else if(safe!=nullptr&&id>0)safe->exportFile(id,safe->selectedTrack);});
 }
-void MainComponent::exportFile(int type,int track,const juce::File& destination){
+void MainComponent::exportFile(int type,int track,const juce::File& destination,bool configured){
+    if(type<1||type>9||loadingPlugin||editingRestricted())return;
     const bool batch=type==3||type==6||type==9;const bool mp3=type>=7;const bool midi=type<=3;const bool single=type==2||type==5||type==8;
-    int flags=batch?juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories:juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting;
-    auto render=[this,type,track,batch,mp3,midi,single](juce::File target){
-        if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));if(target.createDirectory().failed()){message("Impossibile creare la cartella stem.",true);return;}}
-        else target=target.withFileExtension(midi?"mid":mp3?"mp3":"wav");
-        if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithData(bytes.data(),bytes.size())||!temp.overwriteTargetFileWithTemporary())return false;return true;};bool ok=true;if(batch){for(int ti=0;ti<(int)project.tracks.size();++ti)ok=write(target.getChildFile(juce::String(rowForTrack(ti)+1).paddedLeft('0',2)+"-"+juce::File::createLegalFileName(u(project.tracks[(size_t)ti].name))+".mid"),ti)&&ok;}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
-        // Render on a private copy of the instruments so playback keeps running; only when a
-        // plugin cannot be duplicated does the export take over the live engine (and stop it).
-        auto copy=audio.offlineCopy();if(!copy){audio.stop();closePluginEditor();}std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
-        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,std::move(copy),project,target,tracks,mp3,[safe,target](juce::Result r){if(safe!=nullptr)safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());});if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
+    if(single&&!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;
+    if(!midi&&!mp3&&!configured&&destination==juce::File()){
+        auto* dialog=new juce::AlertWindow(tr("WAV export"),tr("Choose the encoding for all exported WAV files."),juce::MessageBoxIconType::NoIcon);
+        dialog->setLookAndFeel(&theme);dialog->addComboBox("rate",{"44.1 kHz","48 kHz","88.2 kHz","96 kHz","192 kHz"},tr("Sample rate"));dialog->addComboBox("depth",{"16 bit PCM","24 bit PCM"},tr("Bit depth"));
+        const int rates[]{44100,48000,88200,96000,192000};const int savedRate=Localisation::setting("exportSampleRate","48000").getIntValue();int selected=1;for(int i=0;i<5;++i)if(rates[i]==savedRate)selected=i;
+        dialog->getComboBoxComponent("rate")->setSelectedItemIndex(selected);dialog->getComboBoxComponent("depth")->setSelectedItemIndex(Localisation::setting("exportBitDepth","24")=="16"?0:1);
+        dialog->addButton(tr("EXPORT"),1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->setAlwaysOnTop(true);
+        juce::Component::SafePointer<MainComponent> safe(this);dialog->enterModalState(true,juce::ModalCallbackFunction::create([safe,dialog,type,track](int result){if(safe&&result==1){const int values[]{44100,48000,88200,96000,192000};Localisation::setSetting("exportSampleRate",juce::String(values[std::clamp(dialog->getComboBoxComponent("rate")->getSelectedItemIndex(),0,4)]));Localisation::setSetting("exportBitDepth",dialog->getComboBoxComponent("depth")->getSelectedItemIndex()==0?"16":"24");safe->exportFile(type,track,{},true);}dialog->setLookAndFeel(nullptr);}),true);return;
+    }
+    const auto encoding=exportSettings();
+    const int flags=batch?juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories:juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting;
+    auto render=[this,track,batch,mp3,midi,single,encoding](juce::File target){
+        if(loadingPlugin||editingRestricted()||(single&&!juce::isPositiveAndBelow(track,(int)project.tracks.size())))return;
+        const auto chosenFolder=batch?target:target.getParentDirectory();if(chosenFolder.isDirectory())Localisation::setSetting("lastExportFolder",chosenFolder.getFullPathName());
+        const auto named=batch?target:exportNamedFile(target,project,midi?"mid":mp3?"mp3":"wav");
+        if(named!=target&&named.existsAsFile()){
+            juce::Component::SafePointer<MainComponent> safe(this);const int retry=batch?(midi?3:mp3?9:6):single?(midi?2:mp3?8:5):midi?1:mp3?7:4;
+            juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon,tr("EXPORT"),named.getFileName()+"\n"+tr("Replace the existing file?"),tr("Replace"),tr("Cancel"),getTopLevelComponent(),juce::ModalCallbackFunction::create([safe,retry,track,named](int result){if(safe&&result)safe->exportFile(retry,track,named,true);}));return;
+        }
+        if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+exportSuffix(project)+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));target=target.getNonexistentSibling();if(target.createDirectory().failed()){message("Impossibile creare la cartella stem.",true);return;}}
+        else target=exportNamedFile(target,project,midi?"mid":mp3?"mp3":"wav");
+        if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);return temp.getFile().replaceWithData(bytes.data(),bytes.size())&&temp.overwriteTargetFileWithTemporary();};bool ok=true;if(batch){ok=writeExportArrangement(target,project);for(int row=0;row<(int)project.tracks.size();++row){const int ti=trackAtRow(row);ok=write(exportStemFile(target,project,ti,"mid"),ti)&&ok;}}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
+        instrumentPanel.flushRender();audio.stop();audio.stopPreview();audio.stopSampleAudition();mediaBusy=true;updateEditingAvailability();
+        // Stop the live callback and render the existing plugin instances. This avoids
+        // reloading libraries/licences and frees the device callback during the export.
+        audio.devices.removeAudioCallback(&audio);
+        std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
+        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
     };
-    if(destination!=juce::File())render(destination);else chooseFile(batch?"Cartella esportazione (crea una sottocartella dedicata)":"Esporta "+juce::String(midi?"MIDI":mp3?"MP3":"WAV"),batch?"*":midi?"*.mid":mp3?"*.mp3":"*.wav",flags,std::move(render));
+    if(destination!=juce::File()){render(destination);return;}
+    auto folder=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);const auto remembered=Localisation::setting("lastExportFolder");if(juce::File::isAbsolutePath(remembered)&&juce::File(remembered).isDirectory())folder=juce::File(remembered);
+    const auto extension=midi?"mid":mp3?"mp3":"wav";const auto suggested=batch?folder:folder.getChildFile(juce::File::createLegalFileName(single?u(project.tracks[(size_t)track].name):u(project.name))+exportSuffix(project)+"."+extension);
+    chooseFile(batch?"Cartella esportazione (crea una sottocartella dedicata)":"Esporta "+juce::String(midi?"MIDI":mp3?"MP3":"WAV"),batch?"*":"*."+juce::String(extension),flags,std::move(render),{},suggested);
+}
+bool MainComponent::verifyExports(const juce::File& folder){
+#if !FGA_SELF_TESTS
+    juce::ignoreUnused(folder);return false;
+#else
+    if(!folder.createDirectory())return false;
+    const auto saved=project;const auto savedFile=projectFile;const bool wasDirty=dirty;const auto oldRate=Localisation::setting("exportSampleRate","48000"),oldBits=Localisation::setting("exportBitDepth","24"),oldFolder=Localisation::setting("lastExportFolder"),oldSave=Localisation::setting("lastSaveFolder");
+    auto* original=audio.plugin(0);juce::String report;bool ok=true;auto check=[&](bool pass,const char* label){ok=pass&&ok;report+=juce::String(pass?"PASS ":"FAIL ")+label+"\n";};
+    project=newProject(7);project.settings.bpm=120;project.settings.key=1;project.settings.scale=0;project.sections={{Section::intro,1,"Intro"},{Section::main,2,"Jackin groove"}};project.normalise();project.masterGain=.5;project.masterAutomation.enabled=false;
+    for(auto& track:project.tracks){track.mute=true;track.volume.enabled=false;track.panAutomation.enabled=false;track.parameters.clear();for(auto& clip:track.clips)clip.notes.clear();}auto& pianoTrack=project.tracks[0];pianoTrack.mute=false;pianoTrack.gain=.5;pianoTrack.pan=0;pianoTrack.instrument=original?"plugin":"internal";pianoTrack.clips[0].notes={{0,2,69,100,0}};audio.publish(project);
+    auto settle=[&]{const auto deadline=juce::Time::getMillisecondCounterHiRes()+30000.;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<deadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !mediaBusy&&!audio.isExporting()&&!audio.isPlaying()&&!editingRestricted();};
+    exportFile(5,0);auto* encodingDialog=dynamic_cast<juce::AlertWindow*>(juce::Component::getCurrentlyModalComponent());const bool hasEncoding=encodingDialog&&encodingDialog->getComboBoxComponent("rate")&&encodingDialog->getComboBoxComponent("depth");check(hasEncoding&&encodingDialog->getComboBoxComponent("rate")->getNumItems()==5&&encodingDialog->getComboBoxComponent("depth")->getNumItems()==2,"WAV export presents working sample-rate and bit-depth choices");
+    if(encodingDialog){if(auto out=folder.getChildFile("wav-options.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(encodingDialog->createComponentSnapshot(encodingDialog->getLocalBounds()),*out);}encodingDialog->exitModalState(0);juce::MessageManager::getInstance()->runDispatchLoopUntil(20);}check(!mediaBusy&&!editingRestricted(),"cancelling encoding choices leaves the DAW available");
+    Localisation::setSetting("exportSampleRate","48000");Localisation::setSetting("exportBitDepth","16");audio.play(true);const auto chosen=folder.getChildFile("Piano.wav");exportFile(5,0,chosen);check(mediaBusy,"audio export suspends live playback and editing");check(settle(),"successful export restores audio device availability and editing");
+    juce::WavAudioFormat wav;{const auto file=exportNamedFile(chosen,project,"wav");std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));juce::AudioBuffer<float> samples(2,8192);const bool audible=reader&&reader->read(&samples,0,8192,4096,true,true)&&samples.getMagnitude(0,8192)>.0001f;check(audible&&reader->sampleRate==48000&&reader->bitsPerSample==16,"WAV export through the actual UI contains music at 48 kHz / 16 bit");}
+    check(audio.plugin(0)==original,"export retains the already loaded instrument instance");
+    exportFile(1,0,folder.getChildFile("Song.mid"));const auto midi=exportNamedFile(folder.getChildFile("Song.mid"),project,"mid");auto stream=midi.createInputStream();juce::MidiFile parsed;check(stream&&parsed.readFrom(*stream),"multitrack MIDI filename includes BPM and key and contains readable MIDI");
+    Localisation::setSetting("exportSampleRate","44100");Localisation::setSetting("exportBitDepth","24");exportFile(6,0,folder);check(settle(),"stem export completes and releases restrictions");const auto stems=folder.findChildFiles(juce::File::findDirectories,false,"*-stems-*");bool stemOk=stems.size()==1;if(stemOk){const auto files=stems[0].findChildFiles(juce::File::findFiles,false,"*.wav");stemOk=files.size()==(int)project.tracks.size();for(const auto& file:files){std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));stemOk=reader&&reader->sampleRate==44100&&reader->bitsPerSample==24&&file.getFileName().contains("_120bpm_Db")&&stemOk;}const auto map=stems[0].getChildFile("Arrangiamento_120bpm_Db.txt").loadFileAsString();stemOk=stemOk&&map.contains("00:00.000 - 00:02.000  Intro")&&map.contains("00:02.000 - 00:06.000  Jackin groove");}check(stemOk,"all stems have the selected encoding, musical names and an exact section timeline TXT");
+    exportFile(5,0,folder.getChildFile("cancel.wav"));if(exportTask)exportTask->signalThreadShouldExit();check(settle(),"cancelling export restores audio and editing");
+    exportFile(5,0,folder.getChildFile("missing-parent/fail.wav"));check(settle()&&!exportNamedFile(folder.getChildFile("missing-parent/fail.wav"),project,"wav").existsAsFile(),"write failure restores audio and editing without a partial WAV");
+    check(writeProjectFile(folder.getChildFile("Saved.fga"))&&Localisation::setting("lastSaveFolder")==folder.getFullPathName(),"successful Save remembers its directory");check(Localisation::setting("lastExportFolder")==folder.getFullPathName(),"export remembers its directory and retains it after an invalid destination");
+    project=saved;projectFile=savedFile;dirty=wasDirty;audio.publish(project);Localisation::setSetting("exportSampleRate",oldRate);Localisation::setSetting("exportBitDepth",oldBits);Localisation::setSetting("lastExportFolder",oldFolder);Localisation::setSetting("lastSaveFolder",oldSave);refreshControls();folder.getChildFile("export-ui.txt").replaceWithText(report);return ok;
+#endif
 }
 }

@@ -375,7 +375,7 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 | **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or appends an insert effect. |
 | **OPEN VST** | The loaded instrument's own interface. Choose the instrument or the effect instance to open. |
 
-**Effect chain.** **+** in the inspector’s **EFFECTS** card opens the browser filtered to VST3/AU effects. Add up to **eight**, processed top to bottom before track volume/pan, groups and sends. Each instance has bypass, an editor, double-click rename, and a menu to replace, move, automate or remove it. Drag the left grip to reorder. The original name remains in its menu; **Use original name** removes the alias. **FX** in the mixer reveals the same chain. Reordering and renaming preserve automation targets; removal or replacement with a different plugin deletes only that instance’s parameter lanes. Undo restores the plugin, its state and curves. Old projects migrate their single insert to the first slot. Projects with effects, newly captured VST/AU states or native sound automation use format 4 and require this version: keep a copy before overwriting an older project. Declared effect tails are included in export, capped at 120 seconds. External inserts on buses/master and external audio sidechain are not available.
+**Effect chain.** **+** in the inspector’s **EFFECTS** card opens the browser filtered to VST3/AU effects. Add up to **eight**, processed top to bottom before track volume/pan, groups and sends. Each instance has bypass, an editor, double-click rename, and a menu to replace, move, automate or remove it. Drag the left grip to reorder. The original name remains in its menu; **Use original name** removes the alias. **FX** in the mixer opens the same chain in a compact window, pinned to that track even when selection changes. It stays on top until closed and reopens centred. Loading a new effect opens its editor immediately, centred; restoring a project does not open editors automatically. Bypass and mix Undo/Redo avoid native state snapshots during playback and preserve independent plugin-editor edits. Reordering and renaming preserve automation targets; removal or replacement with a different plugin deletes only that instance’s parameter lanes. Undo restores the plugin, its state and curves. Old projects migrate their single insert to the first slot. Projects with effects, newly captured VST/AU states or native sound automation use format 4 and require this version: keep a copy before overwriting an older project. Declared effect tails are included in export, capped at 120 seconds. External inserts on buses/master and external audio sidechain are not available.
 
 **Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, choose one personal folder, and rescan. Subfolders are included. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
 
@@ -488,10 +488,16 @@ In this guide, **Ctrl/Cmd + F** focuses search. The arrows beside search move be
 | Export | What you get |
 |---|---|
 | **MIDI** | The multitrack song, one track or separate files for all tracks. Includes tempo and section markers, not the sounds. |
-| **WAV** | Mix, one track or all stems, in 24-bit stereo. Use this for further mixing. |
+| **WAV** | Mix, one track or all stems, in **16- or 24-bit PCM stereo** at **44.1 / 48 / 88.2 / 96 / 192 kHz**, selected before the destination. Use this for further mixing. |
 | **MP3** | Mix, one track or all stems, stereo 320 kbps / 44.1 kHz. The encoder is included. |
 
-All WAV stems start at the song's beginning, have the same length and include a three-second tail. Even an empty track produces an aligned file. Mix export follows mute/solo; a stem exports even when its track is muted and retains gain, pan and master level.
+MIDI and stem filenames include **BPM and key**, for example `15-Piano_128bpm_Db.wav` or `Song_128bpm_Db.mid`. Decimal BPM values are retained. Each separate-track export folder also includes `Arrangiamento_128bpm_Db.txt`, listing BPM, key and section time ranges to the millisecond. Times describe the musical arrangement; audio tails may continue after its end.
+
+Export and project-save folders are remembered separately, along with the last WAV encoding. WAV/MP3 export stops playback and suspends the live device callback. It renders the **already loaded instruments and effects**, without duplicating VST instances or reloading their sounds. Audio is re-enabled after success, cancellation or failure; playback remains stopped.
+
+WAV files also contain ACID tempo/meter metadata and a tempo/key comment. Full arrangements retain their tails and are marked as **one-shots**, so another DAW is not given an incorrect loop length. Automatic tempo recognition depends on the importing application; filenames and the TXT always provide the tempo.
+
+All WAV stems start at the song's beginning, have the same length and retain natural sample and effect tails. Even an empty track produces an aligned file. Mix export follows mute/solo; a stem exports even when its track is muted and retains gain, pan and master level.
 
 > Choose WAV to bring stems into a DAW. MP3 adds codec delay: useful for listening and sharing, rather than precise track alignment.
 
@@ -500,6 +506,8 @@ All WAV stems start at the song's beginning, have the same length and include a 
 With more than fifteen melodic tracks, multitrack MIDI uses a second port to keep channels separate. Drum lanes share GM channel 10. If the receiving program ignores MIDI ports, export the tracks as separate files.
 
 ## 5. Using instruments in real time
+
+The keyboard button below the gear opens the track's instrument directly. Open each effect from its own row. Multiple instrument and effect editors can stay open together; closing one leaves the others visible. Reopening a closed editor centres it again.
 
 Arranger hosts instruments directly: click the **track name**, choose **BUILT-IN**,
 **LOAD SAMPLE** or **LOAD VST3 / AU**, then **OPEN VST** for your instrument’s controls.

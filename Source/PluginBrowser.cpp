@@ -138,7 +138,7 @@ void PluginBrowser::paintListBoxItem(int row,juce::Graphics& g,int width,int hei
     g.setColour(selected?Palette::accent:Palette::text);g.setFont(FamilyTheme::font(15.f,selected));
     g.drawText(title,text.removeFromTop(text.getHeight()*.62f),juce::Justification::bottomLeft);
     g.setColour(Palette::dim);g.setFont(FamilyTheme::font(11.f));
-    auto detail=e.kind==PluginCatalog::BrowserRow::Kind::plugin?tr(e.detail)+(e.format.isNotEmpty()?"  ·  "+e.format:juce::String()):tr(e.detail);
+    auto detail=e.kind==PluginCatalog::BrowserRow::Kind::plugin?tr(e.detail)+(e.format.isNotEmpty()?juce::String::fromUTF8("  \xc2\xb7  ")+e.format:juce::String()):tr(e.detail);
     g.drawText(detail,text,juce::Justification::topLeft);
     if(e.format.isNotEmpty()||e.kind!=PluginCatalog::BrowserRow::Kind::plugin){g.setColour(selected?Palette::text:Palette::accent);g.setFont(FamilyTheme::font(13.f,true));g.drawText(e.kind==PluginCatalog::BrowserRow::Kind::plugin?e.format:tr(e.manufacturer),aside,juce::Justification::centredRight);}
 }

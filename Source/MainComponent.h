@@ -19,6 +19,19 @@
 #include <deque>
 namespace fga {
 class MainComponent;
+// A light, compact dismiss target in the inspector header, sharing the DAW palette.
+class InspectorDismissButton final : public IconButton {
+public:
+    InspectorDismissButton():IconButton(Icon::close){}
+    void paintButton(juce::Graphics& g,bool over,bool down)override{
+        const auto centre=getLocalBounds().toFloat().getCentre();
+        if(over||down||hasKeyboardFocus(true)){g.setColour(Daw::textDim.withAlpha(down?.22f:.12f));g.fillEllipse(centre.x-10,centre.y-10,20,20);}
+        g.setColour(over?Daw::text:Daw::textDim);juce::Path mark;
+        mark.startNewSubPath(centre.x-3.2f,centre.y-3.2f);mark.lineTo(centre.x+3.2f,centre.y+3.2f);
+        mark.startNewSubPath(centre.x+3.2f,centre.y-3.2f);mark.lineTo(centre.x-3.2f,centre.y+3.2f);
+        g.strokePath(mark,juce::PathStrokeType(1.3f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    }
+};
 bool verifyPianoTools(MainComponent&,const juce::File&);
 
 // The narrow half of the GENERATE split button: it opens the scope menu (song, track,
@@ -269,6 +282,7 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow(const juce::File&);
+    bool verifyExports(const juce::File&);
     bool verifyLegacyHostedProjects(const juce::File&,const juce::PluginDescription&);
     bool verifyEffectChain(const juce::File&,const juce::PluginDescription&);
     void dismissAuxiliaryWindow(juce::Component&);
@@ -280,10 +294,12 @@ public:
     bool pluginsBusy()const{return loadingPlugin>0;}
     int trackForSession(std::uint64_t id)const;
     void showEffects(int track,int replaceSlot=0);
+    void showEffectChain(int track);
     void showEffectMenu(int track,int slot,juce::Component*);
     void renameEffect(int track,int slot,const juce::String&);
     void moveEffect(int track,int slot,int position);
     void openHostedEditor(int track,int slot=0);
+    bool hasOpenPluginEditors()const;
     void resolveAutomationParameters(int track,int slot);
     void resetAutomationTarget(int track);
     void showAutomationPicker(int track,int source=-100);
@@ -297,6 +313,7 @@ private:
     friend bool verifyPianoTools(MainComponent&,const juce::File&);
     friend class StudioWindow;
     friend class MixerRoutingWindow;
+    std::unique_ptr<EffectChainWindow> effectsWindow;
     std::unique_ptr<StudioWindow> studioWindow;
     std::unique_ptr<MixerRoutingWindow> mixerRoutingWindow;
     std::unique_ptr<AiComposerWindow> aiWindow;
@@ -313,7 +330,7 @@ private:
     std::unique_ptr<juce::TooltipWindow> tooltips;
     ArrangementView arrangement{*this};PianoRoll piano{*this};
     juce::Viewport arrangementPort,pianoPort,instrumentPort,inspectorPort;
-    IconButton inspectorCollapse{IconButton::Icon::close};
+    InspectorDismissButton inspectorCollapse;
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
     InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
@@ -374,7 +391,8 @@ private:
     ActionButton sectionLoopButton{"LOOP CLIP"};
     ActionButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
-    std::deque<Project> undoStack,redoStack;
+    struct HistoryEntry {Project project;bool mixOnly=false;};
+    std::deque<HistoryEntry> undoStack,redoStack;
     const void* lastCheckpointControl=nullptr;juce::uint32 lastCheckpointTime=0;
     double lastTimerBeat=-1;int lastPlayX=-1,soundBoxTrack=-1;
     juce::StringArray sectionSelectorNames;
@@ -396,7 +414,8 @@ private:
     std::unique_ptr<InstrumentWindow> instrumentWindow;
     bool instrumentIsOpen() const;
     class PluginWindow;
-    std::unique_ptr<PluginWindow> pluginWindow;
+    std::vector<std::unique_ptr<PluginWindow>> pluginWindows;
+    PluginWindow* pluginWindow=nullptr; // most recently raised editor, owned by pluginWindows
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
     int musicalToolKind=0;
     std::unique_ptr<juce::ThreadWithProgressWindow> exportTask;
@@ -424,16 +443,16 @@ private:
     void loadEffectDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false,int slot=0);
     void chooseBrowserRow(const PluginCatalog::BrowserRow&);
     void showPluginMenu(juce::Component* anchor=nullptr);
-    void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>,std::function<void()> cancelled={});
+    void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>,std::function<void()> cancelled={},const juce::File& initial={});
     void exportMenu();
-    void exportFile(int type,int track,const juce::File& destination={});
+    void exportFile(int type,int track,const juce::File& destination={},bool configured=false);
     void loadSampleFile(int,const juce::File&);
     void showAbout();
     void showGuide(bool english=false);
     bool writeHelpEvidence(const juce::File&);
     void showDocument(const juce::String&,const juce::String&);
     void showAudioSettings();
-    void closePluginEditor();
+    void closePluginEditor(int track=-1,int slot=-1);
     void showChordMenu();
     void message(const juce::String&,bool error=false);
     void showPosition(double beat);

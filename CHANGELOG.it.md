@@ -1,5 +1,15 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.3
+
+- Scansione delle cartelle plugin collegate, senza duplicati o cicli. La scansione delle normali sottocartelle resta ricorsiva.
+
+- Gli effetti appena caricati aprono subito l’editor centrato. Corregge il separatore UTF-8 nel browser. FX nel mixer apre la catena in una finestra compatta in primo piano, legata alla traccia. Bypass e Annulla/Ripristina del mixer riusano lo stato senza sospendere l’audio o annullare modifiche indipendenti del VST.
+- Più editor plugin possono restare aperti insieme. Il pulsante tastiera nell’inspector apre solo lo strumento; la chiusura è più piccola e discreta.
+- Export WAV PCM a 16/24 bit e 44,1/48/88,2/96/192 kHz, con codifica ricordata. Le cartelle di export e salvataggio sono memorizzate separatamente.
+- Nomi MIDI e stem con BPM e tonalità; cartelle di tracce separate con TXT degli orari delle sezioni. Metadati tempo/metrica WAV e code conservate come one-shot.
+- L’export audio sospende l’ascolto e usa strumenti ed effetti già caricati, nella modalità DSP di riproduzione, evitando istanze duplicate senza suono. Audio e comandi vengono ripristinati anche dopo annullamento o errore.
+
 ## 0.30.2
 
 - Ripristina le uscite secondarie degli strumenti ospitati come prima della 0.30, anche riaprendo i vecchi progetti. Il routing sul solo bus principale riguarda gli effetti insert. Aggiunge controlli di release con apertura e Play dei formati 1/2/3, più strumenti VST3, automazioni per indice e stato nativo salvato, poi salvataggio e riapertura in formato 4.

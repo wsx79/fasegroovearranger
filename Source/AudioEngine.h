@@ -16,6 +16,7 @@
 #include <optional>
 #include <juce_dsp/juce_dsp.h>
 namespace fga {
+struct AudioExportOptions {double sampleRate=0;int bitDepth=24;};
 static_assert(std::atomic<bool>::is_always_lock_free&&std::atomic<double>::is_always_lock_free,"Audio callback atomics require a lock-free 64-bit target");
 // Everything the audio thread plays, built on the message thread and handed over without a
 // lock (see Handoff). Schedules and automation are read in place: the audio thread never
@@ -230,7 +231,7 @@ public:
     void restorePluginState(int,const juce::String&);
     void restoreEffectState(int,const juce::String&,int slot=1);
     // Same processing graph for playback and export. Export temporarily owns the engine.
-    juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr);
+    juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr,AudioExportOptions options={});
     void markMissing(int);
     juce::Optional<PositionInfo> getPosition() const override;
     void audioDeviceAboutToStart(juce::AudioIODevice*) override;

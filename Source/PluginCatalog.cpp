@@ -115,11 +115,11 @@ void PluginCatalog::run(){
     std::map<juce::String,Record> discovered;std::set<juce::String> visited;
     std::vector<juce::File> pending;for(int i=0;i<paths.getNumPaths();++i)pending.push_back(paths[i]);
     while(!pending.empty()&&!threadShouldExit()){
-        auto dir=pending.back();pending.pop_back();if(!dir.isDirectory()||!visited.insert(pathKey(dir.getFullPathName())).second)continue;
+        auto dir=pending.back().getLinkedTarget();pending.pop_back();if(!dir.isDirectory()||!visited.insert(pathKey(dir.getFullPathName())).second)continue;
         for(const auto& entry:juce::RangedDirectoryIterator(dir,false,"*",juce::File::findFilesAndDirectories,juce::File::FollowSymlinks::no)){
             if(threadShouldExit())break;const auto file=entry.getFile();
             if(file.hasFileExtension("vst3")){Record r;r.format="VST3";r.id=file.getLinkedTarget().getFullPathName();discovered.emplace("VST3:"+pathKey(r.id),r);}
-            else if(file.isDirectory()&&!file.isSymbolicLink())pending.push_back(file);
+            else if(file.isDirectory())pending.push_back(file.getLinkedTarget());
         }
     }
    #if JUCE_MAC
@@ -194,10 +194,11 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
     ok=ok&&standardFolders().getNumPaths()>=2&&copy();note("copy");const auto invalid=nested.getChildFile("Invalid.vst3");invalid.replaceWithText("invalid plugin fixture");
     auto wait=[](PluginCatalog& c){const auto end=juce::Time::getMillisecondCounterHiRes()+120000.;while(c.isThreadRunning()&&juce::Time::getMillisecondCounterHiRes()<end)juce::Thread::sleep(20);return !c.isThreadRunning()&&!c.state().scanning;};
     auto validation=[&](const juce::File& store,const juce::String& id){auto xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));if(xml)for(auto* e:xml->getChildIterator())if(e->getStringAttribute("id")==id)return e->getStringAttribute("validatedAt");return juce::String();};
+    const auto external=root.getChildFile("External plugins");external.createDirectory();const auto linkedProbe=external.getChildFile(probe.getFileName());const bool linkedCopy=probe.isDirectory()?probe.copyDirectoryTo(linkedProbe):probe.copyFileTo(linkedProbe);const bool linked=linkedCopy&&external.createSymbolicLink(library.getChildFile("Linked plugins"),false);if(linked)library.createSymbolicLink(external.getChildFile("Back to library"),false);
     const auto store=root.getChildFile("Cache");
     {
         PluginCatalog catalog(store,false);ok=catalog.setCustomFolder(nested)&&catalog.setCustomFolder(library)&&catalog.customFolder().getFullPathName()==library.getLinkedTarget().getFullPathName()&&!catalog.setCustomFolder(library)&&ok;
-        ok=catalog.scan()&&wait(catalog)&&ok;note("scan-run");auto state=catalog.state();int instruments=0;for(const auto& d:state.plugins)if(belongs(d,target.getFullPathName())){if(d.isInstrument)++instruments;ok=!d.manufacturerName.isEmpty()&&ok;}ok=instruments==1&&state.failed>=1&&ok;if(!ok&&failedAt.isEmpty())failedAt="scan-count "+juce::String(instruments)+"/"+juce::String(state.plugins.size())+" failed "+juce::String(state.failed);
+        ok=catalog.scan()&&wait(catalog)&&ok;note("scan-run");auto state=catalog.state();if(linked){int linkedCount=0;for(const auto& d:state.plugins)if(belongs(d,linkedProbe.getFullPathName()))++linkedCount;ok=linkedCount==1&&ok;note("linked folder and cycle");}int instruments=0;for(const auto& d:state.plugins)if(belongs(d,target.getFullPathName())){if(d.isInstrument)++instruments;ok=!d.manufacturerName.isEmpty()&&ok;}ok=instruments==1&&state.failed>=1&&ok;if(!ok&&failedAt.isEmpty())failedAt="scan-count "+juce::String(instruments)+"/"+juce::String(state.plugins.size())+" failed "+juce::String(state.failed);
         auto knownXml=juce::XmlDocument::parse(store.getChildFile("KnownPlugins.xml"));juce::KnownPluginList known;if(knownXml)known.recreateFromXml(*knownXml);int listed=0;for(const auto& d:known.getTypes())if(belongs(d,target.getFullPathName())&&d.isInstrument)++listed;ok=knownXml&&knownXml->hasTagName("KNOWNPLUGINS")&&listed==1&&ok;note("known-list");
         const auto validTime=validation(store,target.getFullPathName()),badTime=validation(store,invalid.getFullPathName());
         ok=catalog.scan()&&wait(catalog)&&ok;ok=validTime==validation(store,target.getFullPathName())&&badTime==validation(store,invalid.getFullPathName())&&ok;
@@ -213,7 +214,8 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         ok=copy()&&restored.scan()&&wait(restored)&&ok;found=false;for(const auto& d:restored.state().plugins)found=found||belongs(d,target.getFullPathName());ok=found&&ok;
         ok=restored.setCustomFolder(juce::File())&&restored.scan()&&wait(restored)&&ok;for(const auto& d:restored.state().plugins)ok=!belongs(d,target.getFullPathName())&&ok;
     }
-    evidence.getChildFile("plugin-catalog.txt").replaceWithText(ok?"PASS isolated native VST3 discovery, one nested custom folder, instruments and effects, manufacturer browser order with FaseGroove first, KnownPluginList XML, unchanged-plugin cache, update detection, failed-plugin quarantine/retry, interrupted-scan recovery, removal and rediscovery":"FAIL plugin catalogue integration @ "+failedAt);
+    evidence.getChildFile("plugin-catalog.txt").replaceWithText(ok?"PASS isolated native VST3 discovery, nested custom folders and linked folders with cycle protection, instruments and effects, manufacturer browser order with FaseGroove first, KnownPluginList XML, unchanged-plugin cache, update detection, failed-plugin quarantine/retry, interrupted-scan recovery, removal and rediscovery":"FAIL plugin catalogue integration @ "+failedAt);
+    evidence.getChildFile("plugin-catalog.txt").appendText(linked?"\nPASS directory links traversed and cycle avoided":"\nSKIP symbolic links unavailable on this runner");
     root.deleteRecursively();return ok;
 }
 }

@@ -503,7 +503,7 @@ private:
         Localisation::bindTip(audioUseButton,"Add the finished WAV as a new sample track at the recorded position. Master takes start muted to avoid doubling the mix. Undo removes the track, keeping the WAV.");
         Localisation::bindTip(bounceButton,"Render the selected track and its effects to a WAV using the export engine and latency compensation.");
         audioRecordButton.onClick=[this]{choose("RECORD AUDIO","*.wav",true,[this](juce::File file){startAudioTake(file);});};
-        audioFinishButton.onClick=[this]{finishAudioTake();};bounceButton.onClick=[this]{choose("BOUNCE TRACK","*.wav",true,[this](juce::File file){owner.exportFile(5,track,file);});};
+        audioFinishButton.onClick=[this]{finishAudioTake();};bounceButton.onClick=[this]{owner.exportFile(5,track);};
         audioUseButton.onClick=[this]{if(owner.audio.isRecording()||owner.audio.isAudioRecording()||busy)return;auto next=owner.project;const int index=addAudioTake(next,lastTake,lastTakeMaster);if(index<0){audioRecordError="Cannot add audio take: check the file and available track/section slots.";owner.message(audioRecordError,true);refreshAudioControls();return;}auto& track=next.tracks[(size_t)index];auto result=owner.audio.loadSample(index,lastTake.file,60,track.sampler);if(result.failed()){audioRecordError=result.getErrorMessage();owner.message(audioRecordError,true);refreshAudioControls();return;}audioRecordError.clear();if(auto asset=owner.audio.sampleAsset(index))track.sampleHash=asset->hash.toStdString();owner.checkpoint();owner.project=std::move(next);owner.select(index,owner.project.sectionAtBeat(std::max(0.,lastTake.start)));owner.changed(true,index);owner.piano.fitNotes();owner.updateSizes();refresh();};
     }
     void setupRecording(){

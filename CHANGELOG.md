@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.3
+
+- Scan linked plugin folders with canonical-path deduplication and cycle protection; ordinary subfolders remain recursive.
+
+- Open newly loaded effect editors immediately and centred. Fix the plugin-browser UTF-8 separator. Mixer FX opens a compact, always-on-top effect chain for that track. Bypass and mix Undo/Redo reuse state without interrupting audio or restoring unrelated live plugin edits.
+- Plugin editors can stay open together. The inspector keyboard button opens only the instrument; its dismiss control is smaller and blends into the header.
+- WAV export supports 16/24-bit PCM at 44.1/48/88.2/96/192 kHz and remembers its encoding. Export and save destinations are remembered separately.
+- MIDI and stem filenames include BPM and key; separate-track folders include a section timeline TXT. WAV tempo/meter metadata preserves full-arrangement tails as one-shots.
+- Audio export suspends live playback and renders existing instruments/effects in their playback processing mode, avoiding silent duplicate plugin instances. Audio and editing recover after success, cancellation or error.
+
 ## 0.30.2
 
 - Restore the pre-0.30 secondary-output layout for hosted instruments when reopening projects. Restrict main-bus routing to insert effects. Add release checks that open and play legacy project versions 1/2/3 with multiple VST3 instruments, indexed automation and saved native state, then save and reopen version 4.

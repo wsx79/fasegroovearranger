@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "AudioEngine.h"
+#include "ExportSupport.h"
 #include "core/Mp3Encoder.h"
 #include <cmath>
 #include <cstring>
@@ -147,10 +148,10 @@ void AudioEngine::adoptState(){
             i.cursor=cursorAt(i,currentBeat);if(playing){i.resync=true;needsResync=true;}}
     }
 }
-void AudioEngine::play(bool enabled){stopSampleAudition();if(enabled&&currentBeat.load()>=length.load()){currentBeat=looping.load()?loopFrom.load():0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
+void AudioEngine::play(bool enabled){if(exporting)return;stopSampleAudition();if(enabled&&currentBeat.load()>=length.load()){currentBeat=looping.load()?loopFrom.load():0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
 void AudioEngine::stop(){play(false);seek(0);capture.inputOverflow=false;}
 // An explicit seek beyond the loop must remain audible there until the song ends.
-void AudioEngine::seek(double beat){currentBeat=std::clamp(beat,0.0,length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();needsReset=true;needsChase=playing.load();}
+void AudioEngine::seek(double beat){if(exporting)return;currentBeat=std::clamp(beat,0.0,length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();needsReset=true;needsChase=playing.load();}
 void AudioEngine::setLoop(bool enabled,double from,double to){const auto revision=positionRevision.load();if(!(revision&1)&&positionLoopSetting.load()==enabled&&positionLoopFrom.load()==from&&positionLoopTo.load()==to&&revision==positionRevision.load())return;looping=enabled;loopFrom=std::clamp(from,0.0,length.load());loopTo=std::clamp(to,loopFrom.load(),length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();}
 void AudioEngine::resetAt(double beat){
     // Stopped or starting: a full reset (silent anyway). Playing (loop wrap, seek): release the
@@ -531,25 +532,35 @@ void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSl
 void AudioEngine::restorePluginState(int track,const juce::String& state){restoreHosted(track,state,0);}
 void AudioEngine::restoreEffectState(int track,const juce::String& state,int slot){restoreHosted(track,state,slot);}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}
-juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak){
-    if(isAudioRecording())return juce::Result::fail("Finish audio recording before exporting.");
+juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak,AudioExportOptions options){
+    if(isAudioRecording()||isRecording())return juce::Result::fail("Finish recording before exporting.");
+    if(!std::isfinite(options.sampleRate)||options.sampleRate<0||(options.sampleRate>0&&(options.sampleRate<8000||options.sampleRate>192000))||(options.bitDepth!=16&&options.bitDepth!=24))return juce::Result::fail("Invalid WAV encoding.");
     if(rawPeak)*rawPeak=0;
     if(onlyTrack < -1 || onlyTrack>=maxTracks)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
     bool expected=false;if(!exporting.compare_exchange_strong(expected,true))return juce::Result::fail("Esportazione gia in corso.");
     stopSampleAudition();
-    struct Guard{AudioEngine& e;~Guard(){const EngineControlLock lock(e);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;e.publishTransport();e.prepareBuses(e.sampleRate,e.blockSize);for(auto& i:e.instruments){if(i->plugin)i->plugin->setNonRealtime(false);for(auto& fx:i->effects)if(fx.plugin)fx.plugin->setNonRealtime(false);i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.publishTransport();e.needsReset=true;e.hardReset=true;e.exporting=false;}} guard{*this};
+    // Keep the already loaded instrument and its program. Recreating licensed/sample-based
+    // plugins for export can leave the new instance silent. Only change its preparation
+    // when the requested sample rate differs from the device; DSP stays in playback mode.
+    struct Guard{AudioEngine& e;bool changedRate=false;~Guard(){const EngineControlLock lock(e);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;e.publishTransport();if(changedRate){e.prepareBuses(e.sampleRate,e.blockSize);for(auto& i:e.instruments)i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.publishTransport();e.needsReset=true;e.hardReset=true;e.exporting=false;}} guard{*this};
     publish(p);
     int compensation=0;
     {const EngineControlLock lock(*this);for(int ti=0;ti<maxTracks;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
-        playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();if(mp3)sampleRate=44100;publishTransport();prepareBuses(sampleRate,blockSize);
-        for(auto& i:instruments){if(i->plugin)i->plugin->setNonRealtime(true);for(auto& fx:i->effects)if(fx.plugin)fx.plugin->setNonRealtime(true);i->prepare(sampleRate,blockSize);}resetAt(0);
+        playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();const double requestedRate=mp3?44100:options.sampleRate>0?options.sampleRate:deviceRate;
+        guard.changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
+        if(guard.changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);resetAt(0);
         // Delay compensation moves every track later by the largest latency: render that much
         // more and drop it from the start, so the file lines up with the grid.
         for(auto& i:instruments)compensation=std::max(compensation,instrumentLatency(*i));
         compensation=std::clamp(compensation,0,Instrument::maxDelay-1);}
     juce::TemporaryFile temp(file);auto stream=temp.getFile().createOutputStream();if(!stream)return juce::Result::fail("Impossibile scrivere il file audio.");
-    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,24,{},0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");stream.release();
+    juce::StringPairArray metadata;metadata.set(juce::WavAudioFormat::acidTempo,exportTempo(p));
+    // Full arrangement files include effect tails, so mark them as one-shots rather than
+    // inventing a loop beat count that would stretch the tail in another host.
+    metadata.set(juce::WavAudioFormat::acidOneShot,"1");metadata.set(juce::WavAudioFormat::acidNumerator,juce::String(timeNumerator.load()));metadata.set(juce::WavAudioFormat::acidDenominator,juce::String(timeDenominator.load()));
+    metadata.set("ISFT","Fase Groove Arranger");metadata.set("ICMT","BPM: "+exportTempo(p)+"; Key: "+exportKey(p));
+    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");stream.release();
     // Keep identical stem lengths and retain natural sample/effect tails beyond the song.
     double endSeconds=p.length()*60./p.settings.bpm;
     for(size_t ti=0;ti<p.tracks.size();++ti){const auto& track=p.tracks[ti];auto asset=sampleAsset((int)ti);if(track.instrument!="sample"||!asset)continue;

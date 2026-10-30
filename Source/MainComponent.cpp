@@ -652,7 +652,8 @@ private:Project snapshot;juce::File target;std::function<void(juce::Result)> com
 class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
     MainComponent& owner;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
+    std::uint64_t session;int slot;
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),session(id),slot(effectSlot){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
         // The native peer can size the window while showing it; centre on the next
         // message-loop turn, when the final size is known.
         juce::Component::SafePointer<PluginWindow> safe(this);
@@ -660,7 +661,17 @@ public:
     ~PluginWindow()override{owner.audio.invalidatePluginStates();}
     void closeButtonPressed()override{owner.audio.invalidatePluginStates();owner.dismissAuxiliaryWindow(*this);}
 };
-void MainComponent::openHostedEditor(int track,int slot){if(loadingPlugin||editingRestricted())return;auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin)return;pluginWindow.reset();pluginWindow=std::make_unique<PluginWindow>(*this,*plugin);if(slot>0)if(auto* fx=project.tracks[(size_t)track].effect(slot))pluginWindow->setName(utf(fx->displayName())+juce::String::fromUTF8(" · ")+plugin->getName());}
+void MainComponent::openHostedEditor(int track,int slot){
+    if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;
+    auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin)return;const auto session=project.tracks[(size_t)track].sessionId;
+    pluginWindow=nullptr;for(auto& window:pluginWindows)if(window->session==session&&window->slot==slot){pluginWindow=window.get();break;}
+    if(!pluginWindow){auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
+    else if(!pluginWindow->isVisible()){pluginWindow->setVisible(true);juce::Component::SafePointer<PluginWindow> safe(pluginWindow);juce::MessageManager::callAsync([safe]{if(safe&&safe->isVisible())safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
+    pluginWindow->setName(plugin->getName());if(slot>0)if(auto* fx=project.tracks[(size_t)track].effect(slot))if(!fx->name.empty())pluginWindow->setName(utf(fx->name)+juce::String::fromUTF8(" \xc2\xb7 ")+plugin->getName());
+    pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
+}
+bool MainComponent::hasOpenPluginEditors()const{for(const auto& window:pluginWindows)if(window->isVisible())return true;return false;}
+
 namespace {
 void settleNativeFocus(juce::Component& component){
    #if JUCE_MAC
@@ -795,7 +806,7 @@ bool MainComponent::verifyPluginWindow(const juce::File& folder){
 #if !FGA_SELF_TESTS
 return false;
 #else
-    select(0,0);pluginEditorButton.onClick();
+    select(0,0);trackInspector.refresh();auto* direct=dynamic_cast<juce::Button*>(trackInspector.findChildWithID("inspector-plugin-editor"));if(direct)direct->onClick();
     if(!pluginWindow)return false;
     juce::String evidence;bool ok=true;
     auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
@@ -804,8 +815,9 @@ return false;
     settleCentre();
     check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());
     pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
-    pluginEditorButton.onClick();settleCentre();check("VST editor reopened",pluginWindow&&pluginWindow->isVisible());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
-    folder.getChildFile("plugin-window.txt").replaceWithText(evidence);pluginWindow.reset();return ok;
+    pluginEditorButton.onClick();settleCentre();check("VST editor reopened",hasOpenPluginEditors());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
+    if(auto out=folder.getChildFile("plugin-inspector.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(trackInspector.createComponentSnapshot(trackInspector.getLocalBounds()),*out);}
+    folder.getChildFile("plugin-window.txt").replaceWithText(evidence);ok=verifyExports(folder.getChildFile("export-ui"))&&ok;closePluginEditor();return ok;
 #endif
 }
 
@@ -838,6 +850,9 @@ bool MainComponent::verifyLegacyHostedProjects(const juce::File& folder,const ju
         if(!check(file.replaceWithText(juce::JSON::toString(json)),"write legacy native-state fixture")||!reopenAndPlay(file))return false;
     }
     const auto saved=folder.getChildFile("host-upgraded.fga");if(!check(writeProjectFile(saved),"save upgraded hosted project")||!reopenAndPlay(saved))return false;
+    for(int ti=0;ti<3;++ti)openHostedEditor(ti,0);juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
+    bool allVisible=pluginWindows.size()==3;for(int ti=0;ti<3;++ti){auto* editor=audio.plugin(ti)->getActiveEditor();allVisible=allVisible&&editor&&editor->getTopLevelComponent()->isVisible();}check(allVisible,"three instrument editors stay visible together");
+    if(allVisible){pluginWindows.front()->closeButtonPressed();check(pluginWindows[1]->isVisible()&&pluginWindows[2]->isVisible(),"closing one instrument editor preserves the other windows");openHostedEditor(0,0);check(pluginWindows.size()==3&&pluginWindows.front()->isVisible(),"reopening an instrument reuses only its own editor");}closePluginEditor();
     return ok;
 #endif
 }
@@ -871,7 +886,7 @@ MainComponent::MainComponent(){
     addAndMakeVisible(fullScreenButton);fullScreenButton.setClickingTogglesState(false);
     fullScreenButton.onClick=[this]{applyFullScreen(!appFullScreen);};
     addAndMakeVisible(inspectorResizer);addChildComponent(browserResizer);trackInspector.addAndMakeVisible(inspectorCollapse);inspectorCollapse.setComponentID("inspector-collapse");
-    inspectorCollapse.quiet=false;inspectorCollapse.accentHover=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
+    inspectorCollapse.quiet=true;inspectorCollapse.getProperties().set("fgaTip","Hide the track inspector. Restore it with the inspector icon in the toolbar. Shortcut: I.");
     inspectorCollapse.onClick=[this]{inspectorVisible=!inspectorVisible;inspectorToggle.setToggleState(inspectorVisible,juce::dontSendNotification);resized();};
     addAndMakeVisible(fitSongButton);inspectorToggle.setToggleState(true,juce::dontSendNotification);mixerToggle.setToggleState(true,juce::dontSendNotification);
     inspectorToggle.onClick=[this]{inspectorVisible=inspectorToggle.getToggleState();resized();};
@@ -970,11 +985,7 @@ MainComponent::MainComponent(){
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{useBuiltInSound(selectedTrack);};
     sampleButton.onClick=[this]{browseSamplesFor(selectedTrack);};
     loadPluginButton.onClick=[this]{showPluginMenu();};
-    pluginEditorButton.onClick=[this]{if(loadingPlugin)return;const int track=selectedTrack;auto& t=project.tracks[(size_t)track];juce::PopupMenu menu;std::vector<int> choices;
-        if(audio.plugin(track)){choices.push_back(0);menu.addItem((int)choices.size(),tr("OPEN INSTRUMENT"));}
-        for(const auto& fx:t.effects)if(audio.effectPlugin(track,fx.slot)){choices.push_back(fx.slot);menu.addItem((int)choices.size(),utf(fx.displayName()));}
-        if(choices.empty()){message("No plugin loaded on this track.");return;}if(choices.size()==1){openHostedEditor(track,choices[0]);return;}
-        juce::Component::SafePointer<MainComponent> safe(this);const auto session=t.sessionId;menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&pluginEditorButton),[safe,session,choices](int id){if(safe&&id>0&&id<=(int)choices.size()){const int ti=safe->trackForSession(session);if(ti>=0)safe->openHostedEditor(ti,choices[(size_t)(id-1)]);}});};
+    pluginEditorButton.onClick=[this]{openHostedEditor(selectedTrack,0);};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
     importButton.onClick=[this]{chooseFile(tr("Import notes into the selected section"),"*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
     addSectionButton.onClick=[this]{showAddSectionMenu();};
@@ -1039,7 +1050,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));startTimerHz(20);
 }
-MainComponent::~MainComponent(){if(automationPicker)automationPicker->dismiss();++autosaveRequestId;retiredJobs.retire(std::move(autosaveJob));studioWindow.reset();aiWindow.reset();updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();mixerRoutingWindow.reset();studioWindow.reset();instrumentWindow.reset();pluginWindow.reset();audio.stop();setLookAndFeel(nullptr);}
+MainComponent::~MainComponent(){exportTask.reset();effectsWindow.reset();if(automationPicker)automationPicker->dismiss();++autosaveRequestId;retiredJobs.retire(std::move(autosaveJob));studioWindow.reset();aiWindow.reset();updater.onResult=nullptr;if(musicalToolWindow)musicalToolWindow->closeButtonPressed();stopTimer();mixerRoutingWindow.reset();studioWindow.reset();instrumentWindow.reset();closePluginEditor();audio.stop();setLookAndFeel(nullptr);}
 // A native close may hide a peer before JUCE receives the matching mouse-up.
 // Recover only that hidden window, never a real held button or another gesture.
 void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
@@ -1066,9 +1077,13 @@ void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
     release();juce::MessageManager::callAsync(release);
     if(isShowing()&&isEnabled()){getTopLevelComponent()->toFront(true);grabKeyboardFocus();}
 }
-void MainComponent::closePluginEditor(){pluginWindow.reset();}
+void MainComponent::closePluginEditor(int track,int slot){
+    const auto session=juce::isPositiveAndBelow(track,(int)project.tracks.size())?project.tracks[(size_t)track].sessionId:0;
+    pluginWindows.erase(std::remove_if(pluginWindows.begin(),pluginWindows.end(),[&](const auto& window){return track<0||(window->session==session&&(slot<0||window->slot==slot));}),pluginWindows.end());
+    pluginWindow=pluginWindows.empty()?nullptr:pluginWindows.back().get();
+}
 void MainComponent::showAiComposer(){if(loadingPlugin)return;if(!aiWindow)aiWindow=std::make_unique<AiComposerWindow>(*this);aiWindow->show();}
-juce::Result MainComponent::captureAiProject(Project& base){if(editingRestricted())return juce::Result::fail("Finish recording or wait for the media operation before editing the project.");if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");instrumentPanel.flushRender();trackInspector.finishNameEdit();captureProjectStates(audio,project,pluginWindow&&pluginWindow->isVisible());base=project;return juce::Result::ok();}
+juce::Result MainComponent::captureAiProject(Project& base){if(editingRestricted())return juce::Result::fail("Finish recording or wait for the media operation before editing the project.");if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");instrumentPanel.flushRender();trackInspector.finishNameEdit();captureProjectStates(audio,project,hasOpenPluginEditors());base=project;return juce::Result::ok();}
 juce::Result MainComponent::applyAiComposition(const Project& base,const Project& generated,bool listen){
     if(editingRestricted())return juce::Result::fail("Finish recording or wait for the media operation before editing the project.");
     if(loadingPlugin)return juce::Result::fail("Wait for the instrument to finish loading.");
@@ -1132,7 +1147,7 @@ void MainComponent::trackGesture(juce::Slider& s,std::function<void()> onEnd,boo
     s.onDragEnd=[&s,onEnd]{s.getProperties().set("fgaGesture",false);if(onEnd)onEnd();};
 }
 void MainComponent::useBuiltInSound(int track){
-    if(loadingPlugin||track<0||track>=(int)project.tracks.size())return;checkpoint();closePluginEditor();audio.useInternal(track);
+    if(loadingPlugin||track<0||track>=(int)project.tracks.size())return;checkpoint();closePluginEditor(track,0);audio.useInternal(track);
     auto& t=project.tracks[(size_t)track];t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);
 }
 // LOAD SAMPLE opens the integrated browser; its LOAD targets the selected track.
@@ -1171,15 +1186,15 @@ void MainComponent::updateEditingAvailability(){
         }
         auto restrictWindow=[&](juce::Component* component){if(component&&std::none_of(restrictedComponents.begin(),restrictedComponents.end(),[component](const auto& e){return e.first.getComponent()==component;}))restrictedComponents.emplace_back(component,component->isEnabled());};
         restrictWindow(instrumentWindow.get());restrictWindow(musicalToolWindow.getComponent());restrictWindow(aiWindow.get());
-        if(mediaBusy){restrictWindow(mixerRoutingWindow.get());restrictWindow(pluginWindow.get());}
+        if(mediaBusy){restrictWindow(mixerRoutingWindow.get());for(auto& window:pluginWindows)restrictWindow(window.get());}
         for(auto& entry:restrictedComponents)if(entry.first)entry.first->setEnabled(false);
     }else if(!restrictedComponents.empty()){
         auto saved=std::move(restrictedComponents);restrictedComponents.clear();for(auto& entry:saved)if(entry.first)entry.first->setEnabled(entry.second);refreshControls();
     }
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
-void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureProjectStates(audio,project,pluginWindow&&pluginWindow->isVisible());undoStack.push_back(project);if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
-void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back(project);if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureProjectStates(audio,project,hasOpenPluginEditors());undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
     const auto now=juce::Time::getMillisecondCounter();
@@ -1211,7 +1226,7 @@ void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue
 void MainComponent::openInstrumentFor(int track){
     if(track<0||track>=(int)project.tracks.size())return;
     select(track,selectedSection);
-    if(audio.plugin(track)||audio.effectPlugin(track)){pluginEditorButton.onClick();return;}
+    if(audio.plugin(track)){openHostedEditor(track,0);return;}
     showInstrument();
 }
 void MainComponent::showInstrument(){
@@ -1243,11 +1258,11 @@ void MainComponent::refreshTrack(){
     if(project.tracks[(size_t)selectedTrack].freeTimeline&&(selectedClip<0||selectedClip>=(int)project.tracks[(size_t)selectedTrack].clips.size())){selectedClip=-1;emptyClip=Clip{};}
     refreshing=true;const auto& t=project.tracks[(size_t)selectedTrack];gainSlider.setValue(juce::Decibels::gainToDecibels(t.gain,-60.),juce::dontSendNotification);panSlider.setValue(t.pan*100,juce::dontSendNotification);muteButton.setToggleState(t.mute,juce::dontSendNotification);soloButton.setToggleState(t.solo,juce::dontSendNotification);lockButton.setToggleState(t.locked,juce::dontSendNotification);lockClipButton.setToggleState(clip().locked,juce::dontSendNotification);
     const int count=builtInSoundCount(selectedTrack);if(soundBoxTrack!=selectedTrack){soundBoxTrack=selectedTrack;soundBox.clear(juce::dontSendNotification);for(int i=0;i<count;++i)soundBox.addItem(builtInSoundName(selectedTrack,i),i+1);translateControls(soundBox);}soundBox.setSelectedId(std::min(t.sound+1,count),juce::dontSendNotification);soundBox.setEnabled(t.instrument=="internal"&&selectedTrack!=2);
-    inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+sourceWithEffect(selectedTrack),juce::dontSendNotification);sectionLoopButton.setToggleState(clipLoopActive(),juce::dontSendNotification);editorLabel.setText(tr(piano.ownerTrackIsDrum()?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&(audio.plugin(selectedTrack)!=nullptr||audio.effectPlugin(selectedTrack)!=nullptr));sampleButton.setEnabled(!loadingPlugin);trackButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));clipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));regenerateClipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));
+    inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+sourceWithEffect(selectedTrack),juce::dontSendNotification);sectionLoopButton.setToggleState(clipLoopActive(),juce::dontSendNotification);editorLabel.setText(tr(piano.ownerTrackIsDrum()?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&audio.plugin(selectedTrack)!=nullptr);sampleButton.setEnabled(!loadingPlugin);trackButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));clipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));regenerateClipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));
     refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){timelineZoom.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
-void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();captureProjectStates(audio,project,pluginWindow&&pluginWindow->isVisible());dest.push_back(project);const auto& before=dest.back();project=std::move(source.back());source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
+void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();const bool mixOnly=source.back().mixOnly;if(mixOnly)audio.reusePluginStates(project);else captureProjectStates(audio,project,hasOpenPluginEditors());dest.push_back({project,mixOnly});const auto& before=dest.back().project;project=std::move(source.back().project);source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
     selectedTrack=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);
     // Editing selection is independent of the playhead. A note, mix or loop Undo keeps
     // the selected clip when its timeline range is unchanged in the restored snapshot.
@@ -1255,7 +1270,8 @@ void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.canc
     selectedClip=sameRange?focus:project.clipAtBeat(selectedTrack,audio.position());selectionBeat=selectedClip>=0?project.clipStart(selectedTrack,selectedClip)+1./1920.:audio.position();noClipSelection=false;arrangement.selectedClips.clear();
     bool instrumentsChanged=project.tracks.size()!=before.tracks.size();for(size_t i=0;i<project.tracks.size();++i)if(i>=before.tracks.size()||project.tracks[i].instrument!=before.tracks[i].instrument||project.tracks[i].instrumentPath!=before.tracks[i].instrumentPath||project.tracks[i].instrumentId!=before.tracks[i].instrumentId||project.tracks[i].sampleRoot!=before.tracks[i].sampleRoot||!sameEffectPlugins(project.tracks[i],before.tracks[i]))instrumentsChanged=true;
     // Same instruments: bring each plugin back to the sound it had in that snapshot.
-    if(instrumentsChanged)restoreInstruments();else for(size_t i=0;i<project.tracks.size();++i){const auto& t=project.tracks[i];if(t.instrument=="plugin"&&!t.instrumentState.empty()&&t.instrumentState!=before.tracks[i].instrumentState)audio.restorePluginState((int)i,juce::String::fromUTF8(t.instrumentState.c_str()));for(const auto& fx:t.effects){auto* old=before.tracks[i].effect(fx.slot);if(!fx.state.empty()&&old&&fx.state!=old->state)audio.restoreEffectState((int)i,utf(fx.state),fx.slot);}}
+    if(mixOnly){for(size_t i=0;i<project.tracks.size()&&i<before.tracks.size();++i){project.tracks[i].instrumentState=before.tracks[i].instrumentState;for(auto& fx:project.tracks[i].effects)if(auto* old=before.tracks[i].effect(fx.slot))fx.state=old->state;}}
+    if(instrumentsChanged)restoreInstruments();else if(!mixOnly)for(size_t i=0;i<project.tracks.size();++i){const auto& t=project.tracks[i];if(t.instrument=="plugin"&&!t.instrumentState.empty()&&t.instrumentState!=before.tracks[i].instrumentState)audio.restorePluginState((int)i,juce::String::fromUTF8(t.instrumentState.c_str()));for(const auto& fx:t.effects){auto* old=before.tracks[i].effect(fx.slot);if(!fx.state.empty()&&old&&fx.state!=old->state)audio.restoreEffectState((int)i,utf(fx.state),fx.slot);}}
     piano.clearSelection();changed();if(instrumentIsOpen())instrumentPanel.rebuild();}
 void MainComponent::showGenerateMenu(){
     if(editingRestricted())return;
@@ -1463,6 +1479,7 @@ return false;
     if(juce::SystemStats::getEnvironmentVariable("FGA_RUN_NATIVE_INPUT","")!="1")
         folder.getChildFile("window-focus.txt").replaceWithText("SKIP synthetic input regression: a synthesised peer press is not reliably attributed to a JUCE component. Set FGA_RUN_NATIVE_INPUT=1 to run it locally; the recovery code and its guard stay in place.");
     else if(!verifyWindowFocus(folder))return false;
+    if(!verifyExports(folder.getChildFile("export-ui")))return false;
     showStudio();const bool studioOk=studioWindow->verify(folder);studioWindow->closeButtonPressed();if(!studioOk)return false;
     if(!verifyAuditRepairs(folder))return false;
     {
@@ -1598,7 +1615,7 @@ void MainComponent::timerCallback(){
 void MainComponent::autosaveIfIdle(const juce::File& target){
     if(!dirty){autosaveDue=false;return;}
     if(autosaveJob||loadingPlugin||editingRestricted()||audio.isPlaying()||audio.isSampleAuditioning()||audio.isExporting()||(audio.devices.getCurrentAudioDevice()!=nullptr&&audio.masterLevel()>1.e-5f))return;
-    captureProjectStates(audio,project,pluginWindow&&pluginWindow->isVisible());auto path=target!=juce::File()?target:juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");
+    captureProjectStates(audio,project,hasOpenPluginEditors());auto path=target!=juce::File()?target:juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/autosave.fga");
     if(auto result=path.getParentDirectory().createDirectory();result.failed()){autosaveDue=false;message(result.getErrorMessage(),true);return;}
     const int id=++autosaveRequestId;juce::Component::SafePointer<MainComponent> safe(this);autosaveDue=false;
     autosaveJob=std::make_unique<AutosaveJob>(project,path,[safe,id](juce::Result result){if(!safe||id!=safe->autosaveRequestId)return;safe->retiredJobs.retire(std::move(safe->autosaveJob));if(result.failed())safe->message(result.getErrorMessage(),true);});if(!autosaveJob->startThread()){autosaveJob.reset();message("Automatic backup could not start. Save the project manually.",true);}
@@ -1652,7 +1669,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
 
 // Save / Discard / Cancel, as in any DAW. An untitled project opens SAVE AS and keeps the
 // current song open: close again once it is saved.
-void MainComponent::createNewProject(){audio.stop();pluginWindow.reset();undoStack.clear();redoStack.clear();for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);};project=newProject(genreBox.getSelectedItemIndex());editCursor=-1;projectFile=juce::File();selectedSection=0;selectedTrack=4;arrangement.selectedClips.clear();noClipSelection=false;changed();showArrangement();}
+void MainComponent::createNewProject(){audio.stop();closePluginEditor();undoStack.clear();redoStack.clear();for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);};project=newProject(genreBox.getSelectedItemIndex());editCursor=-1;projectFile=juce::File();selectedSection=0;selectedTrack=4;arrangement.selectedClips.clear();noClipSelection=false;changed();showArrangement();}
 void MainComponent::requestClose(std::function<void()> accepted){
     if(closePending)return;
     if(loadingPlugin){message(tr("Wait for the instrument to finish loading."),true);return;}
@@ -1680,10 +1697,13 @@ void MainComponent::finishPendingSave(const juce::File& file,std::function<void(
 bool MainComponent::writeProjectFile(const juce::File& target){
     captureProjectStates(audio,project,true);auto next=project;next.name=target.getFileNameWithoutExtension().toStdString();auto result=saveProject(next,target);
     if(result.failed()){message(result.getErrorMessage(),true);return false;}
-    projectFile=target;project.name=next.name;dirty=false;message(tr("Project saved")+": "+projectFile.getFullPathName());repaint();return true;
+    projectFile=target;Localisation::setSetting("lastSaveFolder",target.getParentDirectory().getFullPathName());project.name=next.name;dirty=false;message(tr("Project saved")+": "+projectFile.getFullPathName());repaint();return true;
 }
-void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback,std::function<void()> cancelled){
-    chooser=std::make_unique<juce::FileChooser>(tr(title),projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory),filter,true,false,studioWindow&&studioWindow->isVisible()?static_cast<juce::Component*>(studioWindow.get()):getTopLevelComponent());
+void MainComponent::chooseFile(const juce::String& title,const juce::String& filter,int flags,std::function<void(juce::File)> callback,std::function<void()> cancelled,const juce::File& initial){
+    auto start=initial;const bool saving=(flags&juce::FileBrowserComponent::saveMode)!=0&&filter=="*.fga";
+    if(start==juce::File()&&saving){const auto stored=Localisation::setting("lastSaveFolder");if(juce::File::isAbsolutePath(stored)&&juce::File(stored).isDirectory())start=juce::File(stored);}
+    if(start==juce::File())start=projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+    chooser=std::make_unique<juce::FileChooser>(tr(title),start,filter,true,false,studioWindow&&studioWindow->isVisible()?static_cast<juce::Component*>(studioWindow.get()):getTopLevelComponent());
     juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback=std::move(callback),cancelled=std::move(cancelled)](const juce::FileChooser& fc){if(!safe)return;auto file=fc.getResult();if(file!=juce::File())callback(file);else if(cancelled)cancelled();});
 }
 void MainComponent::save(bool as){
@@ -1699,9 +1719,9 @@ void MainComponent::open(const juce::File& file,bool recovered){
 }
 
 void MainComponent::showMixerRouting(int track){audio.stopSampleAudition();if(track>=0&&track<(int)project.tracks.size())select(track,selectedSection);if(!mixerRoutingWindow)mixerRoutingWindow=std::make_unique<MixerRoutingWindow>(*this);mixerRoutingWindow->open();}
-void MainComponent::showStudio(int tab){if(!studioWindow)studioWindow=std::make_unique<StudioWindow>(*this);studioWindow->open(tab);}
-void MainComponent::restoreInstruments(){pluginWindow.reset();for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);}for(int i=0;i<(int)project.tracks.size();++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,sampleFile(t,projectFile),t.sampleRoot,t.sampler);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));for(const auto& fx:t.effects)loadEffectFile(i,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);}audio.publish(project);}
-void MainComponent::loadSampleFile(int track,const juce::File& file){if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||loadingPlugin||editingRestricted())return;pluginWindow.reset();auto& t=project.tracks[(size_t)track];int root=isDrumTrack(track)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;const auto previous=t.sampler;SamplerSettings settings=t.vocalChops?vocalSamplerSettings():SamplerSettings{};if(!t.vocalChops){settings.mode=isDrumTrack(track)?1:0;settings.polyphony=8;}auto r=audio.loadSample(track,file,root,settings);if(r.failed()){message(r.getErrorMessage(),true);return;}checkpoint();t.sampler=settings;if(auto asset=audio.sampleAsset(track)){t.sampleHash=asset->hash.toStdString();if(t.vocalChops){const auto points=detectSampleSlices(*asset,0,1,.5,16);if(!points.empty()){t.sampler.slices.fill(0);t.sampler.sliceCount=(int)points.size();std::copy(points.begin(),points.end(),t.sampler.slices.begin());}}}t.sampler.normalise();remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();
+void MainComponent::showStudio(int tab){if(mediaBusy||audio.isExporting())return;if(!studioWindow)studioWindow=std::make_unique<StudioWindow>(*this);studioWindow->open(tab);}
+void MainComponent::restoreInstruments(){closePluginEditor();for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);}for(int i=0;i<(int)project.tracks.size();++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,sampleFile(t,projectFile),t.sampleRoot,t.sampler);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));for(const auto& fx:t.effects)loadEffectFile(i,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);}audio.publish(project);}
+void MainComponent::loadSampleFile(int track,const juce::File& file){if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||loadingPlugin||editingRestricted())return;closePluginEditor(track,0);auto& t=project.tracks[(size_t)track];int root=isDrumTrack(track)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;const auto previous=t.sampler;SamplerSettings settings=t.vocalChops?vocalSamplerSettings():SamplerSettings{};if(!t.vocalChops){settings.mode=isDrumTrack(track)?1:0;settings.polyphony=8;}auto r=audio.loadSample(track,file,root,settings);if(r.failed()){message(r.getErrorMessage(),true);return;}checkpoint();t.sampler=settings;if(auto asset=audio.sampleAsset(track)){t.sampleHash=asset->hash.toStdString();if(t.vocalChops){const auto points=detectSampleSlices(*asset,0,1,.5,16);if(!points.empty()){t.sampler.slices.fill(0);t.sampler.sliceCount=(int)points.size();std::copy(points.begin(),points.end(),t.sampler.slices.begin());}}}t.sampler.normalise();remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();
     message(tr("Sample loaded")+": "+file.getFileName()+juce::String::fromUTF8(" → ")+Localisation::upper(utf(t.name))+juce::String::fromUTF8("  ·  ")+tr("root note")+" "+juce::MidiMessage::getMidiNoteName(root,true,true,3)+" ("+tr("right-click the track to change it")+").");}
 void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){
     if(id.isNotEmpty())audio.markMissing(track);
@@ -1731,7 +1751,7 @@ void MainComponent::loadEffectFile(int track,const juce::File& file,const juce::
 void MainComponent::loadEffectDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring,int slot){
     if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||description.isInstrument||(!restoring&&(loadingPlugin||editingRestricted())))return;
     auto& t=project.tracks[(size_t)track];if(slot==0)slot=t.nextEffectSlot();if(slot<1||slot>maxTrackEffects){message("The effect chain is full.",true);return;}
-    const auto session=t.sessionId;pluginWindow.reset();if(!restoring)checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);
+    const auto session=t.sessionId;if(!restoring)checkpoint();closePluginEditor(track,slot);++loadingPlugin;loadPluginButton.setEnabled(false);
     juce::Component::SafePointer<MainComponent> safe(this);
     audio.loadEffect(track,description,[safe,session,description,state,restoring,slot](juce::Result r){
         if(!safe)return;--safe->loadingPlugin;safe->loadPluginButton.setEnabled(safe->loadingPlugin==0);const int ti=safe->trackForSession(session);if(ti<0)return;
@@ -1744,19 +1764,20 @@ void MainComponent::loadEffectDescription(int track,const juce::PluginDescriptio
         if(restoredState.isNotEmpty())safe->audio.restoreEffectState(ti,restoredState,slot);safe->resolveAutomationParameters(ti,slot);
         if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
         safe->message(tr("Effect ready:")+" "+description.name);
+        if(!restoring)safe->openHostedEditor(ti,slot);
     },slot);
 }
 void MainComponent::chooseBrowserRow(const PluginCatalog::BrowserRow& row){
     if(loadingPlugin){message(tr("Wait for the instrument to finish loading."));return;}
     const int track=trackForSession(browserTrackSession);if(track<0||editingRestricted())return;auto& t=project.tracks[(size_t)track];
-    if(row.kind==PluginCatalog::BrowserRow::Kind::noEffect){if(t.effects.empty())return;checkpoint();closePluginEditor();audio.clearEffect(track);t.effects.clear();t.parameters.erase(std::remove_if(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot>0;}),t.parameters.end());changed(false);message(tr("Effect removed."));return;}
-    if(row.kind==PluginCatalog::BrowserRow::Kind::engine){const int family=instrumentFamily(t.kind);if(row.engine!=family){message(tr("This track keeps its own FaseGroove engine."),true);return;}checkpoint();closePluginEditor();audio.useInternal(track);t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);message(tr("Built-in engine restored."));return;}
+    if(row.kind==PluginCatalog::BrowserRow::Kind::noEffect){if(t.effects.empty())return;checkpoint();for(const auto& fx:t.effects)closePluginEditor(track,fx.slot);audio.clearEffect(track);t.effects.clear();t.parameters.erase(std::remove_if(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot>0;}),t.parameters.end());changed(false);message(tr("Effect removed."));return;}
+    if(row.kind==PluginCatalog::BrowserRow::Kind::engine){const int family=instrumentFamily(t.kind);if(row.engine!=family){message(tr("This track keeps its own FaseGroove engine."),true);return;}checkpoint();closePluginEditor(track,0);audio.useInternal(track);t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);message(tr("Built-in engine restored."));return;}
     const auto plugins=pluginCatalog.state().plugins;if(!juce::isPositiveAndBelow(row.plugin,plugins.size()))return;
     if(effectsBrowser){if(!plugins.getReference(row.plugin).isInstrument){loadEffectDescription(track,plugins.getReference(row.plugin),{},false,browserEffectSlot);pluginBrowser.setVisible(false);}}else{loadPluginDescription(track,plugins.getReference(row.plugin));if(!plugins.getReference(row.plugin).isInstrument)pluginBrowser.setVisible(false);}
 }
 void MainComponent::loadPluginDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring){
     if(!description.isInstrument){loadEffectDescription(track,description,state,restoring);return;}
-    pluginWindow.reset();if(!restoring)checkpoint();++loadingPlugin;loadPluginButton.setEnabled(false);
+    if(!restoring)checkpoint();closePluginEditor(track,0);++loadingPlugin;loadPluginButton.setEnabled(false);
     juce::Component::SafePointer<MainComponent> safe(this);
     audio.loadPlugin(track,description,[safe,track,description,state,restoring](juce::Result r){
         if(safe==nullptr)return;
@@ -1772,7 +1793,7 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
         safe->message(tr("Plugin ready")+": "+description.name);
         // A freshly loaded instrument opens its editor straight away, centred; the user
         // closes it when done, as the other tools behave.
-        if(!restoring)safe->pluginEditorButton.onClick();
+        if(!restoring)safe->openHostedEditor(track,0);
     });
 }
 void MainComponent::showPluginMenu(juce::Component*){

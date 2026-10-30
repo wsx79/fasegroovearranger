@@ -3,6 +3,7 @@
 // Audio engine: edits while playing touch only what changed, loop wraps and stops release
 // notes, publishing never waits for the audio thread, MP3 export is gapless.
 #include "../Source/AudioEngine.h"
+#include "../Source/ExportSupport.h"
 #include "../Source/ArrangementAudit.h"
 #include "../Source/core/Mp3Encoder.h"
 #include <iostream>
@@ -79,6 +80,17 @@ int main(int argc,char** argv){
             auto raw=dir.getChildFile("decoded.raw");juce::ChildProcess ffmpeg;
             check(ffmpeg.start(juce::StringArray{"/usr/bin/ffmpeg","-loglevel","error","-y","-i",mp3.getFullPathName(),"-f","s16le","-ac","2",raw.getFullPathName()}),"ffmpeg start");
             ffmpeg.waitForProcessToFinish(60000);check(raw.getSize()==expected*4,"decoded MP3 length equals the song exactly (no encoder delay/padding)");
+        }
+        // Export encoding, tempo metadata and filename/arrangement interchange contract.
+        {auto named=p;named.settings.bpm=128.5;named.settings.freeTempo=true;named.settings.key=1;named.settings.scale=0;named.sections={{fga::Section::intro,16,"Intro"},{fga::Section::main,32,"Jackin groove"}};named.normalise();
+            check(fga::exportSuffix(named)=="_128.5bpm_Db","filename preserves decimal BPM and flat key spelling");
+            check(fga::exportNamedFile(dir.getChildFile("Piano.mid"),named,"mid").getFileName()=="Piano_128.5bpm_Db.mid","MIDI includes tempo and key");
+            check(fga::exportNamedFile(dir.getChildFile("Piano_128.5bpm_Db.mid"),named,"mid").getFileName()=="Piano_128.5bpm_Db.mid","filename suffix is not duplicated");
+            check(fga::exportTime(90.1234)=="01:30.123"&&fga::exportTime(3601.001)=="01:00:01.001","arrangement timestamps retain milliseconds and hours");
+            const auto text=fga::exportArrangementText(named);check(text.contains("00:00.000 - "+fga::exportTime(64*60./128.5)+"  Intro")&&text.contains(fga::exportTime(64*60./128.5)+" - "+fga::exportTime(192*60./128.5)+"  Jackin groove"),"section ranges derive from beats at the actual tempo");
+            for(auto settings:{fga::AudioExportOptions{44100,16},fga::AudioExportOptions{48000,24},fga::AudioExportOptions{96000,24}}){auto file=dir.getChildFile("encoding-"+juce::String(settings.sampleRate,0)+".wav");check(engine.exportAudio(p,file,0,false,[]{return false;},[](double){},nullptr,settings).wasOk(),"export requested WAV encoding");juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(file.createInputStream().release(),true));check(reader&&reader->sampleRate==settings.sampleRate&&reader->bitsPerSample==(unsigned)settings.bitDepth,"WAV header records selected sample rate and depth");check(std::abs(reader->metadataValues.getValue(juce::WavAudioFormat::acidTempo,"").getDoubleValue()-p.settings.bpm)<.001&&reader->metadataValues.getValue(juce::WavAudioFormat::acidOneShot,"")=="1","tempo metadata preserves full-song tails without declaring an incorrect loop");juce::AudioBuffer<float> samples(2,8192);reader->read(&samples,0,8192,4096,true,true);check(samples.getMagnitude(0,8192)>1e-4,"encoded WAV contains audible music");}
+            auto cancelled=dir.getChildFile("cancelled.wav");check(engine.exportAudio(p,cancelled,0,false,[]{return true;},[](double){},nullptr,{48000,16}).failed()&&!cancelled.existsAsFile()&&!engine.isExporting(),"cancelled export restores the engine and leaves no partial WAV");
+            check(engine.exportAudio(p,dir.getChildFile("invalid.wav"),0,false,[]{return false;},[](double){},nullptr,{48000,12}).failed()&&!engine.isExporting(),"invalid encoding leaves engine available");
         }
         dir.deleteRecursively();
         // After an export the engine plays again.

@@ -47,7 +47,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     solo.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.solo=!t.solo;owner.mixChanged();};
     lockTrack.onClick=[this]{if(validTrack())owner.toggleTrackLock();};lockClip.onClick=[this]{if(validTrack())owner.toggleClipLock();};
     internal.onClick=[this]{owner.useBuiltInSound(owner.selectedTrack);};sample.onClick=[this]{owner.browseSamplesFor(owner.selectedTrack);};
-    plugin.onClick=[this]{owner.showPluginMenu(&plugin);};pluginEditor.onClick=[this]{if(owner.pluginEditorButton.onClick)owner.pluginEditorButton.onClick();};
+    plugin.onClick=[this]{owner.showPluginMenu(&plugin);};pluginEditor.setComponentID("inspector-plugin-editor");pluginEditor.onClick=[this]{owner.openHostedEditor(owner.selectedTrack,0);};
     samplerEditor.setComponentID("inspector-sampler");samplerEditor.onClick=[this]{owner.showStudio(0);};Localisation::bindText(samplerEditor,"OPEN SAMPLER");tip(samplerEditor,"Open the waveform, sample settings and playable slices for this track.");
     regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.toggleClipLoop();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
@@ -74,11 +74,11 @@ void TrackInspector::refresh(){
     if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
     // An automated volume or pan reads in blue.
     for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);slider->setColour(juce::Slider::rotarySliderFillColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);slider->removeColour(juce::Slider::rotarySliderFillColourId);}}
-    const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr||owner.audio.effectPlugin(ti)!=nullptr;
+    const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
     internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);sample.setToggleState(t.instrument=="sample",juce::dontSendNotification);plugin.setToggleState(t.instrument=="plugin",juce::dontSendNotification);
-    internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);samplerEditor.setEnabled(t.instrument=="sample"&&!busy);
+    internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);if(auto* vst=owner.audio.plugin(ti)){const auto action=tr("Open %plugin%").replace("%plugin%",vst->getName());pluginEditor.setTooltip(action);pluginEditor.setTitle(action);}samplerEditor.setEnabled(t.instrument=="sample"&&!busy);
     regenerate.setEnabled(!isManualTrack(ti)&&hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
     // Only these texts change here; the rest is translated on creation and language change.
     effects.refresh();updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);resized();repaint();
@@ -139,7 +139,7 @@ void TrackInspector::resized(){
 
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&gain,&pan,&mute,&solo,&instrument,&clip,&sendA,&sendB,&output,&effects})addAndMakeVisible(c);
-    effects.setComponentID("mixer-effects");effects.getProperties().set("fgaRawText",true);effects.onClick=[this]{if(track<0)return;owner.select(track,owner.selectedSection);if(!owner.inspectorVisible){owner.inspectorVisible=true;owner.resized();}owner.inspectorPort.setViewPosition(0,owner.trackInspector.findChildWithID("effect-chain")->getY());};tip(effects,"Show this track's effect chain in the inspector.");
+    effects.setComponentID("mixer-effects");effects.getProperties().set("fgaRawText",true);effects.onClick=[this]{if(track>=0)owner.showEffectChain(track);};tip(effects,"EFFECTS");
     name.getProperties().set("fgaRawText",true);
     setComponentID("mixer-track-"+juce::String(track));sendA.setComponentID("mixer-send-a");sendB.setComponentID("mixer-send-b");output.setComponentID("mixer-output");
     for(int i=0;i<2;++i){auto& button=i==0?sendA:sendB;button.setColour(juce::TextButton::buttonOnColourId,Daw::accent);button.onClick=[this,i]{if(track<0||track>=(int)owner.project.tracks.size())return;owner.checkpoint();auto& value=owner.project.tracks[(size_t)track].sends[(size_t)i];if(value>0){sendMemory[(size_t)i]=value;value=0;}else value=sendMemory[(size_t)i];owner.mixChanged();};tip(button,i==0?"Toggle send A to shared reverb. Adjust its amount in Bus & Send.":"Toggle send B to shared delay. Adjust its amount in Bus & Send.");}
