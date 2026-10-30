@@ -1,11 +1,12 @@
 # Changelog — Fase Groove Arranger
 
-## 0.30.0
+## 0.30.1
 
 - Studio: opt-in envelope display, immediate slice selection, draggable markers and reverse-aware waveform. Remove the empty-track clip hint while retaining double-click creation.
 - Add eight serial VST3/AU effects per track, with instance aliases, bypass, reordering, editors and mixer FX access. Migrate legacy inserts and persist states and stable identities in format 4.
 - Add a source-aware searchable automation picker, existing-curve reuse and up to 32 parameter lanes, including guide-sound controls and sample filters. Reordering and renaming preserve targets.
 - Apply the full chain to export and latency compensation, retain declared tails and cancel obsolete asynchronous plugin loads after source/project changes.
+- Move the macOS release build to the supported macOS 15 runner after GitHub disabled the macOS 14 image. Keep the universal Intel/Apple Silicon package and the same deployment target. Version 0.30.0 was not distributed.
 
 ## 0.29.0
 

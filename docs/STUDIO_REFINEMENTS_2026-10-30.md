@@ -1,6 +1,6 @@
 # Studio e tracce vuote — 30 ottobre 2026
 
-Intervento aggiuntivo alla preview FX, sulla base dell’utente 0.29.0 (`89e67e3`). Incluso nella pubblicazione 0.30.0 autorizzata dall’utente.
+Intervento aggiuntivo alla preview FX, sulla base dell’utente 0.29.0 (`89e67e3`). Incluso nella pubblicazione 0.30.1 autorizzata dall’utente.
 
 - Inviluppo nascosto inizialmente: il pulsante INVILUPPO AMPIEZZA sulla waveform mostra/nasconde curva, maniglie e sviluppo del volume. Non modifica l’inviluppo audio o la cronologia Undo.
 - Selezionare Transienti o 4/8/16/32/64 parti applica subito i tagli. Taglio automatico resta disponibile per ripetere l’analisi.
@@ -15,4 +15,4 @@ Verifiche Linux: compilazione Release, test nativi completi UI/audio/MP3, drag e
 
 `reverse.patch` rimuove soltanto questo intervento Studio e mantiene la precedente implementazione FX. Verificata ricostruzione esatta del suo albero Git. Conservare modifiche successive, eseguire `git apply --check reverse.patch` e poi applicarla solo se il controllo riesce. `combined-reverse.patch` rimuove anche FX e torna al commit utente 0.29.0; `combined-forward.patch` ricostruisce l’intera preview partendo da quel commit. Nessun reset forzato. I progetti con il nuovo stato VST/FX restano in formato 4: mantenere una copia precedente per riaprire con l’app ufficiale 0.29.0.
 
-Per annullare l’intera release pubblicata usare, su checkout pulito, `git revert --no-commit v0.30.0` e verificare il risultato prima di un eventuale commit. Le patch incrementali citate sono nel report locale `/workspace/reports/studio-refine-2026-10-30/`.
+Per annullare l’intera release pubblicata usare, su checkout pulito, `git revert --no-commit v0.29.0..v0.30.1` e verificare il risultato prima di un eventuale commit. Le patch incrementali citate sono nel report locale `/workspace/reports/studio-refine-2026-10-30/`.

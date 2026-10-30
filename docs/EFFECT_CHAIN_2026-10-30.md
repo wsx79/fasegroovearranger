@@ -1,6 +1,6 @@
 # Catena effetti e automazioni — 30 ottobre 2026
 
-Base: `89e67e3b3bad3d5840956f15d4bc50b7908fe3ed` (v0.29.0). Pubblicazione della versione 0.30.0 autorizzata dall’utente, insieme ai miglioramenti Studio.
+Base: `89e67e3b3bad3d5840956f15d4bc50b7908fe3ed` (v0.29.0). Pubblicazione della versione 0.30.1 autorizzata dall’utente, insieme ai miglioramenti Studio.
 
 ## Utilizzo
 
@@ -38,7 +38,7 @@ Per l’app precedente reinstallare v0.29.0 e usare la copia precedente dei prog
 
 ## Modifiche dell’utente integrate
 
-La base è stata aggiornata al commit dell’utente `89e67e3` del 30 ottobre, già rilasciato come v0.29.0. Sono preservati i pulsanti dimensionati sul testo tradotto, le etichette lunghe in inspector/mixer, titoli di clip e sezioni, tooltip dei nomi completi, armonia e testi delle azioni disabilitate. I file del tema e dei controlli condivisi dall’app corrispondono esattamente a quel commit; le due sovrapposizioni nei changelog mantengono sia la sezione 0.29.0 dell’utente sia le nuove voci della versione 0.30.0. Il rollback finale torna alla base 0.29.0 e conserva queste modifiche. Una copia precedente all’integrazione è nel report esterno.
+La base è stata aggiornata al commit dell’utente `89e67e3` del 30 ottobre, già rilasciato come v0.29.0. Sono preservati i pulsanti dimensionati sul testo tradotto, le etichette lunghe in inspector/mixer, titoli di clip e sezioni, tooltip dei nomi completi, armonia e testi delle azioni disabilitate. I file del tema e dei controlli condivisi dall’app corrispondono esattamente a quel commit; le due sovrapposizioni nei changelog mantengono sia la sezione 0.29.0 dell’utente sia le nuove voci della versione 0.30.1. Il rollback finale torna alla base 0.29.0 e conserva queste modifiche. Una copia precedente all’integrazione è nel report esterno.
 
 Anche le nuove righe effetti e i nomi nel selettore automazioni seguono la preferenza dell’utente: prima riducono la scala del testo, con tooltip che conserva nome completo e plugin originale.
 
@@ -57,6 +57,10 @@ Verifiche ripetute sulla base dell’utente v0.29.0:
 - AddressSanitizer con controllo perdite: tutti i test del core superati. Non è una verifica ASan dei plugin commerciali o dell’intera GUI.
 - Tema/font condivisi, guide IT/EN, localizzazione, sintassi del workflow e packaging controllati.
 
-Le immagini del report mostrano plugin di prova, usati per misurare il percorso audio. Le immagini e il pacchetto locali precedono la pubblicazione. Gli esiti Windows/macOS e Linux della versione 0.30.0 sono nella CI della release.
+Le immagini del report mostrano plugin di prova, usati per misurare il percorso audio. Le immagini e il pacchetto locali precedono la pubblicazione. Gli esiti Windows/macOS e Linux della versione 0.30.1 sono nella CI della release.
 
-Per annullare l’intera versione pubblicata, da un checkout pulito preparare `git revert --no-commit v0.30.0`, controllare il diff e ricompilare prima di autorizzare un commit di ripristino. Il commit dell’utente 0.29.0 resta nella cronologia.
+Per annullare l’intera versione pubblicata, da un checkout pulito preparare `git revert --no-commit v0.29.0..v0.30.1`, controllare il diff e ricompilare prima di autorizzare un commit di ripristino. Il commit dell’utente 0.29.0 resta nella cronologia.
+
+## Aggiornamento della procedura macOS
+
+Il primo tag v0.30.0 non è stato distribuito: GitHub ha annullato il job macOS 14 per la dismissione programmata del runner (actions/runner-images#13518). La v0.30.1 usa macOS 15, mantenendo architetture arm64/x86_64, sistema minimo 11.0, firma e quattro pacchetti della famiglia. Il tag precedente rimane nella cronologia senza essere riscritto.

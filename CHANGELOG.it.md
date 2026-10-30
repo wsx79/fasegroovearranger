@@ -1,11 +1,12 @@
 # Novità — Fase Groove Arranger
 
-## 0.30.0
+## 0.30.1
 
 - Studio: inviluppo visibile solo su richiesta, tagli applicati subito dal selettore, marcatori trascinabili e onda coerente con Inverti. Rimossa la scritta nelle tracce vuote; il doppio clic continua a creare clip.
 - Catene di otto effetti VST3/AU per traccia, con rinomina delle istanze, bypass, riordino, editor e accesso FX dal mixer. Migrazione degli insert precedenti e salvataggio di stato e identità in formato 4.
 - Selettore delle automazioni per sorgente, ricerca parametri, riuso delle curve e fino a 32 corsie; include controlli dei suoni guida e filtro dei campioni. Riordino e rinomina mantengono i destinatari.
 - Export e compensazione della latenza seguono l’intera catena; gestione delle code dichiarate e dei caricamenti asincroni superati da un cambio di sorgente/progetto.
+- Compilazione macOS spostata al runner supportato macOS 15 dopo il blocco di macOS 14 da parte di GitHub. Restano pacchetto universale Intel/Apple Silicon e sistema minimo invariati. La 0.30.0 non è stata distribuita.
 
 ## 0.29.0
 
