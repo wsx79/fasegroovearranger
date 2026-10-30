@@ -48,6 +48,8 @@ constexpr float radius=3.f,panelRadius=5.f;
 constexpr int unit=4,controlHeight=24,toolbarHeight=28;
 
 inline juce::Font font(float size=body,bool bold=false){return FamilyTheme::font(size,bold);}
+// One physical pixel, so a 1 px rule stays crisp when the desktop scale is not 1.
+inline float hairline(){const float s=juce::Desktop::getInstance().getGlobalScaleFactor();return s>0.f?1.f/s:1.f;}
 // Small caps captions: section titles, field labels, LCD legends.
 inline juce::Font caps(float size=small){auto f=FamilyTheme::font(size,true);f.setExtraKerningFactor(.06f);return f;}
 inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,juce::Colour c=textFaint,juce::Justification j=juce::Justification::centredLeft){g.setColour(c);g.setFont(caps());g.drawText(s.toUpperCase(),r,j,true);}
@@ -110,9 +112,9 @@ public:
         g.setColour(Daw::text);text.draw(g,textArea.toFloat());
     }
     int getAlertBoxWindowFlags() override{return juce::ComponentPeer::windowAppearsOnTaskbar;}
-    juce::Font getAlertWindowTitleFont() override{return Daw::font(15.f,true);}
-    juce::Font getAlertWindowMessageFont() override{return Daw::font(13.f);}
-    juce::Font getAlertWindowFont() override{return Daw::font(12.5f);}
+    juce::Font getAlertWindowTitleFont() override{return Daw::font(Daw::title,true);}
+    juce::Font getAlertWindowMessageFont() override{return Daw::font(Daw::body);}
+    juce::Font getAlertWindowFont() override{return Daw::font(Daw::body);}
     int getAlertWindowButtonHeight() override{return 30;}
     // Flat buttons: a 3 px radius, a hairline edge and a 1 px top light; on = accent.
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour& background,bool highlighted,bool down) override{
@@ -124,10 +126,11 @@ public:
         g.setColour(fill);g.fillPath(shape);
         if(!down&&b.isEnabled()){g.setColour(juce::Colours::white.withAlpha(fill.getPerceivedBrightness()>.4f?.18f:.045f));g.fillRect(r.getX()+Daw::radius,r.getY()+.5f,r.getWidth()-2*Daw::radius,1.f);}
         g.setColour(b.hasKeyboardFocus(true)?Daw::accent.withAlpha(.8f):fill.getPerceivedBrightness()>.4f?fill.darker(.3f):juce::Colours::black.withAlpha(.45f));
-        g.strokePath(shape,juce::PathStrokeType(1.f));
+        g.strokePath(shape,juce::PathStrokeType(Daw::hairline()));
     }
-    juce::Font getTextButtonFont(juce::TextButton&,int height) override{return Daw::font(juce::jlimit(9.5f,11.5f,height*.42f),true);}
+    juce::Font getTextButtonFont(juce::TextButton&,int) override{return Daw::font(Daw::small,true);}
     void drawButtonText(juce::Graphics& g,juce::TextButton& b,bool,bool) override{
+        if((bool)b.getProperties().getWithDefault("fgaIconOnly",false)){auto r=b.getLocalBounds().toFloat().reduced(6.f);juce::Path pencil;pencil.startNewSubPath(r.getX()+2.f,r.getBottom()-2.f);pencil.lineTo(r.getRight()-3.f,r.getY()+3.f);g.setColour(b.isEnabled()?Daw::text:Daw::textFaint);g.strokePath(pencil,juce::PathStrokeType(1.5f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));return;}
         const bool on=b.getToggleState();const auto fill=b.findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
         auto ink=fill.getPerceivedBrightness()>.4f?Daw::onAccent:Daw::text;
         g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.45f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
@@ -141,10 +144,10 @@ public:
         const float cx=(float)width-10.f,cy=height*.5f;juce::Path chevron;chevron.startNewSubPath(cx-3.f,cy-1.5f);chevron.lineTo(cx,cy+1.5f);chevron.lineTo(cx+3.f,cy-1.5f);
         g.setColour(box.isEnabled()?Daw::textDim:Daw::textFaint.withAlpha(.5f));g.strokePath(chevron,juce::PathStrokeType(1.3f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     }
-    juce::Font getComboBoxFont(juce::ComboBox& box) override{const float display=(float)box.getProperties().getWithDefault("dawDisplay",0.f);return display>0?Daw::font(display,true):Daw::font(juce::jlimit(10.5f,13.f,box.getHeight()*.46f));}
+    juce::Font getComboBoxFont(juce::ComboBox& box) override{const float display=(float)box.getProperties().getWithDefault("dawDisplay",0.f);return display>0?Daw::font(display,true):Daw::font(Daw::body);}
     void positionComboBoxText(juce::ComboBox& box,juce::Label& label) override{label.setBounds(3,1,box.getWidth()-20,box.getHeight()-2);label.setFont(getComboBoxFont(box));}
     void drawPopupMenuBackground(juce::Graphics& g,int width,int height) override{g.fillAll(Daw::surfaceHi);g.setColour(Daw::lineStrong);g.drawRect(0,0,width,height,1);}
-    juce::Font getPopupMenuFont() override{return Daw::font(13.f);}
+    juce::Font getPopupMenuFont() override{return Daw::font(Daw::body);}
     // Linear sliders: a thin groove with the value in the accent and a small round thumb;
     // vertical sliders are mixer faders with a flat cap; bar styles draw nothing (a value
     // display, as the transport tempo).

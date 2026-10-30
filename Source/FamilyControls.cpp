@@ -377,7 +377,8 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
         ink = ink.withMultipliedAlpha (0.35f);
     const auto iconInk = ! filled && ! on && ! iconColour.isTransparent() ? iconColour.withMultipliedAlpha (isEnabled() ? 1.0f : 0.4f) : ink;
     const float iconSize = juce::jmin (r.getHeight() * 0.58f, 16.0f);
-    const auto label = getButtonText();
+    const bool iconOnly=(bool)getProperties().getWithDefault("fgaIconOnly",false);
+    const auto label = iconOnly?juce::String():getButtonText();
 
     auto content = r.reduced (6.0f, 0.0f);
     if (label.isEmpty())
@@ -386,7 +387,7 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
         return;
     }
 
-    auto f = FamilyTheme::font (juce::jlimit (9.5f, 11.5f, r.getHeight() * 0.42f), true);
+    auto f = Daw::font(Daw::small, true);
     f.setExtraKerningFactor (0.03f);
     const float textW = juce::GlyphArrangement::getStringWidth (f, label);
     const float iconsW = icon == Icon::none ? 0.0f : iconSize + 6.0f;
@@ -411,12 +412,15 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     g.setColour(hasKeyboardFocus(true)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
     if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
     auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=bright?Daw::onAccent:Daw::text;
-    auto font=Daw::font(juce::jlimit(Daw::small,11.f,getHeight()*.4f),true);font.setExtraKerningFactor(.025f);
+    auto font=Daw::font(Daw::small,true);font.setExtraKerningFactor(.025f);
     const float iconSize=std::min(16.f,area.getHeight()*.72f);const bool icon=glyph!=IconButton::Icon::none;
-    const float width=juce::GlyphArrangement::getStringWidth(font,getButtonText())+(icon?iconSize+6.f:0.f);
-    area=area.withSizeKeepingCentre(std::min(area.getWidth(),width),area.getHeight());
-    if(icon){IconButton::drawIcon(g,glyph,area.removeFromLeft(iconSize).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);area.removeFromLeft(6.f);}
-    g.setColour(ink);g.setFont(font);g.drawFittedText(getButtonText(),area.toNearestInt(),juce::Justification::centred,1,.85f);g.endTransparencyLayer();
+    const bool iconOnly=(bool)getProperties().getWithDefault("fgaIconOnly",false);
+    const auto label=iconOnly?juce::String():getButtonText();
+    const float width=juce::GlyphArrangement::getStringWidth(font,label)+(icon?iconSize+6.f:0.f);
+    area=area.withSizeKeepingCentre(std::min(area.getWidth(),std::max(iconSize,width)),area.getHeight());
+    if(icon){IconButton::drawIcon(g,glyph,(label.isEmpty()?area:area.removeFromLeft(iconSize)).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);if(label.isNotEmpty())area.removeFromLeft(6.f);}
+    if(label.isNotEmpty()){g.setColour(ink);g.setFont(font);g.drawFittedText(label,area.toNearestInt(),juce::Justification::centred,1,.7f);}
+    g.endTransparencyLayer();
 }
 
 }

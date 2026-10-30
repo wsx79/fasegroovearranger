@@ -44,7 +44,7 @@ public:
         setColour(juce::Slider::backgroundColourId,line);setColour(juce::Slider::trackColourId,accent);setColour(juce::Slider::thumbColourId,text);
         setColour(juce::TextEditor::backgroundColourId,well);setColour(juce::TextEditor::textColourId,text);setColour(juce::TextEditor::outlineColourId,line);setColour(juce::TextEditor::focusedOutlineColourId,accent);
     }
-    juce::Font getTextButtonFont(juce::TextButton&,int)override{return StudioStyle::font(11);}
+    juce::Font getTextButtonFont(juce::TextButton&,int)override{return StudioStyle::font(Daw::small);}
     juce::Font getComboBoxFont(juce::ComboBox&)override{return StudioStyle::font(12);}
     juce::Label* createSliderTextBox(juce::Slider& s)override{auto* label=DawLookAndFeel::createSliderTextBox(s);label->setFont(StudioStyle::font(12));return label;}
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour& colour,bool hover,bool down)override{

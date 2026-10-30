@@ -56,7 +56,7 @@ OptionsOverlay::OptionsOverlay() : artist (Branding::artistLogo())
     };
     addChildComponent (languageBox);
 
-    for (int percent : { 60, 75, 90, 100, 110, 125, 150, 175, 200 })
+    for (int percent : { 80, 90, 100, 110, 125, 150, 175, 200 })
         sizeBox.addItem (juce::String (percent) + " %", percent);
     sizeBox.onChange = [this]
     {
