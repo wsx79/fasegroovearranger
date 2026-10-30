@@ -407,11 +407,12 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     auto fill=findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
     if(featured&&!on)fill=Daw::surfaceHi.interpolatedWith(Daw::accent,.09f);
     if(over&&isEnabled())fill=fill.brighter(.07f);if(down)fill=fill.darker(.14f);
-    const float opacity=isEnabled()?1.f:.38f;auto r=getLocalBounds().toFloat().reduced(.5f);
-    g.beginTransparencyLayer(opacity);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
+    auto r=getLocalBounds().toFloat().reduced(.5f);
+    g.beginTransparencyLayer(isEnabled()?1.f:.42f);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
     g.setColour(hasKeyboardFocus(true)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
     if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
-    auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=bright?Daw::onAccent:Daw::text;
+    g.endTransparencyLayer();
+    auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=(bright?Daw::onAccent:Daw::text).withMultipliedAlpha(isEnabled()?1.f:.78f);
     auto font=Daw::font(Daw::small,true);font.setExtraKerningFactor(.025f);
     const float iconSize=std::min(16.f,area.getHeight()*.72f);const bool icon=glyph!=IconButton::Icon::none;
     const bool iconOnly=(bool)getProperties().getWithDefault("fgaIconOnly",false);
@@ -419,8 +420,7 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     const float width=juce::GlyphArrangement::getStringWidth(font,label)+(icon?iconSize+6.f:0.f);
     area=area.withSizeKeepingCentre(std::min(area.getWidth(),std::max(iconSize,width)),area.getHeight());
     if(icon){IconButton::drawIcon(g,glyph,(label.isEmpty()?area:area.removeFromLeft(iconSize)).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);if(label.isNotEmpty())area.removeFromLeft(6.f);}
-    if(label.isNotEmpty()){g.setColour(ink);g.setFont(font);g.drawFittedText(label,area.toNearestInt(),juce::Justification::centred,1,.7f);}
-    g.endTransparencyLayer();
+    if(label.isNotEmpty()){g.setColour(ink);g.setFont(font);g.drawFittedText(label,area.toNearestInt(),juce::Justification::centred,1,.55f);}
 }
 
 }

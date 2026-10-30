@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.29.0
+
+- Inspector sound buttons take their width from the label, so Italian Suono guida stays whole. Captions, toolbar actions, section chips and clip titles shrink before they turn into an ellipsis.
+- Track headers and the harmony strip keep the full name, repeated in the tooltip. Mixer strip names and the inspector title and sound scale down so Closed Hat, Tambourine and a long plugin name still read.
+- A disabled action stays dim, and its label stays readable.
+
 ## 0.28.0
 
 - Add an optional sparse Vocal chops part from + MIDI, with slice-aware regeneration, Density/Gate/Humanize controls, automatic voice slicing, MIDI-preserving slice remapping and AI slice-key context. Existing instrument routing and handwritten MIDI remain unchanged.

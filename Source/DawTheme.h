@@ -52,7 +52,7 @@ inline juce::Font font(float size=body,bool bold=false){return FamilyTheme::font
 inline float hairline(){const float s=juce::Desktop::getInstance().getGlobalScaleFactor();return s>0.f?1.f/s:1.f;}
 // Small caps captions: section titles, field labels, LCD legends.
 inline juce::Font caps(float size=small){auto f=FamilyTheme::font(size,true);f.setExtraKerningFactor(.06f);return f;}
-inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,juce::Colour c=textFaint,juce::Justification j=juce::Justification::centredLeft){g.setColour(c);g.setFont(caps());g.drawText(s.toUpperCase(),r,j,true);}
+inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,juce::Colour c=textFaint,juce::Justification j=juce::Justification::centredLeft){g.setColour(c);g.setFont(caps());g.drawFittedText(s.toUpperCase(),r,j,1,.72f);}
 
 // Each track keeps the colour of its instrument family, with a different shade per drum lane
 // so that neighbouring lanes stay distinguishable.
@@ -133,8 +133,8 @@ public:
         if((bool)b.getProperties().getWithDefault("fgaIconOnly",false)){auto r=b.getLocalBounds().toFloat().reduced(6.f);juce::Path pencil;pencil.startNewSubPath(r.getX()+2.f,r.getBottom()-2.f);pencil.lineTo(r.getRight()-3.f,r.getY()+3.f);g.setColour(b.isEnabled()?Daw::text:Daw::textFaint);g.strokePath(pencil,juce::PathStrokeType(1.5f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));return;}
         const bool on=b.getToggleState();const auto fill=b.findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
         auto ink=fill.getPerceivedBrightness()>.4f?Daw::onAccent:Daw::text;
-        g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.45f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
-        g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(6,2),juce::Justification::centred,1,.75f);
+        g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.78f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
+        g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(4,1),juce::Justification::centred,1,.5f);
     }
     void drawComboBox(juce::Graphics& g,int width,int height,bool,int,int,int,int,juce::ComboBox& box) override{
         const auto r=juce::Rectangle<float>(0,0,(float)width,(float)height).reduced(.5f);

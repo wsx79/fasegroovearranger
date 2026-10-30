@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.29.0
+
+- I pulsanti del suono nell'inspector prendono la larghezza dall'etichetta: Suono guida resta intero. Didascalie, azioni della barra, sezioni e titoli dei clip si rimpiccioliscono prima dei puntini.
+- L'intestazione della traccia e la riga Armonia tengono il nome intero, ripetuto nel suggerimento. I nomi nel mixer, e titolo e suono nell'inspector, si riducono così Closed Hat, Tambourine e un plugin lungo restano leggibili.
+- Un'azione disabilitata resta attenuata e l'etichetta si legge ancora.
+
 ## 0.28.0
 
 - Aggiunge una parte opzionale Vocal chops da + MIDI: poche note sincopate, rigenerazione compatibile con le slice, Density/Gate/Humanize, slicing automatico della voce, rimappatura che conserva il MIDI e contesto IA con i tasti corretti. Mantiene routing degli strumenti e MIDI manuale.
