@@ -76,6 +76,10 @@ public:
             const bool ok=fga::writeClubAudioAudit(juce::File(args[1]));
             setApplicationReturnValue(ok?0:1);quit();return;
         }
+        if(args.size()==3&&args[0]=="--effects-smoke-test"){
+            window=std::make_unique<Window>();auto& main=window->content->main;main.audio.devices.closeAudioDevice();juce::OwnedArray<juce::PluginDescription> types;
+            for(int i=0;i<main.audio.formats.getNumFormats();++i)main.audio.formats.getFormat(i)->findAllTypesForFile(types,args[1]);bool ok=false;for(auto* description:types)if(!description->isInstrument){ok=main.verifyEffectChain(juce::File(args[2]),*description);break;}setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==3&&args[0]=="--host-smoke-test"){
             window=std::make_unique<Window>();auto& audio=window->content->main.audio;audio.devices.closeAudioDevice();
             const auto folder=juce::File(args[2]);folder.createDirectory();
@@ -247,7 +251,7 @@ public:
             setApplicationReturnValue(ok?0:1);quit();return;
         }
 #else
-        if(!args.isEmpty()&&(args[0]=="--smoke-test"||args[0]=="--ui-test"||args[0]=="--host-smoke-test"||args[0]=="--club-audit")){
+        if(!args.isEmpty()&&(args[0]=="--smoke-test"||args[0]=="--ui-test"||args[0]=="--host-smoke-test"||args[0]=="--effects-smoke-test"||args[0]=="--club-audit")){
             setApplicationReturnValue(1);quit();return;
         }
 #endif

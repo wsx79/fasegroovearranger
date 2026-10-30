@@ -9,11 +9,12 @@ namespace fga {
 class PluginBrowser : public juce::Component, private juce::ListBoxModel, private juce::Timer {
 public:
     explicit PluginBrowser(PluginCatalog&);
-    void show(int engineFamily,const juce::String& currentKey);
+    void show(int engineFamily,const juce::String& currentKey,int type=0,bool locked=false);
     std::function<void(const PluginCatalog::BrowserRow&)> onChoose;
     std::function<void()> onRescan,onSettings,onOpenFile;
     void refreshText();
     void paint(juce::Graphics&) override;
+    void paintOverChildren(juce::Graphics&) override;
     void resized() override;
     void mouseUp(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
@@ -29,6 +30,8 @@ private:
     juce::Viewport categories;
     juce::TextEditor search;
     juce::TextButton closeButton,rescanButton,settingsButton,openButton;
+    juce::TextButton allButton{"All"},instrumentButton{"Instruments"},effectButton{"Effects"};
+    int pluginType=0;bool typeLocked=false;
     juce::ListBox list;
     int hoverRow=-1;
     std::vector<PluginCatalog::BrowserRow> entries;

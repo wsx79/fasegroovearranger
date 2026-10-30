@@ -3,6 +3,7 @@
 #pragma once
 #include "DawTheme.h"
 #include "FamilyControls.h"
+#include "EffectsUi.h"
 namespace fga {
 class MainComponent;
 // The drag handle on the inspector's right edge, or (forBrowser) on the sample browser's left edge.
@@ -26,7 +27,8 @@ class TrackInspector : public juce::Component {
 public:
     explicit TrackInspector(MainComponent&);
     void refresh();
-    void finishNameEdit(){if(name.isBeingEdited())name.hideEditor(false);}
+    void finishNameEdit(){if(name.isBeingEdited())name.hideEditor(false);effects.finishNameEdit();}
+    void beginEffectRename(int slot){effects.beginRename(slot);}
     int preferredHeight() const { return contentHeight; }
     void paint(juce::Graphics&) override;
     void resized() override;
@@ -38,6 +40,7 @@ private:
     std::vector<juce::Rectangle<int>> cards;
     juce::Label name,source,section;
     juce::Slider gain,pan;
+    EffectChainView effects;
     ActionButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},samplerEditor{"OPEN SAMPLER"},deleteTrack{"DELETE MIDI TRACK"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
     int layout(int width);
     bool validTrack() const;
@@ -62,7 +65,7 @@ private:
     bool updating=false,gainGesture=false,panGesture=false;
     juce::Label name;
     juce::Slider gain,pan;
-    juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"},sendA{"A"},sendB{"B"},output{"M"};
+    juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"},sendA{"A"},sendB{"B"},output{"M"},effects{"FX"};
     std::array<double,2> sendMemory{.25,.25};
 };
 class DawMixer : public juce::Component,public juce::SettableTooltipClient {

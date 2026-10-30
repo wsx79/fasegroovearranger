@@ -124,6 +124,9 @@ jobs:
         # input, pixel layouts, render checks) is verified on Linux and Windows.
         if: '!cancelled() && runner.os != ''macOS'' && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-render.py
+      - name: Native VST3 effects, automation and state integration
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        run: python scripts/test-native-effects.py
       - name: Native VST3 instrument integration
         id: nativehost
         if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
@@ -199,6 +202,7 @@ jobs:
             ${{ runner.temp }}/ai-ui/
             ${{ runner.temp }}/club-audit/
             ${{ runner.temp }}/native-host/
+            ${{ runner.temp }}/native-effects/
             ${{ runner.temp }}/plugin-catalog/plugin-catalog.txt
 
   release:

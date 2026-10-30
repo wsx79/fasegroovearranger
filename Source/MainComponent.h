@@ -65,6 +65,7 @@ public:
     double envelopeMax(int track) const;       // 2 for a gain, 1 for pan and plugin parameters
     double envelopeDefault(int track) const;   // a new lane's flat value
     juce::String envelopeTitle(int track) const;
+    juce::String envelopeValueText(int track,double value)const;
     void showLaneTargetMenu(int track);
     double pixelsPerBar=6;
     std::set<int> selectedClips;
@@ -268,12 +269,24 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow(const juce::File&);
+    bool verifyEffectChain(const juce::File&,const juce::PluginDescription&);
     void dismissAuxiliaryWindow(juce::Component&);
     bool verifyWindowFocus(const juce::File&);
     bool verifyAuditRepairs(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
     void showAiComposer();
+    bool pluginsBusy()const{return loadingPlugin>0;}
+    int trackForSession(std::uint64_t id)const;
+    void showEffects(int track,int replaceSlot=0);
+    void showEffectMenu(int track,int slot,juce::Component*);
+    void renameEffect(int track,int slot,const juce::String&);
+    void moveEffect(int track,int slot,int position);
+    void openHostedEditor(int track,int slot=0);
+    void resolveAutomationParameters(int track,int slot);
+    void resetAutomationTarget(int track);
+    void showAutomationPicker(int track,int source=-100);
+    void selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& parameterId={});
     juce::Result captureAiProject(Project&);
     juce::Result applyAiComposition(const Project&,const Project&,bool listen);
     bool verifyAiComposer(const juce::File&);
@@ -291,7 +304,9 @@ private:
     DawLookAndFeel theme;
     OptionsOverlay options;
     PluginSettings pluginSettings{pluginCatalog};
+    juce::Component::SafePointer<juce::CallOutBox> automationPicker;
     PluginBrowser pluginBrowser{pluginCatalog};
+    std::uint64_t browserTrackSession=0;int browserEffectSlot=0;bool effectsBrowser=false;
     UpdateOverlay updateOverlay;
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
@@ -404,8 +419,8 @@ private:
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
     void loadPluginDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
-    void loadEffectFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});
-    void loadEffectDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false);
+    void loadEffectFile(int,const juce::File&,const juce::String& id={},const juce::String& state={},int slot=0);
+    void loadEffectDescription(int,const juce::PluginDescription&,const juce::String& state={},bool restoring=false,int slot=0);
     void chooseBrowserRow(const PluginCatalog::BrowserRow&);
     void showPluginMenu(juce::Component* anchor=nullptr);
     void chooseFile(const juce::String&,const juce::String&,int,std::function<void(juce::File)>,std::function<void()> cancelled={});

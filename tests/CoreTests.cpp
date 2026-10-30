@@ -343,7 +343,7 @@ int main(int argc,char** argv){try{
         p.removeSection(1);check(t.panAutomation.points[1].beat==16&&t.parameters[0].curve.points[1].beat==20&&p.masterAutomation.points[1].beat==20,"remove shifts every automation lane");
         p.resizeSection(0,8);check(t.parameters[0].curve.points[0].beat==8&&p.masterAutomation.points[0].beat==8&&t.panAutomation.points[1].beat==32,"resize scales every automation lane");
         p.moveSection(0,1);check(t.parameters[0].curve.points[2].beat==40&&t.parameters[0].curve.points[2].value==.25&&p.masterAutomation.points[1].beat==40&&p.masterAutomation.points[1].value==1.5,"automation lanes follow moved sections");
-        for(int k=0;k<12;++k)t.parameters.push_back(lane);p.normalise();check(t.parameters.size()==(size_t)fga::maxParameterLanes,"at most eight plugin lanes per track");
+        for(int k=0;k<fga::maxParameterLanes+4;++k)t.parameters.push_back(lane);p.normalise();check(t.parameters.size()==(size_t)fga::maxParameterLanes,"parameter lane capacity is bounded");
         check(!fga::VolumeAutomation{}.active()&&fga::VolumeAutomation{}.isDefault(),"default lanes are bypassed and not saved");
     }
     {
@@ -553,11 +553,11 @@ int main(int argc,char** argv){try{
     }
     {
         auto p=fga::newProject(1);const int first=p.addMidiTrack(),second=p.addMidiTrack();
-        p.tracks[(size_t)second].name="Personal lead";p.tracks[(size_t)second].clips[0].notes={{1,1,77,112,0}};p.tracks[(size_t)second].instrument="plugin";p.tracks[(size_t)second].instrumentState="saved instrument";p.tracks[(size_t)second].effectState="saved effect";
+        p.tracks[(size_t)second].name="Personal lead";p.tracks[(size_t)second].clips[0].notes={{1,1,77,112,0}};p.tracks[(size_t)second].instrument="plugin";p.tracks[(size_t)second].instrumentState="saved instrument";p.tracks[(size_t)second].effects.push_back({1,"","Test","/fx/Test.vst3","","saved effect",false});
         const auto keep=p.tracks[(size_t)second];const auto factory=p.tracks[0].clips;
         check(!p.deleteMidiTrack(0)&&!p.deleteMidiTrack(fga::leadTrack)&&!p.deleteMidiTrack(99),"only handwritten MIDI tracks can be deleted");
         check(p.deleteMidiTrack(first)&&p.tracks.size()==fga::trackCount+1,"delete a handwritten MIDI track");
-        const auto& moved=p.tracks[(size_t)first];check(moved.sessionId==keep.sessionId,"compaction preserves track session identity");check(moved.name==keep.name&&moved.clips==keep.clips&&moved.instrumentState==keep.instrumentState&&moved.effectState==keep.effectState&&moved.kind==first&&p.tracks[0].clips==factory,"later manual notes, name, plugin and effect state follow their compacted routing ID");
+        const auto& moved=p.tracks[(size_t)first];check(moved.sessionId==keep.sessionId,"compaction preserves track session identity");check(moved.name==keep.name&&moved.clips==keep.clips&&moved.instrumentState==keep.instrumentState&&moved.effects[0].state==keep.effects[0].state&&moved.kind==first&&p.tracks[0].clips==factory,"later manual notes, name, plugin and effect state follow their compacted routing ID");
         check(p.addMidiTrack()==second,"a deleted slot can be reused");
         auto names=fga::newProject(1);const int deleted=names.addMidiTrack();names.addMidiTrack();names.deleteMidiTrack(deleted);const auto added=names.addMidiTrack();
         check(names.tracks[(size_t)deleted].name!=names.tracks[(size_t)added].name,"default MIDI track names remain distinct after deletion and addition");

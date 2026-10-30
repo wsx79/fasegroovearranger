@@ -25,6 +25,7 @@ struct TrackMix {
     std::vector<ParameterAutomation> parameters; // copied on the message thread, only read by the audio thread
     double gain=.75,pan=0,tone=.5,reverb=.12,chorus=0,pump=0,pumpRelease=.2;
     SamplerSettings sampler;int sampleRoot=60;
+    std::array<int,maxTrackEffects> effectOrder{};std::array<bool,maxTrackEffects> effectBypass{};int effectCount=0;
     int group=-1;std::array<double,2> sends{};
     bool mute=false,solo=false;
     int sound=0,pumpRate=0,pumpSource=0,drumNote=36;
@@ -84,9 +85,14 @@ struct Instrument {
     RealtimeEvents<GuideGuitar::Event> guitarEvents;
     RealtimeEvents<GuideLead::Event> leadEvents;
     juce::AudioBuffer<float> scratch,automationBlock;
-    juce::MidiBuffer midi,effectMidi,automationMidi;
-    std::unique_ptr<juce::AudioPluginInstance> plugin,effect;
-    juce::PluginDescription pluginDescription,effectDescription; // as loaded: re-creates them for a private export
+    juce::MidiBuffer midi,effectMidi,chainMidi,automationMidi;
+    struct HostedEffect {std::unique_ptr<juce::AudioPluginInstance> plugin;juce::PluginDescription description;};
+    std::unique_ptr<juce::AudioPluginInstance> plugin;
+    std::array<HostedEffect,maxTrackEffects> effects;
+    std::array<int,maxTrackEffects> effectOrder{};std::array<bool,maxTrackEffects> effectBypass{};int effectCount=0;
+    const TrackMix* controls=nullptr;
+    bool soundAutomated=false;
+    juce::PluginDescription pluginDescription; // as loaded: re-creates them for a private export
     const std::vector<TimedEvent>* schedule=nullptr; // inside the adopted ScheduleState
     const VolumeAutomation* volume=nullptr;         // inside the adopted MixState
     const VolumeAutomation* panAutomation=nullptr;  // inside the adopted MixState
@@ -209,11 +215,11 @@ public:
     juce::Result loadSample(int,const juce::File&,int root,const SamplerSettings& settings={});
     std::shared_ptr<const SampleAsset> sampleAsset(int)const;
     void loadPlugin(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
-    void loadEffect(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
-    void clearEffect(int);
+    void loadEffect(int,const juce::PluginDescription&,std::function<void(juce::Result)>,int slot=1);
+    void clearEffect(int,int slot=0);
     void useInternal(int);
     juce::AudioPluginInstance* plugin(int);
-    juce::AudioPluginInstance* effectPlugin(int);
+    juce::AudioPluginInstance* effectPlugin(int,int slot=0); // slot 0 returns the first available effect
     void capturePluginStates(Project&);
     // Undo for a mix edit (volume, pan, sends). Copies the last snapshot if one exists and
     // never calls getStateInformation or takes the audio lock: that lock silences playback.
@@ -222,7 +228,7 @@ public:
     // the next capture re-serialises it, otherwise the cached blob is reused.
     void invalidatePluginStates(){++pluginStateGeneration;}
     void restorePluginState(int,const juce::String&);
-    void restoreEffectState(int,const juce::String&);
+    void restoreEffectState(int,const juce::String&,int slot=1);
     // Same processing graph for playback and export. Export temporarily owns the engine.
     juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr);
     void markMissing(int);
@@ -295,11 +301,12 @@ private:
     Handoff<PreviewClip> previews;
     std::atomic<bool> previewing{false};
     void mixPreview(float* const* output,int channels,int count);
-    void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,bool effect,const juce::PluginDescription&);
+    void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,int effectSlot,const juce::PluginDescription&);
     double sampleRate=44100,master=.8;
     std::atomic<double> length{0},loopFrom{0},loopTo{0};
     // Serialised plugin state, reused until something invalidates it.
-    std::vector<std::string> cachedInstrumentStates,cachedEffectStates;
+    std::vector<std::string> cachedInstrumentStates;
+    std::vector<std::array<std::string,maxTrackEffects>> cachedEffectStates;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
@@ -307,11 +314,12 @@ private:
     double deviceRate=44100;
     int deviceBlock=512;
     std::atomic<bool> looping{false},loopBypassed{false},needsReset{true},needsChase{false},needsResync{false},hardReset{true};
+    std::array<std::array<std::uint64_t,maxTrackEffects+1>,maxTracks> loadRevision{};
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
     void prepareBuses(double rate,int block);
     void detachSource(int track,int mode,std::unique_ptr<juce::Synthesiser> sampler,std::unique_ptr<juce::AudioPluginInstance>& oldPlugin,std::unique_ptr<juce::Synthesiser>& oldSampler);
-    void loadHosted(int track,const juce::PluginDescription&,bool effect,std::function<void(juce::Result)>);
-    void restoreHosted(int track,const juce::String& state,bool effect);
+    void loadHosted(int track,const juce::PluginDescription&,int effectSlot,std::function<void(juce::Result)>);
+    void restoreHosted(int track,const juce::String& state,int effectSlot);
     void adoptState();
     void adoptWhileStopped();
     void applyMix(const MixState&,bool snap);
@@ -320,6 +328,7 @@ private:
     void flushIdle(int count);
     void click(float* const* output,int channels,int count,double beat,bool force=false);
     void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1,bool schedule=true);
+    void applySoundAutomation(Instrument&,double beat);
     void applyParameterAutomation(Instrument&,double beat,int slot);
     void processHosted(Instrument&,juce::AudioPluginInstance&,juce::AudioBuffer<float>&,juce::MidiBuffer&,double beat,int slot);
 };

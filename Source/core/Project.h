@@ -12,6 +12,7 @@
 
 namespace sgk {struct GrooveSettings;struct GroovePattern;}
 namespace fga {
+inline constexpr const char* hostedStatePrefix="FGAHOST1:"; // native state plus queued controller parameter values
 constexpr int leadTrack = 17;
 constexpr int legacyTrackCount = 17;
 constexpr int trackCount = 18; // generated tracks, stable IDs
@@ -71,6 +72,12 @@ struct EngineOptions {
     std::array<bool,12> laneMute {};
 };
 inline std::uint64_t nextTrackSessionId(){static std::atomic<std::uint64_t> next{1};return next.fetch_add(1,std::memory_order_relaxed);}
+struct EffectSlot {
+    int slot=1; // stable automation target, independent of position in the chain
+    std::string name,pluginName,path,pluginId,state;
+    bool bypassed=false;
+    const std::string& displayName() const {return name.empty()?pluginName:name;}
+};
 struct Track {
     std::uint64_t sessionId=nextTrackSessionId(); // transient identity; copied by Undo, never serialized or used for MIDI routing
     std::string name;
@@ -79,7 +86,12 @@ struct Track {
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
-    std::string effectPath, effectId, effectState;
+    std::vector<EffectSlot> effects;
+    EffectSlot* effect(int slot){for(auto& e:effects)if(e.slot==slot)return &e;return nullptr;}
+    const EffectSlot* effect(int slot)const{for(const auto& e:effects)if(e.slot==slot)return &e;return nullptr;}
+    int nextEffectSlot()const{for(int slot=1;slot<=maxTrackEffects;++slot)if(!effect(slot))return slot;return 0;}
+    bool removeEffect(int slot){auto it=std::find_if(effects.begin(),effects.end(),[slot](const auto& e){return e.slot==slot;});if(it==effects.end())return false;effects.erase(it);parameters.erase(std::remove_if(parameters.begin(),parameters.end(),[slot](const auto& lane){return lane.slot==slot;}),parameters.end());return true;}
+    bool moveEffect(int slot,int position){auto it=std::find_if(effects.begin(),effects.end(),[slot](const auto& e){return e.slot==slot;});if(it==effects.end()||position<0||position>=(int)effects.size())return false;auto saved=std::move(*it);effects.erase(it);effects.insert(effects.begin()+position,std::move(saved));return true;}
     VolumeAutomation volume;
     VolumeAutomation panAutomation;            // 0..1 (see panFromAutomation); replaces `pan` while active
     std::vector<ParameterAutomation> parameters; // hosted plugin parameters, at most maxParameterLanes
@@ -92,6 +104,7 @@ struct Track {
     bool freeTimeline = false;
     std::vector<Clip> clips;
 };
+inline bool sameEffectPlugins(const Track& a,const Track& b){if(a.effects.size()!=b.effects.size())return false;for(const auto& fx:a.effects){auto* old=b.effect(fx.slot);if(!old||old->path!=fx.path||old->pluginId!=fx.pluginId)return false;}return true;}
 inline bool hasGenerator(const Track& t){return !isManualTrack(t.kind)||t.vocalChops;}
 struct Settings {
     int genre = 1, key = 9, scale = 1, extension = 2, voicing = 0;

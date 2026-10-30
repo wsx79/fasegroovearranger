@@ -17,7 +17,7 @@ private:std::atomic<float> value{.75f};
 };
 class AuditPlugin final : public juce::AudioPluginInstance {
 public:
-    AuditPlugin():AudioPluginInstance(BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
+    AuditPlugin(bool effect=false,float shift=0,bool mono=false,float right=1):AudioPluginInstance(effect?BusesProperties().withInput("Input",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true).withOutput("Output",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true):BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)),transform(effect),offset(shift),rightScale(right){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
     std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false;int calls=0,samples=0,lastMidi=-1;
     std::array<int,1024> sizes{},starts{};std::array<float,1024> values{};std::array<double,1024> positions{};
     const juce::String getName()const override{return "Audit probe";}
@@ -27,7 +27,7 @@ public:
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer& midi)override{
         inside=true;if(slow)juce::Thread::sleep(2);if(calls<(int)sizes.size()){sizes[(size_t)calls]=block.getNumSamples();starts[(size_t)calls]=samples;values[(size_t)calls]=gain->get();if(auto* head=getPlayHead())if(auto p=head->getPosition())positions[(size_t)calls]=p->getPpqPosition().orFallback(-1.);}++calls;
         for(auto event:midi)if(event.getMessage().isNoteOn())lastMidi=samples+event.samplePosition;
-        for(int c=0;c<block.getNumChannels();++c)juce::FloatVectorOperations::fill(block.getWritePointer(c),gain->get(),block.getNumSamples());samples+=block.getNumSamples();inside=false;
+        for(int c=0;c<block.getNumChannels();++c){if(transform){block.applyGain(c,0,block.getNumSamples(),gain->get());for(int i=0;i<block.getNumSamples();++i)block.addSample(c,i,offset);}else juce::FloatVectorOperations::fill(block.getWritePointer(c),gain->get()*(c==1?rightScale:1.f),block.getNumSamples());}samples+=block.getNumSamples();inside=false;
     }
     bool acceptsMidi()const override{return true;}bool producesMidi()const override{return false;}bool isMidiEffect()const override{return false;}
     double getTailLengthSeconds()const override{return 0;}int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
@@ -35,11 +35,23 @@ public:
     bool hasEditor()const override{return false;}juce::AudioProcessorEditor* createEditor()override{return nullptr;}
     void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
     void setStateInformation(const void*,int)override{if(inside)overlap=true;}
-private:AuditGain* gain=nullptr;
+private:AuditGain* gain=nullptr;bool transform=false;float offset=0,rightScale=1;
 };
 }
 struct EngineAuditTests {
-    static void run(){
+    static void effects(){
+        AudioEngine engine(AudioEngine::Offline{});for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(32);p.sections={{Section::main,2,"FX"}};p.masterGain=1;
+        for(auto& t:p.tracks){t.gain=0;t.parameters.clear();for(auto& c:t.clips)c.notes.clear();}p.tracks[0].gain=1;p.tracks[0].pan=0;p.tracks[0].effects={{1,"A","Probe","/A","","",false},{5,"B","Probe","/B","","",false}};p.normalise();auto& i=*engine.instruments[0];i.plugin=std::make_unique<AuditPlugin>();i.mode=2;i.effects[0].plugin=std::make_unique<AuditPlugin>(true,.1f);i.effects[4].plugin=std::make_unique<AuditPlugin>(true);i.effects[4].plugin->getParameters()[0]->setValue(1);i.effects[0].plugin->setLatencySamples(13);i.effects[4].plugin->setLatencySamples(29);i.prepare(44100,512);engine.hostedCount=3;
+        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto render=[&](float expected){engine.publish(p);engine.play(true);for(int k=0;k<5;++k)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(std::abs(block.getSample(0,500)-expected)<.001f,"serial effects preserve measurable order and gain");};
+        render(4.7f);requireAudit(engine.latencySamples()==42,"PDC sums enabled insert latencies");p.tracks[0].moveEffect(5,0);render(4.6f);
+        ParameterAutomation lane;lane.slot=1;lane.index=0;lane.curve.enabled=true;lane.curve.points={{0,.25,0},{8,.25,0}};p.tracks[0].parameters.push_back(lane);render(1.6f);i.effects[0].plugin->getParameters()[0]->setValue(.9f);engine.invalidatePluginStates();engine.capturePluginStates(p);const auto recalled=p.tracks[0].effect(1)->state;render(1.6f);engine.restoreEffectState(0,juce::String::fromUTF8(recalled.c_str()),1);render(1.6f);p.tracks[0].moveEffect(1,0);render(1.7f);
+        p.tracks[0].effect(1)->bypassed=true;render(3);requireAudit(engine.latencySamples()==29,"bypassed effect does not contribute latency");i.effects[0].plugin->getParameters()[0]->setValue(.9f);p.tracks[0].effect(1)->bypassed=false;render(1.7f);lane.slot=5;p.tracks[0].parameters.push_back(lane);render(.425f);
+        const auto preserved=p.tracks[0].parameters[1].curve.points;p.tracks[0].removeEffect(1);engine.clearEffect(0,1);render(.75f);requireAudit(p.tracks[0].parameters.size()==1&&p.tracks[0].parameters[0].slot==5&&p.tracks[0].parameters[0].curve.points.size()==preserved.size(),"removal keeps the other instance's automation attached");
+        engine.stop();engine.clearEffect(0);i.plugin=std::make_unique<AuditPlugin>(false,0,false,1.f/3);i.effects[0].plugin=std::make_unique<AuditPlugin>(true,0,true);engine.hostedCount=2;i.prepare(44100,512);p.tracks[0].effects={{1,"Mono","Mono probe","/mono","","",false}};p.tracks[0].parameters.clear();render(1.5f);requireAudit(std::abs(block.getSample(1,500)-1.5f)<.001f,"mono inserts downmix both input sides and return to stereo");
+        engine.stop();engine.useInternal(0);engine.clearEffect(0);p.tracks[0].effects.clear();p.tracks[0].parameters.clear();lane.slot=-1;lane.index=0;lane.curve.points={{0,.2,0},{8,.2,0}};p.tracks[0].parameters.push_back(lane);engine.publish(p);engine.play(true);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(std::abs(i.tone.load()-.2)<1.e-6,"native guide tone automation reaches the sound");
+        engine.stop();auto asset=std::make_shared<SampleAsset>();asset->rate=44100;asset->frames=4410;asset->audio.setSize(2,4410);asset->audio.clear();i.sampler=std::make_unique<SampleSynth>(asset,SamplerSettings{},60,false);i.mode=1;i.prepare(44100,512);p.tracks[0].instrument="sample";p.tracks[0].parameters[0].index=4;p.tracks[0].parameters[0].curve.points={{0,0,0},{8,0,0}};engine.publish(p);engine.play(true);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);auto* sampler=dynamic_cast<SampleSynth*>(i.sampler.get());requireAudit(sampler&&sampler->settings().filter&&sampler->settings().cutoff==20&&!p.tracks[0].sampler.filter,"sample filter automation affects playback without changing stored sampler settings");p.tracks[0].parameters[0].curve.enabled=false;engine.updateMix(p);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(!sampler->settings().filter&&sampler->settings().cutoff==p.tracks[0].sampler.cutoff,"native automation bypass returns to stored sound settings");engine.stop();
+    }
+    static void run(){effects();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

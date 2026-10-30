@@ -133,7 +133,7 @@ static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
     return juce::Result::ok();
 }
 juce::var projectJson(const Project& p){
-    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
+    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return !t.effects.empty()||t.instrumentState.rfind(hostedStatePrefix,0)==0||t.parameters.size()>8||std::any_of(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot<0;});})?4:extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
@@ -149,16 +149,16 @@ juce::var projectJson(const Project& p){
         set(a,"volumeAutomation",envelopeJson(t.volume));
         // Pan and plugin automation are written only when used: older projects save as before.
         if(!t.panAutomation.isDefault())set(a,"panAutomation",envelopeJson(t.panAutomation));
-        if(!t.parameters.empty()){juce::Array<juce::var> lanes;for(const auto& lane:t.parameters){auto l=envelopeJson(lane.curve);set(l,"slot",lane.slot);set(l,"index",lane.index);set(l,"name",lane.name);lanes.add(l);}set(a,"parameterAutomation",lanes);}
+        if(!t.parameters.empty()){juce::Array<juce::var> lanes;for(const auto& lane:t.parameters){auto l=envelopeJson(lane.curve);set(l,"slot",lane.slot);set(l,"index",lane.index);set(l,"name",lane.name);if(!lane.parameterId.empty())set(l,"parameterId",lane.parameterId);lanes.add(l);}set(a,"parameterAutomation",lanes);}
         set(a,"instrument",t.instrument);set(a,"instrumentPath",t.instrumentPath);set(a,"instrumentId",t.instrumentId);set(a,"instrumentState",t.instrumentState);
-        if(!t.effectPath.empty()||!t.effectId.empty()||!t.effectState.empty()){set(a,"effectPath",t.effectPath);set(a,"effectId",t.effectId);set(a,"effectState",t.effectState);}
+        if(!t.effects.empty()){juce::Array<juce::var> effects;for(const auto& e:t.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);effects.add(fx);}set(a,"effects",effects);}
         juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);if(clip.motifSeed)set(b,"motifSeed",(juce::int64)clip.motifSeed);set(b,"locked",clip.locked);if(t.freeTimeline){set(b,"position",clip.position);set(b,"role",clip.role);}if(clip.span>0)set(b,"span",clip.span);
             if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);}juce::Array<juce::var> notes;
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
     }set(o,"tracks",tracks);return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
-    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3))return juce::Result::fail("Formato progetto non supportato.");
+    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3&&(int)o["version"]!=4))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
     if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<1||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (1–32 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
@@ -178,10 +178,12 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
         if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
         if(a.hasProperty("parameterAutomation")){auto* lanes=a["parameterAutomation"].getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");
-            for(const auto& l:*lanes){if(!l.isObject())return juce::Result::fail("Invalid plugin automation lane.");ParameterAutomation lane;lane.slot=(int)num(l,"slot",0);lane.index=(int)num(l,"index",-1);lane.name=str(l,"name");if(auto r=readEnvelope(l,lane.curve);r.failed())return r;t.parameters.push_back(std::move(lane));}}
+            for(const auto& l:*lanes){if(!l.isObject())return juce::Result::fail("Invalid plugin automation lane.");ParameterAutomation lane;const double slot=num(l,"slot",0);if(slot< -1||slot>maxTrackEffects||std::floor(slot)!=slot)return juce::Result::fail("Invalid automation target.");lane.slot=(int)slot;lane.index=(int)num(l,"index",-1);lane.name=str(l,"name");lane.parameterId=str(l,"parameterId");if(auto r=readEnvelope(l,lane.curve);r.failed())return r;t.parameters.push_back(std::move(lane));}}
         t.instrument=str(a,"instrument","internal");if(t.instrument!="internal"&&t.instrument!="sample"&&t.instrument!="plugin")return juce::Result::fail("Tipo strumento non valido.");
         t.instrumentPath=str(a,"instrumentPath");t.instrumentId=str(a,"instrumentId");t.instrumentState=str(a,"instrumentState");
-        t.effectPath=str(a,"effectPath");t.effectId=str(a,"effectId");t.effectState=str(a,"effectState");
+        if(a.hasProperty("effects")){auto* effects=a["effects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid effect chain.");
+            for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||t.effect((int)slot))return juce::Result::fail("Invalid or duplicate effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing effect identifier.");t.effects.push_back(std::move(e));}
+        }else if(!str(a,"effectPath").empty()||!str(a,"effectId").empty()){EffectSlot e;e.path=str(a,"effectPath");e.pluginId=str(a,"effectId");e.state=str(a,"effectState");if(auto xml=juce::XmlDocument::parse(juce::String::fromUTF8(e.pluginId.c_str())))e.pluginName=xml->getStringAttribute("name").toStdString();if(e.pluginName.empty())e.pluginName=juce::File(juce::String::fromUTF8(e.path.c_str())).getFileNameWithoutExtension().toStdString();t.effects.push_back(std::move(e));}
         t.freeTimeline=(int)o["version"]>=2&&(bool)a.getProperty("freeTimeline",false);
         auto* clips=a["clips"].getArray();if(!clips||(t.freeTimeline?clips->size()>4096:clips->size()!=sections->size()))return juce::Result::fail("Clip e sezioni non corrispondono.");
         for(const auto& b:*clips){Clip c;c.motifSeed=(std::uint32_t)(juce::int64)b.getProperty("motifSeed",0);c.seed=(std::uint32_t)(juce::int64)b.getProperty("seed",1);c.locked=(bool)b["locked"];auto* notes=b["notes"].getArray();if(!notes)return juce::Result::fail("Note mancanti.");

@@ -82,8 +82,8 @@ void addEngines(std::vector<PluginCatalog::BrowserRow>& rows,const juce::String&
         if(query.isNotEmpty()&&!name.containsIgnoreCase(query)&&!juce::String(e.detail).containsIgnoreCase(query)&&!juce::String("FaseGroove").containsIgnoreCase(query))continue;
         PluginCatalog::BrowserRow row;row.kind=PluginCatalog::BrowserRow::Kind::engine;row.engine=e.id;row.name=name;row.detail=e.detail;row.manufacturer="FaseGroove";row.key="fg\x1f"+juce::String(e.id);rows.push_back(row);
     }
-    if(query.isEmpty()||juce::String("No effect").containsIgnoreCase(query)||juce::String("FaseGroove").containsIgnoreCase(query)){
-        PluginCatalog::BrowserRow row;row.kind=PluginCatalog::BrowserRow::Kind::noEffect;row.name="No effect";row.detail="Remove the insert effect";row.manufacturer="FaseGroove";row.key=juce::String("fg")+"\x1f"+"clear";rows.push_back(row);
+    if(query.isEmpty()||juce::String("Remove all effects").containsIgnoreCase(query)||juce::String("FaseGroove").containsIgnoreCase(query)){
+        PluginCatalog::BrowserRow row;row.kind=PluginCatalog::BrowserRow::Kind::noEffect;row.name="Remove all effects";row.detail="Remove all effects";row.manufacturer="FaseGroove";row.key=juce::String("fg")+"\x1f"+"clear";rows.push_back(row);
     }
 }
 PluginCatalog::BrowserRow rowFor(const juce::PluginDescription& d,int index){

@@ -45,13 +45,15 @@ struct VolumeAutomation {
 // pan 0 = left, .5 = centre, 1 = right; a plugin parameter takes the value as it is.
 inline double panFromAutomation(double value){return std::clamp(value*2.-1.,-1.,1.);}
 inline double automationFromPan(double pan){return std::clamp((pan+1.)*.5,0.,1.);}
-// A hosted plugin parameter: slot 0 = the track's instrument plugin, 1 = its insert effect.
+// Stable target: -1 = native sound, 0 = instrument, 1..8 = effect instance ID.
 // The index is the plugin's own parameter index; the name is kept to show it and to find
 // the parameter again if the plugin's list changes.
 struct ParameterAutomation {
     int slot=0,index=-1;
     std::string name;
+    std::string parameterId; // plugin-provided ID; index is resolved again when loading
     VolumeAutomation curve;
 };
-constexpr int maxParameterLanes=8;
+constexpr int maxParameterLanes=32;
+constexpr int maxTrackEffects=8;
 }

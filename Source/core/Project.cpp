@@ -350,9 +350,12 @@ void Project::normalise() {
         auto& t=tracks[i]; t.kind=(int)i; if(!isManualTrack(t.kind))t.vocalChops=false; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.sampler.normalise();t.group=std::clamp(t.group,-1,1);for(auto& send:t.sends)send=finite(send,0,0,1);if(t.sampleHash.size()>64)t.sampleHash.clear();
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
+        std::array<bool,maxTrackEffects> usedEffects{};
+        t.effects.erase(std::remove_if(t.effects.begin(),t.effects.end(),[&](const auto& fx){if(fx.slot<1||fx.slot>maxTrackEffects||usedEffects[(size_t)(fx.slot-1)])return true;usedEffects[(size_t)(fx.slot-1)]=true;return false;}),t.effects.end());
+        for(auto& fx:t.effects){if(fx.name.size()>384)fx.name.resize(384);if(fx.pluginName.empty())fx.pluginName="Effect";}
         t.volume.normalise(length());t.panAutomation.normalise(length(),1.);
         if(t.parameters.size()>(size_t)maxParameterLanes)t.parameters.resize((size_t)maxParameterLanes);
-        for(auto& lane:t.parameters){lane.slot=std::clamp(lane.slot,0,1);lane.index=std::max(-1,lane.index);if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
+        for(auto& lane:t.parameters){if(lane.slot< -1||lane.slot>maxTrackEffects){lane.slot=0;lane.index=-1;}lane.index=std::max(-1,lane.index);if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
         auto& e=t.engine;
         e.globalOctave=std::clamp(e.globalOctave,-2,2);e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
         e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
