@@ -35,10 +35,12 @@ struct HeaderChrome { juce::Rectangle<int> name,source,meter,led,automation,mute
 HeaderChrome headerChrome(int hx,int y,int h){
     HeaderChrome c;auto band=juce::Rectangle<int>(hx,y,headerWidth,h).withTrimmedRight(Daw::unit);const int side=5*Daw::unit;
     c.gear=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.solo=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.mute=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.automation=band.removeFromRight(side);
-    c.name={hx+9*Daw::unit,y+Daw::unit,c.automation.getX()-(hx+9*Daw::unit)-Daw::unit,16};
+    c.name={hx+9*Daw::unit,y+Daw::unit,std::max(24,c.automation.getX()-(hx+9*Daw::unit)-Daw::unit),16};
     c.source={c.name.getX(),y+5*Daw::unit,c.name.getWidth(),12};
-    c.meter={c.name.getX(),y+h-2*Daw::unit-2,22*Daw::unit,6};
-    c.led={c.meter.getRight()+Daw::unit,c.meter.getY(),2*Daw::unit,6};
+    // The meter and clip light stop before the automation button, so a click on A is not the clip reset.
+    const int meterRight=c.automation.getX()-Daw::unit;
+    c.led={meterRight-2*Daw::unit,y+h-2*Daw::unit-2,2*Daw::unit,6};
+    c.meter={c.name.getX(),c.led.getY(),std::max(6*Daw::unit,c.led.getX()-c.name.getX()-Daw::unit),6};
     return c;
 }
 juce::ModifierKeys physicalMouseModifiers(){
@@ -412,11 +414,12 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
     const auto saved=owner.project;const auto visibility=volumeVisible;const int track=4;const double zoom=pixelsPerBar;pixelsPerBar=24;owner.select(track,0);owner.arrangementPort.setViewPosition(0,0);
     bool ok=!volumeVisible[(size_t)track]&&!owner.project.tracks[(size_t)track].volume.enabled;
     auto click=[&](juce::Point<float> p,int mods=0){return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),p,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|mods),1,0,0,0,0,this,this,juce::Time::getCurrentTime(),p,juce::Time::getCurrentTime(),1,false);};
-    mouseDown(click({140,(float)rulerHeight+16}));ok=volumeVisible[(size_t)track]&&ok;
+    const auto automationSlot=headerChrome(0,rulerHeight,rowHeight(0)).automation;
+    mouseDown(click({(float)automationSlot.getCentreX(),(float)rulerHeight+16}));ok=volumeVisible[(size_t)track]&&ok;
     juce::Point<float> at(headerWidth+24,volumeY(track,.5));mouseDown(click(at));mouseUp(click(at));
     auto& v=owner.project.tracks[(size_t)track].volume;ok=v.enabled&&v.points.size()==3&&std::abs(v.valueAt(4)-.5)<1e-6&&ok;
-    mouseDown(click(at));mouseDrag(click(at.translated(24,-8)));mouseUp(click(at));ok=std::abs(v.points[1].beat-8)<1e-6&&std::abs(v.points[1].value-.75)<1e-6&&ok;
-    at={headerWidth+12,volumeY(track,.9)};mouseDown(click(at,juce::ModifierKeys::altModifier));mouseDrag(click(at.translated(0,-20),juce::ModifierKeys::altModifier));mouseUp(click(at));ok=v.points[0].curve>.4&&ok;
+    mouseDown(click(at));mouseDrag(click(at.translated(24,-8)));mouseUp(click(at));ok=v.points.size()>1&&std::abs(v.points[1].beat-8)<1e-6&&std::abs(v.points[1].value-.75)<1e-6&&ok;
+    at={headerWidth+12,volumeY(track,.9)};mouseDown(click(at,juce::ModifierKeys::altModifier));mouseDrag(click(at.translated(0,-20),juce::ModifierKeys::altModifier));mouseUp(click(at));ok=!v.points.empty()&&v.points[0].curve>.4&&ok;
     owner.changed(false);auto screenshot=owner.createComponentSnapshot(owner.getLocalBounds());if(auto out=folder.getChildFile("volume-automation.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(screenshot,*out)&&ok;}
     const auto midi=midiFile(owner.project);mouseDown(click({24,(float)rulerHeight+rowHeight(0)+30}));ok=!v.enabled&&midiFile(owner.project)==midi&&ok;
     {
@@ -430,7 +433,7 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
         if(auto out=folder.getChildFile("pan-master-automation.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(owner.createComponentSnapshot(owner.getLocalBounds()),*out)&&ok;}
         laneTarget=targets;
     }
-    mouseDown(click({140,(float)rulerHeight+16}));ok=!volumeVisible[(size_t)track]&&ok;
+    mouseDown(click({(float)automationSlot.getCentreX(),(float)rulerHeight+16}));ok=!volumeVisible[(size_t)track]&&ok;
     owner.project=saved;volumeVisible=visibility;pixelsPerBar=zoom;owner.changed();owner.undoStack.clear();owner.redoStack.clear();folder.getChildFile("volume-automation-ui.txt").replaceWithText(ok?"PASS hidden and bypassed default, lane button, add/move/curve, bypass, pan and master lanes with Undo, hide, MIDI unchanged":"FAIL automation editing");return ok;
 }
 PianoRoll::PianoRoll(MainComponent& m):owner(m){setWantsKeyboardFocus(true);}

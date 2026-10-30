@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.27.1
+
+- The track-header automation button is the control the self-test clicks. A missed click no longer reads past the end of an empty lane, which crashed the Windows smoke test and stopped the Linux UI run.
+
 ## 0.27.0
 
 - Mute is olive, solo is yellow and automation is magenta, separate from the track colours. Studio and the mixer use the same surfaces as the arranger, and a clipped meter is red.

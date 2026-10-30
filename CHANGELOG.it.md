@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.27.1
+
+- Il pulsante di automazione nell'intestazione è quello che il test preme. Un clic a vuoto non legge più oltre la fine di una corsia vuota: era il crash dello smoke test su Windows e l'interruzione su Linux.
+
 ## 0.27.0
 
 - Mute è oliva, solo è giallo e l'automazione è magenta, distinti dai colori delle tracce. Studio e mixer usano le stesse superfici dell'arranger, e il clip del meter è rosso.
