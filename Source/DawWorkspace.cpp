@@ -104,14 +104,21 @@ int TrackInspector::layout(int width){
     const int half=(w-gap)/2;int y=8,cardStart=y;
     auto title=[&](const char* text){captions.push_back({text,{inset,y+6,w,14}});y+=22;};
     auto row=[&](juce::Component& c,int height=24){c.setBounds(inset,y,w,height);y+=height+4;};
-    auto pair=[&](juce::Component& a,juce::Component& b){a.setBounds(inset,y,half,24);b.setBounds(inset+half+gap,y,w-half-gap,24);y+=28;};
+    // Width follows the translated label (Suono guida is much longer than Built-in) and the
+    // leftover goes to the widest, so a short label does not steal room from a long one.
+    auto share=[&](std::initializer_list<juce::Button*> buttons){
+        const int n=(int)buttons.size();if(n==0)return;const int avail=w-gap*(n-1);int sum=0;
+        auto need=[&](juce::Button& b){return std::max(40,(int)std::ceil(juce::GlyphArrangement::getStringWidth(Daw::font(11.f,true),b.getButtonText()))+16);};
+        for(auto* b:buttons)sum+=need(*b);int x=inset,used=0,i=0;
+        for(auto* b:buttons){const int room=std::max(40,avail-used-40*(n-1-i));int width=i==n-1?std::max(1,avail-used):std::clamp(need(*b)*avail/std::max(1,sum),40,room);b->setBounds(x,y,width,24);x+=width+gap;used+=width;++i;}
+        y+=28;
+    };
     auto endCard=[&]{y+=6;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=6;cardStart=y;};
     const int close=24;captions.push_back({"TRACK INSPECTOR",{inset,y+(close-14)/2,std::max(40,w-close-8),14}});owner.inspectorCollapse.setBounds(width-margin-8-close,y,close,close);y+=close+6;
     name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+22,w,16);y+=40;
     mute.setBounds(inset,y,32,24);solo.setBounds(inset+38,y,32,24);lockTrack.setBounds(inset+76,y,w-76,24);y+=28;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
     title("SOUND ASSIGNMENT");
-    const int third=(w-gap*2)/3;
-    internal.setBounds(inset,y,third,24);sample.setBounds(inset+third+gap,y,third,24);plugin.setBounds(inset+2*(third+gap),y,w-2*(third+gap),24);y+=28;
+    share({&internal,&sample,&plugin});
     row(instrument);
     const bool external=validTrack()&&(owner.audio.plugin(owner.selectedTrack)!=nullptr||owner.audio.effectPlugin(owner.selectedTrack)!=nullptr);
     pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
@@ -121,7 +128,7 @@ int TrackInspector::layout(int width){
     gain.setBounds(inset,y,half,76);pan.setBounds(inset+half+gap,y,w-half-gap,76);
     captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;endCard();
     title("SELECTED CLIP");
-    row(section,18);pair(editor,regenerate);pair(loop,lockClip);endCard();
+    row(section,18);share({&editor,&regenerate});share({&loop,&lockClip});endCard();
     return y;
 }
 void TrackInspector::resized(){

@@ -416,7 +416,7 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     const float width=juce::GlyphArrangement::getStringWidth(font,getButtonText())+(icon?iconSize+6.f:0.f);
     area=area.withSizeKeepingCentre(std::min(area.getWidth(),width),area.getHeight());
     if(icon){IconButton::drawIcon(g,glyph,area.removeFromLeft(iconSize).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);area.removeFromLeft(6.f);}
-    g.setColour(ink);g.setFont(font);g.drawFittedText(getButtonText(),area.toNearestInt(),juce::Justification::centred,1,.85f);g.endTransparencyLayer();
+    g.setColour(ink);g.setFont(font);g.drawFittedText(getButtonText(),area.toNearestInt(),juce::Justification::centred,1,.55f);g.endTransparencyLayer();
 }
 
 }
