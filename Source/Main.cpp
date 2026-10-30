@@ -120,6 +120,7 @@ public:
                     engine.publish(p);engine.play(true);const double at=engine.position();
                     r=copy->exportAudio(p,folder.getChildFile("host-offline.wav"),0,false,[]{return false;},[](double){});if(r.failed()){fail(r.getErrorMessage());return;}
                     if(!engine.isPlaying()||engine.position()!=at){fail("Private export disturbed the live transport");return;}engine.stop();}
+                if(!window->content->main.verifyLegacyHostedProjects(folder,description)){fail("Legacy hosted project reopen/Play regression; see host-legacy.txt");return;}
                 folder.getChildFile("host.txt").replaceWithText("PASS native VST3 load, MIDI/playhead, editor lifecycle and project state restore");
                 setApplicationReturnValue(0);quit();
             });return;

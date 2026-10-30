@@ -6,13 +6,13 @@
 #include <cmath>
 class HostProbe final:public juce::AudioProcessor {
 public:
-    HostProbe():AudioProcessor(BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)){
+    HostProbe():AudioProcessor(BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true).withOutput("Part 2",juce::AudioChannelSet::stereo(),true)){
         addParameter(gain=new juce::AudioParameterFloat(juce::ParameterID{"gain",1},"Gain",juce::NormalisableRange<float>(0,1),.25f));
     }
     const juce::String getName()const override{return "Arranger Host Probe";}
     void prepareToPlay(double rate,int)override{sampleRate=rate;phase.fill(0);velocity.fill(0);}
     void releaseResources()override{}
-    bool isBusesLayoutSupported(const BusesLayout& b)const override{return b.getMainOutputChannelSet()==juce::AudioChannelSet::stereo()&&b.getMainInputChannelSet().isDisabled();}
+    bool isBusesLayoutSupported(const BusesLayout& b)const override{return b.outputBuses.size()==2&&b.getMainOutputChannelSet()==juce::AudioChannelSet::stereo()&&b.getMainInputChannelSet().isDisabled()&&(b.outputBuses[1].isDisabled()||b.outputBuses[1]==juce::AudioChannelSet::stereo());}
     void processBlock(juce::AudioBuffer<float>& output,juce::MidiBuffer& midi)override{
         output.clear();auto* head=getPlayHead();if(!head)return;auto position=head->getPosition();
         if(!position||!position->getBpm()||!position->getIsPlaying())return;

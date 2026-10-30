@@ -362,8 +362,10 @@ namespace {
 // and let resync strike the held notes on the new one. Only this track is touched.
 void restrike(Instrument& i){i.releaseVoices();i.sounding.fill(false);i.resync=true;}
 bool configure(juce::AudioPluginInstance& next,bool effect,juce::String& error){
-    next.enableAllBuses();if(!next.disableNonMainBuses()){error="This plugin requires unsupported auxiliary audio routing.";return false;}auto layout=next.getBusesLayout();for(int b=1;b<layout.inputBuses.size();++b)layout.inputBuses.getReference(b)=juce::AudioChannelSet::disabled();for(int b=1;b<layout.outputBuses.size();++b)layout.outputBuses.getReference(b)=juce::AudioChannelSet::disabled();
-    if(effect){if(!layout.inputBuses.isEmpty())layout.inputBuses.getReference(0)=juce::AudioChannelSet::stereo();}
+    // Preserve the pre-0.30 instrument layout: saved multitimbral instruments can
+    // rely on their secondary outputs. Only insert effects use main-bus routing.
+    next.enableAllBuses();if(effect&&!next.disableNonMainBuses()){error="This plugin requires unsupported auxiliary audio routing.";return false;}auto layout=next.getBusesLayout();
+    if(effect){for(int b=1;b<layout.inputBuses.size();++b)layout.inputBuses.getReference(b)=juce::AudioChannelSet::disabled();for(int b=1;b<layout.outputBuses.size();++b)layout.outputBuses.getReference(b)=juce::AudioChannelSet::disabled();if(!layout.inputBuses.isEmpty())layout.inputBuses.getReference(0)=juce::AudioChannelSet::stereo();}
     else for(auto& b:layout.inputBuses)b=juce::AudioChannelSet::disabled();
     if(!layout.outputBuses.isEmpty())layout.outputBuses.getReference(0)=juce::AudioChannelSet::stereo();
     if(next.checkBusesLayoutSupported(layout))next.setBusesLayout(layout);

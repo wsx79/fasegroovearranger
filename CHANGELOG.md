@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.2
+
+- Restore the pre-0.30 secondary-output layout for hosted instruments when reopening projects. Restrict main-bus routing to insert effects. Add release checks that open and play legacy project versions 1/2/3 with multiple VST3 instruments, indexed automation and saved native state, then save and reopen version 4.
+
 ## 0.30.1
 
 - Studio: opt-in envelope display, immediate slice selection, draggable markers and reverse-aware waveform. Remove the empty-track clip hint while retaining double-click creation.

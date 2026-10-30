@@ -809,6 +809,39 @@ return false;
 #endif
 }
 
+bool MainComponent::verifyLegacyHostedProjects(const juce::File& folder,const juce::PluginDescription& description){
+#if !FGA_SELF_TESTS
+    juce::ignoreUnused(folder,description);return false;
+#else
+    juce::String report;bool ok=true;
+    auto check=[&](bool pass,const juce::String& name){report+=(pass?"PASS ":"FAIL ")+name+"\n";folder.getChildFile("host-legacy.txt").replaceWithText(report);ok=pass&&ok;return pass;};
+    auto* source=audio.plugin(0);if(!check(source!=nullptr,"source instrument available"))return false;
+    juce::MemoryBlock native;source->getStateInformation(native);
+    auto legacy=newProject(9022);legacy.sections={{Section::main,1,"Legacy VST"}};legacy.masterGain=1;legacy.normalise();
+    for(auto& t:legacy.tracks){t.mute=true;t.effects.clear();t.parameters.clear();t.volume.enabled=false;for(auto& c:t.clips)c.notes.clear();}
+    legacy.masterAutomation.enabled=false;
+    for(int ti=0;ti<3;++ti){auto& t=legacy.tracks[(size_t)ti];t.mute=false;t.gain=.5;t.instrument="plugin";t.instrumentPath=description.fileOrIdentifier.toStdString();t.instrumentId=description.createXml()->toString().toStdString();t.instrumentState=native.toBase64Encoding().toStdString();t.clips[0].notes={{0,3,69-ti*12,100,0}};}
+    ParameterAutomation lane;lane.slot=0;lane.index=0;lane.name="Gain";lane.curve.enabled=true;lane.curve.points={{0,.25,0},{4,.5,0}};legacy.tracks[1].parameters.push_back(lane);
+    auto reopenAndPlay=[&](const juce::File& file){
+        audio.stop();dirty=false;open(file);const auto until=juce::Time::getMillisecondCounterHiRes()+15000.;
+        while(loadingPlugin&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+        if(!check(loadingPlugin==0,"all saved instruments finish loading"))return false;
+        for(int ti=0;ti<3;++ti){auto* plugin=audio.plugin(ti);if(!check(plugin&&plugin->getTotalNumOutputChannels()==4,"saved instrument retains secondary output: track "+juce::String(ti)))return false;}
+        std::array<std::uint64_t,3> before{};for(int ti=0;ti<3;++ti)before[(size_t)ti]=audio.noteOnsSent(ti);
+        playButton.onClick();juce::AudioBuffer<float> output(2,512);juce::AudioIODeviceCallbackContext context;float peak=0;
+        for(int b=0;b<64;++b){audio.audioDeviceIOCallbackWithContext(nullptr,0,output.getArrayOfWritePointers(),2,512,context);peak=std::max(peak,output.getMagnitude(0,512));}
+        bool played=audio.isPlaying()&&audio.position()>0&&std::isfinite(peak)&&peak>.001f;
+        for(int ti=0;ti<3;++ti)played=played&&audio.noteOnsSent(ti)>before[(size_t)ti];
+        audio.stop();return check(played,"open then Play sounds all saved instruments: "+file.getFileName());
+    };
+    for(int version:{1,2,3}){auto json=projectJson(legacy);json.getDynamicObject()->setProperty("version",version);const auto file=folder.getChildFile("host-legacy-v"+juce::String(version)+".fga");
+        if(!check(file.replaceWithText(juce::JSON::toString(json)),"write legacy native-state fixture")||!reopenAndPlay(file))return false;
+    }
+    const auto saved=folder.getChildFile("host-upgraded.fga");if(!check(writeProjectFile(saved),"save upgraded hosted project")||!reopenAndPlay(saved))return false;
+    return ok;
+#endif
+}
+
 int ArrangementView::totalHeight() const {return rowY((int)owner.project.tracks.size());}
 MainComponent::MainComponent(){
     Localisation::loadSaved();for(int track=0;track<maxTracks;++track){const auto key="trackHeight"+juce::String(track);arrangement.trackHeights[(size_t)track]=std::clamp(Localisation::setting(key.toRawUTF8(),"40").getIntValue(),40,240);}if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,4096);inspectorWidth=std::clamp(Localisation::setting("inspectorWidth","248").getIntValue(),224,480);sampleBrowserWidth=std::max(0,Localisation::setting("sampleBrowserWidth","0").getIntValue());

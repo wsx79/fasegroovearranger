@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.2
+
+- Ripristina le uscite secondarie degli strumenti ospitati come prima della 0.30, anche riaprendo i vecchi progetti. Il routing sul solo bus principale riguarda gli effetti insert. Aggiunge controlli di release con apertura e Play dei formati 1/2/3, più strumenti VST3, automazioni per indice e stato nativo salvato, poi salvataggio e riapertura in formato 4.
+
 ## 0.30.1
 
 - Studio: inviluppo visibile solo su richiesta, tagli applicati subito dal selettore, marcatori trascinabili e onda coerente con Inverti. Rimossa la scritta nelle tracce vuote; il doppio clic continua a creare clip.

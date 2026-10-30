@@ -269,6 +269,7 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow(const juce::File&);
+    bool verifyLegacyHostedProjects(const juce::File&,const juce::PluginDescription&);
     bool verifyEffectChain(const juce::File&,const juce::PluginDescription&);
     void dismissAuxiliaryWindow(juce::Component&);
     bool verifyWindowFocus(const juce::File&);

@@ -127,9 +127,9 @@ jobs:
       - name: Native VST3 effects, automation and state integration
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-effects.py
-      - name: Native VST3 instrument integration
+      - name: Native VST3 instruments and legacy project Play integration
         id: nativehost
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-host.py
       - name: Recursive isolated plugin catalogue integration
         if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
