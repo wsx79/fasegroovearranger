@@ -29,6 +29,18 @@ juce::Colour guitarColour(int lane){return lane<=1?Palette::accent:lane<=4?Palet
 juce::String utf(const std::string& s){return juce::String::fromUTF8(s.c_str());}
 void label(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size=12,juce::Colour c=Daw::text){g.setColour(c);g.setFont(Daw::font(size));g.drawText(tr(s),r,juce::Justification::centredLeft);}
 constexpr int trackHeight=40,headerWidth=216,rulerHeight=60;
+// Header controls come off the right edge in steps of Daw::unit, so hit-testing and
+// painting share one rectangle. The automation slot still covers x=140.
+struct HeaderChrome { juce::Rectangle<int> name,source,meter,led,automation,mute,solo,gear; };
+HeaderChrome headerChrome(int hx,int y,int h){
+    HeaderChrome c;auto band=juce::Rectangle<int>(hx,y,headerWidth,h).withTrimmedRight(Daw::unit);const int side=5*Daw::unit;
+    c.gear=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.solo=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.mute=band.removeFromRight(side);band.removeFromRight(Daw::unit);c.automation=band.removeFromRight(side);
+    c.name={hx+9*Daw::unit,y+Daw::unit,c.automation.getX()-(hx+9*Daw::unit)-Daw::unit,16};
+    c.source={c.name.getX(),y+5*Daw::unit,c.name.getWidth(),12};
+    c.meter={c.name.getX(),y+h-2*Daw::unit-2,22*Daw::unit,6};
+    c.led={c.meter.getRight()+Daw::unit,c.meter.getY(),2*Daw::unit,6};
+    return c;
+}
 juce::ModifierKeys physicalMouseModifiers(){
     auto result=juce::ModifierKeys::getCurrentModifiersRealtime();
    #if JUCE_MAC
@@ -92,12 +104,14 @@ void ArrangementView::paint(juce::Graphics& g){
             const auto& c=t.clips[si];const bool sel=ti==owner.selectedTrack&&(selectedClips.count((int)si)>0||(int)si==owner.clipIndex());const bool hover=ti==hoverTrack&&(int)si==hoverClip;
             juce::Graphics::ScopedSaveState state(g);g.reduceClipRegion(juce::Rectangle<int>(lanesLeft,y,lanesRight-lanesLeft,h));
             if(c.notes.empty()){
-                // An empty slot: only a faint outline, so the song's real material stands out.
+                // An empty slot: outline, plus a hint once the cell is wide enough to read.
                 g.setColour(ink.withAlpha(sel?.14f:.05f));g.fillRoundedRectangle(cell,Daw::radius);
-                g.setColour(sel?Daw::text.withAlpha(.8f):ink.withAlpha(hover?.45f:.16f));g.drawRoundedRectangle(cell.reduced(.5f),Daw::radius,sel?1.5f:1.f);continue;}
+                g.setColour(sel?Daw::text.withAlpha(.8f):ink.withAlpha(hover?.45f:.16f));g.drawRoundedRectangle(cell.reduced(.5f),Daw::radius,sel?1.5f:1.f);
+                if(cell.getWidth()>88.f&&cell.getHeight()>18.f){IconButton::drawIcon(g,IconButton::Icon::pencil,cell.withSizeKeepingCentre(14.f,14.f).translated(-36.f,0),Daw::textDim);g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small));g.drawFittedText(tr("Double-click to create a clip"),cell.reduced(28.f,2.f).translated(8.f,0).toNearestInt(),juce::Justification::centredLeft,1,.6f);}
+                continue;}
             g.setColour(Daw::clipBody(ink,sel));g.fillRoundedRectangle(cell,Daw::radius);
             const float titleHeight=h>=34&&cell.getWidth()>18?13.f:0.f;
-            if(titleHeight>0){juce::Path bar;bar.addRoundedRectangle(cell.getX(),cell.getY(),cell.getWidth(),titleHeight,Daw::radius,Daw::radius,true,true,false,false);g.setColour(ink.withAlpha(sel?.95f:hover?.82f:.7f));g.fillPath(bar);
+            if(titleHeight>0){juce::Path bar;bar.addRoundedRectangle(cell.getX(),cell.getY(),cell.getWidth(),titleHeight,Daw::radius,Daw::radius,true,true,false,false);g.setColour(ink);g.fillPath(bar);
                 if(cell.getWidth()>28){const int guide=std::clamp(p.sectionAtBeat(begin),0,(int)p.sections.size()-1);auto title=cell.withHeight(titleHeight).reduced(5.f,0);if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,title.removeFromRight(10.f).withSizeKeepingCentre(9.f,9.f),Daw::onAccent);title.removeFromRight(3.f);}
                     g.setColour(Daw::onAccent);g.setFont(Daw::font(10.f,true));g.drawText(utf(p.sections[(size_t)guide].name),title,juce::Justification::centredLeft,true);}}
             else if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,{cell.getRight()-13.f,cell.getY()+3.f,10.f,10.f},ink);}
@@ -132,25 +146,23 @@ void ArrangementView::paint(juce::Graphics& g){
     for(int row=0;row<(int)owner.project.tracks.size();++row){const int ti=trackAtRow(row),y=rowY(row),h=rowHeight(row);if(y>dirtyArea.getBottom())break;if(y+h+(volumeVisible[(size_t)ti]?80:0)<dirtyArea.getY())continue;
         const auto& t=p.tracks[(size_t)ti];const bool current=ti==owner.selectedTrack;const auto ink=colour(ti);
         g.setColour(current?Daw::surfaceHi:Daw::surface);g.fillRect(hx,y,headerWidth,h);
-        g.setColour(t.mute?ink.withAlpha(.3f):ink);g.fillRect(hx,y,4,h-1);
-        if(current){g.setColour(juce::Colours::white.withAlpha(.05f));g.fillRect(hx+4,y,headerWidth-4,1);}
+        const auto slots=headerChrome(hx,y,h);
+        g.setColour(t.mute?ink.withAlpha(.3f):ink);g.fillRect(hx,y,Daw::unit,h-1);
+        if(current){g.setColour(juce::Colours::white.withAlpha(.05f));g.fillRect(hx+Daw::unit,y,headerWidth-Daw::unit,1);}
         const auto icon=(ti==0||isManualTrack(ti))?IconButton::Icon::piano:ti==1?IconButton::Icon::bass:ti==2?IconButton::Icon::strings:ti==3?IconButton::Icon::guitar:ti==leadTrack?IconButton::Icon::lead:IconButton::Icon::drum;
-        IconButton::drawIcon(g,icon,{(float)hx+13,(float)y+10,15,15},ink.withAlpha(t.mute?.35f:.85f));
-        g.setColour(t.mute?Daw::textFaint:current?Daw::text:Daw::text.withAlpha(.88f));g.setFont(Daw::font(Daw::body,true));g.drawFittedText(Localisation::upper(utf(t.name)),{hx+36,y+5,92,16},juce::Justification::centredLeft,1,.8f);
-        {auto source=owner.cachedSourceName(ti);if(t.locked)source=tr("LOCK")+juce::String::fromUTF8(" · ")+source;g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawFittedText(source,{hx+36,y+20,92,12},juce::Justification::centredLeft,1,.75f);}
-        // A stereo mini meter under the name.
-        {const juce::Rectangle<float> meter((float)hx+36,(float)(y+h-7),92.f,3.f);g.setColour(juce::Colours::black.withAlpha(.45f));g.fillRect(meter);
-            for(int side=0;side<2;++side){const float level=Daw::meterPosition(owner.audio.level(ti,side));if(level<=0)continue;const auto part=meter.withHeight(1.f).translated(0,side*2.f).withWidth(meter.getWidth()*level);
-                g.setColour(Daw::meterColour(owner.audio.level(ti,side)).withAlpha(.9f));g.fillRect(part);}}
-        // A / M / S switches and the instrument gear, aligned on one row.
-        auto pill=[&](const char* text,float px,bool on,juce::Colour c){const juce::Rectangle<float> r(px,(float)y+9,17,16);g.setColour(on?c:Daw::control);g.fillRoundedRectangle(r,Daw::radius);
-            g.setColour(on?c.darker(.3f):juce::Colours::black.withAlpha(.45f));g.drawRoundedRectangle(r.reduced(.5f),Daw::radius,1);g.setColour(on?Daw::onAccent:Daw::textDim);g.setFont(Daw::font(9.5f,true));g.drawText(text,r,juce::Justification::centred);};
+        IconButton::drawIcon(g,icon,{(float)hx+3*Daw::unit,(float)y+2*Daw::unit+2,16,16},ink.withAlpha(t.mute?.35f:.85f));
+        g.setColour(t.mute?Daw::textFaint:current?Daw::text:Daw::text.withAlpha(.88f));g.setFont(Daw::font(Daw::body,true));g.drawFittedText(Localisation::upper(utf(t.name)),slots.name,juce::Justification::centredLeft,1,.6f);
+        {const bool bare=t.instrument!="internal"&&t.instrument!="sample"&&owner.audio.plugin(ti)==nullptr;auto source=bare?tr("Drag a VST here"):owner.cachedSourceName(ti);if(t.locked)source=tr("LOCK")+juce::String::fromUTF8(" · ")+source;auto textArea=slots.source;if(bare){IconButton::drawIcon(g,IconButton::Icon::folder,textArea.removeFromLeft(12).toFloat().withSizeKeepingCentre(10.f,10.f),Daw::textDim);}g.setColour(bare?Daw::textDim:Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawFittedText(source,textArea,juce::Justification::centredLeft,1,.55f);}
+        {auto& ticks=headerHoldTick[(size_t)ti];float peakNow=0;for(int side=0;side<2;++side)peakNow=std::max(peakNow,owner.audio.level(ti,side));if(peakNow>=headerHold[(size_t)ti][0]||peakNow>=headerHold[(size_t)ti][1]){headerHold[(size_t)ti][0]=owner.audio.level(ti,0);headerHold[(size_t)ti][1]=owner.audio.level(ti,1);ticks=24;}else if(--ticks<=0){headerHold[(size_t)ti][0]=std::max(owner.audio.level(ti,0),headerHold[(size_t)ti][0]*.9f);headerHold[(size_t)ti][1]=std::max(owner.audio.level(ti,1),headerHold[(size_t)ti][1]*.9f);}
+            const auto meter=slots.meter.toFloat();g.setColour(juce::Colours::black.withAlpha(.45f));g.fillRoundedRectangle(meter,1.f);const float gap=1.f,band=(meter.getHeight()-gap)*.5f;
+            for(int side=0;side<2;++side){const float level=Daw::meterPosition(owner.audio.level(ti,side));const auto part=juce::Rectangle<float>(meter.getX(),meter.getY()+side*(band+gap),meter.getWidth()*level,band);if(level>0){g.setColour(Daw::meterColour(owner.audio.level(ti,side)));g.fillRect(part);}const float held=Daw::meterPosition(headerHold[(size_t)ti][(size_t)side]);if(held>.01f){g.setColour(Daw::meterColour(headerHold[(size_t)ti][(size_t)side]));g.fillRect(meter.getX()+meter.getWidth()*held,meter.getY()+side*(band+gap),1.5f,band);}}
+            g.setColour(owner.audio.trackClipped(ti)?Daw::meterHigh:Daw::line);g.fillRoundedRectangle(slots.led.toFloat(),1.f);}
+        auto pill=[&](const char* text,juce::Rectangle<int> r,bool on,juce::Colour c){const auto box=r.toFloat().reduced(1.f,((float)r.getHeight()-16.f)*.5f);g.setColour(on?c:Daw::control);g.fillRoundedRectangle(box,Daw::radius);
+            g.setColour(on?c.darker(.3f):juce::Colours::black.withAlpha(.45f));g.drawRoundedRectangle(box.reduced(.5f),Daw::radius,1);g.setColour(on?Daw::onAccent:Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(text,box,juce::Justification::centred);};
         const bool anyAutomation=t.volume.enabled||t.panAutomation.enabled||std::any_of(t.parameters.begin(),t.parameters.end(),[](const ParameterAutomation& l){return l.curve.enabled;});
-        // A is lit only while the lane is open; existing automation is a small dot instead of a
-        // second switch, so a generated project does not light every track.
-        pill("A",(float)hx+133,volumeVisible[(size_t)ti],Daw::automation);pill("M",(float)hx+153,t.mute,Daw::mute);pill("S",(float)hx+173,t.solo,Daw::solo);
-        if(anyAutomation&&!volumeVisible[(size_t)ti]){g.setColour(Daw::automation);g.fillEllipse((float)hx+145.f,(float)y+21.f,3.5f,3.5f);}
-        IconButton::drawIcon(g,IconButton::Icon::gear,{(float)hx+195,(float)y+9,16,16},current?Daw::accent:Daw::textFaint);
+        pill("A",slots.automation,volumeVisible[(size_t)ti],Daw::automation);pill("M",slots.mute,t.mute,Daw::mute);pill("S",slots.solo,t.solo,Daw::solo);
+        if(anyAutomation&&!volumeVisible[(size_t)ti]){g.setColour(Daw::automation);g.fillEllipse((float)slots.automation.getRight()-2.f,(float)y+h-8.f,3.5f,3.5f);}
+        IconButton::drawIcon(g,IconButton::Icon::gear,slots.gear.toFloat().reduced(2.f),current?Daw::accent:Daw::textFaint);
         g.setColour(juce::Colours::black.withAlpha(.5f));g.drawHorizontalLine(y+h-1,(float)hx,(float)hx+headerWidth);g.drawVerticalLine(hx+headerWidth-1,(float)y,(float)(y+h));
         if(volumeVisible[(size_t)ti]){const int top=y+h;g.setColour(Daw::chrome);g.fillRect(hx,top,headerWidth,80);g.setColour(Daw::automation.withAlpha(.5f));g.fillRect(hx,top,4,79);const auto& shown=envelope(ti);const int target=laneTarget[(size_t)ti];
             g.setColour(shown.moves()?Daw::automation:Daw::text.withAlpha(.8f));g.setFont(Daw::font(Daw::small,true));g.drawFittedText(envelopeTitle(ti)+juce::String::fromUTF8(" \xe2\x96\xbe"),{hx+16,top,190,20},juce::Justification::centredLeft,1,.7f);
@@ -261,8 +273,7 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         else {const double flat=envelopeDefault(ti);if(volume.points.empty())volume.points={{0,flat,0},{owner.project.length(),flat,0}};if(dragPoint<0){const double beat=std::clamp(std::round((e.x-headerWidth)*4./pixelsPerBar),0.,owner.project.length());auto it=std::lower_bound(volume.points.begin(),volume.points.end(),beat,[](const VolumePoint& p,double b){return p.beat<b;});dragPoint=(int)(it-volume.points.begin());if(it==volume.points.end()||std::abs(it->beat-beat)>1./960.)volume.points.insert(it,{beat,volume.valueAt(beat),0});}volume.enabled=true;editPoint(e.position,!e.mods.isShiftDown());}
         owner.changed(false);return;
     }
-    if(e.x<v.getX()+headerWidth&&e.x>=v.getX()+132&&e.x<v.getX()+151){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}
-    if(e.x<v.getX()+headerWidth){owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(e.x>=v.getX()+150&&e.x<v.getX()+171){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(e.x>=v.getX()+171&&e.x<v.getX()+194){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else if(e.x>=v.getX()+194&&e.x<v.getX()+214)owner.openInstrumentFor(ti);return;}
+    if(e.x<v.getX()+headerWidth){const auto slots=headerChrome(v.getX(),rowY(row),rowHeight(row));const auto at=e.getPosition();if(slots.led.expanded(3).contains(at)){owner.audio.clearTrackClip(ti);repaint();return;}if(slots.automation.contains(at)){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();return;}owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(slots.mute.contains(at)){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(slots.solo.contains(at)){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else if(slots.gear.contains(at))owner.openInstrumentFor(ti);return;}
     const int edge=e.mods.isPopupMenu()?-1:edgeAt(ti,e.position.x),hit=clipAt(ti,e.position.x),index=edge>=0?edge:hit;
 
     const bool sameTrack=owner.selectedTrack==ti;const auto previous=selectedClips;

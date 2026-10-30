@@ -32,11 +32,12 @@ inline const juce::Colour textFaint {0xff868e9a};
 // One accent (the family's amber) for selection, active state and the main actions.
 inline const juce::Colour accent    {Palette::accent};
 inline const juce::Colour onAccent  {0xff16130f};   // text and icons on the accent
-// Functional colours: automation, transport and meters keep their usual meanings.
-inline const juce::Colour automation{Palette::accent2};
+// Functional colours stay off the track palette: piano/accent are amber, bass and
+// accent2 are cyan, guitar is gold. Mute, solo and automation each have their own hue.
+inline const juce::Colour automation{0xffff5ec8};   // magenta, not bass cyan or cowbell pink
 inline const juce::Colour play      {0xff52d273};
-inline const juce::Colour mute      {0xffe8a33d};
-inline const juce::Colour solo      {0xff4cc3f0};
+inline const juce::Colour mute      {0xff8d9070};   // olive grey, not piano amber
+inline const juce::Colour solo      {0xfff5e04a};   // lemon, not guitar gold or bass cyan
 inline const juce::Colour meterLow  {0xff4fd17a};
 inline const juce::Colour meterMid  {0xffe7c34a};
 inline const juce::Colour meterHigh {0xffe85d5d};

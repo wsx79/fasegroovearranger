@@ -163,7 +163,7 @@ juce::Rectangle<int> MixerStrip::meterBounds()const{const bool master=track<0;co
 void MixerStrip::paint(juce::Graphics& g){
     const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth(),h=getHeight();
     const auto body=getLocalBounds().toFloat().reduced(.5f);g.setColour(master||current?Daw::surfaceHi:Daw::surface);g.fillRoundedRectangle(body,Daw::radius);
-    g.setColour(colour.withAlpha(master?.0f:.9f));g.fillRect(2.f,1.f,(float)w-4.f,3.f);
+    g.setColour(colour.withAlpha(master?.0f:.9f));g.fillRect(2.f,1.f,(float)w-4.f,4.f);
     // dB scale beside the fader, meters on the right (two sides with peak hold).
     if(gain.isVisible()&&gain.getHeight()>40){
         const int left=gain.getX()+gain.getWidth()/2-14;g.setFont(Daw::font(10.f));
@@ -212,7 +212,7 @@ bool DawMixer::verifySends(const juce::File& folder){const auto saved=owner.proj
     owner.project=saved;owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.dirty=dirty;owner.audio.updateMix(owner.project);owner.refreshControls();resized();folder.getChildFile("mixer-send-buttons.txt").replaceWithText(ok?"PASS mixer A/reverb and B/delay toggles update real sends, restore amounts with Undo, preserve MIDI and fit compact strips":"FAIL mixer send buttons");return ok;}
 void DawMixer::reveal(int track){const int x=rowForTrack(track)*channelWidth;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+channelWidth-4>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+channelWidth-4-port.getViewWidth(),0);}
 void DawMixer::paint(juce::Graphics& g){g.fillAll(Daw::base);g.setColour(Daw::chrome);g.fillRoundedRectangle(0,0,(float)getWidth(),24,Daw::radius);g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(juce::Rectangle<float>(0,0,(float)getWidth(),24).reduced(.5f),Daw::radius,1);
-    if(owner.mixerVisible){Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-430,24});}
+    if(owner.mixerVisible){Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-430,24});if(strips.empty()){g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::body));IconButton::drawIcon(g,IconButton::Icon::mixer,{24.f,40.f,16.f,16.f},Daw::textDim);g.drawFittedText(tr("No tracks in the mixer"),48,36,getWidth()-80,24,juce::Justification::centredLeft,1,.7f);}}
     else{
         Daw::drawCaps(g,"MASTER",{12,0,54,24},Daw::textDim);const float left=78.f,width=(float)std::max(100,getWidth()-484);const int segments=std::clamp((int)(width/7),24,160);const float cell=width/segments;
         for(size_t side=0;side<2;++side){const float y=side==0?6.f:14.f;const float level=Daw::meterPosition(compactPeaks[side]);

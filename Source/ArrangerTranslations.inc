@@ -900,3 +900,6 @@
 
 { "Project exceeds the note limit (2 million notes).", "Il progetto supera il limite di 2 milioni di note.", "El proyecto supera el límite de 2 millones de notas.", "Le projet dépasse la limite de 2 millions de notes.", "Das Projekt überschreitet die Grenze von 2 Millionen Noten.", "O projeto excede o limite de 2 milhões de notas." },
 { "Project exceeds the file size limit (256 MB).", "Il progetto supera il limite di 256 MB.", "El proyecto supera el límite de 256 MB.", "Le projet dépasse la limite de 256 Mo.", "Das Projekt überschreitet die Grenze von 256 MB.", "O projeto excede o limite de 256 MB." },
+{ "Double-click to create a clip", "Doppio clic per creare un clip", "Doble clic para crear un clip", "Double-cliquez pour créer un clip", "Doppelklick erzeugt einen Clip", "Clique duplo para criar um clipe" },
+{ "Drag a VST here", "Trascina qui un VST", "Arrastra un VST aquí", "Déposez un VST ici", "VST hierher ziehen", "Arraste um VST para aqui" },
+{ "No tracks in the mixer", "Nessuna traccia nel mixer", "No hay pistas en el mezclador", "Aucune piste dans le mixeur", "Keine Spuren im Mixer", "Nenhuma faixa no mixer" },

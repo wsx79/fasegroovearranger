@@ -74,6 +74,8 @@ private:
     friend class MainComponent;
     MainComponent& owner;
     std::array<int,maxTracks> trackHeights{};
+    std::array<std::array<float,2>,maxTracks> headerHold{};
+    std::array<int,maxTracks> headerHoldTick{};
     int heightTrack=-1,heightBefore=40;
     int hoverTrack=-1,hoverClip=-1;   // the clip under the pointer, outlined
     void setHover(int track,int clip);

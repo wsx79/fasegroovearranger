@@ -3,18 +3,32 @@
 #pragma once
 #include "DawTheme.h"
 
-// Shared by Studio's three pages and Bus & Send. The workspace/family theme is unchanged.
+// Studio and Bus & Send use the workspace tokens. No second palette.
 namespace StudioStyle {
 using Daw::font;
 using Daw::caps;
-inline const juce::Colour onAccent{0xff1b1c1f};
-inline const juce::Colour base{0xff1b1c1f},surface{0xff232427},surfaceHi{0xff2c2d31};
-inline const juce::Colour well{0xff1b1c1f},chrome{0xff232427},lcd{0xff17181b};
-inline const juce::Colour control{0xff2c2d31},controlHi{0xff34353a},line{0xff34353a},lineStrong{0xff45464b};
-inline const juce::Colour text{0xffc9cacd},textDim{0xff85868b},textFaint{0xff85868b},accent{0xfff5a142};
-inline const juce::Colour automation=accent,solo=accent,mute=accent,meterHigh=accent;
-constexpr float radius=4.f,panelRadius=6.f;
-inline void drawCaps(juce::Graphics& g,const juce::String& value,juce::Rectangle<int> bounds,juce::Colour ink=textDim,juce::Justification align=juce::Justification::centredLeft){g.setFont(font(11));g.setColour(ink);g.drawText(value,bounds,align,true);}
+using Daw::onAccent;
+using Daw::base;
+using Daw::surface;
+using Daw::surfaceHi;
+using Daw::well;
+using Daw::chrome;
+using Daw::lcd;
+using Daw::control;
+using Daw::controlHi;
+using Daw::line;
+using Daw::lineStrong;
+using Daw::text;
+using Daw::textDim;
+using Daw::textFaint;
+using Daw::accent;
+using Daw::automation;
+using Daw::solo;
+using Daw::mute;
+using Daw::meterHigh;
+using Daw::radius;
+using Daw::panelRadius;
+inline void drawCaps(juce::Graphics& g,const juce::String& value,juce::Rectangle<int> bounds,juce::Colour ink=textDim,juce::Justification align=juce::Justification::centredLeft){Daw::drawCaps(g,value,bounds,ink,align);}
 }
 
 class StudioLookAndFeel : public DawLookAndFeel {
@@ -35,14 +49,17 @@ public:
     juce::Label* createSliderTextBox(juce::Slider& s)override{auto* label=DawLookAndFeel::createSliderTextBox(s);label->setFont(StudioStyle::font(12));return label;}
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour& colour,bool hover,bool down)override{
         using namespace StudioStyle;const auto r=b.getLocalBounds().toFloat().reduced(.5f);auto fill=b.getToggleState()?b.findColour(juce::TextButton::buttonOnColourId):colour;
-        if(hover||down)fill=fill.brighter(down?.04f:.08f);g.setColour(fill.withMultipliedAlpha(b.isEnabled()?1.f:.4f));g.fillRoundedRectangle(r,radius);
+        if(!b.isEnabled())fill=fill.withMultipliedAlpha(.45f);
+        else if(down)fill=fill.darker(.18f);
+        else if(hover)fill=fill==control?controlHi:fill.brighter(.08f);
+        g.setColour(fill);g.fillRoundedRectangle(r,radius);
         g.setColour(b.hasKeyboardFocus(true)?accent:line);g.drawRoundedRectangle(r,radius,1);
     }
     void drawButtonText(juce::Graphics& g,juce::TextButton& b,bool,bool)override{
         using namespace StudioStyle;const auto fill=b.findColour(b.getToggleState()?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);g.setFont(font(11));g.setColour((fill.getPerceivedBrightness()>.45f?onAccent:text).withMultipliedAlpha(b.isEnabled()?1.f:.4f));g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(6,2),juce::Justification::centred,1,.8f);
     }
     void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool hover,bool)override{
-        using namespace StudioStyle;const auto r=b.getLocalBounds().toFloat().reduced(2);const bool on=b.getToggleState();g.beginTransparencyLayer(b.isEnabled()?1.f:.4f);g.setColour(on?accent:hover?controlHi:control);g.fillRoundedRectangle(r,radius);g.setColour(b.hasKeyboardFocus(true)?accent:line);g.drawRoundedRectangle(r,radius,1);g.setFont(font(11));g.setColour(on?onAccent:text);g.drawFittedText(b.getButtonText(),r.reduced(6,2).toNearestInt(),juce::Justification::centred,1,.8f);g.endTransparencyLayer();
+        using namespace StudioStyle;const auto r=b.getLocalBounds().toFloat().reduced(2);const bool on=b.getToggleState();const bool down=b.isDown();g.beginTransparencyLayer(b.isEnabled()?1.f:.4f);auto fill=on?accent:hover?controlHi:control;if(down)fill=fill.darker(.18f);g.setColour(fill);g.fillRoundedRectangle(r,radius);g.setColour(b.hasKeyboardFocus(true)?accent:line);g.drawRoundedRectangle(r,radius,1);g.setFont(font(11));g.setColour(on?onAccent:text);g.drawFittedText(b.getButtonText(),r.reduced(6,2).toNearestInt(),juce::Justification::centred,1,.8f);g.endTransparencyLayer();
     }
     void drawComboBox(juce::Graphics& g,int w,int h,bool,int,int,int,int,juce::ComboBox& box)override{
         using namespace StudioStyle;auto r=juce::Rectangle<float>(0,0,(float)w,(float)h).reduced(.5f);g.setColour(box.findColour(juce::ComboBox::backgroundColourId));g.fillRoundedRectangle(r,radius);g.setColour(box.hasKeyboardFocus(true)?accent:line);g.drawRoundedRectangle(r,radius,1);const float x=w-12.f,y=h*.5f;juce::Path p;p.startNewSubPath(x-3,y-1.5f);p.lineTo(x,y+1.5f);p.lineTo(x+3,y-1.5f);g.setColour(textDim);g.strokePath(p,juce::PathStrokeType(1.2f));

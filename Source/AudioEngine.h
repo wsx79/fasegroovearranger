@@ -184,6 +184,8 @@ public:
     float masterLevel(int side) const {return masterSides[(size_t)(side&1)].load();}
     bool hasClipped() const {return masterClip.load();}
     void clearClipping(){masterClip=false;}
+    bool trackClipped(int track) const {return track>=0&&track<maxTracks&&trackClip[(size_t)track].load();}
+    void clearTrackClip(int track){if(track>=0&&track<maxTracks)trackClip[(size_t)track].store(false);}
     std::uint64_t noteOnsSent(int track) const {return instruments[(size_t)track]->noteOns;}
     juce::Result setMidiInput(const juce::String& identifier);
     const juce::String& midiInput()const{return midiIdentifier;}
@@ -275,6 +277,7 @@ private:
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
     std::array<std::atomic<float>,maxTracks> meters;
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
+    std::array<std::atomic<bool>,maxTracks> trackClip{};
     int clickLeft=0,clickPos=0;double clickHz=1000;
     std::atomic<float> masterMeter{0};
     std::array<std::array<std::atomic<float>,2>,maxTracks> sideMeters{};
