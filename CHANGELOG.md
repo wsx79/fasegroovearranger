@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.27.0
+
+- Mute is olive, solo is yellow and automation is magenta, separate from the track colours. Studio and the mixer use the same surfaces as the arranger, and a clipped meter is red.
+- Pressed Studio buttons darken and hovered ones use the raised control colour. Each track header has a readable stereo meter with a peak hold and a clip light, a colour stripe, and a full-colour clip title. An empty clip, a track with no instrument and an empty mixer say what to do next.
+- One type scale, icon actions with the words in the tooltip, and layout steps of 4 px. Interface size in options is an 80–200% desktop zoom. The window background matches the workspace.
+
 ## 0.26.1
 
 - Moving a VST track or master volume during playback no longer silences the audio. The fader does not take a plugin-state snapshot on the audio thread, and the level still ramps.

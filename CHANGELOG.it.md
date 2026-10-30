@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.27.0
+
+- Mute è oliva, solo è giallo e l'automazione è magenta, distinti dai colori delle tracce. Studio e mixer usano le stesse superfici dell'arranger, e il clip del meter è rosso.
+- I pulsanti dello Studio premuti si scuriscono e al passaggio del mouse usano il controllo rialzato. Ogni intestazione ha un meter stereo leggibile con tenuta del picco e spia di clip, una striscia di colore e il titolo del clip a colore pieno. Clip vuoto, traccia senza strumento e mixer vuoto indicano cosa fare.
+- Una sola scala di caratteri, azioni a icona con il testo nel suggerimento, e passi di 4 px. La dimensione interfaccia nelle opzioni è uno zoom desktop dall'80 al 200%. Lo sfondo della finestra coincide con lo spazio di lavoro.
+
 ## 0.26.1
 
 - Muovere il volume di una traccia VST o del master durante la riproduzione non zittisce più l'audio. Il fader non scatta lo stato del plugin sul thread audio, e il livello resta sfumato.
