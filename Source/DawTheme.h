@@ -129,7 +129,7 @@ public:
     void drawButtonText(juce::Graphics& g,juce::TextButton& b,bool,bool) override{
         const bool on=b.getToggleState();const auto fill=b.findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
         auto ink=fill.getPerceivedBrightness()>.4f?Daw::onAccent:Daw::text;
-        g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.45f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
+        g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.78f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
         // Shrink to half size before an ellipsis, so "SUONO GUIDA" and "BLOCCA TRACCIA" stay words.
         g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(4,1),juce::Justification::centred,1,.5f);
     }
