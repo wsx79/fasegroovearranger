@@ -130,7 +130,18 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
         const int rates[]{44100,48000,88200,96000,192000};const int savedRate=Localisation::setting("exportSampleRate","48000").getIntValue();int selected=1;for(int i=0;i<5;++i)if(rates[i]==savedRate)selected=i;
         dialog->getComboBoxComponent("rate")->setSelectedItemIndex(selected);dialog->getComboBoxComponent("depth")->setSelectedItemIndex(Localisation::setting("exportBitDepth","24")=="16"?0:1);
         dialog->addButton(tr("EXPORT"),1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->setAlwaysOnTop(true);
-        juce::Component::SafePointer<MainComponent> safe(this);dialog->enterModalState(true,juce::ModalCallbackFunction::create([safe,dialog,type,track](int result){if(safe&&result==1){const int values[]{44100,48000,88200,96000,192000};Localisation::setSetting("exportSampleRate",juce::String(values[std::clamp(dialog->getComboBoxComponent("rate")->getSelectedItemIndex(),0,4)]));Localisation::setSetting("exportBitDepth",dialog->getComboBoxComponent("depth")->getSelectedItemIndex()==0?"16":"24");safe->exportFile(type,track,{},true);}dialog->setLookAndFeel(nullptr);}),true);return;
+        juce::Component::SafePointer<MainComponent> safe(this);
+        dialog->enterModalState(true,juce::ModalCallbackFunction::create([safe,dialog,type,track](int result){
+            if(safe&&result==1){
+                const int values[]{44100,48000,88200,96000,192000};
+                Localisation::setSetting("exportSampleRate",juce::String(values[std::clamp(dialog->getComboBoxComponent("rate")->getSelectedItemIndex(),0,4)]));
+                Localisation::setSetting("exportBitDepth",dialog->getComboBoxComponent("depth")->getSelectedItemIndex()==0?"16":"24");
+                // The native chooser must outlive the encoding window's modal teardown.
+                dialog->setVisible(false);dialog->setAlwaysOnTop(false);
+                juce::MessageManager::callAsync([safe,type,track]{if(safe)safe->exportFile(type,track,{},true);});
+            }
+            dialog->setLookAndFeel(nullptr);
+        }),true);return;
     }
     const auto encoding=exportSettings();
     const int flags=batch?juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories:juce::FileBrowserComponent::saveMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::warnAboutOverwriting;
@@ -169,7 +180,13 @@ bool MainComponent::verifyExports(const juce::File& folder){
     auto settle=[&]{const auto deadline=juce::Time::getMillisecondCounterHiRes()+30000.;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<deadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !mediaBusy&&!audio.isExporting()&&!audio.isPlaying()&&!editingRestricted();};
     exportFile(5,0);auto* encodingDialog=dynamic_cast<juce::AlertWindow*>(juce::Component::getCurrentlyModalComponent());const bool hasEncoding=encodingDialog&&encodingDialog->getComboBoxComponent("rate")&&encodingDialog->getComboBoxComponent("depth");check(hasEncoding&&encodingDialog->getComboBoxComponent("rate")->getNumItems()==5&&encodingDialog->getComboBoxComponent("depth")->getNumItems()==2,"WAV export presents working sample-rate and bit-depth choices");
     if(encodingDialog){if(auto out=folder.getChildFile("wav-options.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(encodingDialog->createComponentSnapshot(encodingDialog->getLocalBounds()),*out);}encodingDialog->exitModalState(0);juce::MessageManager::getInstance()->runDispatchLoopUntil(20);}check(!mediaBusy&&!editingRestricted(),"cancelling encoding choices leaves the DAW available");
-    Localisation::setSetting("exportSampleRate","48000");Localisation::setSetting("exportBitDepth","16");audio.play(true);const auto chosen=folder.getChildFile("Piano.wav");exportFile(5,0,chosen);check(mediaBusy,"audio export suspends live playback and editing");check(settle(),"successful export restores audio device availability and editing");
+    const auto chosen=folder.getChildFile("Piano.wav");bool pathRequested=false,encodingDestroyed=false,validChoice=false;juce::Component::SafePointer<juce::AlertWindow> finishedDialog;
+    fileChoiceForTest=[&](const juce::File& initial,int mode,std::function<void(juce::File)> accepted,std::function<void()>){pathRequested=true;encodingDestroyed=finishedDialog==nullptr;validChoice=initial.hasFileExtension("wav")&&(mode&juce::FileBrowserComponent::saveMode)!=0;accepted(chosen);};
+    audio.play(true);exportFile(5,0);auto* acceptedDialog=dynamic_cast<juce::AlertWindow*>(juce::Component::getCurrentlyModalComponent());finishedDialog=acceptedDialog;
+    if(acceptedDialog){acceptedDialog->getComboBoxComponent("rate")->setSelectedItemIndex(1);acceptedDialog->getComboBoxComponent("depth")->setSelectedItemIndex(0);acceptedDialog->triggerButtonClick(tr("EXPORT"));}
+    const auto choiceDeadline=juce::Time::getMillisecondCounterHiRes()+5000.;while(!pathRequested&&juce::Time::getMillisecondCounterHiRes()<choiceDeadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    fileChoiceForTest={};check(pathRequested&&encodingDestroyed&&validChoice,"confirming WAV encoding opens the file chooser after destroying the previous modal window");
+    check(mediaBusy&&!audio.isPlaying(),"confirming export suspends live playback and editing");check(settle(),"successful export restores audio device availability and editing");
     juce::WavAudioFormat wav;{const auto file=exportNamedFile(chosen,project,"wav");std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));juce::AudioBuffer<float> samples(2,8192);const bool audible=reader&&reader->read(&samples,0,8192,4096,true,true)&&samples.getMagnitude(0,8192)>.0001f;check(audible&&reader->sampleRate==48000&&reader->bitsPerSample==16,"WAV export through the actual UI contains music at 48 kHz / 16 bit");}
     check(audio.plugin(0)==original,"export retains the already loaded instrument instance");
     exportFile(1,0,folder.getChildFile("Song.mid"));const auto midi=exportNamedFile(folder.getChildFile("Song.mid"),project,"mid");auto stream=midi.createInputStream();juce::MidiFile parsed;check(stream&&parsed.readFrom(*stream),"multitrack MIDI filename includes BPM and key and contains readable MIDI");

@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.4
+
+- Corregge l’export WAV fermo dopo la codifica: la scelta del percorso parte dopo la distruzione della finestra precedente.
+- Ripristina lo stato dei plugin a processing inattivo, poi li riattiva e aggiorna i buffer dei canali. Memorizza anche il programma selezionato, quando esposto dal plugin, insieme allo stato nativo e ai parametri modificati.
+- Verifica la conferma della codifica fino alla scelta del file e al rendering, la sospensione dell’ascolto, i vecchi progetti e un preset non standard salvato prima di Play.
+
 ## 0.30.3
 
 - Scansione delle cartelle plugin collegate, senza duplicati o cicli. La scansione delle normali sottocartelle resta ricorsiva.

@@ -43,3 +43,14 @@ assert abs(restored[0]/before[0]-1) < .001, (before, restored)
 assert offline[2] == restored[2] and abs(offline[0]/restored[0]-1) < .001 and abs(offline[1]-restored[1]) < 1, (restored, offline)
 print(f'PASS real VST3 host: {before[1]:.1f} Hz MIDI note, gain ratio {loud[0]/before[0]:.3f}, restored ratio {restored[0]/before[0]:.6f}, private-copy export ratio {offline[0]/restored[0]:.6f}; editor reopened and project state restored')
 print('PASS legacy versions 1/2/3 and upgraded version 4: reopen and Play with three multi-output VST3 instruments, saved state and indexed automation')
+
+# A selected instrument program is distinct from the factory default, even when its
+# opaque component chunk does not serialize the host-visible program number.
+program_project = json.loads((folder / 'host-program.fga').read_text(encoding='utf-8'))
+program_state = json.loads(program_project['tracks'][0]['instrumentState'].removeprefix('FGAHOST1:'))
+assert program_state['program'] == 1 and program_state['programName'] == 'Bright', program_state
+program = signal('host-program.wav')
+assert program[0] > .001 and abs(program[1] - 880) < 4, program
+export_report = (folder / 'export-ui' / 'export-ui.txt').read_text(encoding='utf-8').splitlines()
+assert export_report and all(line.startswith('PASS ') for line in export_report), export_report
+print(f'PASS reopened selected preset: {program[1]:.1f} Hz; native state restored while inactive; complete WAV encoding confirmation/file-choice/render flow')

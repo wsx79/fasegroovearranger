@@ -448,6 +448,8 @@ Nel mixer, le dodici righe sono affiancate: **livello, ottava, mute, quota di sw
 
 **SALVA / SALVA COME** salva un progetto `.fga`: sezioni, note, parametri, blocchi, mixer e stato dei VST. I campioni e i plugin restano nei loro percorsi: conserva i file usati dal brano.
 
+Dopo aver scelto o modificato un preset nell’editor VST, usa anche **SALVA** in Arranger per memorizzarlo insieme al brano, anche se hai già salvato il preset nel plugin.
+
 L’autosave viene programmato circa ogni minuto quando ci sono modifiche. Se stai ascoltando, registrando o esportando, aspetta il primo momento sicuro a trasporto fermo; la scrittura prosegue senza bloccare i comandi. **Icona altoparlante → Recupera autosave** lo apre come lavoro da salvare con un altro nome. Annulla conserva fino a quaranta passi durante la sessione.
 
 Chiudendo l’app, aprendo un altro progetto o creando un nuovo brano, **Annulla** lascia intatta anche una registrazione in corso. Scegliendo **Salva**, se manca il nome viene chiesta la destinazione: l’azione continua solo a salvataggio riuscito. Annullare la scelta del file annulla il cambio di progetto; un errore di scrittura lascia il lavoro aperto.

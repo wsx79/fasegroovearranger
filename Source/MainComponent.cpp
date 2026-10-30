@@ -853,6 +853,12 @@ bool MainComponent::verifyLegacyHostedProjects(const juce::File& folder,const ju
     for(int ti=0;ti<3;++ti)openHostedEditor(ti,0);juce::MessageManager::getInstance()->runDispatchLoopUntil(20);
     bool allVisible=pluginWindows.size()==3;for(int ti=0;ti<3;++ti){auto* editor=audio.plugin(ti)->getActiveEditor();allVisible=allVisible&&editor&&editor->getTopLevelComponent()->isVisible();}check(allVisible,"three instrument editors stay visible together");
     if(allVisible){pluginWindows.front()->closeButtonPressed();check(pluginWindows[1]->isVisible()&&pluginWindows[2]->isVisible(),"closing one instrument editor preserves the other windows");openHostedEditor(0,0);check(pluginWindows.size()==3&&pluginWindows.front()->isVisible(),"reopening an instrument reuses only its own editor");}closePluginEditor();
+    source=audio.plugin(0);if(source&&source->getNumPrograms()>1){
+        source->setCurrentProgram(1);source->getParameters()[0]->setValueNotifyingHost(.37f);audio.stop();
+        const auto presetProject=folder.getChildFile("host-program.fga");if(!check(writeProjectFile(presetProject),"save chosen program and custom gain before playing any audio")||!reopenAndPlay(presetProject))return false;
+        source=audio.plugin(0);check(source&&source->getCurrentProgram()==1&&source->getProgramName(1)=="Bright"&&std::abs(source->getParameters()[0]->getValue()-.37f)<1.e-5f,"reopening retains the selected program and its saved custom gain");
+        check(audio.exportAudio(project,folder.getChildFile("host-program.wav"),0,false,[]{return false;},[](double){}).wasOk(),"export the restored instrument program");
+    }
     return ok;
 #endif
 }
@@ -1703,6 +1709,9 @@ void MainComponent::chooseFile(const juce::String& title,const juce::String& fil
     auto start=initial;const bool saving=(flags&juce::FileBrowserComponent::saveMode)!=0&&filter=="*.fga";
     if(start==juce::File()&&saving){const auto stored=Localisation::setting("lastSaveFolder");if(juce::File::isAbsolutePath(stored)&&juce::File(stored).isDirectory())start=juce::File(stored);}
     if(start==juce::File())start=projectFile.existsAsFile()?projectFile.getParentDirectory():juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);
+#if FGA_SELF_TESTS
+    if(fileChoiceForTest){juce::Component::SafePointer<MainComponent> safe(this);fileChoiceForTest(start,flags,[safe,callback=std::move(callback)](juce::File file){if(safe)callback(file);},[safe,cancelled=std::move(cancelled)]{if(safe&&cancelled)cancelled();});return;}
+#endif
     chooser=std::make_unique<juce::FileChooser>(tr(title),start,filter,true,false,studioWindow&&studioWindow->isVisible()?static_cast<juce::Component*>(studioWindow.get()):getTopLevelComponent());
     juce::Component::SafePointer<MainComponent> safe(this);chooser->launchAsync(flags,[safe,callback=std::move(callback),cancelled=std::move(cancelled)](const juce::FileChooser& fc){if(!safe)return;auto file=fc.getResult();if(file!=juce::File())callback(file);else if(cancelled)cancelled();});
 }

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.4
+
+- Fix WAV export stopping after encoding options: open the destination chooser after the previous modal window has been destroyed.
+- Restore hosted plugin state while processing is inactive, then reactivate and refresh channel buffers. Store the selected program when exposed by the plugin, alongside its native state and parameter edits.
+- Cover encoding confirmation through file choice and rendering, playback suspension, legacy projects and a non-default instrument preset saved before Play.
+
 ## 0.30.3
 
 - Scan linked plugin folders with canonical-path deduplication and cycle protection; ordinary subfolders remain recursive.

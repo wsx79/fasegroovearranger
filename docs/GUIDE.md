@@ -447,6 +447,8 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 
 **SAVE / SAVE AS** writes a `.fga` project: sections, notes, parameters, locks, mixer and VST state. Samples and plugins stay at their paths; keep the files used in the song.
 
+After choosing or editing a preset in the VST editor, also use **SAVE** in Arranger to retain it with the song, even if you have already saved the preset inside the plugin.
+
 Autosave becomes due about once a minute after edits. During playback, recording or export it waits for a safe stopped moment, then writes without blocking the controls. **speaker icon → restore autosave** opens it as work to save under another name. UNDO retains up to forty steps during the session.
 
 When closing the app, opening a project or starting a new song, **Cancel** leaves an active take untouched. **Save** asks for a destination when needed; the requested action continues only after a successful save. Cancelling the file selection cancels navigation; a write error leaves your work open.

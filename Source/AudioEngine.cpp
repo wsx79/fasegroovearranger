@@ -15,7 +15,10 @@ namespace {
 // Keep those values beside the opaque native state; never run DSP just to save.
 juce::String hostedParameterId(juce::AudioProcessorParameter* parameter){if(auto* hosted=dynamic_cast<juce::HostedAudioProcessorParameter*>(parameter))return hosted->getParameterID();return {};}
 std::string captureHostedState(juce::AudioPluginInstance& plugin){
-    juce::MemoryBlock native;plugin.getStateInformation(native);auto state=std::make_unique<juce::DynamicObject>();state->setProperty("native",native.toBase64Encoding());juce::Array<juce::var> values;
+    juce::MemoryBlock native;plugin.getStateInformation(native);auto state=std::make_unique<juce::DynamicObject>();state->setProperty("native",native.toBase64Encoding());
+    // Some instruments expose the selected program separately from their native chunk.
+    const int program=plugin.getCurrentProgram();if(plugin.getNumPrograms()>1&&program>=0&&program<plugin.getNumPrograms()){state->setProperty("program",program);state->setProperty("programName",plugin.getProgramName(program));}
+    juce::Array<juce::var> values;
     for(int index=0;index<plugin.getParameters().size();++index){auto* parameter=plugin.getParameters()[index];const float value=parameter->getValue();if(!parameter->isAutomatable()||!std::isfinite(value))continue;auto entry=std::make_unique<juce::DynamicObject>();entry->setProperty("index",index);entry->setProperty("id",hostedParameterId(parameter));entry->setProperty("value",std::clamp((double)value,0.,1.));values.add(juce::var(entry.release()));}
     state->setProperty("parameters",values);return std::string(hostedStatePrefix)+juce::JSON::toString(juce::var(state.release()),false,17).toStdString();
 }
@@ -24,6 +27,7 @@ void restoreHostedState(juce::AudioPluginInstance& plugin,const std::string& sav
     if(saved.rfind(hostedStatePrefix,0)!=0){if(native.fromBase64Encoding(juce::String::fromUTF8(saved.c_str())))plugin.setStateInformation(native.getData(),(int)native.getSize());return;}
     const auto json=juce::JSON::parse(juce::String::fromUTF8(saved.c_str()+std::strlen(hostedStatePrefix)));if(!json.isObject())return;
     if(native.fromBase64Encoding(json["native"].toString())&&native.getSize()>0)plugin.setStateInformation(native.getData(),(int)native.getSize());
+    const auto program=json["program"];if(program.isInt()&&(int)program>=0&&(int)program<plugin.getNumPrograms()&&plugin.getCurrentProgram()!=(int)program)plugin.setCurrentProgram((int)program);
     const auto* values=json["parameters"].getArray();if(!values)return;
     std::map<juce::String,juce::AudioProcessorParameter*> byId;for(auto* parameter:plugin.getParameters()){const auto id=hostedParameterId(parameter);if(id.isNotEmpty())byId.emplace(id,parameter);}
     for(const auto& entry:*values){if(!entry.isObject())continue;const auto value=entry["value"];if(!(value.isDouble()||value.isInt()||value.isInt64())||!std::isfinite((double)value))continue;juce::AudioProcessorParameter* parameter=nullptr;const auto id=entry["id"].toString();
@@ -528,7 +532,11 @@ void AudioEngine::reusePluginStates(Project& p){
     if(pluginStateCaptured!=pluginStateGeneration)return;
     for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){p.tracks[ti].instrumentState=cachedInstrumentStates[ti];for(auto& fx:p.tracks[ti].effects)if(fx.slot>0&&fx.slot<=maxTrackEffects)fx.state=cachedEffectStates[ti][(size_t)(fx.slot-1)];}
 }
-void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;if(auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get()){restoreHostedState(*p,state.toStdString());instruments[(size_t)track]->parameterSent.fill(-1.f);}}
+void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;if(auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get()){
+    // State restoration belongs between deactivation and preparation. A stopped
+    // device callback alone does not deactivate the native VST3 component.
+    p->releaseResources();restoreHostedState(*p,state.toStdString());p->setRateAndBufferSizeDetails(sampleRate,blockSize);p->prepareToPlay(sampleRate,blockSize);
+    auto& instrument=*instruments[(size_t)track];instrument.adoptChannels(blockSize);instrument.parameterSent.fill(-1.f);if(effectSlot==0){restrike(instrument);needsResync=true;}}}
 void AudioEngine::restorePluginState(int track,const juce::String& state){restoreHosted(track,state,0);}
 void AudioEngine::restoreEffectState(int track,const juce::String& state,int slot){restoreHosted(track,state,slot);}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}

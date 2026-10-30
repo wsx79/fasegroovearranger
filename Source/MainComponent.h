@@ -410,6 +410,10 @@ private:
     int loadingPlugin=0;
     int ticks=0;
     std::unique_ptr<juce::FileChooser> chooser;
+#if FGA_SELF_TESTS
+    // Exercise the real dialog continuation without depending on native file-dialog input.
+    std::function<void(const juce::File&,int,std::function<void(juce::File)>,std::function<void()>)> fileChoiceForTest;
+#endif
     class InstrumentWindow;
     std::unique_ptr<InstrumentWindow> instrumentWindow;
     bool instrumentIsOpen() const;

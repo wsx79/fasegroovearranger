@@ -18,12 +18,12 @@ private:std::atomic<float> value{.75f};
 class AuditPlugin final : public juce::AudioPluginInstance {
 public:
     AuditPlugin(bool effect=false,float shift=0,bool mono=false,float right=1):AudioPluginInstance(effect?BusesProperties().withInput("Input",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true).withOutput("Output",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true):BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)),transform(effect),offset(shift),rightScale(right){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
-    std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false;int preparations=0;bool offlineObserved=false;int calls=0,samples=0,lastMidi=-1;
+    std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false,prepared=false,stateRestoredActive=false;int preparations=0;bool offlineObserved=false;int calls=0,samples=0,lastMidi=-1;
     std::array<int,1024> sizes{},starts{};std::array<float,1024> values{};std::array<double,1024> positions{};
     const juce::String getName()const override{return "Audit probe";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description.name=getName();}
-    void prepareToPlay(double,int)override{++preparations;}
-    void releaseResources()override{}
+    void prepareToPlay(double,int)override{prepared=true;++preparations;}
+    void releaseResources()override{prepared=false;}
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer& midi)override{
         inside=true;offlineObserved=offlineObserved||isNonRealtime();if(slow)juce::Thread::sleep(2);if(calls<(int)sizes.size()){sizes[(size_t)calls]=block.getNumSamples();starts[(size_t)calls]=samples;values[(size_t)calls]=gain->get();if(auto* head=getPlayHead())if(auto p=head->getPosition())positions[(size_t)calls]=p->getPpqPosition().orFallback(-1.);}++calls;
         for(auto event:midi)if(event.getMessage().isNoteOn())lastMidi=samples+event.samplePosition;
@@ -34,7 +34,7 @@ public:
     const juce::String getProgramName(int)override{return "Audit";}void changeProgramName(int,const juce::String&)override{}
     bool hasEditor()const override{return false;}juce::AudioProcessorEditor* createEditor()override{return nullptr;}
     void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
-    void setStateInformation(const void*,int)override{if(inside)overlap=true;}
+    void setStateInformation(const void*,int)override{if(inside)overlap=true;stateRestoredActive=prepared;}
 private:AuditGain* gain=nullptr;bool transform=false;float offset=0,rightScale=1;
 };
 }
@@ -56,10 +56,16 @@ struct EngineAuditTests {
         auto& track=project.tracks[0];track.gain=1;track.instrument="plugin";track.effects={{1,"A","Probe","/A","","",false},{2,"B","Probe","/B","","",false}};
         auto& instrument=*engine.instruments[0];auto source=std::make_unique<AuditPlugin>();auto* original=source.get();instrument.plugin=std::move(source);instrument.mode=2;instrument.effects[0].plugin=std::make_unique<AuditPlugin>(true);instrument.effects[1].plugin=std::make_unique<AuditPlugin>(true);instrument.prepare(44100,512);engine.hostedCount=3;
         const int prepared=original->preparations;const auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-export-compatibility","",false);folder.createDirectory();
-        for(bool effects:{false,true}){if(!effects)track.effects.clear();else track.effects={{1,"A","Probe","/A","","",false},{2,"B","Probe","/B","","",false}};const auto file=folder.getChildFile(effects?"instrument-two-effects.wav":"instrument.wav");requireAudit(engine.exportAudio(project,file,0,false,[]{return false;},[](double){}).wasOk(),"export already loaded instrument with and without two inserts");juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(file.createInputStream().release(),true));juce::AudioBuffer<float> audio(2,8192);requireAudit(reader&&reader->read(&audio,0,8192,4096,true,true)&&audio.getMagnitude(0,8192)>.01f,"existing instrument and inserts produce audible WAV");requireAudit(instrument.plugin.get()==original&&original->preparations==prepared&&!original->offlineObserved,"same-rate export retains instance/program and playback DSP mode without reinitialisation");}
+        for(bool effects:{false,true}){if(!effects)track.effects.clear();else track.effects={{1,"A","Probe","/A","","",false},{2,"B","Probe","/B","","",false}};const auto file=folder.getChildFile(effects?"instrument-two-effects.wav":"instrument.wav");requireAudit(engine.exportAudio(project,file,0,false,[]{return false;},[&](double){const auto at=engine.position();engine.play(true);engine.seek(99);requireAudit(!engine.isPlaying()&&engine.position()==at,"live playback and seek remain blocked throughout audio export");}).wasOk(),"export already loaded instrument with and without two inserts");juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(file.createInputStream().release(),true));juce::AudioBuffer<float> audio(2,8192);requireAudit(reader&&reader->read(&audio,0,8192,4096,true,true)&&audio.getMagnitude(0,8192)>.01f,"existing instrument and inserts produce audible WAV");requireAudit(instrument.plugin.get()==original&&original->preparations==prepared&&!original->offlineObserved,"same-rate export retains instance/program and playback DSP mode without reinitialisation");}
         folder.deleteRecursively();
     }
-    static void run(){effects();exportCompatibility();
+    static void stateRestoreOrder(){
+        AudioEngine engine(AudioEngine::Offline{});for(auto& source:engine.instruments)source->prepare(44100,512);auto& instrument=*engine.instruments[0];auto next=std::make_unique<AuditPlugin>();auto* source=next.get();instrument.plugin=std::move(next);instrument.mode=2;instrument.prepare(44100,512);
+        juce::MemoryBlock state;source->getStateInformation(state);engine.restorePluginState(0,state.toBase64Encoding());
+        requireAudit(!source->stateRestoredActive&&source->prepared,"native state must be restored with processing inactive and reactivated before playback");
+        requireAudit(instrument.plugin.get()==source&&instrument.scratch.getNumChannels()>=source->getTotalNumOutputChannels(),"state restore retains the instance and refreshes its channel buffers");
+    }
+    static void run(){effects();exportCompatibility();stateRestoreOrder();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();
