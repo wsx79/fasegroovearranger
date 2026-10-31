@@ -27,14 +27,15 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Automation](#pan-master-and-vst-parameters)
 - [Bars and elapsed time](#bars-and-elapsed-time)
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
+- [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.23.5**. Screenshots show the current interface. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.30.4**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.23.5** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.30.4** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -71,7 +72,7 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
-6. Return with **< ARRANGEMENT**. Select **Piano** and choose **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector. The track gear opens its original musical controls.
+6. Return with **< ARRANGEMENT**. Select **Piano** and choose **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector. With a built-in sound, the track gear opens the original musical panel; with a VST instrument it opens its editor.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
 Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
@@ -107,7 +108,7 @@ The top contains project commands, transport and the controls shared by everyone
 
 Colours follow the instruments: **amber** for piano and kick, **cyan** for bass and backbeats, **green** for cymbals, **violet** for percussion and **red** for strings and tom/crash. Guitar playing lanes keep their own colours.
 
-The inspector groups **track**, **sound**, **volume/pan** and **selected clip** into compact cards. Built-in, sample and plugin choices share one row; the plugin editor appears when an external instrument/effect is assigned. Mute, solo, track/clip locks, MIDI editing, regeneration and clip loop retain their actions and undo behaviour. Drag its edge to resize it; double-click restores the 248 px default.
+The inspector groups **track**, **sound**, **volume/pan** and **selected clip** into compact cards. Built-in, sample and plugin choices share one row; the keyboard button appears for a loaded external instrument; open effect editors from their own EFFECTS rows. Mute, solo, track/clip locks, MIDI editing, regeneration and clip loop retain their actions and undo behaviour. Drag its edge to resize it; double-click restores the 248 px default.
 
 Drag the **lower edge of a track header** to change that track’s height independently (40–240 pixels). Other tracks keep their heights; MIDI durations stay unchanged. Double-click the edge to restore the default height; **Escape** cancels a drag. Heights are remembered between sessions.
 
@@ -132,9 +133,9 @@ Rename or delete this optional track as usual. Ordinary handwritten MIDI tracks 
 After regeneration the zoom fits automatically: the whole song in the arrangement, or the clip duration and generated pitch range in the MIDI editor.
 
 
-**+ MIDI**, in the corner above the track headers, adds a blank track and opens its piano roll. Write notes by hand, assign a guide sound, sample or VST/AU in the inspector, and use clips, loops, effects, automation and exports as on the other tracks. Up to **32 tracks in total** are available. GENERATE SONG, genre changes and harmony changes preserve these notes. Double-click a track’s **name in the inspector or mixer** to rename it; right-click → Rename is also available. **OPEN VST** opens its assigned external instrument or effect.
+**+ MIDI**, in the corner above the track headers, adds a blank track and opens its piano roll. Write notes by hand, assign a guide sound, sample or VST/AU in the inspector, and use clips, loops, effects, automation and exports as on the other tracks. Up to **32 tracks in total** are available. GENERATE SONG, genre changes and harmony changes preserve these notes. Double-click a track’s **name in the inspector or mixer** to rename it; right-click → Rename is also available. The keyboard button opens the assigned VST instrument directly; open each effect from its own row in **EFFECTS**.
 
-The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. The small **panel icon** at its top right hides it and returns its entire width to the arrangement. Reopen it with the **inspector icon in the top toolbar** or **I**. The toolbar icon remains available while scrolling. Drag the panel’s **right edge** to resize its width; double-click that edge to restore the default width. The chosen size is remembered. **INSPECTOR / I** also works. Scroll the inspector if vertical space is limited.
+The side **INSPECTOR** follows the selected track and clip: volume in dB, pan, mute/solo, generation locks, sample or VST assignment and access to the original instrument panels. The small **close control** at its top right hides it and returns its entire width to the arrangement. Reopen it with the **inspector icon in the top toolbar** or **I**. The toolbar icon remains available while scrolling. Drag the panel’s **right edge** to resize its width; double-click that edge to restore the default width. The chosen size is remembered. **INSPECTOR / I** also works. Scroll the inspector if vertical space is limited.
 
 At the right of the **HARMONY** row, above **BUS & SEND**, use **zoom − / slider / zoom +** and **FIT SONG**. Fit shows the complete song duration within the available timeline width, including with the browser open. These view controls do not change MIDI, snap or Undo. Track heights remain as you set them.
 
@@ -373,11 +374,11 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 | **BUILT-IN** | Return to the guide sound. Piano and bass have seven keyboard tones; strings, four guitars and four drum kits have their own sounds. |
 | **LOAD SAMPLE** | Your WAV, AIFF, FLAC or OGG, up to 30 minutes and 512 MiB decoded per file. The file stays on disk; the project remembers its path. The sample browser (**B**) does the same with preview and drag & drop. |
 | **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or appends an insert effect. |
-| **OPEN VST** | The loaded instrument's own interface. Choose the instrument or the effect instance to open. |
+| **OPEN VST / keyboard icon** | Opens the loaded instrument’s editor directly. Use the editor button on the effect’s own **EFFECTS** row for an effect. |
 
 **Effect chain.** **+** in the inspector’s **EFFECTS** card opens the browser filtered to VST3/AU effects. Add up to **eight**, processed top to bottom before track volume/pan, groups and sends. Each instance has bypass, an editor, double-click rename, and a menu to replace, move, automate or remove it. Drag the left grip to reorder. The original name remains in its menu; **Use original name** removes the alias. **FX** in the mixer opens the same chain in a compact window, pinned to that track even when selection changes. It stays on top until closed and reopens centred. Loading a new effect opens its editor immediately, centred; restoring a project does not open editors automatically. Bypass and mix Undo/Redo avoid native state snapshots during playback and preserve independent plugin-editor edits. Reordering and renaming preserve automation targets; removal or replacement with a different plugin deletes only that instance’s parameter lanes. Undo restores the plugin, its state and curves. Old projects migrate their single insert to the first slot. Projects with effects, newly captured VST/AU states or native sound automation use format 4 and require this version: keep a copy before overwriting an older project. Declared effect tails are included in export, capped at 120 seconds. External inserts on buses/master and external audio sidechain are not available.
 
-**Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, choose one personal folder, and rescan. Subfolders are included. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
+**Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, choose one personal folder, and rescan. Subfolders and linked folders are included, with duplicate and cycle protection. Windows/Linux support VST3; macOS supports VST3/AU. VST2 `.dll` plugins are not included. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
 
 The first launch scans automatically. Every later launch checks the same standard folders and the one custom folder in the background; the saved KnownPluginList is immediately available from **LOAD VST3 / AU**. Names show Instrument or Effect and the format. New or updated VST3 bundles are inspected again; unchanged bundles reuse the catalogue. Removed plugins disappear from the list, while project assignments remain available for relinking. **OPEN VST3 FILE…** still lets you choose a bundle directly.
 
@@ -493,15 +494,24 @@ In this guide, **Ctrl/Cmd + F** focuses search. The arrows beside search move be
 | **WAV** | Mix, one track or all stems, in **16- or 24-bit PCM stereo** at **44.1 / 48 / 88.2 / 96 / 192 kHz**, selected before the destination. Use this for further mixing. |
 | **MP3** | Mix, one track or all stems, stereo 320 kbps / 44.1 kHz. The encoder is included. |
 
+### Export a WAV or stems, step by step
+
+1. Select the track to export, or prepare the complete mix. Check its sound and levels with **PLAY**, then open **EXPORT**.
+2. Choose **Complete WAV mix**, **Selected WAV track** or **All WAV stems**.
+3. In the encoding window, choose sample rate and bit depth. **48 kHz / 24-bit PCM** is a starting point for a test; the other combinations in the table are available too. Press **EXPORT**.
+4. The destination chooser opens. Choose a file for a mix or one track, or a parent folder for all stems. Arranger creates a dedicated subfolder for the aligned files and section timeline TXT. Confirm the destination.
+5. Rendering now begins: playback stops and progress appears. Playback may continue while you are only choosing encoding and destination; it is suspended during rendering. Playback stays stopped when export finishes; resume with **PLAY**.
+6. Open the WAV in a player or the receiving DAW and check its sound, start and tail. **Cancel** interrupts export; when exporting all stems, completed files remain in the folder.
+
 MIDI and stem filenames include **BPM and key**, for example `15-Piano_128bpm_Db.wav` or `Song_128bpm_Db.mid`. Decimal BPM values are retained. Each separate-track export folder also includes `Arrangiamento_128bpm_Db.txt`, listing BPM, key and section time ranges to the millisecond. Times describe the musical arrangement; audio tails may continue after its end.
 
-Export and project-save folders are remembered separately, along with the last WAV encoding. WAV/MP3 export stops playback and suspends the live device callback. It renders the **already loaded instruments and effects**, without duplicating VST instances or reloading their sounds. Audio is re-enabled after success, cancellation or failure; playback remains stopped.
+Export and project-save folders are remembered separately, along with the last WAV encoding. During WAV/MP3 rendering, playback stops and the song is processed with the **already loaded instruments and effects**. Controls become available again after success, cancellation or failure; playback remains stopped.
 
 WAV files also contain ACID tempo/meter metadata and a tempo/key comment. Full arrangements retain their tails and are marked as **one-shots**, so another DAW is not given an incorrect loop length. Automatic tempo recognition depends on the importing application; filenames and the TXT always provide the tempo.
 
 All WAV stems start at the song's beginning, have the same length and retain natural sample and effect tails. Even an empty track produces an aligned file. Mix export follows mute/solo; a stem exports even when its track is muted and retains gain, pan and master level.
 
-> Choose WAV to bring stems into a DAW. MP3 adds codec delay: useful for listening and sharing, rather than precise track alignment.
+> Choose WAV to bring stems into a DAW: it retains PCM without lossy compression for further mixing. Use MP3 for listening and sharing.
 
 ---
 
@@ -511,12 +521,20 @@ With more than fifteen melodic tracks, multitrack MIDI uses a second port to kee
 
 The keyboard button below the gear opens the track's instrument directly. Open each effect from its own row. Multiple instrument and effect editors can stay open together; closing one leaves the others visible. Reopening a closed editor centres it again.
 
-Arranger hosts instruments directly: click the **track name**, choose **BUILT-IN**,
-**LOAD SAMPLE** or **LOAD VST3 / AU**, then **OPEN VST** for your instrument’s controls.
-Press **▶** to hear the project notes.
+Arranger hosts instruments directly: select the track and use **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector’s **SOUND ASSIGNMENT** card. With **VST / AU**, choose an instrument in the browser; its new editor opens immediately. To reopen it, use the **keyboard** button below the gear. Press **▶** to hear the project notes.
 
 Tempo and position belong to the song; internal engines do not need LINK or SYNC DAW.
 To continue in another DAW, use the MIDI or stems in chapter 4.
+
+### Saving and checking plugin presets
+
+1. Open the project in **0.30.4** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
+2. Open the instrument editor with the inspector’s **keyboard** button. Choose a recognisable preset and, to test parameter recall too, optionally change one plugin control. Listen to the part so you can recognise its sound.
+3. In **Arranger**, press **SAVE AS** and give the `.fga` project a new name. Saving a preset inside the plugin is separate from saving the project: save the project after your changes too.
+4. Close the project and reopen the copy you just saved. Open the plugin editor again, check the preset and edited control, then press **PLAY** to compare the sound.
+5. With that track selected, use **EXPORT → Selected WAV track**, choose for example **48 kHz / 24-bit PCM**, confirm the destination and listen to the exported WAV.
+
+This procedure checks preset and parameter recall in your own installation. If the sound differs, keep both the original and the test copy; note whether the displayed preset changes, an edited control changes or the plugin stays silent. A preset absent from an older save cannot be reconstructed from the track name alone: select the intended sound again and save it in the project copy.
 
 ---
 
@@ -596,7 +614,7 @@ The menu also offers **Random automation for this lane/track**, **Lock this lane
 | **Jazzy late night** | D Major · *Circle of 5ths vi – ii – V – I* · 11ths · Rootless · *Neo Soul Lazy* · Humanize 40% |
 | **Modern / quartal** | G Dorian · *Deep Minor i – v* · 9ths · Quartal · *Broken Beat* · Swing 15% |
 | **Soulful grand** | Eb Major · *Soulful Gospel I – iii – IV – V* · 9ths · Drop 2 · Sound: *Soulful Grand* · *Soulful Sunday* · Strum 25% · Reverb 40% |
-| **'90s house piano** | C Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · Top +8va · Sound: *House Piano (M1 style)* · *Classic Offbeat Stabs* |
+| **'90s house piano** | C Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · Top +8va · Sound: *House Piano* · *Classic Offbeat Stabs* |
 | **Jackin' organ** | G Dorian · *Deep Dorian i – ii – IV – i* · 7ths · Close · Sound: *House Organ* · *Jack Organ Pump* · Swing 40% |
 | **Jackin' house** | A Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · *Jackin' Stabs* or *Jack Bounce* · Swing 40% · Gate 35% · Bass: Octaves |
 | **Gospel slide** | Eb Major · *Turnaround I – vi – ii – V* · 9ths + altered V · Drop 2 · Approach chord: From above · *Gospel Bounce* · Strum 20% |
@@ -657,6 +675,14 @@ The project remembers its path, but the file may have moved or may not be instal
 **How do I keep edited notes while trying other takes?**
 
 Enable **LOCK CLIP** for that part, or **LOCK TRACK** for the instrument. Use NEW on other elements. You can still edit locked material manually.
+
+**The plugin returns to its factory preset when I reopen a project**
+
+Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets): choose the sound, save the project in Arranger too, and reopen that exact file. The plugin’s own save command stores its preset but does not update the `.fga` by itself. Test with a copy and retain the original.
+
+**I press EXPORT in the encoding window but no destination appears**
+
+Check the version in **OPTIONS → ABOUT**: this procedure describes **0.30.4**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 

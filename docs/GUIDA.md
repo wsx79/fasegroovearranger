@@ -27,14 +27,15 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Automazioni](#pan-master-e-parametri-vst)
 - [Battute e tempo trascorso](#battute-e-tempo-trascorso)
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
+- [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.23.5**. Le schermate mostrano l’interfaccia attuale; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.30.4**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.23.5** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.30.4** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -71,7 +72,7 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano** e, nell’inspector, scegli **BUILT-IN**, **CAMPIONE** o **VST / AU**. L’ingranaggio della traccia apre invece il pannello musicale originale.
+6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano** e, nell’inspector, scegli **BUILT-IN**, **CAMPIONE** o **VST / AU**. Con il suono guida, l’ingranaggio della riga apre il pannello musicale originale; con un VST apre il suo editor.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
 Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
@@ -91,7 +92,7 @@ Le nuove rigenerazioni del piano confrontano gli attacchi della figura precedent
 Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
 attenuato = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
 l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
-Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio ambra accanto a Solo apre i parametri. Doppio clic sul clip per le note.
+Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio accanto a Solo apre i controlli dello strumento. Doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
@@ -131,9 +132,9 @@ La traccia si può rinominare ed eliminare come una traccia aggiunta manualmente
 Dopo una rigenerazione lo zoom si adatta automaticamente: il brano intero nell’arrangiamento, la durata del clip e l’intervallo delle note nell’editor MIDI.
 
 
-**+ MIDI**, nell’angolo sopra le intestazioni delle tracce, aggiunge una traccia vuota e apre il piano roll. Scrivi le note a mano, assegna un suono guida, un campione o un VST/AU dall’inspector e usa clip, loop, effetti, automazioni ed export come sulle altre tracce. Sono disponibili fino a **32 tracce totali**. GENERA BRANO, i cambi di genere e gli accordi non riscrivono queste note. Doppio clic sul **nome nell’inspector o nel mixer** per rinominare qualsiasi traccia; resta disponibile anche il menu destro → Rinomina. **APRI VST** apre lo strumento o effetto esterno assegnato.
+**+ MIDI**, nell’angolo sopra le intestazioni delle tracce, aggiunge una traccia vuota e apre il piano roll. Scrivi le note a mano, assegna un suono guida, un campione o un VST/AU dall’inspector e usa clip, loop, effetti, automazioni ed export come sulle altre tracce. Sono disponibili fino a **32 tracce totali**. GENERA BRANO, i cambi di genere e gli accordi non riscrivono queste note. Doppio clic sul **nome nell’inspector o nel mixer** per rinominare qualsiasi traccia; resta disponibile anche il menu destro → Rinomina. Il pulsante con la tastiera apre direttamente lo strumento VST assegnato; ogni effetto si apre dalla propria riga in **EFFETTI**.
 
-L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. La piccola **icona del pannello** nell’angolo superiore destro lo nasconde e restituisce tutta la larghezza all’arrangiamento. Per riaprirlo usa l’**icona inspector nella barra superiore** oppure **I**. L’icona nella barra superiore resta sempre disponibile. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Se lo spazio verticale è ridotto, scorri il pannello.
+L’**INSPECTOR** laterale segue la traccia e il clip selezionati: volume in dB, pan, mute/solo, blocchi di generazione, campione o VST e accesso ai pannelli originali. Il piccolo **pulsante di chiusura** nell’angolo superiore destro lo nasconde e restituisce tutta la larghezza all’arrangiamento. Per riaprirlo usa l’**icona inspector nella barra superiore** oppure **I**. L’icona nella barra superiore resta sempre disponibile. Trascina il **bordo destro** del pannello per regolarne la larghezza; il doppio clic sul bordo ripristina quella predefinita. La dimensione scelta viene ricordata. Se lo spazio verticale è ridotto, scorri il pannello.
 
 Sulla riga **ARMONIA**, a destra sopra **BUS E MANDATE**, trovi **zoom − / cursore / zoom +** e **ADATTA BRANO**. Quest’ultimo inquadra tutta la durata del brano nella larghezza disponibile, anche quando il browser è aperto. Zoom e adattamento non modificano MIDI, snap o Annulla. Le altezze delle tracce restano come le hai impostate.
 
@@ -283,7 +284,7 @@ Le mandate seguono livello e gruppo della traccia; il master controlla anche i r
 | **LOOP** | Ripete la zona impostata; LOOP CLIP ripete la parte scelta nell’editor. |
 | **CLICK** | Metronomo durante l'ascolto (mai nell'export); come il tasto **C**. |
 
-L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionato** in riquadri compatti. Strumento interno, sample e plugin condividono una riga; l'editor del plugin compare quando è assegnato uno strumento o effetto esterno. Mute, solo, blocchi, modifica MIDI, rigenerazione e loop conservano azioni e undo. Trascina il bordo per ridimensionarlo; il doppio clic ripristina 248 px.
+L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionato** in riquadri compatti. Strumento interno, sample e plugin condividono una riga; il pulsante tastiera compare quando è caricato uno strumento esterno; gli editor degli effetti si aprono dalle rispettive righe in EFFETTI. Mute, solo, blocchi, modifica MIDI, rigenerazione e loop conservano azioni e undo. Trascina il bordo per ridimensionarlo; il doppio clic ripristina 248 px.
 
 ### Battute e tempo trascorso
 
@@ -374,11 +375,11 @@ I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di b
 | **BUILT-IN** | Torna al suono guida. Piano e basso hanno i sette timbri di tastiera; archi, quattro chitarre e quattro kit hanno i loro suoni. |
 | **CARICA CAMPIONE** | Un tuo WAV, AIFF, FLAC o OGG, fino a 30 minuti e 512 MiB decodificati per file. Il campione resta sul disco; il progetto ne ricorda il percorso. Il browser dei campioni (**B**) fa lo stesso con ascolto e trascinamento. |
 | **CARICA VST3 / AU** | Apre il browser dei plugin. I motori FaseGroove sono il primo gruppo; gli altri plugin sono divisi per produttore. Ricerca, preferiti e recenti funzionano come nel browser dei groove. Un clic carica uno strumento o un effetto in insert. |
-| **APRI VST** | L'interfaccia dello strumento caricato. Scegli lo strumento o l’istanza di effetto da aprire. |
+| **APRI VST / icona tastiera** | Apre direttamente l’editor dello strumento caricato. Per gli effetti usa il pulsante editor della relativa riga in **EFFETTI**. |
 
 **Catena effetti.** Nel riquadro **EFFETTI** dell’inspector, **+** apre il browser filtrato sugli effetti VST3/AU. Puoi aggiungerne fino a **otto**, elaborati dall’alto verso il basso prima di volume/pan, gruppi e mandate. Ogni istanza ha bypass, editor, doppio clic sul nome per rinominarla e menu per sostituire, spostare, automatizzare o rimuovere. Trascina la presa a sinistra per riordinare. Il nome originale resta nel menu; **Usa nome originale** rimuove il soprannome. **FX** nel mixer apre la stessa catena in una finestra compatta, legata alla traccia anche cambiando selezione. Resta in primo piano fino alla chiusura e si riapre al centro. Caricare un nuovo effetto apre subito il suo editor centrato; riaprire un progetto non apre automaticamente gli editor. Bypass e Annulla/Ripristina del mixer evitano acquisizioni dello stato nativo durante la riproduzione e mantengono le modifiche indipendenti fatte nell’editor del plugin. Riordino e rinomina conservano i destinatari delle automazioni; rimozione o sostituzione con un plugin diverso eliminano soltanto le curve dell’istanza coinvolta. Undo ripristina plugin, stato e curve. I progetti precedenti migrano l’insert nel primo slot. I progetti con catena, nuovi stati VST/AU o automazioni native usano il formato 4 e richiedono questa versione dell’app: conserva una copia prima di sovrascrivere un progetto precedente. Le code dichiarate dagli effetti sono incluse nell’export, fino a 120 secondi. Gli insert esterni sui bus/master e il sidechain audio esterno non sono previsti.
 
-**Catalogo dei plugin.** Apri **OPZIONI → IMPOSTAZIONI → PLUGIN…** per vedere le cartelle standard, scegliere una cartella personale e ripetere la scansione. Sono incluse le sottocartelle. Windows cerca nelle cartelle Common Files/VST3 di sistema e Programs/Common/VST3 dell’utente; macOS nelle cartelle Audio/Plug-Ins/VST3 di sistema e dell’utente; Linux in `~/.vst3`, `/usr/lib/vst3` e `/usr/local/lib/vst3`. Su macOS compaiono anche le Audio Units registrate dal sistema operativo: installa i bundle `.component` nelle cartelle Components standard tramite l’installer del produttore.
+**Catalogo dei plugin.** Apri **OPZIONI → IMPOSTAZIONI → PLUGIN…** per vedere le cartelle standard, scegliere una cartella personale e ripetere la scansione. Sono incluse le sottocartelle e le cartelle collegate, evitando duplicati e percorsi circolari. Sono supportati VST3 su Windows/Linux e VST3/AU su macOS; i plugin VST2 `.dll` non sono inclusi. Windows cerca nelle cartelle Common Files/VST3 di sistema e Programs/Common/VST3 dell’utente; macOS nelle cartelle Audio/Plug-Ins/VST3 di sistema e dell’utente; Linux in `~/.vst3`, `/usr/lib/vst3` e `/usr/local/lib/vst3`. Su macOS compaiono anche le Audio Units registrate dal sistema operativo: installa i bundle `.component` nelle cartelle Components standard tramite l’installer del produttore.
 
 La prima scansione parte automaticamente. A ogni avvio successivo vengono ricontrollate in background le cartelle standard e l’unica cartella personale; il KnownPluginList salvato è disponibile subito da **CARICA VST3 / AU**. Il nome indica Strumento o Effetto e il formato. I bundle VST3 nuovi o aggiornati vengono verificati di nuovo; quelli invariati usano il catalogo. I plugin rimossi spariscono dalla lista, mentre le assegnazioni nei progetti restano ricollegabili. **APRI FILE VST3…** permette ancora la scelta diretta di un bundle.
 
@@ -498,15 +499,24 @@ Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca
 | **WAV** | Mix, singola traccia o tutti gli stem, stereo PCM a **16 o 24 bit** e **44,1 / 48 / 88,2 / 96 / 192 kHz**, da scegliere prima del percorso. È il formato da usare per continuare il mixaggio. |
 | **MP3** | Mix, singola traccia o tutti gli stem, stereo a 320 kbps / 44,1 kHz. L'encoder è incluso. |
 
+### Esportare un WAV o gli stem, passo per passo
+
+1. Seleziona la traccia da esportare, oppure prepara il mix completo. Controlla il suono e i livelli con **AVVIA**, poi apri **EXPORT**.
+2. Scegli **Mix completo WAV**, **Traccia selezionata WAV** oppure **Tutti gli stem WAV**.
+3. Nella finestra di codifica scegli frequenza e profondità in bit. **48 kHz / 24 bit PCM** è un punto di partenza per una prova; puoi scegliere le altre combinazioni della tabella. Premi **ESPORTA**.
+4. Si apre la scelta del percorso: per un mix o una traccia scegli il file; per tutti gli stem scegli la cartella principale. Arranger crea al suo interno una sottocartella dedicata con i file allineati e il TXT delle sezioni. Conferma la destinazione.
+5. Ora parte il rendering: l’ascolto si ferma e compare l’avanzamento. L’audio del brano può continuare durante la sola scelta di codifica e percorso; viene sospeso durante l’elaborazione. Al termine il trasporto resta fermo; puoi riprendere con **AVVIA**.
+6. Apri il WAV in un lettore o nella DAW di destinazione e verifica suono, inizio e coda. **Annulla** interrompe l’export; se stavi esportando tutti gli stem, i file già completati restano nella cartella.
+
 I nomi dei MIDI e degli stem contengono **BPM e tonalità**, ad esempio `15-Piano_128bpm_Db.wav` o `Brano_128bpm_Db.mid`. I BPM decimali sono conservati. La cartella di ogni export separato contiene anche `Arrangiamento_128bpm_Db.txt`, con BPM, tonalità e gli intervalli delle sezioni al millisecondo: `00:00.000 - 00:30.000 Intro`, ecc. Gli orari descrivono la struttura musicale; le code audio possono proseguire oltre la fine.
 
-L'app ricorda separatamente l'ultima cartella di export e quella di salvataggio, oltre a frequenza e bit scelti. Durante l'export WAV/MP3 la riproduzione si ferma e il callback del dispositivo audio viene sospeso: vengono elaborati gli **strumenti e gli effetti già caricati**, senza duplicare i VST o ricaricarne i suoni. L'audio viene riabilitato anche dopo annullamento o errore; il trasporto resta fermo.
+L'app ricorda separatamente l'ultima cartella di export e quella di salvataggio, oltre a frequenza e bit scelti. Durante il rendering WAV/MP3 l’ascolto si ferma e il brano viene elaborato con gli **strumenti e gli effetti già caricati**. Al termine, dopo annullamento o errore, i comandi tornano disponibili e il trasporto resta fermo.
 
 Nei WAV sono salvati anche BPM e metrica come metadati ACID e una descrizione di tempo/tonalità. I file dell'intero arrangiamento conservano le code e sono marcati come **one-shot**, evitando di imporre una lunghezza di loop errata alla DAW di destinazione. Il riconoscimento automatico del tempo dipende dal programma che li importa; BPM nel nome e TXT restano sempre disponibili.
 
 Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono le code dei suoni e degli effetti. Anche una traccia vuota produce un file allineato. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
 
-> Per riportare gli stem in una DAW scegli WAV. L'MP3 aggiunge il ritardo del codec: va bene per ascoltare e condividere, non per l'allineamento preciso delle tracce.
+> Per riportare gli stem in una DAW scegli WAV: conserva il PCM senza compressione con perdita per il mixaggio successivo. MP3 è adatto all’ascolto e alla condivisione.
 
 ---
 
@@ -516,12 +526,20 @@ Con più di quindici tracce melodiche, il MIDI multitraccia usa una seconda port
 
 Il pulsante con la tastiera sotto l’ingranaggio apre direttamente lo strumento della traccia. Ogni effetto si apre dalla propria riga. Gli editor di più strumenti ed effetti possono restare aperti insieme; chiuderne uno lascia visibili gli altri. La riapertura di una finestra chiusa la centra di nuovo.
 
-Arranger ospita direttamente gli strumenti: seleziona la traccia, apri l’**ingranaggio ambra**, scegli
-**BUILT-IN**, **CARICA CAMPIONE** oppure **CARICA VST3 / AU**, quindi premi **APRI VST** per
-i controlli del tuo strumento. Premi **▶** per ascoltare le note del progetto.
+Arranger ospita direttamente gli strumenti: seleziona la traccia e usa **SUONO GUIDA / BUILT-IN**, **CAMPIONE** oppure **VST / AU** nel riquadro **ASSEGNAZIONE SUONO** dell’inspector. Con **VST / AU** scegli lo strumento nel browser; il nuovo editor si apre subito. Per riaprirlo premi il pulsante con la **tastiera**, sotto l’ingranaggio. Premi **▶** per ascoltare le note del progetto.
 
 Il tempo e la posizione sono quelli del brano; non servono LINK o SYNC DAW tra i motori interni.
 Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
+
+### Salvare e verificare i preset dei plugin
+
+1. Apri il progetto in **0.30.4** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
+2. Apri l’editor dello strumento con il pulsante **tastiera** nell’inspector. Scegli un preset riconoscibile e, se vuoi verificare anche i parametri, modifica un controllo del plugin. Ascolta la parte per riconoscere il suono.
+3. In **Arranger** premi **SALVA COME** e assegna un nuovo nome al progetto `.fga`. Il salvataggio del preset dentro il plugin è distinto dal salvataggio del progetto: conserva anche quest’ultimo dopo le modifiche.
+4. Chiudi il progetto e riapri la copia appena salvata. Apri di nuovo l’editor del plugin: controlla il preset e il parametro modificato, poi premi **AVVIA** per confrontare il suono.
+5. Con quella traccia selezionata usa **EXPORT → Traccia selezionata WAV**, scegli ad esempio **48 kHz / 24 bit PCM**, conferma il percorso e ascolta il WAV esportato.
+
+Questa procedura verifica il ripristino del preset e dei parametri nella tua installazione. Se il suono non corrisponde, conserva il progetto originale e la copia di prova; annota se cambia il preset mostrato, se cambia un parametro o se il plugin resta muto. Un preset assente da un vecchio salvataggio non può essere ricostruito dal solo nome della traccia: scegli nuovamente il suono desiderato e salvalo nella copia del progetto.
 
 ---
 
@@ -601,7 +619,7 @@ Nel menu trovi **Automazione casuale per questa corsia/traccia**, **Blocca quest
 | **Jazzy late night** | D Major · *Circle of 5ths vi – ii – V – I* · 11ths · Rootless · *Neo Soul Lazy* · Humanize 40% |
 | **Moderno / quartale** | G Dorian · *Deep Minor i – v* · 9ths · Quartal · *Broken Beat* · Swing 15% |
 | **Soulful grand** | Eb Major · *Soulful Gospel I – iii – IV – V* · 9ths · Drop 2 · Sound: *Soulful Grand* · *Soulful Sunday* · Strum 25% · Reverb 40% |
-| **Piano house anni '90** | C Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · Top +8va · Sound: *House Piano (M1 style)* · *Classic Offbeat Stabs* |
+| **Piano house anni '90** | C Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · Top +8va · Sound: *House Piano* · *Classic Offbeat Stabs* |
 | **Organo jackin'** | G Dorian · *Deep Dorian i – ii – IV – i* · 7ths · Close · Sound: *House Organ* · *Jack Organ Pump* · Swing 40% |
 | **Jackin' house** | A Minor (Aeolian) · *Jackin' Minor i – iv* · 7ths · Close · *Jackin' Stabs* o *Jack Bounce* · Swing 40% · Gate 35% · Bass: Octaves |
 | **Slide gospel** | Eb Major · *Turnaround I – vi – ii – V* · 9ths + altered V · Drop 2 · Approach chord: From above · *Gospel Bounce* · Strum 20% |
@@ -658,6 +676,14 @@ Controlla l’**icona altoparlante → Dispositivo audio / buffer**, l’uscita 
 **Il VST o il campione non si trova più**
 
 Il progetto ne ricorda il percorso, ma il file può essere stato spostato o mancare su questo computer. Usa **CARICA CAMPIONE** o **CARICA VST3 / AU** per ricollegarlo. Controlla anche che il plugin abbia la stessa architettura dell'app e la sua autorizzazione d'uso. Finché uno strumento manca, l'esportazione audio ti chiede di ricollegarlo.
+
+**Il plugin torna al preset standard quando riapro il progetto**
+
+Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin): scegli il suono, salva anche il progetto in Arranger e riapri proprio quel file. Il comando di salvataggio dentro il plugin conserva il suo preset, ma non aggiorna da solo il `.fga`. Per la prova crea una copia, mantenendo l’originale.
+
+**Premo ESPORTA nella codifica ma non compare il percorso**
+
+Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.4**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 
