@@ -50,3 +50,43 @@ The sampler uses Signalsmith Stretch for independent tempo and pitch changes.
 Copyright Geraint Luff / Signalsmith Audio, MIT license. Sources, version pins and
 full license texts are in `ThirdParty/signalsmith-stretch` and
 `ThirdParty/signalsmith-linear`. No network service is involved.
+
+## Optional AI services and model rights
+
+Arranger independently integrates the HTTP APIs of OpenAI, Anthropic (Claude),
+Google (Gemini / AI Studio), DeepSeek, Groq (GroqCloud), OpenRouter and Ollama.
+Their names, logos, services, model names and other protected material remain the
+property of their respective rights holders. No affiliation, sponsorship or
+endorsement is implied. No provider logo, API key, proprietary SDK or model
+weights are bundled by this integration. The application's AGPL licence does
+not relicense those services or models. Accounts, API access, availability,
+quotas, charges and rights in generated output are subject to the applicable
+provider/model terms, not guaranteed by Arranger.
+
+Groq and OpenRouter can serve models created by third parties. For example,
+GPT-OSS is by OpenAI and Qwen is by the Qwen/Alibaba project. Other model authors
+and licences are identified in the selected model's official catalogue/model
+card. Ollama downloads also carry their own model licences. Review those terms
+for your intended use; local inference does not transfer ownership of a model.
+
+Official service terms and privacy references:
+
+| Service | Terms / policies | Privacy / data handling |
+|---|---|---|
+| OpenAI | [Terms / policies](https://openai.com/policies/services-agreement/) | [Privacy / data](https://openai.com/policies/privacy-policy/) |
+| Anthropic / Claude | [Terms / policies](https://www.anthropic.com/legal/commercial-terms) | [Privacy / data](https://www.anthropic.com/legal/privacy) |
+| Google / Gemini | [Terms / policies](https://ai.google.dev/gemini-api/terms) | [Privacy / data](https://policies.google.com/privacy) |
+| DeepSeek | [Terms / policies](https://cdn.deepseek.com/policies/en-US/deepseek-terms-of-use.html) | [Privacy / data](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html) |
+| Groq / GroqCloud | [Terms / policies](https://groq.com/terms-of-use/) | [Privacy / data](https://groq.com/privacy-policy/) |
+| OpenRouter | [Terms / policies](https://openrouter.ai/terms) | [Privacy / data](https://openrouter.ai/privacy) |
+| Ollama | [Terms / policies](https://ollama.com/terms) | [Privacy / data](https://ollama.com/privacy) |
+
+Free cloud API tiers are limited service offers, not licences to unlimited
+inference; their terms can change. OpenRouter also involves the chosen upstream
+provider and its data policies. Setup, current model discovery, free-tier
+limitations and official pricing links are documented in the dedicated AI
+section of `docs/GUIDA.md` and `docs/GUIDE.md`, included in the application.
+The AIREITER article https://aireiter.com/it/blog/best-free-ai-api is credited as
+the user's introductory reference; provider documentation was checked directly
+on 2026-10-31. The guide text and integration are original; no article text or
+third-party model weights were copied.

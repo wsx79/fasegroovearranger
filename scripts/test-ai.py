@@ -54,7 +54,7 @@ class Handler(BaseHTTPRequestHandler):
         self.seen.append((self.path, body))
         if self.mode == 'stall':
             time.sleep(5)
-        code = {'auth': 401, 'quota': 429, 'redirect': 307, 'missing': 404, 'memory': 500}.get(self.mode, 200) if self.path != '/capture' else 200
+        code = {'auth': 401, 'quota': 429, 'credit': 402, 'redirect': 307, 'missing': 404, 'memory': 500}.get(self.mode, 200) if self.path != '/capture' else 200
         data = b'invalid JSON' if self.mode == 'invalid' else json.dumps({'error': 'model needs more system memory'} if self.mode == 'memory' else {'message': {'content': json.dumps(plan)}, 'done': True}).encode()
         try:
             self.send_response(code)
@@ -75,13 +75,13 @@ def quiet(stderr):
     # ALSA complains when /dev/snd is missing; that is not a test failure.
     return '\n'.join(line for line in stderr.splitlines() if 'ALSA lib' not in line and '/dev/snd/' not in line)
 try:
-    for mode, expected in [('ok', ''), ('auth', 'requires authentication'), ('quota', 'quota'), ('invalid', 'unreadable'), ('redirect', 'HTTP 307'), ('missing', 'not installed'), ('memory', 'more system memory')]:
+    for mode, expected in [('ok', ''), ('auth', 'requires authentication'), ('quota', 'quota'), ('credit', 'API credit'), ('invalid', 'unreadable'), ('redirect', 'HTTP 307'), ('missing', 'not installed'), ('memory', 'more system memory')]:
         Handler.mode = mode
         result = subprocess.run([str(binary), '--ai-http-test', endpoint], capture_output=True, text=True, timeout=15)
         err = quiet(result.stderr)
         assert (result.returncode == 0) == (mode == 'ok'), (mode, err)
         assert expected in err, (mode, err)
-    assert len(Handler.seen) == 7
+    assert len(Handler.seen) == 8
     for path, body in Handler.seen:
         assert body['model'] == 'qwen3:8b' and body['think'] is False
         assert path == '/api/chat' and body['stream'] is False and body['format'] == 'json'
@@ -116,6 +116,8 @@ try:
         for subdir in ['', 'ai-it']:
             evidence = Path(args.ui_output) / subdir / 'ai-local-http.txt'
             assert evidence.read_text().startswith('PASS'), evidence
+            providers = Path(args.ui_output) / subdir / 'ai-providers.txt'
+            assert providers.read_text().startswith('PASS'), providers
 
 finally:
     server.shutdown()

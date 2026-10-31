@@ -23,7 +23,8 @@ void runAiTests(){
     auto base=fga::newProject(1);base.tracks[4].instrument="plugin";base.tracks[4].instrumentPath="/PRIVATE/kick.vst3";base.tracks[4].instrumentId="PRIVATE-ID";base.tracks[4].instrumentState="PRIVATE-STATE";base.tracks[4].effects.push_back({1,"","Private effect","/PRIVATE/fx.vst3","","PRIVATE-FX",false});base.tracks[4].gain=.42;
     fga::AiOptions o;o.model="qwen3:8b";o.tracks={4,17};o.prompt="Una canzone techno di 6 minuti";o.key="secret-key";
     require(!fga::aiContext(base,o).contains("PRIVATE")&&!fga::aiContext(base,o).contains(o.key),"AI context excludes credentials, paths and plugin states");
-    for(int i=0;i<4;++i){o.provider=(fga::AiProvider)i;fga::AiHttpRequest request;require(fga::aiHttpRequest(base,o,request).wasOk(),"provider request formats");require(request.body.contains("Six")||request.body.contains("task"),"musical request sent");require(!request.body.contains(o.key)&&!request.url.contains(o.key),"API keys absent from URL/body");require(request.body.contains("messages")||request.body.contains("contents"),"provider payload includes musical context");}
+    for(int i=0;i<(int)fga::AiProvider::count;++i){o.provider=(fga::AiProvider)i;o.model=i==6?"openrouter/free":"qwen3:8b";fga::AiHttpRequest request;require(fga::aiHttpRequest(base,o,request).wasOk(),"provider request formats");require(request.body.contains("Six")||request.body.contains("task"),"musical request sent");require(!request.body.contains(o.key)&&!request.url.contains(o.key),"API keys absent from URL/body");require(request.body.contains("messages")||request.body.contains("contents"),"provider payload includes musical context");}
+    o.model="qwen3:8b";
     fga::Project song;juce::String summary;require(fga::aiCompile(base,o,fixture(),song,summary).wasOk(),"valid AI composition compiles");require(song.settings.chordSteps==32&&song.settings.chordCount==4&&song.settings.degrees[1]==5,"AI harmony metadata matches its chord display");require(song.settings.freeTempo&&song.settings.bpm==138&&std::abs(song.length()*60/138-360)<.01,"six-minute techno retains 138 BPM beyond family presets");
     require(song.tracks[4].instrumentPath==base.tracks[4].instrumentPath&&song.tracks[4].instrumentState=="PRIVATE-STATE"&&song.tracks[4].gain==.42,"AI preserves assigned plugins, state and mix");
     require(!song.tracks[17].clips[1].notes.empty()&&song.tracks[0].clips[0].notes.empty(),"only chosen instruments receive new song MIDI");
@@ -55,7 +56,64 @@ void runAiTests(){
     require(fga::aiResponse(fga::AiProvider::openai,juce::JSON::parse(R"({"choices":[{"finish_reason":"length","message":{"content":"partial"}}]})"),response).failed(),"truncated output cannot become a song");
     const std::array<juce::String,4> replies{R"({"choices":[{"message":{"content":"{}"}}]})",R"({"content":[{"type":"text","text":"{}"}]})",R"({"candidates":[{"content":{"parts":[{"text":"{}"}]}}]})",R"({"message":{"content":"{}"}})"};
     for(int i=0;i<4;++i)require(fga::aiResponse((fga::AiProvider)i,juce::JSON::parse(replies[(size_t)i]),response).wasOk()&&response=="{}","four provider response envelopes");
-    std::cout<<"AI composition: real MIDI, arrangement duration, routing, locks, validation and provider envelopes passed\n";
+    // Stable preference IDs, current presets and fixed origins for every service.
+    require((int)fga::AiProvider::ollama==3&&(int)fga::AiProvider::deepseek==4,"existing provider preferences retain their meanings");
+    const std::array<juce::String,7> hosts{"api.openai.com","api.anthropic.com","generativelanguage.googleapis.com","127.0.0.1","api.deepseek.com","api.groq.com","openrouter.ai"};
+    fga::AiOptions cloud;cloud.prompt="write a song";cloud.tracks={4,17};cloud.key="fixture-secret";cloud.endpoint="http://127.0.0.1:11434";
+    for(int i=0;i<(int)fga::AiProvider::count;++i){
+        cloud.provider=(fga::AiProvider)i;const auto suggestions=fga::aiSuggestedModels(cloud.provider);cloud.model=suggestions.isEmpty()?"qwen3:8b":suggestions[0];
+        require(fga::aiSetupUrl(cloud.provider).startsWith("https://"),"each service has an official setup link");
+        fga::AiHttpRequest compose,catalogue;
+        require(fga::aiHttpRequest(base,cloud,compose).wasOk()&&juce::URL(compose.url).getDomain()==hosts[(size_t)i],"generation uses the selected official origin");
+        require(fga::aiModelsRequest(cloud,{},catalogue).wasOk()&&juce::URL(catalogue.url).getDomain()==hosts[(size_t)i],"model listing cannot leak a cloud key to the Ollama server");
+        require(catalogue.body.isEmpty()&&!catalogue.url.contains(cloud.key)&&!compose.body.contains(cloud.key),"catalogue sends no musical context and key stays in headers");
+        require((i==3)==!catalogue.headers.contains(cloud.key),"local discovery never receives a cloud credential");
+        const auto fields=juce::JSON::parse(compose.body);
+        if(cloud.provider==fga::AiProvider::groq)require((int)fields["max_completion_tokens"]==4096&&fields["reasoning_effort"].toString()=="low","Groq output budget fits free-tier limits better than the paid-service budget");
+        if(cloud.provider==fga::AiProvider::deepseek)require(fields["thinking"]["type"].toString()=="disabled"&&fields.hasProperty("max_tokens"),"DeepSeek returns final JSON without a reasoning budget");
+        if(cloud.provider==fga::AiProvider::openrouter)require(fields["model"].toString()=="openrouter/free"&&!fields.hasProperty("models")&&!fields.hasProperty("tools"),"free router has no paid model fallback or tool charges");
+        auto invalid=cloud;invalid.key="bad\nheader";if(i!=3)require(fga::aiModelsRequest(invalid,{},catalogue).failed(),"discovery rejects header injection");
+        invalid=cloud;invalid.key.clear();if(i!=3)require(fga::aiModelsRequest(invalid,{},catalogue).failed(),"online model listing requires the selected service key");
+        invalid=cloud;invalid.model="model?key=secret";require(fga::aiHttpRequest(base,invalid,compose).failed(),"model IDs cannot inject URLs or query strings");
+    }
+    cloud.provider=fga::AiProvider::openrouter;cloud.model="openai/gpt-6.1-sol";fga::AiHttpRequest blocked;
+    require(fga::aiHttpRequest(base,cloud,blocked).failed(),"OpenRouter Free rejects manually entered paid models");
+    cloud.provider=(fga::AiProvider)100;require(fga::aiHttpRequest(base,cloud,blocked).failed()&&fga::aiModelsRequest(cloud,{},blocked).failed(),"unknown services do not fall through to another provider");
+    for(const auto provider:{fga::AiProvider::deepseek,fga::AiProvider::groq,fga::AiProvider::openrouter}){
+        require(fga::aiResponse(provider,juce::JSON::parse(R"({"choices":[{"message":{"reasoning_content":"private thoughts","content":"{}"}}]})"),response).wasOk()&&response=="{}","compatible providers use final content only");
+        require(fga::aiResponse(provider,juce::JSON::parse(R"({"choices":[{"finish_reason":"length","message":{"content":"{}"}}]})"),response).failed(),"compatible provider truncation cannot be applied");
+        const auto failure=fga::aiResponse(provider,juce::JSON::parse(R"({"error":{"message":"fixture-secret"}})"),response);
+        require(failure.failed()&&!failure.getErrorMessage().contains("fixture-secret"),"embedded provider errors never echo credentials");
+    }
+    juce::StringArray listed;juce::String next;
+    auto catalogue=juce::JSON::parse(R"({"models":[{"name":"models/gemini-3.8-flash","supportedGenerationMethods":["generateContent"]},{"name":"models/gemini-3.1-pro-preview","supportedGenerationMethods":["generateContent"]},{"name":"models/gemini-embedding","supportedGenerationMethods":["embedContent"]},{"name":"models/gemini-image","supportedGenerationMethods":["generateContent"]}],"nextPageToken":"page/+?&"})");
+    require(fga::aiReadModels(fga::AiProvider::gemini,catalogue,listed,next).wasOk()&&listed==juce::StringArray{"gemini-3.8-flash","gemini-3.1-pro-preview"}&&next=="page/+?&","Gemini catalogue selects text generation and pagination cursor");
+    cloud.provider=fga::AiProvider::gemini;require(fga::aiModelsRequest(cloud,next,blocked).wasOk()&&blocked.url.contains("pageToken=page%2F%2B%3F%26"),"catalogue cursors are escaped query data");
+    listed.clear();catalogue=juce::JSON::parse(R"({"data":[{"id":"claude-sonnet-5-5"},{"id":"claude-retired","lifecycle":"retired"}],"has_more":true,"last_id":"claude-sonnet-5-5"})");
+    require(fga::aiReadModels(fga::AiProvider::anthropic,catalogue,listed,next).wasOk()&&listed.size()==1&&next=="claude-sonnet-5-5","Anthropic catalogue excludes retired models and follows last_id");
+    listed.clear();catalogue=juce::JSON::parse(R"({"data":[{"id":"gpt-6.1-sol"},{"id":"gpt-6.1-sol"},{"id":"gpt-audio"},{"id":"gpt-image-1"},{"id":"text-embedding-3-small"},{"id":"whisper-1"},{"id":"bad\nheader"}]})");
+    require(fga::aiReadModels(fga::AiProvider::openai,catalogue,listed,next).wasOk()&&listed==juce::StringArray{"gpt-6.1-sol"},"OpenAI catalogue deduplicates and excludes audio, image, embeddings and invalid IDs");
+    listed.clear();catalogue=juce::JSON::parse(R"({"data":[{"id":"openai/gpt-oss-20b","active":true},{"id":"whisper-large-v3"},{"id":"llama-prompt-guard-2"},{"id":"retired","active":false}]})");
+    require(fga::aiReadModels(fga::AiProvider::groq,catalogue,listed,next).wasOk()&&listed==juce::StringArray{"openai/gpt-oss-20b"},"Groq catalogue excludes non-composers and inactive models");
+    listed.clear();catalogue=juce::JSON::parse(R"({"data":[{"id":"deepseek-flash"},{"id":"deepseek-v4-pro"}]})");
+    require(fga::aiReadModels(fga::AiProvider::deepseek,catalogue,listed,next).wasOk()&&listed.size()==2,"DeepSeek lists current text models");
+    listed.clear();catalogue=juce::JSON::parse(R"({"data":[{"id":"maker/text:free","pricing":{"prompt":"0","completion":"0.0"},"architecture":{"output_modalities":["text"]}},{"id":"maker/paid:free","pricing":{"prompt":"0","completion":"0.1"},"architecture":{"output_modalities":["text"]}},{"id":"maker/missing:free","architecture":{"output_modalities":["text"]}},{"id":"maker/other","pricing":{"prompt":"0","completion":"0"},"architecture":{"output_modalities":["text"]}},{"id":"maker/image:free","pricing":{"prompt":"0","completion":"0"},"architecture":{"output_modalities":["image"]}}]})");
+    require(fga::aiReadModels(fga::AiProvider::openrouter,catalogue,listed,next).wasOk()&&listed==juce::StringArray{"maker/text:free"},"OpenRouter only lists explicit zero-priced free text variants");
+    cloud.provider=fga::AiProvider::openrouter;
+    require(fga::aiModels(cloud,listed,[]{return false;},[&](const fga::AiHttpRequest&,juce::var& root){root=catalogue;return juce::Result::ok();}).wasOk()&&listed==juce::StringArray{"openrouter/free","maker/text:free"},"free router stays selectable after refreshing its variants");
+    // Exercise the complete catalogue operation with deterministic HTTPS replies.
+    cloud.provider=fga::AiProvider::gemini;int requests=0;
+    auto fetch=[&](const fga::AiHttpRequest& request,juce::var& root){
+        require(request.url.startsWith("https://generativelanguage.googleapis.com/")&&request.headers.contains("fixture-secret")&&request.body.isEmpty(),"paginated catalogue stays on the service origin without project data");
+        if(++requests==1)root=juce::JSON::parse(R"({"models":[],"nextPageToken":"second"})");
+        else{require(request.url.contains("pageToken=second"),"subsequent catalogue page uses the service cursor");root=juce::JSON::parse(R"({"models":[{"name":"models/gemini-3.8-flash","supportedGenerationMethods":["generateContent"]}]})");}
+        return juce::Result::ok();
+    };
+    require(fga::aiModels(cloud,listed,[]{return false;},fetch).wasOk()&&requests==2&&listed==juce::StringArray{"gemini-3.8-flash"},"catalogue continues through empty eligible pages");
+    requests=0;require(fga::aiModels(cloud,listed,[]{return false;},[&](const fga::AiHttpRequest&,juce::var& root){if(++requests==2)return juce::Result::fail("quota");root=juce::JSON::parse(R"({"models":[{"name":"models/gemini-3.8-flash","supportedGenerationMethods":["generateContent"]}],"nextPageToken":"next"})");return juce::Result::ok();}).failed()&&listed.isEmpty(),"failed later page never exposes a partial catalogue");
+    requests=0;require(fga::aiModels(cloud,listed,[]{return true;},fetch).failed()&&listed.isEmpty()&&requests==0,"cancelled discovery sends no further request");
+    requests=0;require(fga::aiModels(cloud,listed,[]{return false;},[&](const fga::AiHttpRequest&,juce::var& root){++requests;root=juce::JSON::parse(R"({"models":[],"nextPageToken":"same"})");return juce::Result::ok();}).failed()&&listed.isEmpty()&&requests==2,"cyclic pagination is bounded and cannot publish fake models");
+    std::cout<<"AI composition: real MIDI, arrangement duration, routing, locks, validation and seven provider envelopes/catalogues passed\n";
 }
 int runAiHttpTest(const juce::String& endpoint,bool cancel){auto p=fga::newProject(1);fga::AiOptions o;o.provider=fga::AiProvider::ollama;o.model="qwen3:8b";o.endpoint=endpoint;o.tracks={4,17};o.prompt="techno 6 minutes";fga::Project out;juce::String summary;const auto started=juce::Time::getMillisecondCounterHiRes();auto r=fga::aiGenerate(p,o,out,summary,[=]{return cancel&&juce::Time::getMillisecondCounterHiRes()-started>200;});if(cancel){require(r.failed()&&r.getErrorMessage().contains("cancelled"),"cancel interrupted the HTTP request");return 0;}if(r.failed()){std::cerr<<r.getErrorMessage()<<"\n";return 1;}require(out.settings.bpm==138&&std::abs(out.length()*60/138-360)<.01,"HTTP model response writes six-minute MIDI");return 0;}
 

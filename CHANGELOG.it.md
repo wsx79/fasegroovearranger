@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.5
+
+- Aggiunge DeepSeek, Groq e OpenRouter Free alla composizione IA, con suggerimenti aggiornati e cataloghi cloud aggiornabili. Conserva le preferenze dei servizi esistenti e la configurazione locale Ollama.
+- Aggiunge istruzioni per servizi e chiavi API, limiti delle quote gratuite e attribuzioni di servizi/modelli nelle guide IT/EN. Le credenziali restano separate per servizio; OpenRouter rifiuta ID a pagamento.
+
 ## 0.30.4
 
 - Corregge l’export WAV fermo dopo la codifica: la scelta del percorso parte dopo la distruzione della finestra precedente.

@@ -25,7 +25,7 @@ Create a complete song with the original Piano, Drums, Guitar and Lead engines: 
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
 
-**AI COMPOSER** writes editable MIDI notes and a full arrangement from your request, using your assigned instruments. Choose OpenAI, Claude, Gemini or Ollama, review the preview, then APPLY with Undo. Local Ollama is the initial choice: no API key, with automatic installed-model discovery and connection checks. Ollama and a downloaded text model must be available on your computer. Online APIs need your own key; keys stay in memory. [AI guide](docs/GUIDE.md#compose-with-ai).
+**AI COMPOSER** writes editable MIDI notes and a full arrangement from your request, using your assigned instruments. Choose OpenAI, Claude, Gemini, DeepSeek, Groq, OpenRouter Free or Ollama, review the preview, then APPLY with Undo. Local Ollama is the initial choice: no API key, with automatic installed-model discovery and connection checks. Ollama and a downloaded text model must be available on your computer. Online APIs need your own key; keys stay in memory. Cloud model catalogues can be refreshed from the composer; Groq, OpenRouter Free and some Gemini models offer limited free API access. [AI setup and free APIs](docs/GUIDE.md#ai-services-models-and-free-apis).
 
 Separate instrument windows, a global Lead octave and handwritten MIDI tracks (**+ MIDI**, up to 32 tracks in total). Double-click inspector or mixer names to rename tracks. Piano regeneration selects more distinct rhythmic figures within the same genre.
 

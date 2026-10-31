@@ -113,3 +113,31 @@ The composer initially selects Ollama (one-time preference migration). A cancell
 The sampler page filters target items by source type while retaining real project track IDs; other tabs accept all tracks. Recording prevents implicit target changes. The performance keyboard sits outside the scrolling parameter viewport. Transient and equal slicing share the existing persisted marker array; Reset restores the same defaults as sample loading as one undo step. Sample instruments retain their MIDI pitches when normalising drum tracks; built-in drum generators and guide mappings keep their previous behaviour.
 
 The audio thread publishes active keys in two atomic 64-bit words per track after rendering. Sample keys derive from active voices, including one-shot tails; the GUI reads snapshots without locking or feeding keyboard-display changes back into MIDI input. Studio has its own preference-aware tooltip window. Waveform view gestures update zoom/scroll only, with pointer anchoring; trimming begins on an actual drag, so fitting the view cannot edit trim points.
+
+## Live AI catalogues and additional providers (unreleased)
+
+Provider IDs 0–3 retain their stored preference meanings; DeepSeek, Groq and
+OpenRouter Free are appended. Their Chat Completions adapters share final-content
+parsing and composition validation with OpenAI. DeepSeek disables thinking for
+the MIDI JSON task; Groq requests 4096 completion tokens to reduce free-tier
+quota pressure. OpenRouter accepts only `openrouter/free` or `:free` IDs and
+configures no model fallback array, tools or paid routes. Its catalogue requires
+explicit zero input/output prices and text output. No purchase is performed.
+
+`aiModelsRequest` fixes each cloud service's HTTPS origin and authentication
+header. Only Ollama uses a user-configurable address. `aiReadModels` filters
+recognisable non-text/unsupported models and deduplicates IDs. Gemini and
+Anthropic pagination uses escaped opaque cursors, never service-supplied URLs.
+`aiModels` publishes only a complete catalogue, with page, response-size, model
+count and cursor-cycle bounds. Discovery shares cancellable, redirect-disabled
+HTTP transport with generation (eight-second per-page timeout); no context is
+sent. A deterministic catalogue transport tests page failures/cancellation
+without keys or paid calls. Other providers' catalogue endpoints are unpaged.
+
+Cloud model IDs remain editable and verified-date suggestions are available
+without a catalogue call. Only an explicit REFRESH contacts cloud catalogues;
+failed refresh preserves suggestions/typed IDs. Ollama still requires successful
+installed-model discovery. Request IDs discard retired jobs' callbacks; each
+provider keeps a separate in-memory session key. Online HTTP errors are redacted,
+including HTTP-200 embedded errors. UI help, bilingual manuals, privacy notices
+and third-party service/model attributions ship as embedded resources.

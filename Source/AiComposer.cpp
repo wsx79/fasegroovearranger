@@ -26,6 +26,45 @@ bool anyLock(const Project& p){for(const auto& t:p.tracks){if(t.locked)return tr
 bool selected(const AiOptions& o,int t){return std::find(o.tracks.begin(),o.tracks.end(),t)!=o.tracks.end();}
 
 }
+namespace {
+bool validProvider(AiProvider p){return (int)p>=0&&(int)p<(int)AiProvider::count;}
+bool validModel(const juce::String& model){return model.isNotEmpty()&&model.length()<=160&&model.containsOnly("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-._:/");}
+bool validKey(const juce::String& key){return key.trim().isNotEmpty()&&key.length()<=2048&&!key.containsAnyOf("\r\n");}
+bool freeRouterModel(const juce::String& model){return model=="openrouter/free"||model.endsWith(":free");}
+juce::String compatibleBase(AiProvider p){
+    switch(p){
+        case AiProvider::openai:return "https://api.openai.com/v1";
+        case AiProvider::deepseek:return "https://api.deepseek.com";
+        case AiProvider::groq:return "https://api.groq.com/openai/v1";
+        case AiProvider::openrouter:return "https://openrouter.ai/api/v1";
+        case AiProvider::anthropic:case AiProvider::gemini:case AiProvider::ollama:case AiProvider::count:default:return {};
+    }
+}
+}
+juce::StringArray aiSuggestedModels(AiProvider p){
+    // Verified against official catalogues on 2026-10-31. REFRESH reads live IDs.
+    switch(p){
+        case AiProvider::openai:return {"gpt-6.1-sol","gpt-6.1-terra","gpt-6-luna","gpt-6-astra","gpt-5.5","gpt-5.4-mini"};
+        case AiProvider::anthropic:return {"claude-sonnet-5-5","claude-haiku-5-5","claude-opus-5-5","claude-fable-5-1"};
+        case AiProvider::gemini:return {"gemini-3.8-flash","gemini-3.5-flash-lite","gemini-4-argon"};
+        case AiProvider::deepseek:return {"deepseek-flash","deepseek-v4-pro"};
+        case AiProvider::groq:return {"openai/gpt-oss-20b","openai/gpt-oss-120b","qwen/qwen3.8-27b"};
+        case AiProvider::openrouter:return {"openrouter/free"};
+        case AiProvider::ollama:case AiProvider::count:default:return {};
+    }
+}
+juce::String aiSetupUrl(AiProvider p){
+    switch(p){
+        case AiProvider::openai:return "https://platform.openai.com/api-keys";
+        case AiProvider::anthropic:return "https://platform.claude.com/settings/keys";
+        case AiProvider::gemini:return "https://aistudio.google.com/apikey";
+        case AiProvider::ollama:return "https://ollama.com/download";
+        case AiProvider::deepseek:return "https://platform.deepseek.com/api_keys";
+        case AiProvider::groq:return "https://console.groq.com/keys";
+        case AiProvider::openrouter:return "https://openrouter.ai/settings/keys";
+        case AiProvider::count:default:return {};
+    }
+}
 juce::String aiSystemPrompt(){return R"AI(You are the composer inside Fase Groove Arranger, a MIDI DAW. Compose actual MIDI notes and a complete developing arrangement using ONLY the supplied track IDs. No audio, code, markdown, tools or file paths. Reply with ONE valid JSON object.
 Schema:
 {"title":"...","summary":"brief musical explanation in the user's language","bpm":138,"key":0,"scale":1,"genre":12,"degrees":[0,5,3,4],"chord_steps":16,"target_seconds":360,
@@ -54,25 +93,39 @@ juce::String aiContext(const Project& p,const AiOptions& o){
     return juce::JSON::toString(object({{"task",o.prompt},{"mode",o.wholeSong?"NEW SONG":"TRACK EDIT"},{"duration_seconds",o.seconds},{"bpm",p.settings.bpm},{"key",p.settings.key},{"scale",p.settings.scale},{"chord_beats",p.settings.chordSteps*.25},{"chords",chords},{"scales",scales},{"genres",styles},{"current_sections",sections},{"reference_parts",reference},{"enabled_tracks",tracks}}),true);
 }
 juce::Result aiHttpRequest(const Project& p,const AiOptions& o,AiHttpRequest& out){
+    out={};
+    if(!validProvider(o.provider))return juce::Result::fail("Choose a valid service.");
     if(o.prompt.trim().isEmpty()||o.prompt.length()>6000)return juce::Result::fail("Write a musical request (up to 6000 characters).");
-    if(o.model.trim().isEmpty()||o.model.length()>160||o.model.containsAnyOf("\r\n"))return juce::Result::fail("Choose a valid model.");
+    if(!validModel(o.model))return juce::Result::fail("Choose a valid model.");
     if(o.tracks.empty())return juce::Result::fail("Select at least one instrument.");
     for(int track:o.tracks)if(!juce::isPositiveAndBelow(track,(int)p.tracks.size())||p.tracks[(size_t)track].locked)return juce::Result::fail("An enabled track is locked or unavailable.");
     if(o.wholeSong&&anyLock(p))return juce::Result::fail("Unlock tracks and clips for a new song, or choose selected-track editing.");
-    if(o.provider!=AiProvider::ollama&&(o.key.trim().isEmpty()||o.key.containsAnyOf("\r\n")||o.key.length()>2048))return juce::Result::fail("Enter the API key for the selected service.");
+    if(o.provider!=AiProvider::ollama&&!validKey(o.key))return juce::Result::fail("Enter the API key for the selected service.");
+    if(o.provider==AiProvider::openrouter&&!freeRouterModel(o.model))return juce::Result::fail("OpenRouter Free accepts only openrouter/free or a listed :free model. Paid models are not used.");
     const auto system=aiSystemPrompt(),user=aiContext(p,o);out.headers="Content-Type: application/json\n";
     Array messages{object({{"role","user"},{"content",user}})};
     if(o.provider==AiProvider::anthropic){out.url="https://api.anthropic.com/v1/messages";out.headers+="x-api-key: "+o.key.trim()+"\nanthropic-version: 2023-06-01\n";out.body=juce::JSON::toString(object({{"model",o.model},{"max_tokens",16384},{"system",system},{"messages",messages}}),true);}
     else if(o.provider==AiProvider::gemini){out.url="https://generativelanguage.googleapis.com/v1beta/models/"+juce::URL::addEscapeChars(o.model,false)+":generateContent";out.headers+="x-goog-api-key: "+o.key.trim()+"\n";out.body=juce::JSON::toString(object({{"systemInstruction",object({{"parts",Array{object({{"text",system}})}}})},{"contents",Array{object({{"role","user"},{"parts",Array{object({{"text",user}})}}})}},{"generationConfig",object({{"responseMimeType","application/json"},{"maxOutputTokens",16384}})}}),true);}
     else {messages.insert(0,object({{"role","system"},{"content",system}}));auto body=object({{"model",o.model},{"messages",messages},{"stream",false}});
-        if(o.provider==AiProvider::openai){out.url="https://api.openai.com/v1/chat/completions";out.headers+="Authorization: Bearer "+o.key.trim()+"\n";body.getDynamicObject()->setProperty("max_completion_tokens",16384);body.getDynamicObject()->setProperty("response_format",object({{"type","json_object"}}));}
+        if(o.provider!=AiProvider::ollama){
+            out.url=compatibleBase(o.provider)+"/chat/completions";out.headers+="Authorization: Bearer "+o.key.trim()+"\n";
+            auto* fields=body.getDynamicObject();
+            fields->setProperty(o.provider==AiProvider::openai||o.provider==AiProvider::groq?"max_completion_tokens":"max_tokens",o.provider==AiProvider::groq?4096:16384);
+            // OpenRouter's free router may select a model without JSON mode; the
+            // system prompt and transactional composition validator still apply.
+            if(o.provider!=AiProvider::openrouter)fields->setProperty("response_format",object({{"type","json_object"}}));
+            if(o.provider==AiProvider::deepseek)fields->setProperty("thinking",object({{"type","disabled"}}));
+            if(o.provider==AiProvider::groq&&o.model.startsWith("openai/gpt-oss"))fields->setProperty("reasoning_effort","low");
+        }
         else {juce::String endpoint;auto normalised=aiOllamaEndpoint(o.endpoint,endpoint);if(normalised.failed())return normalised;out.url=endpoint+"/api/chat";body.getDynamicObject()->setProperty("format","json");body.getDynamicObject()->setProperty("options",object({{"num_predict",8192},{"num_ctx",16384}}));if(o.model.startsWithIgnoreCase("qwen3"))body.getDynamicObject()->setProperty("think",false);}
         out.body=juce::JSON::toString(body,true);
     }return juce::Result::ok();
 }
 juce::Result aiResponse(AiProvider provider,const juce::var& reply,juce::String& result){
     result.clear();
-    if(provider==AiProvider::openai){const auto& choices=get(reply,"choices");if(choices.isArray()&&choices.size()>0){const auto choice=choices[0];if(get(choice,"finish_reason").toString()=="length")return juce::Result::fail("The model reached its output limit. Request fewer instruments or shorter patterns.");result=get(get(choice,"message"),"content").toString();}}
+    if(!validProvider(provider))return juce::Result::fail("Choose a valid service.");
+    if(!get(reply,"error").isVoid())return juce::Result::fail("The service could not complete the request. Check model availability, quota and account access.");
+    if(provider!=AiProvider::anthropic&&provider!=AiProvider::gemini&&provider!=AiProvider::ollama){const auto& choices=get(reply,"choices");if(choices.isArray()&&choices.size()>0){const auto choice=choices[0];if(get(choice,"finish_reason").toString()=="length")return juce::Result::fail("The model reached its output limit. Request fewer instruments or shorter patterns.");result=get(get(choice,"message"),"content").toString();}}
     else if(provider==AiProvider::anthropic){if(get(reply,"stop_reason").toString()=="max_tokens")return juce::Result::fail("The model reached its output limit. Request fewer instruments or shorter patterns.");const auto a=get(reply,"content");if(a.isArray())for(auto& v:*a.getArray())if(get(v,"type").toString()=="text")result+=get(v,"text").toString();}
     else if(provider==AiProvider::gemini){const auto a=get(reply,"candidates");if(a.isArray()&&a.size()>0){if(get(a[0],"finishReason").toString()=="MAX_TOKENS")return juce::Result::fail("The model reached its output limit. Request fewer instruments or shorter patterns.");const auto parts=get(get(a[0],"content"),"parts");if(parts.isArray())for(auto& v:*parts.getArray())if(!(bool)get(v,"thought"))result+=get(v,"text").toString();}}
     else {if(get(reply,"done_reason").toString()=="length")return juce::Result::fail("The local model reached its output limit.");result=get(get(reply,"message"),"content").toString();}
@@ -134,14 +187,15 @@ juce::Result fetchJson(const AiHttpRequest& request,bool local,bool discovery,ju
     std::atomic<bool> finished{false},timedOut{false};const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(limitSeconds);
     std::thread watcher([&]{while(!finished.load()){if(cancelled()||std::chrono::steady_clock::now()>=deadline){timedOut=std::chrono::steady_clock::now()>=deadline;stream.cancel();return;}juce::Thread::sleep(20);}});
     struct Finish{std::atomic<bool>& done;std::thread& thread;~Finish(){done=true;thread.join();}} finish{finished,watcher};
-    stream.connect(nullptr);if(cancelled())return juce::Result::fail("Generation cancelled.");if(timedOut)return juce::Result::fail(discovery?"Ollama did not respond in time. Check that the server is running and try again.":"The model took too long. Try a smaller model or a simpler request.");
+    stream.connect(nullptr);if(cancelled())return juce::Result::fail("Generation cancelled.");if(timedOut)return juce::Result::fail(discovery?"The model catalogue did not respond in time. Check the connection and retry.":"The model took too long. Try a smaller model or a simpler request.");
     const int status=stream.getStatusCode();if(status<=0)return juce::Result::fail(local?"Cannot reach Ollama. Open the Ollama application (or run ollama serve), then check the server address and try again.":"Connection failed. Check the server address, network and system TLS support.");
     juce::MemoryOutputStream response;char buffer[8192];while(!stream.isExhausted()){if(cancelled())return juce::Result::fail("Generation cancelled.");const int n=stream.read(buffer,sizeof(buffer));if(n<=0)break;response.write(buffer,(size_t)n);if(response.getDataSize()>4194304)return juce::Result::fail("The response is too large.");}
     if(cancelled())return juce::Result::fail("Generation cancelled.");
     if(timedOut||stream.isError())return juce::Result::fail("The connection ended before the composition was complete.");
     const auto parsed=juce::JSON::parse(response.toUTF8(),envelope);
     if(status==401||status==403)return juce::Result::fail(local?"This Ollama server requires authentication. Use a local Ollama server for generation without an API key.":"The service rejected the API key or model access.");
-    if(status==429)return juce::Result::fail("The service quota or rate limit was reached. Check API billing and retry later.");
+    if(status==402)return juce::Result::fail("The API credit or spending limit was reached. Check the selected service account; no paid fallback was attempted.");
+    if(status==429)return juce::Result::fail("The service quota or rate limit was reached. Wait for the quota reset, reduce enabled instruments, or check your account limits.");
     if(status<200||status>=300){
         if(local&&status==404)return juce::Result::fail(discovery?"Ollama API not found. Enter the server address, normally http://127.0.0.1:11434.":"The selected model is not installed in Ollama. Refresh the model list or download the model in Ollama.");
         // Only expose bounded Ollama error text; online providers may echo credentials.
@@ -177,6 +231,70 @@ juce::Result aiOllamaModels(const juce::String& address,juce::StringArray& model
     models.sort(true);
     if(models.isEmpty())return juce::Result::fail("Ollama is connected but no local models are installed. Download a text model in Ollama, then refresh the list.");
     return juce::Result::ok();
+}
+juce::Result aiModelsRequest(const AiOptions& o,const juce::String& cursor,AiHttpRequest& out){
+    out={};
+    if(!validProvider(o.provider))return juce::Result::fail("Choose a valid service.");
+    if(cursor.length()>2048||cursor.containsAnyOf("\r\n"))return juce::Result::fail("Invalid model catalogue cursor.");
+    out.headers="Content-Type: application/json\n";
+    if(o.provider==AiProvider::ollama){juce::String address;auto r=aiOllamaEndpoint(o.endpoint,address);if(r.failed())return r;out.url=address+"/api/tags";return juce::Result::ok();}
+    if(!validKey(o.key))return juce::Result::fail("Enter the API key for the selected service.");
+    // A cursor is data, never a URL. Credentials only reach the fixed origin
+    // of the selected service, regardless of the previous Ollama address.
+    if(o.provider==AiProvider::anthropic){out.url="https://api.anthropic.com/v1/models?limit=100";if(cursor.isNotEmpty())out.url+="&after_id="+juce::URL::addEscapeChars(cursor,true);out.headers+="x-api-key: "+o.key.trim()+"\nanthropic-version: 2023-06-01\n";}
+    else if(o.provider==AiProvider::gemini){out.url="https://generativelanguage.googleapis.com/v1beta/models?pageSize=100";if(cursor.isNotEmpty())out.url+="&pageToken="+juce::URL::addEscapeChars(cursor,true);out.headers+="x-goog-api-key: "+o.key.trim()+"\n";}
+    else{out.url=compatibleBase(o.provider)+"/models";out.headers+="Authorization: Bearer "+o.key.trim()+"\n";}
+    return juce::Result::ok();
+}
+juce::Result aiReadModels(AiProvider provider,const juce::var& root,juce::StringArray& models,juce::String& next){
+    next.clear();
+    if(!validProvider(provider))return juce::Result::fail("Choose a valid service.");
+    const auto items=get(root,provider==AiProvider::gemini||provider==AiProvider::ollama?"models":"data");
+    if(!items.isArray()||items.size()>10000)return juce::Result::fail("The service did not return a valid model catalogue.");
+    for(const auto& item:*items.getArray()){
+        auto name=get(item,provider==AiProvider::gemini||provider==AiProvider::ollama?"name":"id").toString().trim();
+        if(provider==AiProvider::gemini&&name.startsWith("models/"))name=name.substring(7);
+        if(!validModel(name))continue;
+        const auto lower=name.toLowerCase();
+        if(provider==AiProvider::ollama){if(get(item,"remote_host").toString().isNotEmpty()||get(item,"remote_model").toString().isNotEmpty()||lower.contains(":cloud")||lower.contains("-cloud"))continue;}
+        else if(provider==AiProvider::gemini){const auto methods=get(item,"supportedGenerationMethods");if(!methods.isArray()||!methods.getArray()->contains(juce::var("generateContent"))||!name.startsWith("gemini-"))continue;}
+        else if(provider==AiProvider::openai){if(!name.startsWith("gpt-")&&!name.startsWith("o1")&&!name.startsWith("o3")&&!name.startsWith("o4"))continue;}
+        else if(provider==AiProvider::anthropic){if(!name.startsWith("claude-")||get(item,"lifecycle").toString()=="retired")continue;}
+        else if(provider==AiProvider::groq){if(item.hasProperty("active")&&!(bool)get(item,"active"))continue;}
+        else if(provider==AiProvider::openrouter){
+            const auto pricing=get(item,"pricing");const auto outputs=get(get(item,"architecture"),"output_modalities");
+            // Require explicit zero token prices; a missing/invalid price is not free.
+            auto zero=[](const juce::var& price){const auto value=price.toString();return value=="0"||(value.startsWith("0.")&&value.length()>2&&value.substring(2).containsOnly("0"));};
+            if(!freeRouterModel(name)||!zero(get(pricing,"prompt"))||!zero(get(pricing,"completion"))||!outputs.isArray()||!outputs.getArray()->contains(juce::var("text")))continue;
+            const auto endpoints=get(item,"endpoints");if(endpoints.isArray()&&!endpoints.getArray()->contains(juce::var("/api/v1/chat/completions")))continue;
+        }
+        if(provider!=AiProvider::ollama){bool other=false;for(const auto* excluded:{"audio","realtime","transcribe","tts","image","embedding","whisper","orpheus","playai","guard","content-safety","compound","moderation","deep-research","codex"})if(lower.contains(excluded)){other=true;break;}if(other&&provider!=AiProvider::deepseek&&provider!=AiProvider::anthropic)continue;}
+        models.addIfNotAlreadyThere(name);
+        if(models.size()>2048)return juce::Result::fail("The model catalogue is too large.");
+    }
+    if(provider==AiProvider::gemini)next=get(root,"nextPageToken").toString();
+    if(provider==AiProvider::anthropic&&(bool)get(root,"has_more")){next=get(root,"last_id").toString();if(next.isEmpty())return juce::Result::fail("The service returned an incomplete model catalogue.");}
+    if(next.length()>2048||next.containsAnyOf("\r\n"))return juce::Result::fail("Invalid model catalogue cursor.");
+    return juce::Result::ok();
+}
+juce::Result aiModels(const AiOptions& options,juce::StringArray& models,const std::function<bool()>& cancelled,const AiCatalogueFetch& readCatalogue){
+    models.clear();
+    if(options.provider==AiProvider::ollama)return aiOllamaModels(options.endpoint,models,cancelled);
+    juce::StringArray found,seen;juce::String cursor;
+    for(int page=0;page<10;++page){
+        if(cancelled())return juce::Result::fail("Generation cancelled.");
+        AiHttpRequest request;auto result=aiModelsRequest(options,cursor,request);if(result.failed())return result;
+        juce::var root;result=readCatalogue?readCatalogue(request,root):fetchJson(request,false,true,root,cancelled);if(result.failed())return result;
+        result=aiReadModels(options.provider,root,found,cursor);if(result.failed())return result;
+        if(cancelled())return juce::Result::fail("Generation cancelled.");
+        if(cursor.isEmpty()){
+            if(found.isEmpty())return juce::Result::fail("No compatible text models were returned. Check model access or enter an available model ID manually.");
+            found.sort(true);if(options.provider==AiProvider::openrouter){found.removeString("openrouter/free");found.insert(0,"openrouter/free");}models=found;return juce::Result::ok();
+        }
+        if(seen.contains(cursor))break;
+        seen.add(cursor);
+    }
+    return juce::Result::fail("The service returned an incomplete model catalogue. Try again later.");
 }
 juce::Result aiGenerate(const Project& base,const AiOptions& options,Project& output,juce::String& summary,const std::function<bool()>& cancelled){
     AiHttpRequest request;auto check=aiHttpRequest(base,options,request);if(check.failed())return check;

@@ -22,6 +22,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 
 **Accesso rapido:**
 
+- [Servizi IA e API gratuite](#servizi-ia-modelli-e-api-gratuite)
 - [Campionatore e Studio](#studio-campionatore-registrazione-e-campioni)
 - [Mixer e mandate](#mixer-gruppi-e-mandate)
 - [Automazioni](#pan-master-e-parametri-vst)
@@ -29,13 +30,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.30.4**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.30.5**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.30.4** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.30.5** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -158,12 +159,12 @@ La selezione multipla nel piano roll mantiene le distanze fra le note anche ai b
 
 ### Comporre con l’IA
 
-<p align="center"><img src="images/guide_ai_it.png" alt="Compositore IA" width="900"></p>
+<p align="center"><img src="images/guide_ai_it.png" alt="Compositore IA: esempio con Groq e quota gratuita" width="900"></p>
 
 Il pulsante ambra **CREA CON IA**, con le scintille nella barra dell’arrangiamento, apre il compositore in una finestra separata. L’IA scrive le note MIDI e le sezioni; ascolti con **suoni guida, campioni e VST/AU già assegnati** alle tracce. Tutte le note restano modificabili.
 
-1. **Ollama · locale, senza API** è la scelta iniziale: non servono chiavi API né abbonamenti. Installa [Ollama](https://ollama.com/download) e aprilo sullo stesso computer di Arranger. Scarica un modello di testo: ad esempio `ollama pull qwen2.5:7b` (circa 4,7 GB; servono RAM e spazio sufficienti). I modelli non sono inclusi nel pacchetto di Arranger. **INSTALLA / AIUTO** apre la pagina di installazione e mostra i passaggi nell’anteprima.
-2. Il server normalmente è `http://127.0.0.1:11434`. Arranger verifica la connessione e riempie **MODELLO** con i modelli locali realmente installati; scegli quello da usare. **VERIFICA** aggiorna l’elenco dopo un download o un cambio server. Puoi indicare anche `127.0.0.1:11434` o un indirizzo terminante in `/api`: vengono normalizzati. Se Ollama è spento o non ha modelli, l’anteprima spiega come procedere e **COMPONI** resta disabilitato. Non basta scrivere il nome di un modello: deve essere installato. I modelli cloud vengono esclusi dall’elenco locale. Un server su un altro computer riceve il contesto musicale a quell’indirizzo. Puoi anche scegliere OpenAI, Anthropic / Claude o Google / Gemini: questi servizi richiedono la propria chiave API, custodita soltanto in memoria per la sessione, e possono avere costi a consumo. Gli abbonamenti alle app di chat non includono necessariamente le API.
+1. Scegli **SERVIZIO**. **Ollama · locale, senza API** è la scelta iniziale e non richiede chiavi: sul computer devono essere aperti Ollama e un modello di testo già scaricato. Per usare il cloud scegli Groq, OpenRouter Free, Gemini, DeepSeek, OpenAI o Anthropic / Claude; segui [Servizi IA, modelli e API gratuite](#servizi-ia-modelli-e-api-gratuite) per creare la chiave e controllare quote e costi.
+2. Scegli **MODELLO**. Per Ollama lascia normalmente `http://127.0.0.1:11434` e premi **VERIFICA**: compaiono solo i modelli locali installati; senza connessione o modelli **COMPONI** resta disabilitato. Per il cloud incolla la chiave API, scegli un suggerimento o premi **AGGIORNA** per il catalogo attuale; puoi anche scrivere un ID compatibile esatto. **Chiavi API / aiuto** apre la pagina ufficiale e mostra le istruzioni nell’anteprima; **GUIDA IA** apre il manuale. Le chiavi restano solo in memoria per la sessione.
 3. Scegli **Nuovo brano** per sostituire l’intero MIDI conservando strumenti e mix, oppure **Modifica tracce selezionate** per riscrivere soltanto quelle abilitate, mantenendo forma, tempo e altre tracce. Spunta gli strumenti da usare. Le tracce bloccate non sono selezionabili e i clip bloccati restano intatti nella modifica mirata; per un nuovo brano devi sbloccare tracce e clip.
 4. Descrivi il risultato: «Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop, basso ipnotico e un lead che evolve». **Dal prompt** prende la durata dalla richiesta; in alternativa scegli i minuti dal menu. Il tempo IA può andare da 30 a 300 BPM, anche oltre i preset dei tredici generi. La durata viene adattata alla battuta più vicina.
 5. Premi **COMPONI**. L’elaborazione avviene in background; **Annulla** la interrompe senza cambiare il progetto. L’anteprima mostra descrizione, durata, sezioni e numero di note per strumento. Risultati incompleti o non validi non vengono applicati.
@@ -172,6 +173,56 @@ Il pulsante ambra **CREA CON IA**, con le scintille nella barra dell’arrangiam
 Per chiedere «cambia soltanto il basso», scegli **Modifica tracce selezionate**, abilita solo Bass e descrivi la modifica. Il contesto comprende armonia e un estratto del MIDI corrente; si inviano anche i nomi delle tracce e delle sezioni, mentre percorsi dei file, audio e stati dei plugin restano locali. Nessuna chiave API viene scritta nei progetti, nelle preferenze o nei file temporanei.
 
 La qualità dipende dal modello. Per errori di autorizzazione verifica chiave e accesso al modello; per limiti o credito esaurito controlla il servizio. Un modello locale piccolo può produrre MIDI non valido: riprova con una richiesta più semplice o un modello più capace. I comandi tradizionali **APPLICA/RIGENERA** continuano a usare i motori originali e possono riscrivere le note IA: blocca le parti da conservare.
+
+### Servizi IA, modelli e API gratuite
+
+**GUIDA IA** nel compositore apre questo manuale. Le istruzioni seguenti riguardano le API per scrivere MIDI, non le app di chat o la generazione di file audio. Un abbonamento alla chat non include necessariamente credito API. I modelli non sono inclusi in Arranger. Servizi, quote e disponibilità possono cambiare; consulta sempre la console e i prezzi ufficiali del modello scelto.
+
+| Servizio nel menu | Cosa serve | Gratuità e modelli iniziali |
+|---|---|---|
+| **Ollama · locale, senza API** | Ollama aperto e un modello di testo scaricato | Nessuna chiave o tariffa API per i modelli locali; usa le risorse del computer |
+| **Groq · quota gratuita** | Account GroqCloud e chiave API | Piano Free con limiti; `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` |
+| **OpenRouter Free** | Account OpenRouter e chiave API | `openrouter/free` e varianti disponibili `:free`; quote e disponibilità limitate |
+| **Gemini · quota gratuita** | Account Google, progetto AI Studio e chiave API | Alcuni modelli hanno quote gratuite, per esempio `gemini-3.8-flash` e `gemini-3.5-flash-lite`; `gemini-4-argon` è a pagamento |
+| **DeepSeek** | Account sulla piattaforma API, chiave e saldo/credito | API a consumo: `deepseek-flash`, `deepseek-v4-pro`; la chat gratuita non rende gratuita l’API |
+| **OpenAI** | Account sviluppatore, chiave e fatturazione API | API a consumo; suggerimenti GPT-6.1 Sol/Terra, GPT-6 Luna/Astra, GPT-5.5 e GPT-5.4 Mini |
+| **Anthropic / Claude** | Account sviluppatore, chiave e credito API | API a consumo; Claude Sonnet/Haiku/Opus 5.5 e Fable 5.1 |
+
+#### Configurare un servizio online
+
+1. Scegli **SERVIZIO**, poi **Chiavi API / aiuto**: si apre la pagina ufficiale delle chiavi e l’anteprima mostra le istruzioni per quel servizio. Registrati o accedi sul sito del fornitore. Crea una chiave API e copiala; non usare la password dell’account.
+2. Incolla la chiave in **CHIAVE API · SOLO SESSIONE**. Arranger la maschera e la conserva soltanto in memoria. Ogni servizio mantiene la propria chiave durante la sessione; la chiusura dell’app richiede di reinserirla. Non incollarla nella descrizione del brano.
+3. Scegli **MODELLO**, oppure premi **AGGIORNA** per leggere il catalogo attuale dal servizio. L’operazione non genera un brano e non invia il contesto musicale. Per il cloud puoi scrivere anche l’ID esatto di un modello di testo compatibile. L’elenco non certifica accesso, prezzo o qualità del risultato; immagini, voce, embedding e modelli non pertinenti vengono filtrati quando riconoscibili.
+4. Se il catalogo non risponde, i suggerimenti e l’ID già scritto restano disponibili. Controlla chiave, rete e permessi. Non aggiungere `/v1` o indirizzi web alla chiave: gli indirizzi cloud sono già configurati. **SERVER OLLAMA** riguarda soltanto Ollama.
+5. Scegli durata e strumenti, descrivi il brano e premi **COMPONI**. Controlla l’anteprima prima di **APPLICA**. **Annulla** interrompe l’attesa senza modificare il progetto; una richiesta già ricevuta può comunque essere conteggiata dal servizio.
+
+#### Provare gratuitamente con Groq
+
+Apri [GroqCloud / API Keys](https://console.groq.com/keys), crea l’account e una chiave. In Arranger scegli **Groq · quota gratuita**, incolla la chiave e seleziona `openai/gpt-oss-20b`. Lascia il piano **Free** nella console per usare la quota gratuita. Consulta [limiti ufficiali](https://console.groq.com/docs/rate-limits) e [modelli](https://console.groq.com/docs/models): i limiti riguardano sia richieste sia token e possono cambiare per account e modello. Arranger limita l’output richiesto a 4096 token, ma un arrangiamento con molte tracce può ancora superare la quota. Per la prima prova abilita solo Kick, Bass e Lead e chiedi «Un brano techno di 6 minuti con intro, due drop e outro, usando pattern brevi con variazioni». Se necessario genera una traccia alla volta con **Modifica tracce selezionate**.
+
+#### Provare gratuitamente con OpenRouter
+
+Apri [OpenRouter / Keys](https://openrouter.ai/settings/keys), crea l’account e una chiave, poi scegli **OpenRouter Free** e `openrouter/free`. Il router sceglie tra modelli gratuiti disponibili; può cambiare modello tra due richieste. **AGGIORNA** recupera le varianti di testo `:free` con prezzi di input/output dichiarati pari a zero: scegli una variante precisa per mantenerla nelle richieste successive. Non basta aggiungere `:free` a un modello a caso: deve esistere nel catalogo. Arranger rifiuta ID a pagamento e non imposta ripieghi a pagamento. Consulta [varianti gratuite](https://openrouter.ai/docs/guides/routing/model-variants/free) e [quote](https://openrouter.ai/docs/api/reference/limits). Disponibilità, limiti giornalieri e regole sui dati dipendono anche dal fornitore effettivo: la richiesta passa da OpenRouter a quel servizio. Non occorre acquistare credito per provare la quota gratuita disponibile; un saldo negativo o restrizioni dell’account possono comunque bloccarla.
+
+#### Configurare Gemini
+
+Apri [Google AI Studio / API Keys](https://aistudio.google.com/apikey), accedi, crea o seleziona un progetto e genera la chiave. In Arranger scegli **Gemini · quota gratuita** e un modello con livello gratuito disponibile per il tuo account, come `gemini-3.8-flash`. Verifica [prezzi per modello](https://ai.google.dev/gemini-api/docs/pricing), [paesi supportati](https://ai.google.dev/gemini-api/docs/available-regions) e quote del progetto in AI Studio. Non attivare fatturazione pensando che tutti i modelli restino gratuiti: il catalogo include anche modelli a pagamento. L’uso gratuito può essere soggetto a condizioni diverse sul trattamento dei dati; leggi i [termini Gemini API](https://ai.google.dev/gemini-api/terms) prima di inviare materiale riservato.
+
+#### Configurare DeepSeek, OpenAI e Claude
+
+Per **DeepSeek** crea la chiave in [DeepSeek Platform](https://platform.deepseek.com/api_keys), controlla [modelli e prezzi](https://api-docs.deepseek.com/quick_start/pricing/), scegli `deepseek-flash` o `deepseek-v4-pro` e verifica il saldo API. Per **OpenAI** usa [API Keys](https://platform.openai.com/api-keys) e controlla [modelli](https://developers.openai.com/api/docs/models) e [prezzi API](https://openai.com/api/pricing/). Per **Anthropic / Claude** usa [Claude Platform / Keys](https://platform.claude.com/settings/keys) e consulta [modelli e prezzi](https://platform.claude.com/docs/en/about-claude/models/overview). Poi incolla la chiave del servizio selezionato e scegli il modello, come nella procedura comune. Eventuali crediti promozionali non equivalgono a un piano gratuito permanente. Arranger non acquista credito e non cambia fornitore automaticamente.
+
+#### Senza chiave: Ollama locale
+
+Installa e apri [Ollama](https://ollama.com/download). Scarica un modello di testo, per esempio eseguendo `ollama pull qwen2.5:7b` nel terminale; richiede circa 4,7 GB su disco e RAM sufficiente. Scegli **Ollama · locale, senza API**, lascia `http://127.0.0.1:11434`, premi **VERIFICA** e seleziona il modello installato. Puoi indicare anche `127.0.0.1:11434` o un indirizzo terminante in `/api`: Arranger li normalizza. Se non risponde, avvia Ollama o `ollama serve` e ricontrolla l’indirizzo. La prima generazione può impiegare alcuni minuti. I modelli cloud di Ollama sono esclusi dall’elenco locale. Usando un server su un altro computer, il contesto viene inviato a quell’indirizzo: per restare sul dispositivo usa il server locale. Non serve una chiave di Groq, OpenAI o altri servizi.
+
+#### Problemi, privacy e diritti di terzi
+
+**401/403**: chiave errata, scaduta o modello non autorizzato; controlla il servizio selezionato. **402**: credito o limite di spesa API; verifica la console. **429**: quota di richieste/token raggiunta; attendi il ripristino o riduci gli strumenti. Nessun acquisto o ripiego a pagamento parte automaticamente. Se l’output è troncato o non è MIDI valido, l’anteprima non viene applicata: riduci la complessità o cambia modello. Un modello elencato può non supportare il formato richiesto o non essere accessibile al tuo account.
+
+Il cloud riceve richiesta, nomi/ruoli delle tracce e contesto musicale limitato, non audio, campioni, percorsi o stati dei plugin. Le richieste di catalogo inviano solo i dati di connessione/autenticazione. Le politiche di conservazione e addestramento dipendono dal servizio e dal piano; con OpenRouter anche dal fornitore del modello. Per mantenere il contesto sul computer usa Ollama locale.
+
+**Attribuzioni:** OpenAI e GPT appartengono a OpenAI; Anthropic e Claude ad Anthropic; Google, Gemini e AI Studio a Google; DeepSeek, Groq/GroqCloud, OpenRouter e Ollama ai rispettivi titolari. I modelli serviti possono appartenere ad altri autori: per esempio GPT-OSS a OpenAI e Qwen al progetto Qwen/Alibaba. Copyright, marchi e licenze rimangono dei rispettivi titolari; l’integrazione è indipendente, senza affiliazione o approvazione implicita. Arranger non distribuisce i loro modelli o servizi e non li concede sotto la propria licenza AGPL. Consulta **OPZIONI → Licenze e attribuzioni**, **Privacy e permessi** e le condizioni ufficiali dei fornitori per i dettagli. L’articolo [AIREITER sulle API gratuite](https://aireiter.com/it/blog/best-free-ai-api) è una lettura introduttiva; per configurazione, prezzi e quote fanno riferimento le fonti ufficiali collegate sopra. Le istruzioni qui sono originali.
 
 ### Browser dei campioni
 
@@ -533,7 +584,7 @@ Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
 
 ### Salvare e verificare i preset dei plugin
 
-1. Apri il progetto in **0.30.4** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
+1. Apri il progetto in **0.30.5** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
 2. Apri l’editor dello strumento con il pulsante **tastiera** nell’inspector. Scegli un preset riconoscibile e, se vuoi verificare anche i parametri, modifica un controllo del plugin. Ascolta la parte per riconoscere il suono.
 3. In **Arranger** premi **SALVA COME** e assegna un nuovo nome al progetto `.fga`. Il salvataggio del preset dentro il plugin è distinto dal salvataggio del progetto: conserva anche quest’ultimo dopo le modifiche.
 4. Chiudi il progetto e riapri la copia appena salvata. Apri di nuovo l’editor del plugin: controlla il preset e il parametro modificato, poi premi **AVVIA** per confrontare il suono.
@@ -683,7 +734,7 @@ Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verific
 
 **Premo ESPORTA nella codifica ma non compare il percorso**
 
-Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.4**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
+Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.5**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 

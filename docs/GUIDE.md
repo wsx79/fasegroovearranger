@@ -22,6 +22,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 
 **Quick access:**
 
+- [AI services and free APIs](#ai-services-models-and-free-apis)
 - [Sampler and Studio](#studio-sampler-recording-and-media)
 - [Mixer and sends](#mixer-groups-and-sends)
 - [Automation](#pan-master-and-vst-parameters)
@@ -29,13 +30,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.30.4**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.30.5**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.30.4** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.30.5** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -159,12 +160,12 @@ Moving a multiple-note selection in the piano roll preserves spacing at clip and
 
 ### Compose with AI
 
-<p align="center"><img src="images/guide_ai.png" alt="AI composer" width="900"></p>
+<p align="center"><img src="images/guide_ai.png" alt="AI composer: Groq free-tier example" width="900"></p>
 
 The amber **AI COMPOSER** button, with sparkles in the arrangement toolbar, opens a separate composer window. AI writes MIDI notes and song sections; your **assigned guide sounds, samples and VST/AU instruments** play them. Every note remains editable.
 
-1. **Ollama · local, no API key** is the initial choice: no API key or subscription is needed. Install [Ollama](https://ollama.com/download) and open it on the same computer as Arranger. Download a text model, for example `ollama pull qwen2.5:7b` (about 4.7 GB; allow sufficient RAM and disk space). Models are not bundled with Arranger. **INSTALL / HELP** opens the setup page and shows instructions in the preview.
-2. The server is normally `http://127.0.0.1:11434`. Arranger checks the connection and populates **MODEL** with local models actually installed on that server. **CHECK** refreshes the list after a download or address change. Addresses such as `127.0.0.1:11434` and those ending in `/api` are normalized. When Ollama is stopped or has no models, the preview explains the next step and **COMPOSE** remains disabled. Typing a model name does not install it. Cloud models are excluded from the local list. A server on another computer receives the musical context at that address. Alternatively select OpenAI, Anthropic / Claude or Google / Gemini: these require a service API key, kept only in memory for the session, and may charge for usage. Chat subscriptions do not necessarily include API access.
+1. Choose **SERVICE**. **Ollama · local, no API key** is the initial choice and needs no key: Ollama must be running on your computer with a downloaded text model. For cloud use choose Groq, OpenRouter Free, Gemini, DeepSeek, OpenAI or Anthropic / Claude; follow [AI services, models and free APIs](#ai-services-models-and-free-apis) to create a key and check quotas and costs.
+2. Choose **MODEL**. For Ollama normally leave `http://127.0.0.1:11434` and press **CHECK**: only installed local models appear; **COMPOSE** stays disabled without a connection/models. For cloud services paste the API key, select a suggestion or press **REFRESH** for the current catalogue; you can also enter an exact compatible ID. **API keys / help** opens the official page and shows instructions in the preview; **SETUP GUIDE** opens the manual. Keys stay only in memory for the session.
 3. Choose **New song** to replace the entire MIDI arrangement while retaining instruments and mix, or **Edit selected tracks** to rewrite only enabled tracks while preserving the form, tempo and other parts. Tick the instruments to use. Locked tracks cannot be enabled; targeted editing preserves locked clips. Unlock all tracks and clips before creating a new song.
 4. Describe the result: “A six-minute techno song at 138 BPM, DJ intro, two drops, hypnotic bass and an evolving lead.” **From the prompt** takes duration from your request; alternatively choose minutes from the menu. AI compositions support 30–300 BPM, beyond the thirteen preset genres. Duration fits the nearest whole bar.
 5. Press **COMPOSE**. Generation runs in the background; **Cancel** stops it without changing the project. The preview lists the description, duration, sections and note counts by instrument. Invalid or incomplete responses cannot be applied.
@@ -173,6 +174,56 @@ The amber **AI COMPOSER** button, with sparkles in the arrangement toolbar, open
 To ask “change only the bass”, choose **Edit selected tracks**, enable only Bass, and describe the change. Context includes harmony and excerpts of the current MIDI, plus track/section names; file paths, audio and plugin states are never uploaded. API keys are never written to projects, preferences or temporary files.
 
 Quality depends on the model. For authentication errors, check the key and model access; for quota errors, check the service’s limits and billing. Small local models may return invalid MIDI: simplify the request or use a more capable model. Traditional **APPLY/REGENERATE** commands still use the original engines and can overwrite AI notes; lock parts you want to retain.
+
+### AI services, models and free APIs
+
+**SETUP GUIDE** in the composer opens this manual. These instructions cover APIs that write MIDI, rather than chat apps or audio-file generation. Chat subscriptions do not necessarily include API credit. Models are not bundled with Arranger. Services, quotas and availability can change: check the selected model's official console and pricing.
+
+| Service in the menu | Requirements | Free access and initial models |
+|---|---|---|
+| **Ollama · local, no API key** | Running Ollama and a downloaded text model | No API key or API charges for local models; uses your computer's resources |
+| **Groq · free tier** | GroqCloud account and API key | Free plan with limits; `openai/gpt-oss-20b`, `openai/gpt-oss-120b`, `qwen/qwen3.8-27b` |
+| **OpenRouter Free** | OpenRouter account and API key | `openrouter/free` and available `:free` variants; limited quotas and availability |
+| **Gemini · free tier** | Google account, AI Studio project and API key | Some models offer free quotas, such as `gemini-3.8-flash` and `gemini-3.5-flash-lite`; `gemini-4-argon` is paid |
+| **DeepSeek** | API platform account, key and balance/credit | Usage-billed APIs: `deepseek-flash`, `deepseek-v4-pro`; free chat does not make the API free |
+| **OpenAI** | Developer account, key and API billing | Usage-billed API; suggestions include GPT-6.1 Sol/Terra, GPT-6 Luna/Astra, GPT-5.5 and GPT-5.4 Mini |
+| **Anthropic / Claude** | Developer account, key and API credit | Usage-billed API; Claude Sonnet/Haiku/Opus 5.5 and Fable 5.1 |
+
+#### Set up an online service
+
+1. Choose **SERVICE**, then **API keys / help**. This opens the official key page and shows that service's instructions in the preview. Sign up or sign in on the provider's site. Create and copy an API key; do not use your account password.
+2. Paste it into **API KEY · SESSION ONLY**. Arranger masks it and keeps it only in memory. Each service retains its own key during the session; quitting the application requires entering it again. Never paste a key into the song description.
+3. Choose **MODEL**, or press **REFRESH** to read the current service catalogue. This does not compose a song or send musical context. For cloud services you can also enter the exact ID of a compatible text model. Listing does not certify access, pricing or output quality; recognisable image, speech, embedding and other unsuitable models are filtered out.
+4. If the catalogue fails, suggestions and your existing model ID remain available. Check the key, network and permissions. Do not append `/v1` or web addresses to the key: cloud addresses are already configured. **OLLAMA SERVER** applies only to Ollama.
+5. Select duration and instruments, describe the song and press **COMPOSE**. Review the preview before **APPLY**. **Cancel** stops waiting without changing the project; a request already received may still count towards usage.
+
+#### Try Groq for free
+
+Open [GroqCloud / API Keys](https://console.groq.com/keys), create an account and key. In Arranger choose **Groq · free tier**, paste the key and select `openai/gpt-oss-20b`. Keep the **Free** plan in the console to use the free allowance. Check the official [rate limits](https://console.groq.com/docs/rate-limits) and [models](https://console.groq.com/docs/models): both request and token limits apply and may differ by account/model. Arranger requests up to 4096 output tokens, but an arrangement with many tracks can still exceed the quota. For a first test enable only Kick, Bass and Lead and ask “A six-minute techno song with an intro, two drops and an outro, using short patterns with variations.” If needed, compose one track at a time with **Edit selected tracks**.
+
+#### Try OpenRouter for free
+
+Open [OpenRouter / Keys](https://openrouter.ai/settings/keys), create an account and key, then choose **OpenRouter Free** and `openrouter/free`. This router chooses among available free models and may choose a different model on successive requests. **REFRESH** loads text variants ending in `:free` with explicitly zero input/output token prices. Select a specific variant to retain it for subsequent requests. Appending `:free` to an arbitrary ID is not enough: that variant must exist in the catalogue. Arranger rejects paid IDs and does not configure paid fallbacks. See [free variants](https://openrouter.ai/docs/guides/routing/model-variants/free) and [quotas](https://openrouter.ai/docs/api/reference/limits). Availability, daily limits and data policies also depend on the actual model provider: OpenRouter forwards your request to that service. Buying credit is not required to try the available free allowance; a negative balance or account restrictions can still block it.
+
+#### Set up Gemini
+
+Open [Google AI Studio / API Keys](https://aistudio.google.com/apikey), sign in, create or select a project and generate a key. In Arranger choose **Gemini · free tier** and a model with a free tier available to your account, such as `gemini-3.8-flash`. Check [model pricing](https://ai.google.dev/gemini-api/docs/pricing), [supported regions](https://ai.google.dev/gemini-api/docs/available-regions) and project quotas in AI Studio. Do not enable billing assuming that every model remains free: the catalogue includes paid models too. Free usage may have different data-handling conditions; read the [Gemini API terms](https://ai.google.dev/gemini-api/terms) before sending confidential material.
+
+#### Set up DeepSeek, OpenAI and Claude
+
+For **DeepSeek**, create a key in [DeepSeek Platform](https://platform.deepseek.com/api_keys), check [models and pricing](https://api-docs.deepseek.com/quick_start/pricing/), select `deepseek-flash` or `deepseek-v4-pro` and check your API balance. For **OpenAI**, use [API Keys](https://platform.openai.com/api-keys) and check [models](https://developers.openai.com/api/docs/models) and [API pricing](https://openai.com/api/pricing/). For **Anthropic / Claude**, use [Claude Platform / Keys](https://platform.claude.com/settings/keys) and check [models and pricing](https://platform.claude.com/docs/en/about-claude/models/overview). Then paste the selected service's key and choose the model using the common setup steps. Promotional credits do not constitute a permanent free plan. Arranger does not purchase credit or switch providers automatically.
+
+#### No key: local Ollama
+
+Install and open [Ollama](https://ollama.com/download). Download a text model, for example by running `ollama pull qwen2.5:7b` in a terminal; allow about 4.7 GB of disk space and enough RAM. Choose **Ollama · local, no API key**, leave `http://127.0.0.1:11434`, press **CHECK** and select the installed model. Bare addresses such as `127.0.0.1:11434` and addresses ending in `/api` are normalised. If it does not respond, open Ollama or run `ollama serve` and check the address. The first generation may take several minutes. Ollama cloud models are excluded from the local list. A server on a different computer receives the context at that address: use the local server to keep it on your device. No Groq, OpenAI or other service key is needed.
+
+#### Troubleshooting, privacy and third-party rights
+
+**401/403**: incorrect/expired key or unauthorised model; check the selected service. **402**: API credit or spending limit; check the console. **429**: request/token quota reached; wait for reset or reduce instruments. No purchase or paid fallback starts automatically. Truncated output or invalid MIDI cannot be applied: simplify the request or change models. A listed model may not support the required format or be accessible to your account.
+
+Cloud requests contain your prompt, track names/roles and limited musical context, not audio, samples, file paths or plugin states. Catalogue requests send only connection/authentication data. Retention and training policies depend on the service and plan; OpenRouter also involves the upstream provider. Use local Ollama to keep context on your computer.
+
+**Attributions:** OpenAI and GPT belong to OpenAI; Anthropic and Claude to Anthropic; Google, Gemini and AI Studio to Google; DeepSeek, Groq/GroqCloud, OpenRouter and Ollama to their respective owners. Hosted models may have different authors: for example GPT-OSS is by OpenAI and Qwen by the Qwen/Alibaba project. Copyrights, trademarks and licences remain with their respective rights holders. This is an independent integration, without implied affiliation or endorsement. Arranger does not distribute these models or services or license them under its AGPL licence. See **OPTIONS → Licences and attributions**, **Privacy and permissions** and the providers' official terms for details. The [AIREITER free API article](https://aireiter.com/it/blog/best-free-ai-api) is introductory reading; the official sources linked above govern setup, pricing and quotas. These instructions are original.
 
 ### Sample browser
 
@@ -528,7 +579,7 @@ To continue in another DAW, use the MIDI or stems in chapter 4.
 
 ### Saving and checking plugin presets
 
-1. Open the project in **0.30.4** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
+1. Open the project in **0.30.5** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
 2. Open the instrument editor with the inspector’s **keyboard** button. Choose a recognisable preset and, to test parameter recall too, optionally change one plugin control. Listen to the part so you can recognise its sound.
 3. In **Arranger**, press **SAVE AS** and give the `.fga` project a new name. Saving a preset inside the plugin is separate from saving the project: save the project after your changes too.
 4. Close the project and reopen the copy you just saved. Open the plugin editor again, check the preset and edited control, then press **PLAY** to compare the sound.
@@ -682,7 +733,7 @@ Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
 **I press EXPORT in the encoding window but no destination appears**
 
-Check the version in **OPTIONS → ABOUT**: this procedure describes **0.30.4**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
+Check the version in **OPTIONS → ABOUT**: this procedure describes **0.30.5**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 

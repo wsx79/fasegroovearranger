@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.5
+
+- Add DeepSeek, Groq and OpenRouter Free to AI composition, with current model suggestions and live cloud model discovery. Keep existing provider preferences and local Ollama setup.
+- Add service setup help, free-tier limits, API-key instructions and third-party service/model notices in the IT/EN guides. Keep credentials separate per service and reject paid OpenRouter model IDs.
+
 ## 0.30.4
 
 - Fix WAV export stopping after encoding options: open the destination chooser after the previous modal window has been destroyed.

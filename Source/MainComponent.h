@@ -304,6 +304,7 @@ public:
     void resetAutomationTarget(int track);
     void showAutomationPicker(int track,int source=-100);
     void selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& parameterId={});
+    void showGuide(bool english=false);
     juce::Result captureAiProject(Project&);
     juce::Result applyAiComposition(const Project&,const Project&,bool listen);
     bool verifyAiComposer(const juce::File&);
@@ -452,7 +453,6 @@ private:
     void exportFile(int type,int track,const juce::File& destination={},bool configured=false);
     void loadSampleFile(int,const juce::File&);
     void showAbout();
-    void showGuide(bool english=false);
     bool writeHelpEvidence(const juce::File&);
     void showDocument(const juce::String&,const juce::String&);
     void showAudioSettings();
