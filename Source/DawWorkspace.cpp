@@ -13,6 +13,47 @@ void caption(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> bounds
 void slider(juce::Slider& s,double low,double high,const char* suffix){s.setRange(low,high,.1);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,60,20);s.setTextValueSuffix(suffix);s.setDoubleClickReturnValue(true,0);}
 void tip(juce::Component& c,const char* s){c.getProperties().set("fgaTip",s);}
 }
+// Readback only: the UI never feeds an automation sample back into the project.
+void MainComponent::updateGainDisplay(juce::Slider& control,double base,const VolumeAutomation& lane,bool gesture){
+    if(gesture||(bool)control.getProperties().getWithDefault("fgaGesture",false))return;
+    for(auto* child:control.getChildren())if(auto* label=dynamic_cast<juce::Label*>(child);label&&label->isBeingEdited())return;
+    const bool following=audio.isPlaying()&&lane.active();
+    const double baseDb=db(base),value=db(following?base*lane.valueAt(audio.position()):base);
+    // The base control stops at +6 dB, but a 200% envelope can add another 6 dB.
+    // Expand only the readback range; manual edits retain the original base range.
+    const double upper=std::max(6.,std::ceil(value*10.)/10.);
+    if(control.getMaximum()!=upper)control.setRange(-60,upper,.1);
+    const double shown=std::clamp(std::round(value*10.)/10.,-60.,upper);
+    control.getProperties().set("automationOffsetDb",following?shown-baseDb:0.);
+    control.setValue(shown,juce::dontSendNotification);
+}
+double MainComponent::gainFromControl(const juce::Slider& control)const{
+    // A mouse/key/wheel/text edit trims the base by the change from the displayed
+    // value. Its offset stays fixed for a drag, even while the playhead advances.
+    return amplitude(std::clamp(control.getValue()-(double)control.getProperties().getWithDefault("automationOffsetDb",0.),-60.,6.));
+}
+// Absolute parameter envelopes: trim the stored value by the user's movement,
+// and never write the evaluated envelope into the project from a timer.
+void MainComponent::updatePanDisplay(juce::Slider& control,double base,const VolumeAutomation& lane,bool gesture){
+    if(gesture||inGesture(control))return;
+    for(auto* child:control.getChildren())if(auto* label=dynamic_cast<juce::Label*>(child);label&&label->isBeingEdited())return;
+    const double shown=audio.isPlaying()&&lane.active()?panFromAutomation(lane.valueAt(audio.position()))*100.:base*100.;
+    control.setValue(shown,juce::dontSendNotification);
+    control.getProperties().set("automationOffset",control.getValue()-base*100.);
+}
+void MainComponent::updateParameterDisplay(juce::Slider& control,double base,int index,const Track& track,bool cutoff){
+    if(inGesture(control))return;
+    for(auto* child:control.getChildren())if(auto* label=dynamic_cast<juce::Label*>(child);label&&label->isBeingEdited())return;
+    double shown=base;
+    if(audio.isPlaying())for(const auto& lane:track.parameters)if(lane.slot==-1&&lane.index==index&&lane.curve.active()){
+        const auto value=std::clamp(lane.curve.valueAt(audio.position()),0.,1.);shown=cutoff?20.*std::pow(1000.,value):value*(control.getMaximum()>1?100.:1.);
+    }
+    control.setValue(shown,juce::dontSendNotification);
+    control.getProperties().set("automationOffset",control.getValue()-base);
+}
+double MainComponent::valueFromControl(const juce::Slider& control)const{
+    return std::clamp(control.getValue()-(double)control.getProperties().getWithDefault("automationOffset",0.),control.getMinimum(),control.getMaximum());
+}
 InspectorResizer::InspectorResizer(MainComponent& m,bool forBrowser):owner(m),browser(forBrowser){setMouseCursor(juce::MouseCursor::LeftRightResizeCursor);tip(*this,forBrowser?"Drag the sample browser's left edge to resize its width; double-click to restore the default.":"Drag the inspector's right edge to resize its width; double-click to restore the default.");}
 void InspectorResizer::paint(juce::Graphics& g){const int middle=getHeight()/2;g.setColour((isMouseOverOrDragging()?Daw::accent:Daw::textFaint).withAlpha(isMouseOverOrDragging()?.9f:.5f));for(int dot=-2;dot<=2;++dot)g.fillEllipse(getWidth()*.5f-1.5f,(float)middle+dot*7-1.5f,3.f,3.f);}
 void InspectorResizer::mouseDown(const juce::MouseEvent& e){dragOrigin=e.getEventRelativeTo(&owner).position.x;initialWidth=browser?owner.sampleBrowser.getWidth():owner.inspectorWidth;}
@@ -38,9 +79,9 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);
     // Actions read the selection when clicked; nothing is cached between refreshes.
     gain.onDragStart=[this]{gainGesture=true;owner.checkpointMix();};gain.onDragEnd=[this]{gainGesture=false;refresh();};
-    gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpointMix(&gain);owner.project.tracks[(size_t)owner.selectedTrack].gain=amplitude(gain.getValue());owner.mixChanged();};
+    gain.onValueChange=[this]{if(updating||!validTrack())return;if(!gainGesture)owner.checkpointMix(&gain);owner.project.tracks[(size_t)owner.selectedTrack].gain=owner.gainFromControl(gain);owner.mixChanged();};
     pan.onDragStart=[this]{panGesture=true;owner.checkpointMix();};pan.onDragEnd=[this]{panGesture=false;refresh();};
-    pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)owner.selectedTrack].pan=pan.getValue()/100.;owner.mixChanged();};
+    pan.onValueChange=[this]{if(updating||!validTrack())return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)owner.selectedTrack].pan=owner.valueFromControl(pan)/100.;owner.mixChanged();};
     deleteTrack.setComponentID("delete-midi-track");deleteTrack.onClick=[this]{owner.deleteMidiTrack(owner.selectedTrack);};tip(deleteTrack,"Delete this handwritten MIDI track. Undo restores its notes and sound.");
     instrument.onClick=[this]{owner.showInstrument();};editor.onClick=[this]{owner.showEditor();};
     mute.onClick=[this]{if(!validTrack())return;owner.checkpoint();auto& t=owner.project.tracks[(size_t)owner.selectedTrack];t.mute=!t.mute;owner.mixChanged();};
@@ -70,8 +111,8 @@ void TrackInspector::refresh(){
     if(hasClip){const double bars=owner.clipLength()/4.;const int guide=std::clamp(owner.project.sectionAtBeat(owner.clipStart()),0,(int)owner.project.sections.size()-1);section.setText(text(owner.project.sections[(size_t)guide].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);}
     else section.setText(juce::String::fromUTF8("—"),juce::dontSendNotification);
     // A fader the user is dragging keeps its own value; the model follows it.
-    if(!gainGesture)gain.setValue(db(t.gain),juce::dontSendNotification);
-    if(!panGesture)pan.setValue(t.pan*100,juce::dontSendNotification);
+    owner.updateGainDisplay(gain,t.gain,t.volume,gainGesture);
+    owner.updatePanDisplay(pan,t.pan,t.panAutomation,panGesture);
     // An automated volume or pan reads in blue.
     for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);slider->setColour(juce::Slider::rotarySliderFillColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);slider->removeColour(juce::Slider::rotarySliderFillColourId);}}
     const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr;
@@ -132,6 +173,12 @@ int TrackInspector::layout(int width){
     iconPair(editor,regenerate);iconPair(loop,lockClip);endCard();
     return y;
 }
+void TrackInspector::tick(){
+    if(!validTrack()||!isShowing())return;
+    const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];
+    owner.updateGainDisplay(gain,track.gain,track.volume,gainGesture);
+    owner.updatePanDisplay(pan,track.pan,track.panAutomation,panGesture);
+}
 void TrackInspector::resized(){
     const bool collapsed=getWidth()<=40;for(auto* child:getChildren())child->setVisible(!collapsed);if(collapsed)return;
     contentHeight=layout(getWidth());if(getHeight()!=contentHeight)setSize(getWidth(),contentHeight);
@@ -139,7 +186,7 @@ void TrackInspector::resized(){
 
 MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     for(auto* c:std::initializer_list<juce::Component*>{&name,&gain,&pan,&mute,&solo,&instrument,&clip,&sendA,&sendB,&output,&effects})addAndMakeVisible(c);
-    effects.setComponentID("mixer-effects");effects.getProperties().set("fgaRawText",true);effects.onClick=[this]{if(track>=0)owner.showEffectChain(track);};tip(effects,"EFFECTS");
+    gain.setComponentID("mixer-gain");pan.setComponentID("mixer-pan");effects.setComponentID("mixer-effects");effects.getProperties().set("fgaRawText",true);effects.onClick=[this]{if(track>=0)owner.showEffectChain(track);};tip(effects,"EFFECTS");
     name.getProperties().set("fgaRawText",true);
     setComponentID("mixer-track-"+juce::String(track));sendA.setComponentID("mixer-send-a");sendB.setComponentID("mixer-send-b");output.setComponentID("mixer-output");
     for(int i=0;i<2;++i){auto& button=i==0?sendA:sendB;button.setColour(juce::TextButton::buttonOnColourId,Daw::accent);button.onClick=[this,i]{if(track<0||track>=(int)owner.project.tracks.size())return;owner.checkpoint();auto& value=owner.project.tracks[(size_t)track].sends[(size_t)i];if(value>0){sendMemory[(size_t)i]=value;value=0;}else value=sendMemory[(size_t)i];owner.mixChanged();};tip(button,i==0?"Toggle send A to shared reverb. Adjust its amount in Bus & Send.":"Toggle send B to shared delay. Adjust its amount in Bus & Send.");}
@@ -151,15 +198,21 @@ MixerStrip::MixerStrip(MainComponent& m,int ti):owner(m),track(ti){
     slider(pan,-100,100,"%");pan.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);pan.setTextBoxStyle(juce::Slider::NoTextBox,false,0,0);pan.setMouseDragSensitivity(160);
     instrument.setColour(juce::TextButton::buttonColourId,Daw::surfaceHi);mute.setColour(juce::TextButton::buttonOnColourId,Daw::mute);solo.setColour(juce::TextButton::buttonOnColourId,Daw::solo);clip.setColour(juce::TextButton::buttonOnColourId,Daw::meterHigh);
     gain.onDragStart=[this]{gainGesture=true;owner.checkpointMix();};gain.onDragEnd=[this]{gainGesture=false;};
-    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpointMix(&gain);if(track<0)owner.project.masterGain=amplitude(gain.getValue());else owner.project.tracks[(size_t)track].gain=amplitude(gain.getValue());owner.mixChanged();};
+    gain.onValueChange=[this]{if(updating)return;if(!gainGesture)owner.checkpointMix(&gain);if(track<0)owner.project.masterGain=owner.gainFromControl(gain);else owner.project.tracks[(size_t)track].gain=owner.gainFromControl(gain);owner.mixChanged();};
     pan.onDragStart=[this]{panGesture=true;owner.checkpointMix();};pan.onDragEnd=[this]{panGesture=false;};
-    pan.onValueChange=[this]{if(updating||track<0)return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)track].pan=pan.getValue()/100.;owner.mixChanged();};
+    pan.onValueChange=[this]{if(updating||track<0)return;if(!panGesture)owner.checkpointMix(&pan);owner.project.tracks[(size_t)track].pan=owner.valueFromControl(pan)/100.;owner.mixChanged();};
     mute.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.mute=!t.mute;owner.mixChanged();};solo.onClick=[this]{owner.checkpoint();auto& t=owner.project.tracks[(size_t)track];t.solo=!t.solo;owner.mixChanged();};
     instrument.onClick=[this]{if(track>=0){owner.select(track,owner.selectedSection);owner.showInstrument();}};clip.onClick=[this]{owner.audio.clearClipping();repaint();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(clip,"Master peak overload. Click to clear the indicator.");tip(instrument,"Open the original Fase Groove instrument controls.");refresh();
 }
-void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;effects.setVisible(track>=0);if(track>=0){const auto& chain=owner.project.tracks[(size_t)track].effects;int active=0;for(const auto& fx:chain)if(!fx.bypassed)++active;effects.setButtonText("FX"+(active>0?" "+juce::String(active):juce::String()));effects.setToggleState(active>0,juce::dontSendNotification);effects.setEnabled(!owner.loadingPlugin);}updating=true;const bool master=track<0;const auto full=master?tr("MASTER"):text(owner.project.tracks[(size_t)track].name);name.setText(master?full:Localisation::upper(full),juce::dontSendNotification);name.setTooltip(full);name.setColour(juce::Label::textColourId,Daw::text);gain.setValue(db(master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain),juce::dontSendNotification);pan.setVisible(!master&&getHeight()>=180);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=120);clip.setVisible(master);sendA.setVisible(!master);sendB.setVisible(!master);output.setVisible(!master);if(!master){auto& t=owner.project.tracks[(size_t)track];output.setButtonText(t.group==0?"GA":t.group==1?"GB":"M");for(int i=0;i<2;++i){auto& b=i==0?sendA:sendB;const auto value=t.sends[(size_t)i];if(value>0)sendMemory[(size_t)i]=value;b.setToggleState(value>0,juce::dontSendNotification);}pan.setValue(t.pan*100,juce::dontSendNotification);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(*this);repaint();}
-void MixerStrip::tick(){peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);
+void MixerStrip::refresh(){if(track>=0&&owner.project.tracks.empty())return;effects.setVisible(track>=0);if(track>=0){const auto& chain=owner.project.tracks[(size_t)track].effects;int active=0;for(const auto& fx:chain)if(!fx.bypassed)++active;effects.setButtonText("FX"+(active>0?" "+juce::String(active):juce::String()));effects.setToggleState(active>0,juce::dontSendNotification);effects.setEnabled(!owner.loadingPlugin);}updating=true;const bool master=track<0;const auto full=master?tr("MASTER"):text(owner.project.tracks[(size_t)track].name);name.setText(master?full:Localisation::upper(full),juce::dontSendNotification);name.setTooltip(full);name.setColour(juce::Label::textColourId,Daw::text);owner.updateGainDisplay(gain,master?owner.project.masterGain:owner.project.tracks[(size_t)track].gain,master?owner.project.masterAutomation:owner.project.tracks[(size_t)track].volume,gainGesture);pan.setVisible(!master&&getHeight()>=180);mute.setVisible(!master);solo.setVisible(!master);instrument.setVisible(!master&&getHeight()>=120);clip.setVisible(master);sendA.setVisible(!master);sendB.setVisible(!master);output.setVisible(!master);if(!master){auto& t=owner.project.tracks[(size_t)track];output.setButtonText(t.group==0?"GA":t.group==1?"GB":"M");for(int i=0;i<2;++i){auto& b=i==0?sendA:sendB;const auto value=t.sends[(size_t)i];if(value>0)sendMemory[(size_t)i]=value;b.setToggleState(value>0,juce::dontSendNotification);}owner.updatePanDisplay(pan,t.pan,t.panAutomation,panGesture);mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);instrument.setButtonText(t.instrument=="internal"?"BUILT-IN":t.instrument=="sample"?"SAMPLE":"VST3 / AU");}updating=false;translateControls(*this);repaint();}
+void MixerStrip::tick(){if(track>=0&&track<(int)owner.project.tracks.size()){const auto& t=owner.project.tracks[(size_t)track];owner.updatePanDisplay(pan,t.pan,t.panAutomation,panGesture);}
+
+    const double previousValue=gain.getValue(),previousMaximum=gain.getMaximum();
+    if(track<0||track<(int)owner.project.tracks.size())owner.updateGainDisplay(gain,track<0?owner.project.masterGain:owner.project.tracks[(size_t)track].gain,track<0?owner.project.masterAutomation:owner.project.tracks[(size_t)track].volume,gainGesture);
+    if(gain.getMaximum()!=previousMaximum)repaint();
+    else if(gain.getValue()!=previousValue)repaint(4,gain.getBottom()+2,getWidth()-8,16);
+    peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);
     // Each side falls smoothly; its peak holds for 1.5 s, then falls too.
     for(int side=0;side<2;++side){const float now=track<0?owner.audio.masterLevel(side):owner.audio.level(track,side);sides[(size_t)side]=std::max(now,sides[(size_t)side]*.82f);
         if(sides[(size_t)side]>=holds[(size_t)side]){holds[(size_t)side]=sides[(size_t)side];holdTicks[(size_t)side]=30;}else if(--holdTicks[(size_t)side]<=0)holds[(size_t)side]=std::max(sides[(size_t)side],holds[(size_t)side]*.9f);}
@@ -219,6 +272,69 @@ void DawMixer::tick(){
 }
 bool DawMixer::verifySends(const juce::File& folder){const auto saved=owner.project;auto undos=owner.undoStack,redos=owner.redoStack;const bool dirty=owner.dirty;const auto midi=midiFile(owner.project);bool ok=!strips.empty();if(ok){const int ti=trackAtRow(0);for(int i=0;i<2;++i){auto* button=dynamic_cast<juce::Button*>(strips[0]->findChildWithID(i==0?"mixer-send-a":"mixer-send-b"));if(!button){ok=false;continue;}const double old=owner.project.tracks[(size_t)ti].sends[(size_t)i];const auto count=owner.undoStack.size();button->onClick();const double value=owner.project.tracks[(size_t)ti].sends[(size_t)i];ok=ok&&(old>0?value==0:value>0)&&button->getToggleState()==(value>0)&&owner.undoStack.size()==count+1&&midiFile(owner.project)==midi;owner.undo(false);ok=ok&&owner.project.tracks[(size_t)ti].sends[(size_t)i]==old;}for(int h:{100,140,210,320}){strips[0]->setSize(74,h);for(auto* c:strips[0]->getChildren())if(c->isVisible())ok=ok&&strips[0]->getLocalBounds().contains(c->getBounds())&&!c->getBounds().isEmpty();}}
     owner.project=saved;owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.dirty=dirty;owner.audio.updateMix(owner.project);owner.refreshControls();resized();folder.getChildFile("mixer-send-buttons.txt").replaceWithText(ok?"PASS mixer A/reverb and B/delay toggles update real sends, restore amounts with Undo, preserve MIDI and fit compact strips":"FAIL mixer send buttons");return ok;}
+bool DawMixer::verifyAutomation(const juce::File& folder){
+#if !FGA_SELF_TESTS
+    juce::ignoreUnused(folder);return false;
+#else
+    const auto saved=owner.project;const auto undos=owner.undoStack,redos=owner.redoStack;const bool dirty=owner.dirty,wasPlaying=owner.audio.isPlaying();
+    const int selected=owner.selectedTrack,section=owner.selectedSection,clip=owner.selectedClip;const bool noClip=owner.noClipSelection;const double cursor=owner.editCursor,position=owner.audio.position();
+    bool ok=strips.size()>1;juce::String failure;auto check=[&](bool pass,const char* step){if(!pass&&failure.isEmpty())failure=step;ok=pass&&ok;};
+    owner.audio.stop();const int ti=trackAtRow(0),other=trackAtRow(1);auto& p=owner.project;p.loop=false;p.masterGain=.8;p.masterAutomation.enabled=true;p.masterAutomation.points={{0,.2,-.4},{4,1.8,0}};
+    p.tracks[(size_t)ti].gain=.5;p.tracks[(size_t)ti].volume.enabled=true;p.tracks[(size_t)ti].volume.points={{0,.25,.7},{2,1.5,-.5},{4,.5,0}};
+    p.tracks[(size_t)other].gain=.75;p.tracks[(size_t)other].volume.enabled=false;p.tracks[(size_t)other].volume.points={{0,0,0},{4,2,0}};
+    owner.selectedTrack=ti;owner.selectedSection=0;owner.selectedClip=0;owner.noClipSelection=false;owner.editCursor=-1;owner.audio.publish(p);owner.refreshControls();
+    auto* inspector=dynamic_cast<juce::Slider*>(owner.trackInspector.findChildWithID("track-gain"));
+    auto* channel=dynamic_cast<juce::Slider*>(strips[0]->findChildWithID("mixer-gain"));auto* fixed=dynamic_cast<juce::Slider*>(strips[1]->findChildWithID("mixer-gain"));auto* output=dynamic_cast<juce::Slider*>(master.findChildWithID("mixer-gain"));
+    check(inspector&&channel&&fixed&&output,"volume controls");
+    if(inspector&&channel&&fixed&&output){
+        auto* inspectorPan=dynamic_cast<juce::Slider*>(owner.trackInspector.findChildWithID("track-pan"));auto* mixerPan=dynamic_cast<juce::Slider*>(strips[0]->findChildWithID("mixer-pan"));
+        check(inspectorPan&&mixerPan,"pan controls");
+        p.tracks[(size_t)ti].pan=.2;p.tracks[(size_t)ti].panAutomation.enabled=true;p.tracks[(size_t)ti].panAutomation.points={{0,.1,.5},{4,.9,0}};owner.audio.updateMix(p);
+        auto near=[](double a,double b){return std::abs(a-b)<.11;};
+        auto verify=[&]{const double beat=owner.audio.position(),expected=db(p.tracks[(size_t)ti].gain*p.tracks[(size_t)ti].volume.valueAt(beat)),masterValue=db(p.masterGain*p.masterAutomation.valueAt(beat));
+            check(near(inspector->getValue(),expected)&&near(channel->getValue(),expected)&&near(owner.gainSlider.getValue(),expected),"track automation readback");
+            check(near(output->getValue(),masterValue)&&near(owner.masterSlider.getValue(),masterValue),"master automation readback");check(near(fixed->getValue(),db(.75)),"disabled automation");
+            const double panValue=panFromAutomation(p.tracks[(size_t)ti].panAutomation.valueAt(beat))*100.;
+            check(inspectorPan&&mixerPan&&near(inspectorPan->getValue(),panValue)&&near(mixerPan->getValue(),panValue)&&std::abs(owner.panSlider.getValue()-panValue)<.51,"pan automation readback");};
+        const auto unchanged=juce::JSON::toString(projectJson(p),false,17);owner.audio.seek(0);owner.audio.play(true);owner.timerCallback();verify();const double first=inspector->getValue();
+        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+        for(int i=0;i<12;++i){owner.audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);owner.timerCallback();verify();}
+        check(inspector->getValue()>first+.1,"motion follows audio callback");
+        check(unchanged==juce::JSON::toString(projectJson(p),false,17)&&owner.undoStack.size()==undos.size()&&owner.redoStack.size()==redos.size()&&owner.dirty==dirty,"readback is non-destructive");
+        owner.audio.seek(3.25);owner.timerCallback();verify();
+        inspector->showTextBox();const double editing=inspector->getValue();owner.audio.seek(1.25);owner.timerCallback();check(near(inspector->getValue(),editing),"text entry is not overwritten");inspector->hideTextBox(true);owner.timerCallback();verify();
+        for(auto* control:{inspector,channel,&owner.gainSlider,&owner.masterSlider,output}){
+            const bool isMaster=control==&owner.masterSlider||control==output;const auto before=p;const double base=isMaster?p.masterGain:p.tracks[(size_t)ti].gain;const auto undoCount=owner.undoStack.size();const double requested=control->getValue()+1;
+            control->onDragStart();control->setValue(requested,juce::sendNotificationSync);owner.audio.seek(owner.audio.position()<2?3.:1.);owner.timerCallback();
+            check(near(control->getValue(),requested),"automation does not fight a drag");const double edited=isMaster?p.masterGain:p.tracks[(size_t)ti].gain;check(std::abs(db(edited)-db(base)-1)<.02,"manual edit trims the base once");
+            auto expected=before;if(isMaster)expected.masterGain=edited;else expected.tracks[(size_t)ti].gain=edited;
+            check(juce::JSON::toString(projectJson(expected),false,17)==juce::JSON::toString(projectJson(p),false,17)&&owner.undoStack.size()==undoCount+1,"manual edit keeps curves and one undo gesture");
+            control->onDragEnd();owner.timerCallback();verify();
+        }
+        if(inspectorPan&&mixerPan)for(auto* control:{inspectorPan,mixerPan,&owner.panSlider}){
+            owner.timerCallback();const double before=p.tracks[(size_t)ti].pan,shown=control->getValue();
+            control->onDragStart();control->setValue(shown+5,juce::sendNotificationSync);
+            check(std::abs(p.tracks[(size_t)ti].pan-before-.05)<.006,"pan gesture trims stored value once");control->onDragEnd();owner.timerCallback();verify();
+        }
+        {juce::Slider native;native.setRange(0,100,.1);Track t;ParameterAutomation lane;lane.slot=-1;lane.index=0;lane.curve.enabled=true;lane.curve.points={{0,.15,0},{4,.85,0}};t.parameters={lane};
+            owner.audio.seek(2);owner.updateParameterDisplay(native,30,0,t);check(std::abs(native.getValue()-50)<.11,"native parameter readback");
+            native.setValue(55,juce::dontSendNotification);check(std::abs(owner.valueFromControl(native)-35)<.11,"native manual trim");
+            t.parameters[0].curve.enabled=false;owner.updateParameterDisplay(native,30,0,t);check(native.getValue()==30,"native bypass readback");
+            t.parameters[0].index=4;t.parameters[0].curve.enabled=true;native.setRange(20,20000,1);owner.updateParameterDisplay(native,12000,4,t,true);check(std::abs(native.getValue()-20*std::sqrt(1000.))<1,"sampler logarithmic filter readback");}
+        {auto& t=p.tracks[(size_t)ti];const auto parameters=t.parameters;const auto source=t.instrument;t.instrument="internal";const double tone=t.engine.tone;ParameterAutomation lane;lane.slot=-1;lane.index=0;lane.curve.enabled=true;lane.curve.points={{0,.67,0}};t.parameters={lane};
+            owner.instrumentPanel.rebuild();juce::Slider* knob=nullptr;for(auto* child:owner.instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="TONE")knob=dynamic_cast<juce::Slider*>(child);
+            check(knob!=nullptr,"native tone control exists");if(knob){const auto json=juce::JSON::toString(projectJson(p),false,17);owner.instrumentPanel.repaintMeters(false);check(std::abs(knob->getValue()-67)<.51,"native tone knob follows curve");owner.audio.play(false);owner.instrumentPanel.repaintMeters(false);check(std::abs(knob->getValue()-tone*100)<.51&&json==juce::JSON::toString(projectJson(p),false,17),"idle native knob restores base without edits");owner.audio.play(true);}t.parameters=parameters;t.instrument=source;owner.instrumentPanel.rebuild();}
+        p.loop=true;p.loopStart=2;p.loopEnd=3;owner.audio.play(false);owner.audio.publish(p);owner.audio.seek(2.995);owner.audio.play(true);owner.audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);owner.timerCallback();
+        check(owner.audio.position()>=2&&owner.audio.position()<2.1,"loop wraps");verify();
+        p.tracks[(size_t)ti].gain=1.6;p.tracks[(size_t)ti].volume.points={{0,2,0}};p.masterGain=1.6;p.masterAutomation.points={{0,2,0}};owner.audio.updateMix(p);owner.refreshControls();owner.timerCallback();verify();check(inspector->getValue()>6&&output->getValue()>6&&owner.masterSlider.getValue()>6,"readback includes gain above base range");
+        owner.selectedTrack=other;owner.refreshTrack();owner.timerCallback();check(near(inspector->getValue(),db(.75)),"selection changes followed track");owner.selectedTrack=ti;owner.refreshTrack();owner.timerCallback();verify();
+        owner.audio.play(false);owner.timerCallback();check(inspectorPan&&mixerPan&&near(inspectorPan->getValue(),p.tracks[(size_t)ti].pan*100)&&near(mixerPan->getValue(),p.tracks[(size_t)ti].pan*100),"pan stop restores base");check(near(inspector->getValue(),db(1.6))&&near(channel->getValue(),db(1.6))&&near(output->getValue(),db(1.6))&&near(owner.masterSlider.getValue(),db(1.6))&&inspector->getMaximum()==6,"stop restores base controls");
+        p.tracks[(size_t)ti].volume.enabled=false;p.masterAutomation.enabled=false;owner.audio.play(true);owner.refreshControls();owner.timerCallback();check(near(inspector->getValue(),db(1.6))&&near(channel->getValue(),db(1.6))&&near(output->getValue(),db(1.6))&&near(owner.masterSlider.getValue(),db(1.6)),"bypass restores base controls");
+    }
+    owner.audio.stop();owner.project=saved;owner.undoStack=undos;owner.redoStack=redos;owner.dirty=dirty;owner.selectedTrack=selected;owner.selectedSection=section;owner.selectedClip=clip;owner.noClipSelection=noClip;owner.editCursor=cursor;owner.audio.publish(saved);owner.audio.seek(position);if(wasPlaying)owner.audio.play(true);owner.refreshControls();
+    folder.getChildFile("automation-controls.txt").replaceWithText(ok?"PASS volume/pan/native/filter readback: inspector, mixer, master and instrument toolbar; real audio advancement, curves, seek/loop, bypass/stop, selection, text editing, manual trim and unchanged project/Undo on readback":"FAIL automation controls: "+failure);return ok;
+#endif
+}
 void DawMixer::reveal(int track){const int x=rowForTrack(track)*channelWidth;if(x<port.getViewPositionX())port.setViewPosition(x,0);else if(x+channelWidth-4>port.getViewPositionX()+port.getViewWidth())port.setViewPosition(x+channelWidth-4-port.getViewWidth(),0);}
 void DawMixer::paint(juce::Graphics& g){g.fillAll(Daw::base);g.setColour(Daw::chrome);g.fillRoundedRectangle(0,0,(float)getWidth(),24,Daw::radius);g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(juce::Rectangle<float>(0,0,(float)getWidth(),24).reduced(.5f),Daw::radius,1);
     if(owner.mixerVisible){Daw::drawCaps(g,tr("MIXER"),{10,0,120,24},Daw::textDim);caption(g,"Audio levels / MIDI velocities unchanged",{90,0,getWidth()-430,24});if(strips.empty()){g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::body));IconButton::drawIcon(g,IconButton::Icon::mixer,{24.f,40.f,16.f,16.f},Daw::textDim);g.drawFittedText(tr("No tracks in the mixer"),48,36,getWidth()-80,24,juce::Justification::centredLeft,1,.7f);}}

@@ -84,7 +84,7 @@ juce::String controlTip(const juce::String& key){
     if(key.equalsIgnoreCase("LOCK CLIP"))return tr("Lock this part against regeneration; manual note editing remains available.");
     if(key.equalsIgnoreCase("PLAY"))return tr("Start or pause playback.");
     if(key.equalsIgnoreCase("STOP"))return tr("Stop playback and return to the beginning.");
-    if(key.equalsIgnoreCase("NEW ARRANGEMENT"))return tr("Rebuild the song form from genre, harmonic phrases and groove development.");
+    if(key.equalsIgnoreCase("NEW ARRANGEMENT"))return tr("Rebuild the song form using existing MIDI parts; keep notes, tempo and sounds.");
     if(key.equalsIgnoreCase("NEW CLIP"))return tr("Generate new notes only in the selected part; locked parts stay.");
     if(key.equalsIgnoreCase("AUTOMATION"))return tr("Show or hide the selected track's volume automation. Playback is controlled by ON / BYPASS in the lane.");
     if(key.equalsIgnoreCase("REGENERATE TRACK"))return tr("Try another take of this track, keeping the rest of the song.");

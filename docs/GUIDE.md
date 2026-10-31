@@ -585,7 +585,7 @@ To continue in another DAW, use the MIDI or stems in chapter 4.
 
 ### Saving and checking plugin presets
 
-1. Open the project in **0.30.6** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
+1. Open the project in the updated version of **Arranger** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
 2. Open the instrument editor with the inspector’s **keyboard** button. Choose a recognisable preset and, to test parameter recall too, optionally change one plugin control. Listen to the part so you can recognise its sound.
 3. In **Arranger**, press **SAVE AS** and give the `.fga` project a new name. Saving a preset inside the plugin is separate from saving the project: save the project after your changes too.
 4. Close the project and reopen the copy you just saved. Open the plugin editor again, check the preset and edited control, then press **PLAY** to compare the sound.
@@ -597,7 +597,7 @@ This procedure checks preset and parameter recall in your own installation. If t
 
 ## 6. Building a track: intro, break, drop
 
-**NEW ARRANGEMENT** derives song length from the genre’s sections, complete harmonic cycles and groove development. Longer evolving motifs have room to unfold; dense grooves may answer sooner. There is no minute target.
+**NEW ARRANGEMENT** changes the structure by reusing MIDI from matching existing sections. It retains notes, dynamics, sounds, effects, BPM and harmony. Longer sections repeat the stored take; shorter ones keep the loop source. Independent timelines and handwritten MIDI tracks stay at their absolute positions. Use **GENERATE SONG** to write new notes. Song length derives from the genre’s sections, complete harmonic cycles and groove development. Longer evolving motifs have room to unfold; dense grooves may answer sooner. There is no minute target.
 
 | Part | How to use it |
 |---|---|
@@ -628,13 +628,17 @@ The song keeps its base groove across sections, changing performance, density an
 | **REGENERATE TRACK** | The selected instrument throughout the song. |
 | **REGENERATE SECTION** | This section across all unlocked tracks. |
 | **REGENERATE CLIP** | Just the selected track in this section. |
-| **NEW ARRANGEMENT** | Rebuilds the form and notes from genre, harmonic phrases and groove development. Unlock tracks and clips first. |
+| **NEW ARRANGEMENT** | Rebuilds the form using existing MIDI parts without regenerating notes. Unlock tracks and clips first. |
 
 **Right-click a section:** rename, duplicate with its notes, move, remove, change length or musical role. **+ SECTION** opens a menu to choose the role of the section inserted after the selected one. Dragging a section-header edge changes the guide while preserving clips and automation at their musical positions. To extend the music, resize a clip loop, duplicate parts, write notes or regenerate.
 
 > Try this: duplicate a drop, change only the bass in the second copy, then make the piano sparser. Keep a recognisable idea and change who carries it.
 
 ### Track volume automation
+
+During **Play**, the inspector volume, track mixer fader and instrument-panel volume follow the effective **base gain × envelope** value. Both master controls follow the master envelope too. Readback uses the audio position, including seeks and loops. Stop or envelope bypass restores the base gain display. A 200% envelope can show a value above the base control's normal +6 dB limit.
+
+Visual updates do not modify the project, MIDI or Undo history. Readback pauses while you drag a control or edit its numeric field. Manual changes during Play trim the base gain by the change from the displayed value: the envelope stays intact and following resumes after the gesture. This does not write automation.
 
 In the arrangement view, **A** in each track header opens its volume lane. **AUTOMATION** shows or hides the selected track’s lane. Lanes start hidden and automation starts bypassed, leaving the instrument fader in control.
 
@@ -646,11 +650,13 @@ In the arrangement view, **A** in each track header opens its volume lane. **AUT
 
 Values multiply the track fader: 0% is silence, 100% leaves the level unchanged, and 200% adds about 6 dB. Gain changes continuously, including sustained notes and effect tails. Values hold before the first and after the last point. It works with built-in sounds, samples and VST/AU instruments, during playback and WAV/MP3 mix and stem export.
 
-Envelopes are saved in `.fga` projects, independently of BPM and MIDI regeneration. Inserting, duplicating, deleting or moving sections moves their points too. Changing section length or using NEW ARRANGEMENT keeps absolute point times, clamped to the new song length: review the envelope afterwards. Old projects open with automation bypassed. Lane visibility belongs to the current editing session and is not saved in the project.
+Envelopes are saved in `.fga` projects, independently of BPM and MIDI regeneration. Inserting, duplicating, deleting or moving sections moves their points too. Changing section length scales its envelope times. NEW ARRANGEMENT copies section-bound track and master envelopes into the reused sections and adapts their duration; independent tracks retain absolute times. Old projects open with automation bypassed. Lane visibility belongs to the current editing session and is not saved in the project.
 
 Volume automation **does not change note velocities or export MIDI CC**: it is DAW audio gain. Original engine dynamics still work; extra arranger velocity ramps previously used to imitate fades are removed. Export audio to carry the curves into another application; MIDI retains musical notes and original CC.
 
 ### Pan, master and VST parameters
+
+**Pan** knobs also follow their curves during Play. Guide-sound **Tone, Reverb, Chorus, Pump** and Studio **Cutoff/Resonance** controls show the automated parameter and return to stored settings on Stop or bypass. Plugin windows receive parameter notifications; their visual response also depends on the plugin. Manual gestures adjust the base value without writing points. With absolute automation active (pan and parameters), the curve continues to determine the sound until you edit or bypass it.
 
 Press the track’s **A**, the automation button in **EFFECTS**, or the lane title. Select **Track and master**, **Sound**, **Instrument**, or a numbered **Effect** instance. Search a parameter and double-click it, or press **SHOW AUTOMATION**. Existing lanes are identified and reused instead of duplicated. **Existing automation** lists saved curves; **Remove lane** removes only the selected parameter curve, with Undo. Up to **32 parameter lanes per track**, in addition to volume, pan and master. VST/AU lists contain the automatable parameters actually exposed by that plugin. Guide sounds offer tone, reverb, chorus and pump; samples offer filter cutoff and resonance (automation enables the filter without changing the saved sampler settings). Slice-key mapping remains in Studio.
 

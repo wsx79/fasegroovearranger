@@ -15,7 +15,7 @@ public:
     juce::String getParameterID()const override{return "gain";}
 private:std::atomic<float> value{.75f};
 };
-class AuditPlugin final : public juce::AudioPluginInstance {
+class AuditPlugin : public juce::AudioPluginInstance {
 public:
     AuditPlugin(bool effect=false,float shift=0,bool mono=false,float right=1):AudioPluginInstance(effect?BusesProperties().withInput("Input",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true).withOutput("Output",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true):BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)),transform(effect),offset(shift),rightScale(right){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
     std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false,prepared=false,stateRestoredActive=false;int preparations=0;bool offlineObserved=false;int calls=0,samples=0,lastMidi=-1;
@@ -36,6 +36,22 @@ public:
     void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
     void setStateInformation(const void*,int)override{if(inside)overlap=true;stateRestoredActive=prepared;}
 private:AuditGain* gain=nullptr;bool transform=false;float offset=0,rightScale=1;
+};
+// A native chunk may contain sound edits but leave program selection to the
+// host. Reloading that program afterwards destroys edits that are not exposed.
+class ProgramStatePlugin final : public AuditPlugin {
+public:
+    int program=0;float privateEdit=.1f;
+    int getNumPrograms()override{return 3;}int getCurrentProgram()override{return program;}
+    void setCurrentProgram(int p)override{program=p;privateEdit=.1f;}
+    const juce::String getProgramName(int p)override{return juce::String(p);}
+    void getStateInformation(juce::MemoryBlock& data)override{data.replaceAll(&privateEdit,sizeof privateEdit);}
+    void setStateInformation(const void* data,int bytes)override{if(bytes==sizeof privateEdit)std::memcpy(&privateEdit,data,sizeof privateEdit);}
+};
+struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
+    int changes=0;float value=0;
+    void parameterValueChanged(int,float v)override{++changes;value=v;}
+    void parameterGestureChanged(int,bool)override{}
 };
 }
 struct EngineAuditTests {
@@ -65,7 +81,19 @@ struct EngineAuditTests {
         requireAudit(!source->stateRestoredActive&&source->prepared,"native state must be restored with processing inactive and reactivated before playback");
         requireAudit(instrument.plugin.get()==source&&instrument.scratch.getNumChannels()>=source->getTotalNumOutputChannels(),"state restore retains the instance and refreshes its channel buffers");
     }
-    static void run(){effects();exportCompatibility();stateRestoreOrder();
+    static void programEdits(){
+        AudioEngine engine(AudioEngine::Offline{});for(auto& source:engine.instruments)source->prepare(44100,512);auto project=newProject(4);auto& instrument=*engine.instruments[0];
+        auto source=std::make_unique<ProgramStatePlugin>();source->setCurrentProgram(2);source->privateEdit=.73f;source->getParameters()[0]->setValue(.37f);
+        instrument.plugin=std::move(source);instrument.mode=2;engine.hostedCount=1;engine.capturePluginStates(project);
+        auto loaded=std::make_unique<ProgramStatePlugin>();auto* probe=loaded.get();instrument.plugin=std::move(loaded);
+        engine.restorePluginState(0,juce::String::fromUTF8(project.tracks[0].instrumentState.c_str()));
+        requireAudit(probe->program==2&&std::abs(probe->privateEdit-.73f)<1.e-6f&&std::abs(probe->getParameters()[0]->getValue()-.37f)<1.e-6f,"program selection must precede opaque edits and exposed parameter restore");
+        ParameterObserver listener;auto* parameter=probe->getParameters()[0];parameter->addListener(&listener);
+        ParameterAutomation lane;lane.slot=0;lane.index=0;lane.curve.enabled=true;lane.curve.points={{0,.62,0}};
+        project.tracks[0].parameters={lane};engine.publish(project);engine.applyParameterAutomation(instrument,0,0);parameter->removeListener(&listener);
+        requireAudit(listener.changes>0&&std::abs(listener.value-.62f)<1.e-6f,"automated hosted parameters notify editor listeners");
+    }
+    static void run(){effects();exportCompatibility();stateRestoreOrder();programEdits();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

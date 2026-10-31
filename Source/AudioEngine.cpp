@@ -26,13 +26,15 @@ void restoreHostedState(juce::AudioPluginInstance& plugin,const std::string& sav
     juce::MemoryBlock native;
     if(saved.rfind(hostedStatePrefix,0)!=0){if(native.fromBase64Encoding(juce::String::fromUTF8(saved.c_str())))plugin.setStateInformation(native.getData(),(int)native.getSize());return;}
     const auto json=juce::JSON::parse(juce::String::fromUTF8(saved.c_str()+std::strlen(hostedStatePrefix)));if(!json.isObject())return;
-    if(native.fromBase64Encoding(json["native"].toString())&&native.getSize()>0)plugin.setStateInformation(native.getData(),(int)native.getSize());
+    // Select the bank/program first: loading it after the native state can erase
+    // edits stored only inside that opaque state, even when the preset name matches.
     const auto program=json["program"];if(program.isInt()&&(int)program>=0&&(int)program<plugin.getNumPrograms()&&plugin.getCurrentProgram()!=(int)program)plugin.setCurrentProgram((int)program);
+    if(native.fromBase64Encoding(json["native"].toString())&&native.getSize()>0)plugin.setStateInformation(native.getData(),(int)native.getSize());
     const auto* values=json["parameters"].getArray();if(!values)return;
     std::map<juce::String,juce::AudioProcessorParameter*> byId;for(auto* parameter:plugin.getParameters()){const auto id=hostedParameterId(parameter);if(id.isNotEmpty())byId.emplace(id,parameter);}
     for(const auto& entry:*values){if(!entry.isObject())continue;const auto value=entry["value"];if(!(value.isDouble()||value.isInt()||value.isInt64())||!std::isfinite((double)value))continue;juce::AudioProcessorParameter* parameter=nullptr;const auto id=entry["id"].toString();
         if(id.isNotEmpty()){const auto found=byId.find(id);if(found!=byId.end())parameter=found->second;}else{const double index=(double)entry["index"];if(std::isfinite(index)&&index>=0&&index<plugin.getParameters().size()&&std::floor(index)==index)parameter=plugin.getParameters()[(int)index];}
-        if(parameter&&parameter->isAutomatable())parameter->setValueNotifyingHost((float)std::clamp((double)value,0.,1.));}
+        if(parameter&&parameter->isAutomatable()){const float restored=(float)std::clamp((double)value,0.,1.);if(std::abs(parameter->getValue()-restored)>1.e-6f)parameter->setValueNotifyingHost(restored);}}
 }
 const std::vector<TimedEvent> noEvents;
 bool voicesActive(juce::Synthesiser& synth){for(int i=0;i<synth.getNumVoices();++i)if(synth.getVoice(i)->isVoiceActive())return true;return false;}
@@ -224,7 +226,7 @@ void AudioEngine::applyParameterAutomation(Instrument& i,double beat,int slot){
         const auto& params=target->getParameters();if(lane.index>=params.size())continue;
         float value=(float)std::clamp(lane.curve.valueAt(beat),0.,1.);auto* parameter=params[lane.index];const int steps=parameter->getNumSteps();if(parameter->isDiscrete()&&steps>1)value=std::round(value*(steps-1))/(steps-1);
         if(std::abs(value-i.parameterSent[k])<1.e-5f&&std::abs(parameter->getValue()-value)<1.e-5f)continue;
-        i.parameterSent[k]=value;params[lane.index]->setValue(value);}
+        i.parameterSent[k]=value;params[lane.index]->setValueNotifyingHost(value);}
 }
 // Split only the hosted processor: MIDI offsets, bus DSP and transport keep the
 // original device-block clock. Owned work buffers also handle >32 plugin channels

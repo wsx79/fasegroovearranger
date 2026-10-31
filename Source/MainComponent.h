@@ -461,6 +461,11 @@ private:
     void message(const juce::String&,bool error=false);
     void showPosition(double beat);
     void timerCallback() override;
+    void updateGainDisplay(juce::Slider&,double,const VolumeAutomation&,bool gesture=false);
+    void updatePanDisplay(juce::Slider&,double,const VolumeAutomation&,bool gesture=false);
+    void updateParameterDisplay(juce::Slider&,double,int,const Track&,bool cutoff=false);
+    double valueFromControl(const juce::Slider&) const;
+    double gainFromControl(const juce::Slider&) const;
     void importFile(const juce::File&,double placeAt=-1);
     void modifySelected(std::function<void(Clip&)>);
     friend class ArrangementView;

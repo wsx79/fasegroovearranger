@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## Non ancora pubblicato
+
+- I volumi di inspector, mixer, pannello strumento e master seguono l’automazione durante Play. La lettura visiva conserva curve e volume di base; i gesti manuali regolano la base senza retroazione o operazioni Annulla aggiunte dal movimento automatico.
+- Pan, tono/effetti dei suoni guida e filtro campioni seguono le rispettive automazioni; i plugin ricevono notifiche per aggiornare i propri editor.
+- Ripristina il programma prima dello stato nativo del plugin, preservando le regolazioni private del suono.
+- NUOVO ARRANGIAMENTO riutilizza i MIDI esistenti e le automazioni delle sezioni; conserva tracce indipendenti, BPM, armonia e suoni senza rigenerare il brano.
+
 ## 0.30.6
 
 - La scansione manuale ricontrolla tutti i plugin; all’avvio conserva la cache rapida. Aumenta il tempo per WaveShell/contenitori multipli e ricontrolla una volta le vecchie cache shell.

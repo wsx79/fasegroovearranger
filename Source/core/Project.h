@@ -179,6 +179,8 @@ const GenreProfile& genreProfile(int genre);
 Project newProject(int genre = 1);
 void applyGenre(Project&, int genre);
 void arrangeSong(Project&);
+// Change structure by reusing stored MIDI takes; locked projects remain unchanged.
+bool rearrangeSong(Project&, std::uint32_t seed);
 void chooseProgression(Project&, int preset);
 void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);

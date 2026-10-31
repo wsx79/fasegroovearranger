@@ -27,6 +27,7 @@ class TrackInspector : public juce::Component {
 public:
     explicit TrackInspector(MainComponent&);
     void refresh();
+    void tick();
     void finishNameEdit(){if(name.isBeingEdited())name.hideEditor(false);effects.finishNameEdit();}
     void beginEffectRename(int slot){effects.beginRename(slot);}
     int preferredHeight() const { return contentHeight; }
@@ -75,6 +76,7 @@ public:
     void tick();
     void reveal(int track);
     bool verifySends(const juce::File&);
+    bool verifyAutomation(const juce::File&);
     void mouseDown(const juce::MouseEvent&) override;
     void mouseDrag(const juce::MouseEvent&) override;
     void mouseUp(const juce::MouseEvent&) override;

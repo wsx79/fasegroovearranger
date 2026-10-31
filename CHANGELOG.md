@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Follow volume automation on inspector knobs, mixer faders, instrument-toolbar volume and both master controls during playback. Preserve curves and base gain on visual updates; manual gestures trim the base without feedback or extra Undo entries.
+- Animate pan, guide-sound parameters and sampler filters from their automation; notify hosted plugin editors of parameter changes.
+- Restore the selected program before native plugin state to preserve private sound edits.
+- NEW ARRANGEMENT reuses existing section MIDI and automation, retaining independent tracks, BPM, harmony and sounds without regenerating the song.
+
 ## 0.30.6
 
 - Force a complete plugin rescan on manual request while keeping cached startup scans. Allow longer WaveShell/multi-plugin discovery and refresh old shell caches once.

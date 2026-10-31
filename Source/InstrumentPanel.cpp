@@ -109,7 +109,7 @@ void InstrumentPanel::refreshFromProject(){
         if(auto* b=dynamic_cast<juce::Button*>(c.component.get())){if(name=="SOLISTA")b->setToggleState(s.guitarLead,juce::dontSendNotification);}
         if(auto* box=dynamic_cast<juce::ComboBox*>(c.component.get())){if(name=="Sound"){box->setSelectedItemIndex(t.sound,juce::dontSendNotification);box->setEnabled(t.instrument=="internal");}if(name=="GROOVE")box->setSelectedItemIndex(t.engine.pattern+1,juce::dontSendNotification);if(name=="BASS LINE")box->setSelectedItemIndex(s.bassMode,juce::dontSendNotification);if(name=="Voicing")box->setSelectedItemIndex(s.voicing,juce::dontSendNotification);if(name=="Extensions")box->setSelectedItemIndex(s.extension,juce::dontSendNotification);if(name.startsWith("Degree "))box->setSelectedItemIndex(s.degrees[(size_t)std::clamp(name.fromLastOccurrenceOf(" ",false,false).getIntValue()-1,0,7)],juce::dontSendNotification);}
     }
-    if(owner.selectedTrack<3)updateCircle();repaint();
+    repaintMeters();if(owner.selectedTrack<3)updateCircle();repaint();
 }
 namespace {
 // Audio-only controls change the mix, not the notes.
@@ -120,14 +120,25 @@ bool harmonyControl(const juce::String& n){return n=="Voicing"||n=="Extensions"|
 void InstrumentPanel::rebuildAsync(){if(rebuildPending)return;rebuildPending=true;juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self]{if(self&&self->rebuildPending)self->rebuild();});}
 void InstrumentPanel::scheduleRender(){renderTrack=owner.selectedTrack;if(!renderTimer.isTimerRunning())renderTimer.startTimer(50);}
 void InstrumentPanel::flushRender(){renderTimer.stopTimer();const int track=std::exchange(renderTrack,-1);if(track>=0)owner.applyInstrumentSettings(track,false);}
-void InstrumentPanel::repaintMeters(){for(auto& c:controls)if(dynamic_cast<DrumPads*>(c.component.get()))c.component->repaint();}
+void InstrumentPanel::repaintMeters(bool meters){
+    if(builtTrack!=owner.selectedTrack)return;
+    const auto& track=owner.project.tracks[(size_t)builtTrack];
+    for(auto& c:controls){if(meters&&dynamic_cast<DrumPads*>(c.component.get()))c.component->repaint();
+        if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){const auto name=c.component->getProperties()["fgaControl"].toString();
+            if(name=="TONE")owner.updateParameterDisplay(*slider,track.engine.tone*100,0,track);
+            else if(name=="REVERB")owner.updateParameterDisplay(*slider,track.engine.reverb*100,1,track);
+            else if(name=="CHORUS")owner.updateParameterDisplay(*slider,track.engine.chorus*100,2,track);
+            else if(name=="PUMP")owner.updateParameterDisplay(*slider,track.engine.pump*100,3,track);
+        }
+    }
+}
 void InstrumentPanel::heading(const juce::String& name){headings.push_back({name,(int)controls.size()});}
 // Panel edits re-render the part at once, as in the plugins; locks hold.
 void InstrumentPanel::apply(std::function<void(EngineOptions&)> fn){owner.checkpoint();fn(owner.project.tracks[(size_t)owner.selectedTrack].engine);owner.applyInstrumentSettings(owner.selectedTrack,false);owner.message("Changes re-render this part right away; locked tracks and clips are kept.");}
 void InstrumentPanel::knob(const juce::String& name,double lo,double hi,double step,double value,std::function<void(EngineOptions&,double)> fn,const juce::String& suffix){
     auto c=std::make_unique<juce::Slider>();c->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);c->setTextBoxStyle(juce::Slider::TextBoxBelow,false,70,owner.selectedTrack<3?16:15);c->setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);c->setRange(lo,hi,step);c->setValue(value,juce::dontSendNotification);c->setTextValueSuffix(suffix);c->getProperties().set("fgaControl",name);c->setTooltip(controlTip(name));auto* raw=c.get();owner.trackGesture(*c,[this]{flushRender();});
     // Turning a knob only updates the settings; the part re-renders at most every 50 ms and once more when the drag ends.
-    c->onValueChange=[this,raw,fn,name]{if(!MainComponent::inGesture(*raw))owner.checkpoint(raw);fn(owner.project.tracks[(size_t)owner.selectedTrack].engine,raw->getValue());
+    c->onValueChange=[this,raw,fn,name]{if(!MainComponent::inGesture(*raw))owner.checkpoint(raw);fn(owner.project.tracks[(size_t)owner.selectedTrack].engine,owner.valueFromControl(*raw));
         if(!mixOnly(name)){scheduleRender();return;}
         owner.dirty=true;owner.audio.updateMix(owner.project);if(name=="Part volume"||name.endsWith(" VOLUME"))refreshFromProject();};addAndMakeVisible(*c);controls.push_back({std::move(c),name,true});
 }

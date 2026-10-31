@@ -590,7 +590,7 @@ Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
 
 ### Salvare e verificare i preset dei plugin
 
-1. Apri il progetto in **0.30.6** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
+1. Apri il progetto nella versione aggiornata di **Arranger** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
 2. Apri l’editor dello strumento con il pulsante **tastiera** nell’inspector. Scegli un preset riconoscibile e, se vuoi verificare anche i parametri, modifica un controllo del plugin. Ascolta la parte per riconoscere il suono.
 3. In **Arranger** premi **SALVA COME** e assegna un nuovo nome al progetto `.fga`. Il salvataggio del preset dentro il plugin è distinto dal salvataggio del progetto: conserva anche quest’ultimo dopo le modifiche.
 4. Chiudi il progetto e riapri la copia appena salvata. Apri di nuovo l’editor del plugin: controlla il preset e il parametro modificato, poi premi **AVVIA** per confrontare il suono.
@@ -602,7 +602,7 @@ Questa procedura verifica il ripristino del preset e dei parametri nella tua ins
 
 ## 6. Costruire un brano: intro, break, drop
 
-**NUOVO ARRANGIAMENTO** prepara la forma del genere scelto e scrive il MIDI. La durata deriva dalle sezioni del genere, dai cicli armonici completi e dallo sviluppo del groove. Un motivo più lungo o in evoluzione ha spazio per completarsi; un groove denso può rispondere prima. Non esiste un obiettivo fisso in minuti.
+**NUOVO ARRANGIAMENTO** cambia la struttura riutilizzando il MIDI già presente nelle sezioni corrispondenti: conserva note, dinamiche, timbri, effetti, BPM e armonia. Se una sezione diventa più lunga, ripete la parte; se si accorcia, conserva la sorgente del loop. Le tracce con timeline indipendente e quelle MIDI scritte a mano restano nelle loro posizioni. Per scrivere nuove note usa **GENERA BRANO**. La durata deriva dalle sezioni del genere, dai cicli armonici completi e dallo sviluppo del groove. Un motivo più lungo o in evoluzione ha spazio per completarsi; un groove denso può rispondere prima. Non esiste un obiettivo fisso in minuti.
 
 | Parte | Come usarla |
 |---|---|
@@ -633,13 +633,17 @@ Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, 
 | **RIGENERA TRACCIA** | La traccia selezionata, lungo tutto il brano. |
 | **RIGENERA SEZIONE** | La sezione selezionata, su tutte le tracce sbloccate. |
 | **RIGENERA CLIP** | Soltanto la traccia selezionata in quella sezione. |
-| **NUOVO ARRANGIAMENTO** | Ricostruisce forma e note in base a genere, frasi armoniche e sviluppo del groove. Prima devi sbloccare tracce e clip. |
+| **NUOVO ARRANGIAMENTO** | Ricostruisce la forma riutilizzando le parti MIDI esistenti, senza rigenerare le note. Prima devi sbloccare tracce e clip. |
 
 **Tasto destro sulla sezione:** rinomina, duplica con le note, sposta, elimina, cambia durata o funzione musicale. **+ SECTION** apre un menu per scegliere la funzione della sezione da inserire dopo quella selezionata. Trascinando il bordo dell’intestazione cambi la guida, conservando clip e automazioni nella loro posizione. Per allungare la musica usa il bordo del clip, duplica le parti oppure scrivi o rigenera le note.
 
 > Prova così: duplica il drop, cambia soltanto il basso della seconda copia, poi alleggerisci il piano. Mantieni un'idea riconoscibile e cambia chi la porta avanti.
 
 ### Automazione del volume traccia
+
+Durante **Play**, il volume dell’inspector, il fader della traccia nel mixer e il controllo volume del pannello strumento seguono il valore effettivo **volume di base × curva**. Anche i due controlli master seguono la curva del master. Il movimento usa la posizione audio e segue salti e loop. In Stop o con la curva in bypass tornano al volume di base. Una curva al 200% può mostrare un valore oltre il normale limite di +6 dB del controllo di base.
+
+L’aggiornamento visivo non modifica il progetto, il MIDI o la cronologia Annulla. Mentre trascini un controllo o scrivi nel suo campo numerico, la lettura automatica non lo sovrascrive. Le regolazioni manuali durante Play modificano il volume di base come variazione rispetto al valore visualizzato: la curva rimane intatta e il movimento riprende al termine del gesto. Non è una modalità di scrittura dell’automazione.
 
 Nella vista arrangiamento, **A** nell’intestazione di ogni traccia apre la corsia volume. **AUTOMAZIONE** apre o nasconde quella della traccia selezionata. Le corsie partono nascoste e l’automazione è disattivata: il volume normale resta al fader dello strumento.
 
@@ -651,11 +655,13 @@ Nella vista arrangiamento, **A** nell’intestazione di ogni traccia apre la cor
 
 Il valore è un moltiplicatore del fader: 0% = silenzio, 100% = volume invariato, 200% = circa +6 dB. Fra i punti il valore cambia continuamente, anche sulle note tenute e sulle code degli effetti. Prima del primo punto e dopo l’ultimo mantiene il valore estremo. Funziona sui suoni interni, sui campioni e sui VST/AU, in riproduzione e nei WAV/MP3 di mix e singole tracce.
 
-L’inviluppo si salva nel `.fga`, è indipendente dai BPM e dalla rigenerazione MIDI; inserendo, duplicando, eliminando o spostando sezioni anche i punti si spostano con esse. Cambiare la durata di una sezione o creare una nuova forma con NUOVO ARRANGIAMENTO mantiene invece i tempi assoluti dei punti e li limita alla nuova durata: ricontrolla la linea. I vecchi progetti si aprono con automazione spenta. La visibilità è una preferenza della sessione di lavoro e non è salvata nel progetto.
+L’inviluppo si salva nel `.fga`, è indipendente dai BPM e dalla rigenerazione MIDI; inserendo, duplicando, eliminando o spostando sezioni anche i punti si spostano con esse. Cambiare la durata di una sezione adatta i tempi dei punti. NUOVO ARRANGIAMENTO riporta le curve delle tracce legate alle sezioni e del master nelle sezioni riutilizzate, adattandone la durata; le tracce indipendenti mantengono i tempi assoluti. I vecchi progetti si aprono con automazione spenta. La visibilità è una preferenza della sessione di lavoro e non è salvata nel progetto.
 
 L’automazione volume **non modifica le velocity e non viene convertita in CC MIDI**: resta un controllo audio della DAW. Le dinamiche espressive dei motori originali continuano a funzionare; le rampe extra di velocity aggiunte dall’arranger per simulare un fade sono rimosse. Per portare le curve fuori dall’app esporta l’audio; il MIDI contiene le note e i CC musicali originali.
 
 ### Pan, master e parametri VST
+
+Anche i potenziometri **Pan** seguono la curva durante Play. I controlli **Tono, Riverbero, Chorus, Pump** del suono guida e **Cutoff/Risonanza** in Studio mostrano il parametro automatizzato e tornano alle impostazioni salvate in Stop o bypass. Le finestre dei plugin ricevono le notifiche dei parametri: il loro aggiornamento grafico dipende anche dal plugin. I gesti manuali regolano il valore di base, senza scrivere punti; con un’automazione assoluta attiva (pan e parametri), la curva continua a determinare il suono finché non la modifichi o la escludi.
 
 Premi **A** sulla traccia, il pulsante delle automazioni nel riquadro **EFFETTI**, oppure il nome della corsia. Scegli la sorgente nel menu: **Traccia e master**, **Suono**, **Strumento** o un singolo **Effetto** numerato nella catena. Cerca il parametro e fai doppio clic, oppure premi **MOSTRA AUTOMAZIONE**. Le corsie già aggiunte sono riconoscibili e vengono riutilizzate: non si creano duplicati. **Automazioni esistenti** raccoglie le curve già presenti; **Rimuovi corsia** elimina soltanto quella selezionata, con Undo. Fino a **32 corsie di parametri per traccia**, oltre a volume, pan e master. I VST/AU mostrano i parametri automatizzabili effettivamente esposti. I suoni guida offrono tono, riverbero, chorus e pump; i campioni frequenza e risonanza del filtro (l’automazione attiva il filtro senza cambiare le impostazioni salvate). Le modifiche a numero/primo tasto delle slice restano in Studio.
 

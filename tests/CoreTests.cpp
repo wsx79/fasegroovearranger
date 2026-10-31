@@ -203,7 +203,31 @@ void verifyAuditFixes(){
     fga::Clip clip;clip.notes={{0,1,120,100,0},{1,1,60,100,0}};fga::transpose(clip,12);check(clip.notes[0].pitch==120&&clip.notes[1].pitch==60,"transpose rejects the whole selection at the MIDI edge");
     fga::transpose(clip,-12);check(clip.notes[0].pitch==108&&clip.notes[1].pitch==48,"transpose applies when every note stays in range");
 }
+void verifyRearrange(){
+    using namespace fga;auto original=newProject(4);
+    original.sections={{Section::intro,8,"I"},{Section::main,16,"M"},{Section::breakdown,8,"B"},{Section::buildup,8,"U"},{Section::drop,16,"D"},{Section::outro,8,"O"}};original.normalise();
+    for(size_t t=0;t<original.tracks.size();++t)for(size_t c=0;c<original.sections.size();++c){auto& clip=original.tracks[t].clips[c];clip.notes={{.5,.75,48+(int)c,81+(int)c,0}};clip.loopSource.clear();clip.loopLength=0;clip.seed=100+(std::uint32_t)c;clip.motifSeed=200+(std::uint32_t)c;}
+    original.tracks[0].instrumentState="opaque edits";original.tracks[0].effects={{1,"FX","Probe","/probe","","opaque fx",false}};
+    original.tracks[0].volume.enabled=true;original.tracks[0].volume.locked=true;original.tracks[0].volume.points={{0,.2,.4},{32,.8,0},{96,.5,0}};
+    original.tracks[1].freeTimeline=true;original.tracks[1].clips.resize(1);original.tracks[1].clips[0].position=12;original.tracks[1].clips[0].span=16;
+    const int manual=original.addMidiTrack();original.tracks[(size_t)manual].clips[0].notes={{1,.25,77,100,0}};
+    original.tracks[(size_t)manual].volume.enabled=true;original.tracks[(size_t)manual].volume.points={{0,.2,0},{10,.8,0}};
+    const auto manualNotes=original.tracks[(size_t)manual].clips;const auto freeNotes=original.tracks[1].clips;
+    for(std::uint32_t seed:{1u,2u,19u}){auto p=original;check(rearrangeSong(p,seed),"rearrange existing parts succeeds");
+        check(p.settings.seed==original.settings.seed&&p.settings.key==original.settings.key&&p.settings.bpm==original.settings.bpm&&p.tracks[0].instrumentState=="opaque edits"&&p.tracks[0].effects[0].state=="opaque fx","rearrange retains sound, tempo, harmony and musical seed");
+        check(p.tracks[1].clips==freeNotes&&p.tracks[(size_t)manual].clips==manualNotes,"rearrange retains independent and handwritten MIDI");
+        check(p.tracks[(size_t)manual].volume.points[1].beat==10&&p.tracks[0].volume.enabled&&p.tracks[0].volume.locked,"rearrange preserves automation flags and independent times");
+        bool changed=p.sections.size()!=original.sections.size();for(size_t c=0;c<p.sections.size();++c){if(c>=original.sections.size()||p.sections[c].bars!=original.sections[c].bars)changed=true;
+            const auto& clip=p.tracks[0].clips[c];check(!clip.notes.empty(),"rearrange reuses the existing MIDI");
+            for(const auto& note:clip.notes){const int src=note.pitch-48;check(src>=0&&src<6&&note.velocity==81+src&&note.length==.75,"rearrange neither regenerates nor changes notes");}
+            const auto src=(size_t)(clip.seed-100);check(src<6&&clip.motifSeed==200+src&&p.sections[c].type==original.sections[src].type,"rearrange matches section roles and preserves take identity");
+        }check(changed,"rearrange changes the layout");
+        const auto& curve=p.tracks[0].volume;check(std::abs(curve.valueAt(p.sectionStart(1))-.8)<1.e-6,"automation follows its reused section");
+    }
+    auto locked=original;locked.tracks[0].clips[0].locked=true;const auto clips=locked.tracks[0].clips;check(!rearrangeSong(locked,2)&&locked.tracks[0].clips==clips&&locked.sections[0].bars==8,"locked rearrange is atomic");
+}
 int main(int argc,char** argv){try{
+    verifyRearrange();
     verifyAuditFixes();
     verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {

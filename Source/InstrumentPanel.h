@@ -14,7 +14,7 @@ public:
     // Renders a knob change still waiting for its 50 ms slot (also at drag end and before undo).
     void flushRender();
     void cancelRender(){renderTimer.stopTimer();renderTrack=-1;}
-    void repaintMeters();
+    void repaintMeters(bool meters=true);
     void refreshFromProject();
     juce::String layoutProblems()const;
     int sectionPosition(const juce::String& name)const{for(size_t i=0;i<headings.size()&&i<headingY.size();++i)if(headings[i].first==name)return headingY[i];return 0;}

@@ -819,6 +819,60 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     s.bassMode=sgk::bassModeForLine(bass[at]);
 }
 }
+// A layout operation: reuse the existing takes, including silence. Never call
+// the generators here. Work on a copy so locks/resource limits fail atomically.
+bool rearrangeSong(Project& project,std::uint32_t seed){
+    if(project.sections.empty())return false;
+    for(const auto& t:project.tracks){if(t.locked)return false;for(const auto& c:t.clips)if(c.locked)return false;}
+    auto plan=project;plan.tracks.resize(trackCount);
+    for(auto& t:plan.tracks){t.freeTimeline=false;t.clips.clear();}
+    arrangeSong(plan);varyForm(plan,seed);
+    // Vary against the current form too, rather than occasionally choosing the
+    // same layout again on a repeated press.
+    bool identical=plan.sections.size()==project.sections.size();
+    for(size_t s=0;identical&&s<plan.sections.size();++s)identical=plan.sections[s].type==project.sections[s].type&&plan.sections[s].bars==project.sections[s].bars;
+    if(identical)plan.sections.back().bars=plan.sections.back().bars<=112?plan.sections.back().bars+16:plan.sections.back().bars-16;
+    std::vector<size_t> source;
+    for(size_t s=0;s<plan.sections.size();++s){std::vector<size_t> matches;
+        for(size_t old=0;old<project.sections.size();++old)if(project.sections[old].type==plan.sections[s].type)matches.push_back(old);
+        if(matches.empty())for(size_t old=0;old<project.sections.size();++old)if(project.sections[old].type==Section::main||project.sections[old].type==Section::drop)matches.push_back(old);
+        source.push_back(matches.empty()?std::min(s,project.sections.size()-1):matches[(size_t)(mix(seed+(std::uint32_t)s*97u)%matches.size())]);
+    }
+    auto next=project;
+    for(size_t t=0;t<next.tracks.size();++t)if(isManualTrack((int)t)&&!next.tracks[t].freeTimeline)next.detachTrack((int)t);
+    next.sections=plan.sections;
+    auto remap=[&](VolumeAutomation& target,const VolumeAutomation& original)->bool{
+        if(original.points.empty())return true;
+        // Time-scale the source section's envelope, keeping curved segments.
+        // An explicit last tick isolates discontinuities between reused sections.
+        const bool enabled=original.enabled;auto curve=original;curve.enabled=true;target.points.clear();
+        for(size_t s=0;s<source.size();++s){const double from=project.sectionStart((int)source[s]),until=project.sectionStart((int)source[s]+1),to=next.sectionStart((int)s),end=next.sectionStart((int)s+1),scale=(end-to)/(until-from);
+            std::vector<double> cuts{from};for(const auto& point:curve.points)if(point.beat>from&&point.beat<until)cuts.push_back(point.beat);cuts.push_back(until);
+            for(size_t c=0;c+1<cuts.size();++c){const double a=cuts[c],b=cuts[c+1],v=curve.valueAt(a),last=curve.valueAt(std::nextafter(b,a)),middle=curve.valueAt((a+b)*.5);
+                const double bend=std::abs(last-v)>1.e-12?std::clamp(4.*(middle-(v+last)*.5)/(last-v),-1.,1.):0.;
+                target.points.push_back({to+(a-from)*scale,v,bend});
+            }
+            target.points.push_back({s+1==source.size()?end:end-1./960.,curve.valueAt(std::nextafter(until,from)),0});
+            if(target.points.size()>16384)return false;
+        }
+        target.enabled=enabled;return true;
+    };
+    size_t notes=0;
+    for(size_t t=0;t<next.tracks.size();++t){auto& track=next.tracks[t];const auto& old=project.tracks[t];
+        if(!track.freeTimeline){track.clips.clear();for(size_t s=0;s<source.size();++s){Clip clip;if(source[s]<old.clips.size())clip=old.clips[source[s]];
+                const double duration=next.sections[s].bars*4.;
+                if(!resizedLoop(clip,project.clipLength((int)t,(int)source[s]),duration))return false;
+                clip.span=0;clip.position=0;clip.role=(int)next.sections[s].type;track.clips.push_back(std::move(clip));
+            }
+            if(!remap(track.volume,old.volume)||!remap(track.panAutomation,old.panAutomation))return false;
+            for(size_t lane=0;lane<track.parameters.size();++lane)if(!remap(track.parameters[lane].curve,old.parameters[lane].curve))return false;
+        }
+        for(const auto& clip:track.clips){notes+=clip.notes.size()+clip.loopSource.size();if(notes>2000000)return false;}
+    }
+    if(!remap(next.masterAutomation,project.masterAutomation))return false;
+    next.loopStart=0;next.loopEnd=next.length();next.normalise();project=std::move(next);return true;
+}
+
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
 // Guitar and lead share the piano's section colour. Their engines only have a few
 // chord types, so each piano chord is reduced to the nearest one that does not
