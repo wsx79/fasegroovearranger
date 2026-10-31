@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.30.7
 
 - Follow volume automation on inspector knobs, mixer faders, instrument-toolbar volume and both master controls during playback. Preserve curves and base gain on visual updates; manual gestures trim the base without feedback or extra Undo entries.
 - Animate pan, guide-sound parameters and sampler filters from their automation; notify hosted plugin editors of parameter changes.

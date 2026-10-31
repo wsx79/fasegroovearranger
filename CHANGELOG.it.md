@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## Non ancora pubblicato
+## 0.30.7
 
 - I volumi di inspector, mixer, pannello strumento e master seguono l’automazione durante Play. La lettura visiva conserva curve e volume di base; i gesti manuali regolano la base senza retroazione o operazioni Annulla aggiunte dal movimento automatico.
 - Pan, tono/effetti dei suoni guida e filtro campioni seguono le rispettive automazioni; i plugin ricevono notifiche per aggiornare i propri editor.

@@ -1,6 +1,6 @@
 # Automazioni visibili, ripristino plugin e nuovo arrangiamento
 
-Modifiche locali del 31 ottobre 2026. Base: `v0.30.6`, commit `f4e2885e55bf016be95a2dbee0b9488565a237cf`. Nessun commit, push o release eseguito per questo intervento.
+Intervento del 31 ottobre 2026. Base: `v0.30.6`, commit `f4e2885e55bf016be95a2dbee0b9488565a237cf`. Implementazione committata e inviata su main con autorizzazione dell’utente: `9824f38c356cdc41d022733ffea95504fe8971eb`. Pubblicazione della release **0.30.7** successivamente autorizzata; build e distribuzione seguono il workflow delle release precedenti.
 
 ## Modifiche
 
