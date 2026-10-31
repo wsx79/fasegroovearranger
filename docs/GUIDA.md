@@ -30,13 +30,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.30.5**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.30.6**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.30.5** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.30.6** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -434,6 +434,12 @@ I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di b
 
 La prima scansione parte automaticamente. A ogni avvio successivo vengono ricontrollate in background le cartelle standard e l’unica cartella personale; il KnownPluginList salvato è disponibile subito da **CARICA VST3 / AU**. Il nome indica Strumento o Effetto e il formato. I bundle VST3 nuovi o aggiornati vengono verificati di nuovo; quelli invariati usano il catalogo. I plugin rimossi spariscono dalla lista, mentre le assegnazioni nei progetti restano ricollegabili. **APRI FILE VST3…** permette ancora la scelta diretta di un bundle.
 
+**SCANSIONA** nel browser o nelle impostazioni forza una scansione completa, anche dei file invariati. È il comando da usare dopo aver aggiunto plugin a un contenitore già presente. All’avvio rimane la verifica rapida con cache; **RIPROVA ERRORI** controlla soltanto i file precedentemente scartati.
+
+**Waves e WaveShell.** I plugin Waves sono esposti tramite un file `WaveShell…vst3`, normalmente in `C:\Program Files\Common Files\VST3`. La cartella Waves `Plug-Ins V…` e i singoli `.bundle` sono contenuti del produttore: non vanno spostati o caricati come VST3 indipendenti. Lo scanner enumera i plugin contenuti nel WaveShell; per i WaveShell e i contenitori già riconosciuti con più plugin concede fino a 10 minuti invece del minuto dei file ordinari. Puoi sempre annullare. Le vecchie cache WaveShell vengono ricontrollate una volta dopo l’aggiornamento. I Waves disponibili soltanto come VST2 `.dll` restano esclusi; Waves da V15 non distribuisce più VST2. Controlla installazione e licenza con Waves Central; [istruzioni ufficiali Waves](https://www.waves.com/support/how-to-use-waves-plugins-when-using-custom-vst-folder).
+
+**REPORT SCANSIONE** nelle impostazioni apre l’elenco dei contenitori riconosciuti, dei plugin al loro interno e dei file scartati. Per gli errori distingue tempo scaduto, processo non avviato, scansione annullata/interrotta, codice di uscita e assenza di descrizioni compatibili. Salva anche una copia locale `ScanReport.txt`, nel percorso indicato in fondo alla finestra: puoi usarla per segnalare i problemi. Il report non legge il catalogo di altre DAW e non può identificare plugin installati fuori dai percorsi configurati. Formati, architetture e duplicati possono produrre conteggi diversi fra applicazioni. Non vengono inviati dati a servizi esterni.
+
 La verifica dei plugin avviene in un processo separato, con un limite di tempo. I controlli falliti o interrotti vengono saltati e conteggiati; **RIPROVA ERRORI** li verifica nuovamente. **ANNULLA** interrompe la scansione in corso. La scansione conserva tracce, MIDI e assegnazioni degli strumenti. Catalogo e preferenze delle cartelle sono locali al tuo account. Durante l’ascolto i plugin nativi continuano a girare nel processo dell’app; l’isolamento riguarda la ricerca.
 
 **GAIN, PAN, MUTE e SOLO** appartengono alla traccia. **TIMBRO, RIVERBERO, CHORUS e PUMP** cambiano soltanto il suono guida; per il suono del tuo VST usa i suoi comandi. I parametri di groove continuano a scrivere il MIDI che gli arriva.
@@ -584,7 +590,7 @@ Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
 
 ### Salvare e verificare i preset dei plugin
 
-1. Apri il progetto in **0.30.5** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
+1. Apri il progetto in **0.30.6** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
 2. Apri l’editor dello strumento con il pulsante **tastiera** nell’inspector. Scegli un preset riconoscibile e, se vuoi verificare anche i parametri, modifica un controllo del plugin. Ascolta la parte per riconoscere il suono.
 3. In **Arranger** premi **SALVA COME** e assegna un nuovo nome al progetto `.fga`. Il salvataggio del preset dentro il plugin è distinto dal salvataggio del progetto: conserva anche quest’ultimo dopo le modifiche.
 4. Chiudi il progetto e riapri la copia appena salvata. Apri di nuovo l’editor del plugin: controlla il preset e il parametro modificato, poi premi **AVVIA** per confrontare il suono.
@@ -734,7 +740,7 @@ Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verific
 
 **Premo ESPORTA nella codifica ma non compare il percorso**
 
-Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.5**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
+Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.6**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 

@@ -106,7 +106,7 @@ bool MainComponent::writeHelpEvidence(const juce::File& folder){
     folder.getChildFile("family-options.txt").replaceWithText(ok?"PASS family SETTINGS/ABOUT tabs, settings, credits and link geometry":"FAIL family options");
     return verifyGuidePages(folder)&&ok;
 }
-void MainComponent::showDocument(const juce::String& title,const juce::String& text){juce::DialogWindow::LaunchOptions o;o.dialogTitle=title;o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createReferencePage(title,text).release());o.launchAsync();}
+void MainComponent::showDocument(const juce::String& title,const juce::String& text){juce::DialogWindow::LaunchOptions o;o.dialogTitle=title;o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createReferencePage(title,text).release());if(auto* window=o.launchAsync())window->setAlwaysOnTop(true);}
 void MainComponent::showAbout(){
     float scale=1.f;if(auto* p=getParentComponent())scale=p->getWidth()/1440.f;
     options.checkUpdatesButton.setEnabled(!updater.isBusy());options.checkUpdatesButton.setButtonText(tr(updater.isBusy()?"CHECKING...":"CHECK NOW"));

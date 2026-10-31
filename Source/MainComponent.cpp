@@ -1019,7 +1019,8 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
     addChildComponent(pluginSettings);addChildComponent(pluginBrowser);
     pluginBrowser.onChoose=[this](const PluginCatalog::BrowserRow& row){chooseBrowserRow(row);};
-    pluginBrowser.onRescan=[this]{pluginCatalog.scan();};
+    pluginBrowser.onRescan=[this]{pluginCatalog.scan(PluginCatalog::ScanMode::all);};
+    pluginSettings.onReport=[this]{auto text=pluginCatalog.report();auto file=PluginCatalog::defaultStorage().getChildFile("ScanReport.txt");file.getParentDirectory().createDirectory();if(file.replaceWithText(text))text+="\n\n"+tr("Report file")+": "+file.getFullPathName();showDocument(tr("SCAN REPORT"),text);};
     pluginBrowser.onSettings=[this]{pluginSettings.show();};
     pluginBrowser.onOpenFile=[this]{const auto session=browserTrackSession;const int slot=browserEffectSlot;const bool fx=effectsBrowser;chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[this,session,slot,fx](juce::File file){const int track=trackForSession(session);if(track<0||loadingPlugin||editingRestricted())return;if(fx)loadEffectFile(track,file,{},{},slot);else loadPluginFile(track,file);});};
     options.onPluginSettings=[this]{pluginSettings.show();};
@@ -1514,7 +1515,9 @@ return false;
     bool ok=mark("language",writeLanguageEvidence(folder)&&writeHelpEvidence(folder));
     for(int key=0;key<12;++key){keyBox.setSelectedId(key+1,juce::dontSendNotification);const auto text=keyBox.getText();const auto width=juce::GlyphArrangement::getStringWidth(theme.getComboBoxFont(keyBox),text);ok=mark("key-name-visible",width+8<=keyBox.getWidth()-20)&&ok;}
     keyBox.setSelectedId(project.settings.key+1,juce::dontSendNotification);
-    pluginSettings.show();ok=mark("plugin-settings",pluginSettings.verifyLayout())&&ok;pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=(name.startsWith("instrument-")||name=="guitar-mixer"||name=="piano-family-extended")?instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()):createComponentSnapshot(getLocalBounds());bool wrote=false;if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;wrote=png.writeImageToStream(screenshot,*out);}ok=mark(name=="plugin-browser"?"png-browser":name=="plugin-settings"?"png-settings":"png",wrote)&&ok;};
+    pluginSettings.show();ok=mark("plugin-settings",pluginSettings.verifyLayout())&&ok;
+    if(pluginSettings.onReport){pluginSettings.onReport();auto* dialog=dynamic_cast<juce::DialogWindow*>(juce::Component::getCurrentlyModalComponent());ok=mark("plugin-scan-report",dialog&&dialog->isVisible()&&dialog->isAlwaysOnTop())&&ok;if(dialog)dialog->closeButtonPressed();}else ok=false;
+    pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=(name.startsWith("instrument-")||name=="guitar-mixer"||name=="piano-family-extended")?instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()):createComponentSnapshot(getLocalBounds());bool wrote=false;if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;wrote=png.writeImageToStream(screenshot,*out);}ok=mark(name=="plugin-browser"?"png-browser":name=="plugin-settings"?"png-settings":"png",wrote)&&ok;};
     // Context-dependent panels must not expose controls ignored by the renderer.
     {
         const auto savedProject=project;

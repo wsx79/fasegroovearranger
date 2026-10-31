@@ -24,7 +24,9 @@ public:
     juce::File customFolder() const;
     // One personal folder. An empty file clears it. A repeat of the same path does nothing.
     bool setCustomFolder(const juce::File&);
-    bool scan(bool retryFailures=false);
+    enum class ScanMode { changedOnly, retryFailed, all };
+    bool scan(ScanMode mode=ScanMode::changedOnly);
+    juce::String report() const;
     static juce::String pluginKey(const juce::PluginDescription&);
     // "FaseGroove" is always first. Other names are manufacturers.
     static juce::StringArray pluginCategories(const juce::Array<juce::PluginDescription>&);
@@ -37,14 +39,14 @@ public:
     static int scanOne(const juce::String& format,const juce::String& identifier,const juce::File& output);
     static bool verify(const juce::File& probe,const juce::File& evidence);
 private:
-    struct Record { juce::String format,id,stamp,status; juce::int64 validatedAt=0; juce::Array<juce::PluginDescription> plugins; };
+    struct Record { juce::String format,id,stamp,status,issue; juce::int64 validatedAt=0; juce::Array<juce::PluginDescription> plugins; };
     juce::File directory;
     const bool includeStandardPaths;
     mutable juce::CriticalSection mutex;
     juce::StringArray custom;
     juce::Array<Record> records;
     State progress;
-    bool retry=false;
+    ScanMode scanMode=ScanMode::changedOnly;
     void run() override;
     void read();
     void writeFolders();

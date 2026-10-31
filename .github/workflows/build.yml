@@ -22,8 +22,8 @@ on:
     - cron: "17 3 * * *"
 permissions:
   contents: read
-# The slow audits run nightly and on demand, not on every push or tag: a release
-# must not wait for them. Set full_suite on a manual run to force them.
+# Heavy audio audits run nightly and on demand. Plugin catalogue checks also
+# gate releases. Set full_suite on a manual run to force every audit.
 env:
   FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.full_suite }}
 concurrency:
@@ -132,7 +132,7 @@ jobs:
         if: '!cancelled() && steps.nativebuild.outcome == ''success'''
         run: python scripts/test-native-host.py
       - name: Recursive isolated plugin catalogue integration
-        if: '!cancelled() && steps.nativebuild.outcome == ''success'' && env.FULL_SUITE == ''true'''
+        if: "!cancelled() && steps.nativebuild.outcome == 'success' && (env.FULL_SUITE == 'true' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))"
         run: python scripts/test-plugin-catalog.py
       - name: Complete offline club arrangements and independent audio audit
         if: '!cancelled() && steps.nativebuild.outcome == ''success'' && (steps.nativesmoke.outcome == ''success'' || runner.os == ''macOS'') && env.FULL_SUITE == ''true'''

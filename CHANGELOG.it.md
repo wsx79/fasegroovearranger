@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.6
+
+- La scansione manuale ricontrolla tutti i plugin; all’avvio conserva la cache rapida. Aumenta il tempo per WaveShell/contenitori multipli e ricontrolla una volta le vecchie cache shell.
+- Aggiunge un report locale dei plugin riconosciuti e dei contenitori scartati con il motivo; verifica le liste obsolete di contenitori multiclasse con lo scanner isolato.
+
 ## 0.30.5
 
 - Aggiunge DeepSeek, Groq e OpenRouter Free alla composizione IA, con suggerimenti aggiornati e cataloghi cloud aggiornabili. Conserva le preferenze dei servizi esistenti e la configurazione locale Ollama.

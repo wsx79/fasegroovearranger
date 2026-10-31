@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.6
+
+- Force a complete plugin rescan on manual request while keeping cached startup scans. Allow longer WaveShell/multi-plugin discovery and refresh old shell caches once.
+- Add a local scan report listing recognised plugins and skipped containers with failure reasons; cover unchanged multi-class inventories with the isolated scanner fixture.
+
 ## 0.30.5
 
 - Add DeepSeek, Groq and OpenRouter Free to AI composition, with current model suggestions and live cloud model discovery. Keep existing provider preferences and local Ollama setup.

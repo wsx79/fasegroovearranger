@@ -12,9 +12,10 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     bool verifyLayout() const;
+    std::function<void()> onReport;
 private:
     PluginCatalog& catalog;
-    juce::TextButton close,choose,clear,rescan,retry,cancel;
+    juce::TextButton close,choose,clear,rescan,retry,cancel,report;
     juce::Label title,standardLabel,customLabel,folderPath,status,hint;
     juce::TextEditor standard;
     std::unique_ptr<juce::FileChooser> chooser;
