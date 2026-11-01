@@ -24,6 +24,20 @@ std::string captureHostedState(juce::AudioPluginInstance& plugin){
     for(int index=0;index<plugin.getParameters().size();++index){auto* parameter=plugin.getParameters()[index];const float value=parameter->getValue();if(!parameter->isAutomatable()||!std::isfinite(value))continue;auto entry=std::make_unique<juce::DynamicObject>();entry->setProperty("index",index);entry->setProperty("id",hostedParameterId(parameter));entry->setProperty("value",std::clamp((double)value,0.,1.));values.add(juce::var(entry.release()));}
     state->setProperty("parameters",values);return std::string(hostedStatePrefix)+juce::JSON::toString(juce::var(state.release()),false,17).toStdString();
 }
+// A complete native program is authoritative. Some instruments expose a
+// controller snapshot which can select/rebuild a default sound when replayed
+// after the native preset. Recognise the verified self-contained preset format;
+// keep the parameter fallback for other/legacy state formats.
+bool completeNativeProgram(const juce::MemoryBlock& native){
+    auto xml=juce::AudioProcessor::getXmlFromBinary(native.getData(),(int)native.getSize());
+    if(!xml||!xml->hasTagName("VST3PluginState"))return false;
+    auto* component=xml->getChildByName("IComponent");if(!component)return false;
+    juce::MemoryBlock bytes;if(!bytes.fromBase64Encoding(component->getAllSubText())||!bytes.getSize())return false;
+    const auto* data=static_cast<const char*>(bytes.getData());const auto* end=static_cast<const char*>(std::memchr(data,0,bytes.getSize()));
+    const auto preset=juce::JSON::parse(juce::String::fromUTF8(data,(int)(end?end-data:bytes.getSize())));
+    const auto* settings=preset["dsp_settings"].getArray();
+    return preset.isObject()&&preset["data_type"].toString()=="program"&&preset["general_program_information"].isObject()&&preset["general_program_information"]["triton_bank_number"].isInt()&&preset["general_program_information"]["triton_program_number"].isInt()&&settings&&!settings->isEmpty();
+}
 void restoreHostedState(juce::AudioPluginInstance& plugin,const std::string& saved){
     juce::MemoryBlock native;
     if(saved.rfind(hostedStatePrefix,0)!=0){if(native.fromBase64Encoding(juce::String::fromUTF8(saved.c_str())))plugin.setStateInformation(native.getData(),(int)native.getSize());return;}
@@ -31,7 +45,7 @@ void restoreHostedState(juce::AudioPluginInstance& plugin,const std::string& sav
     // Select the bank/program first: loading it after the native state can erase
     // edits stored only inside that opaque state, even when the preset name matches.
     const auto program=json["program"];if(program.isInt()&&(int)program>=0&&(int)program<plugin.getNumPrograms()&&plugin.getCurrentProgram()!=(int)program)plugin.setCurrentProgram((int)program);
-    if(native.fromBase64Encoding(json["native"].toString())&&native.getSize()>0)plugin.setStateInformation(native.getData(),(int)native.getSize());
+    if(native.fromBase64Encoding(json["native"].toString())&&native.getSize()>0){plugin.setStateInformation(native.getData(),(int)native.getSize());if(completeNativeProgram(native))return;}
     const auto* values=json["parameters"].getArray();if(!values)return;
     std::map<juce::String,juce::AudioProcessorParameter*> byId;for(auto* parameter:plugin.getParameters()){const auto id=hostedParameterId(parameter);if(id.isNotEmpty())byId.emplace(id,parameter);}
     for(const auto& entry:*values){if(!entry.isObject())continue;const auto value=entry["value"];if(!(value.isDouble()||value.isInt()||value.isInt64())||!std::isfinite((double)value))continue;juce::AudioProcessorParameter* parameter=nullptr;const auto id=entry["id"].toString();
@@ -158,7 +172,12 @@ void AudioEngine::adoptState(){
             i.cursor=cursorAt(i,currentBeat);if(playing){i.resync=true;needsResync=true;}}
     }
 }
-void AudioEngine::play(bool enabled){if(exporting)return;stopSampleAudition();if(enabled&&currentBeat.load()>=length.load()){currentBeat=looping.load()?loopFrom.load():0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
+void AudioEngine::play(bool enabled){if(exporting)return;clipPlaybackTrack=-1;stopSampleAudition();if(enabled&&currentBeat.load()>=length.load()){currentBeat=looping.load()?loopFrom.load():0;loopBypassed=false;}if(enabled!=playing.load())hardReset=true;playing=enabled;if(!enabled)clearMeters();needsReset=true;needsChase=enabled;publishTransport();}
+void AudioEngine::playClip(int track,double from,double to){
+    if(exporting||capture.active||recordingAudio||track<0||track>=maxTracks||!std::isfinite(from)||!std::isfinite(to))return;
+    const EngineControlLock lock(*this);from=std::clamp(from,0.,length.load());to=std::clamp(to,from,length.load());if(to-from<1./960.)return;
+    play(false);seek(from);clipPlaybackFrom=from;clipPlaybackTo=to;clipPlaybackTrack=track;playing=true;hardReset=true;needsReset=true;needsChase=false;publishTransport();
+}
 void AudioEngine::stop(){play(false);seek(0);capture.inputOverflow=false;}
 // An explicit seek beyond the loop must remain audible there until the song ends.
 void AudioEngine::seek(double beat){if(exporting)return;currentBeat=std::clamp(beat,0.0,length.load());loopBypassed=currentBeat.load()>=loopTo.load();publishTransport();needsReset=true;needsChase=playing.load();}
@@ -295,6 +314,7 @@ void AudioEngine::refreshLatencies(){
 }
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled){
     RenderingScope renderingScope(rendering);
+    const int clipSource=exporting.load()?-1:clipPlaybackTrack.load();
     const double samplesPerBeat=sampleRate*60./tempo.load(),end=beat+count/samplesPerBeat;
     busGraph.begin(count,onlyTrack>=0);
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
@@ -303,7 +323,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     const bool masterActive=masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
     if(masterActive)for(int s=0;s<count;++s)masterGains[(size_t)s]=(float)masterAutomation->valueAt(beat+s/samplesPerBeat);
     for(int ti=0;ti<maxTracks;++ti){auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);int queued=i.midi.getNumEvents();bool dense=queued>16384;
-        while(scheduled&&i.cursor<schedule.size()&&schedule[i.cursor].beat<end){if(queued>=16384){dense=true;i.cursor=cursorAt(i,end);break;}++queued;const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||laneMuted(i,e))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
+        while(scheduled&&(clipSource<0||ti==clipSource)&&i.cursor<schedule.size()&&schedule[i.cursor].beat<end){if(queued>=16384){dense=true;i.cursor=cursorAt(i,end);break;}++queued;const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||laneMuted(i,e))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
             i.midi.addEvent(e.controller>=0?juce::MidiMessage::controllerEvent(1,e.controller,e.velocity):e.velocity?juce::MidiMessage::noteOn(1,e.pitch,(juce::uint8)e.velocity):juce::MidiMessage::noteOff(1,e.pitch),at);
             if(e.controller<0){const auto k=(size_t)std::clamp(e.pitch,0,127);i.sounding[k]=e.velocity>0;if(e.velocity>0){i.soundingStart[k]=e.beat;i.soundingVelocity[k]=e.velocity;++i.noteOns;}}
             if(ti==3&&i.mode==0&&e.controller<0)i.guitarEvents.push_back({at,e.pitch,e.velocity/127.f,e.lane});
@@ -384,11 +404,11 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* input,int
     int done=0;
     while(!audition&&done<count&&playing){double beat=currentBeat;
         if(capture.active&&capture.countIn>0){const double remaining=capture.countIn.load();const int n=std::min({blockSize,count-done,std::max(1,(int)std::ceil(remaining*sampleRate*60/tempo.load()))});float* pointers[2]{};const int used=std::min(2,channels);for(int c=0;c<used;++c)pointers[c]=output[c]?output[c]+done:nullptr;inputSegmentOffset=done;processLive(n,beat,false);render(pointers,used,n,beat,-1,false);click(pointers,used,n,-remaining,true);capture.countIn=std::max(0.,remaining-n*tempo.load()/(sampleRate*60));done+=n;if(capture.countIn<=0){recordWallStart=juce::Time::getMillisecondCounterHiRes()*.001;chaseRecord=true;}continue;}
-        const bool hasLoop=looping.load()&&!loopBypassed.load()&&loopTo.load()-loopFrom.load()>=1./960.;double boundary=hasLoop?loopTo.load():length.load();
-        if(beat>=boundary-1e-9){if(hasLoop){currentBeat=loopFrom.load();needsChase=true;resetAt(loopFrom.load());continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
+        const int soloClip=clipPlaybackTrack.load();const double from=soloClip>=0?clipPlaybackFrom.load():loopFrom.load();const bool hasLoop=soloClip>=0||(looping.load()&&!loopBypassed.load()&&loopTo.load()-from>=1./960.);double boundary=soloClip>=0?clipPlaybackTo.load():hasLoop?loopTo.load():length.load();
+        if(beat>=boundary-1e-9){if(hasLoop){currentBeat=from;needsChase=soloClip<0;resetAt(from);continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
         const int remain=std::max(1,(int)std::ceil((boundary-beat)*sampleRate*60./tempo.load()));int n=std::min({count-done,blockSize,remain});
         float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;
-        if(capture.active&&chaseRecord)chaseLiveRecord(beat);inputSegmentOffset=done;processLive(n,beat,capture.active.load());render(pointers,used,n,beat);if(capture.active)capture.elapsed=capture.elapsed.load()+n*tempo.load()/(sampleRate*60);click(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
+        if(capture.active&&chaseRecord)chaseLiveRecord(beat);inputSegmentOffset=done;processLive(n,beat,capture.active.load());render(pointers,used,n,beat,soloClip);if(capture.active)capture.elapsed=capture.elapsed.load()+n*tempo.load()/(sampleRate*60);click(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
     }
     // Finalization also covers stopped preview, audition and all early returns.
 }

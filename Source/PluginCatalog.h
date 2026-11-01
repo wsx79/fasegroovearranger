@@ -39,7 +39,7 @@ public:
     static int scanOne(const juce::String& format,const juce::String& identifier,const juce::File& output);
     static bool verify(const juce::File& probe,const juce::File& evidence);
 private:
-    struct Record { juce::String format,id,stamp,status,issue; juce::int64 validatedAt=0; juce::Array<juce::PluginDescription> plugins; };
+    struct Record { juce::String format,id,stamp,status,issue,diagnostic; juce::int64 validatedAt=0; juce::Array<juce::PluginDescription> plugins; };
     juce::File directory;
     const bool includeStandardPaths;
     mutable juce::CriticalSection mutex;

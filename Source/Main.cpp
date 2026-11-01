@@ -11,9 +11,10 @@
 namespace {
 // A crash handler that leaves the stack on disk: the Windows event log names only
 // the executable, which is not enough to find the fault.
+juce::File scannerCrashFile;
 void writeCrashLog(void* context){
     const auto file=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/crash.txt");
-    fga::writeCrashDiagnostic(context,file);
+    fga::writeCrashDiagnostic(context,scannerCrashFile==juce::File()?file:scannerCrashFile);
 }
 
 class ScaledContent:public juce::Component {
@@ -71,7 +72,8 @@ public:
         if(args.size()==2&&args[0]=="--crash-report-test"){fga::writeCrashDiagnostic(nullptr,juce::File(args[1]));quit();return;}
        #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){
-            setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;
+            scannerCrashFile=juce::File(args[3]).withFileExtension("crash.txt");
+            juce::MessageManager::callAsync([this,args]{setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();});return;
         }
         if(args.size()==3&&args[0]=="--plugin-catalog-test"){
             const bool ok=fga::PluginCatalog::verify(juce::File(args[1]),juce::File(args[2]));setApplicationReturnValue(ok?0:1);quit();return;

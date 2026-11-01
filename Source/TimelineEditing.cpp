@@ -25,11 +25,13 @@ void MainComponent::seekTimeline(double beat){
     beat=std::clamp(beat,0.,131072.);editCursor=beat>project.length()?beat:-1;audio.seek(std::min(beat,project.length()));arrangement.repaint();
 }
 void MainComponent::togglePlayback(){
+    piano.stopPreview();
     if(!audio.isPlaying()&&editCursor>=0){if(editCursor>project.length())return;audio.seek(editCursor);}editCursor=-1;audio.play(!audio.isPlaying());
 }
 // Live click on every beat (accented bar); never part of an export.
 void MainComponent::toggleMetronome(){audio.setMetronome(!audio.metronomeOn());metronomeButton.setToggleState(audio.metronomeOn(),juce::dontSendNotification);message(audio.metronomeOn()?"Metronome on.":"Metronome off.");}
 void MainComponent::selectClip(int track,int index,bool keepSelection,double at){
+    if(audio.isClipPlaying()&&(track!=selectedTrack||index!=selectedClip))audio.play(false);
     track=std::clamp(track,0,(int)project.tracks.size()-1);const bool same=selectedTrack==track;const auto previous=arrangement.selectedClips;
     const int guide=index>=0?project.sectionAtBeat(project.clipStart(track,index)):project.sectionAtBeat(at>=0?at:timelinePosition());
     select(track,guide);selectedClip=index;noClipSelection=index<0;selectionBeat=index>=0?project.clipStart(track,index)+1./1920.:(at>=0?at:timelinePosition());

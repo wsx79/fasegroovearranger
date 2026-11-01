@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.3
+
+- Aggiunge ascolto isolato del clip nel piano roll con loop temporaneo, modifica note durante Play e mute/solo/locatori del progetto invariati.
+- Ripristina il formato verificato di programma nativo completo senza sovrascriverlo con parametri incompatibili; mantiene il fallback degli altri formati.
+- Preascolto delle note inserite/selezionate nel piano roll sulla traccia assegnata, a trasporto fermo, con arresto automatico e senza registrazione.
+- Inizializza il contesto host VST3 prima di enumerare e cercare le classi, mantenendolo fino alla creazione del componente. Allinea directory/ciclo messaggi dello scanner e conserva diagnostica dei crash per plugin con codici esadecimali.
+
+
 ## 0.31.2
 
 - Evita ricostruzioni ripetute dei duplicati per produttore e hash dei binari nel thread UI; conserva gli hash verificati e completa quelli mancanti nel worker del catalogo.

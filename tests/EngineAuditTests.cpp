@@ -48,6 +48,15 @@ public:
     void getStateInformation(juce::MemoryBlock& data)override{data.replaceAll(&privateEdit,sizeof privateEdit);}
     void setStateInformation(const void* data,int bytes)override{if(bytes==sizeof privateEdit)std::memcpy(&privateEdit,data,sizeof privateEdit);}
 };
+class CompletePresetPlugin final : public AuditPlugin {
+public:
+    bool full=true;
+    void getStateInformation(juce::MemoryBlock& dest)override{
+        const juce::String preset=full?R"({"data_type":"program","general_program_information":{"name":"Saved piano","triton_bank_number":16,"triton_program_number":0},"dsp_settings":[{"index":0,"key":"gain","value":0.81}]})":R"({"data_type":"partial","dsp_settings":[]})";
+        juce::MemoryBlock component(preset.toRawUTF8(),preset.getNumBytesAsUTF8()+1);juce::XmlElement xml("VST3PluginState");xml.createNewChildElement("IComponent")->addTextElement(component.toBase64Encoding());copyXmlToBinary(xml,dest);
+    }
+    void setStateInformation(const void*,int)override{stateRestoredActive=prepared;getParameters()[0]->setValue(.81f);}
+};
 struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
     int changes=0;float value=0;
     void parameterValueChanged(int,float v)override{++changes;value=v;}
@@ -93,6 +102,24 @@ struct EngineAuditTests {
         project.tracks[0].parameters={lane};engine.publish(project);engine.applyParameterAutomation(instrument,0,0);parameter->removeListener(&listener);
         requireAudit(listener.changes>0&&std::abs(listener.value-.62f)<1.e-6f,"automated hosted parameters notify editor listeners");
     }
+    static void nativePresetAuthority(){
+        AudioEngine engine(AudioEngine::Offline{});for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(4);auto& i=*engine.instruments[0];
+        for(bool full:{true,false}){auto source=std::make_unique<CompletePresetPlugin>();source->full=full;source->getParameters()[0]->setValue(.1f);i.plugin=std::move(source);i.mode=2;engine.hostedCount=1;engine.invalidatePluginStates();engine.capturePluginStates(p);
+            engine.restorePluginState(0,juce::String::fromUTF8(p.tracks[0].instrumentState.c_str()));auto* loaded=static_cast<CompletePresetPlugin*>(i.plugin.get());
+            requireAudit(!loaded->stateRestoredActive&&loaded->prepared,"native program restore remains inactive then prepared");
+            requireAudit(std::abs(loaded->getParameters()[0]->getValue()-(full?.81f:.1f))<1.e-6f,"complete native program wins over stale controller snapshot; partial formats keep fallback");
+        }
+    }
+    static void isolatedClipPlayback(){
+        AudioEngine engine(AudioEngine::Offline{});for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(4);p.sections={{Section::main,2,"Test"}};p.normalise();p.loop=true;p.loopStart=0;p.loopEnd=1;
+        for(auto& t:p.tracks){t.gain=0;t.volume.enabled=false;t.panAutomation.enabled=false;t.parameters.clear();}p.tracks[0].gain=p.tracks[1].gain=1;
+        for(int track:{0,1}){auto& i=*engine.instruments[(size_t)track];i.plugin=std::make_unique<AuditPlugin>();i.mode=2;i.prepare(44100,512);}engine.hostedCount=2;engine.publish(p);
+        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+        engine.playClip(0,2,3);callback();requireAudit(engine.isClipPlaying()&&engine.position()>=2&&engine.position()<3&&engine.level(0)>0&&engine.level(1)==0,"clip play isolates audio and overrides song loop without muting tracks");
+        engine.seek(2.999);callback();requireAudit(engine.position()>=2&&engine.position()<2.1,"clip audition loops at its own bounds");
+        p.tracks[0].clips[0].notes.push_back({2,.25,72,100,0});engine.publish(p);callback();requireAudit(engine.isClipPlaying()&&engine.position()>=2&&engine.position()<3,"editing notes preserves clip audition");
+        engine.play(false);requireAudit(!engine.isClipPlaying(),"stop clears clip audition");engine.play(true);callback();requireAudit(!engine.isClipPlaying()&&engine.level(1)>0&&!p.tracks[1].mute&&!p.tracks[0].solo,"normal transport restores complete mix");engine.stop();
+    }
     static void snapshotKeepsOtherTracksPlaying(){
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& i:engine.instruments)i->prepare(44100,512);
         auto p=newProject(0);p.sections={{Section::main,2,"Snapshot"}};p.normalise();for(auto& t:p.tracks){t.gain=0;for(auto& c:t.clips)c.notes.clear();}
@@ -104,7 +131,7 @@ struct EngineAuditTests {
         std::thread audio([&]{callback();returned.signal();});const bool nonblocking=returned.wait(1000);const bool otherAudible=nonblocking&&engine.level(1)>.001f;
         resume.signal();snapshot.join();audio.join();requireAudit(began&&nonblocking&&otherAudible&&!plugin->overlap,"slow state reads do not block the callback, race the processor or mute unrelated tracks");
     }
-    static void run(){snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();
+    static void run(){snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

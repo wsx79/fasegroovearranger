@@ -129,9 +129,11 @@ private:
     void editPoint(juce::Point<float>,bool snap);
 
 };
-class PianoRoll : public juce::Component,public juce::SettableTooltipClient {
+class PianoRoll : public juce::Component,public juce::SettableTooltipClient,private juce::Timer {
 public:
     explicit PianoRoll(MainComponent&);
+    ~PianoRoll()override;
+    void visibilityChanged()override;
     void paint(juce::Graphics&) override;
     void mouseDown(const juce::MouseEvent&) override;
     void mouseMove(const juce::MouseEvent&) override;
@@ -170,6 +172,10 @@ private:
     MainComponent& owner;
     std::vector<Note> before;
     std::vector<Note> gestureOriginal;
+    int previewTrack=-1;std::vector<int> previewPitches;
+    void previewSelection();
+    void stopPreview();
+    void timerCallback()override{stopPreview();}
     juce::Point<float> anchor;
     bool resizing=false,velocityDrag=false,editingVelocity=false,velocityCheckpoint=false,erasing=false,eraseCheckpoint=false;
     int hit(juce::Point<float>) const;
@@ -390,7 +396,7 @@ private:
     ActionButton fitNotesButton{"FIT"};
     IconButton drawTool{IconButton::Icon::pencil},selectTool{IconButton::Icon::pointer},eraseTool{IconButton::Icon::eraser},regenerateClipButton{IconButton::Icon::dice};
     ActionButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
-    ActionButton sectionLoopButton{"LOOP CLIP"};
+    ActionButton sectionLoopButton{"LOOP CLIP"},pianoPlayButton{"PLAY CLIP"};
     ActionButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
     struct HistoryEntry {Project project;bool mixOnly=false;};

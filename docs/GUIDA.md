@@ -30,13 +30,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.2**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.3**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.31.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.31.3** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -450,6 +450,10 @@ Per un campione intonato, la radice iniziale è MIDI 60. Per la batteria è la n
 
 ### Piano roll e griglia ritmica
 
+**ASCOLTA CLIP**, con icona Play nella barra del piano roll, riproduce in loop soltanto il clip selezionato sulla sua traccia. Premi **FERMA CLIP** per interromperlo. Puoi modificare le note durante l’ascolto. Il comando non modifica mute/solo o i locatori del progetto; il Play principale torna alla riproduzione completa.
+
+A trasporto fermo, inserire o selezionare note ne fa sentire un breve preascolto sul suono assegnato alla traccia, con volume, pan ed effetti correnti. Il preascolto non avvia il brano e non viene registrato come nuova esecuzione MIDI; si arresta automaticamente. Durante Play o registrazione è escluso.
+
 Fai doppio clic su un **clip**: l’editor occupa la finestra. Il menu della sezione sceglie la parte da modificare; **LOOP CLIP** la ripete mentre lavori. Ogni editor mostra soltanto la sua traccia. Per i pezzi della batteria c'è una sola riga.
 
 | Azione | Risultato |
@@ -589,6 +593,8 @@ Il tempo e la posizione sono quelli del brano; non servono LINK o SYNC DAW tra i
 Per continuare in un’altra DAW usa il MIDI o gli stem del capitolo 4.
 
 ### Salvare e verificare i preset dei plugin
+
+Quando il plugin salva un preset completo nel formato riconosciuto, Arranger ripristina quello stato nativo senza sovrascriverlo con la fotografia aggiuntiva dei parametri. Gli altri formati mantengono il comportamento di compatibilità precedente.
 
 1. Apri il progetto nella versione aggiornata di **Arranger** e seleziona una traccia con uno strumento **VST3 / AU** assegnato. Per questa prova usa una copia del progetto.
 2. Apri l’editor dello strumento con il pulsante **tastiera** nell’inspector. Scegli un preset riconoscibile e, se vuoi verificare anche i parametri, modifica un controllo del plugin. Ascolta la parte per riconoscere il suono.
@@ -751,7 +757,7 @@ Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verific
 
 **Premo ESPORTA nella codifica ma non compare il percorso**
 
-Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.31.2**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
+Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.31.3**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 

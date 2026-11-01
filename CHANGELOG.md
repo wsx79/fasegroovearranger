@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.3
+
+- Add isolated piano-roll clip playback with its own temporary loop, live note editing and unchanged project mute/solo/loop settings.
+- Preserve the verified complete native program format instead of replaying a conflicting parameter snapshot over it; retain other state-format fallbacks.
+- Audition inserted/selected piano-roll notes through the assigned track while stopped, with automatic note-offs and no recording.
+- Initialise VST3 factory host context before scanning and matching class indices, keeping the same context through component creation. Align scanner working directory/message-loop startup and persist per-plugin crash diagnostics with hexadecimal exit codes.
+
+
 ## 0.31.2
 
 - Avoid repeated per-manufacturer duplicate reconstruction and binary hashing on the UI thread; persist verified binary hashes and warm missing hashes in the catalogue worker.

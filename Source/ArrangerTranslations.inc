@@ -1062,3 +1062,7 @@
 { "Electro hook", "Tema electro", "Tema electro", "Thème électro", "Electro-Thema", "Tema electro" },
 { "Electro drop", "Drop electro", "Drop electro", "Drop électro", "Electro-Drop", "Drop electro" },
 { "Filter break", "Break filtrato", "Pausa con filtro", "Break filtré", "Filter-Break", "Pausa com filtro" },
+
+{ "PLAY CLIP", "ASCOLTA CLIP", "ESCUCHAR CLIP", "ÉCOUTER LE CLIP", "CLIP ANHÖREN", "OUVIR CLIPE" },
+{ "STOP CLIP", "FERMA CLIP", "DETENER CLIP", "ARRÊTER LE CLIP", "CLIP STOPPEN", "PARAR CLIPE" },
+{ "Play only the selected clip in a loop. Click again to stop.", "Ascolta in loop soltanto il clip selezionato. Premi ancora per fermarlo.", "Escucha en bucle solo el clip seleccionado. Pulsa otra vez para detenerlo.", "Écoute uniquement le clip sélectionné en boucle. Cliquez à nouveau pour arrêter.", "Nur den ausgewählten Clip als Schleife abspielen. Erneut klicken zum Stoppen.", "Ouça apenas o clipe selecionado em loop. Clique novamente para parar." },

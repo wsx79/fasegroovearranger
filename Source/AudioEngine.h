@@ -187,6 +187,8 @@ public:
     void setLoop(bool enabled,double from,double to);
     bool isExporting()const{return exporting.load();}
     bool isPlaying() const {return playing.load();}
+    void playClip(int track,double from,double to);
+    bool isClipPlaying()const{return playing.load()&&clipPlaybackTrack.load()>=0;}
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
     float masterLevel() const {return masterMeter.load();}
@@ -293,7 +295,7 @@ private:
     std::atomic<int> parameterNotifyHead{0},parameterNotifyTail{0};
     std::atomic<bool> rendering{false};
     struct RenderingScope {std::atomic<bool>& active;explicit RenderingScope(std::atomic<bool>& a):active(a){active.store(true);}~RenderingScope(){active.store(false);}};
-    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;positionLoopFrom=loopFrom.load();positionLoopTo=loopTo.load();positionLooping=looping.load()&&!loopBypassed.load();positionLoopSetting=looping.load();positionRevision.fetch_add(1);}
+    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;const bool clip=clipPlaybackTrack.load()>=0;positionLoopFrom=clip?clipPlaybackFrom.load():loopFrom.load();positionLoopTo=clip?clipPlaybackTo.load():loopTo.load();positionLooping=clip||(looping.load()&&!loopBypassed.load());positionLoopSetting=clip||looping.load();positionRevision.fetch_add(1);}
 
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
     std::array<std::atomic<float>,maxTracks> meters;
@@ -305,6 +307,8 @@ private:
     std::array<std::atomic<float>,2> masterSides{};
     void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};
+    std::atomic<int> clipPlaybackTrack{-1};
+    std::atomic<double> clipPlaybackFrom{0},clipPlaybackTo{0};
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
     Handoff<MixState> mixes;

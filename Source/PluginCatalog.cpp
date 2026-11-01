@@ -63,13 +63,13 @@ void PluginCatalog::read(){
     if(auto xml=juce::XmlDocument::parse(directory.getChildFile("Catalog.xml")))if(xml->hasTagName("PLUGIN_CATALOG")&&xml->getIntAttribute("version")>=1&&xml->getIntAttribute("version")<=2){
         const bool rescan=xml->getIntAttribute("version")<2;
         for(auto* e:xml->getChildIterator())if(e->hasTagName("ENTRY")){
-            Record r;r.format=e->getStringAttribute("format");r.id=e->getStringAttribute("id");r.stamp=e->getStringAttribute("stamp");r.status=e->getStringAttribute("status");r.issue=e->getStringAttribute("issue");r.validatedAt=e->getStringAttribute("validatedAt").getLargeIntValue();
+            Record r;r.format=e->getStringAttribute("format");r.id=e->getStringAttribute("id");r.stamp=e->getStringAttribute("stamp");r.status=e->getStringAttribute("status");r.issue=e->getStringAttribute("issue");r.diagnostic=e->getStringAttribute("diagnostic");r.validatedAt=e->getStringAttribute("validatedAt").getLargeIntValue();
             if(rescan)r.stamp.clear();
             // An interrupted child is quarantined until changed or explicitly retried.
             if(r.status=="pending"){r.status="failed";r.issue="interrupted";}
             for(auto* child:e->getChildIterator()){juce::PluginDescription d;if(d.loadFromXml(*child))r.plugins.add(d);}
             // Retry old shell failures/inventories once with the new scan policy.
-            if(xml->getIntAttribute("scanPolicy")<3&&(isWaveShell(r.id)||r.plugins.size()>1))r.stamp.clear();
+            if(xml->getIntAttribute("scanPolicy")<4&&(isWaveShell(r.id)||r.plugins.size()>1||r.status=="failed"))r.stamp.clear();
             records.add(std::move(r));
         }
     }
@@ -83,8 +83,8 @@ void PluginCatalog::read(){
     refreshPlugins();
 }
 void PluginCatalog::writeCache(){
-    juce::XmlElement xml("PLUGIN_CATALOG");xml.setAttribute("version",2);xml.setAttribute("scanPolicy",3);
-    for(const auto& r:records){auto* e=xml.createNewChildElement("ENTRY");e->setAttribute("format",r.format);e->setAttribute("id",r.id);e->setAttribute("stamp",r.stamp);e->setAttribute("status",r.status);e->setAttribute("issue",r.issue);e->setAttribute("validatedAt",juce::String(r.validatedAt));for(const auto& d:r.plugins)e->addChildElement(d.createXml().release());}
+    juce::XmlElement xml("PLUGIN_CATALOG");xml.setAttribute("version",2);xml.setAttribute("scanPolicy",4);
+    for(const auto& r:records){auto* e=xml.createNewChildElement("ENTRY");e->setAttribute("format",r.format);e->setAttribute("id",r.id);e->setAttribute("stamp",r.stamp);e->setAttribute("status",r.status);e->setAttribute("issue",r.issue);e->setAttribute("diagnostic",r.diagnostic);e->setAttribute("validatedAt",juce::String(r.validatedAt));for(const auto& d:r.plugins)e->addChildElement(d.createXml().release());}
     atomicXml(directory.getChildFile("Catalog.xml"),xml);writeKnownList();
 }
 namespace {
@@ -165,6 +165,9 @@ void PluginCatalog::run(){
                 for(auto* e:xml->getChildIterator()){juce::PluginDescription d;if(d.loadFromXml(*e)&&d.pluginFormatName==r.format&&belongs(d,r.id))r.plugins.add(d);}
                 if(!r.plugins.isEmpty()){r.status="ok";r.issue.clear();}
             }
+            const auto crash=output.withFileExtension("crash.txt");r.diagnostic=crash.loadFileAsString().substring(0,16000);
+            if(r.issue.startsWith("exit-")){const auto code=(juce::uint32)r.issue.substring(5).getLargeIntValue();r.diagnostic="Scanner exit 0x"+juce::String::toHexString(code)+"\n"+r.diagnostic;}
+            if(crash.existsAsFile()){const auto folder=directory.getChildFile("Diagnostics");folder.createDirectory();const auto key=juce::SHA256(r.id.toRawUTF8(),(size_t)r.id.getNumBytesAsUTF8()).toHexString();crash.moveFileTo(folder.getChildFile(key+".txt"));const auto dump=crash.withFileExtension("dmp");if(dump.existsAsFile())dump.moveFileTo(folder.getChildFile(key+".dmp"));}
             output.deleteFile();{const juce::ScopedLock lock(mutex);storeRecord(r);}
         }else{const juce::ScopedLock lock(mutex);storeRecord(r);}
         {const juce::ScopedLock lock(mutex);++progress.checked;if(updated){refreshPlugins();writeCache();}}
@@ -197,7 +200,7 @@ juce::String PluginCatalog::report()const{
                     r.issue=="interrupted"||r.issue=="cancelled"?tr("Scan cancelled or interrupted. Use RETRY FAILED."):
                     r.issue.startsWith("exit-")?tr("Scanner exit code")+": "+r.issue.substring(5):
                     r.status=="pending"?tr("Scanning plugins..."):r.issue.isEmpty()?tr("Previous scan failed. Use RETRY FAILED for a fresh diagnostic."):tr("No compatible plugin description was returned. Check the format, architecture and installation.");
-        text+="  "+reason+"\n\n";
+        text+="  "+reason+"\n";if(r.diagnostic.isNotEmpty())text+=r.diagnostic+"\n";text+="\n";
     }
     if(!skipped)text+=tr("No skipped containers.")+"\n\n";
     text+="## "+tr("Recognised plugins")+"\n\n";
@@ -231,6 +234,8 @@ std::vector<PluginCatalog::BrowserRow> PluginCatalog::browserRows(const juce::Ar
     for(const auto& row:all){if(row.manufacturer.equalsIgnoreCase(category))found.push_back(row);}return found;
 }
 int PluginCatalog::scanOne(const juce::String& name,const juce::String& id,const juce::File& output){
+    struct RestoreDirectory {juce::File previous=juce::File::getCurrentWorkingDirectory();~RestoreDirectory(){previous.setAsCurrentWorkingDirectory();}} restore;
+    if(juce::File::isAbsolutePath(id))juce::File(id).getParentDirectory().setAsCurrentWorkingDirectory();
     juce::AudioPluginFormatManager formats;formats.addDefaultFormats();juce::XmlElement result("PLUGIN_SCAN");
     for(int i=0;i<formats.getNumFormats();++i){auto* format=formats.getFormat(i);if(format->getName()!=name)continue;juce::OwnedArray<juce::PluginDescription> types;format->findAllTypesForFile(types,id);for(auto* d:types)result.addChildElement(d->createXml().release());return !types.isEmpty()&&result.writeTo(output)?0:1;}return 1;
 }
@@ -287,7 +292,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         {const auto binaries=factoryShell.findChildFiles(juce::File::findFiles,true,"*.so");for(const auto& binary:binaries)ok=binary.moveFileTo(binary.getSiblingFile(factoryShell.getFileNameWithoutExtension()+".so"))&&ok;}
        #endif
         if(probe.isDirectory())ok=factoryShell.getChildFile("Contents/Resources/moduleinfo.json").replaceWithText(module.replace("\"Classes\": [","\"Classes\": ["+extra))&&ok;
-        const auto result=root.getChildFile("factory.xml");ok=scanOne("VST3",factoryShell.getFullPathName(),result)==0&&ok;
+        const auto result=root.getChildFile("factory.xml");const auto beforeScanDirectory=juce::File::getCurrentWorkingDirectory();ok=scanOne("VST3",factoryShell.getFullPathName(),result)==0&&juce::File::getCurrentWorkingDirectory()==beforeScanDirectory&&ok;
         auto xml=juce::XmlDocument::parse(result);ok=xml&&xml->getNumChildElements()==1&&ok;
         if(xml)for(auto* item:xml->getChildIterator())ok=item->getStringAttribute("name")!="Container test effect"&&ok;
         factoryShell.deleteRecursively();note("native factory overrides misleading shell manifest");

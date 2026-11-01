@@ -30,13 +30,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.3**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.31.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.31.3** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -449,6 +449,10 @@ A pitched sample starts with root MIDI 60; drums use the piece's note. **Right-c
 
 ### Piano roll and rhythm grid
 
+**PLAY CLIP**, with a Play icon in the piano-roll toolbar, loops only the selected clip on its track. Press **STOP CLIP** to stop it. Notes remain editable while listening. This does not change project mute/solo or loop locators; the main Play returns to full-song playback.
+
+With transport stopped, inserting or selecting notes triggers a brief audition through the track’s assigned sound, volume, pan and effects. Audition does not start the song or record another MIDI performance and stops automatically. It is disabled during playback or recording.
+
 Double-click a **clip** to open the full editor. Choose which part to edit in the section menu; **LOOP CLIP** repeats it while you work. Each editor shows only its own track. A drum piece has one row.
 
 | Action | Result |
@@ -584,6 +588,8 @@ Tempo and position belong to the song; internal engines do not need LINK or SYNC
 To continue in another DAW, use the MIDI or stems in chapter 4.
 
 ### Saving and checking plugin presets
+
+When a plugin stores a complete preset in the recognised format, Arranger restores that native state without overwriting it with the additional parameter snapshot. Other state formats retain the existing compatibility fallback.
 
 1. Open the project in the updated version of **Arranger** and select a track with an assigned **VST3 / AU** instrument. Use a project copy for this test.
 2. Open the instrument editor with the inspector’s **keyboard** button. Choose a recognisable preset and, to test parameter recall too, optionally change one plugin control. Listen to the part so you can recognise its sound.
@@ -750,7 +756,7 @@ Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
 **I press EXPORT in the encoding window but no destination appears**
 
-Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.2**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
+Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.3**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 
