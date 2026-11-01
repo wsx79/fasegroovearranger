@@ -35,6 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Test macOS compatibility gate
+        run: python3 cmake/test_verify_macos.py
       - name: Verify module inventory and translation keys
         run: |
           python3 ThirdParty/fasegroove-common/VerifyModule.py
@@ -104,7 +106,12 @@ jobs:
       - name: Validate family resources and Markdown guides
         run: python scripts/verify-family.py
       - name: Configure
+        if: runner.os != 'macOS'
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=ON
+
+      - name: Configure macOS deployment target
+        if: runner.os == 'macOS'
+        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=ON -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
       - name: Build
         id: nativebuild
         run: cmake --build build --config Release -j2
@@ -140,6 +147,10 @@ jobs:
       - name: Complete offline club arrangements and independent audio audit
         if: '!cancelled() && steps.nativebuild.outcome == ''success'' && (steps.nativesmoke.outcome == ''success'' || runner.os == ''macOS'') && env.FULL_SUITE == ''true'''
         run: python scripts/test-offline-audio.py
+      - name: Verify macOS deployment target and universal bundles
+        if: runner.os == 'macOS'
+        run: python3 cmake/verify_macos.py "build/FaseGrooveArranger_artefacts/Release/Fase Groove Arranger.app"
+
       - name: Sign macOS app as in the family
         if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success'
         env:

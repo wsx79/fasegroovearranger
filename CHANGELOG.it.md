@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.5
+
+- Corregge le build macOS che richiedevano il sistema del runner (macOS 26, oppure 15 per Arranger). Applica il target macOS 11 prima dell’inizializzazione dei compilatori, anche con cache CMake esistenti.
+- Verifica il minimo di sistema di entrambe le architetture Intel e Apple Silicon e i metadati dei bundle prima della firma; allinea la documentazione a macOS 11+.
+
 ## 0.31.4
 
 - Corregge stato e aiuto IA al cambio lingua conservando chiavi originali, errori dinamici e anteprima. Isola le preferenze dei self-test da quelle utente.
