@@ -37,7 +37,7 @@ public:
 private:
     MainComponent& owner;
     EffectChainView view;
-    std::uint64_t session=0;
+    std::uint64_t session=0,lastUiRevision=~std::uint64_t{0};bool lastBusy=false,lastRestricted=false;
     void timerCallback()override;
 };
 }

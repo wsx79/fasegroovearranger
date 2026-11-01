@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.9
+
+- Fix sampler loop crossfades in both playback directions without reversing the secondary read or shortening the loop; extend crop boundaries to keep full-sample seams continuous.
+- Resolve Vocal Chops harmony at each note onset, including free/chromatic chords. RND LANE now regenerates only the selected clip.
+- Preserve AI prompt, session API keys, preview and running jobs when changing language; refresh controls in place. Add missing composer controls, chord-menu and export-error translations.
+- Defer full automation UI refresh until mouse-up; rebuild only the edited track during MIDI erasing. Auxiliary windows skip unchanged full refreshes while keeping meters and recording controls live.
+- Avoid allocating delay-compensation storage at startup. Reserve it on the control thread when installing a plugin or sample, including offline copies, so later dynamic latency changes never allocate in the audio callback.
+- Add regressions for chromatic vocal harmony, forward/reverse full-crop seams, idle delay storage and composer state across language changes.
+
 ## 0.30.8
 
 - Audit fixes from the 0.30.7 review: AI composer cancel no longer freezes (the watcher keeps cancelling until the request stops); changing a plugin or effect resets the automation lane target instead of pointing at a stale parameter; Vocal Chops now follow free/chromatic chords (circle of fifths) instead of the diatonic chord; the Inspector's Regenerate button works on Vocal Chops tracks.

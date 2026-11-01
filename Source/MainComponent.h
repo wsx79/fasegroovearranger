@@ -181,6 +181,7 @@ class AiComposerWindow;
 class MainComponent : public juce::Component,private juce::Timer,public juce::FileDragAndDropTarget,public juce::DragAndDropContainer,public juce::DragAndDropTarget {
 public:
     MainComponent();
+    std::uint64_t controlRevision()const{return uiRevision;}
     ~MainComponent() override;
     // Opens the first .fga in a command line (double-click, file association, second instance).
     bool openFromCommandLine(const juce::String& commandLine);
@@ -424,6 +425,7 @@ private:
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
     int musicalToolKind=0;
     std::unique_ptr<juce::ThreadWithProgressWindow> exportTask;
+    std::uint64_t uiRevision=0;
     void refreshControls();
     void refreshTrack();
     void updateSizes();

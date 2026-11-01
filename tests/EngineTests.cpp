@@ -124,7 +124,7 @@ int main(int argc,char** argv){
         }
         // Delay compensation line: a track is delayed by exactly the difference in latency.
         {
-            fga::Instrument track(4);track.delay=100;juce::AudioBuffer<float> block(2,256);block.clear();block.setSample(0,3,1);block.setSample(1,3,-1);
+            fga::Instrument track(4);check(track.delayLine.getNumSamples()==0,"idle instruments do not reserve delay storage");track.delayLine.setSize(2,fga::Instrument::maxDelay);track.delayLine.clear();track.delay=100;juce::AudioBuffer<float> block(2,256);block.clear();block.setSample(0,3,1);block.setSample(1,3,-1);
             track.applyDelay(block,256);check(block.getSample(0,103)==1&&block.getSample(1,103)==-1&&block.getMagnitude(0,0,103)==0,"delay line shifts by the latency difference");
             block.clear();track.applyDelay(block,256);check(block.getMagnitude(0,256)==0,"nothing left behind");
             track.reset();check(!track.delayUsed,"reset clears the line");

@@ -11,6 +11,7 @@ public:
     ~AiComposerWindow()override;
     void closeButtonPressed()override;
     void show();
+    void refreshText();
     bool verify(const juce::File&);
 private:
     MainComponent& owner;

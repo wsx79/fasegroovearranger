@@ -589,5 +589,16 @@ int main(int argc,char** argv){try{
     {
         check(fga::defaultDrumNoteLength(16)==2.&&fga::defaultDrumNoteLength(4)==1.&&fga::defaultDrumNoteLength(8)==.225&&fga::defaultDrumNoteLength(9)==.5,"handwritten drum gates match the original engine, including Crash");
     }
+    {
+        auto p=fga::newProject(773);p.sections={{fga::Section::main,4,"Harmony"}};
+        p.settings.key=0;p.settings.chordCount=4;p.settings.chordSteps=16;
+        p.settings.freeChords[0]=0;p.settings.freeChords[1]=1;p.settings.freeChords[2]=2;p.settings.freeChords[3]=3;
+        p.normalise();const int ti=p.addVocalChopsTrack();auto& t=p.tracks[(size_t)ti];
+        t.instrument="internal";t.engine.density=1;t.engine.swing=0;t.engine.humanize=0;
+        fga::generateVocalChops(p,fga::Scope::track,ti,0,91);
+        bool later=false;for(const auto& n:t.clips[0].notes){int slot=(int)(n.start/4)%4;
+            int interval=(n.pitch-slot+120)%12;check(interval==0||interval==4||interval==7,"vocal onset follows its current chromatic chord");later=later||slot>0;}
+        check(later,"vocal harmony regression exercises later chord slots");
+    }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

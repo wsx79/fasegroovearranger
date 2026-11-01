@@ -161,7 +161,7 @@ void InstrumentPanel::rebuild(){
         if(builtInternal){juce::StringArray sounds;for(int i=0;i<builtInSoundCount(track);++i)sounds.add(builtInSoundName(track,i));sharedChoice("Sound",sounds,owner.project.tracks[(size_t)track].sound,[this](int v){owner.project.tracks[(size_t)owner.selectedTrack].sound=v;});knob("TONE",0,100,1,e.tone*100,[](auto& o,double v){o.tone=v/100;}," %");knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");}
         if(owner.project.tracks[(size_t)track].vocalChops){
             heading("VOCAL CHOPS");knob("DENSITY",0,100,1,e.density*100,[](auto& o,double v){o.density=v/100;}," %");knob("GATE",12.5,150,1,e.gate*100,[](auto& o,double v){o.gate=v/100;}," %");knob("HUMANIZE",0,100,1,std::max(0.,e.humanize)*100,[](auto& o,double v){o.humanize=v/100;}," %");
-            action("LOAD SAMPLE",[this]{owner.browseSamplesFor(owner.selectedTrack);});action("STUDIO",[this]{if(owner.audio.sampleAsset(owner.selectedTrack))owner.showStudio();else owner.browseSamplesFor(owner.selectedTrack);});action("RND LANE",[this]{owner.regenerate(Scope::track);});
+            action("LOAD SAMPLE",[this]{owner.browseSamplesFor(owner.selectedTrack);});action("STUDIO",[this]{if(owner.audio.sampleAsset(owner.selectedTrack))owner.showStudio();else owner.browseSamplesFor(owner.selectedTrack);});action("RND LANE",[this]{owner.regenerate(Scope::clip);});
             for(auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();juce::String tip;
                 if(name=="DENSITY")tip="Number of short vocal triggers per phrase; zero leaves silence.";
                 if(name=="GATE")tip="MIDI note duration. Edit slice audio length in Studio.";

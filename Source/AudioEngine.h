@@ -116,9 +116,9 @@ struct Instrument {
     bool resync=false;
     std::uint64_t noteOns=0; // diagnostics and tests
     // Plugin delay compensation: every track is delayed to line up with the slowest one.
-    // The line is allocated once here, never on the audio thread.
+    // Storage is reserved on source installation, never on the audio thread.
     static constexpr int maxDelay=1<<18;
-    juce::AudioBuffer<float> delayLine{2,maxDelay};
+    juce::AudioBuffer<float> delayLine;
     int delayWrite=0,latency=0,delay=0;
     bool delayUsed=false;
     void adoptChannels(int block); // after a plugin/effect swap: channel count and scratch size
@@ -260,6 +260,7 @@ private:
     double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0,deviceInputLatency=0;
     int liveTail=0;bool chaseRecord=false;
     void processLive(int count,double beat,bool capturing);
+    void prepareDelayLines();
     void refreshLatencies();
     void publishActiveNotes(int track);
     std::array<std::array<std::atomic<std::uint64_t>,2>,maxTracks> activeKeyMasks{};

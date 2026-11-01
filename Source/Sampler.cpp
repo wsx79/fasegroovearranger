@@ -121,13 +121,14 @@ private:
         if(loop&&length>1){if(!p.reverse&&pos>=hi){pos=lo+std::fmod(pos-hi,length);wrapped=true;}if(p.reverse&&pos<lo){pos=hi-1-std::fmod(lo-1-pos,length);wrapped=true;}}
         auto value=raw(channel,pos);if(!loop||length<=1)return value;
         const double fade=std::min(p.crossfade*data->rate,length*.5);if(fade<1)return value;
-        // Symmetric crossfade keeps the exact loop period (no hidden shortening).
+        // Crossfade adjoining source regions without reflecting their time direction.
+        // Boundary extension keeps full-crop loops continuous and preserves the loop period.
         double distance=fade,other=pos;
-        if(!p.reverse&&pos>hi-fade){distance=hi-pos;other=lo+distance;}
-        else if(!p.reverse&&wrapped&&pos<lo+fade){distance=pos-lo;other=hi-distance-1;}
-        else if(p.reverse&&pos<lo+fade){distance=pos-lo;other=hi-distance-1;}
-        else if(p.reverse&&wrapped&&pos>hi-fade){distance=hi-pos;other=lo+distance;}
-        if(distance>=fade)return value;const float weight=(float)(.5+.5*std::sin(std::clamp(distance/fade,0.,1.)*juce::MathConstants<double>::halfPi));return weight*value+(1-weight)*raw(channel,other);
+        if(!p.reverse&&pos>hi-fade){distance=hi-pos;other=pos-length;}
+        else if(!p.reverse&&wrapped&&pos<lo+fade){distance=pos-lo;other=pos+length;}
+        else if(p.reverse&&pos<lo+fade){distance=pos-lo;other=pos+length;}
+        else if(p.reverse&&wrapped&&pos>hi-fade){distance=hi-pos;other=pos-length;}
+        if(distance>=fade)return value;const float weight=(float)(.5+.5*std::sin(std::clamp(distance/fade,0.,1.)*juce::MathConstants<double>::halfPi));return weight*value+(1-weight)*raw(channel,std::clamp(other,begin,finish-1));
     }
     struct Reader {
         SampleVoice& voice;double position;
