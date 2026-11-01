@@ -45,7 +45,12 @@ Install-Probe
 if ((Get-Item $extension).GetValue('') -ne 'InstallerProbe.OtherProject') { throw 'Installer replaced an existing default app' }
 $p = Start-Process -FilePath $uninstall -ArgumentList '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART' -Wait -PassThru
 if ($p.ExitCode -ne 0 -or (Get-Item $extension).GetValue('') -ne 'InstallerProbe.OtherProject') { throw 'Uninstall removed another app association' }
-Remove-ItemProperty -Path $extension -Name '(default)'
+# The unnamed value has an empty name in the registry API; '(default)' is a
+# provider display label, not a property name accepted by Remove-ItemProperty.
+$probeRegistry = [Microsoft.Win32.RegistryKey]::OpenBaseKey([Microsoft.Win32.RegistryHive]::LocalMachine, [Microsoft.Win32.RegistryView]::Registry64)
+$probeExtension = $probeRegistry.OpenSubKey('Software\Classes\.fga', $true)
+try { $probeExtension.DeleteValue('', $false) }
+finally { $probeExtension.Dispose(); $probeRegistry.Dispose() }
 if (-not (Test-Path $personal)) { throw 'Uninstall removed user project' }
 Remove-Item -LiteralPath $folder -Recurse -Force
 'PASS Windows installer: new install, silent upgrade, exact native executable, bundled guides/source, project icon/open command, association preservation, uninstall and user project preservation'

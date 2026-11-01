@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.7
+
+- Fix cleanup of the unnamed registry value in the Windows installer test; app and installer behavior are unchanged.
+
 ## 0.31.6
 
 - Fix the Pascal comment syntax that prevented the Windows installer from compiling. Includes the macOS 11 deployment-target fix from 0.31.5.

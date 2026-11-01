@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.7
+
+- Corregge la pulizia del valore di registro senza nome nel test dell’installer Windows; comportamento dell’app e dell’installer invariato.
+
 ## 0.31.6
 
 - Corregge la sintassi di un commento Pascal che impediva la compilazione dell’installer Windows. Include la correzione del target macOS 11 della 0.31.5.
