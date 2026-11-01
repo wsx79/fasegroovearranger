@@ -657,8 +657,6 @@ int mixEntry(int genre,int track,int bars) {
     int entry=0;
     if(track==leadTrack)entry=24;
     else if(track<4)entry=harmony[engineGenre(genre)][track];
-    if(isElectronicGenre(genre)&&track==1)entry=genre==technoGenre?8:16;
-    if(genre==technoGenre&&track==leadTrack)entry=16;
     else{
         const int lane=track-4;
         // Kick, closed hats and shaker provide a countable pulse from bar one.
@@ -666,6 +664,8 @@ int mixEntry(int genre,int track,int bars) {
         entry=drums[lane];
         if(genre==7&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
     }
+    if(isElectronicGenre(genre)&&track==1)entry=genre==technoGenre?8:16;
+    if(genre==technoGenre&&track==leadTrack)entry=16;
     int at=std::clamp(((entry*bars/32+7)/8)*8,0,bars);
     // Strings scheduled on the final bar never sound: a 32-bar cue scaled onto
     // a shorter intro lands on the last bar and the whole part is removed.
