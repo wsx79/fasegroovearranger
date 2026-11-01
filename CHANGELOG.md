@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.30.8
+
+- Audit fixes from the 0.30.7 review: AI composer cancel no longer freezes (the watcher keeps cancelling until the request stops); changing a plugin or effect resets the automation lane target instead of pointing at a stale parameter; Vocal Chops now follow free/chromatic chords (circle of fifths) instead of the diatonic chord; the Inspector's Regenerate button works on Vocal Chops tracks.
+- MIDI buffers start at 32 KB per track instead of 256 KB (lower idle memory). Automation curve drag and the MIDI eraser update only the touched envelope instead of re-normalising the whole project each pixel; publishing the schedule now copies once instead of twice.
+- Automation lanes no longer copy the point vector every frame. Track and bus names render correctly with accents (UTF-8) in Studio and Bus & Send. Remaining hardcoded Italian strings routed through translation, and the AI panel now refreshes when the language changes.
+
 ## 0.30.7
 
 - Follow volume automation on inspector knobs, mixer faders, instrument-toolbar volume and both master controls during playback. Preserve curves and base gain on visual updates; manual gestures trim the base without feedback or extra Undo entries.

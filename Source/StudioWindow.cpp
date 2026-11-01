@@ -471,7 +471,7 @@ private:
         if(owner.project.tracks.empty())return;updating=true;
         if(!selected()){setTarget(std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1));owner.audio.setMidiMonitor(track,monitor.getToggleState());}
         juce::StringArray names;std::vector<int> ids;const bool samplesOnly=tabs.getCurrentTabIndex()==0;
-        for(size_t i=0;i<owner.project.tracks.size();++i)if(!samplesOnly||owner.project.tracks[i].instrument=="sample"){names.add(juce::String(owner.project.tracks[i].name));ids.push_back((int)i);}
+        for(size_t i=0;i<owner.project.tracks.size();++i)if(!samplesOnly||owner.project.tracks[i].instrument=="sample"){names.add(juce::String::fromUTF8(owner.project.tracks[i].name.c_str()));ids.push_back((int)i);}
         if(names!=trackNames||ids!=trackIds){trackNames=names;trackIds=ids;target.clear(juce::dontSendNotification);for(size_t i=0;i<ids.size();++i)target.addItem(names[(int)i],ids[i]+1);}
         if(samplesOnly&&!owner.audio.isRecording()&&!ids.empty()&&std::find(ids.begin(),ids.end(),track)==ids.end()){releasePads();keys.allNotesOff(0);setTarget(ids.front());owner.select(track,owner.selectedSection);owner.audio.setMidiMonitor(track,monitor.getToggleState());}
         if(samplesOnly&&!owner.audio.isRecording()&&ids.empty()){const int next=std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1);if(next!=track){releasePads();keys.allNotesOff(0);setTarget(next);owner.audio.setMidiMonitor(track,monitor.getToggleState());}}

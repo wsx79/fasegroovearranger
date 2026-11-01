@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/Theory.h"
+#include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <cmath>
 namespace fga {
 namespace {
@@ -39,7 +40,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
             for(int phrase=0;phrase*16.<beats;++phrase){const auto draw=hash(c.seed+phrase*313U);const bool mixing=role==Section::intro||role==Section::outro;
                 if((mixing||role==Section::breakdown)&&(phrase%2==0))continue;
                 int count=1+(int)std::lround(density*5);if(mixing||role==Section::breakdown)count=1;
-                const auto chord=sgk::buildChord(p.settings.key,p.settings.scale,p.settings.degrees[(size_t)((int)((p.clipStart(ti,ci)+phrase*16)/(p.settings.chordSteps*.25))%p.settings.chordCount)],(sgk::Extension)p.settings.extension);
+                const int chordSlot=(int)((p.clipStart(ti,ci)+phrase*16)/(p.settings.chordSteps*.25))%p.settings.chordCount;const auto chord=[&]{sgk::Chord c;if(p.settings.freeChords[(size_t)chordSlot]>=0){sgk::GrooveSettings g;g.keyRoot=p.settings.key;g.scale=p.settings.scale;g.extension=(sgk::Extension)p.settings.extension;g.progressionLength=1;g.freeChords[0]=p.settings.freeChords[(size_t)chordSlot];g.progression[0]=0;c=sgk::GrooveEngine::chordForSlot(g,0);}else c=sgk::buildChord(p.settings.key,p.settings.scale,p.settings.degrees[(size_t)chordSlot],(sgk::Extension)p.settings.extension);return c;}();
                 for(int n=0;n<count;++n){auto r=hash(draw+n*197U);double at=phrase*16.+figures[draw%4][n];
                     const double swing=t.engine.swing<0?p.settings.swing:t.engine.swing;at+=swing*.16;
                     const double human=t.engine.humanize<0?p.settings.humanize:t.engine.humanize;at+=((int)(r%201)-100)*human*.0002;

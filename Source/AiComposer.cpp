@@ -185,7 +185,7 @@ juce::Result fetchJson(const AiHttpRequest& request,bool local,bool discovery,ju
     juce::WebInputStream stream(discovery?juce::URL(request.url):juce::URL(request.url).withPOSTData(request.body),!discovery);
     stream.withCustomRequestCommand(discovery?"GET":"POST").withExtraHeaders(request.headers.replace("\n","\r\n")).withConnectionTimeout(limitSeconds*1000).withNumRedirectsToFollow(0);
     std::atomic<bool> finished{false},timedOut{false};const auto deadline=std::chrono::steady_clock::now()+std::chrono::seconds(limitSeconds);
-    std::thread watcher([&]{while(!finished.load()){if(cancelled()||std::chrono::steady_clock::now()>=deadline){timedOut=std::chrono::steady_clock::now()>=deadline;stream.cancel();return;}juce::Thread::sleep(20);}});
+    std::thread watcher([&]{while(!finished.load()){if(cancelled()||std::chrono::steady_clock::now()>=deadline){timedOut=std::chrono::steady_clock::now()>=deadline;stream.cancel();}juce::Thread::sleep(20);}});
     struct Finish{std::atomic<bool>& done;std::thread& thread;~Finish(){done=true;thread.join();}} finish{finished,watcher};
     stream.connect(nullptr);if(cancelled())return juce::Result::fail("Generation cancelled.");if(timedOut)return juce::Result::fail(discovery?"The model catalogue did not respond in time. Check the connection and retry.":"The model took too long. Try a smaller model or a simpler request.");
     const int status=stream.getStatusCode();if(status<=0)return juce::Result::fail(local?"Cannot reach Ollama. Open the Ollama application (or run ollama serve), then check the server address and try again.":"Connection failed. Check the server address, network and system TLS support.");

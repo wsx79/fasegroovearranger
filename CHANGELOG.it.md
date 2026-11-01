@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.8
+
+- Fix dall'audit della 0.30.7: il cancel del compositore IA non si blocca piu (il watcher continua a cancellare finche la richiesta non si ferma); cambiare plugin o effetto azzera la corsia di automazione invece di puntare a un parametro obsoleto; Vocal Chops seguono ora gli accordi liberi/cromatici (Circolo delle Quinte) invece di quello diatonico; il pulsante Rigenera nell'Inspector funziona sulle tracce Vocal Chops.
+- I buffer MIDI partono da 32 KB per traccia invece di 256 KB (meno memoria a riposo). Il drag della curva di automazione e la gomma MIDI aggiornano solo l'inviluppo toccato invece di ri-normalizzare tutto il progetto a ogni pixel; la pubblicazione degli schedule ora copia una volta invece di due.
+- Le corsie di automazione non copiano piu il vettore dei punti a ogni frame. I nomi di traccia e bus con accenti (UTF-8) si visualizzano correttamente in Studio e Bus & Send. Ulteriori stringhe italiane portate su tr(), e il pannello IA ora si aggiorna al cambio di lingua.
+
 ## 0.30.7
 
 - I volumi di inspector, mixer, pannello strumento e master seguono l’automazione durante Play. La lettura visiva conserva curve e volume di base; i gesti manuali regolano la base senza retroazione o operazioni Annulla aggiunte dal movimento automatico.

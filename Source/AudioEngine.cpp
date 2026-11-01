@@ -78,7 +78,7 @@ void noteOff(Instrument& i,int n,int lane){i.midi.addEvent(juce::MidiMessage::no
 
 Instrument::Instrument(int track):kind(track){
     for(int i=0;i<fgd::numLanes;++i)drumNotes[(size_t)i]=fgd::defaultNote(i);
-    delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);if(kind==3)guitarEvents.prepare();if(kind==leadTrack)leadEvents.prepare();midi.ensureSize(262144);effectMidi.ensureSize(262144);chainMidi.ensureSize(262144);automationMidi.ensureSize(262144);
+    delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);if(kind==3)guitarEvents.prepare();if(kind==leadTrack)leadEvents.prepare();midi.ensureSize(32768);effectMidi.ensureSize(32768);chainMidi.ensureSize(32768);automationMidi.ensureSize(32768);
     if(kind<3||isManualTrack(kind)){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
 }
 void Instrument::prepare(double rate,int block){
@@ -115,7 +115,7 @@ void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
         // length) only that track's events are rebuilt. Other publishers (export, tests) drop them.
         const juce::ScopedLock cacheLock(publishedLock);
         const bool reuse=normalised&&publishedValid&&onlyTrack>=0&&onlyTrack<maxTracks&&songLength==published.length;
-        if(reuse){*next=published;next->schedules[(size_t)onlyTrack].clear();for(auto& e:events(p,onlyTrack))next->schedules[(size_t)onlyTrack].push_back(e);next->hashes[(size_t)onlyTrack]=hashEvents(next->schedules[(size_t)onlyTrack]);}
+        if(reuse){std::swap(*next,published);next->schedules[(size_t)onlyTrack].clear();for(auto& e:events(p,onlyTrack))next->schedules[(size_t)onlyTrack].push_back(e);next->hashes[(size_t)onlyTrack]=hashEvents(next->schedules[(size_t)onlyTrack]);}
         else{for(auto& e:events(p))if(e.track>=0&&e.track<maxTracks)next->schedules[(size_t)e.track].push_back(e);
             for(size_t ti=0;ti<(size_t)maxTracks;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);}
         publishedValid=normalised;next->length=songLength;if(normalised)published=*next;

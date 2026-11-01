@@ -67,7 +67,7 @@ void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){own
 TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     addAndMakeVisible(effects);effects.setComponentID("effect-chain");
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&samplerEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
-    name.setComponentID("track-name");name.setFont(Daw::font(Daw::display,true));name.setMinimumHorizontalScale(.55f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
+    name.setComponentID("track-name");name.getProperties().set("fgaRawText",true);name.setFont(Daw::font(Daw::display,true));name.setMinimumHorizontalScale(.55f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
     source.setFont(Daw::font(Daw::small));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.5f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.55f);section.setInterceptsMouseClicks(false,false);
     gain.setComponentID("track-gain");pan.setComponentID("track-pan");sample.setComponentID("inspector-sample");loop.setComponentID("inspector-loop");
@@ -103,7 +103,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
 bool TrackInspector::validTrack()const{return owner.selectedTrack>=0&&owner.selectedTrack<(int)owner.project.tracks.size();}
 void TrackInspector::refresh(){
     if(!validTrack())return;
-    updating=true;regenerate.setEnabled(!isManualTrack(owner.selectedTrack));const int ti=owner.selectedTrack;const auto& t=owner.project.tracks[(size_t)ti];
+    updating=true;regenerate.setEnabled(hasGenerator(owner.project.tracks[(size_t)owner.selectedTrack]));const int ti=owner.selectedTrack;const auto& t=owner.project.tracks[(size_t)ti];
     if(!name.isBeingEdited())name.setText(text(t.name),juce::dontSendNotification);name.setColour(juce::Label::textColourId,Daw::text);
     const auto sound=owner.sourceWithEffect(ti);
     source.setText(sound,juce::dontSendNotification);source.setTooltip(sound);
@@ -120,7 +120,7 @@ void TrackInspector::refresh(){
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
     internal.setToggleState(t.instrument=="internal",juce::dontSendNotification);sample.setToggleState(t.instrument=="sample",juce::dontSendNotification);plugin.setToggleState(t.instrument=="plugin",juce::dontSendNotification);
     internal.setEnabled(!busy);sample.setEnabled(!busy);plugin.setEnabled(!busy);pluginEditor.setEnabled(hasPlugin&&!busy);if(auto* vst=owner.audio.plugin(ti)){const auto action=tr("Open %plugin%").replace("%plugin%",vst->getName());pluginEditor.setTooltip(action);pluginEditor.setTitle(action);}samplerEditor.setEnabled(t.instrument=="sample"&&!busy);
-    regenerate.setEnabled(!isManualTrack(ti)&&hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
+    regenerate.setEnabled(hasGenerator(t)&&hasClip&&!t.locked&&!t.clips[(size_t)clipIndex].locked&&!busy);loop.setEnabled(hasClip);loop.setToggleState(owner.clipLoopActive(),juce::dontSendNotification);
     // Only these texts change here; the rest is translated on creation and language change.
     effects.refresh();updating=false;for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section})translateControls(*c);resized();repaint();
 }

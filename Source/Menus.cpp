@@ -39,15 +39,15 @@ bool MainComponent::openFromCommandLine(const juce::String& commandLine){
     open(file);return projectFile==file;
 }
 void MainComponent::showChordMenu(){
-    juce::PopupMenu menu;menu.addSectionHeader(juce::String::fromUTF8("Progressione · un accordo per battuta"));
+    juce::PopupMenu menu;menu.addSectionHeader(tr("Progression: one chord per bar"));
     auto names=chordNames(project.settings);
     for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
-        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,"Grado "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
+        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree ")+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
         chord.addSubMenu(tr("Nella scala"),degrees);
-        for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-project.settings.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,project.settings.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?"Maggiore":quality==1?"Minore":"Dominante",roots);}
+        for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-project.settings.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,project.settings.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?tr("Major"):quality==1?tr("Minor"):tr("Dominant"),roots);}
         menu.addSubMenu(juce::String(slot+1)+juce::String::fromUTF8(" · ")+juce::String::fromUTF8(names[(size_t)slot].c_str()),chord);
     }
-    juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" accordi",true,n==project.settings.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
+    juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" "+tr("chords"),true,n==project.settings.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
     juce::PopupMenu durations;const int steps[]{8,16,32,64};for(int i=0;i<4;++i)durations.addItem(2100+steps[i],tr(i==0?"1/2 bar":i==1?"1 bar":i==2?"2 bars":"4 bars"),true,project.settings.chordSteps==steps[i]);menu.addSubMenu(tr("Each chord"),durations);
     menu.addItem(3000,tr("Nuova progressione casuale"));
     juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;safe->checkpoint();auto& s=safe->project.settings;
@@ -153,7 +153,7 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
             juce::Component::SafePointer<MainComponent> safe(this);const int retry=batch?(midi?3:mp3?9:6):single?(midi?2:mp3?8:5):midi?1:mp3?7:4;
             juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::QuestionIcon,tr("EXPORT"),named.getFileName()+"\n"+tr("Replace the existing file?"),tr("Replace"),tr("Cancel"),getTopLevelComponent(),juce::ModalCallbackFunction::create([safe,retry,track,named](int result){if(safe&&result)safe->exportFile(retry,track,named,true);}));return;
         }
-        if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+exportSuffix(project)+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));target=target.getNonexistentSibling();if(target.createDirectory().failed()){message("Impossibile creare la cartella stem.",true);return;}}
+        if(batch){target=target.getChildFile(juce::File::createLegalFileName(u(project.name))+exportSuffix(project)+"-stems-"+juce::Time::getCurrentTime().formatted("%Y%m%d-%H%M%S"));target=target.getNonexistentSibling();if(target.createDirectory().failed()){message(tr("Cannot create the stem folder."),true);return;}}
         else target=exportNamedFile(target,project,midi?"mid":mp3?"mp3":"wav");
         if(midi){auto write=[this](const juce::File& file,int ti){auto bytes=midiFile(project,ti);juce::TemporaryFile temp(file);return temp.getFile().replaceWithData(bytes.data(),bytes.size())&&temp.overwriteTargetFileWithTemporary();};bool ok=true;if(batch){ok=writeExportArrangement(target,project);for(int row=0;row<(int)project.tracks.size();++row){const int ti=trackAtRow(row);ok=write(exportStemFile(target,project,ti,"mid"),ti)&&ok;}}else ok=write(target,single?track:-1);message(ok?"MIDI esportato: "+target.getFullPathName():"Esportazione MIDI non completata.",!ok);return;}
         instrumentPanel.flushRender();audio.stop();audio.stopPreview();audio.stopSampleAudition();mediaBusy=true;updateEditingAvailability();

@@ -138,9 +138,9 @@ void ArrangementView::paint(juce::Graphics& g){
         g.setColour(Daw::chrome);g.fillRect(lanesLeft,top,lanesRight-lanesLeft,80);g.setColour(Daw::line);g.drawHorizontalLine(top,(float)lanesLeft,(float)lanesRight);
         const float zero=volumeY(ti,envelopeMax(ti)*.5);g.setColour(juce::Colours::white.withAlpha(.06f));g.drawHorizontalLine((int)zero,(float)lanesLeft,(float)lanesRight);
         g.setColour(juce::Colours::white.withAlpha(.12f));for(size_t si=1;si<p.sections.size();++si)g.drawVerticalLine((int)std::lround(beatX(p.sectionStart((int)si))),(float)top,(float)top+80);
-        auto displayed=volume;displayed.enabled=true;juce::Path line;
+        juce::Path line;
         const int from=std::max(lanesLeft,dirtyArea.getX()-2),to=std::min(lanesRight,dirtyArea.getRight()+2);
-        for(int x=from;x<=to;x+=2){const float y=volumeY(ti,displayed.valueAt((x-headerWidth)*4./pixelsPerBar));if(x==from)line.startNewSubPath((float)x,y);else line.lineTo((float)x,y);}
+        for(int x=from;x<=to;x+=2){const float y=volumeY(ti,volume.valueAt((x-headerWidth)*4./pixelsPerBar,true));if(x==from)line.startNewSubPath((float)x,y);else line.lineTo((float)x,y);}
         const auto curve=volume.enabled?Daw::automation:Daw::textFaint;
         if(!line.isEmpty()){auto area=line;area.lineTo((float)to,(float)top+79);area.lineTo((float)from,(float)top+79);area.closeSubPath();g.setColour(curve.withAlpha(.1f));g.fillPath(area);}
         g.setColour(curve);g.strokePath(line,juce::PathStrokeType(1.5f));
@@ -361,7 +361,7 @@ void ArrangementView::mouseDrag(const juce::MouseEvent& e){
     if(loopGesture!=loopNone){dragLoop(e);return;}
     if(loopDragging){const double beat=std::clamp(std::floor((e.x-headerWidth)/pixelsPerBar)*4.,0.,owner.project.length());owner.setLoopRange(std::min(loopAnchor,beat),std::min(owner.project.length(),std::max(loopAnchor,beat)+4));return;}
     if(clipTrack>=0){clipMoving=clipMoving||std::abs(e.position.x-clipAnchorX)>4||rowAt(e.y)!=rowForTrack(clipTrack);const int row=rowAt(e.y);clipTarget=row>=0?trackAtRow(row):clipTrack;clipDropBeat=snapBeat(owner.project.clipStart(clipTrack,clipSource)+(e.position.x-clipAnchorX)*4./pixelsPerBar,e.mods.isShiftDown());const auto local=e.getEventRelativeTo(&owner.arrangementPort);owner.arrangementPort.autoScroll(local.x,local.y,30,12);repaint();return;}
-    if(dragTrack<0||dragPoint<0)return;auto& points=envelope(dragTrack).points;if(dragPoint>=(int)points.size())return;if(bending)points[(size_t)dragPoint].curve=std::clamp(originalCurve+(dragY-e.position.y)/40.,-1.,1.);else editPoint(e.position,!e.mods.isShiftDown());owner.changed(false);}
+    if(dragTrack<0||dragPoint<0)return;auto& points=envelope(dragTrack).points;if(dragPoint>=(int)points.size())return;if(bending)points[(size_t)dragPoint].curve=std::clamp(originalCurve+(dragY-e.position.y)/40.,-1.,1.);else editPoint(e.position,!e.mods.isShiftDown());owner.mixChanged();}
 void ArrangementView::mouseUp(const juce::MouseEvent&){
     if(panning){panning=false;return;}
     // A click without a drag on the loop strip seeks there, as before.
@@ -1227,6 +1227,7 @@ const std::vector<std::string>& MainComponent::cachedChordNames(){
 double MainComponent::songLength(){if(songLengthCache<0)songLengthCache=project.length();return songLengthCache;}
 void MainComponent::applyLanguage(){    if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);else tooltips.reset();
     refreshControls();if(instrumentIsOpen())instrumentPanel.rebuild();
+    if(aiWindow&&aiWindow->isVisible()){aiWindow->closeButtonPressed();aiWindow.reset();aiWindow=std::make_unique<AiComposerWindow>(*this);aiWindow->show();}
     options.refreshText();pluginSettings.refreshText();pluginBrowser.refreshText();updateOverlay.refreshText();translateControls(*this);repaint();
 }
 void MainComponent::showArrangement(){page=Page::arrangement;zoomSlider.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);resized();select(selectedTrack,selectedSection);repaint();}
@@ -1739,7 +1740,7 @@ void MainComponent::save(bool as){
 void MainComponent::open(const juce::File& file,bool recovered){
     juce::Component::SafePointer<MainComponent> safe(this);requestClose([safe,file,recovered]{if(!safe)return;
         Project next;auto result=loadProject(file,next);if(result.failed()){safe->message(result.getErrorMessage(),true);return;}
-        auto& o=*safe;o.audio.stop();o.undoStack.clear();o.redoStack.clear();o.project=std::move(next);o.editCursor=-1;o.projectFile=recovered?juce::File():file;o.selectedTrack=o.selectedSection=0;o.dirty=recovered;o.piano.clearSelection();o.audio.publish(o.project);o.refreshControls();o.restoreInstruments();o.select(4,0);o.showArrangement();o.message("Progetto aperto. I file audio e i plugin restano esterni al progetto.");o.repaint();
+        auto& o=*safe;o.audio.stop();o.undoStack.clear();o.redoStack.clear();o.project=std::move(next);o.editCursor=-1;o.projectFile=recovered?juce::File():file;o.selectedTrack=o.selectedSection=0;o.dirty=recovered;o.piano.clearSelection();o.audio.publish(o.project);o.refreshControls();o.restoreInstruments();o.select(4,0);o.showArrangement();o.message(tr("Project opened. Audio files and plugins remain external to the project."));o.repaint();
     });
 }
 
@@ -1784,7 +1785,7 @@ void MainComponent::loadEffectDescription(int track,const juce::PluginDescriptio
         auto& target=safe->project.tracks[(size_t)ti];auto* fx=target.effect(slot);if(!fx){EffectSlot added;added.slot=slot;target.effects.push_back(added);fx=&target.effects.back();}
         bool samePlugin=false;if(auto old=juce::XmlDocument::parse(utf(fx->pluginId))){juce::PluginDescription previous;if(previous.loadFromXml(*old))samePlugin=previous.uniqueId==description.uniqueId&&previous.name==description.name&&previous.manufacturerName==description.manufacturerName&&previous.pluginFormatName==description.pluginFormatName;}
         const auto restoredState=state.isNotEmpty()?state:(samePlugin?utf(fx->state):juce::String());
-        if(!restoring&&!samePlugin)target.parameters.erase(std::remove_if(target.parameters.begin(),target.parameters.end(),[slot](const auto& l){return l.slot==slot;}),target.parameters.end());
+        if(!restoring&&!samePlugin)target.parameters.erase(std::remove_if(target.parameters.begin(),target.parameters.end(),[slot](const auto& l){return l.slot==slot;}),target.parameters.end());if(!restoring&&!samePlugin)safe->resetAutomationTarget(ti);
         fx->path=description.fileOrIdentifier.toStdString();fx->pluginName=description.name.toStdString();if(auto xml=description.createXml())fx->pluginId=xml->toString().toStdString();fx->state=restoredState.toStdString();
         if(restoredState.isNotEmpty())safe->audio.restoreEffectState(ti,restoredState,slot);safe->resolveAutomationParameters(ti,slot);
         if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
@@ -1813,7 +1814,7 @@ void MainComponent::loadPluginDescription(int track,const juce::PluginDescriptio
         if(auto xml=description.createXml())t.instrumentId=xml->toString().toStdString();
         t.instrumentState=state.toStdString();
         if(state.isNotEmpty())safe->audio.restorePluginState(track,state);
-        if(!restoring)t.parameters.erase(std::remove_if(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot==0;}),t.parameters.end());safe->resolveAutomationParameters(track,0);
+        if(!restoring)t.parameters.erase(std::remove_if(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot==0;}),t.parameters.end());safe->resetAutomationTarget(track);safe->resolveAutomationParameters(track,0);
         if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
         safe->message(tr("Plugin ready")+": "+description.name);
         // A freshly loaded instrument opens its editor straight away, centred; the user

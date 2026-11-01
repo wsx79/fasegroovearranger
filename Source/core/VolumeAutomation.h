@@ -16,8 +16,8 @@ struct VolumeAutomation {
     std::vector<VolumePoint> points;
     // Absolute musical time, independent of BPM. Hold the first/last value outside
     // the envelope. No MIDI CC is sent: this is post-instrument audio gain.
-    double valueAt(double beat) const {
-        if(!enabled||points.empty())return 1;
+    double valueAt(double beat,bool ignoreEnabled=false) const {
+        if((!ignoreEnabled&&!enabled)||points.empty())return 1;
         auto end=std::upper_bound(points.begin(),points.end(),beat,[](double b,const VolumePoint& p){return b<p.beat;});
         if(end==points.begin())return end->value;
         const auto& a=*(end-1);
