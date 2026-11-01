@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.6
+
+- Fix the Pascal comment syntax that prevented the Windows installer from compiling. Includes the macOS 11 deployment-target fix from 0.31.5.
+
 ## 0.31.5
 
 - Fix macOS builds incorrectly requiring the runner OS (macOS 26, or 15 for Arranger). Apply the macOS 11 deployment target before compiler initialization, including existing CMake caches.

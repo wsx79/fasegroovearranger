@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.6
+
+- Corregge la sintassi di un commento Pascal che impediva la compilazione dell’installer Windows. Include la correzione del target macOS 11 della 0.31.5.
+
 ## 0.31.5
 
 - Corregge le build macOS che richiedevano il sistema del runner (macOS 26, oppure 15 per Arranger). Applica il target macOS 11 prima dell’inizializzazione dei compilatori, anche con cache CMake esistenti.

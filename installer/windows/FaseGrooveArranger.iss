@@ -95,7 +95,7 @@ begin
   Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
 end;
 
-; Do not remove a different application's association chosen after installation.
+// Do not remove a different application's association chosen after installation.
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   CurrentDefault: String;
