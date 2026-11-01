@@ -209,8 +209,9 @@ juce::StringArray PluginCatalog::pluginCategories(const juce::Array<juce::Plugin
 }
 std::vector<PluginCatalog::BrowserRow> PluginCatalog::browserRows(const juce::Array<juce::PluginDescription>& plugins,const juce::String& category,const juce::String& query,const juce::StringArray& pinned){
     std::vector<BrowserRow> all;addEngines(all,{});
-    for(int i:canonicalHostedPlugins(plugins))if(makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
-    for(int i=0;i<plugins.size();++i)if(!makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
+    const auto canonical=canonicalHostedPlugins(plugins);
+    for(int i:canonical)if(makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
+    for(int i:canonical)if(!makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
     const auto text=query.trim();
     if(text.isNotEmpty()){
         std::vector<BrowserRow> found;for(const auto& row:all)if(row.name.containsIgnoreCase(text)||row.detail.containsIgnoreCase(text)||row.manufacturer.containsIgnoreCase(text)||row.format.containsIgnoreCase(text))found.push_back(row);return found;
