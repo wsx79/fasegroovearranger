@@ -786,6 +786,9 @@ return false;
     finishPendingSave(destination,[&]{++accepted;});Project loaded;
     stage("successful first save writes the completed take and continues exactly once",accepted==1&&!dirty&&!audio.isRecording()&&projectFile==destination&&loadProject(destination,loaded).wasOk()&&std::any_of(loaded.tracks[0].clips[0].notes.begin(),loaded.tracks[0].clips[0].notes.end(),[](const Note& n){return n.pitch==61;}));
     audio.stop();dirty=false;requestClose([&]{++accepted;});stage("clean navigation continues immediately",accepted==2);
+    const auto associated=folder.getChildFile("project prova con spazi.FGA");stage("project association fixture",destination.copyFileTo(associated));
+    stage("project paths with spaces and uppercase extension",projectInCommandLine(associated.getFullPathName().quoted())==associated&&projectInCommandLine(associated.getFullPathName())==associated);
+    stage("project association opens the saved arrangement",openFromCommandLine(associated.getFullPathName().quoted())&&projectFile==associated&&midiFile(project)==midiFile(loaded));
     // Drop onto the visible Snare row while another instrument is selected.
     showArrangement();arrangement.pixelsPerBar=24;updateSizes();select(0,0);arrangementPort.setViewPosition(0,0);
     auto wavFile=folder.getChildFile("drop-routing.wav");juce::WavAudioFormat wav;

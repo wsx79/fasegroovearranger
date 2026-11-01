@@ -4,6 +4,7 @@
 #include "AiComposer.h"
 #include "MainComponent.h"
 #include "UiText.h"
+#include "ProductInfo.h"
 namespace fga {
 namespace {
 juce::String text(const char* en,const char* it){return Localisation::current()==Localisation::Language::italian?juce::String::fromUTF8(it):tr(juce::String::fromUTF8(en));}
@@ -31,7 +32,7 @@ public:
         duration.addItem(text("From the prompt","Dal prompt"),1);for(int n:{2,3,4,5,6,8,10,15,20,30})duration.addItem(juce::String(n)+" min",duration.getNumItems()+1);duration.setSelectedId(1,juce::dontSendNotification);
         model.setEditableText(true);key.setPasswordCharacter(0x2022);key.setTextToShowWhenEmpty(text("API key · this session only","Chiave API · solo questa sessione"),Daw::textFaint);endpoint.setText(Localisation::setting("aiOllamaEndpoint","http://127.0.0.1:11434"));
         prompt.setMultiLine(true);prompt.setReturnKeyStartsNewLine(true);prompt.setScrollbarsShown(true);prompt.setTextToShowWhenEmpty(text("A 6-minute techno song at 138 BPM, DJ intro, two drops and an evolving lead...","Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop e un lead che evolve..."),Daw::textFaint);
-        preview.setMultiLine(true);preview.setReadOnly(true);preview.setScrollbarsShown(true);preview.setText(text("New song replaces the MIDI arrangement; selected-track editing keeps the other parts. Review your composition here before applying it. Undo is available.","Nuovo brano sostituisce l’arrangiamento MIDI; la modifica mirata conserva le altre parti. Controlla qui la composizione prima di applicarla. Annulla è disponibile."));
+        preview.setMultiLine(true);preview.setReadOnly(true);preview.setScrollbarsShown(true);setPreviewKey("New song replaces the MIDI arrangement; selected-track editing keeps the other parts. Review your composition here before applying it. Undo is available.");
         for(auto* editor:{&key,&endpoint,&prompt,&preview}){editor->setFont(Daw::font(Daw::body));editor->setColour(juce::TextEditor::backgroundColourId,Daw::well);editor->setColour(juce::TextEditor::outlineColourId,Daw::line);editor->setColour(juce::TextEditor::focusedOutlineColourId,Daw::accent);editor->setColour(juce::TextEditor::textColourId,Daw::text);editor->setIndents(10,8);}
         generate.primary=true;generate.setButtonText(text("COMPOSE","COMPONI"));generate.setTooltip(text("Ask the selected model to write MIDI notes and song sections.","Chiedi al modello scelto di scrivere note MIDI e sezioni del brano."));
         apply.primary=true;apply.setButtonText(text("APPLY","APPLICA"));apply.onColour=Daw::play;apply.setTooltip(text("Insert the preview into the project as one undoable action.","Inserisci l’anteprima nel progetto con una sola operazione annullabile."));apply.setEnabled(false);
@@ -46,7 +47,7 @@ public:
             activeProvider=provider.getSelectedItemIndex();model.clear(juce::dontSendNotification);model.setEditableText(activeProvider!=3);model.setTextWhenNothingSelected(activeProvider==3?text("No local model detected","Nessun modello locale rilevato"):text("Choose or enter a model","Scegli o scrivi un modello"));
             const auto suggestions=aiSuggestedModels((AiProvider)activeProvider);
             model.addItemList(suggestions,1);auto chosen=Localisation::setting(("aiModel"+juce::String(activeProvider)).toRawUTF8(),"").trim();if(chosen.isEmpty()&&!suggestions.isEmpty())chosen=suggestions[0];model.setText(chosen,juce::dontSendNotification);
-            key.setText(keys[(size_t)activeProvider],false);Localisation::setSetting("aiProvider",activeProvider);preview.setText(setupHelp());status.setText(text("Choose a model. REFRESH reads the service catalogue; availability and quotas depend on your account.","Scegli un modello. AGGIORNA legge il catalogo del servizio; accesso e quote dipendono dal tuo account."),juce::dontSendNotification);setBusy(false);resized();
+            key.setText(keys[(size_t)activeProvider],false);Localisation::setSetting("aiProvider",activeProvider);showSetupHelp();setStatus("Choose a model. REFRESH reads the service catalogue; availability and quotas depend on your account.");setBusy(false);resized();
             if(activeProvider==3)refreshModels();
         };
         model.onChange=[this]{invalidatePreview();};duration.onChange=[this]{invalidatePreview();};
@@ -57,8 +58,8 @@ public:
         mode.onChange=[this]{duration.setEnabled(mode.getSelectedId()==1);invalidatePreview();};
         for(auto* box:{&provider,&model,&duration}){box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));}
         prompt.onTextChange=[this]{invalidatePreview();};
-        generate.onClick=[this]{start();};cancel.onClick=[this]{cancelJob();};apply.onClick=[this]{if(!ready)return;const auto result=owner.applyAiComposition(base,composition,listen.getToggleState());status.setText(tr(result.wasOk()?text("Composition applied. Undo restores the previous song.","Composizione applicata. Annulla ripristina il brano precedente."):result.getErrorMessage()),juce::dontSendNotification);if(result.wasOk()){ready=false;apply.setEnabled(false);}};
-        keyHelp.onClick=[this]{invalidatePreview();preview.setText(setupHelp());juce::URL(aiSetupUrl((AiProvider)activeProvider)).launchInDefaultBrowser();};
+        generate.onClick=[this]{start();};cancel.onClick=[this]{cancelJob();};apply.onClick=[this]{if(!ready)return;const auto result=owner.applyAiComposition(base,composition,listen.getToggleState());setStatus(result.wasOk()?juce::String("Composition applied. Undo restores the previous song."):result.getErrorMessage());if(result.wasOk()){ready=false;apply.setEnabled(false);}};
+        keyHelp.onClick=[this]{invalidatePreview();showSetupHelp();juce::URL(aiSetupUrl((AiProvider)activeProvider)).launchInDefaultBrowser();};
         guideHelp.setButtonText(text("SETUP GUIDE","GUIDA IA"));guideHelp.setTooltip(text("Open the manual: AI services, free API quotas, setup and third-party credits.","Apri la guida: servizi IA, quote API gratuite, configurazione e crediti di terzi."));guideHelp.onClick=[this]{owner.showGuide(Localisation::current()!=Localisation::Language::italian);};
         // Start with local AI once when upgrading; subsequent explicit service choices are retained.
         const bool firstLocalSetup=Localisation::setting("aiLocalSetup","0")=="0";
@@ -84,8 +85,8 @@ public:
         guideHelp.setTooltip(text("Open the manual: AI services, free API quotas, setup and third-party credits.","Apri la guida: servizi IA, quote API gratuite, configurazione e crediti di terzi."));
         for(auto* box:{&provider,&model,&duration})box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));
         model.setTextWhenNothingSelected(activeProvider==3?text("No local model detected","Nessun modello locale rilevato"):text("Choose or enter a model","Scegli o scrivi un modello"));
-        // The status line is transient: re-translating its rendered text is ineffective
-        // (and could mistranslate), so it refreshes on the next status change instead.
+        status.setText(statusPrefix+tr(statusKey),juce::dontSendNotification);
+        if(previewText&&preview.getText()==previewRendered)renderPreview();
         resized();repaint();
     }
     ~AiComposerPanel()override{cancelJob();key.clear();for(auto& k:keys)k.clear();}
@@ -93,7 +94,7 @@ public:
         if(job)return;std::set<std::uint64_t> chosen;for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState())chosen.insert(trackIdentities[i]);const bool initial=tracks.empty();tracks.clear();trackIdentities.clear();
         for(size_t i=0;i<owner.project.tracks.size();++i){auto button=std::make_unique<juce::ToggleButton>();const auto& t=owner.project.tracks[i];button->setButtonText(juce::String::fromUTF8(t.name.c_str()));button->setEnabled(!t.locked);button->setToggleState(!t.locked&&(initial?!isManualTrack((int)i):chosen.count(t.sessionId)>0),juce::dontSendNotification);button->setTooltip(t.locked?text("Unlock this track in the inspector to let AI edit it.","Sblocca questa traccia nell’inspector per modificarla con l’IA."):text("Allow the composer to write MIDI for this instrument.","Consenti al compositore di scrivere MIDI per questo strumento."));button->onClick=[this]{invalidatePreview();};tracksBody.addAndMakeVisible(*button);tracks.push_back(std::move(button));trackIdentities.push_back(t.sessionId);}resized();
     }
-    void cancelJob(){++requestId;++modelRequestId;owner.retiredJobs.retire(std::move(modelsJob));if(job){job->signalThreadShouldExit();owner.retiredJobs.retire(std::move(job));}setBusy(false);status.setText(text("Generation cancelled. The project is unchanged.","Generazione annullata. Il progetto è invariato."),juce::dontSendNotification);}
+    void cancelJob(){++requestId;++modelRequestId;owner.retiredJobs.retire(std::move(modelsJob));if(job){job->signalThreadShouldExit();owner.retiredJobs.retire(std::move(job));}setBusy(false);setStatus("Generation cancelled. The project is unchanged.");}
     void paint(juce::Graphics& g)override{
         g.fillAll(Daw::base);const auto w=getWidth();g.setGradientFill(juce::ColourGradient(Daw::accent.withAlpha(.12f),0.f,0.f,Daw::base,(float)w,100.f,false));g.fillRect(0,0,w,95);
         IconButton::drawIcon(g,IconButton::Icon::sparkles,{26,25,32,32},Daw::accent);g.setFont(Daw::font(Daw::display,true));g.setColour(Daw::text);g.drawText(text("CREATE WITH AI","CREA CON IA"),72,19,w-96,32,juce::Justification::centredLeft);
@@ -124,7 +125,18 @@ public:
         Localisation::setCurrent(Localisation::Language::french);owner.applyLanguage();
         const bool retained=prompt.getText()=="Keep this prompt"&&key.getText()=="session-only-fixture"&&preview.getText()=="Keep this preview"&&generate.getButtonText()=="COMPOSER";
         Localisation::setCurrent(language);owner.applyLanguage();prompt.setText(oldPrompt,false);key.setText(oldKey,false);preview.setText(oldPreview,false);
-        bool ok=retained&&tracks.size()==owner.project.tracks.size()&&generate.isVisible()&&generate.getTooltip().isNotEmpty()&&!apply.isEnabled()&&key.getPasswordCharacter()!=0;
+        const auto savedStatusKey=statusKey,savedPrefix=statusPrefix;const auto savedPreview=previewText;const auto savedRendered=previewRendered;
+        bool translated=true;setStatus("Ready. Review the composition, then apply it.");showSetupHelp("External diagnostic 42");
+        for(auto target:{Localisation::Language::italian,Localisation::Language::french,Localisation::Language::german}){
+            Localisation::setCurrent(target);owner.applyLanguage();
+            translated=translated&&status.getText()==tr("Ready. Review the composition, then apply it.")&&preview.getText()=="External diagnostic 42\n\n"+setupHelp()&&prompt.getText()==oldPrompt&&key.getText()==oldKey;
+        }
+        setStatus(" text models loaded. Check your account quota; you can edit the model ID.","7");Localisation::setCurrent(language);owner.applyLanguage();
+        translated=translated&&status.getText()=="7"+tr(" text models loaded. Check your account quota; you can edit the model ID.");
+        statusKey=savedStatusKey;statusPrefix=savedPrefix;previewText=savedPreview;previewRendered=savedRendered;preview.setText(oldPreview,false);refreshText();
+        const bool isolated=juce::String(FaseGroove::product().productName).endsWith("Self-test");
+        folder.getChildFile("ai-language.txt").replaceWithText(translated&&isolated?"PASS IT/FR/DE canonical status, dynamic count, setup/error preview, prompt/session-key retention and isolated self-test preferences":"FAIL AI language refresh or preference isolation; translated="+juce::String((int)translated)+"; product="+juce::String(FaseGroove::product().productName));
+        bool ok=translated&&isolated&&retained&&tracks.size()==owner.project.tracks.size()&&generate.isVisible()&&generate.getTooltip().isNotEmpty()&&!apply.isEnabled()&&key.getPasswordCharacter()!=0;
         {
             const auto saved=owner.project;std::set<std::uint64_t> selected;
             for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState())selected.insert(trackIdentities[i]);
@@ -147,7 +159,7 @@ public:
             duration.setSelectedId(2,juce::sendNotificationSync);localOk=localOk&&!ready&&!apply.isEnabled();duration.setSelectedId(1,juce::sendNotificationSync);
             folder.getChildFile("ai-local-http.txt").replaceWithText(localOk?"PASS native model discovery, no API key field, installed-model selection, Compose callback, six-minute MIDI preview and stale-preview invalidation (HTTP fixture, no inference)":"FAIL native local AI flow");
             ok=localOk&&ok;cancelJob();endpoint.setText(savedEndpoint,false);provider.setSelectedItemIndex(old,juce::sendNotificationSync);Localisation::setSetting("aiOllamaEndpoint",savedEndpoint);Localisation::setSetting("aiModel3",savedModel);
-            preview.setText(localHelp());
+            showSetupHelp();
         }
         {
             const auto savedKeys=keys;const auto savedKey=key.getText();
@@ -178,6 +190,12 @@ public:
     }
 private:
     MainComponent& owner;double progressValue=-1;juce::ProgressBar progress{progressValue};juce::ComboBox provider,model,mode,duration;juce::TextEditor key,endpoint,prompt,preview;juce::Label status;IconButton generate,apply;juce::TextButton cancel,keyHelp,checkServer,guideHelp;juce::ToggleButton listen;juce::Viewport tracksPort;juce::Component tracksBody;std::vector<std::unique_ptr<juce::ToggleButton>> tracks;std::vector<std::uint64_t> trackIdentities;std::array<juce::String,(size_t)AiProvider::count> keys;int activeProvider=-1,leftWidth=548;bool ready=false,modelsReady=false;int requestId=0,modelRequestId=0;Project base,composition;std::unique_ptr<CompositionJob> job;std::unique_ptr<ModelListJob> modelsJob;
+    juce::String statusKey,statusPrefix,previewRendered;std::function<juce::String()> previewText;
+    void setStatus(juce::String sourceKey,juce::String prefix={}){statusKey=std::move(sourceKey);statusPrefix=std::move(prefix);status.setText(statusPrefix+tr(statusKey),juce::dontSendNotification);}
+    void renderPreview(){previewRendered=previewText();preview.setText(previewRendered,false);}
+    void setPreview(std::function<juce::String()> text){previewText=std::move(text);renderPreview();}
+    void setPreviewKey(juce::String sourceKey){setPreview([sourceKey]{return tr(sourceKey);});}
+    void showSetupHelp(juce::String error={}){setPreview([this,error]{return error.isEmpty()?setupHelp():tr(error)+"\n\n"+setupHelp();});}
     void invalidatePreview(){if(job||modelsJob)return;ready=false;apply.setEnabled(false);}
     void setBusy(bool busy){progress.setVisible(busy);for(juce::Component* c:std::initializer_list<juce::Component*>{&provider,&model,&mode,&duration,&key,&endpoint,&prompt,&tracksPort,&generate,&keyHelp,&checkServer,&guideHelp})c->setEnabled(!busy);duration.setEnabled(!busy&&mode.getSelectedId()==1);cancel.setEnabled(busy);model.setEnabled(!busy&&(activeProvider!=3||modelsReady));generate.setEnabled(!busy&&(activeProvider!=3||modelsReady));apply.setEnabled(!busy&&ready);}
     juce::String localHelp()const{
@@ -204,10 +222,10 @@ private:
         ++modelRequestId;owner.retiredJobs.retire(std::move(modelsJob));modelsReady=false;ready=false;
         AiOptions options;options.provider=(AiProvider)activeProvider;options.key=key.getText().trim();options.endpoint=endpoint.getText();
         AiHttpRequest request;const auto valid=aiModelsRequest(options,{},request);
-        if(valid.failed()){status.setText(tr(valid.getErrorMessage()),juce::dontSendNotification);preview.setText(setupHelp());setBusy(false);return;}
+        if(valid.failed()){setStatus(valid.getErrorMessage());showSetupHelp();setBusy(false);return;}
         if(activeProvider==3){juce::String address;aiOllamaEndpoint(options.endpoint,address);options.endpoint=address;endpoint.setText(address,false);Localisation::setSetting("aiOllamaEndpoint",address);}
         const auto previous=model.getText();if(activeProvider==3)model.clear(juce::dontSendNotification);setBusy(true);
-        status.setText(text("Reading the current model catalogue…","Lettura del catalogo modelli aggiornato…"),juce::dontSendNotification);
+        setStatus("Reading the current model catalogue…");
         const int id=modelRequestId;juce::Component::SafePointer<AiComposerPanel> safe(this);
         modelsJob=std::make_unique<ModelListJob>(std::move(options),[safe,id,previous](juce::Result result,juce::StringArray names){
             if(!safe||id!=safe->modelRequestId)return;
@@ -216,21 +234,21 @@ private:
                 safe->model.clear(juce::dontSendNotification);safe->model.addItemList(names,1);const auto chosen=previous.isNotEmpty()&&(safe->activeProvider!=3||names.contains(previous))?previous:names[0];
                 safe->model.setText(chosen,juce::dontSendNotification);safe->modelsReady=true;safe->preview.setText(safe->setupHelp());
                 Localisation::setSetting(("aiModel"+juce::String(safe->activeProvider)).toRawUTF8(),chosen);
-                safe->status.setText(safe->activeProvider==3?text("Ollama connected. Choose a local model and describe your song. No API key needed.","Ollama collegato. Scegli un modello locale e descrivi il brano. Non serve una chiave API."):juce::String(names.size())+text(" text models loaded. Check your account quota; you can edit the model ID."," modelli di testo caricati. Controlla la quota del tuo account; puoi modificare l’ID modello."),juce::dontSendNotification);
-            }else{safe->status.setText(tr(result.getErrorMessage()),juce::dontSendNotification);safe->preview.setText(tr(result.getErrorMessage())+"\n\n"+safe->setupHelp());}
+                safe->setStatus(safe->activeProvider==3?"Ollama connected. Choose a local model and describe your song. No API key needed.":" text models loaded. Check your account quota; you can edit the model ID.",safe->activeProvider==3?juce::String():juce::String(names.size()));
+            }else{safe->setStatus(result.getErrorMessage());safe->showSetupHelp(result.getErrorMessage());}
             safe->setBusy(false);
         });modelsJob->startThread();
     }
     void start(){
         if(job||modelsJob)return;
         refreshTracks();
-        if(activeProvider==3&&!modelsReady){refreshModels();return;}auto captured=owner.captureAiProject(base);if(captured.failed()){status.setText(tr(captured.getErrorMessage()),juce::dontSendNotification);return;}
+        if(activeProvider==3&&!modelsReady){refreshModels();return;}auto captured=owner.captureAiProject(base);if(captured.failed()){setStatus(captured.getErrorMessage());return;}
         AiOptions options;options.provider=(AiProvider)provider.getSelectedItemIndex();options.model=model.getText().trim();options.key=key.getText().trim();options.endpoint=endpoint.getText().trim();options.prompt=prompt.getText().trim();options.wholeSong=mode.getSelectedId()==1;options.seconds=duration.getSelectedId()==1?0:duration.getText().getDoubleValue()*60;
         for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState()&&tracks[i]->isEnabled())options.tracks.push_back((int)i);
-        AiHttpRequest request;auto validation=aiHttpRequest(base,options,request);if(validation.failed()){status.setText(tr(validation.getErrorMessage()),juce::dontSendNotification);return;}
+        AiHttpRequest request;auto validation=aiHttpRequest(base,options,request);if(validation.failed()){setStatus(validation.getErrorMessage());return;}
         Localisation::setSetting(("aiModel"+juce::String(provider.getSelectedItemIndex())).toRawUTF8(),options.model);Localisation::setSetting("aiOllamaEndpoint",options.endpoint);
-        ready=false;setBusy(true);status.setText(text("Composing MIDI and arrangement… you can cancel at any time.","Composizione MIDI e arrangiamento… puoi annullare in qualsiasi momento."),juce::dontSendNotification);preview.setText(text("The model is writing your composition. Nothing has changed in the project yet.","Il modello sta scrivendo la composizione. Il progetto non è ancora stato modificato."));
-        const int id=++requestId;juce::Component::SafePointer<AiComposerPanel> safe(this);job=std::make_unique<CompositionJob>(base,std::move(options),[safe,id](juce::Result result,Project p,juce::String summary){if(!safe||id!=safe->requestId)return;safe->owner.retiredJobs.retire(std::move(safe->job));safe->ready=result.wasOk();if(result.wasOk()){safe->composition=std::move(p);juce::String report=summary+"\n\n";for(const auto& section:safe->composition.sections)report+=juce::String::fromUTF8(section.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String(section.bars)+" "+tr("bars")+"\n";report+="\n";for(const auto& track:safe->composition.tracks){size_t count=0;for(const auto& c:track.clips)count+=c.notes.size();if(count)report+=juce::String::fromUTF8(track.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String((int)count)+" MIDI\n";}safe->preview.setText(report);safe->status.setText(text("Ready. Review the composition, then apply it.","Pronta. Controlla la composizione, poi applicala."),juce::dontSendNotification);}else{safe->preview.setText(tr(result.getErrorMessage()));safe->status.setText(text("Generation failed. Your project is unchanged.","Generazione non riuscita. Il progetto è invariato."),juce::dontSendNotification);}safe->setBusy(false);});job->startThread();
+        ready=false;setBusy(true);setStatus("Composing MIDI and arrangement… you can cancel at any time.");setPreviewKey("The model is writing your composition. Nothing has changed in the project yet.");
+        const int id=++requestId;juce::Component::SafePointer<AiComposerPanel> safe(this);job=std::make_unique<CompositionJob>(base,std::move(options),[safe,id](juce::Result result,Project p,juce::String summary){if(!safe||id!=safe->requestId)return;safe->owner.retiredJobs.retire(std::move(safe->job));safe->ready=result.wasOk();if(result.wasOk()){safe->composition=std::move(p);safe->setPreview([safe,summary]{juce::String report=summary+"\n\n";for(const auto& section:safe->composition.sections)report+=juce::String::fromUTF8(section.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String(section.bars)+" "+tr("bars")+"\n";report+="\n";for(const auto& track:safe->composition.tracks){size_t count=0;for(const auto& c:track.clips)count+=c.notes.size();if(count)report+=juce::String::fromUTF8(track.name.c_str())+juce::String::fromUTF8("  ·  ")+juce::String((int)count)+" MIDI\n";}return report;});safe->setStatus("Ready. Review the composition, then apply it.");}else{safe->setPreviewKey(result.getErrorMessage());safe->setStatus("Generation failed. Your project is unchanged.");}safe->setBusy(false);});job->startThread();
     }
 };
 AiComposerWindow::AiComposerWindow(MainComponent& m):DocumentWindow("Fase Groove Arranger / "+text("Create with AI","Crea con IA"),Daw::base,DocumentWindow::closeButton),owner(m),panel(std::make_unique<AiComposerPanel>(m)){

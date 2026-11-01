@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.4
+
+- Corregge stato e aiuto IA al cambio lingua conservando chiavi originali, errori dinamici e anteprima. Isola le preferenze dei self-test da quelle utente.
+- L’installer Windows registra icona, Apri con e apertura dei progetti .fga con doppio clic; conserva associazioni preesistenti e progetti alla disinstallazione.
+
 ## 0.31.3
 
 - Aggiunge ascolto isolato del clip nel piano roll con loop temporaneo, modifica note durante Play e mute/solo/locatori del progetto invariati.

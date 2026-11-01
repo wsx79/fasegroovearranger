@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "ProductSettings.h"
 #include "CrashDiagnostics.h"
 #include "Localisation.h"
 #if FGA_SELF_TESTS
@@ -52,6 +53,10 @@ public:
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
+       #if FGA_SELF_TESTS
+        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--plugin-catalog-test"})
+            if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
+       #endif
        #if JUCE_MAC
         if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
        #if FGA_SELF_TESTS

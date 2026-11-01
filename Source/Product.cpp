@@ -5,6 +5,7 @@
 // The arranger compiles part of it (theme, logo, circle of fifths, updater, translations).
 
 #include "ProductInfo.h"
+#include "ProductSettings.h"
 #include "Branding.h"
 #include "Localisation.h"
 
@@ -13,6 +14,7 @@
 namespace
 {
     constexpr const char* name = "Fase Groove Arranger";
+    bool selfTestPreferences=false;
 
     // The family's texts (after the shared CommonTranslations.inc), then the arranger's own.
     // clang-format off
@@ -32,7 +34,14 @@ const FaseGroove::ProductInfo& FaseGroove::product()
                                     "FaseGrooveArranger.install.ini",   // the setup, in any folder
                                     true,                               // reopened once it has quit
                                     true };                             // translations found in any case (see ProductInfo.h)
+    if(selfTestPreferences){static const auto testInfo=[] {auto copy=info;copy.productName="Fase Groove Arranger Self-test";return copy;}();return testInfo;}
     return info;
+}
+
+void FaseGroove::useSelfTestPreferences(){
+    selfTestPreferences=true;
+    // Refresh the shared settings cache after selecting the separate test file.
+    Localisation::setSetting("selfTest",true);
 }
 
 namespace Branding

@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.4
+
+- Refresh AI status/setup previews from source keys on language changes while preserving dynamic errors and user content. Isolate native self-test preferences from user settings.
+- Register Windows .fga project icon, Open With and double-click handling; preserve existing defaults and user projects on uninstall.
+
 ## 0.31.3
 
 - Add isolated piano-roll clip playback with its own temporary loop, live note editing and unchanged project mute/solo/loop settings.

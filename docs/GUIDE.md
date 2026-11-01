@@ -30,13 +30,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.3**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.4**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.31.3** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.31.4** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -65,6 +65,8 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 > Start with the guide sound. You can hear and build the whole song before choosing your instruments.
 
 ---
+
+**Projects in File Explorer (Windows).** Keep **Associate .fga projects with Fase Groove Arranger** selected in the installer. Projects use the Arranger icon and double-clicking opens the file, including when the app is already running. An existing default app is preserved: choose **Open with → Choose another app → Fase Groove Arranger** and set the default for `.fga`. The ZIP version does not register associations automatically. Uninstalling preserves your projects.
 
 ## 2. Your first groove in 60 seconds
 
@@ -756,7 +758,7 @@ Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
 **I press EXPORT in the encoding window but no destination appears**
 
-Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.3**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
+Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.4**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 
