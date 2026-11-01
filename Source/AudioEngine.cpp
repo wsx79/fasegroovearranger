@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "AudioEngine.h"
+#include "HostedPluginIdentity.h"
 #include "ExportSupport.h"
 #include "core/Mp3Encoder.h"
 #include <cmath>
@@ -15,6 +16,7 @@ namespace {
 // Keep those values beside the opaque native state; never run DSP just to save.
 juce::String hostedParameterId(juce::AudioProcessorParameter* parameter){if(auto* hosted=dynamic_cast<juce::HostedAudioProcessorParameter*>(parameter))return hosted->getParameterID();return {};}
 std::string captureHostedState(juce::AudioPluginInstance& plugin){
+    const juce::ScopedLock processorLock(plugin.getCallbackLock());
     juce::MemoryBlock native;plugin.getStateInformation(native);auto state=std::make_unique<juce::DynamicObject>();state->setProperty("native",native.toBase64Encoding());
     // Some instruments expose the selected program separately from their native chunk.
     const int program=plugin.getCurrentProgram();if(plugin.getNumPrograms()>1&&program>=0&&program<plugin.getNumPrograms()){state->setProperty("program",program);state->setProperty("programName",plugin.getProgramName(program));}
@@ -89,7 +91,7 @@ void Instrument::prepare(double rate,int block){
     volumeGains.resize((size_t)block);panLeft.resize((size_t)block);panRight.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
 }
 void Instrument::adoptChannels(int block){
-    int channels=2;auto countChannels=[&](juce::AudioPluginInstance* p){if(p)channels=std::max({channels,p->getTotalNumOutputChannels(),p->getTotalNumInputChannels()});};countChannels(plugin.get());for(auto& fx:effects)countChannels(fx.plugin.get());
+    int channels=2;auto countChannels=[&](juce::AudioPluginInstance* p){if(p)channels=std::max({channels,p->getTotalNumOutputChannels(),p->getTotalNumInputChannels()});};countChannels(plugin.get());for(size_t k=0;k<effects.size();++k){auto* fx=effects[k].plugin.get();countChannels(fx);effectInputs[k]=fx?fx->getTotalNumInputChannels():0;effectOutputs[k]=fx?fx->getTotalNumOutputChannels():0;}
     outputs=mode==2&&plugin?std::max(1,plugin->getTotalNumOutputChannels()):2;scratch.setSize(channels,block);automationBlock.setSize(channels,block);
 }
 void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
@@ -101,7 +103,7 @@ void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
     delayWrite=w;
 }
 void Instrument::releaseVoices(){if(sampler)sampler->allNotesOff(0,false);synth.allNotesOff(0,false);drums.allNotesOff();guitar.allNotesOff();lead.allNotesOff();midi.clear();effectMidi.clear();guitarEvents.clear();leadEvents.clear();}
-void Instrument::reset(){if(delayUsed){delayLine.clear();delayUsed=false;delayWrite=0;}releaseVoices();bassLowPass.reset();reverb.reset();chorus.reset();if(plugin)plugin->reset();for(auto& fx:effects)if(fx.plugin)fx.plugin->reset();}
+void Instrument::reset(){if(delayUsed){delayLine.clear();delayUsed=false;delayWrite=0;}releaseVoices();bassLowPass.reset();reverb.reset();chorus.reset();if(plugin){const juce::ScopedTryLock lock(plugin->getCallbackLock());if(lock.isLocked())plugin->reset();}for(auto& fx:effects)if(fx.plugin){const juce::ScopedTryLock lock(fx.plugin->getCallbackLock());if(lock.isLocked())fx.plugin->reset();}}
 AudioEngine::AudioEngine(){
     formats.addDefaultFormats();for(int i=0;i<maxTracks;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);instruments[(size_t)i]->prepare(sampleRate,blockSize);meters[(size_t)i]=0;}
     busGraph.prepare(sampleRate,blockSize);
@@ -234,8 +236,16 @@ void AudioEngine::applyParameterAutomation(Instrument& i,double beat,int slot){
 // original device-block clock. Owned work buffers also handle >32 plugin channels
 // without AudioBuffer views allocating channel-pointer arrays in the callback.
 void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance& plugin,juce::AudioBuffer<float>& block,juce::MidiBuffer& midi,double beat,int slot){
+    auto& tail=instrument.hostedTail[(size_t)slot];auto& paused=instrument.hostedPaused[(size_t)slot];
+    auto smooth=[&]{const int n=std::min(64,block.getNumSamples());if(paused&&n>1&&!exporting.load())for(int c=0;c<std::min(2,block.getNumChannels());++c)for(int j=0;j<n;++j){const float t=j/(float)(n-1);block.setSample(c,j,tail[(size_t)c]*(1-t)+block.getSample(c,j)*t);}if(block.getNumSamples()>0)for(int c=0;c<std::min(2,block.getNumChannels());++c)tail[(size_t)c]=block.getSample(c,block.getNumSamples()-1);};
+    const juce::ScopedTryLock processorLock(plugin.getCallbackLock());
+    if(!processorLock.isLocked()||plugin.isSuspended()){
+        const bool first=!paused;if(slot==0)block.clear();paused=first;smooth();paused=true;
+        instrument.resync=true;needsResync=true;return;
+    }
+
     bool automated=false;if(instrument.parameters)for(const auto& lane:*instrument.parameters)automated=automated||(lane.slot==slot&&lane.index>=0&&lane.index<plugin.getParameters().size()&&lane.curve.active());
-    if(!automated){plugin.processBlock(block,midi);return;}
+    if(!automated){plugin.processBlock(block,midi);smooth();paused=false;return;}
     const double samplesPerBeat=sampleRate*60./tempo.load();const int channels=block.getNumChannels();
     for(int offset=0;offset<block.getNumSamples();){const double at=beat+offset/samplesPerBeat;int n=std::min(64,block.getNumSamples()-offset);
         for(const auto& lane:*instrument.parameters){if(lane.slot!=slot||!lane.curve.active()||lane.index<0||lane.index>=plugin.getParameters().size())continue;
@@ -246,6 +256,7 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
         instrument.automationMidi.clear();instrument.automationMidi.addEvents(midi,offset,n,-offset);applyParameterAutomation(instrument,at,slot);pluginBeatOffset=offset/samplesPerBeat;plugin.processBlock(instrument.automationBlock,instrument.automationMidi);pluginBeatOffset=0;
         for(int c=0;c<channels;++c)block.copyFrom(c,offset,instrument.automationBlock,c,0,n);offset+=n;
     }
+    smooth();paused=false;
 }
 void AudioEngine::prepareDelayLines(){
     for(auto& ptr:instruments)if(ptr->delayLine.getNumChannels()<2||ptr->delayLine.getNumSamples()<Instrument::maxDelay){ptr->delayLine.setSize(2,Instrument::maxDelay);ptr->delayLine.clear();ptr->delayWrite=0;ptr->delayUsed=false;}
@@ -304,9 +315,9 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
                 for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){for(;next!=kick.end()&&!(time<next->beat);++next)if(next->controller<0&&next->velocity>0){hasKick=true;lastKick=next->beat;}phase=hasKick?time-lastKick:100;}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
         }
         for(int k=0;k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx||i.effectBypass[(size_t)(slot-1)])continue;
-            if(fx->getTotalNumInputChannels()==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
+            if(i.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
-            if(fx->getTotalNumOutputChannels()==1)block.copyFrom(1,0,block,0,0,count);}
+            if(i.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
 
         i.applyDelay(block,count);
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
@@ -414,13 +425,21 @@ void AudioEngine::swapInstrument(int track,std::unique_ptr<juce::AudioPluginInst
         std::unique_ptr<juce::AudioPluginInstance> old;std::unique_ptr<juce::Synthesiser> oldSampler;bool retry=false;
         {const EngineControlLock lock(*this);retry=rate!=sampleRate||block!=blockSize;
             if(!retry){prepareDelayLines();auto& i=*instruments[(size_t)track];if(effectSlot>0){auto& fx=i.effects[(size_t)(effectSlot-1)];if(!fx.plugin)hostedCount.fetch_add(1);old=std::move(fx.plugin);fx.plugin=std::move(next);fx.description=description;i.effectMidi.clear();}
-                else{if(!i.plugin)hostedCount.fetch_add(1);old=std::move(i.plugin);oldSampler=std::move(i.sampler);i.plugin=std::move(next);i.pluginDescription=description;i.mode=2;restrike(i);needsResync=true;}i.parameterSent.fill(-1.f);i.adoptChannels(blockSize);}}
+                else{if(!i.plugin)hostedCount.fetch_add(1);old=std::move(i.plugin);oldSampler=std::move(i.sampler);i.plugin=std::move(next);i.pluginDescription=description;i.mode=2;restrike(i);needsResync=true;}i.parameterSent.fill(-1.f);i.hostedPaused[(size_t)effectSlot]=true;i.adoptChannels(blockSize);}}
         if(retry){next->releaseResources();continue;}if(old)old->releaseResources();return;
     }
 }
-void AudioEngine::loadHosted(int track,const juce::PluginDescription& description,int effectSlot,std::function<void(juce::Result)> callback){
+void AudioEngine::loadHosted(int track,juce::PluginDescription description,int effectSlot,std::function<void(juce::Result)> callback){
     if(track<0||track>=maxTracks||effectSlot<0||effectSlot>maxTrackEffects){callback(juce::Result::fail("Invalid plugin slot."));return;}
-    double rate=44100;int size=512;std::uint64_t revision=0;{const EngineControlLock lock(*this);rate=sampleRate;size=blockSize;revision=++loadRevision[(size_t)track][(size_t)effectSlot];}
+    double rate=44100;int size=512;std::uint64_t revision=0;{const juce::ScopedLock lock(mutex);rate=sampleRate;size=blockSize;revision=++loadRevision[(size_t)track][(size_t)effectSlot];
+        // Reuse the already loaded module for identical plugin types. Loading two
+        // copies of one VST3 binary can split process-global vendor state.
+        bool selected=false;for(const auto& instrument:instruments){
+            if(instrument->plugin&&sameHostedPluginBinary(description,instrument->pluginDescription)){description.fileOrIdentifier=instrument->pluginDescription.fileOrIdentifier;selected=true;break;}
+            for(const auto& fx:instrument->effects)if(fx.plugin&&sameHostedPluginBinary(description,fx.description)){description.fileOrIdentifier=fx.description.fileOrIdentifier;selected=true;break;}
+            if(selected)break;
+        }
+    }
     formats.createPluginInstanceAsync(description,rate,size,[this,track,callback,description,effectSlot,revision,weak=std::weak_ptr<int>(lifetime)](std::unique_ptr<juce::AudioPluginInstance> next,const juce::String& error){
         if(weak.expired())return;bool cancelled=false;{const EngineControlLock lock(*this);cancelled=revision!=loadRevision[(size_t)track][(size_t)effectSlot];}if(cancelled){callback(juce::Result::fail("Plugin load cancelled."));return;}
         if(!next){callback(juce::Result::fail(error));return;}
@@ -513,11 +532,11 @@ void AudioEngine::mixPreview(float* const* output,int channels,int count){
 juce::AudioPluginInstance* AudioEngine::plugin(int track){return instruments[(size_t)track]->plugin.get();}
 juce::AudioPluginInstance* AudioEngine::effectPlugin(int track,int slot){if(track<0||track>=maxTracks)return nullptr;auto& i=*instruments[(size_t)track];if(slot>0&&slot<=maxTrackEffects)return i.effects[(size_t)(slot-1)].plugin.get();if(slot==0)for(auto& fx:i.effects)if(fx.plugin)return fx.plugin.get();return nullptr;}
 // State serialization/restoration is control-thread work and cannot overlap processing.
-// The callback never waits on the control mutex; it emits silence during this short snapshot.
+// Snapshots serialize only their processor; unrelated tracks keep playing.
 void AudioEngine::capturePluginStates(Project& p){
     if(hostedCount.load()==0||exporting.load())return;
-    // getStateInformation runs under the engine lock, which interrupts the audio: reuse the
-    // serialised blob until something invalidates it (load, restore, editor closed).
+    // Reuse the serialised blob until something invalidates it (load, restore,
+    // editor closed). A slow state read holds only that processor's callback lock.
     // A fresh snapshot still waits until processBlock has left the plugin.
     if(pluginStateCaptured==pluginStateGeneration){
         for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){
@@ -526,7 +545,7 @@ void AudioEngine::capturePluginStates(Project& p){
         }
         return;
     }
-    const EngineControlLock lock(*this);if(exporting)return;
+    const juce::ScopedLock lock(mutex);if(exporting)return;
     cachedInstrumentStates.resize(instruments.size());cachedEffectStates.resize(instruments.size());
     for(size_t ti=0;ti<instruments.size()&&ti<p.tracks.size();++ti){
         cachedInstrumentStates[ti]=p.tracks[ti].instrumentState;cachedEffectStates[ti].fill({});for(const auto& fx:p.tracks[ti].effects)cachedEffectStates[ti][(size_t)(fx.slot-1)]=fx.state;
@@ -539,12 +558,16 @@ void AudioEngine::reusePluginStates(Project& p){
     if(pluginStateCaptured!=pluginStateGeneration)return;
     for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){p.tracks[ti].instrumentState=cachedInstrumentStates[ti];for(auto& fx:p.tracks[ti].effects)if(fx.slot>0&&fx.slot<=maxTrackEffects)fx.state=cachedEffectStates[ti][(size_t)(fx.slot-1)];}
 }
-void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;if(auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get()){
-    prepareDelayLines();
-    // State restoration belongs between deactivation and preparation. A stopped
-    // device callback alone does not deactivate the native VST3 component.
+void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){
+    invalidatePluginStates();const juce::ScopedLock ownerLock(mutex);if(exporting)return;
+    auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get();if(!p)return;
+    if(std::any_of(instruments.begin(),instruments.end(),[](const auto& i){return i->delayLine.getNumChannels()<2||i->delayLine.getNumSamples()<Instrument::maxDelay;})){const EngineControlLock storageLock(*this);prepareDelayLines();}
+    const juce::ScopedLock processorLock(p->getCallbackLock());
+    // Only this processor is bypassed while restoring a potentially large preset.
+    // Reconfiguration of host buffers is the short operation that gates the engine.
     p->releaseResources();restoreHostedState(*p,state.toStdString());p->setRateAndBufferSizeDetails(sampleRate,blockSize);p->prepareToPlay(sampleRate,blockSize);
-    auto& instrument=*instruments[(size_t)track];instrument.adoptChannels(blockSize);instrument.parameterSent.fill(-1.f);if(effectSlot==0){restrike(instrument);needsResync=true;}}}
+    const EngineControlLock lock(*this);auto& instrument=*instruments[(size_t)track];instrument.adoptChannels(blockSize);instrument.parameterSent.fill(-1.f);instrument.hostedPaused[(size_t)effectSlot]=true;if(effectSlot==0){restrike(instrument);needsResync=true;}
+}
 void AudioEngine::restorePluginState(int track,const juce::String& state){restoreHosted(track,state,0);}
 void AudioEngine::restoreEffectState(int track,const juce::String& state,int slot){restoreHosted(track,state,slot);}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}

@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.0
+
+- Aggiunti arrangiamenti Techno ed Electro House dedicati: bassi regolari o sincopati, temi synth pulse/saw, batterie elettroniche e strutture per il mix DJ. Il preset Deep è ora indicato come Deep House. Techno ed Electro House non aggiungono automaticamente piano, archi o chitarra; restano disponibili richieste esplicite e parti bloccate.
+- Salvataggio dello stato e ripristino di preset pesanti protetti per singolo processore, senza silenziare l’intero motore. Il callback non attende quei lock; gli effetti interessati passano temporaneamente il suono dry con transizioni smussate.
+- Creazione e distruzione degli editor sincronizzate con il rispettivo processore. Una sola voce nel browser per copie dello stesso plugin e riuso del modulo già caricato, conservando preferiti e versioni differenti.
+- Report di crash Windows con versione dell’app, codice e indirizzo dell’eccezione, modulo e offset, thread e minidump diagnostico. Il crash segnalato con Ample Bass JF è in verifica: le copie duplicate, da sole, non dimostrano la causa del crash.
+- Inclusi i fix dell’audit 0.30.9 e regressioni per armonia e blocchi dei nuovi stili, salvataggio progetti, snapshot lenti e diagnostica Windows.
+
 ## 0.30.9
 
 - Bypass difensivo di delay line mancanti, mono o sottodimensionate, senza allocazioni sul thread audio; preparazione anche durante il ripristino dei preset e test per ogni forma di buffer non valida.

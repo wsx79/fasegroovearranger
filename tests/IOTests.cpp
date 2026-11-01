@@ -12,6 +12,12 @@ int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
     runAiTests();runStudioIOTests();
+    for(int genre:{fga::deepHouseGenre,fga::technoGenre,fga::electroHouseGenre}){
+        auto p=fga::newProject(genre);fga::Project loaded;
+        check(fga::projectFromJson(fga::projectJson(p),loaded).wasOk()&&loaded.settings.genre==genre,"house/techno style IDs round-trip");
+        for(int ti:{0,1,2,3,fga::leadTrack})check(loaded.tracks[(size_t)ti].clips==p.tracks[(size_t)ti].clips,"style MIDI and omitted piano persist exactly");
+    }
+
     {
         auto vocal=fga::newProject(4);const int index=vocal.addVocalChopsTrack();fga::Project loaded;
         check(fga::projectFromJson(fga::projectJson(vocal),loaded).wasOk()&&loaded.tracks[(size_t)index].vocalChops&&loaded.tracks[(size_t)index].clips==vocal.tracks[(size_t)index].clips,"vocal generator role, seeds and MIDI round trip");

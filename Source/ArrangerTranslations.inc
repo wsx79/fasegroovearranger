@@ -1050,3 +1050,15 @@
 { "WRITE", "SCRIVI", "ESCRIBIR", "ÉCRIRE", "SCHREIBEN", "ESCREVER" },
 { "DESCRIBE THE SONG", "DESCRIVI IL BRANO", "DESCRIBE LA CANCIÓN", "DÉCRIVEZ LE MORCEAU", "SONG BESCHREIBEN", "DESCREVA A MÚSICA" },
 { "COMPOSITION PREVIEW", "ANTEPRIMA COMPOSIZIONE", "VISTA PREVIA DE LA COMPOSICIÓN", "APERÇU DE LA COMPOSITION", "KOMPOSITIONSVORSCHAU", "PRÉVIA DA COMPOSIÇÃO" },
+
+// Electronic arrangement styles.
+{ "Techno", "Techno", "Techno", "Techno", "Techno", "Techno" },
+{ "Electro House", "Electro House", "Electro House", "Electro House", "Electro House", "Electro House" },
+{ "Drum intro", "Intro ritmica", "Intro de batería", "Intro rythmique", "Drum-Intro", "Introdução de bateria" },
+{ "Drum outro", "Outro ritmica", "Outro de batería", "Outro rythmique", "Drum-Outro", "Final de bateria" },
+{ "Hypnotic groove", "Groove ipnotico", "Groove hipnótico", "Groove hypnotique", "Hypnotischer Groove", "Groove hipnótico" },
+{ "Pressure build", "Crescita di tensione", "Subida de tensión", "Montée de tension", "Spannungsaufbau", "Aumento de tensão" },
+{ "Techno drop", "Drop techno", "Drop techno", "Drop techno", "Techno-Drop", "Drop techno" },
+{ "Electro hook", "Tema electro", "Tema electro", "Thème électro", "Electro-Thema", "Tema electro" },
+{ "Electro drop", "Drop electro", "Drop electro", "Drop électro", "Electro-Drop", "Drop electro" },
+{ "Filter break", "Break filtrato", "Pausa con filtro", "Break filtré", "Filter-Break", "Pausa com filtro" },

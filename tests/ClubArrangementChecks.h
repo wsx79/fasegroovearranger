@@ -29,7 +29,7 @@ inline void verifyClubProject(const fga::Project& p,int genre,const std::string&
     }
     bool theme=false,bass=false;
     for(size_t si=1;si<last;++si)if(p.sections[si].type==fga::Section::main||p.sections[si].type==fga::Section::drop){
-        theme=theme||!p.tracks[0].clips[si].notes.empty();bass=bass||!p.tracks[1].clips[si].notes.empty();
+        theme=theme||!p.tracks[(size_t)(fga::isElectronicGenre(genre)?fga::leadTrack:0)].clips[si].notes.empty();bass=bass||!p.tracks[1].clips[si].notes.empty();
     }
     check(theme&&bass,"club body must contain its theme and bass");
     if(!profile.rollingBuild)for(size_t si=0;si<p.sections.size();++si)if(p.sections[si].type==fga::Section::buildup){
@@ -56,7 +56,7 @@ inline void verifyClubProject(const fga::Project& p,int genre,const std::string&
     check(file.good()&&report.good(),"club evidence write failed");
 }
 inline void verifyClubSeedCases(){
-    for(int genre=0;genre<13;++genre){
+    for(int genre=0;genre<fga::numGenres;++genre){
         auto p=fga::newProject(genre);
         for(std::uint32_t seed:{1U,42U,4294967295U}){
             p.settings.seed=seed;fga::applyGenre(p,genre);fga::arrangeSong(p);fga::generate(p);

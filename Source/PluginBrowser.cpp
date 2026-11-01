@@ -1,11 +1,12 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "PluginBrowser.h"
+#include "HostedPluginIdentity.h"
 #include "Localisation.h"
 namespace fga {
 namespace {
 bool matchesType(const PluginCatalog::BrowserRow& row,int type){if(type==0)return true;if(type==2)return row.kind==PluginCatalog::BrowserRow::Kind::plugin&&!row.instrument;return row.kind!=PluginCatalog::BrowserRow::Kind::noEffect&&(row.kind!=PluginCatalog::BrowserRow::Kind::plugin||row.instrument);}
-juce::StringArray visibleCategories(const juce::Array<juce::PluginDescription>& plugins,int type){juce::Array<juce::PluginDescription> visible;bool familyEffect=false;for(const auto& d:plugins)if(type==0||(type==1?d.isInstrument:!d.isInstrument)){visible.add(d);familyEffect=familyEffect||(!d.isInstrument&&d.manufacturerName.trim().equalsIgnoreCase("FaseGroove"));}auto result=PluginCatalog::pluginCategories(visible);if(type==2&&!familyEffect)result.removeString("FaseGroove");return result;}
+juce::StringArray visibleCategories(const juce::Array<juce::PluginDescription>& plugins,int type){juce::Array<juce::PluginDescription> visible;bool familyEffect=false;for(int index:canonicalHostedPlugins(plugins))if(const auto& d=plugins.getReference(index);type==0||(type==1?d.isInstrument:!d.isInstrument)){visible.add(d);familyEffect=familyEffect||(!d.isInstrument&&d.manufacturerName.trim().equalsIgnoreCase("FaseGroove"));}auto result=PluginCatalog::pluginCategories(visible);if(type==2&&!familyEffect)result.removeString("FaseGroove");return result;}
 }
 PluginBrowser::PluginBrowser(PluginCatalog& c):catalog(c){
     setWantsKeyboardFocus(true);

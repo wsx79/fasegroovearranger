@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "CrashDiagnostics.h"
 #include "Localisation.h"
 #if FGA_SELF_TESTS
 #include "ArrangementAudit.h"
@@ -10,14 +11,11 @@
 namespace {
 // A crash handler that leaves the stack on disk: the Windows event log names only
 // the executable, which is not enough to find the fault.
-void writeCrashLog(void*){
-    const auto file=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
-                        .getChildFile("FS Pitch/Fase Groove Arranger/crash.txt");
-    file.getParentDirectory().createDirectory();
-    file.replaceWithText(juce::String("Fase Groove Arranger crash\n")
-        +juce::Time::getCurrentTime().toString(true,true,true,true)+"\n\n"
-        +juce::SystemStats::getStackBacktrace());
+void writeCrashLog(void* context){
+    const auto file=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/crash.txt");
+    fga::writeCrashDiagnostic(context,file);
 }
+
 class ScaledContent:public juce::Component {
 public:
     ScaledContent(){addAndMakeVisible(main);setSize(1440,980);}
@@ -51,7 +49,7 @@ public:
     bool moreThanOneInstanceAllowed()override{return getCommandLineParameterArray().contains("--scan-plugin")||getCommandLineParameterArray().contains("--plugin-catalog-test");}
     void initialise(const juce::String&)override{
         juce::LookAndFeel::setDefaultLookAndFeel(&theme);
-        juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
+        fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if JUCE_MAC
         if(args.contains("--scan-plugin")||args.contains("--plugin-catalog-test"))juce::Process::setDockIconVisible(false);
@@ -64,6 +62,9 @@ public:
             while(!juce::Process::isForegroundProcess()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
         }
        #endif
+       #endif
+       #if FGA_SELF_TESTS
+        if(args.size()==2&&args[0]=="--crash-report-test"){fga::writeCrashDiagnostic(nullptr,juce::File(args[1]));quit();return;}
        #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){
             setApplicationReturnValue(fga::PluginCatalog::scanOne(args[1],args[2],juce::File(args[3])));quit();return;

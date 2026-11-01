@@ -652,15 +652,15 @@ private:Project snapshot;juce::File target;std::function<void(juce::Result)> com
 };
 class MainComponent::PluginWindow : public juce::DocumentWindow {
 public:
-    MainComponent& owner;
+    MainComponent& owner;juce::AudioPluginInstance& processor;
     std::uint64_t session;int slot;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),session(id),slot(effectSlot){setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
         // The native peer can size the window while showing it; centre on the next
         // message-loop turn, when the final size is known.
         juce::Component::SafePointer<PluginWindow> safe(this);
         juce::MessageManager::callAsync([safe]{if(safe)safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
-    ~PluginWindow()override{owner.audio.invalidatePluginStates();}
-    void closeButtonPressed()override{owner.audio.invalidatePluginStates();owner.dismissAuxiliaryWindow(*this);}
+    ~PluginWindow()override{const juce::ScopedLock processorLock(processor.getCallbackLock());clearContentComponent();owner.audio.invalidatePluginStates();}
+    void closeButtonPressed()override{const juce::ScopedLock processorLock(processor.getCallbackLock());owner.audio.invalidatePluginStates();owner.dismissAuxiliaryWindow(*this);}
 };
 void MainComponent::openHostedEditor(int track,int slot){
     if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;

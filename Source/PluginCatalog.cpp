@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "PluginCatalog.h"
+#include "HostedPluginIdentity.h"
 #include "Localisation.h"
 #include <juce_cryptography/juce_cryptography.h>
 #include <map>
@@ -208,14 +209,15 @@ juce::StringArray PluginCatalog::pluginCategories(const juce::Array<juce::Plugin
 }
 std::vector<PluginCatalog::BrowserRow> PluginCatalog::browserRows(const juce::Array<juce::PluginDescription>& plugins,const juce::String& category,const juce::String& query,const juce::StringArray& pinned){
     std::vector<BrowserRow> all;addEngines(all,{});
-    for(int i=0;i<plugins.size();++i)if(makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
+    for(int i:canonicalHostedPlugins(plugins))if(makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
     for(int i=0;i<plugins.size();++i)if(!makerOf(plugins.getReference(i)).equalsIgnoreCase("FaseGroove"))all.push_back(rowFor(plugins.getReference(i),i));
     const auto text=query.trim();
     if(text.isNotEmpty()){
         std::vector<BrowserRow> found;for(const auto& row:all)if(row.name.containsIgnoreCase(text)||row.detail.containsIgnoreCase(text)||row.manufacturer.containsIgnoreCase(text)||row.format.containsIgnoreCase(text))found.push_back(row);return found;
     }
     if(!pinned.isEmpty()){
-        std::vector<BrowserRow> found;for(const auto& key:pinned){for(const auto& row:all)if(row.key==key){found.push_back(row);break;}}return found;
+        std::vector<BrowserRow> found;for(const auto& key:pinned){bool exact=false;for(const auto& row:all)if(row.key==key){found.push_back(row);exact=true;break;}if(exact)continue;
+            for(int old=0;old<plugins.size();++old)if(pluginKey(plugins.getReference(old))==key){for(const auto& row:all)if(row.kind==BrowserRow::Kind::plugin&&sameHostedPluginBinary(plugins.getReference(old),plugins.getReference(row.plugin))){auto alias=row;alias.key=key;found.push_back(alias);break;}break;}}return found;
     }
     std::vector<BrowserRow> found;if(category.isEmpty())return found;
     for(const auto& row:all){if(row.manufacturer.equalsIgnoreCase(category))found.push_back(row);}return found;
@@ -236,6 +238,13 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         juce::PluginDescription fx,keys;fx.name="Spring";fx.manufacturerName="Acme";fx.pluginFormatName="VST3";fx.fileOrIdentifier="/plugins/Spring.vst3";fx.isInstrument=false;keys.name="Keys";keys.manufacturerName="Zebra";keys.pluginFormatName="VST3";keys.fileOrIdentifier="/plugins/Keys.vst3";keys.isInstrument=true;
         juce::Array<juce::PluginDescription> sample;sample.add(fx);sample.add(keys);const auto cats=pluginCategories(sample);
         ok=cats.size()==3&&cats[0]=="FaseGroove"&&cats[1]=="Acme"&&cats[2]=="Zebra"&&ok;
+        {
+            juce::PluginDescription root;root.name="Duplicate Bass";root.manufacturerName="Duplicate Maker";root.pluginFormatName="VST3";root.version="4.0.1";root.uniqueId=771;root.isInstrument=true;const auto copies=evidence.getSiblingFile("duplicate-modules");copies.createDirectory();auto direct=copies.getChildFile("Bass.vst3");direct.replaceWithText("identical plugin bytes");root.fileOrIdentifier=direct.getFullPathName();
+            auto nested=root;auto folder=copies.getChildFile("nested");folder.createDirectory();auto duplicate=folder.getChildFile("Bass.vst3");duplicate.replaceWithText("identical plugin bytes");nested.fileOrIdentifier=duplicate.getFullPathName();juce::Array<juce::PluginDescription> duplicates;duplicates.add(nested);duplicates.add(root);
+            auto rows=browserRows(duplicates,"Duplicate Maker",{},{});ok=rows.size()==1&&rows[0].plugin==1&&ok;
+            auto pinned=browserRows(duplicates,{},{},juce::StringArray(pluginKey(nested)));ok=pinned.size()==1&&pinned[0].plugin==1&&pinned[0].key==pluginKey(nested)&&ok;
+            auto modified=root;auto different=copies.getChildFile("Modified.vst3");different.replaceWithText("different implementation");modified.fileOrIdentifier=different.getFullPathName();duplicates.add(modified);ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==2&&ok;auto other=root;other.version="4.0.2";duplicates.add(other);ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==3&&ok;
+        }
         const auto fg=browserRows(sample,"FaseGroove",{},{});ok=fg.size()==7&&fg[0].kind==BrowserRow::Kind::engine&&fg[0].engine==0&&fg[4].engine==4&&fg[5].engine==5&&fg[6].kind==BrowserRow::Kind::noEffect&&ok;
         const auto acme=browserRows(sample,"Acme",{},{});ok=acme.size()==1&&!acme[0].instrument&&acme[0].name=="Spring"&&ok;
         const auto foundRows=browserRows(sample,{},"keys",{});ok=foundRows.size()==1&&foundRows[0].instrument&&ok;

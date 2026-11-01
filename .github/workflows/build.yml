@@ -112,6 +112,9 @@ jobs:
         run: ctest --test-dir build -C Release --output-on-failure
       - name: AI composition HTTP and cancellation integration
         run: python scripts/test-ai.py
+      - name: Crash report and native dump diagnostics
+        if: '!cancelled() && steps.nativebuild.outcome == ''success'''
+        run: python scripts/test-crash-report.py
       - name: Native local AI composer flow
         if: runner.os == 'Linux'
         run: xvfb-run -a python3 scripts/test-ai.py --ui-output "$RUNNER_TEMP/ai-ui"
@@ -195,6 +198,7 @@ jobs:
           retention-days: 30
       - uses: actions/upload-artifact@v4
         if: always()
+        continue-on-error: true
         with:
           name: Arranger-validation-${{ runner.os }}
           path: |

@@ -18,7 +18,7 @@ private:std::atomic<float> value{.75f};
 class AuditPlugin : public juce::AudioPluginInstance {
 public:
     AuditPlugin(bool effect=false,float shift=0,bool mono=false,float right=1):AudioPluginInstance(effect?BusesProperties().withInput("Input",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true).withOutput("Output",mono?juce::AudioChannelSet::mono():juce::AudioChannelSet::stereo(),true):BusesProperties().withOutput("Output",juce::AudioChannelSet::stereo(),true)),transform(effect),offset(shift),rightScale(right){auto parameter=std::make_unique<AuditGain>();gain=parameter.get();addHostedParameter(std::move(parameter));}
-    std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};bool slow=false,prepared=false,stateRestoredActive=false;int preparations=0;bool offlineObserved=false;int calls=0,samples=0,lastMidi=-1;
+    std::atomic<bool> inside{false},overlap{false};std::atomic<int> stateReads{0};juce::WaitableEvent* snapshotStarted=nullptr;juce::WaitableEvent* snapshotResume=nullptr;bool slow=false,prepared=false,stateRestoredActive=false;int preparations=0;bool offlineObserved=false;int calls=0,samples=0,lastMidi=-1;
     std::array<int,1024> sizes{},starts{};std::array<float,1024> values{};std::array<double,1024> positions{};
     const juce::String getName()const override{return "Audit probe";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description.name=getName();}
@@ -33,7 +33,7 @@ public:
     double getTailLengthSeconds()const override{return 0;}int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Audit";}void changeProgramName(int,const juce::String&)override{}
     bool hasEditor()const override{return false;}juce::AudioProcessorEditor* createEditor()override{return nullptr;}
-    void getStateInformation(juce::MemoryBlock& data)override{if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
+    void getStateInformation(juce::MemoryBlock& data)override{if(snapshotStarted)snapshotStarted->signal();if(snapshotResume)snapshotResume->wait(5000);if(inside)overlap=true;++stateReads;juce::Thread::sleep(1);data.setSize(sizeof(float));const float value=gain->get();std::memcpy(data.getData(),&value,sizeof value);}
     void setStateInformation(const void*,int)override{if(inside)overlap=true;stateRestoredActive=prepared;}
 private:AuditGain* gain=nullptr;bool transform=false;float offset=0,rightScale=1;
 };
@@ -93,7 +93,18 @@ struct EngineAuditTests {
         project.tracks[0].parameters={lane};engine.publish(project);engine.applyParameterAutomation(instrument,0,0);parameter->removeListener(&listener);
         requireAudit(listener.changes>0&&std::abs(listener.value-.62f)<1.e-6f,"automated hosted parameters notify editor listeners");
     }
-    static void run(){effects();exportCompatibility();stateRestoreOrder();programEdits();
+    static void snapshotKeepsOtherTracksPlaying(){
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& i:engine.instruments)i->prepare(44100,512);
+        auto p=newProject(0);p.sections={{Section::main,2,"Snapshot"}};p.normalise();for(auto& t:p.tracks){t.gain=0;for(auto& c:t.clips)c.notes.clear();}
+        p.tracks[1].gain=1;p.tracks[1].clips[0].notes={{0,7,40,110,0}};p.tracks[0].gain=1;
+        auto probe=std::make_unique<AuditPlugin>();auto* plugin=probe.get();engine.swapInstrument(0,std::move(probe),0,{});engine.publish(p);engine.play(true);
+        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+        for(int i=0;i<5;++i)callback();juce::WaitableEvent started,resume,returned;plugin->snapshotStarted=&started;plugin->snapshotResume=&resume;
+        std::thread snapshot([&]{engine.capturePluginStates(p);});const bool began=started.wait(2000);
+        std::thread audio([&]{callback();returned.signal();});const bool nonblocking=returned.wait(1000);const bool otherAudible=nonblocking&&engine.level(1)>.001f;
+        resume.signal();snapshot.join();audio.join();requireAudit(began&&nonblocking&&otherAudible&&!plugin->overlap,"slow state reads do not block the callback, race the processor or mute unrelated tracks");
+    }
+    static void run(){snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

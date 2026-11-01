@@ -121,6 +121,9 @@ struct Instrument {
     juce::AudioBuffer<float> delayLine;
     int delayWrite=0,latency=0,delay=0;
     bool delayUsed=false;
+    std::array<std::array<float,2>,maxTrackEffects+1> hostedTail{};
+    std::array<bool,maxTrackEffects+1> hostedPaused{};
+    std::array<int,maxTrackEffects> effectInputs{},effectOutputs{};
     void adoptChannels(int block); // after a plugin/effect swap: channel count and scratch size
     void applyDelay(juce::AudioBuffer<float>&,int count);
 };
@@ -320,7 +323,7 @@ private:
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
     void prepareBuses(double rate,int block);
     void detachSource(int track,int mode,std::unique_ptr<juce::Synthesiser> sampler,std::unique_ptr<juce::AudioPluginInstance>& oldPlugin,std::unique_ptr<juce::Synthesiser>& oldSampler);
-    void loadHosted(int track,const juce::PluginDescription&,int effectSlot,std::function<void(juce::Result)>);
+    void loadHosted(int track,juce::PluginDescription,int effectSlot,std::function<void(juce::Result)>);
     void restoreHosted(int track,const juce::String& state,int effectSlot);
     void adoptState();
     void adoptWhileStopped();

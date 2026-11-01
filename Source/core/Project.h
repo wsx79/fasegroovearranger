@@ -168,6 +168,12 @@ struct Project {
     bool resizeSectionLoop(int index, int bars);
 };
 const char* sectionName(Section);
+constexpr int deepHouseGenre=2,technoGenre=13,electroHouseGenre=14,numGenres=15;
+// Invalid legacy IDs retain their old Dance Stabs fallback.
+inline int normaliseGenre(int genre){return genre<0?0:genre>=numGenres?12:genre;}
+inline bool isElectronicGenre(int genre){return genre==technoGenre||genre==electroHouseGenre;}
+// Vendor engine IDs remain unchanged; arranger-only styles have local generators.
+inline int engineGenre(int genre){return isElectronicGenre(genre)?12:normaliseGenre(genre);}
 std::vector<std::string> genres();
 // Automatic club-arrangement policy. These are curated working ranges, not
 // universal genre definitions; see docs/CLUB_ARRANGEMENT.md for the sources.

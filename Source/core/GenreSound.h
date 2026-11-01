@@ -24,13 +24,15 @@ inline const GenreSound& genreSound(int genre){
         {2,3,0,0,0,1, .83,.22,.62,.70,.50,.08,.60, .60,.87,.20,.15}, // 90s: M1 / 909
         {0,4,1,3,2,3, .28,.35,.28,.22,.78,.34,.42, .58,.78,.18,.28}, // neo soul: dark Rhodes / lo-fi / jazz
         {6,0,3,3,3,3, .24,.18,.22,.18,1.1,.40,.30, .44,.73,.23,.24}, // chill: warm pad / nylon / lo-fi
-        {2,3,0,0,8,4, .80,.18,.72,.72,.20,.03,.65, .56,.90,.12,.18}  // dance stabs: upper triads / 909
+        {2,3,0,0,8,4, .80,.18,.72,.72,.20,.03,.65, .56,.90,.12,.18}, // dance stabs: upper triads / 909
+        {6,3,0,0,0,0, .25,.32,.45,.72,.28,.0,.45, .42,.88,.12,.15}, // techno: sub / 909 / pulse lead
+        {6,3,2,0,0,0, .60,.55,.78,.76,.22,.0,.62, .42,.88,.12,.15}  // electro: syncopated sub / 909 / saw lead
     };
-    return styles[std::clamp(genre,0,12)];
+    return styles[normaliseGenre(genre)];
 }
 inline void applyGenreSound(Project& p){
     const auto& a=genreSound(p.settings.genre);
-    static constexpr int extensions[]{2,2,2,2,1,0,1,1,1,0,3,2,0};
+    static constexpr int extensions[]{2,2,2,2,1,0,1,1,1,0,3,2,0,0,0};
     p.settings.extension=extensions[p.settings.genre];
     p.settings.voicing=a.voicing;p.settings.stringsMode=a.strings;
     p.settings.guitarLead=p.settings.genre==8;

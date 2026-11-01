@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.0
+
+- Add dedicated Techno and Electro House arrangements: straight or syncopated bass, pulse/saw synth themes, electronic drums and distinct DJ-friendly forms. Clarify the existing Deep preset as Deep House. Piano, strings and guitar are not generated automatically for Techno/Electro House; explicit instrument requests and locked parts remain available.
+- Serialize plugin states and restore large presets under each processor's callback lock instead of muting the entire engine. The callback never waits on those locks; affected effects temporarily pass dry audio and transitions are smoothed.
+- Synchronize native editor creation/destruction with its processor. Show one canonical browser entry for duplicate plugin types and reuse an already loaded module for identical copies, preserving pinned aliases and distinct versions.
+- Windows crash reports now include app version, exception code/address, module and offset, thread ID and a diagnostic minidump. The reported Ample Bass JF crash is under investigation; a confirmed vendor/host fault is not inferred from duplicate files alone.
+- Include the 0.30.9 audit fixes and regressions for electronic harmony/locks, project persistence, slow plugin snapshots and Windows diagnostic output.
+
 ## 0.30.9
 
 - Defensively bypass missing, mono or undersized delay storage without allocating on the audio thread; prepare delay lines during preset restoration as well. Add regressions for each invalid buffer shape.

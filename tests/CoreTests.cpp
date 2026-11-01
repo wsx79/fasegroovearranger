@@ -600,5 +600,21 @@ int main(int argc,char** argv){try{
             int interval=(n.pitch-slot+120)%12;check(interval==0||interval==4||interval==7,"vocal onset follows its current chromatic chord");later=later||slot>0;}
         check(later,"vocal harmony regression exercises later chord slots");
     }
+    {
+        check(fga::genres().size()==fga::numGenres&&fga::genres()[fga::deepHouseGenre]=="Deep House","genre list retains Deep House and appends electronic styles");
+        for(int genre:{fga::technoGenre,fga::electroHouseGenre}){
+            auto p=fga::newProject(genre);check(p.settings.genre==genre,"electronic genre survives normalization");verifyClubProject(p,genre,argc>1?argv[1]:"");
+            auto count=[&](int track){size_t notes=0;for(const auto& c:p.tracks[(size_t)track].clips)notes+=c.notes.size();return notes;};
+            check(count(0)==0&&count(2)==0&&count(3)==0,"electronic arrangement never inserts piano, strings or guitar automatically");
+            check(count(1)>0&&count(fga::leadTrack)>0&&count(4)>0,"electronic arrangement has bass, synth theme and kick");
+            check(p.tracks[(size_t)fga::leadTrack].sound==(genre==fga::technoGenre?3:2),"electronic lead uses pulse or saw synthesis");
+            check(genre!=fga::technoGenre||p.settings.swing==0,"techno defaults to straight timing");
+            const auto old=p.tracks[(size_t)fga::leadTrack].clips;p.tracks[(size_t)fga::leadTrack].locked=true;
+            fga::generate(p,fga::Scope::song,0,0,772);check(p.tracks[(size_t)fga::leadTrack].clips==old&&count(0)==0,"electronic regeneration preserves locked parts and omits automatic piano");
+            fga::generate(p,fga::Scope::clip,0,1,491);check(!p.tracks[0].clips[1].notes.empty(),"an explicitly requested piano clip is still available");
+            p.tracks[0].locked=true;const auto piano=p.tracks[0].clips;fga::generate(p,fga::Scope::song,0,0,845);check(p.tracks[0].clips==piano,"explicit locked piano survives subsequent electronic generation");
+            auto midi=fga::midiFile(p);check(midi.size()>200,"electronic styles export valid nonempty MIDI");
+        }
+    }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}
