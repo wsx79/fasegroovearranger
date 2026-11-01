@@ -74,6 +74,12 @@ void runStudioEngineTests(){
     settings.reverse=false;settings.end=1;settings.filter=true;settings.cutoff=80;settings.resonance=0;auto filtered=render(settings,60,-1,120);require(filtered.getMagnitude(20000,2000)<.04,"low-pass filter attenuates actual sample audio");
     settings.filter=false;settings.mode=0;settings.loop=true;settings.loopStart=.01;settings.loopEnd=.231;settings.crossfade=.01;auto looped=render(settings,60,-1,120);require(looped.getMagnitude(80000,1000)>.1f,"loop sustains beyond the source duration");require(std::abs(looped.getSample(0,11088)-looped.getSample(0,11087))<.1f,"crossfade softens a non-periodic loop seam");
 
+    {
+        const int at=11000;const double distance=11088.-at;
+        const float weight=(float)(.5+.5*std::sin(distance/480.*juce::MathConstants<double>::halfPi));
+        const float expected=weight*asset->audio.getSample(0,at)+(1-weight)*asset->audio.getSample(0,at-10608);
+        require(std::abs(looped.getSample(0,at)-expected)<1.e-4f,"crossfade reads the incoming waveform forward instead of reflecting it");
+    }
     for(bool reversed:{false,true}){
         settings.reverse=reversed;settings.loopStart=0;settings.loopEnd=1;settings.crossfade=.01;
         auto fullLoop=render(settings,60,-1,120);
