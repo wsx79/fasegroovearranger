@@ -2,6 +2,8 @@
 
 ## 0.30.9
 
+- Bypass difensivo di delay line mancanti, mono o sottodimensionate, senza allocazioni sul thread audio; preparazione anche durante il ripristino dei preset e test per ogni forma di buffer non valida.
+
 - Corretto il crossfade dei loop in entrambe le direzioni senza invertire la lettura secondaria o accorciare il loop; i bordi del campione vengono estesi per mantenere continui anche i loop sull’intero file.
 - Vocal Chops calcola l’accordo a ogni nota, inclusi gli accordi liberi/cromatici. RND LANE rigenera soltanto il clip selezionato.
 - Il cambio lingua conserva prompt IA, chiavi API di sessione, anteprima e lavori in corso; i controlli vengono aggiornati senza ricreare la finestra. Aggiunte traduzioni per controlli IA, menu accordi ed errori di esportazione.

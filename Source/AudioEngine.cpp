@@ -93,7 +93,9 @@ void Instrument::adoptChannels(int block){
     outputs=mode==2&&plugin?std::max(1,plugin->getTotalNumOutputChannels()):2;scratch.setSize(channels,block);automationBlock.setSize(channels,block);
 }
 void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
-    if(delay<=0)return;
+    // Storage is prepared only on a control thread. An incomplete line must
+    // bypass unchanged; allocating or dereferencing it here is unsafe.
+    if(delay<=0||delayLine.getNumChannels()<2||delayLine.getNumSamples()<maxDelay)return;
     delayUsed=true;auto* left=delayLine.getWritePointer(0);auto* right=delayLine.getWritePointer(1);auto* inL=block.getWritePointer(0);auto* inR=block.getWritePointer(1);int w=delayWrite;
     for(int s=0;s<count;++s){const int r=(w-delay)&(maxDelay-1);left[w]=inL[s];right[w]=inR[s];inL[s]=left[r];inR[s]=right[r];w=(w+1)&(maxDelay-1);}
     delayWrite=w;
@@ -246,7 +248,7 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
     }
 }
 void AudioEngine::prepareDelayLines(){
-    for(auto& ptr:instruments)if(ptr->delayLine.getNumSamples()==0){ptr->delayLine.setSize(2,Instrument::maxDelay);ptr->delayLine.clear();}
+    for(auto& ptr:instruments)if(ptr->delayLine.getNumChannels()<2||ptr->delayLine.getNumSamples()<Instrument::maxDelay){ptr->delayLine.setSize(2,Instrument::maxDelay);ptr->delayLine.clear();ptr->delayWrite=0;ptr->delayUsed=false;}
 }
 void AudioEngine::refreshLatencies(){
     // Plugin delay compensation: instrument + insert latency, every other track delayed to match.
@@ -538,6 +540,7 @@ void AudioEngine::reusePluginStates(Project& p){
     for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){p.tracks[ti].instrumentState=cachedInstrumentStates[ti];for(auto& fx:p.tracks[ti].effects)if(fx.slot>0&&fx.slot<=maxTrackEffects)fx.state=cachedEffectStates[ti][(size_t)(fx.slot-1)];}
 }
 void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){invalidatePluginStates();const EngineControlLock lock(*this);if(exporting)return;if(auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get()){
+    prepareDelayLines();
     // State restoration belongs between deactivation and preparation. A stopped
     // device callback alone does not deactivate the native VST3 component.
     p->releaseResources();restoreHostedState(*p,state.toStdString());p->setRateAndBufferSizeDetails(sampleRate,blockSize);p->prepareToPlay(sampleRate,blockSize);

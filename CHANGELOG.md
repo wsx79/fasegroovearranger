@@ -2,6 +2,8 @@
 
 ## 0.30.9
 
+- Defensively bypass missing, mono or undersized delay storage without allocating on the audio thread; prepare delay lines during preset restoration as well. Add regressions for each invalid buffer shape.
+
 - Fix sampler loop crossfades in both playback directions without reversing the secondary read or shortening the loop; extend crop boundaries to keep full-sample seams continuous.
 - Resolve Vocal Chops harmony at each note onset, including free/chromatic chords. RND LANE now regenerates only the selected clip.
 - Preserve AI prompt, session API keys, preview and running jobs when changing language; refresh controls in place. Add missing composer controls, chord-menu and export-error translations.
