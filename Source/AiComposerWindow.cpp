@@ -84,7 +84,9 @@ public:
         guideHelp.setTooltip(text("Open the manual: AI services, free API quotas, setup and third-party credits.","Apri la guida: servizi IA, quote API gratuite, configurazione e crediti di terzi."));
         for(auto* box:{&provider,&model,&duration})box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));
         model.setTextWhenNothingSelected(activeProvider==3?text("No local model detected","Nessun modello locale rilevato"):text("Choose or enter a model","Scegli o scrivi un modello"));
-        status.setText(tr(status.getText()),juce::dontSendNotification);resized();repaint();
+        // The status line is transient: re-translating its rendered text is ineffective
+        // (and could mistranslate), so it refreshes on the next status change instead.
+        resized();repaint();
     }
     ~AiComposerPanel()override{cancelJob();key.clear();for(auto& k:keys)k.clear();}
     void refreshTracks(){

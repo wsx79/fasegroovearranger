@@ -33,7 +33,7 @@ inline const GenreSound& genreSound(int genre){
 inline void applyGenreSound(Project& p){
     const auto& a=genreSound(p.settings.genre);
     static constexpr int extensions[]{2,2,2,2,1,0,1,1,1,0,3,2,0,0,0};
-    p.settings.extension=extensions[p.settings.genre];
+    p.settings.extension=extensions[normaliseGenre(p.settings.genre)];
     p.settings.voicing=a.voicing;p.settings.stringsMode=a.strings;
     p.settings.guitarLead=p.settings.genre==8;
     for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(t.locked)continue;auto& e=t.engine;

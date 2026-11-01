@@ -230,7 +230,32 @@ void AudioEngine::applyParameterAutomation(Instrument& i,double beat,int slot){
         const auto& params=target->getParameters();if(lane.index>=params.size())continue;
         float value=(float)std::clamp(lane.curve.valueAt(beat),0.,1.);auto* parameter=params[lane.index];const int steps=parameter->getNumSteps();if(parameter->isDiscrete()&&steps>1)value=std::round(value*(steps-1))/(steps-1);
         if(std::abs(value-i.parameterSent[k])<1.e-5f&&std::abs(parameter->getValue()-value)<1.e-5f)continue;
-        i.parameterSent[k]=value;params[lane.index]->setValueNotifyingHost(value);}
+        i.parameterSent[k]=value;
+        if(rendering.load(std::memory_order_relaxed)){
+            // Audio thread: just set the value; the editor/host notification is
+            // delivered on the message thread by flushParameterNotifications().
+            parameter->setValue(value);
+            const int head=parameterNotifyHead.load(std::memory_order_relaxed);
+            const int next=(head+1)%parameterNotifyCapacity;
+            if(next!=parameterNotifyTail.load(std::memory_order_acquire)){
+                parameterNotifyQueue[(size_t)head]={i.kind,slot,lane.index};
+                parameterNotifyHead.store(next,std::memory_order_release);
+            }
+        }else parameter->setValueNotifyingHost(value);}
+}
+void AudioEngine::flushParameterNotifications(){
+    for(;;){
+        const int tail=parameterNotifyTail.load(std::memory_order_relaxed);
+        if(tail==parameterNotifyHead.load(std::memory_order_acquire))break;
+        const auto notify=parameterNotifyQueue[(size_t)tail];
+        parameterNotifyTail.store((tail+1)%parameterNotifyCapacity,std::memory_order_release);
+        if(notify.track<0||notify.track>=maxTracks)continue;
+        auto& instrument=*instruments[(size_t)notify.track];
+        auto* plugin=notify.slot>0?(notify.slot<=maxTrackEffects?instrument.effects[(size_t)(notify.slot-1)].plugin.get():nullptr):instrument.plugin.get();
+        if(!plugin)continue;
+        auto& parameters=plugin->getParameters();
+        if(notify.index>=0&&(size_t)notify.index<parameters.size()){auto* parameter=parameters[notify.index];parameter->setValueNotifyingHost(parameter->getValue());}
+    }
 }
 // Split only the hosted processor: MIDI offsets, bus DSP and transport keep the
 // original device-block clock. Owned work buffers also handle >32 plugin channels
@@ -241,7 +266,7 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
     const juce::ScopedTryLock processorLock(plugin.getCallbackLock());
     if(!processorLock.isLocked()||plugin.isSuspended()){
         const bool first=!paused;if(slot==0)block.clear();paused=first;smooth();paused=true;
-        instrument.resync=true;needsResync=true;return;
+        if(first){instrument.resync=true;needsResync=true;}return;
     }
 
     bool automated=false;if(instrument.parameters)for(const auto& lane:*instrument.parameters)automated=automated||(lane.slot==slot&&lane.index>=0&&lane.index<plugin.getParameters().size()&&lane.curve.active());
@@ -258,8 +283,9 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
     }
     smooth();paused=false;
 }
+static bool delayStorageMissing(const Instrument& i){return i.delayLine.getNumChannels()<2||i.delayLine.getNumSamples()<Instrument::maxDelay;}
 void AudioEngine::prepareDelayLines(){
-    for(auto& ptr:instruments)if(ptr->delayLine.getNumChannels()<2||ptr->delayLine.getNumSamples()<Instrument::maxDelay){ptr->delayLine.setSize(2,Instrument::maxDelay);ptr->delayLine.clear();ptr->delayWrite=0;ptr->delayUsed=false;}
+    for(auto& ptr:instruments)if(delayStorageMissing(*ptr)){ptr->delayLine.setSize(2,Instrument::maxDelay);ptr->delayLine.clear();ptr->delayWrite=0;ptr->delayUsed=false;}
 }
 void AudioEngine::refreshLatencies(){
     // Plugin delay compensation: instrument + insert latency, every other track delayed to match.
@@ -268,6 +294,7 @@ void AudioEngine::refreshLatencies(){
     for(auto& ptr:instruments)ptr->delay=std::clamp(maxLatency-ptr->latency,0,Instrument::maxDelay-1);
 }
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled){
+    RenderingScope renderingScope(rendering);
     const double samplesPerBeat=sampleRate*60./tempo.load(),end=beat+count/samplesPerBeat;
     busGraph.begin(count,onlyTrack>=0);
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
@@ -415,7 +442,7 @@ juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root,c
     auto next=std::make_unique<SampleSynth>(asset,settings,std::clamp(root,0,127),isDrumTrack(track));
     double rate=0;{const EngineControlLock lock(*this);rate=sampleRate;}next->setCurrentPlaybackSampleRate(rate);
     std::unique_ptr<juce::AudioPluginInstance> oldPlugin;std::unique_ptr<juce::Synthesiser> oldSampler;
-    {const EngineControlLock lock(*this);prepareDelayLines();if(rate!=sampleRate)next->setCurrentPlaybackSampleRate(sampleRate);detachSource(track,1,std::move(next),oldPlugin,oldSampler);}
+    {const EngineControlLock lock(*this);if(next->latencySamples()>0||hostedCount.load()>0)prepareDelayLines();if(rate!=sampleRate)next->setCurrentPlaybackSampleRate(sampleRate);detachSource(track,1,std::move(next),oldPlugin,oldSampler);}
     if(oldPlugin)oldPlugin->releaseResources();return juce::Result::ok();
 }
 void AudioEngine::swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,int effectSlot,const juce::PluginDescription& description){
@@ -454,18 +481,18 @@ void AudioEngine::clearEffect(int track,int slot){if(track<0||track>=maxTracks)r
 std::unique_ptr<AudioEngine> AudioEngine::offlineCopy(){
     struct PluginSnapshot {juce::PluginDescription description;juce::AudioProcessor::BusesLayout layout;std::string state;bool present=false;};
     struct TrackSnapshot {int mode=0;std::shared_ptr<const SampleAsset> sample;PluginSnapshot instrument;std::array<PluginSnapshot,maxTrackEffects> effects;};
-    auto snapshots=std::make_unique<std::array<TrackSnapshot,maxTracks>>();double rate=44100;int size=512;
+    auto snapshots=std::make_unique<std::array<TrackSnapshot,maxTracks>>();double rate=44100;int size=512;bool needDelay=false;
     {
         // No processBlock can overlap state reads. Release the control gate before factory
         // creation/prepareToPlay, which can take seconds for a hosted instrument.
         const EngineControlLock lock(*this);if(exporting)return nullptr;rate=deviceRate;size=deviceBlock;
         for(size_t ti=0;ti<instruments.size();++ti){const auto& live=*instruments[ti];auto& saved=(*snapshots)[ti];saved.mode=live.mode;if(live.mode==3)return nullptr;
-            if(live.mode==1){auto* sampler=dynamic_cast<SampleSynth*>(live.sampler.get());if(!sampler)return nullptr;saved.sample=sampler->sharedAsset();}
+            if(live.mode==1){auto* sampler=dynamic_cast<SampleSynth*>(live.sampler.get());if(!sampler)return nullptr;saved.sample=sampler->sharedAsset();if(sampler->settings().sync)needDelay=true;}
             auto captureState=[](juce::AudioPluginInstance* plugin,const juce::PluginDescription& description,PluginSnapshot& saved){if(!plugin)return;saved.present=true;saved.description=description;saved.layout=plugin->getBusesLayout();saved.state=captureHostedState(*plugin);};
-            if(live.mode==2)captureState(live.plugin.get(),live.pluginDescription,saved.instrument);for(size_t k=0;k<live.effects.size();++k)captureState(live.effects[k].plugin.get(),live.effects[k].description,saved.effects[k]);
+            if(live.mode==2){captureState(live.plugin.get(),live.pluginDescription,saved.instrument);needDelay=true;}for(size_t k=0;k<live.effects.size();++k){captureState(live.effects[k].plugin.get(),live.effects[k].description,saved.effects[k]);if(saved.effects[k].present)needDelay=true;}
         }
     }
-    auto copy=std::make_unique<AudioEngine>(Offline{});if(std::any_of(snapshots->begin(),snapshots->end(),[](const auto& s){if(s.mode!=0)return true;for(const auto& fx:s.effects)if(fx.present)return true;return false;}))copy->prepareDelayLines();copy->sampleRate=copy->deviceRate=rate;copy->positionRate=rate;copy->blockSize=copy->deviceBlock=size;copy->busGraph.prepare(rate,size);
+    auto copy=std::make_unique<AudioEngine>(Offline{});if(needDelay)copy->prepareDelayLines();copy->sampleRate=copy->deviceRate=rate;copy->positionRate=rate;copy->blockSize=copy->deviceBlock=size;copy->busGraph.prepare(rate,size);
     auto duplicate=[&](const PluginSnapshot& saved,bool effect)->std::unique_ptr<juce::AudioPluginInstance>{juce::String error;auto next=formats.createPluginInstance(saved.description,rate,size,error);if(!next)return nullptr;if(!next->setBusesLayout(saved.layout)&&!configure(*next,effect,error))return nullptr;restoreHostedState(*next,saved.state);next->setPlayHead(copy.get());return next;};
     for(size_t ti=0;ti<instruments.size();++ti){const auto& saved=(*snapshots)[ti];auto& to=*copy->instruments[ti];to.mode=saved.mode;
         if(saved.sample)to.sampler=std::make_unique<SampleSynth>(saved.sample,SamplerSettings{},60,isDrumTrack((int)ti));
@@ -561,7 +588,7 @@ void AudioEngine::reusePluginStates(Project& p){
 void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){
     invalidatePluginStates();const juce::ScopedLock ownerLock(mutex);if(exporting)return;
     auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get();if(!p)return;
-    if(std::any_of(instruments.begin(),instruments.end(),[](const auto& i){return i->delayLine.getNumChannels()<2||i->delayLine.getNumSamples()<Instrument::maxDelay;})){const EngineControlLock storageLock(*this);prepareDelayLines();}
+    if(std::any_of(instruments.begin(),instruments.end(),[](const auto& i){return delayStorageMissing(*i);})){const EngineControlLock storageLock(*this);prepareDelayLines();}
     const juce::ScopedLock processorLock(p->getCallbackLock());
     // Only this processor is bypassed while restoring a potentially large preset.
     // Reconfiguration of host buffers is the short operation that gates the engine.

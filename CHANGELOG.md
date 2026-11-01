@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.1
+
+- Audio-thread safety and audit clean-up. Parameter automation sets the value on the audio thread and notifies plugin editors from the message thread instead of calling into the host during processBlock. Sample loads and offline copies reserve delay-compensation storage only when a plugin, an insert or a synced sampler can add latency.
+- Remove dead assignments: the per-song feel is not overwritten by the genre sound reset in applyGenre, and electronic genres skip the unused swing draw in varySongFeel. Electronic chord lookup runs once per bar. The auxiliary state line no longer re-translates already rendered text.
+- No behavioural change to the music, projects or exports.
+
 ## 0.31.0
 
 - Add dedicated Techno and Electro House arrangements: straight or syncopated bass, pulse/saw synth themes, electronic drums and distinct DJ-friendly forms. Clarify the existing Deep preset as Deep House. Piano, strings and guitar are not generated automatically for Techno/Electro House; explicit instrument requests and locked parts remain available.

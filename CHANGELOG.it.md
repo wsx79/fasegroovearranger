@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.1
+
+- Sicurezza del thread audio e pulizia dall'audit. L'automazione dei parametri imposta il valore sul thread audio e notifica gli editor dei plugin dal message thread, invece di chiamare l'host durante processBlock. Il caricamento dei campioni e le copie offline riservano la memoria di compensazione della latenza solo se un plugin, un insert o un sampler sincronizzato possono aggiungere latenza.
+- Rimosse assegnazioni morte: il feel per-brano non viene piu sovrascritto dal reset del suono di genere in applyGenre, e i generi elettronici saltano il calcolo dello swing inutilizzato in varySongFeel. La ricerca degli accordi elettronici avviene una volta per battuta. La riga di stato ausiliaria non ritraduce piu testo gia renderizzato.
+- Nessun cambiamento al suono, ai progetti o agli export.
+
 ## 0.31.0
 
 - Aggiunti arrangiamenti Techno ed Electro House dedicati: bassi regolari o sincopati, temi synth pulse/saw, batterie elettroniche e strutture per il mix DJ. Il preset Deep è ora indicato come Deep House. Techno ed Electro House non aggiungono automaticamente piano, archi o chitarra; restano disponibili richieste esplicite e parti bloccate.

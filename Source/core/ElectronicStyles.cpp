@@ -26,13 +26,13 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
         clip.notes.push_back({at,std::min(length,beats-at),std::clamp(pitch,0,127),std::clamp(velocity*e.velocity/100,1,127),lane});
     };
     const int bars=(int)std::ceil(beats/4.);
-    for(int bar=0;bar<bars;++bar){const double base=bar*4.;const auto variation=draw(motif+bar*313U);const bool fill=!mixing&&e.fillEvery>0&&(bar+1)%e.fillEvery==0;
+    for(int bar=0;bar<bars;++bar){const double base=bar*4.;const double segment=s.chordSteps*.25;const bool chordPerBar=segment>=4.&&std::fmod(begin,4.)<1e-9;const auto barChord=chordAt(s,begin+base);const auto variation=draw(motif+bar*313U);const bool fill=!mixing&&e.fillEvery>0&&(bar+1)%e.fillEvery==0;
         if(track==1){
             if(build&&bar>=bars-2)continue;
             if(breakdown){if(bar%4==0){const auto chord=chordAt(s,begin+base);note(base,1.4,36+chord.rootPc,70);}continue;}
             static constexpr int cells[4][7]{{0,3,6,8,11,14,-1},{2,5,6,10,13,14,-1},{0,2,6,8,11,14,-1},{0,3,7,8,10,14,15}};
             for(int cell:cells[variant]){if(cell<0)continue;if((variation+(unsigned)cell*17)%100>(unsigned)(35+density*65))continue;
-                const double at=base+cell*.25;const auto chord=chordAt(s,begin+at);int pitch=24+chord.rootPc;if(pitch<28)pitch+=12;
+                const double at=base+cell*.25;const auto chord=chordPerBar?barChord:chordAt(s,begin+at);int pitch=24+chord.rootPc;if(pitch<28)pitch+=12;
                 if(!techno&&(cell==7||cell==15))pitch+=12;else if(techno&&cell==14&&(bar%4)==3)pitch+=chord.fifth;
                 note(at,std::clamp(e.gate*.32,.08,.28),pitch,(cell%4==0?104:88)+(int)(variation%11));
             }
@@ -43,7 +43,7 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
             static constexpr int technoCells[]{1,6,10};static constexpr int electroCells[]{0,3,6,10,12,15};
             const int count=techno?3:6;
             for(int i=0;i<count;++i){if((variation+i*23)%100>(unsigned)(25+density*75))continue;
-                int cell=techno?technoCells[(i+variant)%3]:electroCells[(i+variant)%6];const double at=base+cell*.25;const auto chord=chordAt(s,begin+at);
+                int cell=techno?technoCells[(i+variant)%3]:electroCells[(i+variant)%6];const double at=base+cell*.25;const auto chord=chordPerBar?barChord:chordAt(s,begin+at);
                 const int tones[]{0,chord.third,chord.fifth,12};int degree=techno?(i+variant)%2:(i+bar/2+variant)%4;
                 note(at,breakdown?.65:std::clamp(e.gate*.5,.09,.45),60+chord.rootPc+tones[degree],drop?103:86);
             }

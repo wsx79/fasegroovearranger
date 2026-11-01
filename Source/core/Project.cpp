@@ -522,8 +522,6 @@ void applyGenre(Project& p,int genre) {
         if(pattern>=0&&pattern<factoryCount)pattern=-1;
     }
     chooseProgression(p,presets[engineGenre(p.settings.genre)]);
-    // Each song takes one of the genre's piano voicings and colours.
-    {const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),p.settings.seed);p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}
     // Match each style to an actual named bass line in the original library.
     static const int bassLines[]{8,23,16,11,22,13,18,15,20,12,10,16,12};
     p.settings.bassMode=sgk::bassModeForLine(bassLines[engineGenre(p.settings.genre)]);
@@ -733,8 +731,8 @@ void varySongFeel(Project& p,std::uint32_t seed) {
     // Jackin' house shuffle stays near 56–62% (swing 0.36–0.72). A hotter offset
     // lands on the triplet and the beat starts to feel like garage.
     const bool jackinHouse=s.genre==4;
-    for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
     if(isElectronicGenre(s.genre)){s.swing=s.genre==technoGenre?0.:.04;s.humanize=.04;}
+    else for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
 }
 // The form must answer the Harmonic cycle and the groove, not a random list: every
 // section length is a multiple of this phrase, as arrangeSong already assumes.

@@ -1616,7 +1616,7 @@ void MainComponent::timerCallback(){
     fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
     // keep the button's icon and state in step without repainting when nothing changed.
-    const double beat=timelinePosition();showPosition(beat);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);playButton.setToggleState(audio.isPlaying(),juce::dontSendNotification);mixer.tick();trackInspector.tick();updateGainDisplay(masterSlider,project.masterGain,project.masterAutomation);
+    const double beat=timelinePosition();showPosition(beat);playButton.setIcon(audio.isPlaying()?IconButton::Icon::pause:IconButton::Icon::play);playButton.setToggleState(audio.isPlaying(),juce::dontSendNotification);mixer.tick();trackInspector.tick();audio.flushParameterNotifications();updateGainDisplay(masterSlider,project.masterGain,project.masterAutomation);
     if(juce::isPositiveAndBelow(selectedTrack,(int)project.tracks.size())){const auto& selected=project.tracks[(size_t)selectedTrack];updateGainDisplay(gainSlider,selected.gain,selected.volume);updatePanDisplay(panSlider,selected.pan,selected.panAutomation);}
     if(page==Page::arrangement&&followPlayhead&&audio.isPlaying()){const auto v=arrangementPort.getViewArea();const int x=headerWidth+(int)(beat/4*arrangement.pixelsPerBar);if(x>v.getRight()-40||x<v.getX()+headerWidth)arrangementPort.setViewPosition(std::max(0,x-headerWidth-60),v.getY());}
     // Repaint the timeline only while something moves (playback, meters falling, cursor jumps):

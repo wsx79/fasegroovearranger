@@ -172,6 +172,8 @@ public:
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
     void collectGarbage(){schedules.collect();mixes.collect();previews.collect();}
+    // Message thread: notify plugin editors of parameter automation queued by the audio thread.
+    void flushParameterNotifications();
     // Meter uses MIDI quarter-note units, including non-quarter-note denominators.
     void setTimeSignature(int numerator,int denominator);
     bool latencyIsLimited()const{return latencyLimited.load();}
@@ -283,6 +285,14 @@ private:
     std::atomic<bool> positionLooping{false},positionLoopSetting{false};std::atomic<unsigned> positionRevision{0};
     std::atomic<int> timeNumerator{4},timeDenominator{4},reportedLatency{0},hostedCount{0};std::atomic<bool> latencyLimited{false};
     std::atomic<double> pluginBeatOffset{0};
+    // Parameter changes made on the audio thread are delivered to plugin editors on
+    // the message thread. The audio side only stores the value and queues the lane.
+    struct ParameterNotify {int track=0,slot=0,index=0;};
+    static constexpr int parameterNotifyCapacity=1024;
+    std::array<ParameterNotify,parameterNotifyCapacity> parameterNotifyQueue{};
+    std::atomic<int> parameterNotifyHead{0},parameterNotifyTail{0};
+    std::atomic<bool> rendering{false};
+    struct RenderingScope {std::atomic<bool>& active;explicit RenderingScope(std::atomic<bool>& a):active(a){active.store(true);}~RenderingScope(){active.store(false);}};
     void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;positionLoopFrom=loopFrom.load();positionLoopTo=loopTo.load();positionLooping=looping.load()&&!loopBypassed.load();positionLoopSetting=looping.load();positionRevision.fetch_add(1);}
 
     std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
