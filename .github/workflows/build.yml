@@ -208,7 +208,7 @@ jobs:
   release:
     name: Publish release
     needs: [family, core, standalone]
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -219,12 +219,26 @@ jobs:
           pattern: FaseGrooveArranger-*
           path: packages
           merge-multiple: true
+      # Explicit [release] commits on main use the tested CMake version. The
+      # release job's existing GITHUB_TOKEN creates the corresponding tag.
+      - name: Resolve release tag
+        id: release_tag
+        env:
+          REQUESTED_TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || '' }}
+        run: |
+          tag="$REQUESTED_TAG"
+          if [ -z "$tag" ]; then
+            version=$(sed -n 's/^project(FaseGrooveArranger VERSION \([^ ]*\).*/\1/p' CMakeLists.txt)
+            test -n "$version"
+            tag="v$version"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
       - name: Release notes from the changelog
-        run: .github/scripts/release-notes.sh "${{ inputs.release_tag || github.ref_name }}" > release-notes.md
+        run: .github/scripts/release-notes.sh "${{ steps.release_tag.outputs.tag }}" > release-notes.md
       - name: Publish only the four distribution packages
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.release_tag || github.ref_name }}
+          TAG: ${{ steps.release_tag.outputs.tag }}
         run: |
           set -euo pipefail
           test -f packages/FaseGrooveArranger-Linux.zip
