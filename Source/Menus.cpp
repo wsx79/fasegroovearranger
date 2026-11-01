@@ -42,7 +42,7 @@ void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("Progression: one chord per bar"));
     auto names=chordNames(project.settings);
     for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
-        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree ")+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
+        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree")+" "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
         chord.addSubMenu(tr("Nella scala"),degrees);
         for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-project.settings.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,project.settings.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?tr("Major"):quality==1?tr("Minor"):tr("Dominant"),roots);}
         menu.addSubMenu(juce::String(slot+1)+juce::String::fromUTF8(" · ")+juce::String::fromUTF8(names[(size_t)slot].c_str()),chord);
