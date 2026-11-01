@@ -55,7 +55,7 @@ EffectChainWindow::~EffectChainWindow(){stopTimer();clearContentComponent();}
 void EffectChainWindow::open(int track){session=owner.project.tracks[(size_t)track].sessionId;view.setTrackSession(session);refresh();setVisible(true);toFront(true);centreWithSize(getWidth(),getHeight());startTimerHz(10);}
 void EffectChainWindow::refresh(){const int track=owner.trackForSession(session);if(track<0){closeButtonPressed();return;}setName(tr("EFFECTS")+juce::String::fromUTF8(" \xc2\xb7 ")+string(owner.project.tracks[(size_t)track].name));view.refresh();const int height=view.preferredHeight()+16;if(view.getWidth()!=344||view.getHeight()!=height)setContentComponentSize(344,height);}
 void EffectChainWindow::closeButtonPressed(){view.finishNameEdit();stopTimer();owner.dismissAuxiliaryWindow(*this);}
-void EffectChainWindow::timerCallback(){if(isVisible())refresh();}
+void EffectChainWindow::timerCallback(){if(isVisible()&&(lastUiRevision!=owner.controlRevision()||lastBusy!=owner.pluginsBusy()||lastRestricted!=owner.editingRestricted())){lastUiRevision=owner.controlRevision();lastBusy=owner.pluginsBusy();lastRestricted=owner.editingRestricted();refresh();}}
 void MainComponent::showEffectChain(int track){if(!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;select(track,selectedSection);if(!effectsWindow)effectsWindow=std::make_unique<EffectChainWindow>(*this);effectsWindow->open(track);}
 
 int MainComponent::trackForSession(std::uint64_t id)const{for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].sessionId==id)return (int)i;return -1;}

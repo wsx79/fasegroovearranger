@@ -56,7 +56,7 @@ struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
 }
 struct EngineAuditTests {
     static void effects(){
-        AudioEngine engine(AudioEngine::Offline{});for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(32);p.sections={{Section::main,2,"FX"}};p.masterGain=1;
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(32);p.sections={{Section::main,2,"FX"}};p.masterGain=1;
         for(auto& t:p.tracks){t.gain=0;t.parameters.clear();for(auto& c:t.clips)c.notes.clear();}p.tracks[0].gain=1;p.tracks[0].pan=0;p.tracks[0].effects={{1,"A","Probe","/A","","",false},{5,"B","Probe","/B","","",false}};p.normalise();auto& i=*engine.instruments[0];i.plugin=std::make_unique<AuditPlugin>();i.mode=2;i.effects[0].plugin=std::make_unique<AuditPlugin>(true,.1f);i.effects[4].plugin=std::make_unique<AuditPlugin>(true);i.effects[4].plugin->getParameters()[0]->setValue(1);i.effects[0].plugin->setLatencySamples(13);i.effects[4].plugin->setLatencySamples(29);i.prepare(44100,512);engine.hostedCount=3;
         juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto render=[&](float expected){engine.publish(p);engine.play(true);for(int k=0;k<5;++k)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(std::abs(block.getSample(0,500)-expected)<.001f,"serial effects preserve measurable order and gain");};
         render(4.7f);requireAudit(engine.latencySamples()==42,"PDC sums enabled insert latencies");p.tracks[0].moveEffect(5,0);render(4.6f);
@@ -68,7 +68,7 @@ struct EngineAuditTests {
         engine.stop();auto asset=std::make_shared<SampleAsset>();asset->rate=44100;asset->frames=4410;asset->audio.setSize(2,4410);asset->audio.clear();i.sampler=std::make_unique<SampleSynth>(asset,SamplerSettings{},60,false);i.mode=1;i.prepare(44100,512);p.tracks[0].instrument="sample";p.tracks[0].parameters[0].index=4;p.tracks[0].parameters[0].curve.points={{0,0,0},{8,0,0}};engine.publish(p);engine.play(true);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);auto* sampler=dynamic_cast<SampleSynth*>(i.sampler.get());requireAudit(sampler&&sampler->settings().filter&&sampler->settings().cutoff==20&&!p.tracks[0].sampler.filter,"sample filter automation affects playback without changing stored sampler settings");p.tracks[0].parameters[0].curve.enabled=false;engine.updateMix(p);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(!sampler->settings().filter&&sampler->settings().cutoff==p.tracks[0].sampler.cutoff,"native automation bypass returns to stored sound settings");engine.stop();
     }
     static void exportCompatibility(){
-        AudioEngine engine(AudioEngine::Offline{});for(auto& prepared:engine.instruments)prepared->prepare(44100,512);auto project=newProject(32);project.sections={{Section::main,1,"Intro"}};project.normalise();project.masterGain=.1;for(auto& t:project.tracks){t.gain=0;t.volume.enabled=false;t.parameters.clear();}project.masterAutomation.enabled=false;
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& prepared:engine.instruments)prepared->prepare(44100,512);auto project=newProject(32);project.sections={{Section::main,1,"Intro"}};project.normalise();project.masterGain=.1;for(auto& t:project.tracks){t.gain=0;t.volume.enabled=false;t.parameters.clear();}project.masterAutomation.enabled=false;
         auto& track=project.tracks[0];track.gain=1;track.instrument="plugin";track.effects={{1,"A","Probe","/A","","",false},{2,"B","Probe","/B","","",false}};
         auto& instrument=*engine.instruments[0];auto source=std::make_unique<AuditPlugin>();auto* original=source.get();instrument.plugin=std::move(source);instrument.mode=2;instrument.effects[0].plugin=std::make_unique<AuditPlugin>(true);instrument.effects[1].plugin=std::make_unique<AuditPlugin>(true);instrument.prepare(44100,512);engine.hostedCount=3;
         const int prepared=original->preparations;const auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-export-compatibility","",false);folder.createDirectory();
@@ -76,13 +76,13 @@ struct EngineAuditTests {
         folder.deleteRecursively();
     }
     static void stateRestoreOrder(){
-        AudioEngine engine(AudioEngine::Offline{});for(auto& source:engine.instruments)source->prepare(44100,512);auto& instrument=*engine.instruments[0];auto next=std::make_unique<AuditPlugin>();auto* source=next.get();instrument.plugin=std::move(next);instrument.mode=2;instrument.prepare(44100,512);
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& source:engine.instruments)source->prepare(44100,512);auto& instrument=*engine.instruments[0];auto next=std::make_unique<AuditPlugin>();auto* source=next.get();instrument.plugin=std::move(next);instrument.mode=2;instrument.prepare(44100,512);
         juce::MemoryBlock state;source->getStateInformation(state);engine.restorePluginState(0,state.toBase64Encoding());
         requireAudit(!source->stateRestoredActive&&source->prepared,"native state must be restored with processing inactive and reactivated before playback");
         requireAudit(instrument.plugin.get()==source&&instrument.scratch.getNumChannels()>=source->getTotalNumOutputChannels(),"state restore retains the instance and refreshes its channel buffers");
     }
     static void programEdits(){
-        AudioEngine engine(AudioEngine::Offline{});for(auto& source:engine.instruments)source->prepare(44100,512);auto project=newProject(4);auto& instrument=*engine.instruments[0];
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& source:engine.instruments)source->prepare(44100,512);auto project=newProject(4);auto& instrument=*engine.instruments[0];
         auto source=std::make_unique<ProgramStatePlugin>();source->setCurrentProgram(2);source->privateEdit=.73f;source->getParameters()[0]->setValue(.37f);
         instrument.plugin=std::move(source);instrument.mode=2;engine.hostedCount=1;engine.capturePluginStates(project);
         auto loaded=std::make_unique<ProgramStatePlugin>();auto* probe=loaded.get();instrument.plugin=std::move(loaded);
@@ -95,7 +95,7 @@ struct EngineAuditTests {
     }
     static void run(){effects();exportCompatibility();stateRestoreOrder();programEdits();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
-        AudioEngine engine(AudioEngine::Offline{});for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
+        AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();
         auto probe=std::make_unique<AuditPlugin>();auto* plugin=probe.get();{const AudioEngine::EngineControlLock lock(engine);auto& i=*engine.instruments[0];i.plugin=std::move(probe);engine.hostedCount=1;i.mode=2;i.plugin->setPlayHead(&engine);i.prepare(44100,512);}
         engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;

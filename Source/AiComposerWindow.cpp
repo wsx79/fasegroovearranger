@@ -65,6 +65,27 @@ public:
         Localisation::setSetting("aiLocalSetup",1);
         provider.setSelectedItemIndex(firstLocalSetup?3:std::clamp(Localisation::setting("aiProvider","3").getIntValue(),0,(int)AiProvider::count-1),juce::sendNotificationSync);setSize(960,800);refreshTracks();
     }
+    void refreshText(){
+        provider.changeItemText(3,text("Gemini · free tier","Gemini · quota gratuita"));provider.changeItemText(4,text("Ollama · local, no API key","Ollama · locale, senza API"));provider.changeItemText(6,text("Groq · free tier","Groq · quota gratuita"));
+        mode.changeItemText(1,text("New song","Nuovo brano"));mode.changeItemText(2,text("Edit selected tracks","Modifica tracce selezionate"));duration.changeItemText(1,text("From the prompt","Dal prompt"));
+        key.setTextToShowWhenEmpty(text("API key · this session only","Chiave API · solo questa sessione"),Daw::textFaint);
+        prompt.setTextToShowWhenEmpty(text("A 6-minute techno song at 138 BPM, DJ intro, two drops and an evolving lead...","Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop e un lead che evolve..."),Daw::textFaint);
+        generate.setButtonText(text("COMPOSE","COMPONI"));
+        generate.setTooltip(text("Ask the selected model to write MIDI notes and song sections.","Chiedi al modello scelto di scrivere note MIDI e sezioni del brano."));
+        apply.setButtonText(text("APPLY","APPLICA"));
+        apply.setTooltip(text("Insert the preview into the project as one undoable action.","Inserisci l’anteprima nel progetto con una sola operazione annullabile."));
+        cancel.setButtonText(tr("Cancel"));
+        listen.setButtonText(text("Listen when applied","Ascolta dopo Applica"));
+        keyHelp.setButtonText(text("API keys / help","Chiavi API / aiuto"));
+        keyHelp.setTooltip(text("Open the selected service's setup page in your browser.","Apri nel browser la pagina di configurazione del servizio scelto."));
+        checkServer.setButtonText(text("CHECK","VERIFICA"));
+        checkServer.setTooltip(text("Read the selected service’s current text models. Cloud services need their API key; Ollama lists installed local models. This does not generate a song.","Leggi i modelli di testo aggiornati del servizio scelto. Il cloud richiede la chiave API; Ollama elenca quelli locali installati. Non genera un brano."));
+        guideHelp.setButtonText(text("SETUP GUIDE","GUIDA IA"));
+        guideHelp.setTooltip(text("Open the manual: AI services, free API quotas, setup and third-party credits.","Apri la guida: servizi IA, quote API gratuite, configurazione e crediti di terzi."));
+        for(auto* box:{&provider,&model,&duration})box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));
+        model.setTextWhenNothingSelected(activeProvider==3?text("No local model detected","Nessun modello locale rilevato"):text("Choose or enter a model","Scegli o scrivi un modello"));
+        status.setText(tr(status.getText()),juce::dontSendNotification);resized();repaint();
+    }
     ~AiComposerPanel()override{cancelJob();key.clear();for(auto& k:keys)k.clear();}
     void refreshTracks(){
         if(job)return;std::set<std::uint64_t> chosen;for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState())chosen.insert(trackIdentities[i]);const bool initial=tracks.empty();tracks.clear();trackIdentities.clear();
@@ -96,7 +117,12 @@ public:
         generate.setBounds(left,getHeight()-80,138,30);cancel.setBounds(left+148,getHeight()-80,96,30);listen.setBounds(right,getHeight()-80,180,30);apply.setBounds(getWidth()-144,getHeight()-80,120,30);repaint();
     }
     bool verify(const juce::File& folder){
-        bool ok=tracks.size()==owner.project.tracks.size()&&generate.isVisible()&&generate.getTooltip().isNotEmpty()&&!apply.isEnabled()&&key.getPasswordCharacter()!=0;
+        const auto language=Localisation::current();const auto oldPrompt=prompt.getText(),oldKey=key.getText(),oldPreview=preview.getText();
+        prompt.setText("Keep this prompt",false);key.setText("session-only-fixture",false);preview.setText("Keep this preview",false);
+        Localisation::setCurrent(Localisation::Language::french);owner.applyLanguage();
+        const bool retained=prompt.getText()=="Keep this prompt"&&key.getText()=="session-only-fixture"&&preview.getText()=="Keep this preview"&&generate.getButtonText()=="COMPOSER";
+        Localisation::setCurrent(language);owner.applyLanguage();prompt.setText(oldPrompt,false);key.setText(oldKey,false);preview.setText(oldPreview,false);
+        bool ok=retained&&tracks.size()==owner.project.tracks.size()&&generate.isVisible()&&generate.getTooltip().isNotEmpty()&&!apply.isEnabled()&&key.getPasswordCharacter()!=0;
         {
             const auto saved=owner.project;std::set<std::uint64_t> selected;
             for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState())selected.insert(trackIdentities[i]);
@@ -210,6 +236,7 @@ AiComposerWindow::AiComposerWindow(MainComponent& m):DocumentWindow("Fase Groove
 }
 AiComposerWindow::~AiComposerWindow(){clearContentComponent();panel.reset();}
 void AiComposerWindow::closeButtonPressed(){panel->cancelJob();owner.dismissAuxiliaryWindow(*this);}
-void AiComposerWindow::show(){panel->refreshTracks();panel->refreshLocal();if(!isVisible())centreWithSize(getWidth(),getHeight());setAlwaysOnTop(true);setVisible(true);toFront(true);}
+void AiComposerWindow::refreshText(){panel->refreshText();}
+void AiComposerWindow::show(){panel->refreshText();panel->refreshTracks();panel->refreshLocal();if(!isVisible())centreWithSize(getWidth(),getHeight());setAlwaysOnTop(true);setVisible(true);toFront(true);}
 bool AiComposerWindow::verify(const juce::File& f){return panel->verify(f)&&isAlwaysOnTop();}
 }

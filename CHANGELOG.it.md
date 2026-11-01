@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.30.9
+
+- Corretto il crossfade dei loop in entrambe le direzioni senza invertire la lettura secondaria o accorciare il loop; i bordi del campione vengono estesi per mantenere continui anche i loop sull’intero file.
+- Vocal Chops calcola l’accordo a ogni nota, inclusi gli accordi liberi/cromatici. RND LANE rigenera soltanto il clip selezionato.
+- Il cambio lingua conserva prompt IA, chiavi API di sessione, anteprima e lavori in corso; i controlli vengono aggiornati senza ricreare la finestra. Aggiunte traduzioni per controlli IA, menu accordi ed errori di esportazione.
+- Il drag di automazione rinvia l’aggiornamento completo al rilascio; la gomma MIDI ricostruisce soltanto la traccia modificata. Le finestre ausiliarie evitano refresh completi se lo stato è invariato, mantenendo attivi meter e registrazione.
+- Memoria delle linee di compensazione non allocata all’avvio: viene riservata sul thread di controllo quando si installa un plugin o campione, anche nelle copie offline, per gestire variazioni successive di latenza senza allocazioni nel callback audio.
+- Aggiunti controlli di regressione per armonia cromatica, loop avanti/indietro sull’intero campione, memoria a riposo e conservazione dello stato IA al cambio lingua.
+
 ## 0.30.8
 
 - Fix dall'audit della 0.30.7: il cancel del compositore IA non si blocca piu (il watcher continua a cancellare finche la richiesta non si ferma); cambiare plugin o effetto azzera la corsia di automazione invece di puntare a un parametro obsoleto; Vocal Chops seguono ora gli accordi liberi/cromatici (Circolo delle Quinte) invece di quello diatonico; il pulsante Rigenera nell'Inspector funziona sulle tracce Vocal Chops.
