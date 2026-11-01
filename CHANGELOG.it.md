@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.2
+
+- Evita ricostruzioni ripetute dei duplicati per produttore e hash dei binari nel thread UI; conserva gli hash verificati e completa quelli mancanti nel worker del catalogo.
+- Enumera la factory nativa WaveShell invece del solo manifest del wrapper; ricontrolla una volta le vecchie cache shell.
+
+- Corregge ingresso lead elettronico, swing/quinte dei vocal chops ed esempio genere IA; amplia i motivi elettronici e centralizza armonia/feel. Protegge self-test e tabelle degli stili.
+
 ## 0.31.1
 
 - Sicurezza del thread audio e pulizia dall'audit. L'automazione dei parametri imposta il valore sul thread audio e notifica gli editor dei plugin dal message thread, invece di chiamare l'host durante processBlock. Il caricamento dei campioni e le copie offline riservano la memoria di compensazione della latenza solo se un plugin, un insert o un sampler sincronizzato possono aggiungere latenza.

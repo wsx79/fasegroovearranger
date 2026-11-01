@@ -8,6 +8,7 @@
 #include <vector>
 #include <algorithm>
 #include <set>
+#include <thread>
 namespace fga {
 namespace {
 juce::String pathKey(juce::String p) {
@@ -28,7 +29,11 @@ void atomicXml(const juce::File& file,const juce::XmlElement& xml){
     if(xml.writeTo(temp.getFile()))temp.overwriteTargetFileWithTemporary();
 }
 }
-juce::File PluginCatalog::defaultStorage(){return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("Fase Groove Arranger/Plugins");}
+juce::File PluginCatalog::defaultStorage(){
+#if FGA_SELF_TESTS
+    if(juce::JUCEApplication::getCommandLineParameterArray().contains("--startup-benchmark")){const auto path=juce::SystemStats::getEnvironmentVariable("FGA_BENCHMARK_PLUGIN_CACHE",{});if(juce::File::isAbsolutePath(path))return juce::File(path);}
+#endif
+    return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("Fase Groove Arranger/Plugins");}
 juce::FileSearchPath PluginCatalog::standardFolders(){
     juce::AudioPluginFormatManager formats;formats.addDefaultFormats();juce::FileSearchPath paths;
     for(int i=0;i<formats.getNumFormats();++i)paths.addPath(formats.getFormat(i)->getDefaultLocationsToSearch());
@@ -64,7 +69,7 @@ void PluginCatalog::read(){
             if(r.status=="pending"){r.status="failed";r.issue="interrupted";}
             for(auto* child:e->getChildIterator()){juce::PluginDescription d;if(d.loadFromXml(*child))r.plugins.add(d);}
             // Retry old shell failures/inventories once with the new scan policy.
-            if(xml->getIntAttribute("scanPolicy")<2&&(isWaveShell(r.id)||r.plugins.size()>1))r.stamp.clear();
+            if(xml->getIntAttribute("scanPolicy")<3&&(isWaveShell(r.id)||r.plugins.size()>1))r.stamp.clear();
             records.add(std::move(r));
         }
     }
@@ -75,10 +80,10 @@ void PluginCatalog::read(){
             if(!grouped){Record r;r.format=d.pluginFormatName;r.id=d.fileOrIdentifier;r.status="ok";r.plugins.add(d);records.add(std::move(r));}
         }
     }
-    refreshPlugins();if(!progress.plugins.isEmpty())writeKnownList();
+    refreshPlugins();
 }
 void PluginCatalog::writeCache(){
-    juce::XmlElement xml("PLUGIN_CATALOG");xml.setAttribute("version",2);xml.setAttribute("scanPolicy",2);
+    juce::XmlElement xml("PLUGIN_CATALOG");xml.setAttribute("version",2);xml.setAttribute("scanPolicy",3);
     for(const auto& r:records){auto* e=xml.createNewChildElement("ENTRY");e->setAttribute("format",r.format);e->setAttribute("id",r.id);e->setAttribute("stamp",r.stamp);e->setAttribute("status",r.status);e->setAttribute("issue",r.issue);e->setAttribute("validatedAt",juce::String(r.validatedAt));for(const auto& d:r.plugins)e->addChildElement(d.createXml().release());}
     atomicXml(directory.getChildFile("Catalog.xml"),xml);writeKnownList();
 }
@@ -164,7 +169,9 @@ void PluginCatalog::run(){
         }else{const juce::ScopedLock lock(mutex);storeRecord(r);}
         {const juce::ScopedLock lock(mutex);++progress.checked;if(updated){refreshPlugins();writeCache();}}
     }
-    const juce::ScopedLock lock(mutex);refreshPlugins();writeCache();progress.current.clear();progress.scanning=false;
+    juce::Array<juce::PluginDescription> inventory;{const juce::ScopedLock lock(mutex);refreshPlugins();inventory=progress.plugins;}
+    if(!threadShouldExit())canonicalHostedPlugins(inventory); // warm duplicate hashes outside the UI/catalogue lock
+    const juce::ScopedLock lock(mutex);writeCache();progress.current.clear();progress.scanning=false;
 }
 juce::String PluginCatalog::report()const{
     juce::Array<Record> snapshot;juce::StringArray extras;State state;
@@ -242,9 +249,11 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         {
             juce::PluginDescription root;root.name="Duplicate Bass";root.manufacturerName="Duplicate Maker";root.pluginFormatName="VST3";root.version="4.0.1";root.uniqueId=771;root.isInstrument=true;const auto copies=evidence.getSiblingFile("duplicate-modules");copies.createDirectory();auto direct=copies.getChildFile("Bass.vst3");direct.replaceWithText("identical plugin bytes");root.fileOrIdentifier=direct.getFullPathName();
             auto nested=root;auto folder=copies.getChildFile("nested");folder.createDirectory();auto duplicate=folder.getChildFile("Bass.vst3");duplicate.replaceWithText("identical plugin bytes");nested.fileOrIdentifier=duplicate.getFullPathName();juce::Array<juce::PluginDescription> duplicates;duplicates.add(nested);duplicates.add(root);
+            const auto cold=copies.getNonexistentChildFile("Cold-",".vst3",false);cold.replaceWithText("hash only off the message thread");ok=hostedBinaryHash(cold.getFullPathName()).isEmpty()&&ok;note("cold binary hashing never runs on UI");cold.deleteFile();
+            std::thread([&]{hostedBinaryHash(root.fileOrIdentifier);hostedBinaryHash(nested.fileOrIdentifier);}).join();
             auto rows=browserRows(duplicates,"Duplicate Maker",{},{});ok=rows.size()==1&&rows[0].plugin==1&&ok;
             auto pinned=browserRows(duplicates,{},{},juce::StringArray(pluginKey(nested)));ok=pinned.size()==1&&pinned[0].plugin==1&&pinned[0].key==pluginKey(nested)&&ok;
-            auto modified=root;auto different=copies.getChildFile("Modified.vst3");different.replaceWithText("different implementation");modified.fileOrIdentifier=different.getFullPathName();duplicates.add(modified);ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==2&&ok;auto other=root;other.version="4.0.2";duplicates.add(other);ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==3&&ok;
+            auto modified=root;auto different=copies.getChildFile("Modified.vst3");different.replaceWithText("different implementation");modified.fileOrIdentifier=different.getFullPathName();duplicates.add(modified);std::thread([&]{hostedBinaryHash(modified.fileOrIdentifier);}).join();ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==2&&ok;auto other=root;other.version="4.0.2";duplicates.add(other);ok=browserRows(duplicates,"Duplicate Maker",{},{}).size()==3&&ok;
         }
         const auto fg=browserRows(sample,"FaseGroove",{},{});ok=fg.size()==7&&fg[0].kind==BrowserRow::Kind::engine&&fg[0].engine==0&&fg[4].engine==4&&fg[5].engine==5&&fg[6].kind==BrowserRow::Kind::noEffect&&ok;
         const auto acme=browserRows(sample,"Acme",{},{});ok=acme.size()==1&&!acme[0].instrument&&acme[0].name=="Spring"&&ok;
@@ -252,16 +261,37 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         const auto pinned=browserRows(sample,{},{},juce::StringArray(pluginKey(fx)));ok=pinned.size()==1&&pinned[0].name=="Spring"&&ok;
         juce::KnownPluginList round;round.addType(fx);round.addType(keys);auto xml=round.createXml();juce::KnownPluginList back;if(xml)back.recreateFromXml(*xml);int inst=0,eff=0;for(const auto& d:back.getTypes())(d.isInstrument?inst:eff)++;ok=xml&&xml->hasTagName("KNOWNPLUGINS")&&inst==1&&eff==1&&ok;note("model");
     }
+    {juce::Array<juce::PluginDescription> large;for(int i=0;i<2000;++i){juce::PluginDescription d;d.name="Effect"+juce::String(i);d.uniqueId=i+1;d.pluginFormatName="VST3";d.manufacturerName="Maker"+juce::String(i%100);d.fileOrIdentifier="/missing/"+d.name+".vst3";large.add(d);}
+        const auto start=juce::Time::getMillisecondCounterHiRes();int previousCount=0;
+        for(int maker=0;maker<100;++maker)previousCount+=(int)browserRows(large,"Maker"+juce::String(maker),{},{}).size();
+        const auto repeatedMs=juce::Time::getMillisecondCounterHiRes()-start;const auto fastStart=juce::Time::getMillisecondCounterHiRes();std::map<juce::String,int> counts;
+        for(int index:canonicalHostedPlugins(large))++counts[large.getReference(index).manufacturerName];int count=0;for(const auto& item:counts)count+=item.second;
+        ok=count==previousCount&&count==2000&&ok;note("large catalogue counts");
+        evidence.getChildFile("catalogue-timing.txt").replaceWithText("2000 plugins / 100 manufacturers; repeated category reconstruction (with current deduplication): "+juce::String(repeatedMs,3)+" ms; single pass: "+juce::String(juce::Time::getMillisecondCounterHiRes()-fastStart,3)+" ms");
+    }
     ok=ok&&standardFolders().getNumPaths()>=2&&copy();note("copy");const auto invalid=nested.getChildFile("Invalid.vst3");invalid.replaceWithText("invalid plugin fixture");
     // Catalogue-only multi-class fixture: it exercises the VST3 module manifest
     // path, not Waves binaries, licensing or audio processing.
-    const auto shell=nested.getChildFile("WaveShell-Catalogue-Test.vst3");
+    const auto shell=nested.getChildFile("Multi-Catalogue-Test.vst3");
     shell.getChildFile("Contents/Resources").createDirectory();
     const auto shellInfo=shell.getChildFile("Contents/Resources/moduleinfo.json");
     auto module=probe.getChildFile("Contents/Resources/moduleinfo.json").loadFileAsString();
     const juce::String extra=R"JSON({"CID":"11223344556677889900AABBCCDDEEFF","Category":"Audio Module Class","Name":"Container test effect","Vendor":"FS Pitch","Version":"1.0.0","SDKVersion":"VST 3.7.12","Sub Categories":["Fx"],"Class Flags":2,"Cardinality":2147483647,"Snapshots":[]},)JSON";
     ok=module.contains("\"Classes\": [")&&shellInfo.replaceWithText(module.replace("\"Classes\": [","\"Classes\": ["+extra))&&ok;
-    ok=scanTimeoutMs(shell.getFullPathName(),0)==600000&&scanTimeoutMs(target.getFullPathName(),1)==60000&&scanTimeoutMs(target.getFullPathName(),2)==600000&&ok;note("container fixture and scan budgets");
+    ok=scanTimeoutMs(nested.getChildFile("WaveShell-Test.vst3").getFullPathName(),0)==600000&&scanTimeoutMs(target.getFullPathName(),1)==60000&&scanTimeoutMs(target.getFullPathName(),2)==600000&&ok;note("container fixture and scan budgets");
+    // A misleading manifest advertises synthetic classes. A real shell scan
+    // must ignore it and enumerate the probe's actual native factory.
+    {const auto factoryShell=nested.getChildFile("WaveShell-Factory-Test.vst3");
+        ok=(probe.isDirectory()?probe.copyDirectoryTo(factoryShell):probe.copyFileTo(factoryShell))&&ok;
+       #if JUCE_LINUX
+        {const auto binaries=factoryShell.findChildFiles(juce::File::findFiles,true,"*.so");for(const auto& binary:binaries)ok=binary.moveFileTo(binary.getSiblingFile(factoryShell.getFileNameWithoutExtension()+".so"))&&ok;}
+       #endif
+        if(probe.isDirectory())ok=factoryShell.getChildFile("Contents/Resources/moduleinfo.json").replaceWithText(module.replace("\"Classes\": [","\"Classes\": ["+extra))&&ok;
+        const auto result=root.getChildFile("factory.xml");ok=scanOne("VST3",factoryShell.getFullPathName(),result)==0&&ok;
+        auto xml=juce::XmlDocument::parse(result);ok=xml&&xml->getNumChildElements()==1&&ok;
+        if(xml)for(auto* item:xml->getChildIterator())ok=item->getStringAttribute("name")!="Container test effect"&&ok;
+        factoryShell.deleteRecursively();note("native factory overrides misleading shell manifest");
+    }
     auto wait=[](PluginCatalog& c){const auto end=juce::Time::getMillisecondCounterHiRes()+120000.;while(c.isThreadRunning()&&juce::Time::getMillisecondCounterHiRes()<end)juce::Thread::sleep(20);return !c.isThreadRunning()&&!c.state().scanning;};
     auto validation=[&](const juce::File& store,const juce::String& id){auto xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));if(xml)for(auto* e:xml->getChildIterator())if(e->getStringAttribute("id")==id)return e->getStringAttribute("validatedAt");return juce::String();};
     const auto external=root.getChildFile("External plugins");external.createDirectory();const auto linkedProbe=external.getChildFile(probe.getFileName());const bool linkedCopy=probe.isDirectory()?probe.copyDirectoryTo(linkedProbe):probe.copyFileTo(linkedProbe);const bool linked=linkedCopy&&external.createSymbolicLink(library.getChildFile("Linked plugins"),false);if(linked)library.createSymbolicLink(external.getChildFile("Back to library"),false);
@@ -298,7 +328,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         // Old cached shell failures get one automatic retry with the larger
         // timeout. Successful ordinary plugins keep their unchanged cache.
         xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));
-        if(xml){xml->setAttribute("version",2);xml->removeAttribute("scanPolicy");for(auto* entry:xml->getChildIterator())if(entry->getStringAttribute("id")==shell.getFullPathName()){entry->setAttribute("status","failed");entry->deleteAllChildElements();}atomicXml(store.getChildFile("Catalog.xml"),*xml);}else ok=false;
+        if(xml){xml->setAttribute("version",2);xml->removeAttribute("scanPolicy");for(auto* entry:xml->getChildIterator())if(entry->getStringAttribute("id")==shell.getFullPathName()){entry->setAttribute("status","failed");}atomicXml(store.getChildFile("Catalog.xml"),*xml);}else ok=false;
         PluginCatalog upgraded(store,false);ok=upgraded.scan()&&wait(upgraded)&&count(upgraded)==2&&ok;note("old shell cache migration");
         xml=juce::XmlDocument::parse(store.getChildFile("Catalog.xml"));bool failureReported=false;
         if(xml)for(auto* entry:xml->getChildIterator())if(entry->getStringAttribute("id")==invalid.getFullPathName())failureReported=entry->getStringAttribute("status")=="failed"&&entry->getStringAttribute("issue").startsWith("exit-");

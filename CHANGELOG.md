@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.2
+
+- Avoid repeated per-manufacturer duplicate reconstruction and binary hashing on the UI thread; persist verified binary hashes and warm missing hashes in the catalogue worker.
+- Enumerate WaveShell native factories instead of trusting wrapper-only module manifests; retry old shell caches once.
+
+- Fix electronic lead entry, vocal swing/chord fifths and AI genre examples; diversify electronic motifs and centralise their harmony/feel settings. Guard UI self-tests and electronic style tables.
+
 ## 0.31.1
 
 - Audio-thread safety and audit clean-up. Parameter automation sets the value on the audio thread and notifies plugin editors from the message thread instead of calling into the host during processBlock. Sample loads and offline copies reserve delay-compensation storage only when a plugin, an insert or a synced sampler can add latency.

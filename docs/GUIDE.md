@@ -30,13 +30,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.30.7**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.30.7** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers **v0.31.2** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -435,7 +435,7 @@ The first launch scans automatically. Every later launch checks the same standar
 
 **RESCAN** in the browser or settings forces a full scan, including unchanged files. Use it after adding plugins to an existing container. Startup still uses the fast cached check; **RETRY FAILED** checks only previously skipped files.
 
-**Waves and WaveShell.** Waves plugins are exposed through a `WaveShell…vst3` file, normally in `C:\Program Files\Common Files\VST3`. The Waves `Plug-Ins V…` folder and individual `.bundle` files are vendor contents: do not move them or load them as standalone VST3 plugins. The scanner enumerates the WaveShell's contained plugins; WaveShells and previously recognised multi-plugin containers get up to 10 minutes rather than the ordinary one-minute limit. You can cancel at any time. Old WaveShell caches are checked once after the update. Waves available only as VST2 `.dll` remain excluded; Waves no longer distributes VST2 from V15. Check installation and licences in Waves Central; [official Waves instructions](https://www.waves.com/support/how-to-use-waves-plugins-when-using-custom-vst-folder).
+**Waves and WaveShell.** Waves plugins are exposed through a `WaveShell…vst3` file, normally in `C:\Program Files\Common Files\VST3`. The Waves `Plug-Ins V…` folder and individual `.bundle` files are vendor contents: do not move them or load them as standalone VST3 plugins. The scanner enumerates the WaveShell's contained plugins; WaveShells and previously recognised multi-plugin containers get up to 10 minutes rather than the ordinary one-minute limit. You can cancel at any time. Old WaveShell caches are checked once after the update. Waves available only as VST2 `.dll` remain excluded; Waves no longer distributes VST2 from V15. Check installation and licences in Waves Central; [official Waves instructions](https://www.waves.com/support/how-to-use-waves-plugins-when-using-custom-vst-folder). Scanning queries the native container factory even when its manifest describes only the wrapper. Old WaveShell caches are retried once in the background after updating. Startup reuses cached duplicate-file hashes; the worker computes missing hashes without reading entire binaries on the UI thread. Unverified copies may remain listed separately until checked.
 
 **SCAN REPORT** in settings opens recognised containers, their contained plugins and skipped files. For failed scans it distinguishes timeout, process launch failure, cancellation/interruption, exit code and missing compatible descriptions. It also saves a local `ScanReport.txt` copy at the path shown at the bottom of the window, for reporting problems. It does not read another DAW's catalogue or identify plugins installed outside configured search paths. Formats, architectures and duplicate entries can produce different counts between applications. No data is sent to external services.
 
@@ -597,6 +597,11 @@ This procedure checks preset and parameter recall in your own installation. If t
 
 ## 6. Building a track: intro, break, drop
 
+### Techno and Electro House
+
+Techno and Electro House use dedicated drum, bass and lead generators. Regeneration varies rhythmic figures, motifs and responses; Electro offers eight minor progressions and offbeat swing. Techno retains a four-on-the-floor kick and minimal harmony. Intro/outro entries adapt to section length. Piano, strings and guitar are not added automatically: explicitly requesting them uses the shared engines with the Dance Stabs vocabulary. Saved notes change only when regenerated.
+
+
 **NEW ARRANGEMENT** changes the structure by reusing MIDI from matching existing sections. It retains notes, dynamics, sounds, effects, BPM and harmony. Longer sections repeat the stored take; shorter ones keep the loop source. Independent timelines and handwritten MIDI tracks stay at their absolute positions. Use **GENERATE SONG** to write new notes. Song length derives from the genre’s sections, complete harmonic cycles and groove development. Longer evolving motifs have room to unfold; dense grooves may answer sooner. There is no minute target.
 
 | Part | How to use it |
@@ -745,7 +750,7 @@ Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
 **I press EXPORT in the encoding window but no destination appears**
 
-Check the version in **OPTIONS → ABOUT**: this procedure describes **0.30.7**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
+Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.2**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 

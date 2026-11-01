@@ -1,3 +1,5 @@
+> Historical audit of v0.13.0; not a description of the current application. See docs/AUDIT_FIXES_2026-11-01.md for the current verified follow-up.
+
 # Fase Groove Arranger: DAW audit (v0.13.0, branch `daw`)
 
 The scope is the standalone arranger: 17 fixed tracks (piano, bass, strings, guitar and 13 drum stems). They are fed by the three vendored Fase Groove engines and played by built-in guide sounds, a sampler, or a VST3/AU instrument with one insert effect.

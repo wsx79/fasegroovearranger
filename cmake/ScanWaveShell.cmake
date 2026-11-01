@@ -1,0 +1,16 @@
+# JUCE 8.0.9 trusts moduleinfo.json before opening a factory. WaveShell's
+# manifest can describe only the wrapper: enumerate its actual factory instead.
+get_target_property(fga_juce_modules juce::juce_audio_processors INTERFACE_JUCE_MODULE_PATH)
+set(fga_vst3 "${fga_juce_modules}/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp")
+file(READ "${fga_vst3}" fga_vst3_text)
+set(fga_fast "if (const auto fast = DescriptionLister::findDescriptionsFast (File (fileOrIdentifier)); ! fast.empty())")
+set(fga_factory "if (const auto fast = File (fileOrIdentifier).getFileName().startsWithIgnoreCase (\"WaveShell\") ? std::vector<PluginDescription>{} : DescriptionLister::findDescriptionsFast (File (fileOrIdentifier)); ! fast.empty())")
+string(FIND "${fga_vst3_text}" "${fga_factory}" fga_patched)
+if(fga_patched EQUAL -1)
+    string(FIND "${fga_vst3_text}" "${fga_fast}" fga_found)
+    if(fga_found EQUAL -1)
+        message(FATAL_ERROR "Review the WaveShell scanner adaptation for this JUCE version")
+    endif()
+    string(REPLACE "${fga_fast}" "${fga_factory}" fga_vst3_text "${fga_vst3_text}")
+    file(WRITE "${fga_vst3}" "${fga_vst3_text}")
+endif()

@@ -6,7 +6,7 @@
 namespace fga {
 namespace {
 bool matchesType(const PluginCatalog::BrowserRow& row,int type){if(type==0)return true;if(type==2)return row.kind==PluginCatalog::BrowserRow::Kind::plugin&&!row.instrument;return row.kind!=PluginCatalog::BrowserRow::Kind::noEffect&&(row.kind!=PluginCatalog::BrowserRow::Kind::plugin||row.instrument);}
-juce::StringArray visibleCategories(const juce::Array<juce::PluginDescription>& plugins,int type){juce::Array<juce::PluginDescription> visible;bool familyEffect=false;for(int index:canonicalHostedPlugins(plugins))if(const auto& d=plugins.getReference(index);type==0||(type==1?d.isInstrument:!d.isInstrument)){visible.add(d);familyEffect=familyEffect||(!d.isInstrument&&d.manufacturerName.trim().equalsIgnoreCase("FaseGroove"));}auto result=PluginCatalog::pluginCategories(visible);if(type==2&&!familyEffect)result.removeString("FaseGroove");return result;}
+juce::StringArray visibleCategories(const juce::Array<juce::PluginDescription>& plugins,int type){juce::Array<juce::PluginDescription> visible;bool familyEffect=false;for(const auto& d:plugins)if(type==0||(type==1?d.isInstrument:!d.isInstrument)){visible.add(d);familyEffect=familyEffect||(!d.isInstrument&&d.manufacturerName.trim().equalsIgnoreCase("FaseGroove"));}auto result=PluginCatalog::pluginCategories(visible);if(type==2&&!familyEffect)result.removeString("FaseGroove");return result;}
 }
 PluginBrowser::PluginBrowser(PluginCatalog& c):catalog(c){
     setWantsKeyboardFocus(true);
@@ -58,7 +58,8 @@ void PluginBrowser::refreshText(){
     settingsButton.setButtonText(tr("PLUGIN SETTINGS"));
     openButton.setButtonText(tr("Open VST3 file..."));
     favouriteKeys=loadList("favPlugins");
-    const auto plugins=catalog.state().plugins;
+    const auto inventory=catalog.state().plugins;juce::Array<juce::PluginDescription> plugins;
+    for(int index:canonicalHostedPlugins(inventory))plugins.add(inventory.getReference(index));
     const auto cats=visibleCategories(plugins,pluginType);
     const int count=firstCategory+cats.size();
     while(column.buttons.size()>count)column.buttons.removeLast();
@@ -77,7 +78,7 @@ void PluginBrowser::refreshText(){
         juce::String name;int items=-1;
         if(i==favourites){name=juce::String::fromUTF8("\xe2\x98\x85 ")+tr("Favourites");items=favouriteKeys.size();}
         else if(i==recent)name=tr("Recent");
-        else{name=tr(cats[i-firstCategory]);const auto rows=PluginCatalog::browserRows(plugins,cats[i-firstCategory],{},{});items=(int)std::count_if(rows.begin(),rows.end(),[this](const auto& row){return matchesType(row,pluginType);});}
+        else{name=tr(cats[i-firstCategory]);items=cats[i-firstCategory].equalsIgnoreCase("FaseGroove")?(pluginType==0?7:pluginType==1?6:0):0;for(const auto& d:plugins){auto maker=d.manufacturerName.trim();if(maker.isEmpty())maker="Unknown manufacturer";if(maker.equalsIgnoreCase(cats[i-firstCategory])&&(pluginType==0||(pluginType==1?d.isInstrument:!d.isInstrument)))++items;}}
         b->setButtonText(items>=0?name+"  ("+juce::String(items)+")":name);
     }
     repaint();

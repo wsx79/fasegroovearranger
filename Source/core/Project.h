@@ -168,7 +168,8 @@ struct Project {
     bool resizeSectionLoop(int index, int bars);
 };
 const char* sectionName(Section);
-constexpr int deepHouseGenre=2,technoGenre=13,electroHouseGenre=14,numGenres=15;
+enum class Genre : int { pianoHouse,soulful,deepHouse,gospel,jackinHouse,pianoJack,ukGarage,afroHouse,discoHouse,ninetiesHouse,neoSoul,chill,danceStabs,techno,electroHouse,count };
+constexpr int deepHouseGenre=(int)Genre::deepHouse,technoGenre=(int)Genre::techno,electroHouseGenre=(int)Genre::electroHouse,numGenres=(int)Genre::count;
 // Invalid legacy IDs retain their old Dance Stabs fallback.
 // normaliseGenre -> 0..14: arranger arrays (styles, profiles, forms, extensions) have one row per style.
 inline int normaliseGenre(int genre){return genre<0?0:genre>=numGenres?12:genre;}

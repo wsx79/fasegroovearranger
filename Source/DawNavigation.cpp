@@ -183,7 +183,7 @@ return false;
     stage("paste relative phrase at cursor",clip().notes.size()==4&&clip().notes[2].start==8&&clip().notes[3].start==9&&piano.selected.size()==2);
     loopSelection();stage("loop selected MIDI",project.loop&&project.loopStart==8&&project.loopEnd==9.5);
     const auto notes=clip().notes;
-    piano.fitNotes();pianoPort.setViewPosition(0,0);const auto selectionUndoSize=undoStack.size();const auto n=clip().notes.front();const float nx=piano.leftMargin()+(float)(n.start*piano.pixelsPerBeat)+2,ny=piano.noteY(n)+piano.noteHeight()/2;
+    piano.fitNotes();pianoPort.setViewPosition(0,0);const auto selectionUndoSize=undoStack.size();const auto n=clip().notes.empty()?Note{}:clip().notes.front();const float nx=piano.leftMargin()+(float)(n.start*piano.pixelsPerBeat)+2,ny=piano.noteY(n)+piano.noteHeight()/2;
     piano.mouseDown(event(piano,nx,ny,juce::ModifierKeys::leftButtonModifier));piano.mouseUp(event(piano,nx,ny,0));
     stage("selection click creates no undo step",undoStack.size()==selectionUndoSize&&clip().notes==notes);
     seekTimeline(clipLength()-.25);pasteButton.onClick();stage("reject truncated MIDI phrase",clip().notes==notes);

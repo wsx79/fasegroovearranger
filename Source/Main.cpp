@@ -64,6 +64,10 @@ public:
        #endif
        #endif
        #if FGA_SELF_TESTS
+        if(args.size()==2&&args[0]=="--startup-benchmark"){
+            const auto start=juce::Time::getMillisecondCounterHiRes();window=std::make_unique<Window>();
+            juce::File(args[1]).replaceWithText(juce::String(juce::Time::getMillisecondCounterHiRes()-start,3)+" "+juce::String(window->content->main.pluginCatalog.progressState().count));quit();return;
+        }
         if(args.size()==2&&args[0]=="--crash-report-test"){fga::writeCrashDiagnostic(nullptr,juce::File(args[1]));quit();return;}
        #endif
         if(args.size()==4&&args[0]=="--scan-plugin"){

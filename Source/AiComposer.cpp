@@ -67,7 +67,7 @@ juce::String aiSetupUrl(AiProvider p){
 }
 juce::String aiSystemPrompt(){return R"AI(You are the composer inside Fase Groove Arranger, a MIDI DAW. Compose actual MIDI notes and a complete developing arrangement using ONLY the supplied track IDs. No audio, code, markdown, tools or file paths. Reply with ONE valid JSON object.
 Schema:
-{"title":"...","summary":"brief musical explanation in the user's language","bpm":138,"key":0,"scale":1,"genre":12,"degrees":[0,5,3,4],"chord_steps":16,"target_seconds":360,
+{"title":"...","summary":"brief musical explanation in the user's language","bpm":138,"key":0,"scale":1,"genre":13,"degrees":[0,5,3,4],"chord_steps":16,"target_seconds":360,
  "sections":[{"name":"Intro","type":"intro","bars":16}],
  "patterns":[{"id":"kick","track":4,"beats":4,"notes":[[0,36,0.5,110],[1,36,0.5,105],[2,36,0.5,110],[3,36,0.5,105]]}],
  "clips":[{"section":0,"pattern":"kick","offset":0,"repeat":true,"transpose":0,"velocity":1.0}]}

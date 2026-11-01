@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/core/Project.h"
+#include "../Source/core/ElectronicStyles.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -609,12 +610,31 @@ int main(int argc,char** argv){try{
             check(count(1)>0&&count(fga::leadTrack)>0&&count(4)>0,"electronic arrangement has bass, synth theme and kick");
             check(p.tracks[(size_t)fga::leadTrack].sound==(genre==fga::technoGenre?3:2),"electronic lead uses pulse or saw synthesis");
             check(genre!=fga::technoGenre||p.settings.swing==0,"techno defaults to straight timing");
+            {
+                std::set<std::vector<int>> leadRhythms,hatRhythms;auto probe=p;probe.settings.humanize=0;probe.settings.swing=0;
+                for(int track:{fga::leadTrack,8}){probe.tracks[(size_t)track].engine.humanize=0;probe.tracks[(size_t)track].engine.swing=0;probe.tracks[(size_t)track].engine.density=1;}
+                for(unsigned seed=1;seed<=32;++seed){for(int track:{fga::leadTrack,8}){fga::Clip c;c.seed=c.motifSeed=seed;fga::generateElectronicClip(probe,c,track,0,32,fga::Section::drop,false);std::vector<int> rhythm;for(const auto& n:c.notes)rhythm.push_back((int)std::lround(n.start*4));(track==fga::leadTrack?leadRhythms:hatRhythms).insert(rhythm);}}
+                check(leadRhythms.size()>=4&&hatRhythms.size()>=4,"electronic seeds vary note onsets, not just velocity or jitter");
+                probe.sections={{fga::Section::intro,16,"Intro"}};probe.normalise();probe.tracks[(size_t)fga::leadTrack].engine.density=1;fga::generate(probe,fga::Scope::song);
+                if(genre==fga::technoGenre)check(!probe.tracks[(size_t)fga::leadTrack].clips[0].notes.empty(),"electronic lead enters a short intro through shared mixing policy");
+                for(const auto& n:probe.tracks[(size_t)fga::leadTrack].clips[0].notes)check(n.start>=32,"lead respects scaled intro entry");
+            }
             const auto old=p.tracks[(size_t)fga::leadTrack].clips;p.tracks[(size_t)fga::leadTrack].locked=true;
             fga::generate(p,fga::Scope::song,0,0,772);check(p.tracks[(size_t)fga::leadTrack].clips==old&&count(0)==0,"electronic regeneration preserves locked parts and omits automatic piano");
             fga::generate(p,fga::Scope::clip,0,1,491);check(!p.tracks[0].clips[1].notes.empty(),"an explicitly requested piano clip is still available");
             p.tracks[0].locked=true;const auto piano=p.tracks[0].clips;fga::generate(p,fga::Scope::song,0,0,845);check(p.tracks[0].clips==piano,"explicit locked piano survives subsequent electronic generation");
             auto midi=fga::midiFile(p);check(midi.size()>200,"electronic styles export valid nonempty MIDI");
         }
+    }
+    {
+        auto p=fga::newProject(4);p.sections={{fga::Section::main,8,"Test"}};p.normalise();const int ti=p.addVocalChopsTrack();auto& t=p.tracks[(size_t)ti];t.engine.density=1;t.engine.humanize=0;t.engine.swing=0;
+        fga::generateVocalChops(p,fga::Scope::track,ti,0,42);const auto straight=t.clips[0].notes;t.engine.swing=.6;fga::generateVocalChops(p,fga::Scope::track,ti,0,42);const auto shuffled=t.clips[0].notes;
+        check(straight.size()==shuffled.size()&&!straight.empty(),"vocal swing keeps the phrase");bool on=false,off=false;
+        for(size_t i=0;i<straight.size();++i){const bool odd=((int)std::lround(straight[i].start*4)&1)!=0;check(std::abs(shuffled[i].start-straight[i].start-(odd?.15:0))<1e-8,"vocal swing shifts only offbeats");on=on||!odd;off=off||odd;}check(on&&off,"swing regression covers both beat positions");
+        p.settings.key=0;p.settings.scale=8;p.settings.chordCount=1;p.settings.degrees.fill(0);p.settings.freeChords.fill(-1);
+        const auto chord=fga::chordAtBeat(p.settings,0);check(chord.fifth==6,"fixture uses a diminished fifth");
+        fga::generateVocalChops(p,fga::Scope::track,ti,0,42);bool fifth=false;
+        for(const auto& n:t.clips[0].notes){const int interval=n.pitch-60-chord.rootPc;check(interval==0||interval==chord.third||interval==chord.fifth||interval==12,"vocal notes follow the actual chord fifth");fifth=fifth||interval==chord.fifth;}check(fifth,"diminished fifth is exercised");
     }
     std::cout<<"All arranger core tests passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

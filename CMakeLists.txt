@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(FaseGrooveArranger VERSION 0.31.1 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.31.2 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(APPLE AND NOT CMAKE_OSX_ARCHITECTURES)
@@ -67,6 +67,7 @@ if(FGA_BUILD_APP)
         FetchContent_Declare(JUCE GIT_REPOSITORY https://github.com/juce-framework/JUCE.git GIT_TAG 8.0.9 GIT_SHALLOW TRUE)
         FetchContent_MakeAvailable(JUCE)
     endif()
+    include(cmake/ScanWaveShell.cmake)
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"
         COMPANY_NAME "FS Pitch" BUNDLE_ID "com.fspitch.fasegroovearranger"
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png

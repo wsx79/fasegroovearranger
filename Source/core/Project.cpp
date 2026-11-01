@@ -270,6 +270,7 @@ const GenreProfile& genreProfile(int genre) {
         {126,145,132,32,true},  // Techno
         {124,132,128,32,true}   // Electro House
     };
+    static_assert(std::size(profiles)==numGenres);
     return profiles[normaliseGenre(genre)];
 }
 std::vector<std::string> genres() { std::vector<std::string> out; for(auto s:sgk::grooveCategories()) out.emplace_back(s);out[(size_t)deepHouseGenre]="Deep House";out.emplace_back("Techno");out.emplace_back("Electro House");return out; }
@@ -521,17 +522,17 @@ void applyGenre(Project& p,int genre) {
         const int factoryCount=ti<3?(int)sgk::groovePatterns().size():ti==3?(int)fgg::guitarPatterns().size():ti==leadTrack?(int)fgl::leadPatterns().size():(int)fgd::drumPatterns().size();
         if(pattern>=0&&pattern<factoryCount)pattern=-1;
     }
+    static_assert(std::size(presets)==(int)Genre::danceStabs+1);
     chooseProgression(p,presets[engineGenre(p.settings.genre)]);
     // Match each style to an actual named bass line in the original library.
     static const int bassLines[]{8,23,16,11,22,13,18,15,20,12,10,16,12};
+    static_assert(std::size(bassLines)==(int)Genre::danceStabs+1);
     p.settings.bassMode=sgk::bassModeForLine(bassLines[engineGenre(p.settings.genre)]);
     applyGenreSound(p);
     if(isElectronicGenre(p.settings.genre)){
-        p.settings.scale=1;p.settings.extension=0;p.settings.voicing=0;p.settings.freeChords.fill(-1);
-        p.settings.chordCount=p.settings.genre==technoGenre?1:4;p.settings.chordSteps=p.settings.genre==technoGenre?64:16;
-        p.settings.degrees={0,5,2,6,0,5,2,6};p.settings.swing=p.settings.genre==technoGenre?0.:.04;p.settings.humanize=.04;
+        applyElectronicHarmony(p.settings);applyElectronicFeel(p.settings);
         auto& lead=p.tracks[(size_t)leadTrack];if(!lead.locked){lead.engine.density=p.settings.genre==technoGenre?.36:.62;lead.engine.gate=.45;if(lead.instrument=="internal"){lead.sound=p.settings.genre==technoGenre?3:2;lead.gain=p.settings.genre==technoGenre?.18:.24;lead.engine.tone=p.settings.genre==technoGenre?.5:.78;}}
-        auto& bass=p.tracks[1];if(!bass.locked){bass.engine.gate=.65;bass.engine.humanize=.02;bass.engine.pump=.3;}
+        auto& bass=p.tracks[1];if(!bass.locked){bass.engine.gate=.65;bass.engine.humanize=.3;bass.engine.pump=.3;}
     }
 }
 namespace {
@@ -554,6 +555,7 @@ const std::vector<SongSection>& genreForm(int genre) {
         {{Section::intro,32,"Drum intro"},{Section::main,16,"Electro hook"},{Section::breakdown,16,"Filter break"},{Section::buildup,16,"Pressure build"},{Section::drop,32,"Electro drop"},{Section::breakdown,8,"Filter break"},{Section::buildup,8,"Pressure build"},{Section::drop,32,"Final drop"},{Section::outro,32,"Drum outro"}}
     };
 
+    static_assert(std::size(forms)==numGenres);
     return forms[normaliseGenre(genre)];
 }
 // A form nobody restructured: the factory section sequence of some genre.
@@ -652,6 +654,7 @@ int mixEntry(int genre,int track,int bars) {
         {24,16,24,16},{16,24,24,24},{16,32,24,24},{16,32,16,24},
         {24,24,32,24}
     };
+    static_assert(std::size(harmony)==(int)Genre::danceStabs+1);
     int entry=0;
     if(track==leadTrack)entry=24;
     else if(track<4)entry=harmony[engineGenre(genre)][track];
@@ -660,7 +663,7 @@ int mixEntry(int genre,int track,int bars) {
         // Kick, closed hats and shaker provide a countable pulse from bar one.
         static constexpr int drums[]{0,16,8,16,0,8,16,0,8,8,16,24,32};
         entry=drums[lane];
-        if(genre==7&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
+        if(genre==(int)Genre::afroHouse&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
     }
     if(isElectronicGenre(genre)&&track==1)entry=genre==technoGenre?8:16;
     if(genre==technoGenre&&track==leadTrack)entry=16;
@@ -676,7 +679,7 @@ int mixEntry(int genre,int track,int bars) {
 }
 void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
-    if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
+    if(isElectronicGenre(genre)||sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
     const auto& e=p.tracks[(size_t)track].engine;
     const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():track==leadTrack?fgl::userPatternIndex():fgd::userPatternIndex();
     if(e.pattern==user)return;
@@ -685,16 +688,16 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         // to the last two bars of a phrase removed every chord that did not
         // start in that window, so most songs never grew a string part.
         if(track==3&&!p.settings.guitarLead){
-            if(genre==4)return phrase%2==1; // percussive guitar answers the chopped keys
-            if(genre==7)return phrase%4>=2; // percussion/guitar answers
-            if(genre==2||genre==9||genre==12)return phrase>=6;
+            if(genre==(int)Genre::jackinHouse)return phrase%2==1; // percussive guitar answers the chopped keys
+            if(genre==(int)Genre::afroHouse)return phrase%4>=2; // percussion/guitar answers
+            if(genre==(int)Genre::deepHouse||genre==(int)Genre::ninetiesHouse||genre==(int)Genre::danceStabs)return phrase>=6;
             return phrase%4>=2; // leave the first half to the piano
         }
         // Different percussion layers announce phrases; never gate the kick,
         // backbeat or closed hat. These are compositional rests, not audio mute.
         if(track==10||track==12||track==14||track==15){
-            if(genre==4&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
-            return genre==7?phrase>=2:phrase>=4;
+            if(genre==(int)Genre::jackinHouse&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
+            return genre==(int)Genre::afroHouse?phrase>=2:phrase>=4;
         }
         return true;
     };
@@ -730,8 +733,8 @@ void varySongFeel(Project& p,std::uint32_t seed) {
     const double base=fgd::genreSwing(engineGenre(s.genre));const int which=(int)(mix(seed+1901U)%5);
     // Jackin' house shuffle stays near 56–62% (swing 0.36–0.72). A hotter offset
     // lands on the triplet and the beat starts to feel like garage.
-    const bool jackinHouse=s.genre==4;
-    if(isElectronicGenre(s.genre)){s.swing=s.genre==technoGenre?0.:.04;s.humanize=.04;}
+    const bool jackinHouse=s.genre==(int)Genre::jackinHouse;
+    if(isElectronicGenre(s.genre)){applyElectronicFeel(s);}
     else for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
 }
 // The form must answer the Harmonic cycle and the groove, not a random list: every
@@ -796,9 +799,7 @@ void renewForm(Project& p) {
 void newSongHarmony(Project& p,std::uint32_t seed) {
     auto& s=p.settings;const auto before=s;
     if(isElectronicGenre(s.genre)){
-        s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;s.scale=1;s.extension=0;s.voicing=0;
-        s.freeChords.fill(-1);s.chordCount=s.genre==technoGenre?1:4;s.chordSteps=s.genre==technoGenre?64:16;
-        s.degrees={0,5,2,6,0,5,2,6};if(s.genre==electroHouseGenre&&mix(seed)%2)s.degrees={0,6,5,6,0,6,5,6};return;
+        s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;applyElectronicHarmony(s,seed);return;
     }
     auto differs=[&]{return s.scale!=before.scale||s.chordCount!=before.chordCount
         ||!std::equal(s.degrees.begin(),s.degrees.begin()+s.chordCount,before.degrees.begin())
@@ -1024,8 +1025,9 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 std::rotate(row->begin(),row->begin()+chordOffset,row->begin()+s.chordCount);
             if(mixing){ps.fillEveryBars=0;ps.variationEvery=0;}
             const bool manualPart=requestedPart||(scope!=Scope::song&&!clip.notes.empty());
-            if(isElectronicGenre(s.genre)&&e.pattern<0&&generateElectronicClip(p,clip,ti,p.clipStart(ti,(int)si),beats,type,manualPart)){}
-            else if(ti<3) {
+            const bool electronicRendered=isElectronicGenre(s.genre)&&e.pattern<0&&generateElectronicClip(p,clip,ti,p.clipStart(ti,(int)si),beats,type,manualPart);
+            if(!electronicRendered){
+            if(ti<3) {
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
                 // The kit turns the corner at every section end; give the harmony the
                 // same last-bar fill instead of one every 16 bars counted from the clip.
@@ -1042,7 +1044,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 }
             } else if(ti==3) {
                 fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=engineGenre(s.genre);
-                if(s.genre==4&&e.pattern<0&&!clip.motifSeed){
+                if(s.genre==(int)Genre::jackinHouse&&e.pattern<0&&!clip.motifSeed){
                     const auto& patterns=fgg::guitarPatterns();
                     for(size_t i=0;i<patterns.size();++i)if(patterns[i].name=="Chicago Chank"){gs.pattern=(int)i;break;}
                 }
@@ -1087,6 +1089,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 auto all=fgd::GrooveEngine::renderArrangement(ds,{{(fgd::Section)rhythmType,renderBars,ds.sectionVariation,-1}});
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
+            } // Vendor engines are used only when the dedicated generator declines.
             if(isDrumTrack(ti))for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeBandRoles(clip,p,ti,guide);
             shapeMixSection(clip,s.genre,ti,type,renderBars);

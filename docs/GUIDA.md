@@ -30,13 +30,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.30.7**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.2**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.30.7** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive la **v0.31.2** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -436,7 +436,7 @@ La prima scansione parte automaticamente. A ogni avvio successivo vengono ricont
 
 **SCANSIONA** nel browser o nelle impostazioni forza una scansione completa, anche dei file invariati. È il comando da usare dopo aver aggiunto plugin a un contenitore già presente. All’avvio rimane la verifica rapida con cache; **RIPROVA ERRORI** controlla soltanto i file precedentemente scartati.
 
-**Waves e WaveShell.** I plugin Waves sono esposti tramite un file `WaveShell…vst3`, normalmente in `C:\Program Files\Common Files\VST3`. La cartella Waves `Plug-Ins V…` e i singoli `.bundle` sono contenuti del produttore: non vanno spostati o caricati come VST3 indipendenti. Lo scanner enumera i plugin contenuti nel WaveShell; per i WaveShell e i contenitori già riconosciuti con più plugin concede fino a 10 minuti invece del minuto dei file ordinari. Puoi sempre annullare. Le vecchie cache WaveShell vengono ricontrollate una volta dopo l’aggiornamento. I Waves disponibili soltanto come VST2 `.dll` restano esclusi; Waves da V15 non distribuisce più VST2. Controlla installazione e licenza con Waves Central; [istruzioni ufficiali Waves](https://www.waves.com/support/how-to-use-waves-plugins-when-using-custom-vst-folder).
+**Waves e WaveShell.** I plugin Waves sono esposti tramite un file `WaveShell…vst3`, normalmente in `C:\Program Files\Common Files\VST3`. La cartella Waves `Plug-Ins V…` e i singoli `.bundle` sono contenuti del produttore: non vanno spostati o caricati come VST3 indipendenti. Lo scanner enumera i plugin contenuti nel WaveShell; per i WaveShell e i contenitori già riconosciuti con più plugin concede fino a 10 minuti invece del minuto dei file ordinari. Puoi sempre annullare. Le vecchie cache WaveShell vengono ricontrollate una volta dopo l’aggiornamento. I Waves disponibili soltanto come VST2 `.dll` restano esclusi; Waves da V15 non distribuisce più VST2. Controlla installazione e licenza con Waves Central; [istruzioni ufficiali Waves](https://www.waves.com/support/how-to-use-waves-plugins-when-using-custom-vst-folder). La scansione interroga la factory nativa del contenitore, anche se il manifest descrive soltanto il wrapper. Dopo l’aggiornamento le vecchie cache WaveShell vengono ricontrollate una volta in background. Per l’avvio, gli hash dei file duplicati sono riutilizzati dalla cache; gli hash mancanti vengono calcolati dal worker, senza leggere interi binari nel thread grafico. Finché una copia non è verificata, può restare visibile separatamente.
 
 **REPORT SCANSIONE** nelle impostazioni apre l’elenco dei contenitori riconosciuti, dei plugin al loro interno e dei file scartati. Per gli errori distingue tempo scaduto, processo non avviato, scansione annullata/interrotta, codice di uscita e assenza di descrizioni compatibili. Salva anche una copia locale `ScanReport.txt`, nel percorso indicato in fondo alla finestra: puoi usarla per segnalare i problemi. Il report non legge il catalogo di altre DAW e non può identificare plugin installati fuori dai percorsi configurati. Formati, architetture e duplicati possono produrre conteggi diversi fra applicazioni. Non vengono inviati dati a servizi esterni.
 
@@ -602,6 +602,11 @@ Questa procedura verifica il ripristino del preset e dei parametri nella tua ins
 
 ## 6. Costruire un brano: intro, break, drop
 
+### Techno ed Electro House
+
+Techno ed Electro House usano generatori dedicati per batteria, basso e lead. La rigenerazione varia le figure ritmiche, i motivi e le risposte; Electro dispone di otto progressioni minori e swing sui controtempi. Techno mantiene il kick in quarti e una base armonica minimale. Intro e outro seguono gli ingressi adattati alla durata della sezione. Piano, archi e chitarra non sono aggiunti automaticamente: richiedendoli esplicitamente si usano i motori condivisi con il vocabolario Dance Stabs. Le note già salvate cambiano soltanto quando rigeneri.
+
+
 **NUOVO ARRANGIAMENTO** cambia la struttura riutilizzando il MIDI già presente nelle sezioni corrispondenti: conserva note, dinamiche, timbri, effetti, BPM e armonia. Se una sezione diventa più lunga, ripete la parte; se si accorcia, conserva la sorgente del loop. Le tracce con timeline indipendente e quelle MIDI scritte a mano restano nelle loro posizioni. Per scrivere nuove note usa **GENERA BRANO**. La durata deriva dalle sezioni del genere, dai cicli armonici completi e dallo sviluppo del groove. Un motivo più lungo o in evoluzione ha spazio per completarsi; un groove denso può rispondere prima. Non esiste un obiettivo fisso in minuti.
 
 | Parte | Come usarla |
@@ -746,7 +751,7 @@ Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verific
 
 **Premo ESPORTA nella codifica ma non compare il percorso**
 
-Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.30.7**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
+Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.31.2**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 
