@@ -1085,3 +1085,7 @@
 { "Track", "Traccia", "Pista", "Piste", "Spur", "Faixa" },
 { "All tracks", "Tutto", "Todas las pistas", "Toutes les pistes", "Alle Spuren", "Todas as faixas" },
 { "Hide automation", "Nascondi automazione", "Ocultar automatización", "Masquer l’automation", "Automation ausblenden", "Ocultar automação" },
+
+{ "Starting...", "Avvio in corso...", "Iniciando...", "Démarrage...", "Wird gestartet...", "Iniciando..." },
+{ "Loading project...", "Caricamento progetto...", "Cargando proyecto...", "Chargement du projet...", "Projekt wird geladen...", "Carregando projeto..." },
+{ "Loading plugins", "Caricamento plugin", "Cargando plugins", "Chargement des plugins", "Plugins werden geladen", "Carregando plugins" },

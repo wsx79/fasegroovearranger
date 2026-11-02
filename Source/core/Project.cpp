@@ -694,25 +694,33 @@ int mixEntry(int genre,int track,int bars) {
 }
 void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
-    if(isElectronicGenre(genre)||sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
+    if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
     const auto& e=p.tracks[(size_t)track].engine;
     const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():track==leadTrack?fgl::userPatternIndex():fgd::userPatternIndex();
     if(e.pattern==user)return;
+    // Repeated verses/drops develop across the song, independently of seed
+    // variation. Preserve the kick/bass foundation and explicit user patterns.
+    int preceding=0,total=0;
+    for(int i=0;i<(int)p.sections.size();++i)if(p.sections[(size_t)i].type==Section::main||p.sections[(size_t)i].type==Section::drop){++total;if(i<section)++preceding;}
+    const double development=total>1?double(preceding)/(total-1):0.;
+    if(track!=1&&track!=4)for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*(1.+.12*development)),1,127);
+    if(isElectronicGenre(genre))return;
+    const bool later=development>=.5;
     auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
         // Strings follow the harmony for the whole verse and chorus. Gating them
         // to the last two bars of a phrase removed every chord that did not
         // start in that window, so most songs never grew a string part.
         if(track==3&&!p.settings.guitarLead){
             if(genre==(int)Genre::jackinHouse)return phrase%2==1; // percussive guitar answers the chopped keys
-            if(genre==(int)Genre::afroHouse)return phrase%4>=2; // percussion/guitar answers
-            if(genre==(int)Genre::deepHouse||genre==(int)Genre::ninetiesHouse||genre==(int)Genre::danceStabs)return phrase>=6;
-            return phrase%4>=2; // leave the first half to the piano
+            if(genre==(int)Genre::afroHouse)return phrase%4>=(later?1:2); // percussion/guitar answers
+            if(genre==(int)Genre::deepHouse||genre==(int)Genre::ninetiesHouse||genre==(int)Genre::danceStabs)return phrase>=(later?4:6);
+            return phrase%4>=(later?1:2); // opening phrases leave room for the piano
         }
         // Different percussion layers announce phrases; never gate the kick,
         // backbeat or closed hat. These are compositional rests, not audio mute.
         if(track==10||track==12||track==14||track==15){
             if(genre==(int)Genre::jackinHouse&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
-            return genre==(int)Genre::afroHouse?phrase>=2:phrase>=4;
+            return genre==(int)Genre::afroHouse?phrase>=(later?1:2):phrase>=(later?2:4);
         }
         return true;
     };

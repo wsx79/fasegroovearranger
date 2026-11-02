@@ -242,6 +242,10 @@ namespace
                 p.startNewSubPath (0.76f, 0.3f); p.lineTo (0.9f, 0.5f); p.lineTo (0.76f, 0.7f);
                 strokeWidth = 0.08f;
                 break;
+            case I::routing:
+                for(float y:{.2f,.5f,.8f}){p.startNewSubPath(.12f,y);p.lineTo(.45f,y);p.lineTo(.6f,.5f);}
+                p.startNewSubPath(.6f,.5f);p.lineTo(.92f,.5f);p.lineTo(.77f,.35f);
+                p.startNewSubPath(.92f,.5f);p.lineTo(.77f,.65f);strokeWidth=.075f;break;
             case I::automation:
                 p.startNewSubPath (0.1f, 0.72f); p.lineTo (0.34f, 0.72f); p.lineTo (0.62f, 0.28f); p.lineTo (0.9f, 0.28f);
                 p.addEllipse (0.27f, 0.65f, 0.14f, 0.14f);
@@ -331,7 +335,7 @@ const char* IconButton::iconTitle (Icon i)
         case Icon::right: return "Next"; case Icon::loop: return "Loop"; case Icon::metronome: return "Metronome";
         case Icon::save: return "Save"; case Icon::help: return "Help"; case Icon::mixer: return "Mixer";
         case Icon::inspector: return "Inspector"; case Icon::zoomIn: return "Zoom in"; case Icon::zoomOut: return "Zoom out";
-        case Icon::follow: return "Follow"; case Icon::automation: return "Automation"; case Icon::studio: return "Studio";
+        case Icon::follow: return "Follow"; case Icon::automation: return "Automation"; case Icon::routing: return "BUS & SEND"; case Icon::studio: return "Studio";
         default: return "Button";
     }
 }
@@ -406,10 +410,12 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     const bool on=getToggleState(),featured=(bool)getProperties().getWithDefault("dawFeatured",false);
     auto fill=findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
     if(featured&&!on)fill=Daw::surfaceHi.interpolatedWith(Daw::accent,.09f);
-    if(over&&isEnabled())fill=fill.brighter(.07f);if(down)fill=fill.darker(.14f);
+    const bool outline=(bool)getProperties().getWithDefault("fgaOutlineSelected",false);
+    if(outline)fill=on?Daw::surfaceHi.interpolatedWith(Daw::accent,.09f):findColour(juce::TextButton::buttonColourId);
+    if(over&&isEnabled())fill=outline?Daw::accent:fill.brighter(.07f);if(down)fill=fill.darker(.14f);
     auto r=getLocalBounds().toFloat().reduced(.5f);
     g.beginTransparencyLayer(isEnabled()?1.f:.42f);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
-    g.setColour(hasKeyboardFocus(true)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
+    g.setColour(hasKeyboardFocus(true)||(outline&&on)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
     if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
     g.endTransparencyLayer();
     auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=(bright?Daw::onAccent:Daw::text).withMultipliedAlpha(isEnabled()?1.f:.78f);

@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.13**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.14**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
@@ -866,4 +866,13 @@ AI progressions contain 1–8 entries, each a zero-based degree from 0 (tonic) t
 
 The key selector, export names and MIDI signatures use consistent sharp/flat spelling, including Gb major and Eb minor. Standard MIDI key-signature events encode only major/minor: modes retain their parent signature, while a readable text event records the actual tonic and mode. Natural, harmonic and melodic minor retain the minor flag. Existing stored notes change only when you regenerate or edit them.
 
-The .fga project icon has a small folded-document badge to distinguish projects from the application. Windows installers register the dedicated project icon; macOS bundles include it in the document-type declaration.
+The .fga project icon is a white folded-corner document with the Arranger logo in its centre, distinguishing projects from the application. Windows installers register the dedicated project icon; macOS bundles include it in the document-type declaration.
+
+
+Fullscreen retains **Options** and the exit **X**. The outlined sound-source button identifies Built-in, Sample or VST/AU; click it again to choose another sound. The converging-input arrow opens **Bus & Send**.
+
+Startup shows a loading screen. Opening a project displays progress as plugins are restored, closing the indicator when restoration finishes, including missing plugins. A plugin that temporarily blocks its own initialization can pause visual updates.
+
+In **Studio**, a single sample audition finishes automatically and enables **Play sample** again. **Notes**, **Amplitude envelope** and **Audition loop** retain their choices across instrument changes and application restarts. Sound parameters remain track-specific. Resize the window using its borders or lower corner; closing and reopening restores the standard size.
+
+New arrangements and regeneration develop later Main/Drop sections with stronger dynamics and, in non-electronic genres, more guitar answers and percussion. Kick and bass retain their foundation. User patterns and locked parts are respected; intro/outro retain their mixing roles. Existing projects keep their stored notes until regeneration.

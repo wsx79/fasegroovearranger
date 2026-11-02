@@ -145,7 +145,7 @@ public:
         g.setColour(box.isEnabled()?Daw::textDim:Daw::textFaint.withAlpha(.5f));g.strokePath(chevron,juce::PathStrokeType(1.3f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     }
     juce::Font getComboBoxFont(juce::ComboBox& box) override{const float display=(float)box.getProperties().getWithDefault("dawDisplay",0.f);return display>0?Daw::font(display,true):Daw::font(Daw::body);}
-    void positionComboBoxText(juce::ComboBox& box,juce::Label& label) override{label.setBounds(3,1,box.getWidth()-20,box.getHeight()-2);label.setFont(getComboBoxFont(box));}
+    void positionComboBoxText(juce::ComboBox& box,juce::Label& label) override{if((bool)box.getProperties().getWithDefault("transportReadout",false)){label.setBorderSize(juce::BorderSize<int>(0));label.setBounds(4,1,box.getWidth()-20,box.getHeight()-2);}else label.setBounds(3,1,box.getWidth()-20,box.getHeight()-2);label.setFont(getComboBoxFont(box));}
     void drawPopupMenuBackground(juce::Graphics& g,int width,int height) override{g.fillAll(Daw::surfaceHi);g.setColour(Daw::lineStrong);g.drawRect(0,0,width,height,1);}
     juce::Font getPopupMenuFont() override{return Daw::font(Daw::body);}
     // Linear sliders: a thin groove with the value in the accent and a small round thumb;
@@ -186,6 +186,7 @@ public:
     int getSliderThumbRadius(juce::Slider& s) override{return s.getSliderStyle()==juce::Slider::LinearVertical?7:5;}
     juce::Label* createSliderTextBox(juce::Slider& s) override{
         auto* l=FamilyLookAndFeel::createSliderTextBox(s);l->setFont(Daw::font(s.getSliderStyle()==juce::Slider::LinearBarVertical?Daw::display:11.f,s.getSliderStyle()==juce::Slider::LinearBarVertical));
+        if(s.getSliderStyle()==juce::Slider::LinearBarVertical){l->setBorderSize(juce::BorderSize<int>(0));l->setJustificationType(juce::Justification::centredLeft);}
         l->setColour(juce::Label::outlineWhenEditingColourId,Daw::accent);l->setColour(juce::TextEditor::highlightColourId,Daw::accent.withAlpha(.4f));return l;}
     // Knobs: a thin track, the value arc from the left (or from the centre for a bipolar
     // range such as pan) and a flat cap with a pointer.

@@ -825,7 +825,11 @@ return false;
     audio.stop();dirty=false;requestClose([&]{++accepted;});stage("clean navigation continues immediately",accepted==2);
     const auto associated=folder.getChildFile("project prova con spazi.FGA");stage("project association fixture",destination.copyFileTo(associated));
     stage("project paths with spaces and uppercase extension",projectInCommandLine(associated.getFullPathName().quoted())==associated&&projectInCommandLine(associated.getFullPathName())==associated);
-    stage("project association opens the saved arrangement",openFromCommandLine(associated.getFullPathName().quoted())&&projectFile==associated&&midiFile(project)==midiFile(loaded));
+    const bool requestedOpen=openFromCommandLine(associated.getFullPathName().quoted());
+    stage("project association shows loading before restoring the file",requestedOpen&&loadingView.isVisible());
+    const auto openDeadline=juce::Time::getMillisecondCounterHiRes()+5000.;
+    while(loadingView.isVisible()&&juce::Time::getMillisecondCounterHiRes()<openDeadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
+    stage("project association opens the saved arrangement",requestedOpen&&projectFile==associated&&midiFile(project)==midiFile(loaded)&&!loadingView.isVisible());
     // Drop onto the visible Snare row while another instrument is selected.
     showArrangement();arrangement.pixelsPerBar=24;updateSizes();select(0,0);arrangementPort.setViewPosition(0,0);
     auto wavFile=folder.getChildFile("drop-routing.wav");juce::WavAudioFormat wav;
@@ -977,7 +981,7 @@ MainComponent::MainComponent(){
     metronomeButton.getProperties().set("fgaTip","Metronome while playing (never exported). Shortcut: C.");
     // Monospaced digits: the transport keeps a fixed width while it counts, so the bar/beat
     // readout never jitters and the surrounding LCD blocks never shift.
-    positionLabel.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(),Daw::display,juce::Font::bold));positionLabel.setColour(juce::Label::textColourId,Daw::text);positionLabel.setJustificationType(juce::Justification::centredLeft);positionLabel.setInterceptsMouseClicks(false,false);
+    positionLabel.setBorderSize(juce::BorderSize<int>(0));positionLabel.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(),Daw::display,juce::Font::bold));positionLabel.setColour(juce::Label::textColourId,Daw::text);positionLabel.setJustificationType(juce::Justification::centredLeft);positionLabel.setInterceptsMouseClicks(false,false);
     timeDisplay=Localisation::setting("timelineTimeDisplay","0")=="1";
     addAndMakeVisible(positionModeButton);positionModeButton.onClick=[this]{toggleTimeDisplay();};
     positionModeButton.getProperties().set("fgaTip","Click to switch bars and elapsed time. The musical grid and MIDI timing stay unchanged.");
@@ -1073,7 +1077,7 @@ MainComponent::MainComponent(){
     for(auto* b:{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&inspectorToggle,&mixerToggle,&browserToggle,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton,&fullScreenButton})b->quiet=true;
     for(auto* b:{&inspectorToggle,&mixerToggle,&browserToggle,&followButton,&automationButton,&fullScreenButton})b->onColour=b==&automationButton?Daw::automation:Daw::accent;
     tempoSlider.setSliderStyle(juce::Slider::LinearBarVertical);tempoSlider.setTextValueSuffix("");tempoSlider.setTextBoxStyle(juce::Slider::TextBoxLeft,false,82,26);tempoSlider.setColour(juce::Slider::textBoxTextColourId,Daw::text);tempoSlider.setMouseDragSensitivity(400);tempoSlider.setVelocityBasedMode(false);tempoSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
-    for(auto* box:{&keyBox,&scaleBox}){box->setColour(juce::ComboBox::backgroundColourId,juce::Colours::transparentBlack);box->setColour(juce::ComboBox::textColourId,Daw::text);box->getProperties().set("dawDisplay",box==&keyBox?17.f:13.f);}
+    for(auto* box:{&keyBox,&scaleBox}){box->getProperties().set("transportReadout",true);box->setColour(juce::ComboBox::backgroundColourId,juce::Colours::transparentBlack);box->setColour(juce::ComboBox::textColourId,Daw::text);box->getProperties().set("dawDisplay",box==&keyBox?17.f:13.f);}
     masterSlider.setTextBoxStyle(juce::Slider::TextBoxRight,false,58,22);masterSlider.setDoubleClickReturnValue(true,0);
 playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("Stop playback and return to the beginning."));rewindButton.setTooltip(tr("Back to the beginning."));undoButton.setTooltip(tr("Undo"));redoButton.setTooltip(tr("Redo"));
     rewindButton.setConnectedEdges(juce::Button::ConnectedOnRight);playButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);stopButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
@@ -1431,12 +1435,12 @@ void MainComponent::paint(juce::Graphics& g){
     g.setColour(juce::Colours::white.withAlpha(.06f));g.drawHorizontalLine(lcdArea.getBottom(),(float)lcdArea.getX()+4,(float)lcdArea.getRight()-4);
     for(int x:lcdDividers){g.setColour(juce::Colours::white.withAlpha(.07f));g.drawVerticalLine(x,(float)lcdArea.getY()+7,(float)lcdArea.getBottom()-7);}
     const int legendY=lcdArea.getBottom()-15;
-    Daw::drawCaps(g,positionLegend,{positionLabel.getX()+2,legendY,positionLabel.getWidth(),12});
-    Daw::drawCaps(g,tr("TEMPO"),{tempoSlider.getX()+2,legendY,tempoSlider.getWidth(),12});
+    Daw::drawCaps(g,positionLegend,{positionLabel.getX(),legendY,positionLabel.getWidth(),12});
+    Daw::drawCaps(g,tr("TEMPO"),{tempoSlider.getX(),legendY,tempoSlider.getWidth(),12});
     g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::body,true));g.drawText("4/4",juce::Rectangle<int>(lcdDividers.size()>1?lcdDividers[1]:0,lcdArea.getY()+8,lcdDividers.size()>2?lcdDividers[2]-lcdDividers[1]:0,16),juce::Justification::centred);
     Daw::drawCaps(g,tr("KEY"),{keyBox.getX()+4,legendY,keyBox.getWidth()+scaleBox.getWidth(),12});
     // The master section's caption.
-    Daw::drawCaps(g,tr("MASTER"),{masterSlider.getRight()-58,3,58,12});
+    g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(tr("MASTER"),masterSlider.getRight()-64,3,64,12,juce::Justification::centred);
     if(page!=Page::arrangement){const auto ink=colour(selectedTrack);g.setColour(ink);g.fillRoundedRectangle(184.f,(float)controlBarHeight+12,3.f,14.f,1.f);
         g.setColour(Daw::text);g.setFont(Daw::font(Daw::title,true));g.drawText(tr(page==Page::instrument?"INSTRUMENT":"MIDI EDITOR")+" / "+utf(project.tracks[(size_t)selectedTrack].name).toUpperCase(),194,controlBarHeight+4,390,30,juce::Justification::centredLeft,true);}
     if(page==Page::arrangement&&chordsLabel.isVisible()){const auto r=chordsLabel.getBounds().toFloat().expanded(4.f,1.f);g.setColour(Daw::chrome);g.fillRoundedRectangle(r,Daw::radius);g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(r.reduced(.5f),Daw::radius,1.f);g.setColour(Daw::accent);g.fillRoundedRectangle(r.getX()+1.f,r.getY()+1.f,3.f,r.getHeight()-2.f,1.f);}
@@ -1448,6 +1452,7 @@ void MainComponent::paint(juce::Graphics& g){
     g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(title,w-536,h-statusHeight,352,statusHeight,juce::Justification::centredRight,true);
 }
 void MainComponent::resized(){
+    loadingView.setBounds(getLocalBounds());
     const int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
@@ -1481,12 +1486,12 @@ void MainComponent::resized(){
     lcdArea={x,6,lcdWidth,controlBarHeight-12};
     place(positionLabel,x+8,lcdArea.getY()+2,120,26);positionModeButton.setBounds(x,lcdArea.getY(),132,lcdArea.getHeight());positionModeButton.toFront(false);lcdDividers.push_back(x+132);
     place(tempoSlider,x+136,lcdArea.getY()+2,78,26);lcdDividers.push_back(x+218);lcdDividers.push_back(x+258);
-    place(keyBox,x+260,lcdArea.getY()+3,60,24);place(scaleBox,x+322,lcdArea.getY()+3,lcdWidth-326,24);
+    place(keyBox,x+260,lcdArea.getY()+2,60,26);place(scaleBox,x+322,lcdArea.getY()+2,lcdWidth-326,26);
     // Right: master level, settings and help, then the panel switches.
-    creditsButton.setBounds(14,14,152,28);const auto* topWindow=dynamic_cast<juce::ResizableWindow*>(getTopLevelComponent());const bool showQuit=appFullScreen||(topWindow&&topWindow->isFullScreen());quitButton.setVisible(showQuit);aboutButton.setVisible(!showQuit);
+    creditsButton.setBounds(14,14,152,28);const auto* topWindow=dynamic_cast<juce::ResizableWindow*>(getTopLevelComponent());const bool showQuit=appFullScreen||(topWindow&&topWindow->isFullScreen());quitButton.setVisible(showQuit);aboutButton.setVisible(true);
     x=w-14;for(auto* b:{&quitButton,&fullScreenButton,&mixerToggle,&browserToggle,&inspectorToggle}){if(!b->isVisible())continue;x-=30;place(*b,x,barY,30);x-=2;}divider(x-4,barY+4,20);x-=10;
     for(auto* b:{&helpButton,&aboutButton,&settingsButton}){if(!b->isVisible())continue;x-=30;place(*b,x,barY,30);x-=2;}divider(x-4,barY+4,20);x-=12;
-    place(masterSlider,x-152,8,152,40);
+    const int masterWidth=showQuit?120:152;place(masterSlider,x-masterWidth,8,masterWidth,40);
     // Arrangement toolbars: generation on the first row, harmony and feel on the second.
     const int rowA=controlBarHeight+4,rowB=controlBarHeight+toolRowHeight+4;
     for(auto* b:{&zoomSelectionButton,&loopSelectionButton})b->setVisible(song);timelineGrid.setVisible(song);
@@ -1548,6 +1553,7 @@ void MainComponent::resized(){
     chordsLabel.setVisible(song);
     if(song){trackButton.setButtonText("REGENERATE TRACK");sectionButton.setButtonText("REGENERATE SECTION");clipButton.setButtonText("REGENERATE CLIP");}
     place(statusLabel,12,getHeight()-statusHeight+1,w-560,statusHeight-2);options.setBounds(getLocalBounds());if(options.isVisible())options.toFront(false);pluginSettings.setBounds(getLocalBounds());if(pluginSettings.isVisible())pluginSettings.toFront(false);pluginBrowser.setBounds(getLocalBounds());if(pluginBrowser.isVisible())pluginBrowser.toFront(false);updateOverlay.setBounds(getLocalBounds());if(updateOverlay.isVisible())updateOverlay.toFront(false);updateSizes();for(juce::Button* b:std::initializer_list<juce::Button*>{&trackButton,&sectionButton,&clipButton,&inspectorCollapse})translateControls(*b);
+    if(loadingView.isVisible())loadingView.toFront(false);
 }
 bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     const auto saved=Localisation::current();const auto originalJson=juce::JSON::toString(projectJson(project),false,17);bool ok=true;static const char* codes[]{"en","it","es","fr","de","pt"};static const char* expected[]{"NEW TRACK","NUOVA TRACCIA","NUEVA PISTA","NOUVELLE PISTE","NEUE SPUR","NOVA FAIXA"};
@@ -1736,7 +1742,14 @@ void MainComponent::applyFullScreen(bool on){
         if(safe->appFullScreen!=enter)safe->applyFullScreen(safe->appFullScreen);
     });
 }
+void MainComponent::updateLoadingProgress(){
+    if(!restoringProject)return;
+    if(!loadingPlugin){restoringProject=false;loadingView.setVisible(false);return;}
+    restorePluginTotal=std::max(restorePluginTotal,loadingPlugin);
+    loadingView.show(tr("Loading plugins")+" "+juce::String(restorePluginTotal-loadingPlugin)+" / "+juce::String(restorePluginTotal),double(restorePluginTotal-loadingPlugin)/std::max(1,restorePluginTotal));
+}
 void MainComponent::timerCallback(){
+    updateLoadingProgress();
     if(suspendedEffectsSession)resumeEffectChain();
     fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
@@ -1779,6 +1792,7 @@ void MainComponent::showPosition(double beat){
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
+    if(loadingView.isVisible())return true;
     if(k.getKeyCode()==juce::KeyPress::F11Key){applyFullScreen(!appFullScreen);return true;}
     if(pluginSettings.isVisible()){if(k==juce::KeyPress::escapeKey)pluginSettings.setVisible(false);return true;}
     if(pluginBrowser.isVisible()){if(k==juce::KeyPress::escapeKey)pluginBrowser.setVisible(false);return true;}
@@ -1865,15 +1879,19 @@ void MainComponent::save(bool as){
     else writeProjectFile(projectFile);
 }
 void MainComponent::open(const juce::File& file,bool recovered){
+    if(loadingPlugin||loadingView.isVisible()){message(tr("Wait for the instrument to finish loading."));return;}
     juce::Component::SafePointer<MainComponent> safe(this);requestClose([safe,file,recovered]{if(!safe)return;
-        Project next;auto result=loadProject(file,next);if(result.failed()){safe->message(result.getErrorMessage(),true);return;}
+        safe->addChildComponent(safe->loadingView);safe->loadingView.setBounds(safe->getLocalBounds());safe->loadingView.show(tr("Loading project..."));safe->loadingView.grabKeyboardFocus();
+        juce::Timer::callAfterDelay(40,[safe,file,recovered]{if(!safe)return;
+        Project next;auto result=loadProject(file,next);if(result.failed()){safe->loadingView.setVisible(false);safe->message(result.getErrorMessage(),true);return;}
         auto& o=*safe;o.audio.stop();o.undoStack.clear();o.redoStack.clear();o.project=std::move(next);o.editCursor=-1;o.projectFile=recovered?juce::File():file;o.selectedTrack=o.selectedSection=0;o.dirty=recovered;o.piano.clearSelection();o.audio.publish(o.project);o.refreshControls();o.restoreInstruments();o.select(4,0);o.showArrangement();o.message(tr("Project opened. Audio files and plugins remain external to the project."));o.repaint();
+        });
     });
 }
 
 void MainComponent::showMixerRouting(int track){audio.stopSampleAudition();if(track>=0&&track<(int)project.tracks.size())select(track,selectedSection);if(!mixerRoutingWindow)mixerRoutingWindow=std::make_unique<MixerRoutingWindow>(*this);mixerRoutingWindow->open();}
 void MainComponent::showStudio(int tab){if(mediaBusy||audio.isExporting())return;if(!studioWindow)studioWindow=std::make_unique<StudioWindow>(*this);studioWindow->open(tab);}
-void MainComponent::restoreInstruments(){closePluginEditor();audio.clearEffect(masterEffectTrack);for(const auto& fx:project.masterEffects.effects)loadEffectFile(masterEffectTrack,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);}for(int i=0;i<(int)project.tracks.size();++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,sampleFile(t,projectFile),t.sampleRoot,t.sampler);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));for(const auto& fx:t.effects)loadEffectFile(i,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);}audio.publish(project);}
+void MainComponent::restoreInstruments(){addChildComponent(loadingView);loadingView.setBounds(getLocalBounds());loadingView.show(tr("Loading project..."));restoringProject=true;restorePluginTotal=0;closePluginEditor();audio.clearEffect(masterEffectTrack);for(const auto& fx:project.masterEffects.effects)loadEffectFile(masterEffectTrack,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);}for(int i=0;i<(int)project.tracks.size();++i){audio.useInternal(i);audio.clearEffect(i);auto t=project.tracks[(size_t)i];if(t.instrument=="sample"){auto r=audio.loadSample(i,sampleFile(t,projectFile),t.sampleRoot,t.sampler);if(r.failed()){audio.markMissing(i);message("Campione mancante su "+utf(t.name)+": ricollegalo con LOAD SAMPLE.",true);}}else if(t.instrument=="plugin")loadPluginFile(i,juce::File::isAbsolutePath(utf(t.instrumentPath))?juce::File(utf(t.instrumentPath)):juce::File(),utf(t.instrumentId),utf(t.instrumentState));for(const auto& fx:t.effects)loadEffectFile(i,juce::File::isAbsolutePath(utf(fx.path))?juce::File(utf(fx.path)):juce::File(),utf(fx.pluginId),utf(fx.state),fx.slot);}audio.publish(project);updateLoadingProgress();}
 void MainComponent::loadSampleFile(int track,const juce::File& file){if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||loadingPlugin||editingRestricted())return;closePluginEditor(track,0);auto& t=project.tracks[(size_t)track];int root=isDrumTrack(track)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote(track-4)):60;const auto previous=t.sampler;SamplerSettings settings=t.vocalChops?vocalSamplerSettings():SamplerSettings{};if(!t.vocalChops){settings.mode=isDrumTrack(track)?1:0;settings.polyphony=8;}auto r=audio.loadSample(track,file,root,settings);if(r.failed()){message(r.getErrorMessage(),true);return;}checkpoint();t.sampler=settings;if(auto asset=audio.sampleAsset(track)){t.sampleHash=asset->hash.toStdString();if(t.vocalChops){const auto points=detectSampleSlices(*asset,0,1,.5,16);if(!points.empty()){t.sampler.slices.fill(0);t.sampler.sliceCount=(int)points.size();std::copy(points.begin(),points.end(),t.sampler.slices.begin());}}}t.sampler.normalise();remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=file.getFullPathName().toStdString();t.sampleRoot=root;t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();
     message(tr("Sample loaded")+": "+file.getFileName()+juce::String::fromUTF8(" → ")+Localisation::upper(utf(t.name))+juce::String::fromUTF8("  ·  ")+tr("root note")+" "+juce::MidiMessage::getMidiNoteName(root,true,true,3)+" ("+tr("right-click the track to change it")+").");}
 void MainComponent::loadPluginFile(int track,const juce::File& file,const juce::String& id,const juce::String& state){

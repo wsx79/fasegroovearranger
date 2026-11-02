@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.14
+
+- Mantiene Opzioni in fullscreen, allinea Master e letture del trasporto, distingue la sorgente sonora selezionata con un bordo e assegna un’icona dedicata a Bus e mandate.
+- Mostra una schermata di avvio e l’avanzamento del ripristino dei plugin nei progetti.
+- Riabilita Ascolta campione alla fine dell’ascolto singolo; ricorda Note, inviluppo di ampiezza e ripeti ascolto; consente di ridimensionare Studio e ripristina le dimensioni standard alla riapertura.
+- Sviluppa le sezioni successive con più frasi di appoggio/percussioni e dinamica fino al 12% superiore, conservando kick, basso, pattern utente e parti bloccate. Aggiunge controlli MIDI e confronti audio sui 13 generi.
+- Usa un foglio con angolo ripiegato e logo Arranger come icona dei documenti .fga.
+
 ## 0.31.13
 
 - Distingue i file progetto .fga con un’icona documento dedicata nelle associazioni Windows e nei bundle macOS.

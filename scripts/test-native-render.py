@@ -18,5 +18,9 @@ folder = output_folder('arranger-smoke', args.output)
 # exported PCM/MP3 audio below.
 if platform.system() == 'Darwin':
     os.environ['FGA_SKIP_UI_EVIDENCE'] = '1'
+startup = folder / 'startup'
+run_application(build, '--startup-splash-test', startup, timeout=60)
+if not (startup / 'startup.txt').read_text().startswith('PASS '):
+    raise RuntimeError('Startup splash did not transition to the visible application')
 run_application(build, '--smoke-test', folder, timeout=600)
 verify('verify-audio.py', folder)

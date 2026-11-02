@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.13**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.14**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -870,4 +870,13 @@ Le progressioni IA contengono 1–8 elementi, ciascuno un grado da zero: 0 è la
 
 Selettore di tonalità, nomi dei file e firme MIDI usano grafie coerenti, comprese Sol♭ maggiore e Mi♭ minore. La firma standard MIDI codifica solo maggiore/minore: i modi conservano la firma genitore e un evento testuale leggibile riporta tonica e modo effettivi. Minore naturale, armonica e melodica conservano il flag minore. Le note già salvate cambiano soltanto quando rigeneri o le modifichi.
 
-L’icona dei progetti .fga ha un piccolo foglio con angolo ripiegato, per distinguerli dall’applicazione. L’installer Windows registra l’icona dedicata; il bundle macOS la include nella dichiarazione del tipo di documento.
+L’icona dei progetti .fga è un foglio bianco con angolo ripiegato e il logo Arranger al centro, per distinguerli dall’applicazione. L’installer Windows registra l’icona dedicata; il bundle macOS la include nella dichiarazione del tipo di documento.
+
+
+In fullscreen restano disponibili **Opzioni** e la **X** per uscire. Il bordo della sorgente sonora indica se la traccia usa Suono guida, Campione o VST/AU; puoi premere nuovamente il pulsante per scegliere un altro suono. La freccia con ingressi convergenti apre **Bus e mandate**.
+
+L’avvio mostra una schermata di caricamento. Aprendo un progetto, una barra indica quanti plugin sono stati ripristinati; l’indicazione si chiude al termine, anche in caso di plugin mancanti. Un plugin che blocca temporaneamente il proprio caricamento può sospendere l’aggiornamento visivo.
+
+In **Studio**, l’ascolto singolo termina automaticamente e permette di ripremere **Ascolta campione**. **Note**, **Inviluppo ampiezza** e **Ripeti ascolto** conservano la scelta anche cambiando strumento o riaprendo l’app. I parametri sonori restano propri della traccia. La finestra si ridimensiona tramite bordi e angolo inferiore; chiuderla e riaprirla ripristina la dimensione standard.
+
+I nuovi arrangiamenti e le rigenerazioni sviluppano le sezioni Main e Drop successive con dinamiche più presenti e, nei generi non elettronici, più risposte di chitarra e percussioni. Kick e basso mantengono la loro base. Pattern utente e parti bloccate sono rispettati; intro e outro mantengono il loro ruolo nel mix. Le note dei progetti esistenti restano memorizzate finché non rigeneri.

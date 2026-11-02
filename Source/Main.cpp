@@ -58,7 +58,7 @@ public:
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if FGA_SELF_TESTS
-        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--plugin-catalog-test"})
+        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--startup-splash-test","--plugin-catalog-test"})
             if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
        #endif
        #if JUCE_MAC
@@ -272,19 +272,31 @@ public:
             setApplicationReturnValue(1);quit();return;
         }
 #endif
+        splashView=std::make_unique<fga::LoadingView>();splashView->setSize(520,224);splashView->show(tr("Starting..."));
+        auto splashImage=splashView->createComponentSnapshot(splashView->getLocalBounds());
+        splash=std::make_unique<juce::SplashScreen>("Fase Groove Arranger",splashImage,true);
+        splash->setVisible(true);
+       #if FGA_SELF_TESTS
+        if(args.size()==2&&args[0]=="--startup-splash-test"){const juce::File folder(args[1]);folder.createDirectory();if(auto out=folder.getChildFile("startup-splash.png").createOutputStream())juce::PNGImageFormat().writeImageToStream(splashImage,*out);}
+       #endif
+        juce::Timer::callAfterDelay(60,[this,args]{if(stopping)return;
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
-        window->content->main.openFromCommandLine(getCommandLineParameters());
+        window->content->main.openFromCommandLine(pendingStartupCommand.isEmpty()?getCommandLineParameters():pendingStartupCommand);pendingStartupCommand.clear();splash.reset();splashView.reset();
+       #if FGA_SELF_TESTS
+        if(args.size()==2&&args[0]=="--startup-splash-test"){const juce::File folder(args[1]);juce::Timer::callAfterDelay(80,[this,folder]{if(!window)return;auto& main=window->content->main;if(auto out=folder.getChildFile("startup-main.png").createOutputStream())juce::PNGImageFormat().writeImageToStream(main.createComponentSnapshot(main.getLocalBounds()),*out);folder.getChildFile("startup.txt").replaceWithText(!splash&&window->isVisible()?"PASS startup splash transitions to the visible application":"FAIL startup transition");quit();});return;}
+       #endif
         if(Localisation::setting("firstLaunchInfoShown","0")!="1"){
             Localisation::setSetting("firstLaunchInfoShown","1");
             juce::Component::SafePointer<fga::MainComponent> main(&window->content->main);
             juce::MessageManager::callAsync([main]{if(main)main->openCredits();});
         }
+        });
     }
     // Single instance: a double-clicked .fga arrives here (and as a macOS open-document event).
-    void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}}
-    void shutdown()override{window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
+    void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}else pendingStartupCommand=commandLine;}
+    void shutdown()override{stopping=true;splash.reset();splashView.reset();window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
-private:DawLookAndFeel theme;std::unique_ptr<Window> window;
+private:juce::String pendingStartupCommand;bool stopping=false;DawLookAndFeel theme;std::unique_ptr<Window> window;std::unique_ptr<fga::LoadingView> splashView;std::unique_ptr<juce::SplashScreen> splash;
 };
 }
 START_JUCE_APPLICATION(Application)

@@ -1,5 +1,12 @@
 # Validation record
 
+## 0.31.14 — workspace, Studio and arrangement development
+
+- Local core/MIDI/MP3 checks: 3/3 passed, including deterministic late-body development across all 13 genres and locked-clip preservation. Native UI passed fullscreen Options/quit geometry, natural audition completion/restart, Studio resizing/reset, asynchronous project association loading and existing editor/guide/Undo regressions. Startup splash-to-main transition passed.
+- Native VST3 effects smoke and independent WAV verification passed, including visible restoration progress, indicator completion and master removal/replacement with live editors.
+- The optional engine `--development-audit` rendered 26 equal eight-bar excerpts with the original automation sampled into each excerpt. All 13 late excerpts had higher RMS than their early counterparts (about +1.0% to +15.3%); maximum raw peak was 0.588253. These are deterministic reference windows, not a guarantee of increasing loudness in every bar or every custom project. Quiet intro/outro roles remain intentional.
+- macOS packaging gate unit tests (12), distribution packaging, shared-family assets, guide versions/links and six-language translation checks passed locally. Functional native evidence used the pre-bump binary; the release pipeline rebuilds the same code as 0.31.14 for Linux, Windows and macOS and gates publication on its checks.
+
 ## 0.23.5 — auxiliary-window close and first-click actions
 
 - All owned non-modal tool windows explicitly return activation and keyboard focus to the main DAW after hiding. Studio ends auditions and takes, then synchronously refreshes recording/import availability; its hidden timer is not responsible for restoring controls. Existing busy guards remain in place.

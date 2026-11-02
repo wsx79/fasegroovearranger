@@ -230,7 +230,19 @@ void verifyRearrange(){
     }
     auto locked=original;locked.tracks[0].clips[0].locked=true;const auto clips=locked.tracks[0].clips;check(!rearrangeSong(locked,2)&&locked.tracks[0].clips==clips&&locked.sections[0].bars==8,"locked rearrange is atomic");
 }
+void verifySectionDevelopment(){
+    for(int genre=0;genre<13;++genre){
+        auto p=fga::newProject(genre);p.sections={{fga::Section::main,16,"First"},{fga::Section::main,16,"Reprise"}};p.normalise();
+        for(auto& t:p.tracks)for(auto& c:t.clips){c.seed=42;c.motifSeed=0;}
+        fga::generate(p);
+        auto energy=[&](int section){double sum=0;for(int t=0;t<fga::trackCount;++t)for(const auto& n:p.tracks[(size_t)t].clips[(size_t)section].notes)sum+=n.velocity*n.velocity;return sum;};
+        check(energy(1)>energy(0),"repeated main section develops intensity across all genres");
+        auto locked=p;locked.tracks[3].clips[1].locked=true;const auto notes=locked.tracks[3].clips[1].notes;
+        fga::generate(locked,fga::Scope::song,0,0,123);check(locked.tracks[3].clips[1].notes==notes,"development respects locked clips");
+    }
+}
 int main(int argc,char** argv){try{
+    verifySectionDevelopment();
     verifyHarmonyAudit();
     verifyRearrange();
     verifyAuditFixes();

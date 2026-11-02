@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.14
+
+- Keep Options available in fullscreen, align master/time readouts, outline the selected sound source and give Bus & Send a distinct routing icon.
+- Show startup branding and project/plugin restoration progress.
+- Reset sample audition controls on natural completion; remember note-map, envelope and audition-loop preferences; allow Studio resizing and restore its standard size on reopening.
+- Develop later generated body sections with more supporting phrases/percussion and up to 12% higher velocities, preserving kick/bass, user patterns and locked parts. Add all-genre MIDI and early/late audio audits.
+- Use a folded-page icon with the Arranger logo for .fga project documents.
+
 ## 0.31.13
 
 - Give .fga project files a dedicated document-badge icon, distinct from the application icon, in Windows associations and macOS bundles.

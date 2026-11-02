@@ -8,6 +8,7 @@
 #include "InstrumentPanel.h"
 #include "FamilyOptions.h"
 #include "FamilyControls.h"
+#include "LoadingView.h"
 #include "Updater.h"
 #include "DawWorkspace.h"
 #include "PluginSettings.h"
@@ -430,6 +431,8 @@ private:
     juce::ComboBox timelineGrid;
     juce::File projectFile;
     bool dirty=false,refreshing=false;
+    LoadingView loadingView;bool restoringProject=false;int restorePluginTotal=0;
+    void updateLoadingProgress();
     int loadingPlugin=0;
     int ticks=0;
     std::unique_ptr<juce::FileChooser> chooser;

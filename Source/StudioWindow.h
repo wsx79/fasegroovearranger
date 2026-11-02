@@ -18,5 +18,6 @@ private:
     Panel* panel=nullptr;
     juce::TextButton dismissButton{"X"};
     void resized()override;
+    void resetDefaultSize();
 };
 }

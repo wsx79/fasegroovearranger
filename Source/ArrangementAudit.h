@@ -7,6 +7,39 @@
 #include <iostream>
 
 namespace fga {
+// Compare actual stored MIDI in equal eight-bar windows of early/late body
+// sections. Do not regenerate the excerpts or include quiet DJ bookends.
+inline bool writeDevelopmentAudit(const juce::File& folder){
+    if(folder.createDirectory().failed())return false;
+    AudioEngine audio(AudioEngine::Offline{});juce::AudioFormatManager formats;formats.registerBasicFormats();
+    juce::String report="genre\tearly_rms\tlate_rms\tearly_raw_peak\tlate_raw_peak\n";bool ok=true;
+    for(int genre=0;genre<13;++genre){
+        auto p=newProject(genre);int first=-1,last=-1;
+        for(int i=0;i<(int)p.sections.size();++i)if(p.sections[(size_t)i].type==Section::main||p.sections[(size_t)i].type==Section::drop){if(first<0)first=i;last=i;}
+        if(first<0||last<=first)return false;
+        double rms[2]{},peaks[2]{};
+        for(int pass=0;pass<2;++pass){const int section=pass?last:first;auto excerpt=p;excerpt.sections={p.sections[(size_t)section]};excerpt.sections[0].bars=8;excerpt.loop=false;
+            for(size_t t=0;t<excerpt.tracks.size();++t){excerpt.tracks[t].clips={p.tracks[t].clips[(size_t)section]};}
+            // Sample the original absolute-time envelopes into the excerpt,
+            // including native tone lanes, rather than reusing the intro curves.
+            const double offset=p.sectionStart(section);
+            for(auto entry:excerpt.envelopes()){auto& curve=*entry.first;if(!curve.active())continue;const auto original=curve;curve.points.clear();
+                for(int tick=0;tick<=128;++tick){const double beat=tick*.25;curve.points.push_back({beat,original.valueAt(offset+beat),0});}}
+            excerpt.normalise();
+            const auto file=folder.getChildFile(juce::String(genre)+(pass?"-late.wav":"-early.wav"));
+            if(audio.exportAudio(excerpt,file,-1,false,[]{return false;},[](double){},&peaks[pass]).failed())return false;
+            std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));if(!reader)return false;
+            const auto end=std::min(reader->lengthInSamples,(juce::int64)(32.*60./p.settings.bpm*reader->sampleRate));
+            double sum=0;juce::int64 count=0;juce::AudioBuffer<float> buffer(2,8192);
+            for(juce::int64 at=0;at<end;at+=8192){const int n=(int)std::min<juce::int64>(8192,end-at);if(!reader->read(&buffer,0,n,at,true,true))return false;
+                for(int ch=0;ch<2;++ch)for(int i=0;i<n;++i){const double v=buffer.getSample(ch,i);if(!std::isfinite(v))return false;sum+=v*v;++count;}}
+            rms[pass]=std::sqrt(sum/std::max<juce::int64>(1,count));ok=peaks[pass]<.9985&&rms[pass]>.001&&ok;
+        }
+        report+=juce::String(genres()[(size_t)genre])+"\t"+juce::String(rms[0],6)+"\t"+juce::String(rms[1],6)+"\t"+juce::String(peaks[0],6)+"\t"+juce::String(peaks[1],6)+"\n";
+        folder.getChildFile("development-audio.tsv").replaceWithText(report);std::cout<<"Development audio genre="<<genre<<" early="<<rms[0]<<" late="<<rms[1]<<std::endl;
+    }
+    folder.getChildFile("development-audio.txt").replaceWithText(ok?"PASS all 13 early/late excerpts: finite audible audio and raw headroom":"FAIL development rendering/headroom");return ok;
+}
 // Full-song integration evidence, separate from the short routing smoke test.
 // Only original built-in instruments are used; no installed plugins are needed.
 inline bool writeClubAudioAudit(const juce::File& folder){

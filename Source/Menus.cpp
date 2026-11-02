@@ -36,7 +36,7 @@ juce::File MainComponent::projectInCommandLine(const juce::String& commandLine){
 }
 bool MainComponent::openFromCommandLine(const juce::String& commandLine){
     const auto file=projectInCommandLine(commandLine);if(file==juce::File())return false;
-    open(file);return projectFile==file;
+    open(file);return loadingView.isVisible()||projectFile==file;
 }
 void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("Progression: one chord per bar"));

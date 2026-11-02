@@ -244,6 +244,9 @@ return false;
     if(gain){const auto before=project.tracks[(size_t)selectedTrack].gain;gain->setValue(3,juce::sendNotificationSync);stage("rotary gain changes audio without changing MIDI",std::abs(project.tracks[(size_t)selectedTrack].gain-juce::Decibels::decibelsToGain(3.))<1e-6&&midiFile(project)==midi);undo(false);stage("one undo restores rotary gain",std::abs(project.tracks[(size_t)selectedTrack].gain-before)<1e-9);}
     if(pan){const double before=project.tracks[(size_t)selectedTrack].pan;pan->setValue(-25,juce::sendNotificationSync);stage("rotary pan uses the existing stereo range",std::abs(project.tracks[(size_t)selectedTrack].pan+.25)<1e-9);undo(false);stage("one undo restores rotary pan",std::abs(project.tracks[(size_t)selectedTrack].pan-before)<1e-9);}
     for(auto* knob:{&masterSlider,&densitySlider,&swingSlider,&humanizeSlider})stage("home controls remain functional rotaries",knob->getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag&&knob->getBounds().getHeight()>=40);
+    const bool fullscreenBefore=appFullScreen;appFullScreen=true;resized();
+    stage("fullscreen retains Options and quit without overlapping the LCD",aboutButton.isVisible()&&quitButton.isVisible()&&masterSlider.getX()>=lcdArea.getRight()+4);
+    snapshot("fullscreen-toolbar.png");appFullScreen=fullscreenBefore;resized();
     // Show the song at a nonzero time. Only the display preference changes.
     seekTimeline(std::min(32.,project.length()));timeDisplay=false;showPosition(timelinePosition());const auto beforeMode=json();const auto count=undoStack.size();const auto position=audio.position();const auto grid=timelineSnap;
     positionModeButton.onClick();stage("clock mode preserves project, grid, undo and playhead",timeDisplay&&json()==beforeMode&&midiFile(project)==midi&&undoStack.size()==count&&audio.position()==position&&timelineSnap==grid&&positionLabel.getText()==timeText(timelinePosition()*60/project.settings.bpm,3));
