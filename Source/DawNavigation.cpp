@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
 #include "Localisation.h"
+#include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <cmath>
 #include <limits>
 
@@ -187,6 +188,12 @@ return false;
     piano.mouseDown(event(piano,nx,ny,juce::ModifierKeys::leftButtonModifier));piano.mouseUp(event(piano,nx,ny,0));
     stage("selection click creates no undo step",undoStack.size()==selectionUndoSize&&clip().notes==notes);
     seekTimeline(clipLength()-.25);pasteButton.onClick();stage("reject truncated MIDI phrase",clip().notes==notes);
+    select(0,0);showEditor();clip().notes={{0,.5,60,90,0},{1,.5,64,100,0}};changed();piano.selected={1};
+    transposeUp.onClick();transposeUp.onClick();stage("successive octave edits retain selection and spare unselected notes",clip().notes[0].pitch==60&&clip().notes[1].pitch==88&&piano.selected.size()==1);
+    transposeDown.onClick();stage("reverse octave edit retains selected notes",clip().notes[0].pitch==60&&clip().notes[1].pitch==76&&piano.selected.size()==1);
+    {const auto settings=project.settings;const auto& presets=sgk::progressionPresets();for(size_t i=0;i<presets.size();++i)if(juce::String(presets[i].name).containsIgnoreCase("Dorian")&&juce::String(presets[i].name).containsIgnoreCase("Vamp")){chooseProgression(project,(int)i);progressionBox.setSelectedId((int)i+1,juce::dontSendNotification);refreshControls();stage("known progression retains its actual preset name",progressionBox.getSelectedId()==(int)i+1);break;}project.settings=settings;refreshControls();}
+    showArrangement();automationAllButton.onClick();stage("all-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==(int)project.tracks.size());
+    automationTrackButton.onClick();stage("selected-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==1&&arrangement.volumeVisible[(size_t)selectedTrack]);showAutomationScope(false);
     select(4,0);showEditor();clip().notes={{1,.25,36,100,0}};changed();piano.selected={0};const auto drum=clip().notes;
     piano.keyPressed(juce::KeyPress(juce::KeyPress::upKey));stage("drum pitch stays isolated",clip().notes==drum);
     // A key during an active clip gesture must not undo the source underneath mouseUp.

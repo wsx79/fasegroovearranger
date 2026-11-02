@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato
+
+- Studio: ascolta e ripete solo le note MIDI selezionate; conserva la selezione dopo più modifiche di ottava.
+- Ricorda mixer, inspector, zoom e finestra; aggiunge uscita a schermo intero, chiusura interna di Studio/browser Campioni/automazione, crediti dal logo e invito alla donazione al primo avvio.
+- Aggiunge automazioni Traccia/Tutto, nomi delle progressioni riconosciute e aggancio dei bordi dei clip alla griglia scelta.
+- Aggiunge ultima nota, media e dominante e una mappa stimata di note/accordi sul campione, analizzata in background.
+- Aggiunge insert master VST3/AU in serie con stato, bypass, riordino, Undo ed esportazione del mix completo.
+- Migliora solo i motivi lead e le parti d’appoggio piano/chitarra di techno ed electro house; la guida richiede suoni esterni adeguati al genere. MIDI degli altri generi e tutte le parti ritmiche invariati.
+
 ## 0.31.7
 
 - Corregge la pulizia del valore di registro senza nome nel test dell’installer Windows; comportamento dell’app e dell’installer invariato.

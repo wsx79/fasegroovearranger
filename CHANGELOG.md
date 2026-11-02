@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Studio: audition and loop only selected MIDI notes; preserve selection through repeated octave edits.
+- Remember mixer/inspector visibility, zoom and window state; add full-screen quit, Studio/sample-browser/automation close controls, clickable credits and first-launch donation information.
+- Add selected-track/all-track automation views and show recognised progression names. Make clip-edge snapping follow the timeline grid.
+- Add last/average/dominant pitch views and a background sample note/chord overlay.
+- Add serial master VST3/AU inserts with state, bypass, ordering, Undo and complete-mix export support.
+- Refine only techno/electro-house lead motifs and sparse piano/guitar support; document external sound customisation. Other genre MIDI and all rhythmic parts are unchanged.
+
 ## 0.31.7
 
 - Fix cleanup of the unnamed registry value in the Windows installer test; app and installer behavior are unchanged.

@@ -95,6 +95,6 @@ private:
     MixerStrip master;
     std::array<float,2> compactPeaks{},compactHolds{};
     std::array<int,2> compactHoldTicks{};
-    ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"};
+    ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"},masterEffectsButton{"EFFECTS"};
 };
 }

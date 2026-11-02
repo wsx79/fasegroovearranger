@@ -149,10 +149,11 @@ SampleBrowser::SampleBrowser(AudioEngine& e):engine(e),shared(std::make_shared<S
     autoButton.onClick=[this]{prefs.autoPreview=autoButton.getToggleState();savePreferences();};
     addButton.onClick=[this]{chooseFolder();};
     loadButton.setColour(juce::TextButton::buttonColourId,Palette::accent);loadButton.onClick=[this]{loadSelected();};
+    closeButton.setComponentID("sample-browser-close");closeButton.setTooltip(tr("CLOSE"));closeButton.onClick=[this]{stopPreview();if(onClose)onClose();};
     backButton.onClick=[this]{back();};forwardButton.onClick=[this]{forward();};upButton.onClick=[this]{up();};
     playButton.onColour=Palette::accent2;playButton.primary=true;
     playButton.onClick=[this]{if(engine.isPreviewing()||isTimerRunning())stopPreview();else preview(fileAt(fileList.getSelectedRow()));};
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&addButton,&orderButton,&autoButton,&loadButton,&backButton,&forwardButton,&upButton,&playButton})addAndMakeVisible(c);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&closeButton,&addButton,&orderButton,&autoButton,&loadButton,&backButton,&forwardButton,&upButton,&playButton})addAndMakeVisible(c);
     backButton.setConnectedEdges(juce::Button::ConnectedOnRight);forwardButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);upButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     setWantsKeyboardFocus(false);refreshText();updateButtons();
 }
@@ -356,7 +357,7 @@ bool SampleBrowser::waitForListing(int milliseconds){
 }
 void SampleBrowser::resized(){
     auto r=getLocalBounds().reduced(gap,6);
-    headerArea=r.removeFromTop(rowH);addButton.setBounds(headerArea.removeFromRight(110));
+    headerArea=r.removeFromTop(rowH);closeButton.setBounds(headerArea.removeFromRight(26));headerArea.removeFromRight(4);addButton.setBounds(headerArea.removeFromRight(110));
     r.removeFromTop(6);
     const int placeRows=std::clamp((int)places->items.size(),1,std::max(1,std::min(5,(r.getHeight()-260)/24)));
     placeList.setBounds(r.removeFromTop(placeRows*24+2));r.removeFromTop(gap);
@@ -393,7 +394,7 @@ void SampleBrowser::paintOverChildren(juce::Graphics& g){
 bool SampleBrowser::verifyLayout() const{
     juce::Array<juce::Component*> parts{const_cast<juce::ListBox*>(&placeList),const_cast<juce::ListBox*>(&fileList),const_cast<juce::TextEditor*>(&search),const_cast<juce::ComboBox*>(&filterBox),const_cast<juce::ComboBox*>(&sortBox),
         const_cast<juce::TextButton*>(&addButton),const_cast<juce::TextButton*>(&orderButton),const_cast<juce::TextButton*>(&autoButton),const_cast<juce::TextButton*>(&loadButton),const_cast<juce::TextButton*>(&upButton),
-        const_cast<IconButton*>(&backButton),const_cast<IconButton*>(&forwardButton),const_cast<IconButton*>(&playButton),crumbs.get()};
+        const_cast<IconButton*>(&closeButton),const_cast<IconButton*>(&backButton),const_cast<IconButton*>(&forwardButton),const_cast<IconButton*>(&playButton),crumbs.get()};
     for(int i=0;i<parts.size();++i){const auto b=parts[i]->getBounds();if(b.isEmpty()||!getLocalBounds().contains(b)||b.intersects(infoArea))return false;
         for(int j=i+1;j<parts.size();++j)if(b.intersects(parts[j]->getBounds()))return false;}
     return fileList.getHeight()>=100;

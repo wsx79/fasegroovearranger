@@ -40,7 +40,11 @@ public:
             Localisation::setSetting("uiZoom",scale);
         };
         const float saved=juce::jlimit(.8f,2.f,Localisation::setting("uiZoom",Localisation::setting("uiScale","1")).getFloatValue());if(saved>0.f&&std::abs(saved-1.f)>1e-3f)content->main.onScaleChosen(saved);
+        const auto state=Localisation::setting("mainWindowState","");if(state.isNotEmpty())restoreWindowStateFromString(state);
+        if(Localisation::setting("appFullScreen","0")=="1"){juce::Component::SafePointer<fga::MainComponent> main(&content->main);juce::MessageManager::callAsync([main]{if(main)main->restoreInterfaceFullScreen();});}
+
     }
+    ~Window()override{if(!content->main.interfaceFullScreen())Localisation::setSetting("mainWindowState",getWindowStateAsString());}
     void closeButtonPressed()override{content->main.requestClose([]{juce::JUCEApplication::getInstance()->quit();});}
     ScaledContent* content=nullptr;
 };
@@ -270,6 +274,11 @@ public:
 #endif
         window=std::make_unique<Window>();window->content->main.pluginCatalog.scan();
         window->content->main.openFromCommandLine(getCommandLineParameters());
+        if(Localisation::setting("firstLaunchInfoShown","0")!="1"){
+            Localisation::setSetting("firstLaunchInfoShown","1");
+            juce::Component::SafePointer<fga::MainComponent> main(&window->content->main);
+            juce::MessageManager::callAsync([main]{if(main)main->openCredits();});
+        }
     }
     // Single instance: a double-clicked .fga arrives here (and as a macOS open-document event).
     void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}}

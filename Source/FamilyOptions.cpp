@@ -300,6 +300,7 @@ void OptionsOverlay::paint (juce::Graphics& g)
     g.setColour (Palette::text);
     g.setFont (FamilyTheme::font (12.0f, true));
     g.drawText (tr (Branding::licence), r.removeFromBottom (18.0f), juce::Justification::centred);
+    g.setColour(Palette::accent);g.drawFittedText(tr("If you enjoy this free app, please consider a donation. Thank you!"),r.removeFromBottom(24.f).toNearestInt(),juce::Justification::centred,2);
 }
 
 

@@ -11,7 +11,10 @@ folder = Path(sys.argv[1])
 expected = {'effects-order-ab.wav': .1, 'effects-order-ba.wav': .05,
             'effects-automated-ba.wav': .08, 'effects-automated-ab.wav': .04,
             'effects-private-export.wav': .04, 'effects-bypass.wav': 0,
-            'effects-undo.wav': .04, 'effects-relink.wav': .04, 'effects-editor-restored.wav': .03, 'effects-parameter-bypass.wav': .08}
+            'effects-undo.wav': .04, 'effects-relink.wav': .04, 'effects-editor-restored.wav': .03, 'effects-parameter-bypass.wav': .08,
+            'master-effect.wav': .05, 'master-effect-private.wav': .05, 'master-bypassed.wav': 0,
+            'master-undo.wav': .05, 'master-chain-ab.wav': .1, 'master-chain-ba.wav': .05,
+            'master-stem-dry.wav': 0, 'master-restored.wav': .05}
 for name, target in expected.items():
     with wave.open(str(folder / name)) as stream:
         assert stream.getsampwidth() == 3, (name, stream.getsampwidth())
@@ -36,3 +39,9 @@ assert track['effects'][0]['name'] == 'Voce brillante'
 assert all(item['parameterId'] for item in track['parameterAutomation'])
 assert 'FAIL' not in (folder / 'effects.txt').read_text(encoding='utf-8')
 print('PASS persisted instance identity, alias, states and parameter IDs')
+
+master = json.loads((folder / "master-effects-project.fga").read_text(encoding="utf-8"))["masterEffects"]
+assert [effect["slot"] for effect in master] == [2, 1]
+assert all(effect["state"] for effect in master)
+assert master[1]["name"] == "Master colour"
+print("PASS master effects: ordered native states and names persist")

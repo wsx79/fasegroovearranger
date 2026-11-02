@@ -820,3 +820,28 @@ Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**, AI coding
 [Source code and the Fase Groove family](https://github.com/wsx79/fasegroovearranger)
 
 The app is free and open source, **GNU AGPL v3 or later**, built with JUCE and the Inter typeface. Its original engines work offline, with no analytics or automatic uploads. AI composition is optional and sends only the disclosed musical context to your chosen service. External links open your browser only when you choose them. Your samples and plugins keep their own licences and terms; Privacy and Licences are included in the package.
+
+
+## Selection, snapping and interface memory
+
+In the piano roll, **Select** chooses a group of notes. Play (or Space) auditions only those notes and stops at their end. Enabling Loop repeats that selection without changing clips, mute/solo states or project loop locators. With no notes selected, ordinary project playback remains available; the clip audition button retains its function. Repeated **+12 / −12** edits retain the note selection.
+
+The **Grid/Snap** menu above the tracks snaps clip moves, clip edges and loop locators: one bar is four beats; one beat is a quarter note in 4/4. OFF permits free positioning; Shift temporarily bypasses snapping. It does not quantise existing MIDI notes; use Quantise in the piano roll for that.
+
+Closing the app saves mixer/inspector visibility, panel dimensions, zoom and window state. The X beside Full Screen uses the normal unsaved-changes close flow. Clicking the Fase Groove Arranger name/logo opens credits. The first launch opens Info with an invitation to support the project.
+
+## Pitch readout and sample note map
+
+Click the pitch readout to cycle **last pitch**, **time-weighted average** and **dominant note**. Average uses stable readings and also displays the most frequent note. Statistics belong to the current sample/track and reset when the monitored source changes. Noise, transients and polyphonic audio may not have a stable pitch.
+
+**Notes**, beside the pitch readout, toggles an estimated note/chord map on the original sample waveform. Analysis runs in the background and changes neither the sample nor slices or MIDI. This is an advisory visual estimate, not MIDI transcription or guaranteed chord recognition; long recordings use coarser time resolution. The Samples browser opened from the upper toolbar has its own X in the header. Studio has an internal X close button, available even when the system title bar is hidden.
+
+## Automation scope and master effects
+
+Beside Automation, **Track** (default) shows the selected track’s lane; **All** shows every track’s lane. The parameter picker has an explicit X close button. The Progression menu displays the preset recognised from the current harmony; custom progressions are not assigned an incorrect preset name.
+
+**Effects** on the mixer master, or beside Bus & Send in the compact lower bar, opens the master insert chain. Add multiple VST3/AU effects, open editors, rename, reorder, bypass and remove instances. The chain and native plugin states persist with the project. Complete mix exports include master inserts; individual stems exclude them.
+
+## Techno and electro house: hooks and support parts
+
+Only **Techno** and **Electro House** use the revised lead: repeatable small-note motifs, phrase responses and controlled registers. Piano and guitar can supply sparse stabs, intervals and supporting parts. Their track names identify the MIDI generators: **customise these parts with external synths or sounds appropriate to the genre**. Internal sounds are listening guides. Other genres and rhythmic parts remain unchanged.

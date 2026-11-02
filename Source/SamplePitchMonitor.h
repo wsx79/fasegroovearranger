@@ -25,6 +25,12 @@ inline SamplePitchReading estimateSamplePitch(const float* samples,int count,dou
     const double hz=rate/lag;if(hz<35||hz>1600)return result;
     const double note=69.+12.*std::log2(hz/440.);result.midi=(int)std::lround(note);result.cents=100*(note-result.midi);result.hz=hz;result.confidence=1-difference[(size_t)best];return result;
 }
+struct SamplePitchStatistics {
+    SamplePitchReading last;double weightedMidi=0,weight=0;std::array<double,128> histogram{},fine{};
+    void add(const SamplePitchReading& reading){if(!reading.fresh||reading.midi<0||reading.midi>127)return;last=reading;const double w=std::clamp(reading.confidence,.01,1.);const double midi=reading.midi+reading.cents/100.;weightedMidi+=midi*w;weight+=w;histogram[(size_t)reading.midi]+=w;fine[(size_t)reading.midi]+=midi*w;}
+    int dominant()const{return weight>0?(int)std::distance(histogram.begin(),std::max_element(histogram.begin(),histogram.end())):-1;}
+    SamplePitchReading reading(int mode)const{if(mode==0||weight<=0)return last;const int main=dominant();const double midi=mode==1?weightedMidi/weight:fine[(size_t)main]/histogram[(size_t)main];SamplePitchReading r;r.midi=(int)std::lround(midi);r.cents=(midi-r.midi)*100;r.hz=440*std::pow(2.,(midi-69)/12);return r;}
+};
 // Audio producer / Studio consumer. No locks, allocation or pitch search in the callback.
 class SamplePitchMonitor {
 public:

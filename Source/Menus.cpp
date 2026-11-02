@@ -110,7 +110,7 @@ void MainComponent::showDocument(const juce::String& title,const juce::String& t
 void MainComponent::showAbout(){
     float scale=1.f;if(auto* p=getParentComponent())scale=p->getWidth()/1440.f;
     options.checkUpdatesButton.setEnabled(!updater.isBusy());options.checkUpdatesButton.setButtonText(tr(updater.isBusy()?"CHECKING...":"CHECK NOW"));
-    options.show(false,scale);
+    options.show(true,scale);
 }
 void MainComponent::showAudioSettings(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("AUDIO / MIDI"));menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));menu.addSeparator();menu.addItem(5,tr("Metronome (C)"),true,audio.metronomeOn());juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton).withMinimumWidth(240).withStandardItemHeight(30),[safe](int id){if(safe==nullptr)return;if(id==5){safe->toggleMetronome();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,2,0,2,false,false,true,false);selector->setSize(920,640);o.content.setOwned(selector);o.componentToCentreAround=safe.getComponent();o.launchAsync();}
@@ -177,7 +177,13 @@ bool MainComponent::verifyExports(const juce::File& folder){
     auto* original=audio.plugin(0);juce::String report;bool ok=true;auto check=[&](bool pass,const char* label){ok=pass&&ok;report+=juce::String(pass?"PASS ":"FAIL ")+label+"\n";};
     project=newProject(7);project.settings.bpm=120;project.settings.key=1;project.settings.scale=0;project.sections={{Section::intro,1,"Intro"},{Section::main,2,"Jackin groove"}};project.normalise();project.masterGain=.5;project.masterAutomation.enabled=false;
     for(auto& track:project.tracks){track.mute=true;track.volume.enabled=false;track.panAutomation.enabled=false;track.parameters.clear();for(auto& clip:track.clips)clip.notes.clear();}auto& pianoTrack=project.tracks[0];pianoTrack.mute=false;pianoTrack.gain=.5;pianoTrack.pan=0;pianoTrack.instrument=original?"plugin":"internal";pianoTrack.clips[0].notes={{0,2,69,100,0}};audio.publish(project);
-    auto settle=[&]{const auto deadline=juce::Time::getMillisecondCounterHiRes()+30000.;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<deadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !mediaBusy&&!audio.isExporting()&&!audio.isPlaying()&&!editingRestricted();};
+    // Debug synthesis of all 18 stems is deliberately slower; keep the same completion/audio assertions.
+   #if JUCE_DEBUG
+    constexpr double exportTestTimeout=600000.;
+   #else
+    constexpr double exportTestTimeout=30000.;
+   #endif
+    auto settle=[&]{const auto deadline=juce::Time::getMillisecondCounterHiRes()+exportTestTimeout;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<deadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !mediaBusy&&!audio.isExporting()&&!audio.isPlaying()&&!editingRestricted();};
     exportFile(5,0);auto* encodingDialog=dynamic_cast<juce::AlertWindow*>(juce::Component::getCurrentlyModalComponent());const bool hasEncoding=encodingDialog&&encodingDialog->getComboBoxComponent("rate")&&encodingDialog->getComboBoxComponent("depth");check(hasEncoding&&encodingDialog->getComboBoxComponent("rate")->getNumItems()==5&&encodingDialog->getComboBoxComponent("depth")->getNumItems()==2,"WAV export presents working sample-rate and bit-depth choices");
     if(encodingDialog){if(auto out=folder.getChildFile("wav-options.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(encodingDialog->createComponentSnapshot(encodingDialog->getLocalBounds()),*out);}encodingDialog->exitModalState(0);juce::MessageManager::getInstance()->runDispatchLoopUntil(20);}check(!mediaBusy&&!editingRestricted(),"cancelling encoding choices leaves the DAW available");
     const auto chosen=folder.getChildFile("Piano.wav");bool pathRequested=false,encodingDestroyed=false,validChoice=false;juce::Component::SafePointer<juce::AlertWindow> finishedDialog;

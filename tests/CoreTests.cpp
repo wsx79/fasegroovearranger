@@ -606,7 +606,7 @@ int main(int argc,char** argv){try{
         for(int genre:{fga::technoGenre,fga::electroHouseGenre}){
             auto p=fga::newProject(genre);check(p.settings.genre==genre,"electronic genre survives normalization");verifyClubProject(p,genre,argc>1?argv[1]:"");
             auto count=[&](int track){size_t notes=0;for(const auto& c:p.tracks[(size_t)track].clips)notes+=c.notes.size();return notes;};
-            check(count(0)==0&&count(2)==0&&count(3)==0,"electronic arrangement never inserts piano, strings or guitar automatically");
+            check(count(0)>0&&count(2)==0&&count(3)>0,"electronic arrangement uses sparse piano/guitar support and leaves strings empty");
             check(count(1)>0&&count(fga::leadTrack)>0&&count(4)>0,"electronic arrangement has bass, synth theme and kick");
             check(p.tracks[(size_t)fga::leadTrack].sound==(genre==fga::technoGenre?3:2),"electronic lead uses pulse or saw synthesis");
             check(genre!=fga::technoGenre||p.settings.swing==0,"techno defaults to straight timing");
@@ -620,7 +620,7 @@ int main(int argc,char** argv){try{
                 for(const auto& n:probe.tracks[(size_t)fga::leadTrack].clips[0].notes)check(n.start>=32,"lead respects scaled intro entry");
             }
             const auto old=p.tracks[(size_t)fga::leadTrack].clips;p.tracks[(size_t)fga::leadTrack].locked=true;
-            fga::generate(p,fga::Scope::song,0,0,772);check(p.tracks[(size_t)fga::leadTrack].clips==old&&count(0)==0,"electronic regeneration preserves locked parts and omits automatic piano");
+            fga::generate(p,fga::Scope::song,0,0,772);check(p.tracks[(size_t)fga::leadTrack].clips==old&&count(0)>0,"electronic regeneration preserves locked lead and sparse support");
             fga::generate(p,fga::Scope::clip,0,1,491);check(!p.tracks[0].clips[1].notes.empty(),"an explicitly requested piano clip is still available");
             p.tracks[0].locked=true;const auto piano=p.tracks[0].clips;fga::generate(p,fga::Scope::song,0,0,845);check(p.tracks[0].clips==piano,"explicit locked piano survives subsequent electronic generation");
             auto midi=fga::midiFile(p);check(midi.size()>200,"electronic styles export valid nonempty MIDI");

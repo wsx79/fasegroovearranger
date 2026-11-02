@@ -26,6 +26,10 @@ void MainComponent::seekTimeline(double beat){
 }
 void MainComponent::togglePlayback(){
     piano.stopPreview();
+    if(!audio.isPlaying()&&page==Page::editor&&!piano.selected.empty()){
+        std::vector<Note> notes;for(int index:piano.selected)if(juce::isPositiveAndBelow(index,(int)clip().notes.size()))notes.push_back(clip().notes[(size_t)index]);
+        if(!notes.empty()){editCursor=-1;audio.playSelectedNotes(selectedTrack,notes,clipStart(),project.loop);return;}
+    }
     if(!audio.isPlaying()&&editCursor>=0){if(editCursor>project.length())return;audio.seek(editCursor);}editCursor=-1;audio.play(!audio.isPlaying());
 }
 // Live click on every beat (accented bar); never part of an export.

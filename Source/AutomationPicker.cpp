@@ -10,7 +10,8 @@ class AutomationPicker final : public juce::Component,private juce::ListBoxModel
 public:
     AutomationPicker(MainComponent& component,int track,int preferred):owner(component),alive(&component),session(component.project.tracks[(size_t)track].sessionId){
         if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);
-        setSize(500,470);for(auto* c:std::initializer_list<juce::Component*>{&source,&search,&list,&choose,&remove})addAndMakeVisible(c);
+        setSize(500,470);for(auto* c:std::initializer_list<juce::Component*>{&source,&search,&list,&choose,&remove,&close})addAndMakeVisible(c);
+        close.setComponentID("automation-close");close.setButtonText("X");close.setTooltip(tr("CLOSE"));close.onClick=[this]{dismiss();};
         source.setComponentID("automation-source");search.setComponentID("automation-search");list.setComponentID("automation-parameters");choose.setComponentID("automation-choose");remove.setComponentID("automation-remove");
         search.setTextToShowWhenEmpty(tr("Search a parameter..."),Daw::textFaint);search.onTextChange=[this]{rebuild();};source.onChange=[this]{rebuild();};
         list.setModel(this);list.setRowHeight(36);list.setColour(juce::ListBox::backgroundColourId,Daw::base);list.setOutlineThickness(1);list.setColour(juce::ListBox::outlineColourId,Daw::line);
@@ -21,7 +22,7 @@ public:
         Localisation::bindTip(source,"Choose the track, its native sound, instrument plugin or one effect instance.");Localisation::bindTip(search,"Filter the parameters exposed by the selected sound or plugin.");Localisation::bindTip(choose,"Show the selected automation lane. Existing curves are reused.");Localisation::bindTip(remove,"Remove this parameter's automation curve. Undo restores it.");
     }
     void paint(juce::Graphics& g)override{if(!alive)return;g.fillAll(Daw::surface);g.setColour(Daw::text);g.setFont(FamilyTheme::font(16,true));g.drawText(tr("AUTOMATION"),juce::Rectangle<int>(16,8,getWidth()-32,28),juce::Justification::centredLeft);g.setColour(Daw::textFaint);g.setFont(FamilyTheme::font(11));const int track=owner.trackForSession(session);if(track>=0)g.drawText(juce::String((int)owner.project.tracks[(size_t)track].parameters.size())+" / "+juce::String(maxParameterLanes)+"  "+tr("Parameter lanes"),juce::Rectangle<int>(16,getHeight()-70,getWidth()-32,18),juce::Justification::centredLeft);if(entries.empty())g.drawText(tr("No matching parameters"),list.getBounds().reduced(10),juce::Justification::centred);}
-    void resized()override{auto r=getLocalBounds().reduced(16);r.removeFromTop(28);source.setBounds(r.removeFromTop(30));r.removeFromTop(8);search.setBounds(r.removeFromTop(28));r.removeFromTop(8);auto bottom=r.removeFromBottom(68);bottom.removeFromTop(30);remove.setBounds(bottom.removeFromLeft(130));bottom.removeFromLeft(8);choose.setBounds(bottom);list.setBounds(r);}
+    void resized()override{auto r=getLocalBounds().reduced(16);auto title=r.removeFromTop(28);close.setBounds(title.removeFromRight(28));source.setBounds(r.removeFromTop(30));r.removeFromTop(8);search.setBounds(r.removeFromTop(28));r.removeFromTop(8);auto bottom=r.removeFromBottom(68);bottom.removeFromTop(30);remove.setBounds(bottom.removeFromLeft(130));bottom.removeFromLeft(8);choose.setBounds(bottom);list.setBounds(r);}
     int getNumRows()override{return (int)entries.size();}
     juce::String getTooltipForRow(int row)override{if(row<0||row>=(int)entries.size())return {};const auto& entry=entries[(size_t)row];return entry.title+(entry.value.isEmpty()?juce::String():"\n"+entry.value);}
     void paintListBoxItem(int index,juce::Graphics& g,int width,int height,bool selected)override{if(index<0||index>=(int)entries.size())return;const auto& entry=entries[(size_t)index];if(selected){g.setColour(Daw::accent.withAlpha(.15f));g.fillRect(0,0,width,height);}g.setColour(entry.existing?Daw::automation:Daw::text);g.setFont(FamilyTheme::font(12,selected));g.drawFittedText(entry.title,juce::Rectangle<int>(10,0,width-115,height),juce::Justification::centredLeft,1,.6f);g.setColour(Daw::textFaint);g.setFont(FamilyTheme::font(10));g.drawText(entry.existing?tr("Already added"):entry.value,juce::Rectangle<int>(width-110,0,100,height),juce::Justification::centredRight);}
@@ -32,7 +33,7 @@ private:
     struct Entry {int slot,index;juce::String title,id,value;bool existing=false;};
     MainComponent& owner;juce::Component::SafePointer<MainComponent> alive;std::uint64_t session;
     juce::ComboBox source;juce::TextEditor search;juce::ListBox list;
-    juce::TextButton choose,remove;
+    juce::TextButton choose,remove,close;
     std::unique_ptr<juce::TooltipWindow> tooltips;
     std::vector<std::pair<int,juce::String>> sources;std::vector<Entry> entries;
     void rebuild(){if(!alive)return;entries.clear();const int track=owner.trackForSession(session);if(track<0)return;const auto& t=owner.project.tracks[(size_t)track];const int selection=source.getSelectedId()-1;if(selection<0||selection>=(int)sources.size())return;const int slot=sources[(size_t)selection].first;const auto query=search.getText().trim();
@@ -48,7 +49,11 @@ private:
     void removeLane(){if(!alive)return;const int row=list.getSelectedRow(),track=owner.trackForSession(session);if(track<0||row<0||row>=(int)entries.size()||owner.pluginsBusy()||owner.editingRestricted())return;const auto entry=entries[(size_t)row];auto& lanes=owner.project.tracks[(size_t)track].parameters;auto it=std::find_if(lanes.begin(),lanes.end(),[&](const auto& lane){return lane.slot==entry.slot&&(entry.id.isNotEmpty()?text(lane.parameterId)==entry.id:lane.index==entry.index);});if(it==lanes.end())return;owner.checkpoint();lanes.erase(it);owner.resetAutomationTarget(track);owner.changed(false);rebuild();}
 };
 }
-void MainComponent::resetAutomationTarget(int track){arrangement.laneTarget[(size_t)track]=ArrangementView::laneVolume;}
+void MainComponent::showAutomationScope(bool enabled){
+    for(size_t i=0;i<arrangement.volumeVisible.size();++i)arrangement.volumeVisible[i]=enabled&&i<project.tracks.size()&&(automationAllTracks||(int)i==selectedTrack);
+    automationTrackButton.setToggleState(!automationAllTracks,juce::dontSendNotification);automationAllButton.setToggleState(automationAllTracks,juce::dontSendNotification);updateSizes();arrangement.repaint();
+}
+void MainComponent::resetAutomationTarget(int track){if(track==masterEffectTrack)return;arrangement.laneTarget[(size_t)track]=ArrangementView::laneVolume;}
 void MainComponent::showAutomationPicker(int track,int source){if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;if(automationPicker)automationPicker->dismiss();select(track,selectedSection);arrangement.volumeVisible[(size_t)track]=true;updateSizes();arrangement.repaint();auto content=std::make_unique<AutomationPicker>(*this,track,source);auto& box=juce::CallOutBox::launchAsynchronously(std::move(content),automationButton.getScreenBounds(),nullptr);automationPicker=&box;box.setDismissalMouseClicksAreAlwaysConsumed(false);}
 void MainComponent::selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& id){if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;auto& t=project.tracks[(size_t)track];int target=ArrangementView::laneVolume;
     if(slot==-2){if(index<0||index>2)return;target=index;}

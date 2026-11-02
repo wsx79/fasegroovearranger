@@ -16,5 +16,7 @@ private:
     class Panel;
     MainComponent& owner;
     Panel* panel=nullptr;
+    juce::TextButton dismissButton{"X"};
+    void resized()override;
 };
 }

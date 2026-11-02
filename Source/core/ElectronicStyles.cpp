@@ -18,7 +18,8 @@ void applyElectronicHarmony(Settings& s,std::uint32_t seed){
 }
 bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,double beats,Section role,bool requested){
     const auto& s=p.settings;if(!isElectronicGenre(s.genre))return false;
-    if(track==0||track==2||track==3){if(requested)return false;clip.notes.clear();return true;}
+    if(track==2){if(requested)return false;clip.notes.clear();return true;}
+    if((track==0||track==3)&&requested)return false;
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
     const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(e.density<0?s.density:e.density,0.,1.);
     clip.notes.clear();if(density<=0)return true;
@@ -44,16 +45,26 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
                 if(!techno&&(cell==7||cell==15))pitch+=12;else if(techno&&cell==14&&(bar%4)==3)pitch+=chord.fifth;
                 note(at,std::clamp(e.gate*.32,.08,.28),pitch,(cell%4==0?104:88)+(int)(variation%11));
             }
+        }else if(track==0||track==3){
+            // Sparse support for external synth sounds, only for these two electronic styles.
+            if(mixing||build||(track==3&&(bar%4!=2||breakdown)))continue;
+            if(track==0){const double at=base+(techno?1.5:1.);const auto chord=chordAtBeat(s,begin+at);const int root=48+chord.rootPc;
+                const double duration=breakdown?1.25:techno?.16:.28;note(at,duration,root,breakdown?55:70);note(at,duration,root+(techno?chord.fifth:chord.third),breakdown?48:64);
+                if(!techno&&drop&&bar%2==1){note(base+3.25,.2,root,62);note(base+3.25,.2,root+chord.fifth,57);}}
+            else{const auto chord=chordAtBeat(s,begin+base);note(base+2.5,techno?.18:.45,60+chord.rootPc,58);note(base+2.5,techno?.18:.45,60+chord.rootPc+chord.fifth,51);}
         }else if(track==leadTrack){
-            if(breakdown&&bar%4!=0)continue;
-            if(techno&&bar%4==3)continue;
-            static constexpr int technoCells[]{1,6,10};static constexpr int electroCells[]{0,3,6,10,12,15};
-            const int count=techno?3+variant%3:4+variant%3;
-            const int period=1<<(variant%3);const bool answer=(bar/period)%2!=0;
-            for(int i=0;i<count;++i){if((variation+i*23)%100>(unsigned)(25+density*75))continue;
-                int cell=techno?(technoCells[i%3]+variant*2+(answer?3:0))%16:(electroCells[i%6]+variant+(answer?2:0))%16;const double at=base+cell*.25;const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);
-                const int tones[]{0,chord.third,chord.fifth,chord.seventh>=0?chord.seventh:10,14,12,24};int degree=(i+(int)(draw(motif+unsigned(i)*79U)%7)+(answer?2:0))%7;
-                note(at,breakdown?.65:std::clamp(e.gate*.5,.09,.45),60+chord.rootPc+tones[degree],drop?103:86);
+            if((mixing&&bar%4!=0)||(build&&bar>=bars-1)||(breakdown&&bar%4!=0))continue;
+            const bool answer=(bar%4)>=2;
+            static constexpr int electroCells[4][6]{{0,3,6,8,11,14},{0,2,6,8,10,14},{0,3,6,10,12,14},{0,2,5,8,11,14}};
+            static constexpr int electroDegrees[2][6]{{0,0,2,0,1,2},{0,0,2,1,0,1}};
+            static constexpr int technoCells[4][4]{{0,3,6,10},{0,3,6,14},{0,2,6,10},{0,3,7,10}};
+            static constexpr int technoDegrees[2][4]{{0,0,2,0},{0,0,2,1}};
+            const int count=mixing?2:breakdown?1:techno?4:6;
+            for(int i=0;i<count;++i){if(i>1&&density<.4&&i%2)continue;
+                const int phrase=answer?1:0,rhythm=(variant+phrase)%4,cell=techno?technoCells[rhythm][i]:electroCells[rhythm][i];const double at=base+cell*.25;
+                const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);const int tones[]{0,chord.third,chord.fifth};const int degree=techno?technoDegrees[phrase][i]:electroDegrees[phrase][i];
+                const int pitch=60+chord.rootPc+tones[degree];const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);
+                note(at,gate,pitch,(i==0?drop?106:94:drop?93:81)+(int)(draw(motif+i*17U)%5));
             }
         }else if(isDrumTrack(track)){
             const int lane=track-4,pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(lane);

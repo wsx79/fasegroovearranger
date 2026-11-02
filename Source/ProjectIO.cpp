@@ -155,7 +155,9 @@ juce::var projectJson(const Project& p){
         juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);if(clip.motifSeed)set(b,"motifSeed",(juce::int64)clip.motifSeed);set(b,"locked",clip.locked);if(t.freeTimeline){set(b,"position",clip.position);set(b,"role",clip.role);}if(clip.span>0)set(b,"span",clip.span);
             if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);}juce::Array<juce::var> notes;
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
-    }set(o,"tracks",tracks);return o;
+    }set(o,"tracks",tracks);
+    if(!p.masterEffects.effects.empty()){juce::Array<juce::var> effects;for(const auto& e:p.masterEffects.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);effects.add(fx);}set(o,"masterEffects",effects);set(o,"version",4);}
+    return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
     if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3&&(int)o["version"]!=4))return juce::Result::fail("Formato progetto non supportato.");
@@ -168,6 +170,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
     if(auto r=readBuses(o["buses"],p.buses);r.failed())return r;
+    p.masterEffects.effects.clear();
+    if(o.hasProperty("masterEffects")){auto* effects=o["masterEffects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid master effect chain.");
+        for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||p.masterEffects.effect((int)slot))return juce::Result::fail("Invalid master effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing master effect identifier.");p.masterEffects.effects.push_back(std::move(e));}}
     p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
     for(const auto& a:*sections){if(!a.isObject())return juce::Result::fail("Sezione non valida.");p.sections.push_back({(Section)(int)num(a,"type",0),(int)num(a,"bars",8),str(a,"name","Main")});}
     const bool migrateSlots=tracks->size()<legacyTrackCount;std::array<bool,maxTracks> usedSlots{};

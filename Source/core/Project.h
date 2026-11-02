@@ -17,6 +17,8 @@ constexpr int leadTrack = 17;
 constexpr int legacyTrackCount = 17;
 constexpr int trackCount = 18; // generated tracks, stable IDs
 constexpr int maxTracks = 32;
+// Dedicated engine slot: never a MIDI track and never exported as a stem.
+constexpr int masterEffectTrack = maxTracks, engineTrackCount = maxTracks + 1;
 inline bool isManualTrack(int track) { return track >= trackCount && track < maxTracks; }
 inline bool isDrumTrack(int track) { return track >= 4 && track < legacyTrackCount; }
 inline bool isHarmonicTrack(int track) { return track >= 0 && (track < 4 || track == leadTrack); }
@@ -127,6 +129,7 @@ struct Project {
     std::vector<SongSection> sections;
     std::vector<Track> tracks;
     std::array<BusSettings,4> buses=defaultBuses();
+    Track masterEffects;
     double masterGain = .8;
     VolumeAutomation masterAutomation; // gain multiplier on the master, as a track's volume
     // Every automation envelope with its value ceiling (for edits that move or cut time).

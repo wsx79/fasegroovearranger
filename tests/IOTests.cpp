@@ -12,6 +12,10 @@ int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
     runAiTests();runStudioIOTests();
+    {auto master=fga::newProject(1);fga::EffectSlot fx;fx.slot=2;fx.name="Master colour";fx.pluginName="Probe";fx.path="/Probe.vst3";fx.state="native-master-state";fx.bypassed=true;master.masterEffects.effects.push_back(fx);fga::Project loaded;auto json=fga::projectJson(master);
+     check(fga::projectFromJson(json,loaded).wasOk()&&loaded.masterEffects.effects.size()==1&&loaded.masterEffects.effects[0].slot==2&&loaded.masterEffects.effects[0].state==fx.state&&loaded.masterEffects.effects[0].bypassed,"master effects, order, native state and bypass round-trip");
+     auto* entries=json["masterEffects"].getArray();entries->add(entries->getReference(0));check(fga::projectFromJson(json,loaded).failed(),"duplicate master effect slots are rejected");}
+
     for(int genre:{fga::deepHouseGenre,fga::technoGenre,fga::electroHouseGenre}){
         auto p=fga::newProject(genre);fga::Project loaded;
         check(fga::projectFromJson(fga::projectJson(p),loaded).wasOk()&&loaded.settings.genre==genre,"house/techno style IDs round-trip");

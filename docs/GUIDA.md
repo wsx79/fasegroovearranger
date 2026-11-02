@@ -824,3 +824,28 @@ Assistenza allo sviluppo: **Claude (Anthropic)** e **Codex (OpenAI)**, AI coding
 [Codice sorgente e famiglia Fase Groove](https://github.com/wsx79/fasegroovearranger)
 
 L'app è gratuita e open source, **GNU AGPL v3 o successiva**. Usa JUCE e il carattere Inter. I motori originali funzionano offline, senza analytics o caricamenti automatici. CREA CON IA è facoltativo e invia il contesto musicale dichiarato al servizio scelto. I collegamenti esterni aprono il browser soltanto se li scegli. Campioni e VST personali mantengono le proprie licenze e condizioni; i dettagli sono in Privacy e Licenze, incluse nel pacchetto.
+
+
+## Selezione, griglia e memoria dell’interfaccia
+
+Nel piano roll, **Seleziona** permette di scegliere un gruppo di note. Play (o Spazio) riproduce soltanto quelle note e si arresta alla fine della selezione. Con Loop attivo ripete la selezione, senza modificare clip, mute, solo o locatori del progetto. Senza note selezionate resta disponibile la normale riproduzione del progetto; il pulsante di ascolto del clip mantiene la sua funzione. **+12 / −12** conservano la selezione anche dopo clic ripetuti.
+
+La **Griglia** sopra le tracce regola l’aggancio degli spostamenti e dei bordi dei clip e dei locatori del loop: 1 battuta = 4 beat, 1 beat = un quarto in 4/4. OFF consente il posizionamento libero; Maiusc ignora temporaneamente l’aggancio. Non quantizza le note già scritte: per quello usa Quantizza nel piano roll.
+
+Alla chiusura vengono conservati visibilità di mixer e inspector, dimensioni dei pannelli, zoom e stato della finestra. La X accanto a Schermo intero chiude l’app con il normale controllo delle modifiche non salvate. Il nome/logo Fase Groove Arranger apre i crediti; al primo avvio viene mostrata Info con l’invito a sostenere il progetto.
+
+## Intonazione e mappa del campione
+
+Clicca sul riquadro Intonazione per alternare **ultima nota**, **media nel tempo** e **nota dominante**. La media è calcolata sulle letture stabili e mostra anche la nota più frequente. Le statistiche appartengono al campione e alla traccia correnti e si azzerano quando cambia la sorgente monitorata. Rumore, transienti e polifonia possono non dare una nota stabile.
+
+Il pulsante **Note**, accanto a Intonazione, mostra una mappa stimata di note e accordi sulla forma d’onda originale; un secondo clic la nasconde. L’analisi avviene in background: non cambia il campione, le slice o il MIDI. È un aiuto visivo indicativo, non una trascrizione MIDI o una garanzia di riconoscimento degli accordi; nei campioni lunghi la risoluzione temporale è più grossolana. Il browser Campioni aperto dall’icona in alto ha una propria X nella testata. La X interna di Studio chiude la finestra anche quando la barra di sistema non è visibile.
+
+## Automazioni ed effetti master
+
+Accanto ad Automazione, **Traccia** (predefinito) mostra la corsia della traccia selezionata; **Tutto** mostra le corsie di tutte le tracce. La finestra di scelta dei parametri ha una X di chiusura. Il menu Progressione riporta il preset riconosciuto dalla successione armonica corrente; una successione personalizzata non viene etichettata con un nome di preset errato.
+
+**Effetti** sul master del mixer, oppure accanto a Bus e mandate nella barra inferiore quando il mixer è chiuso, apre la catena insert del master. Puoi aggiungere più VST3/AU, aprire i loro editor, rinominare, riordinare, bypassare e rimuovere gli effetti. Catena e stato dei plugin vengono salvati nel progetto e ripristinati alla riapertura. Il mix completo esportato passa dagli insert master; gli stem individuali restano privi degli insert master.
+
+## Techno ed electro house: lead e parti d’appoggio
+
+Solo per **Techno** ed **Electro House**, il lead usa motivi ripetibili di poche note, con risposte nella frase e registri contenuti. Piano e chitarra possono fornire stabs, intervalli e parti d’appoggio sparse. I loro nomi indicano il generatore MIDI: **personalizza queste parti con sintetizzatori o suoni esterni adeguati al genere**. I suoni interni sono guide d’ascolto. Gli altri generi e le parti ritmiche restano invariati.

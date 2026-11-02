@@ -1,8 +1,31 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/AudioEngine.h"
 #include "../Source/StudioIO.h"
+#include "../Source/SampleNoteAnalysis.h"
 #include <stdexcept>
 namespace {void require(bool ok,const char* text){if(!ok)throw std::runtime_error(text);}}
+static void testSelectedNotesAndAnalysis(){
+    using namespace fga;
+    SamplePitchStatistics statistics;SamplePitchReading reading;reading.fresh=true;reading.confidence=1;reading.midi=60;statistics.add(reading);reading.midi=64;for(int i=0;i<3;++i)statistics.add(reading);
+    require(statistics.reading(0).midi==64&&statistics.dominant()==64&&statistics.reading(1).midi==63,"pitch statistics retain last, average and dominant independently");
+    reading.fresh=false;reading.midi=90;statistics.add(reading);require(statistics.reading(0).midi==64&&statistics.weight==4,"repainting does not count stale pitch readings");
+    SampleAsset asset;asset.rate=11025;asset.frames=22050;asset.audio.setSize(2,asset.frames);
+    for(int i=0;i<asset.frames;++i){const double hz=i<11025?261.625565:329.627557;const float value=.3f*(float)std::sin(2*juce::MathConstants<double>::pi*hz*i/asset.rate);asset.audio.setSample(0,i,value);asset.audio.setSample(1,i,-value);}
+    auto regions=analyseSampleNotes(asset);bool c=false,e=false;for(const auto& region:regions){c=c||std::find(region.notes.begin(),region.notes.end(),60)!=region.notes.end();e=e||std::find(region.notes.begin(),region.notes.end(),64)!=region.notes.end();}require(c&&e,"sample map finds separate notes even in anti-phase stereo");
+    for(int i=0;i<asset.frames;++i){float value=0;for(double hz:{261.625565,329.627557,391.995436})value+=.15f*(float)std::sin(2*juce::MathConstants<double>::pi*hz*i/asset.rate);asset.audio.setSample(0,i,value);asset.audio.setSample(1,i,value);}
+    regions=analyseSampleNotes(asset);bool chord=false;for(const auto& region:regions)chord=chord||sampleRegionLabel(region.notes)=="C";require(chord,"sample map recognises a synthetic major triad");
+    asset.audio.clear();require(analyseSampleNotes(asset).empty(),"sample map never assigns notes to silence");
+    std::uint32_t random=73;for(int i=0;i<asset.frames;++i){random=random*1664525u+1013904223u;asset.audio.setSample(0,i,(float)((random>>8)/16777216.-.5));}require(analyseSampleNotes(asset).empty(),"sample map rejects unpitched noise");
+    AudioEngine engine;engine.devices.closeAudioDevice();auto project=newProject(1);project.sections={{Section::main,2,"Selection"}};project.loop=false;project.normalise();for(auto& track:project.tracks){track.volume={};for(auto& clip:track.clips)clip.notes.clear();}
+    project.tracks[0].clips[0].notes={{0,.25,60,100,0},{.5,.25,64,100,0},{1,.25,67,100,0}};project.tracks[1].clips[0].notes={{.5,.25,36,100,0}};const auto original=midiFile(project);engine.publish(project);
+    juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto tick=[&](int count){for(int n=0;n<count;++n)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+    const auto first=engine.noteOnsSent(0),other=engine.noteOnsSent(1);engine.playSelectedNotes(0,{project.tracks[0].clips[0].notes[1]},0,false);tick(40);
+    require(!engine.isPlaying()&&engine.noteOnsSent(0)==first+1&&engine.noteOnsSent(1)==other,"selected-note audition plays only chosen events and stops at their end");
+    const auto once=engine.noteOnsSent(0);engine.playSelectedNotes(0,{project.tracks[0].clips[0].notes[1]},0,true);tick(80);
+    require(engine.isPlaying()&&engine.noteOnsSent(0)>once+4&&engine.noteOnsSent(1)==other,"selected-note loop repeats only the selected phrase");
+    const double auditionPosition=engine.position();auto shifted=project.tracks[0].clips[0].notes[1];shifted.pitch+=12;engine.playSelectedNotes(0,{shifted},0,true,false);require(std::abs(engine.position()-auditionPosition)<1.e-8,"editing a selected audition keeps its playhead position");tick(4);engine.stop();engine.seek(0);const auto resumed=engine.noteOnsSent(0);engine.play(true);tick(100);
+    require(engine.noteOnsSent(0)>=resumed+3&&midiFile(project)==original&&!project.loop,"normal playback restores the complete schedule without changing MIDI or loop locators");engine.stop();
+}
 static void testSamplePitch(){
     using namespace fga;std::array<float,2048> source{};
     for(double hz:{55.,110.,261.625565,440.*std::pow(2.,17./1200.),880.,1568.}){
@@ -50,7 +73,7 @@ void runStudioEngineTests(){
         {auto external=std::make_unique<fga::SamplerSettings>(initial);external->start=.25;synth.configure(*external,60,120);external->start=.75;require(synth.settings().start==.25,"sampler settings belong to the synth, not a retiring publisher");}
         auto next=initial;next.start=.25;require(!synth.configure(next,60,120)&&synth.settings().start==.25,"reconfigure compares a live owned snapshot after publisher reclamation");
     }
-    testSamplePitch();
+    testSelectedNotesAndAnalysis();testSamplePitch();
     testSampleAudition();
     {fga::MixerBuses graph;graph.prepare(48000,512);auto settings=fga::defaultBuses();settings[0].gain=.5;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{0,0});juce::AudioBuffer<float> out(2,512);out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(std::abs(out.getSample(0,0)-.25)<1e-6,"group and master gain apply once");settings[1].solo=true;graph.configure(settings,120,.5,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"group solo excludes other groups and their sends");graph.reset();settings[1].solo=false;graph.configure(settings,120,0,true);graph.begin(512,false);graph.add(0,0,1,0,{1,1});out.clear();graph.finish(out.getArrayOfWritePointers(),2,512,nullptr);require(out.getMagnitude(0,512)==0,"master silences dry and shared returns");}
     {fga::AudioEngine recorder;recorder.devices.closeAudioDevice();auto project=fga::newProject(81);project.sections={{fga::Section::main,1,"Main"}};project.normalise();for(auto& track:project.tracks)for(auto& clip:track.clips)clip.notes.clear();recorder.publish(project);require(recorder.startRecording(0,1).wasOk(),"start actual MIDI capture");juce::AudioBuffer<float> audio(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{recorder.audioDeviceIOCallbackWithContext(nullptr,0,audio.getArrayOfWritePointers(),2,512,context);};callback();require(recorder.position()==0&&recorder.countInRemaining()>0,"count-in holds the song cursor");for(int i=0;i<1000&&recorder.countInRemaining()>0;++i)callback();recorder.liveMidi(0,juce::MidiMessage::noteOn(1,67,(juce::uint8)107));for(int i=0;i<20;++i)callback();recorder.liveMidi(0,juce::MidiMessage::noteOff(1,67));callback();auto captured=recorder.finishRecording();fga::assembleMidiTake(captured,0);require(captured.notes.size()==1&&captured.notes[0].pitch==67&&captured.notes[0].velocity==107&&captured.notes[0].length>.1,"audio callback records queued MIDI with duration and velocity");recorder.stop();require(recorder.startRecording(0,1).wasOk(),"start sustained count-in recording");recorder.liveMidi(0,juce::MidiMessage::controllerEvent(1,64,127));recorder.liveMidi(0,juce::MidiMessage::noteOn(1,69,(juce::uint8)91));callback();recorder.liveMidi(0,juce::MidiMessage::noteOff(1,69));callback();for(int i=0;i<1000&&recorder.countInRemaining()>0;++i)callback();for(int i=0;i<20;++i)callback();recorder.liveMidi(0,juce::MidiMessage::controllerEvent(1,64,0));callback();auto sustained=recorder.finishRecording();fga::assembleMidiTake(sustained,0);require(sustained.notes.size()==1&&sustained.notes[0].pitch==69&&sustained.notes[0].length>.1,"sustained note from count-in is captured until pedal release");recorder.stop();}

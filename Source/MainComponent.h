@@ -300,6 +300,12 @@ public:
     void showAiComposer();
     bool pluginsBusy()const{return loadingPlugin>0;}
     int trackForSession(std::uint64_t id)const;
+    bool validEffectTrack(int track)const{return track==masterEffectTrack||juce::isPositiveAndBelow(track,(int)project.tracks.size());}
+    Track& effectTrack(int track){return track==masterEffectTrack?project.masterEffects:project.tracks.at((size_t)track);}
+    const Track& effectTrack(int track)const{return track==masterEffectTrack?project.masterEffects:project.tracks.at((size_t)track);}
+    void openCredits(){showAbout();}
+    void restoreInterfaceFullScreen(){applyFullScreen(true);}
+    bool interfaceFullScreen()const{return appFullScreen;}
     void showEffects(int track,int replaceSlot=0);
     void showEffectChain(int track);
     void showEffectMenu(int track,int slot,juce::Component*);
@@ -361,7 +367,8 @@ private:
     int clampBrowserWidth(int width)const{return std::clamp(width,260,std::max(260,std::min(640,getWidth()/2)));}
     IconButton inspectorToggle{IconButton::Icon::inspector},mixerToggle{IconButton::Icon::mixer},browserToggle{IconButton::Icon::browser},fitSongButton{IconButton::Icon::fitWidth},followButton{IconButton::Icon::follow};
     // Full screen drops the native title bar, so the arranger reaches the screen edges.
-    IconButton fullScreenButton{IconButton::Icon::fullScreen};
+    class CreditsButton final:public juce::Button {public:CreditsButton():Button("Credits"){}void paintButton(juce::Graphics&,bool,bool)override{}} creditsButton;
+    IconButton fullScreenButton{IconButton::Icon::fullScreen},quitButton{IconButton::Icon::close};
     void applyFullScreen(bool on);
     bool appFullScreen=false,fullScreenApplying=false;juce::Rectangle<int> fullScreenRestore;
     SampleBrowser sampleBrowser{audio};
@@ -376,6 +383,9 @@ private:
     juce::Rectangle<int> lcdArea;std::vector<int> lcdDividers;std::vector<juce::Rectangle<int>> toolbarDividers;
     ActionButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     IconButton automationButton{IconButton::Icon::automation};
+    ActionButton automationTrackButton{"TRACK"},automationAllButton{"ALL"};
+    bool automationAllTracks=false;
+    void showAutomationScope(bool enabled);
     juce::Label durationLabel;
     juce::ComboBox sectionSelector,panelSections;
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};

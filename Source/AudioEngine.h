@@ -33,13 +33,13 @@ struct TrackMix {
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
-struct MixState { std::array<TrackMix,maxTracks> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; };
+struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
 inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):(track<2||isManualTrack(track))?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
 struct ScheduleState {
-    std::array<std::vector<TimedEvent>,maxTracks> schedules;
-    std::array<std::uint64_t,maxTracks> hashes{}; // which tracks changed since the last state
+    std::array<std::vector<TimedEvent>,engineTrackCount> schedules;
+    std::array<std::uint64_t,engineTrackCount> hashes{}; // which tracks changed since the last state
     double length=0,loopFrom=0,loopTo=0;
     bool looping=false;
 };
@@ -188,6 +188,8 @@ public:
     bool isExporting()const{return exporting.load();}
     bool isPlaying() const {return playing.load();}
     void playClip(int track,double from,double to);
+    void playSelectedNotes(int track,const std::vector<Note>& notes,double clipStart,bool repeat,bool restart=true);
+    bool isSelectedNotePlayback()const{return playing.load()&&selectedNoteTrack>=0;}
     bool isClipPlaying()const{return playing.load()&&clipPlaybackTrack.load()>=0;}
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
@@ -198,8 +200,8 @@ public:
     float masterLevel(int side) const {return masterSides[(size_t)(side&1)].load();}
     bool hasClipped() const {return masterClip.load();}
     void clearClipping(){masterClip=false;}
-    bool trackClipped(int track) const {return track>=0&&track<maxTracks&&trackClip[(size_t)track].load();}
-    void clearTrackClip(int track){if(track>=0&&track<maxTracks)trackClip[(size_t)track].store(false);}
+    bool trackClipped(int track) const {return track>=0&&track<engineTrackCount&&trackClip[(size_t)track].load();}
+    void clearTrackClip(int track){if(track>=0&&track<engineTrackCount)trackClip[(size_t)track].store(false);}
     std::uint64_t noteOnsSent(int track) const {return instruments[(size_t)track]->noteOns;}
     juce::Result setMidiInput(const juce::String& identifier);
     const juce::String& midiInput()const{return midiIdentifier;}
@@ -257,8 +259,8 @@ private:
 
     juce::String midiIdentifier;bool ownsMidiInput=false;
     MidiTake takeInfo;
-    std::array<std::array<unsigned char,16*128>,maxTracks> liveHeld{}; // high bit: key released under sustain
-    std::array<std::array<bool,16>,maxTracks> livePedal{};
+    std::array<std::array<unsigned char,16*128>,engineTrackCount> liveHeld{}; // high bit: key released under sustain
+    std::array<std::array<bool,16>,engineTrackCount> livePedal{};
     struct PendingLive {LiveMidiEvent event;int sample=0,order=0;};
     std::unique_ptr<std::array<PendingLive,16384>> pendingLive=std::make_unique<std::array<PendingLive,16384>>();
     int pendingLiveCount=0,pendingLiveCursor=0,inputCallbackCount=0,inputSegmentOffset=0;
@@ -270,7 +272,7 @@ private:
     void prepareDelayLines();
     void refreshLatencies();
     void publishActiveNotes(int track);
-    std::array<std::array<std::atomic<std::uint64_t>,2>,maxTracks> activeKeyMasks{};
+    std::array<std::array<std::atomic<std::uint64_t>,2>,engineTrackCount> activeKeyMasks{};
     void chaseLiveRecord(double beat);
     MixerBuses busGraph;
     // Only control threads acquire this mutex. The audio callback uses a bounded atomic
@@ -295,19 +297,22 @@ private:
     std::atomic<int> parameterNotifyHead{0},parameterNotifyTail{0};
     std::atomic<bool> rendering{false};
     struct RenderingScope {std::atomic<bool>& active;explicit RenderingScope(std::atomic<bool>& a):active(a){active.store(true);}~RenderingScope(){active.store(false);}};
-    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;const bool clip=clipPlaybackTrack.load()>=0;positionLoopFrom=clip?clipPlaybackFrom.load():loopFrom.load();positionLoopTo=clip?clipPlaybackTo.load():loopTo.load();positionLooping=clip||(looping.load()&&!loopBypassed.load());positionLoopSetting=clip||looping.load();positionRevision.fetch_add(1);}
+    void publishTransport(){positionRevision.fetch_add(1);positionRate=sampleRate;const bool clip=clipPlaybackTrack.load()>=0;positionLoopFrom=clip?clipPlaybackFrom.load():loopFrom.load();positionLoopTo=clip?clipPlaybackTo.load():loopTo.load();positionLooping=clip?clipPlaybackLoop.load():(looping.load()&&!loopBypassed.load());positionLoopSetting=clip?clipPlaybackLoop.load():looping.load();positionRevision.fetch_add(1);}
 
-    std::array<std::unique_ptr<Instrument>,maxTracks> instruments;
-    std::array<std::atomic<float>,maxTracks> meters;
+    std::array<std::unique_ptr<Instrument>,engineTrackCount> instruments;
+    std::array<std::atomic<float>,engineTrackCount> meters;
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
-    std::array<std::atomic<bool>,maxTracks> trackClip{};
+    std::array<std::atomic<bool>,engineTrackCount> trackClip{};
     int clickLeft=0,clickPos=0;double clickHz=1000;
     std::atomic<float> masterMeter{0};
-    std::array<std::array<std::atomic<float>,2>,maxTracks> sideMeters{};
+    std::array<std::array<std::atomic<float>,2>,engineTrackCount> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
     void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};
     std::atomic<int> clipPlaybackTrack{-1};
+    std::atomic<bool> clipPlaybackLoop{true};
+    std::vector<TimedEvent> selectedNoteEvents;
+    int selectedNoteTrack=-1;
     std::atomic<double> clipPlaybackFrom{0},clipPlaybackTo{0};
     Handoff<ScheduleState> schedules;
     juce::CriticalSection publishedLock;ScheduleState published;bool publishedValid=false;
@@ -326,6 +331,7 @@ private:
     // Serialised plugin state, reused until something invalidates it.
     std::vector<std::string> cachedInstrumentStates;
     std::vector<std::array<std::string,maxTrackEffects>> cachedEffectStates;
+    std::array<std::string,maxTrackEffects> cachedMasterEffectStates;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
@@ -333,7 +339,7 @@ private:
     double deviceRate=44100;
     int deviceBlock=512;
     std::atomic<bool> looping{false},loopBypassed{false},needsReset{true},needsChase{false},needsResync{false},hardReset{true};
-    std::array<std::array<std::uint64_t,maxTrackEffects+1>,maxTracks> loadRevision{};
+    std::array<std::array<std::uint64_t,maxTrackEffects+1>,engineTrackCount> loadRevision{};
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
     void prepareBuses(double rate,int block);
     void detachSource(int track,int mode,std::unique_ptr<juce::Synthesiser> sampler,std::unique_ptr<juce::AudioPluginInstance>& oldPlugin,std::unique_ptr<juce::Synthesiser>& oldSampler);

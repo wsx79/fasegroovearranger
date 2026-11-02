@@ -16,6 +16,7 @@ class SampleBrowser : public juce::Component, private juce::Timer {
 public:
     explicit SampleBrowser(AudioEngine&);
     ~SampleBrowser() override;
+    std::function<void()> onClose;
     std::function<void(const juce::File&)> onLoad;       // into the selected track's sampler
     std::function<void(const juce::String&,bool)> onMessage;
     std::function<juce::String()> targetName;             // the selected track, for LOAD's tip
@@ -77,6 +78,7 @@ private:
     juce::TextEditor search;
     juce::ComboBox filterBox,sortBox;
     juce::TextButton addButton,orderButton,autoButton,loadButton,upButton;
+    IconButton closeButton{IconButton::Icon::close};
     IconButton backButton{IconButton::Icon::left},forwardButton{IconButton::Icon::right},playButton{IconButton::Icon::play};
     std::unique_ptr<juce::FileChooser> chooser;
     juce::Rectangle<int> infoArea,headerArea;
