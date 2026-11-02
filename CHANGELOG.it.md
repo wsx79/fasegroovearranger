@@ -2,6 +2,7 @@
 
 ## 0.31.8
 
+- Inizializza i motori offline prima della prima esportazione, evitando un crash alla frequenza predefinita.
 - Studio: ascolta e ripete solo le note MIDI selezionate; conserva la selezione dopo più modifiche di ottava.
 - Ricorda mixer, inspector, zoom e finestra; aggiunge uscita a schermo intero, chiusura interna di Studio/browser Campioni/automazione, crediti dal logo e invito alla donazione al primo avvio.
 - Aggiunge automazioni Traccia/Tutto, nomi delle progressioni riconosciute e aggancio dei bordi dei clip alla griglia scelta.

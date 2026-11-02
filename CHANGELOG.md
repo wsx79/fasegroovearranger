@@ -2,6 +2,7 @@
 
 ## 0.31.8
 
+- Prepare fresh offline engines before their first export, preventing a crash at the default sample rate.
 - Studio: audition and loop only selected MIDI notes; preserve selection through repeated octave edits.
 - Remember mixer/inspector visibility, zoom and window state; add full-screen quit, Studio/sample-browser/automation close controls, clickable credits and first-launch donation information.
 - Add selected-track/all-track automation views and show recognised progression names. Make clip-edge snapping follow the timeline grid.

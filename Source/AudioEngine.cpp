@@ -125,7 +125,9 @@ AudioEngine::AudioEngine(){
     busGraph.prepare(sampleRate,blockSize);
     devices.initialise(0,2,nullptr,true);devices.addAudioCallback(this);
 }
-AudioEngine::AudioEngine(Offline){busGraph.prepare(sampleRate,blockSize);for(int i=0;i<engineTrackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);meters[(size_t)i]=0;}}
+// Offline engines need the same prepared DSP/buffers as device engines, including
+// when their first export uses the default rate and does not trigger re-preparation.
+AudioEngine::AudioEngine(Offline){busGraph.prepare(sampleRate,blockSize);for(int i=0;i<engineTrackCount;++i){instruments[(size_t)i]=std::make_unique<Instrument>(i);instruments[(size_t)i]->prepare(sampleRate,blockSize);meters[(size_t)i]=0;}}
 AudioEngine::~AudioEngine(){finishAudioRecording();setMidiInput({});lifetime.reset();devices.removeAudioCallback(this);const EngineControlLock lock(*this);for(auto& i:instruments){if(i->plugin)i->plugin->releaseResources();for(auto& fx:i->effects)if(fx.plugin)fx.plugin->releaseResources();}}
 void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
     std::optional<Project> canonical;if(!normalised){canonical=source;canonical->normalise();}const auto& p=canonical?*canonical:source;

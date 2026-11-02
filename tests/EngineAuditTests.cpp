@@ -187,4 +187,15 @@ void runEngineAuditTests(){
     {fga::RetiredJobs pending;auto job=std::make_unique<DelayedJob>(entered,release,destroyed);auto* worker=job.get();job->startThread();if(!entered.wait(10000)){release.signal();throw std::runtime_error("worker startup deadline");}
      pending.retire(std::move(job));const bool retained=!destroyed&&worker->isThreadRunning()&&worker->threadShouldExit();release.signal();const bool returned=worker->waitForThreadToExit(10000);if(!retained||!returned)throw std::runtime_error("cancel must return before a worker's outstanding I/O and keep it alive");}
     if(!destroyed)throw std::runtime_error("retired job must be reclaimed after cooperative shutdown");
-fga::EngineAuditTests::run();}
+{
+    fga::AudioEngine offline(fga::AudioEngine::Offline{});
+    auto project=fga::newProject(1);project.sections={{fga::Section::main,1,"Offline"}};project.normalise();
+    for(auto& track:project.tracks)for(auto& clip:track.clips)clip.notes.clear();
+    project.tracks[0].clips[0].notes={{0,1,69,100,0}};
+    const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-first-offline-export",".wav",false);
+    if(offline.exportAudio(project,file,-1,false,[]{return false;},[](double){}).failed())throw std::runtime_error("fresh offline engine exports at its default sample rate");
+    juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));
+    juce::AudioBuffer<float> block(2,8192);const bool audible=reader&&reader->read(&block,0,8192,4096,true,true)&&block.getMagnitude(0,8192)>.001f;
+    reader.reset();file.deleteFile();if(!audible)throw std::runtime_error("fresh offline export contains audible prepared guide audio");
+    }
+    fga::EngineAuditTests::run();}
