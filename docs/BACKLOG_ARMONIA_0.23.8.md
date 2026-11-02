@@ -21,7 +21,7 @@ Aggiornato: 29 ottobre 2026.
 ## Da fare, in quest'ordine
 
 1. **Stessa qualità di accordo per piano, chitarra e lead.**
-   Oggi il piano usa `sgk::buildChord` (11 estensioni) mentre chitarra e lead ricevono `std::min(extension,2)` su un enum di tre soli valori: con sus, dominante alterata, 11ths/13ths il piano e la chitarra suonano accordi diversi (nona minore contro nona naturale).
+   Stato 0.31.13: l’arranger deriva già gli accordi da `sgk::buildChord` mediante `bandChord`; ora anche le lane chitarra inserite a mano usano quel percorso. Sono conservati i tipi nativi mMaj7, dim7 e dom7b9. Resta una riduzione per le qualità non rappresentabili dal vocabolario corrente, ad esempio mMaj9 completa, 6/9 minore o 7#9. La parità integrale delle 11 estensioni resta un intervento più ampio.
    Progetto: estendere `ChordColour` in `fasegrooveguitar` e `fasegroovelead` con `sixNine`, `sus`, `elevenths`, `thirteenths`, `sharpNine` (i `ChordType` esistono già tranne `7#9`), mappare in `Project.cpp` l'indice di estensione al colore corrispondente, aggiornare `chordColourName`/`numChordColours`. Va fatto upstream nei due motori, con i loro test, poi ri-pin.
    Rischio: alto (cambia il suono di ogni brano) — richiede ascolto A/B.
 

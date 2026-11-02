@@ -16,8 +16,9 @@ function Install-Probe {
     $command = (Get-Item (Join-Path $projectClass 'shell\open\command')).GetValue('')
     if ($command -ne "`"$exe`" `"%1`"") { throw 'Project open command loses executable/project quoting' }
     $icon = (Get-Item (Join-Path $projectClass 'DefaultIcon')).GetValue('')
-    if ($icon -ne "`"$(Join-Path $folder 'FaseGrooveArranger.ico')`",0") { throw 'Project icon is not the installed Arranger icon' }
-    if (-not (Test-Path (Join-Path $folder 'FaseGrooveArranger.ico'))) { throw 'Project icon file missing' }
+    if ($icon -ne "`"$(Join-Path $folder 'Resources\arranger-project.ico')`",0") { throw 'Project icon is not the dedicated project icon' }
+    if (-not (Test-Path (Join-Path $folder 'Resources\arranger-project.ico'))) { throw 'Project icon file missing' }
+    if ((Get-FileHash (Join-Path $folder 'Resources\arranger-project.ico')).Hash -eq (Get-FileHash (Join-Path $folder 'FaseGrooveArranger.ico')).Hash) { throw 'Project icon must differ from the application icon' }
     if ($null -eq (Get-Item (Join-Path $extension 'OpenWithProgids')).GetValue('FaseGrooveArranger.Project')) { throw 'Project Open With registration missing' }
     foreach ($file in @('unins000.exe', 'FaseGrooveArranger.install.ini', 'SOURCE.txt', 'docs/GUIDE.md', 'docs/GUIDA.md', 'LICENSE')) {
         if (-not (Test-Path (Join-Path $folder $file))) { throw "Missing installer file: $file" }

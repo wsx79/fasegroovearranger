@@ -22,6 +22,16 @@ def verify(bundle):
         info = plistlib.load(stream)
     if version(info.get('LSMinimumSystemVersion', '0')) != version('11.0'):
         raise ValueError(f'{bundle}: LSMinimumSystemVersion must be 11.0')
+    if info.get('CFBundleIdentifier') == 'com.fspitch.fasegroovearranger':
+        document = next((item for item in info.get('CFBundleDocumentTypes', []) if 'fga' in item.get('CFBundleTypeExtensions', [])), None)
+        if document is None:
+            raise ValueError(f'{bundle}: missing .fga document type')
+        icon = document.get('CFBundleTypeIconFile', '')
+        if not icon or icon == info.get('CFBundleIconFile', 'Icon.icns'):
+            raise ValueError(f'{bundle}: project icon must differ from the application icon')
+        data = (bundle / 'Contents/Resources' / icon).read_bytes()
+        if len(data) < 8 or data[:4] != b'icns' or int.from_bytes(data[4:8], 'big') != len(data):
+            raise ValueError(f'{bundle}: invalid project ICNS resource')
     binary = bundle / 'Contents/MacOS' / info['CFBundleExecutable']
     arches = set(run('xcrun', 'lipo', '-archs', str(binary)).split())
     if arches != {'arm64', 'x86_64'}:

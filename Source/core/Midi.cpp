@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
+#include "../../ThirdParty/fasegroovepiano/Source/engine/Theory.h"
 #include <cmath>
 #include <stdexcept>
 namespace fga {
@@ -18,13 +19,14 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
     Bytes out{'M','T','h','d'};be(out,6,4);be(out,1,2);be(out,onlyTrack<0?(std::uint32_t)p.tracks.size()+1:2,2);be(out,960,2);
     Bytes conductor; text(conductor,0,3,p.name); const auto tempo=(std::uint32_t)std::llround(60000000.0/std::clamp(p.settings.bpm,30.0,300.0));
     meta(conductor,0,0x51,{(std::uint8_t)(tempo>>16),(std::uint8_t)(tempo>>8),(std::uint8_t)tempo});meta(conductor,0,0x58,{4,2,24,8});
-    // Key signature uses the scale's parent major: modal detail remains in the name.
+    // SMF supports only major/minor. Keep the parent signature and spell Gb/Eb minor
+    // consistently with the UI/export names; retain the exact mode in readable text.
     const int parentOffsets[]{0,-2,3,-7,-5,-4,3,3,1,0,-5,-7,-4};
-    const int sharps[]{0,-5,2,-3,4,-1,6,1,-4,3,-2,5};
+    const int sharps[]{0,-5,2,-3,4,-1,-6,1,-4,3,-2,5};
     int parent=(p.settings.key+parentOffsets[std::clamp(p.settings.scale,0,12)]+24)%12;
     bool minor=p.settings.scale==2||p.settings.scale==6||p.settings.scale==7;
     meta(conductor,0,0x59,{(std::uint8_t)sharps[parent],(std::uint8_t)(minor?1:0)});
-    text(conductor,0,1,"Fase Groove Arranger | key="+std::to_string(p.settings.key)+" scale="+std::to_string(p.settings.scale));
+    text(conductor,0,1,"Fase Groove Arranger | key="+std::to_string(p.settings.key)+" scale="+std::to_string(p.settings.scale)+" | "+sgk::spelledNote(p.settings.key,p.settings.key,p.settings.scale)+" "+sgk::scaleName(p.settings.scale));
     std::uint32_t last=0;
     for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);text(conductor,at-last,6,p.sections[si].name);last=at;}
     auto end=(std::uint32_t)std::llround(p.length()*960);meta(conductor,end-last,0x2f,{});chunk(out,std::move(conductor));

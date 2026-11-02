@@ -10,7 +10,8 @@
 #include "VolumeAutomation.h"
 #include "StudioSettings.h"
 
-namespace sgk {struct GrooveSettings;struct GroovePattern;}
+namespace sgk {struct GrooveSettings;struct GroovePattern;enum class Extension;}
+namespace fgg {struct Chord;}
 namespace fga {
 inline constexpr const char* hostedStatePrefix="FGAHOST1:"; // native state plus queued controller parameter values
 constexpr int leadTrack = 17;
@@ -197,6 +198,8 @@ bool rearrangeSong(Project&, std::uint32_t seed);
 void chooseProgression(Project&, int preset);
 void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
+// Shared reduction of the piano harmony for generated and hand-entered guitar/lead notes.
+fgg::Chord bandChord(int key,int scale,int degree,int free,sgk::Extension extension);
 // A zero seed applies settings to stored takes. A nonzero seed draws new genre
 // patterns, releasing fixed pattern/riff overrides on targeted tracks. Song scope
 // also changes key, tempo, feel and 8-bar section lengths unless notes are locked.

@@ -6,6 +6,7 @@
 #include "AiComposerWindow.h"
 #include "AiComposer.h"
 #include "UiText.h"
+#include "ExportSupport.h"
 #include "DarkTitleBar.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <BinaryData.h>
@@ -532,7 +533,7 @@ void PianoRoll::mouseDown(const juce::MouseEvent& e){
     int index=hit(e.position);if(tool==1&&index<0&&!e.mods.isPopupMenu()){selecting=true;anchor=e.position;marquee={};if(!e.mods.isShiftDown())selected.clear();repaint();return;}if(e.mods.isPopupMenu()||tool==2){erasing=true;eraseCheckpoint=false;eraseAt(e.position);return;}
     gestureOriginal=owner.clip().notes;anchor=e.position;resizing=false;velocityDrag=e.mods.isAltDown();before=owner.clip().notes;
     if(index>=0){if(e.mods.isShiftDown()){if(selected.count(index))selected.erase(index);else selected.insert(index);}else if(!selected.count(index)){selected.clear();selected.insert(index);if(laneView()&&owner.selectedTrack==3){const auto hitNote=before[(size_t)index];for(size_t k=0;k<before.size();++k)if(before[k].lane==hitNote.lane&&std::abs(before[k].start-hitNote.start)<.18)selected.insert((int)k);}}const auto& n=before[(size_t)index];resizing=(!laneView()||ownerTrackIsDrum())&&e.x>=leftMargin()+n.start*pixelsPerBeat+noteWidth(n)-std::min(6.f,noteWidth(n)*.4f)&&!velocityDrag;}
-    else{if(!e.mods.isShiftDown())selected.clear();double start=std::floor(beat(e.position.x)/grid)*grid;if(start>=owner.clipLength())return;if(laneView()&&owner.selectedTrack==3){const int lane=laneAt(e.position.y);const auto& settings=owner.project.settings;const double chordBeats=settings.chordSteps*.25;const int slot=((int)((owner.clipStart()+start)/chordBeats))%settings.chordCount;auto chord=settings.freeChords[(size_t)slot]>=0?fgg::codeChord(settings.key,settings.freeChords[(size_t)slot],std::min(2,settings.extension)):fgg::diatonicChord(settings.key,settings.scale,settings.degrees[(size_t)slot],std::min(2,settings.extension));auto notes=fgg::laneNotes((fgg::Lane)lane,fgg::tonesOf(chord),(int)(start*4)%16);for(int note:notes){owner.clip().notes.push_back({start,std::min(grid,owner.clipLength()-start),note,brushVelocity,lane});selected.insert((int)owner.clip().notes.size()-1);}}
+    else{if(!e.mods.isShiftDown())selected.clear();double start=std::floor(beat(e.position.x)/grid)*grid;if(start>=owner.clipLength())return;if(laneView()&&owner.selectedTrack==3){const int lane=laneAt(e.position.y);const auto& settings=owner.project.settings;const double chordBeats=settings.chordSteps*.25;const int slot=((int)((owner.clipStart()+start)/chordBeats))%settings.chordCount;auto chord=bandChord(settings.key,settings.scale,settings.degrees[(size_t)slot],settings.freeChords[(size_t)slot],(sgk::Extension)settings.extension);auto notes=fgg::laneNotes((fgg::Lane)lane,fgg::tonesOf(chord),(int)(start*4)%16);for(int note:notes){owner.clip().notes.push_back({start,std::min(grid,owner.clipLength()-start),note,brushVelocity,lane});selected.insert((int)owner.clip().notes.size()-1);}}
         else{owner.clip().notes.push_back({start,std::min(ownerTrackIsDrum()?defaultDrumNoteLength(owner.selectedTrack):grid,owner.clipLength()-start),pitch(e.position.y),ownerTrackIsDrum()?brushVelocity:(int)owner.velocitySlider.getValue(),ownerTrackIsDrum()?owner.selectedTrack-4:0});selected.insert((int)owner.clip().notes.size()-1);}if(laneView()&&flamBrush&&owner.clip().notes.size()>before.size()){auto note=owner.clip().notes.back();note.start=std::max(0.,note.start-.08);note.length=.04;note.velocity=45;owner.clip().notes.push_back(note);}before=owner.clip().notes;}
     if(index>=0)previewSelection();
     repaint();
@@ -590,6 +591,17 @@ bool PianoRoll::verifyEditing(){
         auto at=juce::Point<float>(leftMargin()+(float)pixelsPerBeat+2,noteY(owner.clip().notes[0])+noteHeight()/2);
         mouseDown(event(at));mouseDrag(event(at.translated((float)(-4*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(-4*pixelsPerBeat),0)));
         ok=ok&&owner.clip().notes.size()==2&&std::abs(owner.clip().notes[0].start)<1e-9&&std::abs(owner.clip().notes[1].start-1)<1e-9;
+    }
+    if(owner.selectedTrack==3){
+        const auto harmony=owner.project.settings;const bool noteView=guitarNotes;guitarNotes=false;
+        struct ChordCase{int scale,degree,extension,root;unsigned expected;};
+        for(const auto& c:{ChordCase{6,0,1,0,(1U<<0)|(1U<<3)|(1U<<7)|(1U<<11)},ChordCase{6,4,1,7,(1U<<0)|(1U<<4)|(1U<<7)|(1U<<10)},ChordCase{6,4,2,7,(1U<<0)|(1U<<1)|(1U<<4)|(1U<<7)|(1U<<10)}}){
+            auto& settings=owner.project.settings;settings.key=0;settings.scale=c.scale;settings.extension=c.extension;settings.chordCount=1;settings.degrees[0]=c.degree;settings.freeChords[0]=-1;owner.clip().notes.clear();
+            auto at=juce::Point<float>(leftMargin()+2,58);mouseDown(event(at));mouseUp(event(at));unsigned actual=0;for(const auto& note:owner.clip().notes)actual|=1U<<((note.pitch-c.root+120)%12);
+            const unsigned colour=c.degree==0?1U<<11:(1U<<10)|(c.extension==2?1U<<1:0U);
+            ok=ok&&actual!=0&&(actual&~c.expected)==0&&(actual&colour)==colour;stopPreview();
+        }
+        owner.project.settings=harmony;guitarNotes=noteView;
     }
     const auto notesBeforeSeek=owner.clip().notes;
     mouseDown(event({leftMargin()+(float)(2.375*pixelsPerBeat),24}));
@@ -1320,6 +1332,7 @@ void MainComponent::refreshControls(){
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     for(int i=0;i<12&&keyBox.getNumItems()==12;++i){auto name=juce::String::fromUTF8(sgk::spelledNote(i,s.key,s.scale));if(keyBox.getItemText(i)!=name)keyBox.changeItemText(i+1,name);}
+    for(int pc=0;pc<12;++pc)keyBox.changeItemText(pc+1,sgk::spelledNote(pc,s.key,s.scale));
     sectionSelector.setSelectedId(selectedSection+1,juce::dontSendNotification);genreBox.setSelectedId(s.genre+1,juce::dontSendNotification);keyBox.setSelectedId(s.key+1,juce::dontSendNotification);scaleBox.setSelectedId(s.scale+1,juce::dontSendNotification);extensionBox.setSelectedId(s.extension+1,juce::dontSendNotification);voicingBox.setSelectedId(s.voicing+1,juce::dontSendNotification);bassBox.setSelectedId(s.bassMode+1,juce::dontSendNotification);stringsBox.setSelectedId(s.stringsMode+1,juce::dontSendNotification);
     tempoSlider.setValue(s.bpm,juce::dontSendNotification);swingSlider.setValue(s.swing*100,juce::dontSendNotification);densitySlider.setValue(s.density*100,juce::dontSendNotification);humanizeSlider.setValue(s.humanize*100,juce::dontSendNotification);updateGainDisplay(masterSlider,project.masterGain,project.masterAutomation);loopButton.setToggleState(project.loop,juce::dontSendNotification);
     int matchedProgression=0;
@@ -1639,6 +1652,7 @@ return false;
     bool ok=mark("language",writeLanguageEvidence(folder)&&writeHelpEvidence(folder));
     for(int key=0;key<12;++key){keyBox.setSelectedId(key+1,juce::dontSendNotification);const auto text=keyBox.getText();const auto width=juce::GlyphArrangement::getStringWidth(theme.getComboBoxFont(keyBox),text);ok=mark("key-name-visible",width+8<=keyBox.getWidth()-20)&&ok;}
     keyBox.setSelectedId(project.settings.key+1,juce::dontSendNotification);
+    {const auto settings=project.settings;for(const auto& key:std::array<std::pair<int,int>,4>{{{6,0},{3,2},{1,0},{1,1}}}){project.settings.key=key.first;project.settings.scale=key.second;refreshControls();ok=mark("key-spelling",keyBox.getText()==exportKey(project))&&ok;}project.settings=settings;refreshControls();}
     pluginSettings.show();ok=mark("plugin-settings",pluginSettings.verifyLayout())&&ok;
     if(pluginSettings.onReport){pluginSettings.onReport();auto* dialog=dynamic_cast<juce::DialogWindow*>(juce::Component::getCurrentlyModalComponent());ok=mark("plugin-scan-report",dialog&&dialog->isVisible()&&dialog->isAlwaysOnTop())&&ok;if(dialog)dialog->closeButtonPressed();}else ok=false;
     pluginSettings.setVisible(false);auto capture=[&](const juce::String& name){auto screenshot=(name.startsWith("instrument-")||name=="guitar-mixer"||name=="piano-family-extended")?instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()):createComponentSnapshot(getLocalBounds());bool wrote=false;if(auto out=folder.getChildFile(name+".png").createOutputStream()){juce::PNGImageFormat png;wrote=png.writeImageToStream(screenshot,*out);}ok=mark(name=="plugin-browser"?"png-browser":name=="plugin-settings"?"png-settings":"png",wrote)&&ok;};

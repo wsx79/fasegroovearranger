@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.13
+
+- Give .fga project files a dedicated document-badge icon, distinct from the application icon, in Windows associations and macOS bundles.
+- Preserve minor-major sevenths, diminished sevenths and dominant flat ninths in the shared guitar/lead chord adapter; use it for hand-entered guitar lanes too.
+- Clarify the AI progression contract: 1–8 entries using zero-based degrees 0–6, with explicit errors for invalid values and no inferred renumbering.
+- Align key-selector/export spelling and SMF signatures for Gb/Eb minor; retain exact modal names in readable MIDI metadata without changing the parent-signature policy.
+- Add reference chord-quality checks, all 156 key/mode signature cases, AI boundary tests and real piano-roll insertion checks.
+
 ## 0.31.12
 
 - Move Track/All automation scope into the parameter picker; keep the main toolbar compact and allow reopening the picker while lanes are visible.

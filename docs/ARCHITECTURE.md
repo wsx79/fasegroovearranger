@@ -1,6 +1,6 @@
 # Architecture and provenance
 
-The current overview describes 0.31.12. Version-labelled sections below record when individual subsystems were introduced.
+The current overview describes 0.31.13. Version-labelled sections below record when individual subsystems were introduced.
 
 The application is a native JUCE GUI executable, not a wrapper around the four plugin binaries. All four original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`, `fgl`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar and lead step adapters add a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
@@ -151,3 +151,5 @@ and third-party service/model attributions ship as embedded resources.
 Version 0.31.11 stores explicit `manualChords` and `generatedTone` provenance. Legacy chromatic chords retain manual protection; legacy parameter lanes remain user-owned. Song regeneration rebuilds owned Techno Tone envelopes and genre changes remove only unlocked owned envelopes. Direct UI lane edits release generated ownership. Structural plugin snapshots dirty the last active visible editor and focus loss dirties that instance, covering opaque state edits without invalidating unrelated caches. Electronic harmony defaults stay at triads/Close because dedicated patterns generate their own section voicings.
 
 Version 0.31.12 resolves plugin editor sessions through the same master/track target accessor used by effect loading, so editors are destroyed before master insert removal or replacement. The floating effects chain suspends while its browser or native file chooser is open and resumes after selection, cancellation or loading failure. Automation scope lives inside the parameter picker; the toolbar opens that picker even when lanes are already visible.
+
+Version 0.31.13 exposes the shared `bandChord` adapter to piano-roll guitar insertion and preserves the existing mMaj7/dim7/dom7b9 native types. Key spelling follows the current key/mode; MIDI's parent-signature policy is unchanged, with Gb/Eb minor encoded using six flats and readable exact-mode text. The AI contract distinguishes list length from zero-based indices and retains strict transactional validation.

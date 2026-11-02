@@ -30,6 +30,8 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
          'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
+if system == 'Windows':
+    files.add('Resources/arranger-project.ico')
 # Include the user manuals and their local links/images, not the development
 # documentation, source assets or duplicate embedded fonts.
 pending = [root / 'docs/GUIDE.md', root / 'docs/GUIDA.md']

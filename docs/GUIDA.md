@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.12**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.13**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -861,3 +861,13 @@ Gli accordi cromatici automatici restano rigenerabili con **Random Chords** ripe
 Il Tone Techno interno generato segue la struttura corrente quando rigeneri il brano, anche con automazione casuale disattivata. Cambiare genere rimuove quella corsia generata. I blocchi di traccia, clip e corsia la proteggono; modificarne direttamente punti, bypass o casualizzazione la rende manuale. Le corsie Tone dell’utente vengono conservate. I vecchi progetti non memorizzano questa origine: per adottare l’inviluppo aggiornabile, elimina la vecchia corsia Tone e rigenera un brano Techno. I generatori elettronici partono da Close/triadi; le inversioni e il movimento delle voci udibili nelle sezioni dipendono dai pattern dedicati al genere.
 
 I checkpoint strutturali di Annulla rileggono l’ultimo editor plugin visibile attivo, incluse le modifiche senza notifiche JUCE. Anche la perdita del focus segnala lo stato da aggiornare. Le altre istanze mantengono la cache; i gesti del mixer evitano queste letture e il salvataggio esplicito rilegge tutti gli stati. Il ripiego è verificato con il plugin nativo di test; la compatibilità degli editor nativi Serum/Vital richiede ancora prove con quei prodotti.
+
+## Coerenza armonica e nomi delle tonalità MIDI
+
+Chitarra/lead generati e lane chitarra inserite a mano usano lo stesso adattatore degli accordi. Settime minori-maggiori, settime diminuite e dominanti con nona minore supportate conservano la loro qualità; una dominante con palette 7ths non acquisisce una nona minore solo perché inserita a mano. Il vocabolario più ridotto di chitarra/lead può ancora omettere estensioni superiori non supportate.
+
+Le progressioni IA contengono 1–8 elementi, ciascuno un grado da zero: 0 è la tonica, 6 il settimo grado. Una progressione valida senza lo zero conserva la numerazione. Indici invalidi vengono rifiutati con l’intervallo nell’errore; non sono limitati né interpretati automaticamente come numerazione da uno.
+
+Selettore di tonalità, nomi dei file e firme MIDI usano grafie coerenti, comprese Sol♭ maggiore e Mi♭ minore. La firma standard MIDI codifica solo maggiore/minore: i modi conservano la firma genitore e un evento testuale leggibile riporta tonica e modo effettivi. Minore naturale, armonica e melodica conservano il flag minore. Le note già salvate cambiano soltanto quando rigeneri o le modifichi.
+
+L’icona dei progetti .fga ha un piccolo foglio con angolo ripiegato, per distinguerli dall’applicazione. L’installer Windows registra l’icona dedicata; il bundle macOS la include nella dichiarazione del tipo di documento.

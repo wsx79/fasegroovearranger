@@ -15,6 +15,7 @@
 #include "../ThirdParty/fasegroovelead/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "HarmonyAuditChecks.h"
+#include "HarmonyContractChecks.h"
 namespace {
 int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
 bool guitarHas(const fgg::GuitarPattern& p,char symbol,int lane=-1){for(int l=0;l<fgg::numLanes;++l){if(lane>=0&&l!=lane)continue;if(p.lanes[(size_t)l].find(symbol)!=std::string::npos)return true;}return false;}
@@ -197,6 +198,7 @@ void verifyLeadIntegration(){
     }
 }
 void verifyAuditFixes(){
+    verifyHarmonyContracts();
     fga::Settings s;s.key=9;s.scale=0;s.extension=1;s.chordCount=1;s.degrees[0]=2;s.freeChords[0]=-1;
     auto names=fga::chordNames(s);check(!names.empty()&&names[0].find("C#")!=std::string::npos&&names[0].find("Db")==std::string::npos,"A major spells iii as C#");
     check(std::string(sgk::spelledNote(6,5,0))=="Gb","F major spells Gb");

@@ -8,7 +8,7 @@ if(CMAKE_HOST_APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     endif()
 endif()
 
-project(FaseGrooveArranger VERSION 0.31.12 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.31.13 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
@@ -60,12 +60,18 @@ if(FGA_BUILD_APP)
         FetchContent_MakeAvailable(JUCE)
     endif()
     include(cmake/ScanWaveShell.cmake)
+    configure_file(cmake/ArrangerInfo.plist.in "${CMAKE_CURRENT_BINARY_DIR}/ArrangerInfo-extra.plist" @ONLY)
+    file(READ "${CMAKE_CURRENT_BINARY_DIR}/ArrangerInfo-extra.plist" FGA_EXTRA_PLIST)
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"
         COMPANY_NAME "FS Pitch" BUNDLE_ID "com.fspitch.fasegroovearranger"
         ICON_BIG Resources/arranger.png ICON_SMALL Resources/arranger.png
         MICROPHONE_PERMISSION_ENABLED TRUE
         MICROPHONE_PERMISSION_TEXT "Record audio only when you choose audio input recording in Studio."
-        PLIST_TO_MERGE "<plist><dict><key>LSMinimumSystemVersion</key><string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string><key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict><key>NSLocalNetworkUsageDescription</key><string>Connect to your selected Ollama server to compose MIDI.</string></dict></plist>")
+        PLIST_TO_MERGE "${FGA_EXTRA_PLIST}")
+    if(APPLE)
+        set_source_files_properties(Resources/arranger-project.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        target_sources(FaseGrooveArranger PRIVATE Resources/arranger-project.icns)
+    endif()
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
         Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png docs/images/guide_sampler.png docs/images/guide_recording.png docs/images/guide_buses.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
     target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/StudioWindow.cpp Source/MixerRoutingWindow.cpp Source/AiComposer.cpp Source/AiComposerWindow.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/EffectsUi.cpp Source/AutomationPicker.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/Sampler.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp Source/ProjectIO.cpp Source/StudioIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp

@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.13
+
+- Distingue i file progetto .fga con un’icona documento dedicata nelle associazioni Windows e nei bundle macOS.
+- Conserva settime minori-maggiori, settime diminuite e dominanti con nona minore nell’adattatore condiviso di chitarra/lead; usa lo stesso percorso nelle lane chitarra inserite a mano.
+- Chiarisce il contratto IA: 1–8 elementi con gradi da zero, 0–6; errori espliciti per valori invalidi e nessuna rinumerazione dedotta.
+- Allinea grafie del selettore/esportazione e firme MIDI per Sol♭/Mi♭ minore; conserva il nome modale leggibile nei metadati senza cambiare la convenzione della firma genitore.
+- Aggiunge riferimenti sulle qualità degli accordi, tutti i 156 casi tonalità/modo, limiti IA e inserimento reale nel piano roll.
+
 ## 0.31.12
 
 - Sposta Traccia/Tutto nella finestra dei parametri di automazione; libera la barra principale e permette di riaprire la scelta con corsie già visibili.

@@ -31,6 +31,37 @@ class DeploymentGateTests(unittest.TestCase):
         with patch.object(gate, 'run', side_effect=output):
             gate.verify(self.bundle)
 
+    def project_document(self):
+        self.info['CFBundleIdentifier'] = 'com.fspitch.fasegroovearranger'
+        self.info['CFBundleDocumentTypes'] = [{'CFBundleTypeExtensions': ['fga'], 'CFBundleTypeIconFile': 'arranger-project.icns'}]
+        folder = self.bundle / 'Contents/Resources'
+        folder.mkdir(exist_ok=True)
+        (folder / 'arranger-project.icns').write_bytes(b'icns\x00\x00\x00\x08')
+        self.save_plist()
+
+    def test_project_document_icon(self):
+        self.project_document()
+        self.verify()
+
+    def test_project_icon_must_be_bundled(self):
+        self.project_document()
+        (self.bundle / 'Contents/Resources/arranger-project.icns').unlink()
+        with self.assertRaises(FileNotFoundError):
+            self.verify()
+
+    def test_project_icon_must_be_distinct(self):
+        self.project_document()
+        self.info['CFBundleDocumentTypes'][0]['CFBundleTypeIconFile'] = 'Icon.icns'
+        self.save_plist()
+        with self.assertRaises(ValueError):
+            self.verify()
+
+    def test_project_type_must_be_declared(self):
+        self.info['CFBundleIdentifier'] = 'com.fspitch.fasegroovearranger'
+        self.save_plist()
+        with self.assertRaises(ValueError):
+            self.verify()
+
     def test_valid_universal_bundle(self):
         self.verify()
 

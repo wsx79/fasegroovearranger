@@ -67,7 +67,7 @@ Name: "associatefga"; Description: "{cm:AssociateFga}"; GroupDescription: "{cm:A
 Root: HKLM64; Subkey: "Software\Classes\.fga"; ValueType: string; ValueName: ""; ValueData: "FaseGrooveArranger.Project"; Flags: createvalueifdoesntexist uninsdeletekeyifempty; Tasks: associatefga
 Root: HKLM64; Subkey: "Software\Classes\.fga\OpenWithProgids"; ValueType: string; ValueName: "FaseGrooveArranger.Project"; ValueData: ""; Flags: uninsdeletevalue uninsdeletekeyifempty; Tasks: associatefga
 Root: HKLM64; Subkey: "Software\Classes\FaseGrooveArranger.Project"; ValueType: string; ValueName: ""; ValueData: "Fase Groove Arranger project"; Flags: uninsdeletekey; Tasks: associatefga
-Root: HKLM64; Subkey: "Software\Classes\FaseGrooveArranger.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\FaseGrooveArranger.ico"",0"; Tasks: associatefga
+Root: HKLM64; Subkey: "Software\Classes\FaseGrooveArranger.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: """{app}\Resources\arranger-project.ico"",0"; Tasks: associatefga
 Root: HKLM64; Subkey: "Software\Classes\FaseGrooveArranger.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Fase Groove Arranger.exe"" ""%1"""; Tasks: associatefga
 
 [Files]

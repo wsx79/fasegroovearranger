@@ -919,14 +919,15 @@ fgg::Chord bandChord(int key,int scale,int degree,int free,sgk::Extension ext){
     using T=fgg::ChordType;int type=(int)T::major;
     if(c.suspended)type=(int)T::sus4;
     else if(c.sixth>=0&&c.seventh<0&&c.third==4&&c.fifth==7)type=(int)T::sixNine;
-    else if(c.third==3&&c.fifth==6)type=(int)(c.seventh==10?T::halfDim:T::dim);
+    else if(c.third==3&&c.fifth==6)type=(int)(c.seventh==9?T::dim7:c.seventh==10?T::halfDim:T::dim);
     else if(c.third==4&&c.fifth==8)type=(int)T::aug;
+    else if(c.third==3&&c.seventh==11)type=(int)T::mMaj7;
     else if(c.third==3&&c.eleventh==5)type=(int)T::m11;
     else if(c.third==4&&c.seventh==10&&c.thirteenth==9&&c.ninth!=1&&c.ninth!=3)type=(int)T::dom13;
     else if(c.third==3)type=c.seventh<0?(int)T::minor:(c.ninth==2?(int)T::m9:(int)T::m7);
     else if(c.seventh<0)type=(int)T::major;
     else if(c.seventh==11)type=c.ninth==2?(int)T::maj9:(int)T::maj7;
-    else if(c.seventh==10)type=c.ninth==2?(int)T::dom9:(int)T::dom7;
+    else if(c.seventh==10)type=(int)(c.ninth==1?T::dom7b9:c.ninth==2?T::dom9:T::dom7);
     return {c.rootPc,type};
 }
 // Every section that follows a filled one gets a crash on its first beat: each
