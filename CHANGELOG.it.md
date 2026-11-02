@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## Non pubblicato
+## 0.31.9
 
 - Corregge gli accordi cromatici di Random Chords e usa i pool elettronici per i rispettivi generi; conserva gli slot cromatici inseriti a mano.
 - Usa progressioni Eolie in Electro House, cambi ogni una/due battute, stabs in controtempo con condotta delle voci e lead con ottava vicina; varia modi, vamp e voicing Techno e aggiunge un’apertura del timbro guida nei build senza sostituire le automazioni esistenti.

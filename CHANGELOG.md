@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.31.9
 
 - Fix chromatic Random Chords presets and route electronic harmony dice through their genre pools; preserve manually authored chromatic slots.
 - Use Aeolian Electro House progressions with seeded one/two-bar changes, voiced offbeat stabs and nearest-octave lead colour; vary Techno modes, vamps and section voicings with a protected native tone build envelope.
