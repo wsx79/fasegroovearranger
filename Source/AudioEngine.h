@@ -237,6 +237,8 @@ public:
     // Call when a plugin's own state may have changed (load, restore, editor closed):
     // the next capture re-serialises it, otherwise the cached blob is reused.
     void invalidatePluginStates(){++pluginStateGeneration;}
+    // Editor/processor callbacks may come from an audio thread: mark only this instance.
+    void invalidatePluginState(int track,int slot)noexcept{if(track>=0&&track<engineTrackCount&&slot>=0&&slot<=maxTrackEffects)pluginStateDirty[(size_t)track][(size_t)slot].value.store(true,std::memory_order_release);}
     void restorePluginState(int,const juce::String&);
     void restoreEffectState(int,const juce::String&,int slot=1);
     // Same processing graph for playback and export. Export temporarily owns the engine.
@@ -332,6 +334,8 @@ private:
     std::vector<std::string> cachedInstrumentStates;
     std::vector<std::array<std::string,maxTrackEffects>> cachedEffectStates;
     std::array<std::string,maxTrackEffects> cachedMasterEffectStates;
+    struct DirtyPluginState {std::atomic<bool> value{false};};
+    std::array<std::array<DirtyPluginState,maxTrackEffects+1>,engineTrackCount> pluginStateDirty;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once

@@ -5,6 +5,7 @@
 #include "../Source/AudioEngine.h"
 #include "../Source/ExportSupport.h"
 #include "../Source/ArrangementAudit.h"
+#include <cmath>
 #include "../Source/core/Mp3Encoder.h"
 #include <iostream>
 #include <stdexcept>
@@ -15,6 +16,19 @@ int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
         if(argc==3&&juce::String(argv[1])=="--club-audit")return fga::writeClubAudioAudit(juce::File(argv[2]))?0:1;
+        if(argc==3&&juce::String(argv[1])=="--electronic-audit"){
+            const juce::File folder(argv[2]);check(folder.createDirectory().wasOk(),"electronic audit folder");
+            fga::AudioEngine engine(fga::AudioEngine::Offline{});
+            for(int genre:{fga::technoGenre,fga::electroHouseGenre}){
+                auto project=fga::newProject(genre);project.sections={{fga::Section::drop,8,"Drop"}};
+                for(auto& track:project.tracks){track.freeTimeline=false;track.clips.assign(1,{});track.parameters.clear();}
+                project.normalise();fga::generate(project);double peak=0;const auto file=folder.getChildFile(juce::String(genre)+".wav");
+                check(engine.exportAudio(project,file,-1,false,[]{return false;},[](double){},&peak).wasOk(),"electronic guide export");
+                check(std::isfinite(peak)&&peak>.01&&peak<.9985,"electronic guide mix remains audible and below clipping");
+                std::cout<<"PASS electronic guide genre="<<genre<<" peak="<<peak<<"\n";
+            }return 0;
+        }
+        if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
         runStudioEngineTests();runEngineAuditTests();
         fga::AudioEngine engine;engine.devices.closeAudioDevice(); // drive the callback by hand
         {

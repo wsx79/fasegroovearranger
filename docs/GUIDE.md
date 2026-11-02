@@ -607,7 +607,7 @@ This procedure checks preset and parameter recall in your own installation. If t
 
 ### Techno and Electro House
 
-Techno and Electro House use dedicated drum, bass and lead generators. Regeneration varies rhythmic figures, motifs and responses; Electro offers eight minor progressions and offbeat swing. Techno retains a four-on-the-floor kick and minimal harmony. Intro/outro entries adapt to section length. Piano, strings and guitar are not added automatically: explicitly requesting them uses the shared engines with the Dance Stabs vocabulary. Saved notes change only when regenerated.
+Techno and Electro House use dedicated drum, bass and lead generators. Regeneration varies rhythmic figures, motifs and responses; Electro offers eight minor progressions and offbeat swing. Techno retains a four-on-the-floor kick and varies tonic drones/two-chord vamps in Dorian, Aeolian and Phrygian. Intro/outro entries adapt to section length. Piano and guitar supply dedicated support parts; strings are omitted from automatic generation. Explicit requests for the original instruments use their shared Dance Stabs vocabulary. Saved notes change only when regenerated.
 
 
 **NEW ARRANGEMENT** changes the structure by reusing MIDI from matching existing sections. It retains notes, dynamics, sounds, effects, BPM and harmony. Longer sections repeat the stored take; shorter ones keep the loop source. Independent timelines and handwritten MIDI tracks stay at their absolute positions. Use **GENERATE SONG** to write new notes. Song length derives from the genre’s sections, complete harmonic cycles and groove development. Longer evolving motifs have room to unfold; dense grooves may answer sooner. There is no minute target.
@@ -845,3 +845,9 @@ Beside Automation, **Track** (default) shows the selected track’s lane; **All*
 ## Techno and electro house: hooks and support parts
 
 Only **Techno** and **Electro House** use the revised lead: repeatable small-note motifs, phrase responses and controlled registers. Piano and guitar can supply sparse stabs, intervals and supporting parts. Their track names identify the MIDI generators: **customise these parts with external synths or sounds appropriate to the genre**. Internal sounds are listening guides. Other genres and rhythmic parts remain unchanged.
+
+Electro House uses **natural minor (Aeolian)**, eight progressions and one or two bars per chord. Offbeat or syncopated drop stabs use complete triads with an octave doubling; nearby inversions reduce voice movement. Two-bar lead motifs use the nearest octave and weak-beat sevenths/ninths.
+
+Techno varies Dorian, Aeolian and Phrygian tonic drones/two-chord vamps. Sparse fifths develop into octave, seventh or suspended voicings. A native Tone build envelope is added only when no such lane exists and the track is unlocked; map external synth filters using their own parameters. **Random Chords** retains manually authored chromatic slots and uses the electronic genre pool for the remaining slots. Saved MIDI only changes when regenerated. UK Garage starts with minor harmony while retaining its broader regeneration vocabulary.
+
+AI compositions with notes extending beyond their pattern have those tails trimmed. Simultaneous Lead notes keep the strongest voice (highest pitch on velocity ties), with overlapping tails shortened; the summary reports the adjustments. Invalid structure, disabled tracks and out-of-range MIDI notes remain errors.

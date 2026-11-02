@@ -7,6 +7,7 @@ namespace fga {
 sgk::Chord chordAtBeat(const Settings&,double);
 void applyElectronicHarmony(Settings&,std::uint32_t seed=0);
 void applyElectronicFeel(Settings&);
+void addElectronicToneAutomation(Project&);
 // Returns false when a deliberately requested legacy instrument should render.
 bool generateElectronicClip(const Project&,Clip&,int track,double begin,double beats,Section,bool requested);
 }

@@ -67,7 +67,6 @@ bool Project::deleteClip(int track,int index){
     index=detachTrack(track,index);if(index<0)return false;auto& clips=tracks[(size_t)track].clips;clips.erase(clips.begin()+index);return true;
 }
 void Project::resizeGuide(int index,int bars){if(index<0||index>=(int)sections.size())return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);sections[(size_t)index].bars=std::clamp(bars,1,128);normalise();}
-void Project::insertGuide(int index,SongSection guide){if(sections.size()>=64)return;for(int t=0;t<(int)tracks.size();++t)detachTrack(t);index=std::clamp(index,0,(int)sections.size());sections.insert(sections.begin()+index,std::move(guide));normalise();}
 bool Project::duplicateSection(int index){
     if(index<0||index>=(int)sections.size()||sections.size()>=64)return false;
     auto copy=sections[(size_t)index];if(copy.name.size()<60)copy.name+=" 2";

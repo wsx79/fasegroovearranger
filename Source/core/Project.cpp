@@ -486,6 +486,15 @@ void chooseProgression(Project& p,int preset) {
     for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void randomiseHarmony(Project& p,std::uint32_t seed) {
+    if(isElectronicGenre(p.settings.genre)){
+        const auto before=p.settings;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(p.settings,seed);
+        // Explicitly authored chromatic chords keep their slots and progression length.
+        if(std::any_of(before.freeChords.begin(),before.freeChords.begin()+count,[](int chord){return chord>=0;})){
+            p.settings.chordCount=count;
+            for(int i=0;i<count;++i)if(before.freeChords[(size_t)i]>=0){p.settings.freeChords[(size_t)i]=before.freeChords[(size_t)i];p.settings.degrees[(size_t)i]=before.degrees[(size_t)i];}
+        }
+        return;
+    }
     // Keep the progression length and any chord chosen by hand: only the diatonic
     // slots are rerolled, from the genre vocabulary rather than four fixed degrees.
     const int count=std::clamp(p.settings.chordCount,1,8);
@@ -503,14 +512,15 @@ void randomiseHarmony(Project& p,std::uint32_t seed) {
     const int shift=(int)(mix(seed+17U)%(std::uint32_t)slots.size());
     for(int i=0;i<count;++i){
         if(p.settings.freeChords[(size_t)i]>=0)continue;
-        p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)((i+shift)%(int)slots.size())].degree);
+        const auto& slot=slots[(size_t)((i+shift)%(int)slots.size())];
+        p.settings.degrees[(size_t)i]=std::max(0,slot.degree);p.settings.freeChords[(size_t)i]=slot.freeCode;
     }
 }
 void applyGenre(Project& p,int genre) {
     p.settings.freeTempo=false;
     p.normalise();
     p.settings.genre=normaliseGenre(genre);
-    static const int presets[]{4,2,0,8,17,28,9,0,33,27,29,6,4};
+    static const int presets[]{4,2,0,8,17,28,20,0,33,27,29,6,4};
     const auto& profile=genreProfile(p.settings.genre);
     const int feelOffset=(int)std::lround((finite(p.settings.density,.55,0,1)-.55)*4);
     const int takeOffset=(int)(mix(p.settings.seed+(std::uint32_t)p.settings.genre)%3)-1;
@@ -531,7 +541,8 @@ void applyGenre(Project& p,int genre) {
     p.settings.bassMode=sgk::bassModeForLine(bassLines[engineGenre(p.settings.genre)]);
     applyGenreSound(p);
     if(isElectronicGenre(p.settings.genre)){
-        applyElectronicHarmony(p.settings);applyElectronicFeel(p.settings);
+        applyElectronicHarmony(p.settings,p.settings.seed);applyElectronicFeel(p.settings);
+        if(p.settings.genre==electroHouseGenre&&!p.tracks[0].locked)p.tracks[0].engine.pump=.3;
         auto& lead=p.tracks[(size_t)leadTrack];if(!lead.locked){lead.engine.density=p.settings.genre==technoGenre?.36:.62;lead.engine.gate=.45;if(lead.instrument=="internal"){lead.sound=p.settings.genre==technoGenre?3:2;lead.gain=p.settings.genre==technoGenre?.18:.24;lead.engine.tone=p.settings.genre==technoGenre?.5:.78;}}
         auto& bass=p.tracks[1];if(!bass.locked){bass.engine.gate=.65;bass.engine.humanize=.3;bass.engine.pump=.3;}
     }
@@ -952,6 +963,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     if(scope==Scope::song||scope==Scope::section)addSectionCrashes(p);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
+    if(scope==Scope::song)addElectronicToneAutomation(p);
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();
@@ -1252,6 +1264,10 @@ void humanize(Clip& c,double amount,std::uint32_t seed,double beats) {
 std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
     std::vector<TimedEvent> out;
     for(size_t ti=0;ti<p.tracks.size();++ti) {
+        int expressionSent=-1;size_t expressionIndex=0;
+        auto expression=[&](double beat,int value){if(value==expressionSent)return;
+            if(expressionSent>=0&&out[expressionIndex].beat==beat)out[expressionIndex].velocity=value;
+            else{expressionIndex=out.size();out.push_back({beat,(int)ti,11,value,0,11});}expressionSent=value;};
         if(onlyTrack>=0&&(int)ti!=onlyTrack)continue;
         const auto& t=p.tracks[ti];
         double occupied=0,sectionBegin=0;
@@ -1264,9 +1280,10 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
                 const double chord=p.settings.chordSteps*.25;
                 for(double at=0;at<end;at+=chord){if(at<from)continue;out.push_back({begin+at,(int)ti,64,0,0,64});out.push_back({begin+at+.02,(int)ti,64,127,0,64});}
                 const Section role=t.freeTimeline&&t.clips[si].role>=0?(Section)t.clips[si].role:p.sections.empty()?Section::main:p.sections[(size_t)p.sectionAtBeat(begin)].type;
-                for(double at=0;at<end;at+=.25){if(at<from)continue;const int expression=role==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;out.push_back({begin+at,(int)ti,11,expression,0,11});}
-                if(from>0){out.push_back({begin+from,(int)ti,64,0,0,64});out.push_back({begin+from,(int)ti,11,127,0,11});}
-                out.push_back({begin+end,(int)ti,64,0,0,64});out.push_back({begin+end,(int)ti,11,127,0,11});
+                auto level=[&](double at){return role==Section::buildup?std::clamp((int)(60+67*at/end),0,127):127;};
+                if(from>0){out.push_back({begin+from,(int)ti,64,0,0,64});expression(begin+from,level(from));}
+                for(double at=0;at<end;at+=.25){if(at<from)continue;expression(begin+at,level(at));}
+                out.push_back({begin+end,(int)ti,64,0,0,64});expression(begin+end,127);
             }
             for(const auto& n:t.clips[si].notes) {
                 if(n.start>=end||n.start+n.length<=from)continue;

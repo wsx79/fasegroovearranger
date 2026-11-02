@@ -155,7 +155,6 @@ struct Project {
     int moveClip(int track, int clip, int targetTrack, double beat, bool copy);
     bool deleteClip(int track, int clip);
     void resizeGuide(int section, int bars);
-    void insertGuide(int section, SongSection);
     void removeGuide(int section);
     void moveGuide(int from, int to);
     void normalise();

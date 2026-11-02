@@ -404,6 +404,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     // Full mixes and live clip previews pass through the master inserts; stems stay dry of master inserts.
     if((onlyTrack<0||clipSource>=0)&&instruments[(size_t)masterEffectTrack]->effectCount>0){auto& rack=*instruments[(size_t)masterEffectTrack];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();
         for(int ch=0;ch<std::min(channels,2);++ch)if(output[ch])block.copyFrom(ch,0,output[ch],count);
+        // A mono device supplies one real side; duplicate it before a stereo or mono insert.
+        if(channels==1&&output[0])block.copyFrom(1,0,block,0,0,count);
         for(int k=0;k<rack.effectCount;++k){const int slot=rack.effectOrder[(size_t)k];auto* fx=rack.effects[(size_t)(slot-1)].plugin.get();if(!fx||rack.effectBypass[(size_t)(slot-1)])continue;
             if(rack.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             rack.chainMidi.clear();processHosted(rack,*fx,block,rack.chainMidi,beat,slot);
@@ -608,27 +610,26 @@ juce::AudioPluginInstance* AudioEngine::effectPlugin(int track,int slot){if(trac
 // State serialization/restoration is control-thread work and cannot overlap processing.
 // Snapshots serialize only their processor; unrelated tracks keep playing.
 void AudioEngine::capturePluginStates(Project& p){
-
     if(hostedCount.load()==0||exporting.load())return;
-    // Reuse the serialised blob until something invalidates it (load, restore,
-    // editor closed). A slow state read holds only that processor's callback lock.
-    // A fresh snapshot still waits until processBlock has left the plugin.
-    if(pluginStateCaptured==pluginStateGeneration){
-        for(size_t ti=0;ti<p.tracks.size()&&ti<cachedInstrumentStates.size();++ti){
-            p.tracks[ti].instrumentState=cachedInstrumentStates[ti];
-            for(auto& fx:p.tracks[ti].effects)if(fx.slot>0&&fx.slot<=maxTrackEffects)fx.state=cachedEffectStates[ti][(size_t)(fx.slot-1)];
-        }
-        for(auto& fx:p.masterEffects.effects)fx.state=cachedMasterEffectStates[(size_t)(fx.slot-1)];
-        return;
-    }
+    const bool all=pluginStateCaptured!=pluginStateGeneration;bool dirty=all;
+    for(const auto& track:pluginStateDirty)for(const auto& slot:track)dirty=dirty||slot.value.load(std::memory_order_acquire);
+    if(!dirty){reusePluginStates(p);return;}
     const juce::ScopedLock lock(mutex);if(exporting)return;
     cachedInstrumentStates.resize(instruments.size());cachedEffectStates.resize(instruments.size());
+    auto capture=[&](int track,int slot,const std::string& saved,std::string& cached)->const std::string&{
+        const bool changed=pluginStateDirty[(size_t)track][(size_t)slot].value.exchange(false,std::memory_order_acq_rel);
+        auto* processor=slot==0?instruments[(size_t)track]->plugin.get():effectPlugin(track,slot);
+        if(!processor)cached=saved;else if(all||changed)cached=captureHostedState(*processor);
+        return cached;
+    };
     for(size_t ti=0;ti<instruments.size()&&ti<p.tracks.size();++ti){
-        cachedInstrumentStates[ti]=p.tracks[ti].instrumentState;cachedEffectStates[ti].fill({});for(const auto& fx:p.tracks[ti].effects)cachedEffectStates[ti][(size_t)(fx.slot-1)]=fx.state;
-        if(auto* plugin=instruments[ti]->plugin.get()){cachedInstrumentStates[ti]=captureHostedState(*plugin);p.tracks[ti].instrumentState=cachedInstrumentStates[ti];}
-        for(auto& fx:p.tracks[ti].effects)if(auto* effect=effectPlugin((int)ti,fx.slot)){cachedEffectStates[ti][(size_t)(fx.slot-1)]=captureHostedState(*effect);fx.state=cachedEffectStates[ti][(size_t)(fx.slot-1)];}
+        auto& track=p.tracks[ti];track.instrumentState=capture((int)ti,0,track.instrumentState,cachedInstrumentStates[ti]);
+        for(auto& fx:track.effects)fx.state=capture((int)ti,fx.slot,fx.state,cachedEffectStates[ti][(size_t)(fx.slot-1)]);
     }
-    cachedMasterEffectStates.fill({});for(auto& fx:p.masterEffects.effects){if(auto* effect=effectPlugin(masterEffectTrack,fx.slot))fx.state=captureHostedState(*effect);cachedMasterEffectStates[(size_t)(fx.slot-1)]=fx.state;}
+    for(auto& fx:p.masterEffects.effects)fx.state=capture(masterEffectTrack,fx.slot,fx.state,cachedMasterEffectStates[(size_t)(fx.slot-1)]);
+    // Notifications for removed instances must not keep otherwise clean snapshots dirty.
+    for(int ti=0;ti<engineTrackCount;++ti)for(int slot=0;slot<=maxTrackEffects;++slot)
+        if((slot==0&&!instruments[(size_t)ti]->plugin)||(slot>0&&!effectPlugin(ti,slot)))pluginStateDirty[(size_t)ti][(size_t)slot].value.store(false,std::memory_order_release);
     pluginStateCaptured=pluginStateGeneration;
 }
 void AudioEngine::reusePluginStates(Project& p){

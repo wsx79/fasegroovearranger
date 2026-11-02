@@ -14,6 +14,7 @@
 #include "../ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.h"
 #include "../ThirdParty/fasegroovelead/Source/engine/GrooveEngine.h"
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
+#include "HarmonyAuditChecks.h"
 namespace {
 int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
 bool guitarHas(const fgg::GuitarPattern& p,char symbol,int lane=-1){for(int l=0;l<fgg::numLanes;++l){if(lane>=0&&l!=lane)continue;if(p.lanes[(size_t)l].find(symbol)!=std::string::npos)return true;}return false;}
@@ -228,6 +229,7 @@ void verifyRearrange(){
     auto locked=original;locked.tracks[0].clips[0].locked=true;const auto clips=locked.tracks[0].clips;check(!rearrangeSong(locked,2)&&locked.tracks[0].clips==clips&&locked.sections[0].bars==8,"locked rearrange is atomic");
 }
 int main(int argc,char** argv){try{
+    verifyHarmonyAudit();
     verifyRearrange();
     verifyAuditFixes();
     verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();

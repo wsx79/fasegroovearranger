@@ -64,6 +64,32 @@ struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
 };
 }
 struct EngineAuditTests {
+    static void selectiveSnapshots(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(4);
+        auto a=std::make_unique<AuditPlugin>(),b=std::make_unique<AuditPlugin>(),master=std::make_unique<AuditPlugin>(true);
+        auto* first=a.get();auto* second=b.get();auto* effect=master.get();engine.instruments[0]->plugin=std::move(a);engine.instruments[1]->plugin=std::move(b);
+        engine.instruments[(size_t)masterEffectTrack]->effects[0].plugin=std::move(master);engine.hostedCount=3;project.masterEffects.effects={{1,"Master","Probe","/probe","","",false}};
+        engine.capturePluginStates(project);const auto old=project.tracks[0].instrumentState;
+        auto reads=[&]{return first->stateReads.load()+second->stateReads.load()+effect->stateReads.load();};
+        const int initial=reads();const auto start=juce::Time::getMillisecondCounterHiRes();
+        for(int i=0;i<20;++i){engine.invalidatePluginStates();engine.capturePluginStates(project);}const auto baselineTime=juce::Time::getMillisecondCounterHiRes()-start;const int baseline=reads()-initial;
+        const int before=reads();const auto cachedStart=juce::Time::getMillisecondCounterHiRes();for(int i=0;i<20;++i)engine.capturePluginStates(project);const auto cachedTime=juce::Time::getMillisecondCounterHiRes()-cachedStart;
+        requireAudit(baseline==60&&reads()==before,"unchanged checkpoints reuse all native chunks instead of serializing every plugin");
+        const int untouched=second->stateReads,masterReads=effect->stateReads;first->getParameters()[0]->setValue(.27f);std::thread edit([&]{engine.invalidatePluginState(0,0);});edit.join();engine.capturePluginStates(project);
+        requireAudit(reads()==before+1&&second->stateReads==untouched&&effect->stateReads==masterReads&&project.tracks[0].instrumentState!=old,"one editor notification refreshes only its own instance and captures its new sound");
+        const int firstReads=first->stateReads;engine.invalidatePluginState(masterEffectTrack,1);engine.capturePluginStates(project);requireAudit(effect->stateReads==masterReads+1&&first->stateReads==firstReads,"master editor refresh does not serialize track plugins");
+        std::cout<<"Snapshot audit: 20 edits, baseline reads="<<baseline<<", cached reads=0, edited instance reads=1; baseline_ms="<<baselineTime<<", cached_ms="<<cachedTime<<"\n";
+    }
+    static void monoMaster(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(4);project.sections={{Section::main,4,"Mono"}};project.normalise();project.masterGain=1;project.masterAutomation={};
+        for(auto& track:project.tracks){track.gain=0;track.volume={};track.parameters.clear();for(auto& clip:track.clips)clip.notes.clear();}project.tracks[0].gain=1;
+        auto& source=*engine.instruments[0];source.plugin=std::make_unique<AuditPlugin>();source.plugin->getParameters()[0]->setValue(.25f);source.mode=2;source.prepare(44100,512);
+        auto& rack=*engine.instruments[(size_t)masterEffectTrack];rack.effects[0].plugin=std::make_unique<AuditPlugin>(true,0,true);rack.effects[0].plugin->getParameters()[0]->setValue(.25f);rack.prepare(44100,512);engine.hostedCount=2;
+        project.masterEffects.effects={{1,"Mono","Probe","/mono","","",true}};juce::AudioBuffer<float> block(1,512);juce::AudioIODeviceCallbackContext context;
+        auto render=[&]{engine.publish(project);engine.play(true);for(int i=0;i<16;++i)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),1,512,context);return block.getSample(0,500);};
+        const float dry=render();project.masterEffects.effects[0].bypassed=false;const float processed=render();std::cout<<"Mono master audit: dry="<<dry<<", processed="<<processed<<"\n";
+        requireAudit(dry>.1f&&std::abs(processed/dry-.5f)<1.e-5f,"mono output preserves master level through a mono insert without an extra six dB loss");engine.stop();
+    }
     static void effects(){
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& i:engine.instruments)i->prepare(44100,512);auto p=newProject(32);p.sections={{Section::main,2,"FX"}};p.masterGain=1;
         for(auto& t:p.tracks){t.gain=0;t.parameters.clear();for(auto& c:t.clips)c.notes.clear();}p.tracks[0].gain=1;p.tracks[0].pan=0;p.tracks[0].effects={{1,"A","Probe","/A","","",false},{5,"B","Probe","/B","","",false}};p.normalise();auto& i=*engine.instruments[0];i.plugin=std::make_unique<AuditPlugin>();i.mode=2;i.effects[0].plugin=std::make_unique<AuditPlugin>(true,.1f);i.effects[4].plugin=std::make_unique<AuditPlugin>(true);i.effects[4].plugin->getParameters()[0]->setValue(1);i.effects[0].plugin->setLatencySamples(13);i.effects[4].plugin->setLatencySamples(29);i.prepare(44100,512);engine.hostedCount=3;
@@ -131,7 +157,7 @@ struct EngineAuditTests {
         std::thread audio([&]{callback();returned.signal();});const bool nonblocking=returned.wait(1000);const bool otherAudible=nonblocking&&engine.level(1)>.001f;
         resume.signal();snapshot.join();audio.join();requireAudit(began&&nonblocking&&otherAudible&&!plugin->overlap,"slow state reads do not block the callback, race the processor or mute unrelated tracks");
     }
-    static void run(){snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
+    static void run(){selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

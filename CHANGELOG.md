@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Fix chromatic Random Chords presets and route electronic harmony dice through their genre pools; preserve manually authored chromatic slots.
+- Use Aeolian Electro House progressions with seeded one/two-bar changes, voiced offbeat stabs and nearest-octave lead colour; vary Techno modes, vamps and section voicings with a protected native tone build envelope.
+- Start UK Garage in minor harmony while retaining its broader regeneration pool.
+- Repair AI pattern-end note tails and simultaneous Lead voices instead of rejecting the complete composition; report the adjustments.
+- Refresh only changed plugin instances for structural Undo checkpoints, retaining complete state reads for explicit saves.
+- Avoid redundant CC11 events and preserve mono-device master insert gain.
+
 ## 0.31.8
 
 - Prepare fresh offline engines before their first export, preventing a crash at the default sample rate.

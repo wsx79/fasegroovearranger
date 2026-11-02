@@ -133,6 +133,7 @@ juce::Result aiResponse(AiProvider provider,const juce::var& reply,juce::String&
 }
 juce::Result aiCompile(const Project& base,const AiOptions& o,const juce::String& text,Project& output,juce::String& summary){
     try{
+        int trimmedTails=0,removedVoices=0;
         need(text.getNumBytesAsUTF8()<=4*1024*1024,"Composition response is too large.");auto cleaned=text.trim();if(cleaned.startsWith("```")){const int line=cleaned.indexOfChar('\n'),end=cleaned.lastIndexOf("```");need(line>=0&&end>line,"Incomplete composition JSON.");cleaned=cleaned.substring(line+1,end).trim();}
         juce::var root;auto parse=juce::JSON::parse(cleaned,root);need(parse.wasOk()&&root.isObject(),"The model did not return valid composition JSON. Try again or choose another model.");
         need(!o.tracks.empty(),"Select at least one instrument.");for(int t:o.tracks)need(t>=0&&t<(int)base.tracks.size()&&!base.tracks[(size_t)t].locked,"An enabled track is locked or unavailable.");
@@ -158,7 +159,7 @@ juce::Result aiCompile(const Project& base,const AiOptions& o,const juce::String
         }
         struct Pattern{int track;double beats;std::vector<Note> notes;};std::map<juce::String,Pattern> patterns;
         for(auto& v:array(get(root,"patterns"),1,256,"patterns")){const auto id=string(get(v,"id"),"pattern id",80);const int t=integer(get(v,"track"),0,(int)p.tracks.size()-1,"track");need(selected(o,t),"The model used a disabled track.");Pattern pattern{t,number(get(v,"beats"),.25,128,"pattern beats"),{}};
-            for(auto& x:array(get(v,"notes"),1,512,"notes")){const auto& n=array(x,4,5,"note");Note note{number(n[0],0,pattern.beats,"note start"),number(n[2],1./960.,128,"note length"),integer(n[1],0,127,"MIDI pitch"),integer(n[3],1,127,"velocity"),n.size()==5?integer(n[4],0,isDrumTrack(t)?12:11,"lane"):0};need(note.start<pattern.beats&&note.start+note.length<=pattern.beats+1./960.,"A note extends beyond its pattern.");if(isDrumTrack(t)){note.pitch=p.tracks[(size_t)t].engine.midiNote>=0?p.tracks[(size_t)t].engine.midiNote:fgd::defaultNote(t-4);note.lane=t-4;}const auto& part=p.tracks[(size_t)t];if(part.vocalChops&&part.instrument=="sample"&&part.sampler.mode==2&&part.sampler.sliceCount>0)need(note.pitch>=part.sampler.sliceBase&&note.pitch<part.sampler.sliceBase+part.sampler.sliceCount,"Vocal notes must use mapped slice keys.");pattern.notes.push_back(note);}
+            for(auto& x:array(get(v,"notes"),1,512,"notes")){const auto& n=array(x,4,5,"note");Note note{number(n[0],0,pattern.beats,"note start"),number(n[2],1./960.,128,"note length"),integer(n[1],0,127,"MIDI pitch"),integer(n[3],1,127,"velocity"),n.size()==5?integer(n[4],0,isDrumTrack(t)?12:11,"lane"):0};if(note.start>=pattern.beats){++trimmedTails;continue;}if(note.start+note.length>pattern.beats){note.length=pattern.beats-note.start;++trimmedTails;}if(isDrumTrack(t)){note.pitch=p.tracks[(size_t)t].engine.midiNote>=0?p.tracks[(size_t)t].engine.midiNote:fgd::defaultNote(t-4);note.lane=t-4;}const auto& part=p.tracks[(size_t)t];if(part.vocalChops&&part.instrument=="sample"&&part.sampler.mode==2&&part.sampler.sliceCount>0)need(note.pitch>=part.sampler.sliceBase&&note.pitch<part.sampler.sliceBase+part.sampler.sliceCount,"Vocal notes must use mapped slice keys.");pattern.notes.push_back(note);}
             need(patterns.emplace(id,std::move(pattern)).second,"Pattern IDs must be unique.");
         }
         size_t count=0;for(auto& v:array(get(root,"clips"),1,2048,"clips")){const int si=integer(get(v,"section"),0,(int)p.sections.size()-1,"section index");const auto found=patterns.find(string(get(v,"pattern"),"pattern reference",80));need(found!=patterns.end(),"A clip refers to an unknown pattern.");const auto& pattern=found->second;auto& clip=p.tracks[(size_t)pattern.track].clips[(size_t)si];if(clip.locked)continue;
@@ -170,10 +171,18 @@ juce::Result aiCompile(const Project& base,const AiOptions& o,const juce::String
             for(double at=offset;at<span-1./960.;at+=pattern.beats){for(auto note:pattern.notes){note.start+=at;if(note.start>=span)continue;note.length=std::min(note.length,span-note.start);if(!isDrumTrack(pattern.track)){note.pitch+=transpose;need(note.pitch>=0&&note.pitch<=127,"Transposition exceeds MIDI range.");}note.velocity=std::clamp((int)std::lround(note.velocity*velocity),1,127);clip.notes.push_back(note);need(++count<=500000,"The composition contains too many notes.");}if(!repeat)break;}
         }
         need(count>0,"The composition has no playable notes.");for(int t:o.tracks)for(size_t i=0;i<p.tracks[(size_t)t].clips.size();++i){auto& c=p.tracks[(size_t)t].clips[i];if(c.locked)continue;
-            if(t==leadTrack){std::stable_sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});for(size_t n=0;n+1<c.notes.size();++n){need(c.notes[n+1].start-c.notes[n].start>=1./960.,"Lead must be monophonic: simultaneous notes are not supported.");c.notes[n].length=std::min(c.notes[n].length,c.notes[n+1].start-c.notes[n].start);}}
+            if(t==leadTrack){
+                std::stable_sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+                std::vector<Note> mono;for(const auto& note:c.notes){
+                    if(!mono.empty()&&note.start-mono.back().start<1./960.){auto& chosen=mono.back();if(note.velocity>chosen.velocity||(note.velocity==chosen.velocity&&note.pitch>chosen.pitch)){const double start=chosen.start;chosen=note;chosen.start=start;}++removedVoices;}
+                    else mono.push_back(note);
+                }
+                for(size_t n=0;n+1<mono.size();++n)mono[n].length=std::min(mono[n].length,mono[n+1].start-mono[n].start);
+                c.notes=std::move(mono);
+            }
             tidyNotes(c,p.clipLength(t,(int)i));}
         for(auto& entry:independentLocks){p.detachTrack(entry.first);for(auto& locked:entry.second){const double at=locked.position;need(p.placeClip(entry.first,std::move(locked),at)>=0,"Cannot preserve a locked independent clip.");}}
-        p.normalise();count=0;for(const auto& t:p.tracks)for(const auto& c:t.clips)count+=c.notes.size();summary=get(root,"summary").toString().substring(0,2000)+"\n\n"+juce::String(p.settings.bpm,1)+juce::String::fromUTF8(" BPM  ·  ")+juce::String((int)std::lround(p.length()*60/p.settings.bpm))+juce::String::fromUTF8(" s  ·  ")+juce::String((int)p.sections.size())+juce::String::fromUTF8(" sections  ·  ")+juce::String((int)count)+" MIDI notes";output=std::move(p);return juce::Result::ok();
+        p.normalise();count=0;for(const auto& t:p.tracks)for(const auto& c:t.clips)count+=c.notes.size();summary=get(root,"summary").toString().substring(0,2000)+"\n\n"+juce::String(p.settings.bpm,1)+juce::String::fromUTF8(" BPM  ·  ")+juce::String((int)std::lround(p.length()*60/p.settings.bpm))+juce::String::fromUTF8(" s  ·  ")+juce::String((int)p.sections.size())+juce::String::fromUTF8(" sections  ·  ")+juce::String((int)count)+" MIDI notes";if(trimmedTails||removedVoices)summary+="\nAdjusted pattern boundaries: "+juce::String(trimmedTails)+"; simultaneous Lead voices removed: "+juce::String(removedVoices)+".";output=std::move(p);return juce::Result::ok();
     }catch(const Invalid& e){return juce::Result::fail(e.message);}catch(...){return juce::Result::fail("The composition could not be read. Try a simpler request.");}
 }
 namespace {

@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato
+
+- Corregge gli accordi cromatici di Random Chords e usa i pool elettronici per i rispettivi generi; conserva gli slot cromatici inseriti a mano.
+- Usa progressioni Eolie in Electro House, cambi ogni una/due battute, stabs in controtempo con condotta delle voci e lead con ottava vicina; varia modi, vamp e voicing Techno e aggiunge un’apertura del timbro guida nei build senza sostituire le automazioni esistenti.
+- Avvia UK Garage con armonia minore, mantenendo il pool più ampio per le rigenerazioni.
+- Corregge le code oltre il pattern e le voci Lead simultanee nelle composizioni IA senza scartare l’intero brano; segnala gli adattamenti.
+- Negli snapshot Undo aggiorna lo stato dei soli plugin modificati; il salvataggio esplicito conserva la lettura completa.
+- Elimina CC11 ripetuti e conserva il livello degli insert master con un dispositivo mono.
+
 ## 0.31.8
 
 - Inizializza i motori offline prima della prima esportazione, evitando un crash alla frequenza predefinita.

@@ -27,8 +27,7 @@ namespace {
 juce::Colour colour(int t){return Daw::trackColour(t);}
 juce::Colour guitarColour(int lane){return lane<=1?Palette::accent:lane<=4?Palette::accent2:lane<=6?Palette::percussion:lane<=8?Palette::cymbals:Palette::toms;}
 juce::String utf(const std::string& s){return juce::String::fromUTF8(s.c_str());}
-// Mix gestures reuse cached state. Structural edits with an open editor, and explicit
-// saves, need the current plugin state even before the editor closes.
+// Editor notifications invalidate one instance. Explicit saves also refresh opaque state.
 void captureProjectStates(AudioEngine& audio,Project& project,bool fresh){if(fresh)audio.invalidatePluginStates();audio.capturePluginStates(project);}
 void label(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,float size=12,juce::Colour c=Daw::text){g.setColour(c);g.setFont(Daw::font(size));g.drawText(tr(s),r,juce::Justification::centredLeft);}
 constexpr int trackHeight=40,headerWidth=216,rulerHeight=60;
@@ -666,23 +665,27 @@ public:
     void run()override{if(threadShouldExit())return;auto result=saveProject(snapshot,target);if(!threadShouldExit())juce::MessageManager::callAsync([callback=complete,result]{callback(result);});}
 private:Project snapshot;juce::File target;std::function<void(juce::Result)> complete;
 };
-class MainComponent::PluginWindow : public juce::DocumentWindow {
+class MainComponent::PluginWindow : public juce::DocumentWindow,private juce::AudioProcessorListener {
 public:
     MainComponent& owner;juce::AudioPluginInstance& processor;
-    std::uint64_t session;int slot;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
+    std::uint64_t session;int slot,track;
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot,int trackIndex):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot),track(trackIndex){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);processor.addListener(this);editor->addMouseListener(this,true);markState();setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
         // The native peer can size the window while showing it; centre on the next
         // message-loop turn, when the final size is known.
         juce::Component::SafePointer<PluginWindow> safe(this);
         juce::MessageManager::callAsync([safe]{if(safe)safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
-    ~PluginWindow()override{const juce::ScopedLock processorLock(processor.getCallbackLock());clearContentComponent();owner.audio.invalidatePluginStates();}
-    void closeButtonPressed()override{const juce::ScopedLock processorLock(processor.getCallbackLock());owner.audio.invalidatePluginStates();owner.dismissAuxiliaryWindow(*this);}
+    void markState()noexcept{owner.audio.invalidatePluginState(track,slot);}
+    void audioProcessorParameterChanged(juce::AudioProcessor*,int,float)override{markState();}
+    void audioProcessorChanged(juce::AudioProcessor*,const juce::AudioProcessorListener::ChangeDetails&)override{markState();}
+    void mouseUp(const juce::MouseEvent& e)override{markState();juce::DocumentWindow::mouseUp(e);}
+    ~PluginWindow()override{const juce::ScopedLock processorLock(processor.getCallbackLock());processor.removeListener(this);if(auto* editor=getContentComponent())editor->removeMouseListener(this);clearContentComponent();markState();}
+    void closeButtonPressed()override{const juce::ScopedLock processorLock(processor.getCallbackLock());markState();owner.dismissAuxiliaryWindow(*this);}
 };
 void MainComponent::openHostedEditor(int track,int slot){
     if(loadingPlugin||editingRestricted()||!validEffectTrack(track))return;
     auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin)return;const auto session=effectTrack(track).sessionId;
     pluginWindow=nullptr;for(auto& window:pluginWindows)if(window->session==session&&window->slot==slot){pluginWindow=window.get();break;}
-    if(!pluginWindow){auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
+    if(!pluginWindow){auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot,track);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
     else if(!pluginWindow->isVisible()){pluginWindow->setVisible(true);juce::Component::SafePointer<PluginWindow> safe(pluginWindow);juce::MessageManager::callAsync([safe]{if(safe&&safe->isVisible())safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
     pluginWindow->setName(plugin->getName());if(slot>0)if(auto* fx=effectTrack(track).effect(slot))if(!fx->name.empty())pluginWindow->setName(utf(fx->name)+juce::String::fromUTF8(" \xc2\xb7 ")+plugin->getName());
     pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
@@ -1241,7 +1244,7 @@ void MainComponent::updateEditingAvailability(){
     }
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
-void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureProjectStates(audio,project,hasOpenPluginEditors());undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureProjectStates(audio,project,false);undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
@@ -1317,7 +1320,7 @@ void MainComponent::refreshTrack(){++uiRevision;
     refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){if(automationAllTracks&&std::any_of(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),[](bool visible){return visible;}))for(size_t i=0;i<arrangement.volumeVisible.size();++i)arrangement.volumeVisible[i]=i<project.tracks.size();timelineZoom.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
-void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();const bool mixOnly=source.back().mixOnly;if(mixOnly)audio.reusePluginStates(project);else captureProjectStates(audio,project,hasOpenPluginEditors());dest.push_back({project,mixOnly});const auto& before=dest.back().project;project=std::move(source.back().project);source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
+void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();const bool mixOnly=source.back().mixOnly;if(mixOnly)audio.reusePluginStates(project);else captureProjectStates(audio,project,false);dest.push_back({project,mixOnly});const auto& before=dest.back().project;project=std::move(source.back().project);source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
     selectedTrack=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);
     // Editing selection is independent of the playhead. A note, mix or loop Undo keeps
     // the selected clip when its timeline range is unchanged in the restored snapshot.
