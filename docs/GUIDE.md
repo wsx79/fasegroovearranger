@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.9**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.10**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
