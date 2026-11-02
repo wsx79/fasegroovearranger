@@ -17,7 +17,7 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
         for path in ['scripts/package.py', 'CMakeLists.txt', 'LICENSE', 'README.md', 'README.it.md',
                      'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
                      'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
-                     'Resources/arranger.svg', 'ThirdParty/shine/COPYING',
+                     'Resources/arranger.svg', 'Resources/arranger-project.ico', 'ThirdParty/shine/COPYING',
                      'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-linear/LICENSE.txt',
                      'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
                      'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
@@ -49,6 +49,10 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
                 assert f'ThirdParty/{dependency}/LICENSE.txt' in names
             for image in ['logo.svg', 'options.png', 'screenshot.png', 'images/guide_piano.png', 'images/guide_lead.png', 'images/guide_sampler.png', 'images/guide_recording.png', 'images/guide_buses.png']:
                 assert f'docs/{image}' in names
+            if system == 'Windows':
+                assert archive.read('Resources/arranger-project.ico') == (repo / 'Resources/arranger-project.ico').read_bytes()
+            else:
+                assert 'Resources/arranger-project.ico' not in names
             if system == 'Linux':
                 assert archive.getinfo('Standalone/' + binary.name).external_attr >> 16 & 0o111
         assert len([p for p in (root / 'dist').glob('FaseGrooveArranger-*.*') if p.is_file()]) == 1
