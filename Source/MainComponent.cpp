@@ -407,15 +407,18 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
         ok=owner.project.masterAutomation.enabled&&std::abs(owner.project.masterAutomation.valueAt(8)-1.5)<.04&&ok;
         owner.undo(false);ok=owner.project.masterAutomation.isDefault()&&ok;   // (quick edits may share one Undo step)
         if(auto out=folder.getChildFile("pan-master-automation.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(owner.createComponentSnapshot(owner.getLocalBounds()),*out)&&ok;}
+        const bool previousChecks=ok;const auto ownedVisibility=volumeVisible;const auto viewBefore=owner.arrangementPort.getViewPosition();owner.select(0,0);volumeVisible[0]=true;owner.updateSizes();
         ParameterAutomation generated;generated.slot=-1;generated.index=0;generated.generatedTone=true;generated.curve.enabled=true;generated.curve.points={{0,.2,0},{owner.project.length(),.8,0}};
-        auto& lanes=owner.project.tracks[(size_t)track].parameters;lanes.push_back(generated);laneTarget[(size_t)track]=lanePlugin+(int)lanes.size()-1;
-        p={headerWidth+24,volumeY(track,.6)};mouseDown(click(p));mouseUp(click(p));
-        ok=!owner.project.tracks[(size_t)track].parameters.back().generatedTone&&ok;
-        owner.undo(false);ok=owner.project.tracks[(size_t)track].parameters.back().generatedTone&&ok;
+        auto& lanes=owner.project.tracks[0].parameters;lanes.push_back(generated);laneTarget[0]=lanePlugin+(int)lanes.size()-1;
+        p={headerWidth+24,volumeY(0,.6)};mouseDown(click(p));mouseUp(click(p));
+        const bool edited=!owner.project.tracks[0].parameters.back().generatedTone;ok=edited&&ok;
+        owner.undo(false);const bool restored=owner.project.tracks[0].parameters.back().generatedTone;ok=restored&&ok;
+        folder.getChildFile("tone-ownership-ui.txt").replaceWithText(juce::String("Previous checks: ")+(previousChecks?"PASS":"FAIL")+"\nManual edit: "+(edited?"PASS":"FAIL")+"\nUndo ownership: "+(restored?"PASS":"FAIL"));
+        owner.select(track,0);volumeVisible=ownedVisibility;owner.updateSizes();owner.arrangementPort.setViewPosition(viewBefore);
         laneTarget=targets;
     }
     mouseDown(click({(float)automationSlot.getCentreX(),(float)rulerHeight+16}));ok=!volumeVisible[(size_t)track]&&ok;
-    owner.project=saved;volumeVisible=visibility;pixelsPerBar=zoom;owner.changed();owner.undoStack.clear();owner.redoStack.clear();folder.getChildFile("volume-automation-ui.txt").replaceWithText(ok?"PASS hidden and bypassed default, lane button, add/move/curve, bypass, pan and master lanes with Undo, hide, MIDI unchanged":"FAIL automation editing");return ok;
+    owner.project=saved;volumeVisible=visibility;pixelsPerBar=zoom;owner.changed();owner.undoStack.clear();owner.redoStack.clear();folder.getChildFile("volume-automation-ui.txt").replaceWithText(ok?"PASS hidden and bypassed default, lane button, add/move/curve, bypass, pan/master lanes and generated Tone ownership with Undo, hide, MIDI unchanged":"FAIL automation editing");return ok;
 }
 PianoRoll::PianoRoll(MainComponent& m):owner(m){setWantsKeyboardFocus(true);}
 bool PianoRoll::ownerTrackIsDrum()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];return isDrumTrack(owner.selectedTrack)&&!(track.instrument=="sample"&&track.sampler.mode==2);}
