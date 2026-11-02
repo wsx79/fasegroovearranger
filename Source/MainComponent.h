@@ -75,6 +75,7 @@ public:
     enum LaneTarget { laneVolume=0, lanePan, laneMaster, lanePlugin };
     std::array<int,maxTracks> laneTarget{};
     VolumeAutomation& envelope(int track) const;
+    void makeEnvelopeManual(int track);
     double envelopeMax(int track) const;       // 2 for a gain, 1 for pan and plugin parameters
     double envelopeDefault(int track) const;   // a new lane's flat value
     juce::String envelopeTitle(int track) const;
@@ -313,6 +314,7 @@ public:
     void moveEffect(int track,int slot,int position);
     void openHostedEditor(int track,int slot=0);
     bool hasOpenPluginEditors()const;
+    void captureUndoPluginStates();
     void resolveAutomationParameters(int track,int slot);
     void resetAutomationTarget(int track);
     void showAutomationPicker(int track,int source=-100);
@@ -437,6 +439,7 @@ private:
     bool instrumentIsOpen() const;
     class PluginWindow;
     std::vector<std::unique_ptr<PluginWindow>> pluginWindows;
+    std::uint64_t lastActivePluginSession=0;int lastActivePluginSlot=0;
     PluginWindow* pluginWindow=nullptr; // most recently raised editor, owned by pluginWindows
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
     int musicalToolKind=0;

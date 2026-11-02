@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.11
+
+- Keep generated chromatic chords rerollable across repeated Random Chords actions; store manual chord ownership explicitly and preserve legacy overrides.
+- Refresh generated Techno Tone envelopes after song regeneration and remove them on genre changes; protect user-edited and locked lanes.
+- Capture non-notifying state from the last active visible plugin editor at structural Undo checkpoints and on focus loss, retaining cached states for unrelated instances and mix gestures.
+- Keep electronic harmony defaults consistent with the dedicated MIDI voicing generator; test repeated generation, project migration and native editor Undo.
+
 ## 0.31.10
 
 - Fix the standalone core-test script with a source inventory shared by CMake; run the script and MIDI verification in CI.

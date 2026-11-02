@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.11
+
+- Mantiene rigenerabili gli accordi cromatici automatici dopo ripetuti Random Chords; memorizza esplicitamente gli accordi manuali e conserva le scelte dei vecchi progetti.
+- Riallinea il Tone Techno generato dopo la rigenerazione del brano e lo rimuove al cambio di genere; protegge corsie manuali e blocchi.
+- Cattura lo stato senza notifiche dell’ultimo editor plugin visibile attivo ai checkpoint strutturali di Annulla e alla perdita del focus; conserva la cache per le altre istanze e i gesti del mixer.
+- Allinea i parametri armonici elettronici al generatore MIDI dedicato; verifica rigenerazioni ripetute, migrazione progetti e Annulla nell’editor nativo.
+
 ## 0.31.10
 
 - Corregge lo script autonomo dei test core usando un elenco delle sorgenti condiviso con CMake; aggiunge script e verifica MIDI alla CI.

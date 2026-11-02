@@ -118,6 +118,8 @@ struct Settings {
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
     std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
+    // Chromatic spelling is independent of a user-authored chord override.
+    std::array<bool, 8> manualChords {};
     // Regenerating (song, track, section, clip) also writes musical automation for that scope.
     // Off in projects saved before it existed; new projects start with it on.
     bool randomAutomation = false;

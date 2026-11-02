@@ -53,6 +53,7 @@ struct ParameterAutomation {
     std::string name;
     std::string parameterId; // plugin-provided ID; index is resolved again when loading
     VolumeAutomation curve;
+    bool generatedTone=false; // owned Techno build envelope; direct edits release ownership
 };
 constexpr int maxParameterLanes=32;
 constexpr int maxTrackEffects=8;

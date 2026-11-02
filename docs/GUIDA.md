@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.10**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.11**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -852,6 +852,12 @@ Solo per **Techno** ed **Electro House**, il lead usa motivi ripetibili di poche
 
 Electro House usa la scala **minore naturale (Eolio)**, otto progressioni e cambi ogni una o due battute. Gli stabs sono triadi con raddoppio all’ottava, in controtempo o con figure sincopate nel drop; le inversioni limitano i salti tra gli accordi. Il lead collega i motivi di due battute scegliendo l’ottava più vicina e usa settime e none come colori sui tempi deboli.
 
-Techno alterna Dorico, Eolio e Frigio, droni sulla tonica e vamp di due accordi. Gli stabs passano da quinte sparse a ottave, accordi di settima o sospesi nelle sezioni più piene. Per il suono interno, un’automazione Timbro apre il build solo se la corsia non esiste già e la traccia è libera; con un synth esterno assegna il filtro ai suoi parametri. **Random Chords** conserva gli accordi cromatici manuali e usa il pool del genere per le altre posizioni. I progetti salvati mantengono le note esistenti finché non rigeneri. UK Garage parte da un’armonia minore; le successive rigenerazioni conservano il vocabolario più ampio.
+Techno alterna Dorico, Eolio e Frigio, droni sulla tonica e vamp di due accordi. Gli stabs passano da quinte sparse a ottave, accordi di settima o sospesi nelle sezioni più piene. Per il suono interno, un’automazione Timbro apre il build se non esiste una corsia manuale e la traccia è libera; con un synth esterno assegna il filtro ai suoi parametri. **Random Chords** conserva gli accordi cromatici manuali e usa il pool del genere per le altre posizioni. I progetti salvati mantengono le note esistenti finché non rigeneri. UK Garage parte da un’armonia minore; le successive rigenerazioni conservano il vocabolario più ampio.
 
 Nelle risposte di CREA CON IA, le code delle note oltre il bordo del pattern vengono accorciate. Se il modello scrive più note Lead simultanee, viene conservata la voce più forte (a parità di intensità, la più alta) e le sovrapposizioni vengono accorciate; il riepilogo segnala gli adattamenti. Errori di struttura, tracce non abilitate e note MIDI fuori intervallo continuano a essere rifiutati.
+
+Gli accordi cromatici automatici restano rigenerabili con **Random Chords** ripetuti; scegliere un accordo cromatico personalizzato protegge quella posizione. Scegliere un preset di progressione azzera queste protezioni manuali. I progetti salvati prima della 0.31.11 non distinguevano le due origini: gli accordi cromatici vengono conservati come manuali. Riseleziona un preset per ottenere una progressione liberamente rigenerabile.
+
+Il Tone Techno interno generato segue la struttura corrente quando rigeneri il brano, anche con automazione casuale disattivata. Cambiare genere rimuove quella corsia generata. I blocchi di traccia, clip e corsia la proteggono; modificarne direttamente punti, bypass o casualizzazione la rende manuale. Le corsie Tone dell’utente vengono conservate. I vecchi progetti non memorizzano questa origine: per adottare l’inviluppo aggiornabile, elimina la vecchia corsia Tone e rigenera un brano Techno. I generatori elettronici partono da Close/triadi; le inversioni e il movimento delle voci udibili nelle sezioni dipendono dai pattern dedicati al genere.
+
+I checkpoint strutturali di Annulla rileggono l’ultimo editor plugin visibile attivo, incluse le modifiche senza notifiche JUCE. Anche la perdita del focus segnala lo stato da aggiornare. Le altre istanze mantengono la cache; i gesti del mixer evitano queste letture e il salvataggio esplicito rilegge tutti gli stati. Il ripiego è verificato con il plugin nativo di test; la compatibilità degli editor nativi Serum/Vital richiede ancora prove con quei prodotti.

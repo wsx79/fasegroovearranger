@@ -1,6 +1,6 @@
 # Architecture and provenance
 
-The current overview describes 0.31.10. Version-labelled sections below record when individual subsystems were introduced.
+The current overview describes 0.31.11. Version-labelled sections below record when individual subsystems were introduced.
 
 The application is a native JUCE GUI executable, not a wrapper around the four plugin binaries. All four original pure-C++ generation engines are vendored, separately namespaced (`sgk`, `fgd`, `fgg`, `fgl`) and linked into `fga_core`. Source snapshots are recorded in THIRD_PARTY_NOTICES.md. The guitar and lead step adapters add a shared `stepsPerChord` duration (8/16/32/64); its default of 16 preserves the plugin rhythm/harmony timing. The remaining engine integration lives in `Source/core/Project.cpp`.
 
@@ -147,3 +147,5 @@ installed-model discovery. Request IDs discard retired jobs' callbacks; each
 provider keeps a separate in-memory session key. Online HTTP errors are redacted,
 including HTTP-200 embedded errors. UI help, bilingual manuals, privacy notices
 and third-party service/model attributions ship as embedded resources.
+
+Version 0.31.11 stores explicit `manualChords` and `generatedTone` provenance. Legacy chromatic chords retain manual protection; legacy parameter lanes remain user-owned. Song regeneration rebuilds owned Techno Tone envelopes and genre changes remove only unlocked owned envelopes. Direct UI lane edits release generated ownership. Structural plugin snapshots dirty the last active visible editor and focus loss dirties that instance, covering opaque state edits without invalidating unrelated caches. Electronic harmony defaults stay at triads/Close because dedicated patterns generate their own section voicings.

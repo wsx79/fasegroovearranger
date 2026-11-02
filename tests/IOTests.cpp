@@ -16,6 +16,17 @@ int main(int argc,char** argv){try{
      check(fga::projectFromJson(json,loaded).wasOk()&&loaded.masterEffects.effects.size()==1&&loaded.masterEffects.effects[0].slot==2&&loaded.masterEffects.effects[0].state==fx.state&&loaded.masterEffects.effects[0].bypassed,"master effects, order, native state and bypass round-trip");
      auto* entries=json["masterEffects"].getArray();entries->add(entries->getReference(0));check(fga::projectFromJson(json,loaded).failed(),"duplicate master effect slots are rejected");}
 
+    {
+        auto p=fga::newProject(0);p.settings.freeChords[0]=19;p.settings.manualChords[0]=true;p.settings.freeChords[1]=8;p.settings.manualChords[1]=false;
+        fga::Project restored;auto json=fga::projectJson(p);check(fga::projectFromJson(json,restored).wasOk()&&restored.settings.manualChords[0]&&!restored.settings.manualChords[1],"manual versus preset chord ownership round-trips");
+        auto legacy=juce::JSON::parse(juce::JSON::toString(json));legacy["settings"].getDynamicObject()->removeProperty("manualChords");check(fga::projectFromJson(legacy,restored).wasOk()&&restored.settings.manualChords[0]&&restored.settings.manualChords[1],"unknown legacy chromatic provenance is preserved conservatively");
+        auto bad=juce::JSON::parse(juce::JSON::toString(json));bad["settings"]["manualChords"].getArray()->set(0,"not a bool");check(fga::projectFromJson(bad,restored).failed(),"malformed ownership mask rejected");
+        p=fga::newProject(fga::technoGenre);auto generated=std::find_if(p.tracks[0].parameters.begin(),p.tracks[0].parameters.end(),[](const fga::ParameterAutomation& lane){return lane.generatedTone;});check(generated!=p.tracks[0].parameters.end(),"generated Tone fixture");
+        check(fga::projectFromJson(fga::projectJson(p),restored).wasOk()&&restored.tracks[0].parameters[0].generatedTone,"generated Tone ownership round-trips");
+        auto invalid=juce::JSON::parse(juce::JSON::toString(fga::projectJson(p)));invalid["tracks"][0]["parameterAutomation"][0].getDynamicObject()->setProperty("generatedTone",1);check(fga::projectFromJson(invalid,restored).failed(),"generated Tone flag must be boolean");
+        invalid=juce::JSON::parse(juce::JSON::toString(fga::projectJson(p)));invalid["tracks"][0]["parameterAutomation"][0].getDynamicObject()->setProperty("index",1);check(fga::projectFromJson(invalid,restored).failed(),"generated Tone ownership cannot target another parameter");
+        auto old=juce::JSON::parse(juce::JSON::toString(fga::projectJson(p)));for(auto& lane:*old["tracks"][0]["parameterAutomation"].getArray())lane.getDynamicObject()->removeProperty("generatedTone");check(fga::projectFromJson(old,restored).wasOk()&&!restored.tracks[0].parameters[0].generatedTone,"legacy automation remains user-owned");
+    }
     for(int genre:{fga::deepHouseGenre,fga::technoGenre,fga::electroHouseGenre}){
         auto p=fga::newProject(genre);fga::Project loaded;
         check(fga::projectFromJson(fga::projectJson(p),loaded).wasOk()&&loaded.settings.genre==genre,"house/techno style IDs round-trip");

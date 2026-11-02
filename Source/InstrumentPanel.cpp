@@ -88,7 +88,7 @@ InstrumentPanel::InstrumentPanel(MainComponent& m):owner(m){
     circle.setFamilyFont(true);   // the arranger draws it with the family typeface
     circle.setFreeMode(Localisation::setting("freeCircle","1")!="0");
     circle.onPick=[this](int root,bool minor){owner.checkpoint();auto& s=owner.project.settings;const bool modeMinor=sgk::scaleIsMinor(s.scale);s.key=root;if(minor!=modeMinor)s.scale=minor?2:0;owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
-    circle.onMoveChord=[this](int slot,int degree,int root,bool minor){auto& s=owner.project.settings;if(slot<0||slot>=s.chordCount)return;owner.checkpoint();if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;}else s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
+    circle.onMoveChord=[this](int slot,int degree,int root,bool minor){auto& s=owner.project.settings;if(slot<0||slot>=s.chordCount)return;owner.checkpoint();if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else{s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)slot]=true;}owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
 }
 void InstrumentPanel::updateCircle(){
     auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed);
@@ -261,7 +261,7 @@ void InstrumentPanel::rebuild(){
         juce::StringArray lengths;for(int i=1;i<=8;++i)lengths.add(juce::String(i));
         sharedChoice("Length",lengths,owner.project.settings.chordCount-1,[this](int v){owner.project.settings.chordCount=v+1;rebuildAsync();});
         sharedChoice("Each chord",{"1/2 bar","1 bar","2 bars","4 bars"},owner.project.settings.chordSteps==8?0:owner.project.settings.chordSteps==16?1:owner.project.settings.chordSteps==32?2:3,[this](int v){owner.project.settings.chordSteps=8<<v;});
-        for(int i=0;i<8;++i)sharedChoice("Degree "+juce::String(i+1),{"I","ii","iii","IV","V","vi","vii"},owner.project.settings.degrees[(size_t)i],[this,i](int v){owner.project.settings.degrees[(size_t)i]=v;owner.project.settings.freeChords[(size_t)i]=-1;updateCircle();repaint();});
+        for(int i=0;i<8;++i)sharedChoice("Degree "+juce::String(i+1),{"I","ii","iii","IV","V","vi","vii"},owner.project.settings.degrees[(size_t)i],[this,i](int v){owner.project.settings.degrees[(size_t)i]=v;owner.project.settings.freeChords[(size_t)i]=-1;owner.project.settings.manualChords[(size_t)i]=false;updateCircle();repaint();});
     }
     const bool grid=usesPianoGrid(owner.project,track);
     const bool internal=owner.project.tracks[(size_t)track].instrument=="internal";

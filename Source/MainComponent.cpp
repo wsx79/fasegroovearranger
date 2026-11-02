@@ -266,17 +266,17 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         owner.selectedTrack=ti;auto& volume=envelope(ti);
         // The lane's title chooses what it automates; the rest of its header switches it on and off.
         if(e.x<v.getX()+headerWidth&&e.y<rowY(row)+rowHeight(row)+20){showLaneTargetMenu(ti);return;}
-        if(e.x<v.getX()+headerWidth){owner.checkpoint();volume.enabled=!volume.enabled;owner.changed(false);return;}
+        if(e.x<v.getX()+headerWidth){owner.checkpoint();makeEnvelopeManual(ti);volume.enabled=!volume.enabled;owner.changed(false);return;}
         const int hit=pointAt(ti,e.position);
         if(e.mods.isPopupMenu()){
             juce::PopupMenu menu;menu.addItem(1,tr(volume.enabled?"Bypass automation":"Enable automation"));menu.addItem(2,tr("Delete point"),hit>=0);menu.addItem(3,tr("Reset curve"),hit>=0);menu.addItem(4,tr("Clear automation"),!volume.points.empty());menu.addSeparator();menu.addItem(5,tr("Choose automation parameter"));menu.addItem(6,tr("Random automation for this lane"),laneTarget[(size_t)ti]!=laneMaster&&!owner.project.tracks[(size_t)ti].locked&&!volume.locked);menu.addItem(7,tr("Random automation for this track"),!owner.project.tracks[(size_t)ti].locked);menu.addItem(8,tr("Lock this lane"),true,volume.locked);menu.addItem(9,tr("Write automation when regenerating"),true,owner.project.settings.randomAutomation);
-            juce::Component::SafePointer<ArrangementView> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,ti,hit](int result){if(!safe||!result)return;auto& o=safe->owner;if(result==5){o.showAutomationPicker(ti);return;}o.checkpoint();auto& a=safe->envelope(ti);if(result==6||result==7){const int target=safe->laneTarget[(size_t)ti];const int lane=result==7?-1:target==laneVolume?0:target==lanePan?1:2+(target-lanePlugin);randomiseAutomation(o.project,Scope::track,ti,0,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),lane);}else if(result==8)a.locked=!a.locked;else if(result==9)o.project.settings.randomAutomation=!o.project.settings.randomAutomation;if(result==1)a.enabled=!a.enabled;else if(result==2&&hit>=0&&hit<(int)a.points.size())a.points.erase(a.points.begin()+hit);else if(result==3&&hit>=0&&hit<(int)a.points.size())a.points[(size_t)hit].curve=0;else if(result==4){a.points.clear();a.enabled=false;}o.changed(false);});return;
+            juce::Component::SafePointer<ArrangementView> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,ti,hit](int result){if(!safe||!result)return;auto& o=safe->owner;if(result==5){o.showAutomationPicker(ti);return;}o.checkpoint();if(result!=9)safe->makeEnvelopeManual(ti);if(result==7)for(auto& lane:o.project.tracks[(size_t)ti].parameters)if(!lane.curve.locked)lane.generatedTone=false;auto& a=safe->envelope(ti);if(result==6||result==7){const int target=safe->laneTarget[(size_t)ti];const int lane=result==7?-1:target==laneVolume?0:target==lanePan?1:2+(target-lanePlugin);randomiseAutomation(o.project,Scope::track,ti,0,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),lane);}else if(result==8)a.locked=!a.locked;else if(result==9)o.project.settings.randomAutomation=!o.project.settings.randomAutomation;if(result==1)a.enabled=!a.enabled;else if(result==2&&hit>=0&&hit<(int)a.points.size())a.points.erase(a.points.begin()+hit);else if(result==3&&hit>=0&&hit<(int)a.points.size())a.points[(size_t)hit].curve=0;else if(result==4){a.points.clear();a.enabled=false;}o.changed(false);});return;
         }
         if(hit<0&&!e.mods.isAltDown()&&volume.points.size()>=16384)return;
         owner.checkpoint();dragTrack=ti;dragPoint=hit;bending=e.mods.isAltDown();dragY=e.position.y;
         if(bending){const double beat=std::clamp((e.position.x-headerWidth)*4./pixelsPerBar,0.,owner.project.length());auto it=std::upper_bound(volume.points.begin(),volume.points.end(),beat,[](double b,const VolumePoint& p){return b<p.beat;});dragPoint=(int)(it-volume.points.begin())-1;if(dragPoint<0||dragPoint+1>=(int)volume.points.size()){dragTrack=-1;return;}originalCurve=volume.points[(size_t)dragPoint].curve;}
         else {const double flat=envelopeDefault(ti);if(volume.points.empty())volume.points={{0,flat,0},{owner.project.length(),flat,0}};if(dragPoint<0){const double beat=std::clamp(std::round((e.x-headerWidth)*4./pixelsPerBar),0.,owner.project.length());auto it=std::lower_bound(volume.points.begin(),volume.points.end(),beat,[](const VolumePoint& p,double b){return p.beat<b;});dragPoint=(int)(it-volume.points.begin());if(it==volume.points.end()||std::abs(it->beat-beat)>1./960.)volume.points.insert(it,{beat,volume.valueAt(beat),0});}volume.enabled=true;editPoint(e.position,!e.mods.isShiftDown());}
-        owner.changed(false);return;
+        makeEnvelopeManual(ti);owner.changed(false);return;
     }
     if(e.x<v.getX()+headerWidth){const auto slots=headerChrome(v.getX(),rowY(row),rowHeight(row));const auto at=e.getPosition();if(slots.led.expanded(3).contains(at)){owner.audio.clearTrackClip(ti);repaint();return;}if(slots.automation.contains(at)){volumeVisible[(size_t)ti]=!volumeVisible[(size_t)ti];owner.select(ti,owner.selectedSection);owner.updateSizes();repaint();if(volumeVisible[(size_t)ti])owner.showAutomationPicker(ti);return;}owner.select(ti,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(ti);else if(slots.mute.contains(at)){owner.checkpoint();owner.project.tracks[(size_t)ti].mute=!owner.project.tracks[(size_t)ti].mute;owner.changed(false);}else if(slots.solo.contains(at)){owner.checkpoint();owner.project.tracks[(size_t)ti].solo=!owner.project.tracks[(size_t)ti].solo;owner.changed(false);}else if(slots.gear.contains(at))owner.openInstrumentFor(ti);return;}
     const int edge=e.mods.isPopupMenu()?-1:edgeAt(ti,e.position.x),hit=clipAt(ti,e.position.x),index=edge>=0?edge:hit;
@@ -289,6 +289,10 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     repaint();
     if(index>=0){clipTrack=ti;clipSource=index;clipTarget=ti;clipAnchorX=e.position.x;clipDropBeat=owner.project.clipStart(ti,index);clipMoving=false;copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();}grabKeyboardFocus();
 
+}
+void ArrangementView::makeEnvelopeManual(int track){
+    auto& lanes=owner.project.tracks[(size_t)track].parameters;const int index=laneTarget[(size_t)track]-lanePlugin;
+    if(index>=0&&index<(int)lanes.size())lanes[(size_t)index].generatedTone=false;
 }
 VolumeAutomation& ArrangementView::envelope(int track) const{
     auto& t=owner.project.tracks[(size_t)track];const int target=laneTarget[(size_t)track];
@@ -403,6 +407,11 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
         ok=owner.project.masterAutomation.enabled&&std::abs(owner.project.masterAutomation.valueAt(8)-1.5)<.04&&ok;
         owner.undo(false);ok=owner.project.masterAutomation.isDefault()&&ok;   // (quick edits may share one Undo step)
         if(auto out=folder.getChildFile("pan-master-automation.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(owner.createComponentSnapshot(owner.getLocalBounds()),*out)&&ok;}
+        ParameterAutomation generated;generated.slot=-1;generated.index=0;generated.generatedTone=true;generated.curve.enabled=true;generated.curve.points={{0,.2,0},{owner.project.length(),.8,0}};
+        auto& lanes=owner.project.tracks[(size_t)track].parameters;lanes.push_back(generated);laneTarget[(size_t)track]=lanePlugin+(int)lanes.size()-1;
+        p={headerWidth+24,volumeY(track,.6)};mouseDown(click(p));mouseUp(click(p));
+        ok=!owner.project.tracks[(size_t)track].parameters.back().generatedTone&&ok;
+        owner.undo(false);ok=owner.project.tracks[(size_t)track].parameters.back().generatedTone&&ok;
         laneTarget=targets;
     }
     mouseDown(click({(float)automationSlot.getCentreX(),(float)rulerHeight+16}));ok=!volumeVisible[(size_t)track]&&ok;
@@ -675,6 +684,10 @@ public:
         juce::Component::SafePointer<PluginWindow> safe(this);
         juce::MessageManager::callAsync([safe]{if(safe)safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
     void markState()noexcept{owner.audio.invalidatePluginState(track,slot);}
+    void activeWindowStatusChanged()override{
+        if(isActiveWindow()){owner.lastActivePluginSession=session;owner.lastActivePluginSlot=slot;}else markState();
+        juce::DocumentWindow::activeWindowStatusChanged();
+    }
     void audioProcessorParameterChanged(juce::AudioProcessor*,int,float)override{markState();}
     void audioProcessorChanged(juce::AudioProcessor*,const juce::AudioProcessorListener::ChangeDetails&)override{markState();}
     void mouseUp(const juce::MouseEvent& e)override{markState();juce::DocumentWindow::mouseUp(e);}
@@ -688,7 +701,13 @@ void MainComponent::openHostedEditor(int track,int slot){
     if(!pluginWindow){auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot,track);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
     else if(!pluginWindow->isVisible()){pluginWindow->setVisible(true);juce::Component::SafePointer<PluginWindow> safe(pluginWindow);juce::MessageManager::callAsync([safe]{if(safe&&safe->isVisible())safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
     pluginWindow->setName(plugin->getName());if(slot>0)if(auto* fx=effectTrack(track).effect(slot))if(!fx->name.empty())pluginWindow->setName(utf(fx->name)+juce::String::fromUTF8(" \xc2\xb7 ")+plugin->getName());
-    pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
+    lastActivePluginSession=session;lastActivePluginSlot=slot;pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
+}
+void MainComponent::captureUndoPluginStates(){
+    // Native editors can change opaque state without notifying JUCE mouse/parameter listeners.
+    // Refresh the most recently active visible editor; closed/unrelated instances keep their cache.
+    for(const auto& window:pluginWindows)if(window->isVisible()&&window->session==lastActivePluginSession&&window->slot==lastActivePluginSlot){window->markState();break;}
+    audio.capturePluginStates(project);
 }
 bool MainComponent::hasOpenPluginEditors()const{for(const auto& window:pluginWindows)if(window->isVisible())return true;return false;}
 
@@ -1244,7 +1263,7 @@ void MainComponent::updateEditingAvailability(){
     }
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
-void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureProjectStates(audio,project,false);undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureUndoPluginStates();undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
@@ -1320,7 +1339,7 @@ void MainComponent::refreshTrack(){++uiRevision;
     refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){if(automationAllTracks&&std::any_of(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),[](bool visible){return visible;}))for(size_t i=0;i<arrangement.volumeVisible.size();++i)arrangement.volumeVisible[i]=i<project.tracks.size();timelineZoom.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
-void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();const bool mixOnly=source.back().mixOnly;if(mixOnly)audio.reusePluginStates(project);else captureProjectStates(audio,project,false);dest.push_back({project,mixOnly});const auto& before=dest.back().project;project=std::move(source.back().project);source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
+void MainComponent::undo(bool redo){if(loadingPlugin)return;instrumentPanel.cancelRender();auto& source=redo?redoStack:undoStack;auto& dest=redo?undoStack:redoStack;if(source.empty())return;const int focus=clipIndex();const bool mixOnly=source.back().mixOnly;if(mixOnly)audio.reusePluginStates(project);else captureUndoPluginStates();dest.push_back({project,mixOnly});const auto& before=dest.back().project;project=std::move(source.back().project);source.pop_back();lastCheckpointControl=nullptr;project.normalise();selectedSection=std::min(selectedSection,(int)project.sections.size()-1);
     selectedTrack=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);
     // Editing selection is independent of the playhead. A note, mix or loop Undo keeps
     // the selected clip when its timeline range is unchanged in the restored snapshot.
@@ -1554,6 +1573,17 @@ return false;
     }else if(!verifyExports(folder.getChildFile("export-ui")))return false;
     showStudio();const bool studioOk=studioWindow->verify(folder);studioWindow->closeButtonPressed();if(!studioOk)return false;
     if(!verifyAuditRepairs(folder))return false;
+    {
+        const auto saved=project;const int track=selectedTrack;select(0,0);showInstrument();bool passed=false;
+        for(auto* child:instrumentPanel.getChildren())if(auto* circle=dynamic_cast<CircleOfFifths*>(child)){
+            circle->onMoveChord(0,-1,(project.settings.key+1)%12,true);const int chosen=project.settings.freeChords[0];
+            passed=project.settings.manualChords[0];for(unsigned seed=1;seed<=20;++seed)randomiseHarmony(project,seed);
+            passed=passed&&project.settings.manualChords[0]&&project.settings.freeChords[0]==chosen;
+            circle->onMoveChord(0,0,project.settings.key,false);passed=passed&&!project.settings.manualChords[0]&&project.settings.freeChords[0]<0;
+        }
+        project=saved;select(track,0);changed();undoStack.clear();redoStack.clear();
+        folder.getChildFile("manual-chord-ownership.txt").replaceWithText(passed?"PASS circle edits protect custom chromatic chords across repeated dice; choosing a degree releases the override":"FAIL manual circle chord ownership");if(!passed)return false;
+    }
     {
         const auto saved=project;const auto undos=undoStack,redos=redoStack;const bool previousDirty=dirty;const int track=selectedTrack,section=selectedSection,selected=selectedClip;const bool noSelection=noClipSelection;const double cursor=editCursor;
         for(auto& t:project.tracks){t.locked=false;for(auto& c:t.clips)c.locked=false;}

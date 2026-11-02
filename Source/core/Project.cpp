@@ -346,6 +346,7 @@ void Project::normalise() {
     s.chordCount=std::clamp(s.chordCount,1,8); s.bassMode=std::clamp(s.bassMode,0,sgk::numBassModes-1); s.stringsMode=std::clamp(s.stringsMode,0,10);
     for(auto& d:s.degrees) d=std::clamp(d,0,6);
     for(auto& c:s.freeChords) c=std::clamp(c,-1,35);
+    for(size_t i=0;i<s.manualChords.size();++i)if(s.freeChords[i]<0)s.manualChords[i]=false;
     if(sections.empty()) sections.push_back({Section::main,8,"Main"});
     if(sections.size()>64) sections.resize(64);
     for(auto& p:sections) {p.bars=std::clamp(p.bars,1,128); p.type=(Section)std::clamp((int)p.type,0,5);}
@@ -360,7 +361,7 @@ void Project::normalise() {
         for(auto& fx:t.effects){if(fx.name.size()>384)fx.name.resize(384);if(fx.pluginName.empty())fx.pluginName="Effect";}
         t.volume.normalise(length());t.panAutomation.normalise(length(),1.);
         if(t.parameters.size()>(size_t)maxParameterLanes)t.parameters.resize((size_t)maxParameterLanes);
-        for(auto& lane:t.parameters){if(lane.slot< -1||lane.slot>maxTrackEffects){lane.slot=0;lane.index=-1;}lane.index=std::max(-1,lane.index);if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
+        for(auto& lane:t.parameters){if(lane.slot< -1||lane.slot>maxTrackEffects){lane.slot=0;lane.index=-1;}lane.index=std::max(-1,lane.index);if(t.kind!=0||lane.slot!=-1||lane.index!=0)lane.generatedTone=false;if(lane.name.size()>128)lane.name.resize(128);lane.curve.normalise(length(),1.);}
         auto& e=t.engine;
         e.globalOctave=std::clamp(e.globalOctave,-2,2);e.pattern=std::clamp(e.pattern,-1,10000);e.velocity=std::clamp(e.velocity,1,127);e.grooveBars=std::clamp(e.grooveBars,1,4);
         e.swing=finite(e.swing,-1,-1,1.5);e.humanize=finite(e.humanize,-1,-1,1);e.density=finite(e.density,-1,-1,1);
@@ -481,6 +482,7 @@ bool transferClip(Project& p,int track,int from,int to,bool copy){
 }
 void chooseProgression(Project& p,int preset) {
     const auto& all=sgk::progressionPresets(); const auto& pr=all[(size_t)std::clamp(preset,0,(int)all.size()-1)];
+    p.settings.manualChords.fill(false);p.settings.freeChords.fill(-1);
     p.settings.scale=pr.scale; auto slots=sgk::presetSlots(pr,p.settings.extension);
     p.settings.chordCount=std::min(8,(int)slots.size());
     for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
@@ -489,21 +491,21 @@ void randomiseHarmony(Project& p,std::uint32_t seed) {
     if(isElectronicGenre(p.settings.genre)){
         const auto before=p.settings;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(p.settings,seed);
         // Explicitly authored chromatic chords keep their slots and progression length.
-        if(std::any_of(before.freeChords.begin(),before.freeChords.begin()+count,[](int chord){return chord>=0;})){
+        if(std::any_of(before.manualChords.begin(),before.manualChords.begin()+count,[](bool manual){return manual;})){
             p.settings.chordCount=count;
-            for(int i=0;i<count;++i)if(before.freeChords[(size_t)i]>=0){p.settings.freeChords[(size_t)i]=before.freeChords[(size_t)i];p.settings.degrees[(size_t)i]=before.degrees[(size_t)i];}
+            for(int i=0;i<count;++i)if(before.manualChords[(size_t)i]){p.settings.freeChords[(size_t)i]=before.freeChords[(size_t)i];p.settings.degrees[(size_t)i]=before.degrees[(size_t)i];p.settings.manualChords[(size_t)i]=true;}
         }
         return;
     }
-    // Keep the progression length and any chord chosen by hand: only the diatonic
-    // slots are rerolled, from the genre vocabulary rather than four fixed degrees.
+    // Keep the progression length and explicit manual chords; reroll automatic
+    // slots from the genre vocabulary, including generated chromatic chords.
     const int count=std::clamp(p.settings.chordCount,1,8);
     const auto& all=sgk::progressionPresets();
     std::vector<int> candidates;
     for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==p.settings.scale)candidates.push_back(i);
     if(candidates.empty()){
         auto degrees=sgk::randomProgression(seed,count,p.settings.scale,engineGenre(p.settings.genre));
-        for(int i=0;i<count;++i)if(p.settings.freeChords[(size_t)i]<0)p.settings.degrees[(size_t)i]=degrees[(size_t)i];
+        for(int i=0;i<count;++i)if(!p.settings.manualChords[(size_t)i]){p.settings.degrees[(size_t)i]=degrees[(size_t)i];p.settings.freeChords[(size_t)i]=-1;}
         return;
     }
     const int preset=candidates[(size_t)(mix(seed)%candidates.size())];
@@ -511,7 +513,7 @@ void randomiseHarmony(Project& p,std::uint32_t seed) {
     if(slots.empty())return;
     const int shift=(int)(mix(seed+17U)%(std::uint32_t)slots.size());
     for(int i=0;i<count;++i){
-        if(p.settings.freeChords[(size_t)i]>=0)continue;
+        if(p.settings.manualChords[(size_t)i])continue;
         const auto& slot=slots[(size_t)((i+shift)%(int)slots.size())];
         p.settings.degrees[(size_t)i]=std::max(0,slot.degree);p.settings.freeChords[(size_t)i]=slot.freeCode;
     }
@@ -546,6 +548,7 @@ void applyGenre(Project& p,int genre) {
         auto& lead=p.tracks[(size_t)leadTrack];if(!lead.locked){lead.engine.density=p.settings.genre==technoGenre?.36:.62;lead.engine.gate=.45;if(lead.instrument=="internal"){lead.sound=p.settings.genre==technoGenre?3:2;lead.gain=p.settings.genre==technoGenre?.18:.24;lead.engine.tone=p.settings.genre==technoGenre?.5:.78;}}
         auto& bass=p.tracks[1];if(!bass.locked){bass.engine.gate=.65;bass.engine.humanize=.3;bass.engine.pump=.3;}
     }
+    if(p.settings.genre!=technoGenre)addElectronicToneAutomation(p);
 }
 namespace {
 const std::vector<SongSection>& genreForm(int genre) {
@@ -819,7 +822,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     if(mix(seed)%3!=0){
         int length=4;const auto roll=mix(seed+53U)%5;if(roll==0)length=8;else if(roll==1)length=3;
         const auto degrees=sgk::randomProgression(seed,length,s.scale,engineGenre(s.genre));
-        if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
+        if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);s.manualChords.fill(false);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
         if(!differs())s=before;
     }
     // Curated alternatives retain each style's harmonic vocabulary.
@@ -984,7 +987,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){
             return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
-        if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}   // a new song, a new piano colour
+        if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
         varySongFeel(p,seed);renewForm(p);varyForm(p,seed);
     }
     const auto& s=p.settings;
@@ -1175,6 +1178,10 @@ void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_
             if(kind==1&&!panMoves(ti)&&!asked)continue;
             auto& env=kind==0?t.volume:kind==1?t.panAutomation:t.parameters[(size_t)(kind-2)].curve;
             if(env.locked)continue;
+            if(kind>=2&&t.parameters[(size_t)(kind-2)].generatedTone){
+                if(onlyLane<0)continue; // an owned envelope is rebuilt from the current sections below
+                t.parameters[(size_t)(kind-2)].generatedTone=false;
+            }
             const double neutral=kind==0?1.:kind==1?automationFromPan(t.pan):(env.points.empty()?.5:env.points.front().value);   // a plugin lane rests where it starts
             auto& points=env.points;
             if(points.empty())points={{0,neutral,0},{p.length(),neutral,0}};

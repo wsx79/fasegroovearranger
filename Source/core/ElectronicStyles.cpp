@@ -24,7 +24,7 @@ std::array<int,4> voiceTriad(const sgk::Chord& chord,const std::array<int,4>& pr
 sgk::Chord chordAtBeat(const Settings& s,double beat){sgk::GrooveSettings g;g.keyRoot=s.key;g.scale=s.scale;g.extension=(sgk::Extension)s.extension;g.progressionLength=s.chordCount;g.progression=s.degrees;g.freeChords=s.freeChords;return sgk::GrooveEngine::chordForSlot(g,(int)(std::max(0.,beat)/(s.chordSteps*.25))%s.chordCount);}
 void applyElectronicFeel(Settings& s){s.swing=s.genre==technoGenre?0.:.12;s.humanize=.4;}
 void applyElectronicHarmony(Settings& s,std::uint32_t seed){
-    s.extension=0;s.voicing=(int)(draw(seed+41U)%3);s.freeChords.fill(-1);s.degrees.fill(0);
+    s.extension=0;s.voicing=0;s.freeChords.fill(-1);s.manualChords.fill(false);s.degrees.fill(0);
     if(s.genre==technoGenre){
         const auto mode=draw(seed+17U)%100;s.scale=mode<40?1:mode<75?2:5;
         const auto vamp=draw(seed+59U)%6;s.chordCount=vamp<2?1:2;s.chordSteps=draw(seed+113U)%2?32:64;
@@ -38,13 +38,21 @@ void applyElectronicHarmony(Settings& s,std::uint32_t seed){
     }
 }
 void addElectronicToneAutomation(Project& p){
-    if(p.settings.genre!=technoGenre||p.tracks.empty())return;auto& track=p.tracks[0];
-    if(track.locked||track.freeTimeline||track.instrument!="internal"||track.parameters.size()>=(size_t)maxParameterLanes||std::any_of(track.clips.begin(),track.clips.end(),[](const Clip& c){return c.locked;}))return;
-    if(std::any_of(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return lane.slot==-1&&lane.index==0;}))return;
-    ParameterAutomation lane;lane.slot=-1;lane.index=0;lane.name="Tone";lane.curve.enabled=true;double at=0;const double neutral=track.engine.tone;
+    if(p.tracks.empty())return;auto& track=p.tracks[0];
+    if(track.locked||std::any_of(track.clips.begin(),track.clips.end(),[](const Clip& c){return c.locked;}))return;
+    auto owned=std::find_if(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return lane.generatedTone;});
+    if(p.settings.genre!=technoGenre){
+        track.parameters.erase(std::remove_if(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return lane.generatedTone&&!lane.curve.locked;}),track.parameters.end());return;
+    }
+    if(track.freeTimeline||track.instrument!="internal")return;
+    if(owned!=track.parameters.end()&&owned->curve.locked)return;
+    if(std::any_of(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return !lane.generatedTone&&lane.slot==-1&&lane.index==0;}))return;
+    if(owned==track.parameters.end()&&track.parameters.size()>=(size_t)maxParameterLanes)return;
+    ParameterAutomation lane;lane.slot=-1;lane.index=0;lane.name="Tone";lane.generatedTone=true;lane.curve.enabled=true;double at=0;const double neutral=track.engine.tone;
     lane.curve.points={{0,neutral,0}};bool build=false;
     for(const auto& section:p.sections){const double end=at+section.bars*4.;if(section.type==Section::buildup){build=true;if(at>0)lane.curve.points.push_back({at-1./64.,neutral,0});lane.curve.points.push_back({at,.2,.35});lane.curve.points.push_back({end-1./16.,.85,0});lane.curve.points.push_back({end,neutral,0});}at=end;}
-    if(build){lane.curve.points.push_back({p.length(),neutral,0});lane.curve.normalise(p.length(),1.);track.parameters.push_back(std::move(lane));}
+    if(build){lane.curve.points.push_back({p.length(),neutral,0});lane.curve.normalise(p.length(),1.);if(owned==track.parameters.end())track.parameters.push_back(std::move(lane));else *owned=std::move(lane);}
+    else if(owned!=track.parameters.end())track.parameters.erase(owned);
 }
 bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,double beats,Section role,bool requested){
     const auto& s=p.settings;if(!isElectronicGenre(s.genre))return false;
