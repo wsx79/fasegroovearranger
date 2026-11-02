@@ -60,6 +60,7 @@ if(FGA_BUILD_APP)
         FetchContent_MakeAvailable(JUCE)
     endif()
     include(cmake/ScanWaveShell.cmake)
+    include(cmake/LinuxEventLoop.cmake)
     configure_file(cmake/ArrangerInfo.plist.in "${CMAKE_CURRENT_BINARY_DIR}/ArrangerInfo-extra.plist" @ONLY)
     file(READ "${CMAKE_CURRENT_BINARY_DIR}/ArrangerInfo-extra.plist" FGA_EXTRA_PLIST)
     juce_add_gui_app(FaseGrooveArranger PRODUCT_NAME "Fase Groove Arranger"

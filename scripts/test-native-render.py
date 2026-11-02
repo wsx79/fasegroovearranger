@@ -18,6 +18,8 @@ folder = output_folder('arranger-smoke', args.output)
 # exported PCM/MP3 audio below.
 if platform.system() == 'Darwin':
     os.environ['FGA_SKIP_UI_EVIDENCE'] = '1'
+if platform.system() == 'Linux':
+    run_application(build, '--event-loop-audit', folder / 'event-loop', timeout=60)
 startup = folder / 'startup'
 run_application(build, '--startup-splash-test', startup, timeout=60)
 if not (startup / 'startup.txt').read_text().startswith('PASS '):

@@ -6,6 +6,7 @@
 #include "Localisation.h"
 #if FGA_SELF_TESTS
 #include "ArrangementAudit.h"
+#include "../tests/EventLoopChecks.h"
 #endif
 #include "DarkTitleBar.h"
 #include <cmath>
@@ -58,7 +59,7 @@ public:
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if FGA_SELF_TESTS
-        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--startup-splash-test","--plugin-catalog-test"})
+        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
             if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
        #endif
        #if JUCE_MAC
@@ -74,6 +75,10 @@ public:
        #endif
        #endif
        #if FGA_SELF_TESTS
+        if(args.size()==2&&args[0]=="--event-loop-audit"){
+            const juce::File folder(args[1]);folder.createDirectory();const bool ok=fga::verifyEventLoopLifetime(false)&&fga::verifyEventLoopLifetime(true);
+            folder.getChildFile("event-loop.txt").replaceWithText(ok?"PASS unregistered FD callbacks are skipped; nested dispatch owns its snapshot":"FAIL pending FD lifetime / nested dispatch");setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==2&&args[0]=="--startup-benchmark"){
             const auto start=juce::Time::getMillisecondCounterHiRes();window=std::make_unique<Window>();
             juce::File(args[1]).replaceWithText(juce::String(juce::Time::getMillisecondCounterHiRes()-start,3)+" "+juce::String(window->content->main.pluginCatalog.progressState().count));quit();return;

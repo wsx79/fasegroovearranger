@@ -4,6 +4,7 @@
 
 - Keep Options available in fullscreen, align master/time readouts, outline the selected sound source and give Bus & Send a distinct routing icon.
 - Show startup branding and project/plugin restoration progress.
+- Prevent stale Linux VST3 FD callbacks during plugin replacement; keep nested event-dispatch snapshots independent.
 - Reset sample audition controls on natural completion; remember note-map, envelope and audition-loop preferences; allow Studio resizing and restore its standard size on reopening.
 - Develop later generated body sections with more supporting phrases/percussion and up to 12% higher velocities, preserving kick/bass, user patterns and locked parts. Add all-genre MIDI and early/late audio audits.
 - Use a folded-page icon with the Arranger logo for .fga project documents.
