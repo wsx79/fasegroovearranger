@@ -309,6 +309,8 @@ public:
     bool interfaceFullScreen()const{return appFullScreen;}
     void showEffects(int track,int replaceSlot=0);
     void showEffectChain(int track);
+    void resumeEffectChain();
+    void removeEffect(int track,int slot);
     void showEffectMenu(int track,int slot,juce::Component*);
     void renameEffect(int track,int slot,const juce::String&);
     void moveEffect(int track,int slot,int position);
@@ -318,6 +320,8 @@ public:
     void resolveAutomationParameters(int track,int slot);
     void resetAutomationTarget(int track);
     void showAutomationPicker(int track,int source=-100);
+    bool automationShowsAllTracks()const{return automationAllTracks;}
+    void setAutomationScope(bool all,bool visible=true);
     void selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& parameterId={});
     void showGuide(bool english=false);
     juce::Result captureAiProject(Project&);
@@ -340,7 +344,7 @@ private:
     PluginSettings pluginSettings{pluginCatalog};
     juce::Component::SafePointer<juce::CallOutBox> automationPicker;
     PluginBrowser pluginBrowser{pluginCatalog};
-    std::uint64_t browserTrackSession=0;int browserEffectSlot=0;bool effectsBrowser=false;
+    std::uint64_t browserTrackSession=0,suspendedEffectsSession=0;int browserEffectSlot=0;bool effectsBrowser=false,pluginFileDialogOpen=false;
     UpdateOverlay updateOverlay;
     Updater::Checker updater;
     std::unique_ptr<juce::TooltipWindow> tooltips;
@@ -385,7 +389,6 @@ private:
     juce::Rectangle<int> lcdArea;std::vector<int> lcdDividers;std::vector<juce::Rectangle<int>> toolbarDividers;
     ActionButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     IconButton automationButton{IconButton::Icon::automation};
-    ActionButton automationTrackButton{"TRACK"},automationAllButton{"ALL"};
     bool automationAllTracks=false;
     void showAutomationScope(bool enabled);
     juce::Label durationLabel;

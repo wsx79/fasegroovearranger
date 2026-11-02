@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.11**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.12**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -842,7 +842,7 @@ Il pulsante **Note**, accanto a Intonazione, mostra una mappa stimata di note e 
 
 ## Automazioni ed effetti master
 
-Accanto ad Automazione, **Traccia** (predefinito) mostra la corsia della traccia selezionata; **Tutto** mostra le corsie di tutte le tracce. La finestra di scelta dei parametri ha una X di chiusura. Il menu Progressione riporta il preset riconosciuto dalla successione armonica corrente; una successione personalizzata non viene etichettata con un nome di preset errato.
+Clicca **Automazione** per aprire la finestra di scelta: al suo interno **Traccia** (predefinito) mostra la corsia della traccia selezionata e **Tutto** le corsie di tutte le tracce. **Nascondi automazione** richiude le corsie. La scelta resta nella finestra, senza pulsanti aggiuntivi nella barra principale. La finestra di scelta dei parametri ha una X di chiusura. Il menu Progressione riporta il preset riconosciuto dalla successione armonica corrente; una successione personalizzata non viene etichettata con un nome di preset errato.
 
 **Effetti** sul master del mixer, oppure accanto a Bus e mandate nella barra inferiore quando il mixer è chiuso, apre la catena insert del master. Puoi aggiungere più VST3/AU, aprire i loro editor, rinominare, riordinare, bypassare e rimuovere gli effetti. Catena e stato dei plugin vengono salvati nel progetto e ripristinati alla riapertura. Il mix completo esportato passa dagli insert master; gli stem individuali restano privi degli insert master.
 

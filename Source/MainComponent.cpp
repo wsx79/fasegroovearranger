@@ -989,12 +989,8 @@ MainComponent::MainComponent(){
     for(auto* label:{&chordsLabel,&statusLabel,&editorLabel,&durationLabel}){label->setFont(Daw::font(Daw::body));label->setMinimumHorizontalScale(.65f);}
     inspectorLabel.getProperties().set("fgaRawText",true);
     auto slider=[this](juce::Slider& s,double lo,double hi,double step,const juce::String& suffix){s.setRange(lo,hi,step);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,64,22);s.setTextValueSuffix(suffix);s.onDragStart=[this]{checkpoint();};};
-    addAndMakeVisible(automationButton);automationButton.setClickingTogglesState(true);
-    automationButton.onClick=[this]{const bool visible=!std::any_of(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),[](bool on){return on;});showAutomationScope(visible);if(visible&&!automationAllTracks)showAutomationPicker(selectedTrack);};
-    for(auto* button:{&automationTrackButton,&automationAllButton}){addAndMakeVisible(button);button->setClickingTogglesState(true);button->setRadioGroupId(4108);}
-    automationTrackButton.setToggleState(true,juce::dontSendNotification);
-    automationTrackButton.onClick=[this]{automationAllTracks=false;showAutomationScope(true);};
-    automationAllButton.onClick=[this]{automationAllTracks=true;showAutomationScope(true);};
+    addAndMakeVisible(automationButton);
+    automationButton.onClick=[this]{showAutomationPicker(selectedTrack);};
 
     slider(tempoSlider,30,300,.1," BPM");slider(swingSlider,0,150,1,"% swing");slider(densitySlider,0,100,1,"% notes");slider(humanizeSlider,0,100,1,"% feel");slider(masterSlider,-60,6,.1," dB");
     for(auto* knob:{&densitySlider,&swingSlider,&humanizeSlider,&masterSlider}){knob->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob->setMouseDragSensitivity(180);}
@@ -1061,7 +1057,7 @@ MainComponent::MainComponent(){
     exportButton.onClick=[this]{exportMenu();};settingsButton.onClick=[this]{showAudioSettings();};aboutButton.onClick=[this]{showAbout();};helpButton.onClick=[this]{showGuide(Localisation::current()!=Localisation::Language::italian);};
     playButton.onColour=Daw::play;loopButton.onColour=Daw::accent;metronomeButton.onColour=Daw::accent;
     // Icon-only actions: the tooltip names them (translated with the rest of the interface).
-    for(const auto& entry:std::initializer_list<std::pair<IconButton*,const char*>>{{&newButton,"Start a new song project."},{&openButton,"Open a local .fga project."},{&saveButton,"Save the song and all instrument settings in a project."},{&saveAsButton,"SAVE AS"},{&exportButton,"Export the mix or separate tracks as MIDI, WAV or MP3."},{&settingsButton,"Choose the audio output and buffer size."},{&aboutButton,"Choose the language, control tooltips, credits and privacy."},{&helpButton,"GUIDE"},{&automationButton,"Show or hide the selected track's volume automation. Playback is controlled by ON / BYPASS in the lane."}})entry.first->getProperties().set("fgaTip",entry.second);
+    for(const auto& entry:std::initializer_list<std::pair<IconButton*,const char*>>{{&newButton,"Start a new song project."},{&openButton,"Open a local .fga project."},{&saveButton,"Save the song and all instrument settings in a project."},{&saveAsButton,"SAVE AS"},{&exportButton,"Export the mix or separate tracks as MIDI, WAV or MP3."},{&settingsButton,"Choose the audio output and buffer size."},{&aboutButton,"Choose the language, control tooltips, credits and privacy."},{&helpButton,"GUIDE"},{&automationButton,"Choose a sound, instrument or effect parameter to automate."}})entry.first->getProperties().set("fgaTip",entry.second);
     for(auto* b:{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&inspectorToggle,&mixerToggle,&browserToggle,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton,&fullScreenButton})b->quiet=true;
     for(auto* b:{&inspectorToggle,&mixerToggle,&browserToggle,&followButton,&automationButton,&fullScreenButton})b->onColour=b==&automationButton?Daw::automation:Daw::accent;
     tempoSlider.setSliderStyle(juce::Slider::LinearBarVertical);tempoSlider.setTextValueSuffix("");tempoSlider.setTextBoxStyle(juce::Slider::TextBoxLeft,false,82,26);tempoSlider.setColour(juce::Slider::textBoxTextColourId,Daw::text);tempoSlider.setMouseDragSensitivity(400);tempoSlider.setVelocityBasedMode(false);tempoSlider.setMouseCursor(juce::MouseCursor::UpDownResizeCursor);
@@ -1079,10 +1075,13 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     options.onTipsChanged=[this](bool enabled){Localisation::setTipsEnabled(enabled);applyLanguage();};
     addChildComponent(pluginSettings);addChildComponent(pluginBrowser);
     pluginBrowser.onChoose=[this](const PluginCatalog::BrowserRow& row){chooseBrowserRow(row);};
+    // The Open File button hides the browser before launching its native chooser.
+    // Defer restoration so the chooser/loading guards are already set.
+    pluginBrowser.onDismiss=[this]{juce::Component::SafePointer<MainComponent> safe(this);juce::MessageManager::callAsync([safe]{if(safe)safe->resumeEffectChain();});};
     pluginBrowser.onRescan=[this]{pluginCatalog.scan(PluginCatalog::ScanMode::all);};
     pluginSettings.onReport=[this]{auto text=pluginCatalog.report();auto file=PluginCatalog::defaultStorage().getChildFile("ScanReport.txt");file.getParentDirectory().createDirectory();if(file.replaceWithText(text))text+="\n\n"+tr("Report file")+": "+file.getFullPathName();showDocument(tr("SCAN REPORT"),text);};
     pluginBrowser.onSettings=[this]{pluginSettings.show();};
-    pluginBrowser.onOpenFile=[this]{const auto session=browserTrackSession;const int slot=browserEffectSlot;const bool fx=effectsBrowser;chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[this,session,slot,fx](juce::File file){const int track=trackForSession(session);if(track<0||loadingPlugin||editingRestricted())return;if(fx)loadEffectFile(track,file,{},{},slot);else loadPluginFile(track,file);});};
+    pluginBrowser.onOpenFile=[this]{const auto session=browserTrackSession;const int slot=browserEffectSlot;const bool fx=effectsBrowser;pluginFileDialogOpen=true;chooseFile(tr("Open VST3 file..."),"*.vst3",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles|juce::FileBrowserComponent::canSelectDirectories,[this,session,slot,fx](juce::File file){pluginFileDialogOpen=false;const int track=trackForSession(session);if(track>=0&&!loadingPlugin&&!editingRestricted()){if(fx)loadEffectFile(track,file,{},{},slot);else loadPluginFile(track,file);}resumeEffectChain();},[this]{pluginFileDialogOpen=false;resumeEffectChain();});};
     options.onPluginSettings=[this]{pluginSettings.show();};
     options.onAudioSettings=[this]{showAudioSettings();};
     options.onDocument=[this](int id){if(id==0)showGuide(Localisation::current()!=Localisation::Language::italian);if(id==1){const bool it=Localisation::current()==Localisation::Language::italian;showDocument(tr("Privacy and permissions"),juce::String::fromUTF8(it?BinaryData::PRIVACY_it_md:BinaryData::PRIVACY_md,it?BinaryData::PRIVACY_it_mdSize:BinaryData::PRIVACY_mdSize));}if(id==2)showDocument(tr("Licences and attributions"),juce::String::fromUTF8(BinaryData::THIRD_PARTY_NOTICES_md,BinaryData::THIRD_PARTY_NOTICES_mdSize));};
@@ -1151,7 +1150,7 @@ void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
     if(isShowing()&&isEnabled()){getTopLevelComponent()->toFront(true);grabKeyboardFocus();}
 }
 void MainComponent::closePluginEditor(int track,int slot){
-    const auto session=juce::isPositiveAndBelow(track,(int)project.tracks.size())?project.tracks[(size_t)track].sessionId:0;
+    const auto session=validEffectTrack(track)?effectTrack(track).sessionId:0;
     pluginWindows.erase(std::remove_if(pluginWindows.begin(),pluginWindows.end(),[&](const auto& window){return track<0||(window->session==session&&(slot<0||window->slot==slot));}),pluginWindows.end());
     pluginWindow=pluginWindows.empty()?nullptr:pluginWindows.back().get();
 }
@@ -1445,7 +1444,7 @@ void MainComponent::resized(){
     for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineZoomOut,&timelineZoomIn,&timelineFitButton,&timelineZoom})c->setVisible(song);
     zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
     sampleBrowser.setVisible(song&&browserVisible);browserResizer.setVisible(song&&browserVisible);
-    automationTrackButton.setVisible(song);automationAllButton.setVisible(song);automationButton.setVisible(song);addTrackButton.setVisible(song);addTrackButton.setEnabled(project.tracks.size()<maxTracks&&!loadingPlugin);
+    automationButton.setVisible(song);addTrackButton.setVisible(song);addTrackButton.setEnabled(project.tracks.size()<maxTracks&&!loadingPlugin);
     bassBox.setVisible(false);stringsBox.setVisible(false); // instrument-owned styles live in their panels
     for(juce::Component* c:std::initializer_list<juce::Component*>{&soundButton,&soundBox,&sampleButton,&loadPluginButton,&pluginEditorButton,&gainSlider,&panSlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&inspectorLabel})c->setVisible(engine);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&editorLabel,&sectionLoopButton,&pianoPlayButton,&importButton,&copyButton,&pasteButton,&quantiseButton,&transposeDown,&transposeUp,&deleteNotes,&gridBox,&velocitySlider})c->setVisible(edit);
@@ -1505,8 +1504,7 @@ void MainComponent::resized(){
         place(timelineGrid,corner+8,top+4,headerWidth-16,24);
         place(addTrackButton,corner+160,top+31,48,24);addTrackButton.toFront(false);
         x=corner+4;for(auto* b:{&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton}){place(*b,x,top+31,22,24);x+=24;}
-        automationTrackButton.setBounds(x,top+31,48,24);automationAllButton.setBounds(x+50,top+31,38,24);
-        for(juce::Component* c:std::initializer_list<juce::Component*>{&automationTrackButton,&automationAllButton,&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
+        for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,top,inspectorVisible?inspectorWidth:0,std::max(60,footer-top));trackInspector.setSize(inspectorWidth-16,trackInspector.preferredHeight());
         inspectorCollapse.setVisible(inspectorVisible);inspectorCollapse.toFront(false);
@@ -1586,6 +1584,23 @@ return false;
         }
         project=saved;select(track,0);changed();undoStack.clear();redoStack.clear();
         folder.getChildFile("manual-chord-ownership.txt").replaceWithText(passed?"PASS circle edits protect custom chromatic chords across repeated dice; choosing a degree releases the override":"FAIL manual circle chord ownership");if(!passed)return false;
+    }
+    {
+        const auto saved=project;const int track=selectedTrack,section=selectedSection;bool passed=true;juce::String report;
+        for(int genre:{0,technoGenre,electroHouseGenre}){
+            project=newProject(genre);project.sections={{Section::main,8,"Repeated chords"}};project.settings.randomAutomation=false;
+            for(auto& t:project.tracks){t.locked=false;t.freeTimeline=false;t.clips.assign(1,{});}project.normalise();select(0,0);changed();
+            std::set<juce::String> harmonies;std::set<std::uint64_t> midi;bool roundTrip=true;
+            for(int press=0;press<32;++press){
+                harmonyButton.onClick();juce::MessageManager::getInstance()->runDispatchLoopUntil(1);
+                if(press%8==7){Project loaded;roundTrip=projectFromJson(projectJson(project),loaded).wasOk()&&roundTrip;if(roundTrip){project=std::move(loaded);changed();}}
+                if(press>=8){juce::StringArray names;for(const auto& name:chordNames(project.settings))names.add(utf(name));harmonies.insert(names.joinIntoString(" / "));const auto bytes=midiFile(project);std::uint64_t hash=1469598103934665603ULL;for(auto byte:bytes){hash^=byte;hash*=1099511628211ULL;}midi.insert(hash);}
+            }
+            const bool automatic=std::none_of(project.settings.manualChords.begin(),project.settings.manualChords.end(),[](bool manual){return manual;});
+            const bool varied=roundTrip&&automatic&&harmonies.size()>1&&midi.size()>1;passed=passed&&varied;
+            report+=(varied?"PASS ":"FAIL ")+juce::String(genre)+": 32 actual New Chords actions with four save/reload cycles; late harmonies="+juce::String((int)harmonies.size())+", MIDI="+juce::String((int)midi.size())+"\n";
+        }
+        project=saved;select(track,section);changed();undoStack.clear();redoStack.clear();folder.getChildFile("repeated-new-chords.txt").replaceWithText(report);if(!passed)return false;
     }
     {
         const auto saved=project;const auto undos=undoStack,redos=redoStack;const bool previousDirty=dirty;const int track=selectedTrack,section=selectedSection,selected=selectedClip;const bool noSelection=noClipSelection;const double cursor=editCursor;
@@ -1708,6 +1723,7 @@ void MainComponent::applyFullScreen(bool on){
     });
 }
 void MainComponent::timerCallback(){
+    if(suspendedEffectsSession)resumeEffectChain();
     fga::applyDarkTitleBarToAll();
     // The OS can leave full screen on its own (window manager, Escape in some shells):
     // keep the button's icon and state in step without repainting when nothing changed.
@@ -1878,7 +1894,7 @@ void MainComponent::loadEffectDescription(int track,const juce::PluginDescriptio
     juce::Component::SafePointer<MainComponent> safe(this);
     audio.loadEffect(track,description,[safe,session,description,state,restoring,slot](juce::Result r){
         if(!safe)return;--safe->loadingPlugin;safe->loadPluginButton.setEnabled(safe->loadingPlugin==0);const int ti=safe->trackForSession(session);if(ti<0)return;
-        if(r.failed()){safe->message(r.getErrorMessage(),true);safe->refreshTrack();return;}
+        if(r.failed()){safe->message(r.getErrorMessage(),true);safe->refreshTrack();safe->resumeEffectChain();return;}
         auto& target=safe->effectTrack(ti);auto* fx=target.effect(slot);if(!fx){EffectSlot added;added.slot=slot;target.effects.push_back(added);fx=&target.effects.back();}
         bool samePlugin=false;if(auto old=juce::XmlDocument::parse(utf(fx->pluginId))){juce::PluginDescription previous;if(previous.loadFromXml(*old))samePlugin=previous.uniqueId==description.uniqueId&&previous.name==description.name&&previous.manufacturerName==description.manufacturerName&&previous.pluginFormatName==description.pluginFormatName;}
         const auto restoredState=state.isNotEmpty()?state:(samePlugin?utf(fx->state):juce::String());
@@ -1887,7 +1903,7 @@ void MainComponent::loadEffectDescription(int track,const juce::PluginDescriptio
         if(restoredState.isNotEmpty())safe->audio.restoreEffectState(ti,restoredState,slot);safe->resolveAutomationParameters(ti,slot);
         if(restoring){safe->audio.updateMix(safe->project);safe->refreshTrack();}else safe->changed(false);
         safe->message(tr("Effect ready:")+" "+description.name);
-        if(!restoring)safe->openHostedEditor(ti,slot);
+        safe->resumeEffectChain();if(!restoring)safe->openHostedEditor(ti,slot);
     },slot);
 }
 void MainComponent::chooseBrowserRow(const PluginCatalog::BrowserRow& row){

@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.11**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.12**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
@@ -838,7 +838,7 @@ Click the pitch readout to cycle **last pitch**, **time-weighted average** and *
 
 ## Automation scope and master effects
 
-Beside Automation, **Track** (default) shows the selected track’s lane; **All** shows every track’s lane. The parameter picker has an explicit X close button. The Progression menu displays the preset recognised from the current harmony; custom progressions are not assigned an incorrect preset name.
+Click **Automation** to open the picker: inside it, **Track** (default) shows the selected track’s lane and **All tracks** shows every track’s lane. **Hide automation** hides the lanes. The scope controls stay inside the picker, leaving the main toolbar uncluttered. The parameter picker has an explicit X close button. The Progression menu displays the preset recognised from the current harmony; custom progressions are not assigned an incorrect preset name.
 
 **Effects** on the mixer master, or beside Bus & Send in the compact lower bar, opens the master insert chain. Add multiple VST3/AU effects, open editors, rename, reorder, bypass and remove instances. The chain and native plugin states persist with the project. Complete mix exports include master inserts; individual stems exclude them.
 

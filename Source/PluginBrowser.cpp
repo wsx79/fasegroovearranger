@@ -93,7 +93,7 @@ void PluginBrowser::show(int family,const juce::String& key,int type,bool locked
     else{const auto plugins=catalog.state().plugins;const auto cats=visibleCategories(plugins,pluginType);for(int i=0;i<plugins.size();++i)if(PluginCatalog::pluginKey(plugins.getReference(i))==currentKey){const auto maker=plugins.getReference(i).manufacturerName.trim().isEmpty()?"Unknown manufacturer":plugins.getReference(i).manufacturerName.trim();const int index=cats.indexOf(maker,true);if(index>=0)openAt=firstCategory+index;break;}}
     selectCategory(openAt);setVisible(true);toFront(true);list.grabKeyboardFocus();startTimerHz(4);
 }
-void PluginBrowser::visibilityChanged(){if(!isVisible())stopTimer();}
+void PluginBrowser::visibilityChanged(){if(!isVisible()){stopTimer();if(onDismiss)onDismiss();}}
 void PluginBrowser::selectCategory(int index){const auto cats=visibleCategories(catalog.state().plugins,pluginType);category=juce::jlimit(0,std::max(firstCategory,firstCategory+cats.size()-1),index);rebuildList();}
 void PluginBrowser::rebuildList(){
     const auto plugins=catalog.state().plugins;const auto cats=visibleCategories(plugins,pluginType);const auto query=search.getText().trim();

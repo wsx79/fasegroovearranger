@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.12
+
+- Sposta Traccia/Tutto nella finestra dei parametri di automazione; libera la barra principale e permette di riaprire la scelta con corsie già visibili.
+- Corregge rimozione e sostituzione degli insert master con editor nativo aperto; conserva gli altri editor e supporta Annulla/Ripeti.
+- Ingrandisce la finestra effetti e la nasconde durante la scelta del plugin, ripristinandola dopo selezione o annullamento.
+- Aggiunge verifiche native dell’interfaccia su Nuovi accordi ripetuto con salvataggio/riapertura, scelta delle automazioni e durata degli editor insert master.
+
+
 ## 0.31.11
 
 - Mantiene rigenerabili gli accordi cromatici automatici dopo ripetuti Random Chords; memorizza esplicitamente gli accordi manuali e conserva le scelte dei vecchi progetti.

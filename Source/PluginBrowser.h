@@ -11,7 +11,7 @@ public:
     explicit PluginBrowser(PluginCatalog&);
     void show(int engineFamily,const juce::String& currentKey,int type=0,bool locked=false);
     std::function<void(const PluginCatalog::BrowserRow&)> onChoose;
-    std::function<void()> onRescan,onSettings,onOpenFile;
+    std::function<void()> onRescan,onSettings,onOpenFile,onDismiss;
     void refreshText();
     void paint(juce::Graphics&) override;
     void paintOverChildren(juce::Graphics&) override;

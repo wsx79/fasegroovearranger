@@ -192,8 +192,17 @@ return false;
     transposeUp.onClick();transposeUp.onClick();stage("successive octave edits retain selection and spare unselected notes",clip().notes[0].pitch==60&&clip().notes[1].pitch==88&&piano.selected.size()==1);
     transposeDown.onClick();stage("reverse octave edit retains selected notes",clip().notes[0].pitch==60&&clip().notes[1].pitch==76&&piano.selected.size()==1);
     {const auto settings=project.settings;const auto& presets=sgk::progressionPresets();for(size_t i=0;i<presets.size();++i)if(juce::String(presets[i].name).containsIgnoreCase("Dorian")&&juce::String(presets[i].name).containsIgnoreCase("Vamp")){chooseProgression(project,(int)i);progressionBox.setSelectedId((int)i+1,juce::dontSendNotification);refreshControls();stage("known progression retains its actual preset name",progressionBox.getSelectedId()==(int)i+1);break;}project.settings=settings;refreshControls();}
-    showArrangement();automationAllButton.onClick();stage("all-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==(int)project.tracks.size());
-    automationTrackButton.onClick();stage("selected-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==1&&arrangement.volumeVisible[(size_t)selectedTrack]);showAutomationScope(false);
+    showArrangement();automationButton.onClick();juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
+    std::function<juce::Component*(juce::Component&,const juce::String&)> findControl=[&](juce::Component& root,const juce::String& id)->juce::Component*{if(root.getComponentID()==id)return &root;for(auto* child:root.getChildren())if(auto* found=findControl(*child,id))return found;return nullptr;};
+    auto scopeButton=[&](const char* id)->juce::Button*{return automationPicker?dynamic_cast<juce::Button*>(findControl(*automationPicker,id)):nullptr;};
+    auto* allScope=scopeButton("automation-scope-all");auto* trackScope=scopeButton("automation-scope-track");
+    stage("automation scope is inside the picker",allScope&&trackScope&&trackScope->getToggleState()&&!findChildWithID("automation-scope-track")&&!findChildWithID("automation-scope-all"));
+    if(allScope)allScope->onClick();stage("all-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==(int)project.tracks.size());
+    if(trackScope)trackScope->onClick();stage("selected-track automation scope",std::count(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),true)==1&&arrangement.volumeVisible[(size_t)selectedTrack]);
+    if(automationPicker)automationPicker->dismiss();juce::MessageManager::getInstance()->runDispatchLoopUntil(30);automationButton.onClick();
+    stage("Automation reopens the picker while lanes are visible",automationPicker&&automationPicker->isVisible());
+    if(automationPicker)if(auto out=folder.getChildFile("automation-scope.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(automationPicker->createComponentSnapshot(automationPicker->getLocalBounds()),*out);}
+    if(auto* hide=scopeButton("automation-hide"))hide->onClick();stage("picker hides all automation lanes",std::none_of(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),[](bool visible){return visible;}));juce::MessageManager::getInstance()->runDispatchLoopUntil(30);showAutomationScope(false);
     select(4,0);showEditor();clip().notes={{1,.25,36,100,0}};changed();piano.selected={0};const auto drum=clip().notes;
     piano.keyPressed(juce::KeyPress(juce::KeyPress::upKey));stage("drum pitch stays isolated",clip().notes==drum);
     // A key during an active clip gesture must not undo the source underneath mouseUp.

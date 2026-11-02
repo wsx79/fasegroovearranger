@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.12
+
+- Move Track/All automation scope into the parameter picker; keep the main toolbar compact and allow reopening the picker while lanes are visible.
+- Fix master insert removal/replacement with an open native editor; preserve unrelated editors and support Undo/Redo.
+- Enlarge the floating effects chain and hide it during plugin selection, restoring it after selection or cancellation.
+- Add native UI regression coverage for repeated New Chords actions across save/reload cycles, automation scope and master insert editor lifetime.
+
+
 ## 0.31.11
 
 - Keep generated chromatic chords rerollable across repeated Random Chords actions; store manual chord ownership explicitly and preserve legacy overrides.
