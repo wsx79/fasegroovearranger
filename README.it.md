@@ -21,7 +21,7 @@
 
 **[Scarica l’ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).** I pacchetti verificati per Windows, macOS universal e Linux sono nella sezione **Assets**. È un’applicazione iniziale di sviluppo.
 
-Fase Groove Arranger **crea MIDI** per un brano completo negli stessi 13 generi della famiglia. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
+Fase Groove Arranger **crea MIDI** per un brano completo in 15 generi, inclusi Techno ed Electro House. Scegli genere, tonalità, giro e groove; ascolta con i suoni guida, modifica le note e assegna i tuoi campioni o strumenti VST3/AU. I motori originali sono già inclusi: non occorre installare i singoli plugin.
 
 Clic sui nomi delle sezioni per ascoltare dal punto scelto; la selezione dei clip conserva la riproduzione. Durata MIDI modificabile anche nei Drums e coda naturale dei campioni. Finestre strumento e VST in primo piano, centrate alla riapertura.
 
@@ -44,7 +44,7 @@ Lo zoom segue il puntatore (rotella sul righello o Ctrl/Cmd+rotella); Maiusc+rot
 - Generazione di brano, traccia, sezione o singolo clip; blocchi di generazione, annulla/ripeti e MIDI salvato nel progetto.
 - Pannelli strumenti e piano roll grande separati: ogni batteria mostra solo lo strumento scelto, la chitarra tutte le sue parti. Il piano mantiene i controlli estesi, DNA, Morph, Voicing Coach, Varianti e circolo delle quinte.
 - Disegno, spostamento, durata e dinamica delle note, selezione multipla, quantizzazione, trasposizione e copia/incolla. Importazione MIDI PPQ.
-- Suoni guida originali, campioni personali, uno strumento VST3/AU e fino a otto effetti in serie per traccia. Editor e stato salvati nel progetto. Il browser è quello dei groove FaseGroove: prima i motori interni, poi i produttori, con la ricerca. All’avvio scansiona le cartelle VST3 predefinite e una cartella personale; l’elenco è un KnownPluginList di JUCE. Cartella in OPZIONI → IMPOSTAZIONI → PLUGIN.
+- Suoni guida originali, campioni personali, uno strumento VST3/AU e fino a otto effetti in serie per traccia, oltre a una catena insert separata sul master. Editor e stato salvati nel progetto. Il browser è quello dei groove FaseGroove: prima i motori interni, poi i produttori, con la ricerca. All’avvio scansiona i percorsi VST3 configurati; l’elenco è un KnownPluginList di JUCE. Percorsi in OPZIONI → IMPOSTAZIONI → PLUGIN.
 - **STUDIO**: accesso dall’inspector per i campioni, zoom con rotella/pizzicamento, tagli automatici e tastiera sempre visibile con note in riproduzione, default annullabili, tooltip descrittivi, preset portatili, sincronizzazione di tempo e altezza, registrazione di note MIDI, take WAV da ingresso/mix con importazione e render della traccia, due gruppi e riverbero/delay comuni. Raccolta e ricollegamento dei campioni per progetti portatili. Vedi la [guida](docs/GUIDA.md).
 - Mixer con uscita M/GA/GB, pulsanti A/riverbero e B/delay su ogni traccia e pannello Bus e mandate con quattro strip verticali, manopole per mandate/Pan/effetti, fader in dB e meter allineati, M/S.
 - Studio in vista strumento: una sola waveform a tutta larghezza, cinque moduli compatti con valori e didascalie sotto le manopole, selettore di modalità e caricamento tramite trascinamento audio.
@@ -77,7 +77,9 @@ ctest --test-dir build -C Release --output-on-failure
 
 Scarica da [Releases](https://github.com/wsx79/fasegroovearranger/releases/latest): **FaseGrooveArranger-Windows-Setup.exe** usa lo stesso installer italiano/inglese della famiglia, con menu Start e disinstallazione. Ci sono gli ZIP portatili per Windows, macOS universale e Linux, uno ZIP per piattaforma. **OPZIONI → IMPOSTAZIONI → VERIFICA ORA** scarica l’aggiornamento; **INSTALLA ORA** esegue il setup o sostituisce la copia portatile scrivibile e riapre l’app. Progetti e preferenze restano. La 0.7.0 e le precedenti richiedono una prima installazione manuale. Dettagli nella [guida](docs/GUIDA.md#1-installazione). Il setup Windows non è firmato; macOS usa la firma ad hoc/Developer ID opzionale della famiglia. Build di sviluppo anche in Actions → Artifacts.
 
-Per provare i soli motori: `bash scripts/test-core.sh` oppure CMake con `-DFGA_BUILD_APP=OFF`.
+Per provare i soli motori: `bash scripts/test-core.sh` (g++ oppure il compilatore indicato da `CXX`) o CMake con `-DFGA_BUILD_APP=OFF`. Entrambi leggono lo stesso elenco [`cmake/core-sources.txt`](cmake/core-sources.txt); la CI esegue anche lo script autonomo e verifica il MIDI prodotto.
+
+`-DFGA_BUILD_TESTS=OFF` esclude gli eseguibili di test separati. `-DFGA_SELF_TESTS=OFF` esclude indipendentemente i collaudi CLI/UI interni all’app. Entrambe le opzioni sono ON per default; la CI di distribuzione impacchetta attualmente lo stesso binario usato per le prove native.
 
 Potenziometri e icone rinnovano inspector e home. Doppio clic sul nome della traccia apre l’inspector; accanto ad Armonia trovi zoom e Adatta brano. Con mixer chiuso compare il meter master. Clicca la posizione per alternare battute e tempo trascorso/residuo, conservando la griglia musicale.
 
@@ -88,7 +90,7 @@ Potenziometri e icone rinnovano inspector e home. Doppio clic sul nome della tra
 - [Architettura e provenienza](docs/ARCHITECTURE.md) · [Confronto UI famiglia](docs/FAMILY_ALIGNMENT.md)
 - [Licenze di terze parti](THIRD_PARTY_NOTICES.md) · [Verifiche](docs/VALIDATION.md)
 
-Questa versione è una workstation MIDI in sviluppo. Editing audio distruttivo, warping delle tracce audio, insert esterni su bus/master, sidechain audio esterno e registrazione delle automazioni dei controller MIDI non sono implementati (la compensazione della latenza dei plugin sì). Sono disponibili fino a otto insert per traccia, con rinomina, bypass, riordino e automazioni dei parametri. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
+Questa versione è una workstation MIDI in sviluppo. Editing audio distruttivo, warping delle tracce audio, insert esterni sui bus, sidechain audio esterno e registrazione delle automazioni dei controller MIDI non sono implementati (la compensazione della latenza dei plugin sì). Sono disponibili fino a otto insert per traccia, con rinomina, bypass, riordino e automazioni dei parametri. Il master ha una catena insert dedicata, applicata al mix completo ed esclusa dagli stem individuali. I plugin girano nel processo dell'app e richiedono l'architettura corretta; la compatibilità va provata con i plugin effettivi.
 
 I suoni guida sono sintetizzati, non librerie commerciali campionate. Per la produzione finale puoi usare i tuoi strumenti. WAV è senza perdita; MP3 aggiunge il ritardo/padding del codec.
 

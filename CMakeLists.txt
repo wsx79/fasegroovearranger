@@ -29,21 +29,10 @@ if(NOT MSVC)
 endif()
 add_library(fga_mp3 STATIC Source/core/Mp3Encoder.cpp)
 target_link_libraries(fga_mp3 PUBLIC shine)
-add_library(fga_core STATIC Source/core/Project.cpp Source/core/ElectronicStyles.cpp Source/core/VocalChops.cpp Source/core/Timeline.cpp Source/core/Midi.cpp
-    ThirdParty/fasegroovepiano/Source/engine/Theory.cpp
-    ThirdParty/fasegroovepiano/Source/engine/Generators.cpp
-    ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.cpp
-    ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.cpp
-    ThirdParty/fasegroovepiano/Source/engine/Comping.cpp
-    ThirdParty/fasegroovedrums/Source/engine/Drums.cpp
-    ThirdParty/fasegroovedrums/Source/engine/Generators.cpp
-    ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.cpp
-    ThirdParty/fasegrooveguitar/Source/engine/Guitar.cpp
-    ThirdParty/fasegrooveguitar/Source/engine/Generators.cpp
-    ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.cpp
-    ThirdParty/fasegroovelead/Source/engine/Lead.cpp
-    ThirdParty/fasegroovelead/Source/engine/Generators.cpp
-    ThirdParty/fasegroovelead/Source/engine/GrooveEngine.cpp)
+set(FGA_CORE_SOURCE_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/cmake/core-sources.txt")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${FGA_CORE_SOURCE_MANIFEST}")
+file(STRINGS "${FGA_CORE_SOURCE_MANIFEST}" FGA_CORE_SOURCES REGEX "^[^#]")
+add_library(fga_core STATIC ${FGA_CORE_SOURCES})
 target_include_directories(fga_core PUBLIC Source/core)
 if(FGA_BUILD_TESTS)
     enable_testing()

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato
+
+- Corregge lo script autonomo dei test core usando un elenco delle sorgenti condiviso con CMake; aggiunge script e verifica MIDI alla CI.
+- Allinea la documentazione IT/EN a 15 generi, insert master, registrazione, compensazione della latenza e opzioni di collaudo già presenti; verifica in CI la versione delle guide rispetto a CMake.
+
 ## 0.31.9
 
 - Corregge gli accordi cromatici di Random Chords e usa i pool elettronici per i rispettivi generi; conserva gli slot cromatici inseriti a mano.

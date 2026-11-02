@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Fix the standalone core-test script with a source inventory shared by CMake; run the script and MIDI verification in CI.
+- Align English/Italian documentation with 15 genres, master inserts, recording, latency compensation and existing test-build options; check guide versions against CMake in CI.
+
 ## 0.31.9
 
 - Fix chromatic Random Chords presets and route electronic harmony dice through their genre pools; preserve manually authored chromatic slots.

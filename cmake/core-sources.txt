@@ -1,0 +1,21 @@
+# Shared by CMakeLists.txt and scripts/test-core.sh.
+# One unindented repository-relative source path per line.
+Source/core/Project.cpp
+Source/core/ElectronicStyles.cpp
+Source/core/VocalChops.cpp
+Source/core/Timeline.cpp
+Source/core/Midi.cpp
+ThirdParty/fasegroovepiano/Source/engine/Theory.cpp
+ThirdParty/fasegroovepiano/Source/engine/Generators.cpp
+ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.cpp
+ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.cpp
+ThirdParty/fasegroovepiano/Source/engine/Comping.cpp
+ThirdParty/fasegroovedrums/Source/engine/Drums.cpp
+ThirdParty/fasegroovedrums/Source/engine/Generators.cpp
+ThirdParty/fasegroovedrums/Source/engine/GrooveEngine.cpp
+ThirdParty/fasegrooveguitar/Source/engine/Guitar.cpp
+ThirdParty/fasegrooveguitar/Source/engine/Generators.cpp
+ThirdParty/fasegrooveguitar/Source/engine/GrooveEngine.cpp
+ThirdParty/fasegroovelead/Source/engine/Lead.cpp
+ThirdParty/fasegroovelead/Source/engine/Generators.cpp
+ThirdParty/fasegroovelead/Source/engine/GrooveEngine.cpp

@@ -21,7 +21,7 @@
 
 **[Download the latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).** Verified Windows, macOS universal and Linux packages are under **Assets**. This is an initial development application.
 
-Create a complete song with the original Piano, Drums, Guitar and Lead engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose one of the same 13 genres, edit the generated notes, assign sounds per track, and export the mix or individual stems.
+Create a complete song with the original Piano, Drums, Guitar and Lead engines: Intro → Main → Breakdown → Build-up → Drop → Outro. Choose from 15 genres, including Techno and Electro House, edit the generated notes, assign sounds per track, and export the mix or individual stems.
 
 By **Fabio 'Pitch' Serra / FS Pitch — DJ & Producer**. Development assistance: **Claude (Anthropic)** and **Codex (OpenAI)**. Free software under **AGPL-3.0-or-later**.
 
@@ -51,7 +51,7 @@ Zoom follows the mouse pointer (ruler wheel or Ctrl/Cmd+wheel); Shift+wheel scro
 - Separate instrument panels and large MIDI editors, isolated drum lanes, all guitar lanes together, original guitar-soloist/piano-comping logic, and per-instrument generation settings.
 - Editable piano roll: draw, move, resize, delete, change velocity, select multiple notes, quantise, transpose and copy/paste. Import standard PPQ MIDI into a selected clip.
 - Native audio playback, seeking and song/section loops; per-track gain, pan, mute, solo and meters; master level.
-- Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3/AU instrument plus up to eight serial insert effects per track. Plugin editor and state persistence. The plugin browser matches the FaseGroove groove browser: FaseGroove engines first, then manufacturer groups, with search. Startup scans the default VST3 folders and one custom folder; the known list is a JUCE KnownPluginList. Configure the folder in OPTIONS → SETTINGS → PLUGINS.
+- Original synthesized guide sounds, user audio samples with adjustable root note, and one native VST3/AU instrument plus up to eight serial insert effects per track and a separate master insert chain. Plugin editor and state persistence. The plugin browser matches the FaseGroove groove browser: FaseGroove engines first, then manufacturer groups, with search. Startup scans the configured VST3 locations; the known list is a JUCE KnownPluginList. Configure plugin locations in OPTIONS → SETTINGS → PLUGINS.
 - **STUDIO**: inspector access for sample tracks, wheel/pinch waveform zoom, transient/equal slicing with an always-visible keyboard and sounding-note display, undoable defaults, descriptive tooltips, portable presets, independent tempo/pitch sync, MIDI note recording, stereo input/master WAV takes with sample-track import and track bounce, two groups and shared reverb/delay sends. Collect & save and relink make sample projects portable. See the [guide](docs/GUIDE.md).
 - Mixer output selection M/GA/GB, per-track A/reverb and B/delay toggles, and a dedicated Bus & Send panel with four vertical strips, rotary sends/Pan/effects, aligned dB faders/meters and M/S.
 - Studio instrument view: a single full-width waveform, five compact knob/value/caption modules, playback-mode selector and audio drop loading.
@@ -94,7 +94,9 @@ cmake --build build-core -j2
 ctest --test-dir build-core --output-on-failure
 ```
 
-Without CMake, `bash scripts/test-core.sh` runs the arranging tests with g++.
+Without CMake, `bash scripts/test-core.sh` runs the arranging tests with g++ (or the compiler in `CXX`). Both build paths read the same source inventory, [`cmake/core-sources.txt`](cmake/core-sources.txt); CI also runs the standalone script and checks its generated MIDI.
+
+`-DFGA_BUILD_TESTS=OFF` disables the separate test executables. `-DFGA_SELF_TESTS=OFF` excludes the application’s CLI/UI test harness independently. Both options default to ON; distribution CI currently packages the same application binary used for native integration tests.
 
 ## First song
 
@@ -116,7 +118,7 @@ Rotary controls and vector icons refresh the inspector and home view. Double-cli
 - [Third-party notices](THIRD_PARTY_NOTICES.md) · [License](LICENSE)
 - [Validation record](docs/VALIDATION.md)
 
-This application is a MIDI arranging workstation in development. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, external bus/master inserts, external audio sidechain, and controller automation recording are not implemented (plugin delay compensation is). Up to eight insert effects per track are available, with instance names, bypass, reordering and parameter automation. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
+This application is a MIDI arranging workstation in development. It does not yet replace every function of a general-purpose DAW: destructive audio editing, audio-track warping, external bus inserts, external audio sidechain, and controller automation recording are not implemented (plugin delay compensation is). Up to eight insert effects per track are available, with instance names, bypass, reordering and parameter automation. The master has its own insert chain, applied to the complete mix and excluded from individual stems. Native plugins run in the application process and must match the application's architecture. Arbitrary third-party plugin compatibility needs testing with the actual plugins.
 
 The original guide instruments are synthesized audition sounds; they are not sampled commercial libraries. Use your own instruments for the final production. WAV is the lossless export; MP3 is intended for sharing and adds codec delay/padding.
 

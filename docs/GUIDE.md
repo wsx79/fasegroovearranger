@@ -30,13 +30,13 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.7**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.9**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
 ## 1. Installation
 
-This guide covers **v0.31.7** of Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+This guide covers Fase Groove Arranger. Download your system's package from the [latest release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Windows installer (recommended)
 
@@ -429,7 +429,7 @@ Panels show only controls used by the selected mode: named bass lines and indepe
 | **LOAD VST3 / AU** | Opens the plugin browser. FaseGroove engines are the first group; other plugins are grouped by manufacturer. Search, favourites and recents work as in the groove browser. A click loads an instrument or appends an insert effect. |
 | **OPEN VST / keyboard icon** | Opens the loaded instrument’s editor directly. Use the editor button on the effect’s own **EFFECTS** row for an effect. |
 
-**Effect chain.** **+** in the inspector’s **EFFECTS** card opens the browser filtered to VST3/AU effects. Add up to **eight**, processed top to bottom before track volume/pan, groups and sends. Each instance has bypass, an editor, double-click rename, and a menu to replace, move, automate or remove it. Drag the left grip to reorder. The original name remains in its menu; **Use original name** removes the alias. **FX** in the mixer opens the same chain in a compact window, pinned to that track even when selection changes. It stays on top until closed and reopens centred. Loading a new effect opens its editor immediately, centred; restoring a project does not open editors automatically. Bypass and mix Undo/Redo avoid native state snapshots during playback and preserve independent plugin-editor edits. Reordering and renaming preserve automation targets; removal or replacement with a different plugin deletes only that instance’s parameter lanes. Undo restores the plugin, its state and curves. Old projects migrate their single insert to the first slot. Projects with effects, newly captured VST/AU states or native sound automation use format 4 and require this version: keep a copy before overwriting an older project. Declared effect tails are included in export, capped at 120 seconds. External inserts on buses/master and external audio sidechain are not available.
+**Effect chain.** **+** in the inspector’s **EFFECTS** card opens the browser filtered to VST3/AU effects. Add up to **eight**, processed top to bottom before track volume/pan, groups and sends. Each instance has bypass, an editor, double-click rename, and a menu to replace, move, automate or remove it. Drag the left grip to reorder. The original name remains in its menu; **Use original name** removes the alias. **FX** in the mixer opens the same chain in a compact window, pinned to that track even when selection changes. It stays on top until closed and reopens centred. Loading a new effect opens its editor immediately, centred; restoring a project does not open editors automatically. Bypass and mix Undo/Redo avoid native state snapshots during playback and preserve independent plugin-editor edits. Reordering and renaming preserve automation targets; removal or replacement with a different plugin deletes only that instance’s parameter lanes. Undo restores the plugin, its state and curves. Old projects migrate their single insert to the first slot. Projects with effects, newly captured VST/AU states or native sound automation use format 4 and require this version: keep a copy before overwriting an older project. Declared effect tails are included in export, capped at 120 seconds. The master has its own insert chain, accessed from the mixer or compact master bar. External inserts on group/send buses and external audio sidechain are not available.
 
 **Plugin catalogue.** Open **OPTIONS → SETTINGS → PLUGINS…** to see the standard folders, choose one personal folder, and rescan. Subfolders and linked folders are included, with duplicate and cycle protection. Windows/Linux support VST3; macOS supports VST3/AU. VST2 `.dll` plugins are not included. Windows searches the system Common Files/VST3 and user Programs/Common/VST3 folders; macOS searches the system and user Audio/Plug-Ins/VST3 folders; Linux searches `~/.vst3`, `/usr/lib/vst3` and `/usr/local/lib/vst3`. macOS also lists Audio Units registered with the operating system; install `.component` bundles in its standard Components folders using the vendor installer.
 
@@ -758,7 +758,7 @@ Follow [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
 **I press EXPORT in the encoding window but no destination appears**
 
-Check the version in **OPTIONS → ABOUT**: this procedure describes **0.31.7**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
+Check the version in **OPTIONS → ABOUT**. The file/folder chooser should follow encoding selection; rendering and playback suspension begin after confirming the destination. If the transition stops, note which window remained open and the app version.
 
 **What determines the duration?**
 
@@ -766,7 +766,7 @@ Genre sets the musical form; the groove and harmonic cycle determine its develop
 
 **Where are recording, automation and effect chains?**
 
-**STUDIO → RECORDING** provides MIDI and input/master audio takes, take import and track bounce. The mixer provides groups A/B and reverb/delay sends; arrangement lanes automate volume, pan, master and VST/AU parameters. Each track has an instrument and up to eight serial effects, with latency compensation. External bus/master inserts, external audio sidechain, destructive audio editing, audio-track warping and MIDI controller automation recording are not implemented.
+**STUDIO → RECORDING** provides MIDI and input/master audio takes, take import and track bounce. The mixer provides groups A/B and reverb/delay sends; arrangement lanes automate volume, pan, master and VST/AU parameters. Each track has an instrument and up to eight serial effects, with latency compensation. The master also has a dedicated insert chain. External bus inserts, external audio sidechain, destructive audio editing, audio-track warping and MIDI controller automation recording are not implemented.
 
 **RECORD AUDIO is disabled, or no input is captured**
 

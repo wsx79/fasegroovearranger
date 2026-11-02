@@ -91,6 +91,10 @@ jobs:
       - run: ctest --test-dir build --output-on-failure
       - run: mkdir -p build/midi && build/fga_core_tests build/midi && python3 scripts/verify-midi.py build/midi
       - run: python3 tests/test-packaging.py
+      - name: Standalone core script and generated MIDI
+        run: |
+          bash scripts/test-core.sh
+          python3 scripts/verify-midi.py build/core
   standalone:
     needs: family
     strategy:

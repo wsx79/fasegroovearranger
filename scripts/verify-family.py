@@ -17,9 +17,13 @@ for path, sha in expected.items():
         data = data.replace(b"\r\n", b"\n")  # Git autocrlf on Windows; canonical Git blob is LF.
     actual = hashlib.sha1(b'blob ' + str(len(data)).encode() + b'\0' + data).hexdigest()
     assert actual == sha, f'{path}: family asset has diverged ({actual})'
+version = re.search(r'^project\(FaseGrooveArranger VERSION ([0-9.]+)',
+                    (root / 'CMakeLists.txt').read_text(encoding='utf-8'), re.M).group(1)
+version_labels = {'GUIDA': 'La guida è aggiornata alla', 'GUIDE': 'This guide is current for'}
 for name in ['GUIDA', 'GUIDE']:
     doc = root / 'docs' / f'{name}.md'
     text = doc.read_text(encoding='utf-8')
+    assert f'{version_labels[name]} **{version}**' in text, f'{doc}: guide version must match CMake {version}'
     assert len(re.findall(r'^## [0-9]+\.', text, re.M)) == 9, doc
     for target in re.findall(r'!?\[[^\]]*\]\(([^)]+)\)', text):
         if target.startswith(('https://', 'http://', '#', 'mailto:')):
@@ -34,4 +38,4 @@ for name in ['GUIDA', 'GUIDE']:
         assert (doc.parent/image).is_file(),(doc,image)
 for name in ['README.it.md', 'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.md', 'PRIVACY.it.md']:
     assert (root / name).is_file(), name
-print('PASS exact family theme + Inter fonts, IT/EN Markdown manuals and local links')
+print('PASS exact family theme + Inter fonts, IT/EN Markdown manuals, guide versions and local links')

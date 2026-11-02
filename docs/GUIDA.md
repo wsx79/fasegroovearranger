@@ -30,13 +30,13 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.7**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.9**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
 ## 1. Installazione
 
-Questa guida descrive la **v0.31.7** di Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
+Questa guida descrive Fase Groove Arranger. Scarica il pacchetto del tuo sistema dall’[ultima release](https://github.com/wsx79/fasegroovearranger/releases/latest).
 
 ### Installer Windows (consigliato)
 
@@ -430,7 +430,7 @@ I pannelli mostrano solo i controlli usati dalla modalità scelta: le linee di b
 | **CARICA VST3 / AU** | Apre il browser dei plugin. I motori FaseGroove sono il primo gruppo; gli altri plugin sono divisi per produttore. Ricerca, preferiti e recenti funzionano come nel browser dei groove. Un clic carica uno strumento o un effetto in insert. |
 | **APRI VST / icona tastiera** | Apre direttamente l’editor dello strumento caricato. Per gli effetti usa il pulsante editor della relativa riga in **EFFETTI**. |
 
-**Catena effetti.** Nel riquadro **EFFETTI** dell’inspector, **+** apre il browser filtrato sugli effetti VST3/AU. Puoi aggiungerne fino a **otto**, elaborati dall’alto verso il basso prima di volume/pan, gruppi e mandate. Ogni istanza ha bypass, editor, doppio clic sul nome per rinominarla e menu per sostituire, spostare, automatizzare o rimuovere. Trascina la presa a sinistra per riordinare. Il nome originale resta nel menu; **Usa nome originale** rimuove il soprannome. **FX** nel mixer apre la stessa catena in una finestra compatta, legata alla traccia anche cambiando selezione. Resta in primo piano fino alla chiusura e si riapre al centro. Caricare un nuovo effetto apre subito il suo editor centrato; riaprire un progetto non apre automaticamente gli editor. Bypass e Annulla/Ripristina del mixer evitano acquisizioni dello stato nativo durante la riproduzione e mantengono le modifiche indipendenti fatte nell’editor del plugin. Riordino e rinomina conservano i destinatari delle automazioni; rimozione o sostituzione con un plugin diverso eliminano soltanto le curve dell’istanza coinvolta. Undo ripristina plugin, stato e curve. I progetti precedenti migrano l’insert nel primo slot. I progetti con catena, nuovi stati VST/AU o automazioni native usano il formato 4 e richiedono questa versione dell’app: conserva una copia prima di sovrascrivere un progetto precedente. Le code dichiarate dagli effetti sono incluse nell’export, fino a 120 secondi. Gli insert esterni sui bus/master e il sidechain audio esterno non sono previsti.
+**Catena effetti.** Nel riquadro **EFFETTI** dell’inspector, **+** apre il browser filtrato sugli effetti VST3/AU. Puoi aggiungerne fino a **otto**, elaborati dall’alto verso il basso prima di volume/pan, gruppi e mandate. Ogni istanza ha bypass, editor, doppio clic sul nome per rinominarla e menu per sostituire, spostare, automatizzare o rimuovere. Trascina la presa a sinistra per riordinare. Il nome originale resta nel menu; **Usa nome originale** rimuove il soprannome. **FX** nel mixer apre la stessa catena in una finestra compatta, legata alla traccia anche cambiando selezione. Resta in primo piano fino alla chiusura e si riapre al centro. Caricare un nuovo effetto apre subito il suo editor centrato; riaprire un progetto non apre automaticamente gli editor. Bypass e Annulla/Ripristina del mixer evitano acquisizioni dello stato nativo durante la riproduzione e mantengono le modifiche indipendenti fatte nell’editor del plugin. Riordino e rinomina conservano i destinatari delle automazioni; rimozione o sostituzione con un plugin diverso eliminano soltanto le curve dell’istanza coinvolta. Undo ripristina plugin, stato e curve. I progetti precedenti migrano l’insert nel primo slot. I progetti con catena, nuovi stati VST/AU o automazioni native usano il formato 4 e richiedono questa versione dell’app: conserva una copia prima di sovrascrivere un progetto precedente. Le code dichiarate dagli effetti sono incluse nell’export, fino a 120 secondi. Il master ha una propria catena insert, accessibile dal mixer o dalla barra master compatta. Gli insert esterni sui bus di gruppo/mandata e il sidechain audio esterno non sono previsti.
 
 **Catalogo dei plugin.** Apri **OPZIONI → IMPOSTAZIONI → PLUGIN…** per vedere le cartelle standard, scegliere una cartella personale e ripetere la scansione. Sono incluse le sottocartelle e le cartelle collegate, evitando duplicati e percorsi circolari. Sono supportati VST3 su Windows/Linux e VST3/AU su macOS; i plugin VST2 `.dll` non sono inclusi. Windows cerca nelle cartelle Common Files/VST3 di sistema e Programs/Common/VST3 dell’utente; macOS nelle cartelle Audio/Plug-Ins/VST3 di sistema e dell’utente; Linux in `~/.vst3`, `/usr/lib/vst3` e `/usr/local/lib/vst3`. Su macOS compaiono anche le Audio Units registrate dal sistema operativo: installa i bundle `.component` nelle cartelle Components standard tramite l’installer del produttore.
 
@@ -759,7 +759,7 @@ Segui la procedura [Salvare e verificare i preset dei plugin](#salvare-e-verific
 
 **Premo ESPORTA nella codifica ma non compare il percorso**
 
-Controlla la versione in **OPZIONI → INFO**: la procedura qui descritta è quella della **0.31.7**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
+Controlla la versione in **OPZIONI → INFO**. Dopo la codifica deve aprirsi la scelta del file o della cartella; il rendering e la sospensione dell’ascolto iniziano dopo la conferma del percorso. Se il passaggio si interrompe, annota quale finestra è rimasta aperta e la versione dell’app.
 
 **Ho modificato delle note. Come le tengo mentre provo altro?**
 
@@ -771,7 +771,7 @@ La forma dipende dal genere; il groove e il ciclo armonico stabiliscono lo svilu
 
 **Dove sono registrazione, automazioni e catene di effetti?**
 
-**STUDIO → REGISTRAZIONE** offre take MIDI e audio da ingresso o master, con importazione della take e bounce della traccia. Il mixer gestisce gruppi A/B e mandate riverbero/delay; le corsie dell’arrangiamento gestiscono volume, pan, master e parametri VST/AU. Ogni traccia dispone di uno strumento e fino a otto effetti in serie, con compensazione della latenza. Non sono disponibili insert esterni sui bus/master, sidechain audio esterno, editing audio distruttivo, warping delle tracce audio o registrazione delle automazioni dei controller MIDI.
+**STUDIO → REGISTRAZIONE** offre take MIDI e audio da ingresso o master, con importazione della take e bounce della traccia. Il mixer gestisce gruppi A/B e mandate riverbero/delay; le corsie dell’arrangiamento gestiscono volume, pan, master e parametri VST/AU. Ogni traccia dispone di uno strumento e fino a otto effetti in serie, con compensazione della latenza. Anche il master ha una catena insert dedicata. Non sono disponibili insert esterni sui bus, sidechain audio esterno, editing audio distruttivo, warping delle tracce audio o registrazione delle automazioni dei controller MIDI.
 
 **REGISTRA AUDIO è disabilitato o non entra segnale**
 
