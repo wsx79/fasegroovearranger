@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.31.8
 
 - Studio: audition and loop only selected MIDI notes; preserve selection through repeated octave edits.
 - Remember mixer/inspector visibility, zoom and window state; add full-screen quit, Studio/sample-browser/automation close controls, clickable credits and first-launch donation information.

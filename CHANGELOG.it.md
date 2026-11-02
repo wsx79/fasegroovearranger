@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## Non pubblicato
+## 0.31.8
 
 - Studio: ascolta e ripete solo le note MIDI selezionate; conserva la selezione dopo più modifiche di ottava.
 - Ricorda mixer, inspector, zoom e finestra; aggiunge uscita a schermo intero, chiusura interna di Studio/browser Campioni/automazione, crediti dal logo e invito alla donazione al primo avvio.
