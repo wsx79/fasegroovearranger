@@ -144,6 +144,9 @@ jobs:
       - name: Recursive isolated plugin catalogue integration
         if: "!cancelled() && steps.nativebuild.outcome == 'success' && (env.FULL_SUITE == 'true' || startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != ''))"
         run: python scripts/test-plugin-catalog.py
+      - name: macOS full-audit MP3 verification dependency
+        if: runner.os == 'macOS' && !cancelled() && steps.nativebuild.outcome == 'success' && env.FULL_SUITE == 'true'
+        run: command -v ffmpeg >/dev/null || brew install ffmpeg
       - name: Complete offline club arrangements and independent audio audit
         if: '!cancelled() && steps.nativebuild.outcome == ''success'' && (steps.nativesmoke.outcome == ''success'' || runner.os == ''macOS'') && env.FULL_SUITE == ''true'''
         run: python scripts/test-offline-audio.py
