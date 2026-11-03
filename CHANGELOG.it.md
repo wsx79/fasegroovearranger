@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.16
+
+- Il piano roll suona ogni nuova altezza durante il trascinamento delle note.
+- Aggiunto il pulsante Note in scala con scelta memorizzata per evidenziare le corsie nella tonalità e scala correnti.
+
 ## 0.31.15
 
 - Conserva le code dei clip MIDI duplicando le sezioni e la fase armonica rigenerando clip tagliati.

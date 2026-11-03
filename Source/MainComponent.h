@@ -145,6 +145,7 @@ public:
     bool keyPressed(const juce::KeyPress&) override;
     void clearSelection(){selected.clear();}
     bool guitarNotes=false;
+    bool showScaleGuide=false;
     int lowNote=48,highNote=72,brushVelocity=100;
     bool flamBrush=false;
     int tool=0;
@@ -160,6 +161,8 @@ public:
     void editVelocity(juce::Point<float>);
     void eraseAt(juce::Point<float>);
     bool laneView() const;
+    bool scaleGuideAvailable() const;
+    bool noteInScale(int midiNote) const;
     float noteY(const Note&) const;
     float noteHeight() const;
     float noteWidth(const Note&) const;
@@ -409,7 +412,7 @@ private:
     juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
     juce::ComboBox soundBox,gridBox;
     ActionButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
-    ActionButton fitNotesButton{"FIT"};
+    ActionButton fitNotesButton{"FIT"},scaleGuideButton{"SCALE NOTES"};
     IconButton drawTool{IconButton::Icon::pencil},selectTool{IconButton::Icon::pointer},eraseTool{IconButton::Icon::eraser},regenerateClipButton{IconButton::Icon::dice};
     ActionButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     ActionButton sectionLoopButton{"LOOP CLIP"},pianoPlayButton{"PLAY CLIP"};

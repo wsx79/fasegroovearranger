@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.16
+
+- Piano roll auditions each pitch crossed while dragging notes.
+- Added a persistent Scale Notes toggle to highlight lanes in the current key and scale.
+
 ## 0.31.15
 
 - Preserve crossing MIDI clips when duplicating sections and absolute harmonic phase when regenerating split clips.

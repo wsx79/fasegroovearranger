@@ -1,4 +1,6 @@
 // Arranger-specific extensions to the original family dictionaries.
+{ "SCALE NOTES", "NOTE IN SCALA", "NOTAS DE ESCALA", "NOTES DE GAMME", "SKALENNOTEN", "NOTAS DA ESCALA" },
+{ "Show or hide the note lanes belonging to the current key and scale.", "Mostra o nasconde le corsie delle note nella tonalità e scala correnti.", "Muestra u oculta las filas de notas de la tonalidad y escala actuales.", "Affiche ou masque les lignes de notes de la tonalité et de la gamme actuelles.", "Zeigt oder verbirgt die Notenzeilen der aktuellen Tonart und Skala.", "Mostra ou oculta as linhas de notas da tonalidade e escala atuais." },
 { "NEW", "NUOVO", "NUEVO", "NOUVEAU", "NEU", "NOVO" },
 { "OPEN", "APRI", "ABRIR", "OUVRIR", "ÖFFNEN", "ABRIR" },
 { "SAVE AS", "SALVA COME", "GUARDAR COMO", "ENREGISTRER SOUS", "SPEICHERN ALS", "SALVAR COMO" },

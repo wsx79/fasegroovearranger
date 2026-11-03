@@ -424,6 +424,8 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
 PianoRoll::PianoRoll(MainComponent& m):owner(m){setWantsKeyboardFocus(true);}
 bool PianoRoll::ownerTrackIsDrum()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];return isDrumTrack(owner.selectedTrack)&&!(track.instrument=="sample"&&track.sampler.mode==2);}
 bool PianoRoll::laneView()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];if(track.instrument=="sample"&&track.sampler.mode==2)return false;return ownerTrackIsDrum()||(owner.selectedTrack==3&&!guitarNotes);}
+bool PianoRoll::scaleGuideAvailable()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];return !laneView()&&!(track.instrument=="sample"&&track.sampler.mode==2);}
+bool PianoRoll::noteInScale(int midiNote)const{const auto& settings=owner.project.settings;const auto& intervals=sgk::scaleIntervals(settings.scale);const int pc=(midiNote-settings.key+120)%12;return std::find(intervals.begin(),intervals.end(),pc)!=intervals.end();}
 void PianoRoll::fitNotes(){
     int lo=127,hi=0;for(const auto& n:owner.clip().notes){lo=std::min(lo,n.pitch);hi=std::max(hi,n.pitch);}
     if(lo>hi){lo=owner.selectedTrack==1?28:48;hi=lo+24;}lo-=2;hi+=2;while(hi-lo<24){--lo;++hi;}
@@ -441,10 +443,12 @@ void PianoRoll::paint(juce::Graphics& g){
     const auto dirtyArea=g.getClipBounds().expanded(4);
     const auto gridArea=juce::Rectangle<float>(left,48,(float)getWidth()-left,std::max(40.f,velocityTop()-52));
     auto blackKey=[](int n){const int k=n%12;return k==1||k==3||k==6||k==8||k==10;};
+    const bool highlightScale=showScaleGuide&&scaleGuideAvailable();
     {
         juce::Graphics::ScopedSaveState clip(g);g.reduceClipRegion(gridArea.toNearestInt());
         // Rows of the black keys a shade darker, octaves (C) marked by a stronger line.
         if(!laneView())for(int n=lowNote;n<=highNote;++n){float y=48+(highNote-n)*rowHeight();if(blackKey(n)){g.setColour(juce::Colours::black.withAlpha(.22f));g.fillRect(left,y,(float)getWidth()-left,rowHeight());}
+            if(highlightScale&&noteInScale(n)){g.setColour(Daw::accent.withAlpha((n-owner.project.settings.key+120)%12==0?.18f:.10f));g.fillRect(left,y,(float)getWidth()-left,rowHeight());}
             g.setColour(juce::Colours::white.withAlpha(n%12==0?.1f:n%12==5?.04f:0.f));if(n%12==0||n%12==5)g.fillRect(left,y+rowHeight()-1,(float)getWidth()-left,1.f);}
         // Grid: bars, beats and the chosen division, each fainter.
         const double beats=owner.clipLength();
@@ -476,6 +480,7 @@ void PianoRoll::paint(juce::Graphics& g){
         for(int n=lowNote;n<=highNote;++n){const float y=48+(highNote-n)*rowHeight();const auto key=juce::Rectangle<float>((float)vx,y,left-2,rowHeight());
             if(!blackKey(n)){g.setColour(juce::Colour(0xffd6d9de));g.fillRect(key);g.setColour(juce::Colour(0xff9da3ab));if(n%12==0||n%12==5)g.fillRect(key.getX(),key.getBottom()-1,key.getWidth(),1.f);}
             else{g.setColour(juce::Colour(0xffd6d9de));g.fillRect(key);g.setColour(juce::Colour(0xff1c1f24));g.fillRoundedRectangle(key.withWidth(key.getWidth()*.6f).reduced(0,.5f),1.5f);}
+            if(highlightScale&&noteInScale(n)){g.setColour(Daw::accent);g.fillRect(key.getRight()-3,y+1,3.f,rowHeight()-2);}
             if(n%12==0){g.setColour(juce::Colour(0xff2a2d33));g.setFont(Daw::font(Daw::small,true));g.drawText(juce::MidiMessage::getMidiNoteName(n,true,true,4),key.reduced(4,0),juce::Justification::centredRight);}}
         g.setColour(juce::Colours::black.withAlpha(.6f));g.drawVerticalLine(vx+(int)left-2,48.f,velocityTop());
     }
@@ -553,7 +558,9 @@ void PianoRoll::mouseDrag(const juce::MouseEvent& e){
         for(int i:selected)if(i>=0&&i<(int)before.size()){const auto& n=before[(size_t)i];earliest=std::min(earliest,n.start);latest=std::max(latest,n.start+n.length);lowest=std::min(lowest,n.pitch);highest=std::max(highest,n.pitch);}
         delta=std::clamp(delta,-earliest,std::max(-earliest,owner.clipLength()-latest));deltaPitch=std::clamp(deltaPitch,-lowest,127-highest);
     }
-    for(int i:selected)if(i>=0&&i<(int)notes.size()&&i<(int)before.size()){const auto n=before[(size_t)i];auto& now=notes[(size_t)i];if(velocityDrag)now.velocity=std::clamp(n.velocity+(int)(anchor.y-e.position.y),1,127);else if(resizing)now.length=std::clamp(n.length+delta,std::min(.0625,owner.clipLength()-n.start),owner.clipLength()-n.start);else{now.start=std::clamp(n.start+delta,0.,std::max(0.,owner.clipLength()-n.length));if(!laneView())now.pitch=std::clamp(n.pitch+deltaPitch,0,127);else if(owner.selectedTrack==3)now.lane=std::clamp(n.lane+(int)std::round((e.position.y-anchor.y)/40.),0,11);}}
+    bool auditionChanged=false;
+    for(int i:selected)if(i>=0&&i<(int)notes.size()&&i<(int)before.size()){const auto n=before[(size_t)i];auto& now=notes[(size_t)i];if(velocityDrag)now.velocity=std::clamp(n.velocity+(int)(anchor.y-e.position.y),1,127);else if(resizing)now.length=std::clamp(n.length+delta,std::min(.0625,owner.clipLength()-n.start),owner.clipLength()-n.start);else{now.start=std::clamp(n.start+delta,0.,std::max(0.,owner.clipLength()-n.length));if(!laneView()){const int nextPitch=std::clamp(n.pitch+deltaPitch,0,127);auditionChanged=auditionChanged||now.pitch!=nextPitch;now.pitch=nextPitch;}else if(owner.selectedTrack==3)now.lane=std::clamp(n.lane+(int)std::round((e.position.y-anchor.y)/40.),0,11);}}
+    if(auditionChanged)previewSelection();
     repaint();
 }
 void PianoRoll::mouseUp(const juce::MouseEvent&){
@@ -585,6 +592,42 @@ bool PianoRoll::verifyEditing(){
         const auto beforeMove=owner.clip().notes.front();at={leftMargin()+(float)(beforeMove.start*pixelsPerBeat)+2,noteY(beforeMove)+noteHeight()/2};mouseDown(event(at));mouseDrag(event(at.translated((float)pixelsPerBeat,0)));mouseUp(event(at.translated((float)pixelsPerBeat,0)));ok=std::abs(owner.clip().notes.front().start-beforeMove.start-1)<1./960.&&ok;
         if(!laneView()||ownerTrackIsDrum()){const auto beforeResize=owner.clip().notes.front();at={leftMargin()+(float)((beforeResize.start+beforeResize.length)*pixelsPerBeat)-1,noteY(beforeResize)+noteHeight()/2};mouseDown(event(at));mouseDrag(event(at.translated((float)(grid*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(grid*pixelsPerBeat),0)));ok=owner.clip().notes.front().length>beforeResize.length&&ok;}
         deleteSelected();ok=owner.clip().notes.empty()&&ok;
+    }
+    if(!laneView()){
+        // Audition each new pitch before release, without retriggering within a row.
+        const auto undos=owner.undoStack,redos=owner.redoStack;owner.undoStack.clear();owner.redoStack.clear();
+        owner.clip().notes={{1,.5,60,100,0},{2,.5,64,100,0}};selected={0,1};fitNotes();
+        auto start=juce::Point<float>(leftMargin()+(float)pixelsPerBeat+2,noteY(owner.clip().notes[0])+noteHeight()/2);
+        juce::AudioBuffer<float> sound(2,512);juce::AudioIODeviceCallbackContext context;
+        auto drain=[&]{owner.audio.audioDeviceIOCallbackWithContext(nullptr,0,sound.getArrayOfWritePointers(),2,512,context);};
+        auto heard=[&](int a,int b){const auto active=owner.audio.activeNotes(owner.selectedTrack);return previewTrack==owner.selectedTrack&&previewPitches==std::vector<int>{a,b}&&active[(size_t)a]&&active[(size_t)b];};
+        mouseDown(event(start));drain();
+        mouseDrag(event(start.translated(0,-rowHeight())));drain();
+        auto active=owner.audio.activeNotes(owner.selectedTrack);ok=heard(61,65)&&!active[60]&&!active[64]&&owner.undoStack.empty()&&ok;
+        const auto played=owner.audio.noteOnsSent(owner.selectedTrack);mouseDrag(event(start.translated(0,-rowHeight())));drain();
+        ok=owner.audio.noteOnsSent(owner.selectedTrack)==played&&ok;
+        mouseDrag(event(start.translated(0,-2*rowHeight())));drain();active=owner.audio.activeNotes(owner.selectedTrack);
+        ok=heard(62,66)&&!active[61]&&!active[65]&&owner.undoStack.empty()&&ok;
+        mouseUp(event(start.translated(0,-2*rowHeight())));stopPreview();drain();active=owner.audio.activeNotes(owner.selectedTrack);
+        ok=owner.undoStack.size()==1&&!active[62]&&!active[66]&&previewPitches.empty()&&ok;
+        owner.undoStack=undos;owner.redoStack=redos;
+    }
+    if(scaleGuideAvailable()){
+        const int key=owner.project.settings.key,scale=owner.project.settings.scale;const bool guide=showScaleGuide;
+        const auto preference=Localisation::setting("pianoScaleGuide","0");const auto notes=owner.clip().notes;
+        owner.project.settings.key=0;owner.project.settings.scale=0;owner.clip().notes.clear();showScaleGuide=false;
+        const auto off=createComponentSnapshot(getLocalBounds());
+        const auto json=juce::JSON::toString(projectJson(owner.project),false,17);const auto history=owner.undoStack.size();
+        owner.scaleGuideButton.onClick();const auto on=createComponentSnapshot(getLocalBounds());
+        auto pixel=[&](const juce::Image& image,int note){return image.getPixelAt(leftMargin()+10,(int)(noteY({0,.25,note,100,0})+noteHeight()/2));};
+        ok=showScaleGuide&&owner.scaleGuideButton.getToggleState()&&Localisation::setting("pianoScaleGuide","0")=="1"&&pixel(off,60)!=pixel(on,60)&&pixel(off,61)==pixel(on,61)&&ok;
+        ok=noteInScale(60)&&noteInScale(64)&&!noteInScale(61)&&!noteInScale(66)&&ok;
+        owner.project.settings.key=2;ok=noteInScale(61)&&noteInScale(66)&&!noteInScale(60)&&!noteInScale(65)&&ok;
+        owner.project.settings.scale=1;ok=noteInScale(60)&&noteInScale(65)&&!noteInScale(61)&&!noteInScale(66)&&ok;
+        owner.project.settings.key=0;owner.project.settings.scale=0;owner.scaleGuideButton.onClick();
+        ok=!showScaleGuide&&!owner.scaleGuideButton.getToggleState()&&owner.undoStack.size()==history&&json==juce::JSON::toString(projectJson(owner.project),false,17)&&ok;
+        owner.project.settings.key=key;owner.project.settings.scale=scale;owner.clip().notes=notes;showScaleGuide=guide;
+        owner.scaleGuideButton.setToggleState(guide,juce::dontSendNotification);Localisation::setSetting("pianoScaleGuide",preference);
     }
     if(!laneView()){
         owner.clip().notes={{1,.5,60,100,0},{2,.5,64,100,0}};selected={0,1};fitNotes();
@@ -941,7 +984,9 @@ MainComponent::MainComponent(){
     instrumentPort.setViewedComponent(&instrumentPanel,false);instrumentPort.setScrollBarsShown(true,true);addAndMakeVisible(instrumentPort);
     backButton.onClick=[this]{showArrangement();};instrumentButton.onClick=[this]{showInstrument();};
     addAndMakeVisible(addTrackButton);addTrackButton.onClick=[this]{showAddTrackMenu();};addTrackButton.getProperties().set("fgaTip","Add a handwritten MIDI track or a sparse vocal chops part for Studio slices.");editButton.onClick=[this]{showEditor();};
-    addAndMakeVisible(fitNotesButton);muteButton.setClickingTogglesState(true);soloButton.setClickingTogglesState(true);
+    addAndMakeVisible(fitNotesButton);addAndMakeVisible(scaleGuideButton);piano.showScaleGuide=Localisation::setting("pianoScaleGuide","0")=="1";scaleGuideButton.setToggleState(piano.showScaleGuide,juce::dontSendNotification);scaleGuideButton.getProperties().set("fgaTip","Show or hide the note lanes belonging to the current key and scale.");
+    scaleGuideButton.onClick=[this]{piano.showScaleGuide=!piano.showScaleGuide;scaleGuideButton.setToggleState(piano.showScaleGuide,juce::dontSendNotification);Localisation::setSetting("pianoScaleGuide",piano.showScaleGuide?"1":"0");piano.repaint();};
+    muteButton.setClickingTogglesState(true);soloButton.setClickingTogglesState(true);
     int toolIndex=0;for(auto* button:{&drawTool,&selectTool,&eraseTool}){addAndMakeVisible(button);button->setClickingTogglesState(true);button->setRadioGroupId(4001);const int index=toolIndex++;button->onClick=[this,index]{piano.tool=index;};}drawTool.setToggleState(true,juce::dontSendNotification);
     drawTool.setConnectedEdges(juce::Button::ConnectedOnRight);selectTool.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);eraseTool.setConnectedEdges(juce::Button::ConnectedOnLeft);
     drawTool.setComponentID("tool-draw");selectTool.setComponentID("tool-select");eraseTool.setComponentID("tool-erase");
@@ -1360,6 +1405,7 @@ void MainComponent::refreshTrack(){++uiRevision;
     refreshing=true;const auto& t=project.tracks[(size_t)selectedTrack];updateGainDisplay(gainSlider,t.gain,t.volume);updatePanDisplay(panSlider,t.pan,t.panAutomation);muteButton.setToggleState(t.mute,juce::dontSendNotification);soloButton.setToggleState(t.solo,juce::dontSendNotification);lockButton.setToggleState(t.locked,juce::dontSendNotification);lockClipButton.setToggleState(clip().locked,juce::dontSendNotification);
     const int count=builtInSoundCount(selectedTrack);if(soundBoxTrack!=selectedTrack){soundBoxTrack=selectedTrack;soundBox.clear(juce::dontSendNotification);for(int i=0;i<count;++i)soundBox.addItem(builtInSoundName(selectedTrack,i),i+1);translateControls(soundBox);}soundBox.setSelectedId(std::min(t.sound+1,count),juce::dontSendNotification);soundBox.setEnabled(t.instrument=="internal"&&selectedTrack!=2);
     inspectorLabel.setText(utf(t.name).toUpperCase()+juce::String::fromUTF8("   ·   ")+sourceWithEffect(selectedTrack),juce::dontSendNotification);sectionLoopButton.setToggleState(clipLoopActive(),juce::dontSendNotification);editorLabel.setText(tr(piano.ownerTrackIsDrum()?"DRUM EDITOR":selectedTrack==3?"GUITAR EDITOR":"PIANO ROLL")+"   /   "+utf(t.name)+"   /   "+utf(project.sections[(size_t)selectedSection].name)+"   /   "+juce::String((int)clip().notes.size())+" notes",juce::dontSendNotification);pluginEditorButton.setEnabled(!loadingPlugin&&audio.plugin(selectedTrack)!=nullptr);sampleButton.setEnabled(!loadingPlugin);trackButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));clipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));regenerateClipButton.setEnabled(hasGenerator(project.tracks[(size_t)selectedTrack]));
+    scaleGuideButton.setVisible(page==Page::editor&&piano.scaleGuideAvailable());
     refreshing=false;trackInspector.refresh();mixer.refresh();
 }
 void MainComponent::updateSizes(){if(automationAllTracks&&std::any_of(arrangement.volumeVisible.begin(),arrangement.volumeVisible.end(),[](bool visible){return visible;}))for(size_t i=0;i<arrangement.volumeVisible.size();++i)arrangement.volumeVisible[i]=i<project.tracks.size();timelineZoom.setValue(arrangement.pixelsPerBar,juce::dontSendNotification);automationButton.setToggleState(arrangement.volumeVisible[(size_t)selectedTrack],juce::dontSendNotification);arrangement.setSize(std::max(arrangementPort.getWidth()-16,headerWidth+(int)((project.length()+32)/4*arrangement.pixelsPerBar)+20),arrangement.totalHeight());piano.setSize(piano.leftMargin()+(int)(clipLength()*piano.pixelsPerBeat)+20,std::max(selectedTrack==3&&!piano.guitarNotes?640:320,pianoPort.getHeight()-18));}
@@ -1473,6 +1519,7 @@ void MainComponent::resized(){
     for(juce::Component* c:std::initializer_list<juce::Component*>{&editorLabel,&sectionLoopButton,&pianoPlayButton,&importButton,&copyButton,&pasteButton,&quantiseButton,&transposeDown,&transposeUp,&deleteNotes,&gridBox,&velocitySlider})c->setVisible(edit);
     for(juce::Component* button:std::initializer_list<juce::Component*>{&drawTool,&selectTool,&eraseTool,&regenerateClipButton})button->setVisible(edit);
     for(auto* button:{&brushAccent,&brushHit,&brushGhost,&brushFlam})button->setVisible(edit&&piano.laneView());fitNotesButton.setVisible(edit&&!piano.laneView());
+    scaleGuideButton.setVisible(edit&&piano.scaleGuideAvailable());
     if(edit&&piano.ownerTrackIsDrum()){transposeDown.setVisible(false);transposeUp.setVisible(false);}
     backButton.setVisible(!song);instrumentButton.setVisible(edit);editButton.setVisible(engine);sectionSelector.setVisible(!song);leadButton.setVisible(song||(edit&&selectedTrack==3));guitarNotesButton.setVisible(edit&&selectedTrack==3&&!(project.tracks[(size_t)selectedTrack].instrument=="sample"&&project.tracks[(size_t)selectedTrack].sampler.mode==2));panelSections.setVisible(engine);
     toolbarDividers.clear();lcdDividers.clear();
@@ -1550,7 +1597,7 @@ void MainComponent::resized(){
             instrumentPanel.setSize(panelWidth,instrumentPanel.getHeight());
         }else{
             const int rowC=controlBarHeight+2*toolRowHeight+4;
-            place(editorLabel,16,rowB,640,28);place(guitarNotesButton,w-496,rowB,180);place(pianoPlayButton,w-302,rowB,146);place(sectionLoopButton,w-144,rowB,132);
+            place(editorLabel,16,rowB,640,28);place(scaleGuideButton,w-638,rowB,132);place(guitarNotesButton,w-496,rowB,180);place(pianoPlayButton,w-302,rowB,146);place(sectionLoopButton,w-144,rowB,132);
             x=12;for(auto* b:{&importButton,&copyButton,&pasteButton,&quantiseButton,&transposeDown,&transposeUp,&deleteNotes}){if(!b->isVisible())continue;int width=b==&importButton?115:b==&quantiseButton?103:64;place(*b,x,rowC,width,28);x+=width+6;}place(gridBox,x+3,rowC,88);place(velocitySlider,x+101,rowC,154);place(zoomSlider,x+265,rowC,160);zoomSlider.setVisible(true);place(drawTool,1034,rowC,36);place(selectTool,1070,rowC,36);place(eraseTool,1106,rowC,36);place(regenerateClipButton,1152,rowC,138);place(brushAccent,700,rowB,80);place(brushHit,780,rowB,70);place(brushGhost,850,rowB,80);place(brushFlam,930,rowB,74);place(fitNotesButton,w-110,rowC,98);
             const int top=toolbarBottom()+8;pianoPort.setBounds(12,top,w-24,getHeight()-statusHeight-8-top);
         }
@@ -1695,7 +1742,8 @@ return false;
     ok=mark("ai-composer",verifyAiComposer(folder))&&ok;
     capture("daw-workspace");ok=mark("daw-workspace",verifyDawWorkspace(folder))&&ok;ok=mark("timeline",verifyTimelineEditing(folder))&&ok;ok=mark("navigation",verifyNavigation(folder))&&ok;ok=mark("sample-browser",verifySampleBrowser(folder))&&ok;
     juce::String layoutReport,editingReport;
-    for(int track:{4,16,1,0,2,3,leadTrack}){select(track,1);const auto mainPage=page;showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentIsOpen()&&instrumentPort.getTopLevelComponent()!=getTopLevelComponent()&&page==mainPage&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(isDrumTrack(track))ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2||track==leadTrack)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;if(track==0){const auto json=juce::JSON::toString(projectJson(project),false,17);const auto undos=undoStack.size();pianoPlayButton.onClick();bool clipPlay=audio.isClipPlaying();juce::AudioBuffer<float> sound(2,512);juce::AudioIODeviceCallbackContext context;audio.audioDeviceIOCallbackWithContext(nullptr,0,sound.getArrayOfWritePointers(),2,512,context);clipPlay=clipPlay&&audio.position()>=clipStart()&&audio.position()<clipStart()+clipLength();pianoPlayButton.onClick();clipPlay=clipPlay&&!audio.isPlaying()&&json==juce::JSON::toString(projectJson(project),false,17)&&undos==undoStack.size();ok=mark("piano-clip-play",clipPlay)&&ok;folder.getChildFile("piano-clip-play.txt").replaceWithText(clipPlay?"PASS editor Play/Stop clip button uses isolated engine loop, leaves project and Undo unchanged":"FAIL piano clip playback");}editingReport+=juce::String(track)+": "+(edits?"PASS add, move, velocity, resize pitched and drum notes, delete, precise ruler seek":"FAIL editing gestures")+"\n";}
+    for(int track:{4,16,1,0,2,3,leadTrack}){select(track,1);const auto mainPage=page;showInstrument();auto problems=instrumentPanel.layoutProblems();layoutReport+=juce::String(track)+": "+(problems.isEmpty()?"PASS":problems)+"\n";ok=mark("panel",problems.isEmpty())&&ok;ok=mark("instrument-page",instrumentIsOpen()&&instrumentPort.getTopLevelComponent()!=getTopLevelComponent()&&page==mainPage&&sectionSelector.getSelectedId()==selectedSection+1)&&ok;capture("instrument-"+juce::String(track));if(track==3){instrumentPort.setViewPosition(0,instrumentPanel.getHeight());capture("guitar-mixer");instrumentPort.setViewPosition(0,0);}showEditor();ok=mark("editor-page",pianoPort.getHeight()>400&&!arrangementPort.isVisible())&&ok;if(isDrumTrack(track))ok=mark("drum-lanes",piano.laneView())&&ok;if(track==1||track==2||track==leadTrack)ok=mark("pitched-lanes",!piano.laneView())&&ok;capture("editor-"+juce::String(track));ok=mark("scale-guide-visibility",scaleGuideButton.isVisible()==piano.scaleGuideAvailable())&&ok;if(track==0){const bool guide=piano.showScaleGuide;piano.showScaleGuide=true;scaleGuideButton.setToggleState(true,juce::dontSendNotification);capture("piano-scale-guide");piano.showScaleGuide=guide;scaleGuideButton.setToggleState(guide,juce::dontSendNotification);}const bool edits=piano.verifyEditing();ok=mark("editing",edits)&&ok;if(track==0){const auto json=juce::JSON::toString(projectJson(project),false,17);const auto undos=undoStack.size();pianoPlayButton.onClick();bool clipPlay=audio.isClipPlaying();juce::AudioBuffer<float> sound(2,512);juce::AudioIODeviceCallbackContext context;audio.audioDeviceIOCallbackWithContext(nullptr,0,sound.getArrayOfWritePointers(),2,512,context);clipPlay=clipPlay&&audio.position()>=clipStart()&&audio.position()<clipStart()+clipLength();pianoPlayButton.onClick();clipPlay=clipPlay&&!audio.isPlaying()&&json==juce::JSON::toString(projectJson(project),false,17)&&undos==undoStack.size();ok=mark("piano-clip-play",clipPlay)&&ok;folder.getChildFile("piano-clip-play.txt").replaceWithText(clipPlay?"PASS editor Play/Stop clip button uses isolated engine loop, leaves project and Undo unchanged":"FAIL piano clip playback");}editingReport+=juce::String(track)+": "+(edits?"PASS add, move with per-pitch audition, velocity, resize, delete, precise ruler seek and scale guide":"FAIL editing gestures")+"\n";}
+    select(3,1);piano.guitarNotes=true;showEditor();const bool guitarEdits=piano.verifyEditing();ok=mark("guitar-note-editing",guitarEdits&&scaleGuideButton.isVisible())&&ok;editingReport+="guitar notes: "+juce::String(guitarEdits?"PASS drag audition and scale guide":"FAIL editing gestures")+"\n";piano.guitarNotes=false;
     select(leadTrack,1);showArrangement();
     if(auto output=folder.getChildFile("inspector.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(trackInspector.createComponentSnapshot(trackInspector.getLocalBounds()),*output);}
     capture("arrangement-lead");
