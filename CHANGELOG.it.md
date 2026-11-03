@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.17
+
+- Il cambio di tonalità nella barra superiore rigenera subito le tracce armoniche con gli accordi aggiornati e un solo Annulla.
+- Il ripristino dei plugin avviene in sequenza e mostra un avanzamento corretto durante il caricamento.
+
 ## 0.31.16
 
 - Il piano roll suona ogni nuova altezza durante il trascinamento delle note.

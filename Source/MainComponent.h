@@ -434,7 +434,8 @@ private:
     juce::ComboBox timelineGrid;
     juce::File projectFile;
     bool dirty=false,refreshing=false;
-    LoadingView loadingView;bool restoringProject=false;int restorePluginTotal=0;
+    LoadingView loadingView;bool restoringProject=false,restoreTaskScheduled=false;int restorePluginTotal=0;
+    std::deque<std::function<void()>> restorePluginTasks;
     void updateLoadingProgress();
     int loadingPlugin=0;
     int ticks=0;

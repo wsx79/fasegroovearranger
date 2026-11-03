@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.17
+
+- Header key changes immediately regenerate harmonic tracks with the updated chords and one-step Undo.
+- Project plugin restoration now loads sequentially and displays accurate progress between plugins.
+
 ## 0.31.16
 
 - Piano roll auditions each pitch crossed while dragging notes.
