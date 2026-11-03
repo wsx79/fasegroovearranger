@@ -40,6 +40,7 @@ bool MainComponent::openFromCommandLine(const juce::String& commandLine){
 }
 void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("Progression: one chord per bar"));
+    menu.addItem(4000,tr("Circle of Fifths interactive editor..."));menu.addSeparator();
     auto names=chordNames(project.settings);
     for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
         for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree")+" "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
@@ -50,7 +51,7 @@ void MainComponent::showChordMenu(){
     juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" "+tr("chords"),true,n==project.settings.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
     juce::PopupMenu durations;const int steps[]{8,16,32,64};for(int i=0;i<4;++i)durations.addItem(2100+steps[i],tr(i==0?"1/2 bar":i==1?"1 bar":i==2?"2 bars":"4 bars"),true,project.settings.chordSteps==steps[i]);menu.addSubMenu(tr("Each chord"),durations);
     menu.addItem(3000,tr("Nuova progressione casuale"));
-    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;safe->checkpoint();auto& s=safe->project.settings;
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;if(id==4000){safe->showChordCirclePopover(0);return;}safe->checkpoint();auto& s=safe->project.settings;
         if(id>=1000&&id<1800){int slot=(id-1000)/100,value=(id-1000)%100;if(value<7){s.degrees[(size_t)slot]=value;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else if(value>=10&&value<46){s.freeChords[(size_t)slot]=value-10;s.manualChords[(size_t)slot]=true;}}
         if(id>2000&&id<=2008)s.chordCount=id-2000;if(id>=2108&&id<=2164)s.chordSteps=id-2100;if(id==3000){randomiseHarmony(safe->project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(safe->project);}safe->changed();if(safe->page==Page::instrument)safe->showInstrument();safe->message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");
     });
@@ -87,7 +88,8 @@ void MainComponent::showClipMenu(int track,int index){
     const bool hasClip=index>=0&&index<(int)project.tracks[(size_t)track].clips.size();juce::PopupMenu menu;
     menu.addItem(11,tr("Cut clip"),hasClip);menu.addItem(12,tr("Copy clip"),hasClip);menu.addItem(13,tr("Paste clips at cursor"),!timelineClipboard.empty());menu.addItem(14,tr("Split at cursor"),hasClip);menu.addItem(15,tr("Duplicate clip"),hasClip);menu.addItem(16,tr("Delete clip"),hasClip);menu.addItem(18,tr("Create empty MIDI clip"));menu.addItem(4,tr("Humanize notes"),hasClip);menu.addSeparator();
     menu.addItem(1,tr("Rigenera solo questo clip"),hasClip);menu.addItem(2,tr("Blocca generazione"),hasClip,hasClip&&project.tracks[(size_t)track].clips[(size_t)index].locked);menu.addItem(6,tr("LOOP CLIP"),hasClip,hasClip&&project.loop&&project.loopMatches(project.clipStart(track,index),project.clipStart(track,index)+project.clipLength(track,index)));menu.addItem(7,tr("Clear loop"),project.loop||project.hasLoopRegion());
-    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,track,index](int id){if(!safe||!id)return;safe->selectClip(track,index,true);if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id>=11){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
+    menu.addSeparator();menu.addItem(21,tr("Drag / Export clip MIDI (.mid)"),hasClip);menu.addItem(22,tr("Drag / Export clip WAV (.wav)"),hasClip);
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,track,index](int id){if(!safe||!id)return;safe->selectClip(track,index,true);if(id==21||id==22){safe->performExternalClipDrag(id==22);return;}if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id>=11){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
 }
 void MainComponent::showGuide(bool english){juce::DialogWindow::LaunchOptions o;o.dialogTitle=english?"Fase Groove Arranger / User guide":"Fase Groove Arranger / Guida";o.dialogBackgroundColour=Palette::background;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createGuidePage(english).release());if(auto* window=o.launchAsync())window->setAlwaysOnTop(true);}
 bool MainComponent::writeHelpEvidence(const juce::File& folder){

@@ -199,6 +199,7 @@ public:
     static juce::File projectInCommandLine(const juce::String& commandLine);
     void paint(juce::Graphics&) override;
     void resized() override;
+    void mouseDown(const juce::MouseEvent&) override;
     bool keyPressed(const juce::KeyPress&) override;
     bool isInterestedInFileDrag(const juce::StringArray&) override;
     void filesDropped(const juce::StringArray&,int,int) override;
@@ -400,7 +401,9 @@ private:
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
     IconButton loopButton{IconButton::Icon::loop},metronomeButton{IconButton::Icon::metronome};
-    ActionButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"};
+    ActionButton songButton{"GENERATE SONG"},trackButton{"NEW TRACK"},sectionButton{"NEW SECTION"},clipButton{"NEW CLIP"},harmonyButton{"NEW CHORDS"},addSectionButton{"+ SECTION"},snapshotAButton{"A"},snapshotBButton{"B"},dragMidiToolbarButton{"DRAG MIDI"},dragWavToolbarButton{"DRAG WAV"},spotlightButton{"SEARCH"};
+    std::array<std::optional<Project>,2> arrangementSnapshots;
+    int activeSnapshot=0;
     GenerateMenuButton generateMenuButton;
     ActionButton addTrackButton { "+ MIDI" };
     juce::ComboBox genreBox,keyBox,scaleBox,extensionBox,voicingBox,progressionBox,bassBox,stringsBox;
@@ -488,6 +491,10 @@ private:
     void showAudioSettings();
     void closePluginEditor(int track=-1,int slot=-1);
     void showChordMenu();
+    void showChordCirclePopover(int slot=-1);
+    void showSpotlightSearch();
+    void performExternalClipDrag(bool asAudio=false);
+    void switchSnapshot(int slot,bool copyCurrent=false);
     void message(const juce::String&,bool error=false);
     void showPosition(double beat);
     void timerCallback() override;
@@ -506,4 +513,6 @@ private:
     friend class MixerStrip;
     friend class DawMixer;
 };
+juce::Result exportClipMidiFile(const Project&,int track,int clipIndex,const juce::File&);
+juce::Result exportClipWaveFile(AudioEngine&,const Project&,int track,int clipIndex,const juce::File&);
 }

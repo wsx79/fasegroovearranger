@@ -48,6 +48,8 @@ constexpr float radius=3.f,panelRadius=5.f;
 constexpr int unit=4,controlHeight=24,toolbarHeight=28;
 
 inline juce::Font font(float size=body,bool bold=false){return FamilyTheme::font(size,bold);}
+inline juce::Font smallFont(float size=10.f){return FamilyTheme::font(size,true);}
+inline juce::Colour bgPanel(){return surface;}
 // One physical pixel, so a 1 px rule stays crisp when the desktop scale is not 1.
 inline float hairline(){const float s=juce::Desktop::getInstance().getGlobalScaleFactor();return s>0.f?1.f/s:1.f;}
 // Small caps captions: section titles, field labels, LCD legends.
@@ -75,6 +77,15 @@ inline juce::Colour clipBody(juce::Colour c,bool selected){return well.interpola
 inline juce::Colour meterColour(float peak){return peak>=1.f?meterHigh:peak>.5f?meterMid:meterLow;}
 // Meter position for a linear peak: 0 at -60 dB, 1 at +6 dB, as the faders.
 inline float meterPosition(float peak){return peak<=.001f?0.f:std::clamp((20.f*std::log10(peak)+60.f)/66.f,0.f,1.f);}
+// Subtle vertical micro-gradient + 1px 8% top highlight for modern studio hardware depth.
+inline void fillElevatedSurface(juce::Graphics& g,juce::Rectangle<float> r,juce::Colour baseCol,float cornerRadius=0.f){
+    g.setGradientFill(juce::ColourGradient(baseCol.brighter(.11f),r.getX(),r.getY(),baseCol.darker(.09f),r.getX(),r.getBottom(),false));
+    if(cornerRadius>0.f)g.fillRoundedRectangle(r,cornerRadius);else g.fillRect(r);
+    g.setColour(juce::Colours::white.withAlpha(.11f));
+    g.fillRect(r.getX()+cornerRadius,r.getY(),std::max(0.f,r.getWidth()-2.f*cornerRadius),1.f);
+    g.setColour(juce::Colours::black.withAlpha(.35f));
+    g.fillRect(r.getX()+cornerRadius,r.getBottom()-1.f,std::max(0.f,r.getWidth()-2.f*cornerRadius),1.f);
+}
 }
 
 class DawLookAndFeel : public FamilyLookAndFeel {
@@ -123,8 +134,9 @@ public:
         if(fill==Palette::control||fill==Palette::background)fill=Daw::control;
         if(!b.isEnabled())fill=fill.withMultipliedAlpha(.45f);else if(down)fill=fill.darker(.18f);else if(highlighted)fill=fill==Daw::control?Daw::controlHi:fill.brighter(.08f);
         juce::Path shape;shape.addRoundedRectangle(r.getX(),r.getY(),r.getWidth(),r.getHeight(),Daw::radius,Daw::radius,!b.isConnectedOnLeft(),!b.isConnectedOnRight(),!b.isConnectedOnLeft(),!b.isConnectedOnRight());
-        g.setColour(fill);g.fillPath(shape);
-        if(!down&&b.isEnabled()){g.setColour(juce::Colours::white.withAlpha(fill.getPerceivedBrightness()>.4f?.18f:.045f));g.fillRect(r.getX()+Daw::radius,r.getY()+.5f,r.getWidth()-2*Daw::radius,1.f);}
+        if(on&&b.isEnabled()){g.setGradientFill(juce::ColourGradient(fill.withAlpha(.28f),r.getCentreX(),r.getCentreY(),fill.withAlpha(0.f),r.getX()-4.f,r.getY()-4.f,true));g.fillRoundedRectangle(r.expanded(2.5f),Daw::radius+2.f);}
+        g.setGradientFill(juce::ColourGradient(fill.brighter(.09f),r.getX(),r.getY(),fill.darker(.08f),r.getX(),r.getBottom(),false));g.fillPath(shape);
+        if(!down&&b.isEnabled()){g.setColour(juce::Colours::white.withAlpha(fill.getPerceivedBrightness()>.4f?.18f:.08f));g.fillRect(r.getX()+Daw::radius,r.getY()+.5f,r.getWidth()-2*Daw::radius,1.f);}
         g.setColour(b.hasKeyboardFocus(true)?Daw::accent.withAlpha(.8f):fill.getPerceivedBrightness()>.4f?fill.darker(.3f):juce::Colours::black.withAlpha(.45f));
         g.strokePath(shape,juce::PathStrokeType(Daw::hairline()));
     }
@@ -139,7 +151,7 @@ public:
     void drawComboBox(juce::Graphics& g,int width,int height,bool,int,int,int,int,juce::ComboBox& box) override{
         const auto r=juce::Rectangle<float>(0,0,(float)width,(float)height).reduced(.5f);
         const auto fill=box.findColour(juce::ComboBox::backgroundColourId);const bool flat=fill.isTransparent();
-        if(!flat){g.setColour(box.isMouseOver(true)&&box.isEnabled()&&fill==Daw::control?Daw::controlHi:fill);g.fillRoundedRectangle(r,Daw::radius);
+        if(!flat){Daw::fillElevatedSurface(g,r,box.isMouseOver(true)&&box.isEnabled()&&fill==Daw::control?Daw::controlHi:fill,Daw::radius);
             g.setColour(box.hasKeyboardFocus(true)?Daw::accent.withAlpha(.8f):juce::Colours::black.withAlpha(.45f));g.drawRoundedRectangle(r,Daw::radius,1.f);}
         const float cx=(float)width-10.f,cy=height*.5f;juce::Path chevron;chevron.startNewSubPath(cx-3.f,cy-1.5f);chevron.lineTo(cx,cy+1.5f);chevron.lineTo(cx+3.f,cy-1.5f);
         g.setColour(box.isEnabled()?Daw::textDim:Daw::textFaint.withAlpha(.5f));g.strokePath(chevron,juce::PathStrokeType(1.3f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
@@ -163,7 +175,7 @@ public:
             g.setColour(juce::Colours::black.withAlpha(.4f));g.fillRoundedRectangle(cap.translated(0,1.5f),2.f);
             g.setGradientFill(juce::ColourGradient(juce::Colour(0xff50565f).withMultipliedAlpha(alpha),cx,cap.getY(),juce::Colour(0xff30343b).withMultipliedAlpha(alpha),cx,cap.getBottom(),false));g.fillRoundedRectangle(cap,2.f);
             g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(cap.reduced(.5f),2.f,1.f);
-            g.setColour(value==Daw::accent?Daw::text.withAlpha(.9f*alpha):value.withMultipliedAlpha(alpha));g.fillRect(cap.getX()+4.f,pos-.75f,cap.getWidth()-8.f,1.5f);
+            g.setColour(juce::Colours::white.withAlpha(.15f*alpha));g.fillRect(cap.getX()+2.f,cap.getY()+1.f,cap.getWidth()-4.f,1.f);g.setColour(value==Daw::accent?Daw::accent.withAlpha(.95f*alpha):value.withMultipliedAlpha(alpha));g.fillRect(cap.getX()+3.f,pos-1.f,cap.getWidth()-6.f,2.f);
             return;
         }
         const bool horizontal=style!=juce::Slider::LinearVertical;
@@ -199,6 +211,7 @@ public:
         juce::Path track;track.addCentredArc(centre.x,centre.y,arcR,arcR,0,startAngle,endAngle,true);
         g.setColour(juce::Colours::black.withAlpha(.55f));g.strokePath(track,juce::PathStrokeType(lineW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
         juce::Path value;value.addCentredArc(centre.x,centre.y,arcR,arcR,0,std::min(from,angle),std::max(from,angle),true);
+        if(s.isEnabled()&&(s.isMouseOverOrDragging()||std::abs(angle-from)>.05f)){g.setGradientFill(juce::ColourGradient(ink.withAlpha(s.isMouseOverOrDragging()?.22f:.11f),centre.x,centre.y,ink.withAlpha(0.f),centre.x-radius,centre.y-radius,true));g.fillEllipse(bounds.expanded(2.f));}
         g.setColour(ink.withMultipliedAlpha(s.isEnabled()?1.f:.4f));g.strokePath(value,juce::PathStrokeType(lineW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
         const float capR=arcR-lineW-2.f;const auto cap=juce::Rectangle<float>(capR*2,capR*2).withCentre(centre);
         g.setColour(juce::Colours::black.withAlpha(.35f));g.fillEllipse(cap.translated(0,1.f));

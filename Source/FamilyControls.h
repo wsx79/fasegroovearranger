@@ -32,6 +32,7 @@ class ActionButton : public juce::TextButton {
 public:
     using juce::TextButton::TextButton;
     void setIcon(IconButton::Icon next){glyph=next;repaint();}
+    void setPrimary(bool p){getProperties().set("dawFeatured",p);repaint();}
     void paintButton(juce::Graphics&,bool,bool) override;
 private:
     IconButton::Icon glyph=IconButton::Icon::none;
