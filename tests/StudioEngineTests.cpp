@@ -66,7 +66,38 @@ static void testSampleAudition(){
     t.sampler.mode=2;t.sampler.sliceCount=2;t.sampler.sliceBase=36;t.sampler.start=0;t.sampler.end=1;t.sampler.slices[0]=0;t.sampler.slices[1]=.5;engine.updateMix(p);engine.startSampleAudition(0,true);require(tick()>.01f&&engine.sampleAuditionNote(0)==36,"sliced audition uses the first mapped slice");
     engine.useInternal(0);tick();require(!engine.isSampleAuditioning(),"instrument replacement stops audition");
 }
+static void testMuteAndLaneReleases(){
+    using namespace fga;
+    AudioEngine engine(AudioEngine::Offline{});
+    auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-mute-regression","",false);folder.createDirectory();
+    struct Cleanup{juce::File folder;~Cleanup(){folder.deleteRecursively();}}cleanup{folder};
+    const auto sample=folder.getChildFile("sustain.wav");juce::WavAudioFormat wav;
+    {std::unique_ptr<juce::AudioFormatWriter> writer(wav.createWriterFor(sample.createOutputStream().release(),44100,1,16,{},0));require(writer!=nullptr,"create sustained mute fixture");juce::AudioBuffer<float> source(1,44100);for(int n=0;n<44100;++n)source.setSample(0,n,.4f*std::sin(n*.0627f));writer->writeFromAudioSampleBuffer(source,0,44100);}
+    auto project=newProject(821);project.sections={{Section::main,2,"Mute"}};project.normalise();project.masterAutomation.enabled=false;
+    for(auto& track:project.tracks){track.volume.enabled=false;track.engine.reverb=track.engine.chorus=0;for(auto& clip:track.clips)clip.notes.clear();}
+    auto& track=project.tracks[0];track.instrument="sample";track.instrumentPath=sample.getFullPathName().toStdString();track.sampler.mode=0;track.sampler.loop=true;track.sampler.attack=track.sampler.fadeIn=track.sampler.fadeOut=0;track.sampler.release=.01;
+    require(engine.loadSample(0,sample,60,track.sampler).wasOk(),"load sustained mute fixture");engine.publish(project);
+    juce::AudioBuffer<float> sound(2,512);juce::AudioIODeviceCallbackContext context;
+    auto tick=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,sound.getArrayOfWritePointers(),2,512,context);};
+    // Include a non-default MIDI channel: releasing only channel 1 leaves voices held.
+    engine.liveMidi(0,juce::MidiMessage::controllerEvent(3,64,127));engine.liveMidi(0,juce::MidiMessage::noteOn(3,60,(juce::uint8)110));tick();
+    engine.liveMidi(0,juce::MidiMessage::noteOff(3,60));tick();require(engine.activeNotes(0)[60],"pedal holds the released sampler note before mute");
+    track.mute=true;engine.updateMix(project);for(int n=0;n<64;++n)tick();
+    require(!engine.activeNotes(0)[60],"mute releases the real sampler voice including sustain pedal");
+    track.mute=false;engine.updateMix(project);tick();require(!engine.activeNotes(0)[60]&&sound.getMagnitude(0,512)<1.e-6f,"unmute does not revive the sustained live note");
+    engine.useInternal(0);track.instrument="internal";
+    for(int ti:{3,leadTrack}){
+        engine.stop();tick();for(auto& t:project.tracks)for(auto& clip:t.clips)clip.notes.clear();
+        auto& part=project.tracks[(size_t)ti];part.engine.laneMute.fill(false);part.clips[0].notes={{0,.5,60,100,1},{1,.5,64,100,0}};
+        engine.publish(project);engine.play(true);tick();require(engine.activeNotes(ti)[60],"guitar/lead note starts before lane mute");
+        part.engine.laneMute[1]=true;engine.updateMix(project);tick();require(!engine.activeNotes(ti)[60],"muting guitar/lead lane releases its active note");
+        while(engine.position()<1.1)tick();require(engine.activeNotes(ti)[64],"an unmuted guitar/lead lane still plays");
+        while(engine.position()<1.8)tick();require(!engine.activeNotes(ti)[60]&&!engine.activeNotes(ti)[64],"muted and unmuted lane note-offs leave no stuck notes");
+    }
+    engine.stop();tick();
+}
 void runStudioEngineTests(){
+    testMuteAndLaneReleases();
     {
         auto asset=std::make_shared<fga::SampleAsset>();asset->audio.setSize(1,256);asset->audio.clear();asset->frames=256;fga::SamplerSettings initial;initial.mode=1;
         fga::SampleSynth synth(asset,initial,60,false);

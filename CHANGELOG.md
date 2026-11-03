@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.18
+
+- Refreshed arrangement clips, mixer and Studio with consistent controls and surfaces. Removed the extra transport meter, arrangement A/B snapshots and clip MIDI/WAV drag actions from the experimental UI.
+- Quick Search (Ctrl/Cmd+K) includes a close button; interactive chord editing is available from EDIT CHORDS.
+- Track Lock uses an outlined selected state and amber hover. Action buttons no longer retain an amber focus border after clicking.
+- Changing the scale immediately regenerates harmonic MIDI, with track/clip locks and Undo/Redo preserved. Major, minor and Dorian transitions are covered by native UI tests.
+- Swing and Feel now update generated MIDI immediately, retaining locked parts and Undo.
+- Muting releases live notes and sustain on all affected MIDI channels; guitar/lead lane note-offs remain safe. Added audio regressions for mute, sustain and lane changes.
+
 ## 0.31.17
 
 - Header key changes immediately regenerate harmonic tracks with the updated chords and one-step Undo.

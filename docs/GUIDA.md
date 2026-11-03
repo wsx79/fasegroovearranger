@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.17**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.18**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -92,12 +92,12 @@ Le nuove rigenerazioni del piano confrontano gli attacchi della figura precedent
 
 ### Interfaccia attuale
 
-Tutti i pulsanti dell’interfaccia sono disegnati allo stesso modo: **acceso (pieno) = attivo**,
-attenuato = spento. L’**ambra** indica le azioni principali, l’**azzurro** il trasporto e
-l’automazione. I colori di piano, basso, archi, chitarra e batteria restano quelli della famiglia.
+I controlli attivi sono evidenziati; le sorgenti sonore e **BLOCCA TRACCIA** usano un bordo quando selezionati. Le azioni mostrano il feedback durante la pressione senza lasciare un bordo giallo dopo il clic. L’**ambra** indica le azioni principali; piano, basso, archi, chitarra e batteria mantengono i colori della famiglia.
 Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio accanto a Solo apre i controlli dello strumento. Doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
+
+Cambiare **tonalità o scala** nel display superiore aggiorna subito gli accordi e rigenera le parti armoniche sbloccate. Anche **Swing** e **Feel** aggiornano il MIDI generato; **Annulla** ripristina le note precedenti. **SEARCH** o **Ctrl/Cmd+K** apre la ricerca rapida: la **X** chiude la finestra. **MODIFICA ACCORDI** apre il circolo delle quinte interattivo; **Maiusc+clic** apre il menu accordi.
 
 | Dove | Cosa trovi |
 |---|---|

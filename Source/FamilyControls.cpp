@@ -343,7 +343,7 @@ const char* IconButton::iconTitle (Icon i)
 void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
     auto r = getLocalBounds().toFloat().reduced (0.5f);
-    if (hasKeyboardFocus (true)) { g.setColour (Daw::accent); g.drawRoundedRectangle (r.reduced (1.f), Daw::radius, 1.5f); }
+    if (down) { g.setColour (Daw::accent); g.drawRoundedRectangle (r.reduced (1.f), Daw::radius, 1.5f); }
     const bool on = getToggleState();
     const bool filled = (on && ! quiet) || primary;
     const bool flatLeft = isConnectedOnLeft(), flatRight = isConnectedOnRight();
@@ -371,7 +371,7 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
             g.setColour (juce::Colours::white.withAlpha (filled ? 0.18f : 0.045f));
             g.fillRect (r.getX() + Daw::radius, r.getY() + 0.5f, r.getWidth() - 2.0f * Daw::radius, 1.0f);
         }
-        g.setColour (hasKeyboardFocus (true) ? Daw::accent.withAlpha (0.8f) : filled ? fillColour.darker (0.3f) : juce::Colours::black.withAlpha (0.45f));
+        g.setColour (down ? Daw::accent.withAlpha (0.8f) : filled ? fillColour.darker (0.3f) : juce::Colours::black.withAlpha (0.45f));
         g.strokePath (shape, juce::PathStrokeType (1.0f));
     }
 
@@ -415,7 +415,7 @@ void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
     if(over&&isEnabled())fill=outline?Daw::accent:fill.brighter(.07f);if(down)fill=fill.darker(.14f);
     auto r=getLocalBounds().toFloat().reduced(.5f);
     g.beginTransparencyLayer(isEnabled()?1.f:.42f);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
-    g.setColour(hasKeyboardFocus(true)||(outline&&on)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
+    g.setColour(down||(outline&&on)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
     if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
     g.endTransparencyLayer();
     auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=(bright?Daw::onAccent:Daw::text).withMultipliedAlpha(isEnabled()?1.f:.78f);

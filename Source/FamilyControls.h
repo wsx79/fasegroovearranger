@@ -32,6 +32,7 @@ class ActionButton : public juce::TextButton {
 public:
     using juce::TextButton::TextButton;
     void setIcon(IconButton::Icon next){glyph=next;repaint();}
+    void setPrimary(bool p){getProperties().set("dawFeatured",p);repaint();}
     void paintButton(juce::Graphics&,bool,bool) override;
 private:
     IconButton::Icon glyph=IconButton::Icon::none;
@@ -41,7 +42,7 @@ class DisplayButton : public juce::Button {
 public:
     DisplayButton():juce::Button("position-format"){setWantsKeyboardFocus(false);setMouseCursor(juce::MouseCursor::PointingHandCursor);}
     void paintButton(juce::Graphics& g,bool over,bool down)override{
-        if(over||down||hasKeyboardFocus(true)){g.setColour(Daw::accent.withAlpha(down?.6f:.3f));g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.5f),4.f,1.f);}
+        if(over||down){g.setColour(Daw::accent.withAlpha(down?.6f:.3f));g.drawRoundedRectangle(getLocalBounds().toFloat().reduced(1.5f),4.f,1.f);}
     }
 };
 }

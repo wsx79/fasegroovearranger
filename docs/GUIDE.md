@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.17**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.18**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
@@ -92,11 +92,11 @@ New piano regenerations compare the previous rhythmic attacks against draws from
 
 ### Current interface
 
-Every button of the interface is drawn the same way: **lit (filled) = on**, dimmed = off.
-**Amber** marks the main actions, **cyan** transport and automation. Piano, bass, strings, guitar
-and drums keep their family colours. Every button has its tooltip. Click a track name to select it in the inspector, its gear to open the instrument panel, and double-click a clip to edit its notes.
+Active controls are highlighted; sound sources and **LOCK TRACK** use an outline when selected. Actions show feedback while pressed without leaving an amber border after clicking. **Amber** marks the main actions; piano, bass, strings, guitar and drums keep their family colours. Every button has its tooltip. Click a track name to select it in the inspector, its gear to open the instrument panel, and double-click a clip to edit its notes.
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
+
+Changing **key or scale** in the top display immediately updates the chords and regenerates unlocked harmonic parts. **Swing** and **Feel** also update generated MIDI; **Undo** restores the previous notes. **SEARCH** or **Ctrl/Cmd+K** opens Quick Search; use its **X** to close it. **EDIT CHORDS** opens the interactive circle of fifths; **Shift-click** opens the chord menu.
 
 | Where | What you find |
 |---|---|

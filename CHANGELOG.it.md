@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.18
+
+- Rinnovati clip, mixer e Studio con controlli e superfici coerenti. Rimossi dalla UI sperimentale il meter aggiuntivo nel trasporto, gli snapshot A/B e il drag MIDI/WAV dei clip.
+- Ricerca rapida (Ctrl/Cmd+K) con pulsante di chiusura; modifica interattiva degli accordi da MODIFICA ACCORDI.
+- Blocco traccia contornato se selezionato e giallo al passaggio del mouse. I pulsanti non mantengono più il bordo giallo dopo il clic.
+- Il cambio scala rigenera subito il MIDI armonico, rispettando blocchi e Annulla/Ripristina. Test UI nativi su maggiore, minore e dorica.
+- Swing e Feel aggiornano subito il MIDI generato, mantenendo parti bloccate e Annulla.
+- Il mute rilascia note live e sustain su tutti i canali interessati; verificati i note-off delle corsie chitarra/lead. Aggiunti test audio su mute, sustain e cambi corsia.
+
 ## 0.31.17
 
 - Il cambio di tonalità nella barra superiore rigenera subito le tracce armoniche con gli accordi aggiornati e un solo Annulla.

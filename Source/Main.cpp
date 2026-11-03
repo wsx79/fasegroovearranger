@@ -299,7 +299,12 @@ public:
     }
     // Single instance: a double-clicked .fga arrives here (and as a macOS open-document event).
     void anotherInstanceStarted(const juce::String& commandLine)override{if(window){window->toFront(true);window->content->main.openFromCommandLine(commandLine);}else pendingStartupCommand=commandLine;}
-    void shutdown()override{stopping=true;splash.reset();splashView.reset();window.reset();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
+    static void clearWindowsClipboardForShutdown(){
+       #if JUCE_WINDOWS
+        if(HWND owner=::GetClipboardOwner()){DWORD ownerPid=0;::GetWindowThreadProcessId(owner,&ownerPid);if(ownerPid==::GetCurrentProcessId()&&::OpenClipboard(nullptr)){::EmptyClipboard();::CloseClipboard();}}
+       #endif
+    }
+    void shutdown()override{stopping=true;splash.reset();splashView.reset();window.reset();clearWindowsClipboardForShutdown();juce::LookAndFeel::setDefaultLookAndFeel(nullptr);}
     void systemRequestedQuit()override{if(window)window->closeButtonPressed();}
 private:juce::String pendingStartupCommand;bool stopping=false;DawLookAndFeel theme;std::unique_ptr<Window> window;std::unique_ptr<fga::LoadingView> splashView;std::unique_ptr<juce::SplashScreen> splash;
 };

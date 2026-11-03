@@ -40,6 +40,7 @@ bool MainComponent::openFromCommandLine(const juce::String& commandLine){
 }
 void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("Progression: one chord per bar"));
+    menu.addItem(4000,tr("Circle of Fifths interactive editor..."));menu.addSeparator();
     auto names=chordNames(project.settings);
     for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
         for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree")+" "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
@@ -50,7 +51,7 @@ void MainComponent::showChordMenu(){
     juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" "+tr("chords"),true,n==project.settings.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
     juce::PopupMenu durations;const int steps[]{8,16,32,64};for(int i=0;i<4;++i)durations.addItem(2100+steps[i],tr(i==0?"1/2 bar":i==1?"1 bar":i==2?"2 bars":"4 bars"),true,project.settings.chordSteps==steps[i]);menu.addSubMenu(tr("Each chord"),durations);
     menu.addItem(3000,tr("Nuova progressione casuale"));
-    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;safe->checkpoint();auto& s=safe->project.settings;
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe==nullptr||id==0)return;if(id==4000){safe->showChordCirclePopover(0);return;}safe->checkpoint();auto& s=safe->project.settings;
         if(id>=1000&&id<1800){int slot=(id-1000)/100,value=(id-1000)%100;if(value<7){s.degrees[(size_t)slot]=value;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else if(value>=10&&value<46){s.freeChords[(size_t)slot]=value-10;s.manualChords[(size_t)slot]=true;}}
         if(id>2000&&id<=2008)s.chordCount=id-2000;if(id>=2108&&id<=2164)s.chordSteps=id-2100;if(id==3000){randomiseHarmony(safe->project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(safe->project);}safe->changed();if(safe->page==Page::instrument)safe->showInstrument();safe->message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");
     });

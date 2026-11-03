@@ -93,7 +93,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     regenerate.onClick=[this]{owner.regenerate(Scope::clip);};loop.onClick=[this]{owner.toggleClipLoop();};
     tip(gain,"Track volume in dB. This changes audio, not MIDI velocities. Double-click for 0 dB.");tip(pan,"Stereo pan. Double-click to centre.");tip(mute,"Mute this track.");tip(solo,"Listen to soloed tracks.");tip(editor,"Open the selected clip in the full MIDI editor. Shortcut: E.");tip(instrument,"Open the original Fase Groove instrument controls.");
     tip(sample,"Open the integrated sample browser for this track: double-click a sample or drag it onto the track.");tip(loop,"Loop the selected clip; click again to remove the loop.");
-    for(auto* b:{&internal,&sample,&plugin})b->getProperties().set("fgaOutlineSelected",true);
+    for(auto* b:{&internal,&sample,&plugin,&lockTrack})b->getProperties().set("fgaOutlineSelected",true);
     internal.setButtonText(tr("Built-in"));sample.setButtonText(tr("Sample"));plugin.setButtonText("VST / AU");
     editor.setButtonText(tr("EDIT MIDI"));regenerate.setButtonText(tr("REGENERATE"));loop.setButtonText(tr("LOOP"));pluginEditor.setButtonText(tr("OPEN VST"));
     for(auto* b:{&editor,&regenerate,&loop,&pluginEditor,&instrument}){b->getProperties().set("fgaIconOnly",true);b->setTitle(b->getButtonText());}
@@ -128,7 +128,7 @@ void TrackInspector::refresh(){
 void TrackInspector::paint(juce::Graphics& g){
     g.fillAll(Daw::base);if(getWidth()<=40)return;
     for(const auto& bounds:cards){
-        g.setColour(Daw::surface);g.fillRoundedRectangle(bounds.toFloat(),Daw::panelRadius);
+        Daw::fillElevatedSurface(g,bounds.toFloat(),Daw::surface,Daw::panelRadius);
         g.setColour(Daw::line);g.drawRoundedRectangle(bounds.toFloat().reduced(.5f),Daw::panelRadius,1.f);
     }
     if(validTrack()&&!cards.empty()){
@@ -225,12 +225,13 @@ float MixerStrip::faderY(double db)const{return (float)gain.getY()+(float)gain.g
 juce::Rectangle<int> MixerStrip::meterBounds()const{const bool master=track<0;const int width=master?14:9;const int top=(int)std::floor(faderY(6)),bottom=(int)std::ceil(faderY(-60));return {getWidth()-width-8,top,width,std::max(4,bottom-top)};}
 void MixerStrip::paint(juce::Graphics& g){
     const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth(),h=getHeight();
-    const auto body=getLocalBounds().toFloat().reduced(.5f);g.setColour(master||current?Daw::surfaceHi:Daw::surface);g.fillRoundedRectangle(body,Daw::radius);
-    g.setColour(colour.withAlpha(master?.0f:.9f));g.fillRect(2.f,1.f,(float)w-4.f,4.f);
+    const auto body=getLocalBounds().toFloat().reduced(.5f);Daw::fillElevatedSurface(g,body,master||current?Daw::surfaceHi:Daw::surface,Daw::radius);
+    g.setColour(colour.withAlpha(master?.85f:.95f));g.fillRoundedRectangle(2.f,1.f,(float)w-4.f,5.f,2.f);g.setColour(juce::Colours::white.withAlpha(.22f));g.fillRect(4.f,1.f,(float)w-8.f,1.f);
     // dB scale beside the fader, meters on the right (two sides with peak hold).
     if(gain.isVisible()&&gain.getHeight()>40){
         const int left=gain.getX()+gain.getWidth()/2-14;g.setFont(Daw::font(Daw::small));
-        for(double db:{6.,0.,-6.,-12.,-24.,-48.}){const float y=faderY(db);g.setColour(db==0?Daw::textDim:Daw::textFaint);g.fillRect((float)left+11.f,y,4.f,1.f);
+        g.setColour(Daw::accent.withAlpha(.35f));g.fillRect((float)gain.getX()+2.f,faderY(0),(float)gain.getWidth()-4.f,1.f);
+        for(double db:{6.,0.,-6.,-12.,-18.,-24.,-36.,-48.}){const float y=faderY(db);g.setColour(db==0?Daw::accent:Daw::textFaint);g.fillRect((float)left+10.f,y,db==0?6.f:4.f,1.f);
             // A 4 px gap keeps the tick from reading as a minus sign after the number.
             if(gain.getHeight()>90||db==0||db==-24)g.drawText(juce::String(db>0?"+":"")+juce::String((int)db),juce::Rectangle<float>((float)left-19.f,y-6.f,24.f,12.f),juce::Justification::centredRight);}
         const auto meter=meterBounds().toFloat();g.setColour(juce::Colours::black.withAlpha(.6f));g.fillRoundedRectangle(meter.expanded(1.f),1.5f);
@@ -239,7 +240,7 @@ void MixerStrip::paint(juce::Graphics& g){
         auto levelY=[&](float linear){if(linear<=.001f)return bottom;return faderY(std::clamp((double)juce::Decibels::gainToDecibels(linear,-60.f),-60.,6.));};
         for(int side=0;side<2;++side){const float x=meter.getX()+side*(sideWidth+1.f);const float y=levelY(sides[(size_t)side]);
             if(y<bottom){g.setGradientFill(gradient);g.fillRect(juce::Rectangle<float>(x,y,sideWidth,bottom-y));}
-            const float hold=holds[(size_t)side];if(hold>.001f){g.setColour(Daw::meterColour(hold));g.fillRect(x,levelY(hold)-1.f,sideWidth,1.5f);}}
+            const float hold=holds[(size_t)side];if(hold>.001f){const float hy=levelY(hold);g.setColour(Daw::meterColour(hold).withAlpha(.28f));g.fillRect(x,hy-2.f,sideWidth,3.5f);g.setColour(Daw::meterColour(hold));g.fillRect(x,hy-1.f,sideWidth,1.5f);}}
         g.setColour(juce::Colours::black.withAlpha(.5f));g.fillRect(meter.getX(),faderY(0),meter.getWidth(),1.f);
         // The fader's value under it.
         const auto value=juce::Rectangle<float>(4.f,(float)gain.getBottom()+2.f,(float)w-8.f,15.f);g.setColour(Daw::well);g.fillRoundedRectangle(value,2.f);

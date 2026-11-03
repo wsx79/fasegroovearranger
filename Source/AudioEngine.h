@@ -194,6 +194,7 @@ public:
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
     float masterLevel() const {return masterMeter.load();}
+    float cpuLoad() const {return cpuLoadPct.load(std::memory_order_relaxed);}
     // Per side (0 left, 1 right) peaks of the last block, for the stereo meters.
     float level(int track,int side) const {return sideMeters[(size_t)track][(size_t)(side&1)].load();}
     float busLevel(int bus)const{return busGraph.level(bus);}
@@ -306,7 +307,7 @@ private:
     std::atomic<bool> playing{false},exporting{false},masterClip{false},metronome{false};
     std::array<std::atomic<bool>,engineTrackCount> trackClip{};
     int clickLeft=0,clickPos=0;double clickHz=1000;
-    std::atomic<float> masterMeter{0};
+    std::atomic<float> masterMeter{0},cpuLoadPct{0.f};
     std::array<std::array<std::atomic<float>,2>,engineTrackCount> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
     void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
