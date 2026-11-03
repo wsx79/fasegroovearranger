@@ -75,6 +75,20 @@ bool Project::duplicateSection(int index){
     Project edited=*this;const double start=edited.sectionStart(index),end=edited.sectionStart(index+1),duration=end-start;
     struct Held{int track;Clip clip;};std::vector<Held> copies;
     for(int ti=0;ti<(int)edited.tracks.size();++ti){auto& t=edited.tracks[(size_t)ti];if(!t.freeTimeline)continue;for(const auto& c:t.clips){const double from=std::max(c.position,start),to=std::min(c.position+c.span,end);if(to-from<tick)continue;copies.push_back({ti,slice(c,from-c.position,to-from,end+(from-start))});}}
+    // Split crossing clips before inserting time: shifting only their starts
+    // lets placeClip overwrite the original tail with the duplicated material.
+    for(auto& t:edited.tracks)if(t.freeTimeline){
+        std::vector<Clip> split;split.reserve(t.clips.size()+1);
+        for(const auto& c:t.clips){
+            const double tail=c.position+c.span;
+            if(c.position<end-tick&&tail>end+tick){
+                split.push_back(slice(c,0,end-c.position,c.position));
+                split.push_back(slice(c,end-c.position,tail-end,end));
+            }else split.push_back(c);
+        }
+        if(split.size()>4096)return false;
+        t.clips=std::move(split);
+    }
     edited.insertSection(index+1,copy,index);
     for(auto& t:edited.tracks)if(t.freeTimeline)for(auto& c:t.clips)if(c.position>=end-tick)c.position+=duration;
     for(auto& item:copies){const double at=item.clip.position;if(edited.placeClip(item.track,std::move(item.clip),at)<0)return false;}

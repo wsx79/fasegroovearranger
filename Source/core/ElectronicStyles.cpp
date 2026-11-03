@@ -113,7 +113,7 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
                 const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);const int tones[]{0,chord.third,chord.fifth};const int degree=techno?technoDegrees[phrase][i]:electroDegrees[phrase][i];
                 int interval=tones[degree];
                 if(!techno&&!mixing&&!breakdown&&i>=4&&cell%4!=0){auto colour=s;colour.extension=2;const auto extended=chordAtBeat(colour,begin+at);const int upper=i==4?extended.seventh:extended.ninth;if(upper>=0)interval=upper;}
-                const int pitch=nearestPitch(chord.rootPc+interval,previousLead,60,84);previousLead=pitch;const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);
+                const int voiced=nearestPitch(chord.rootPc+interval,previousLead,60,84);previousLead=voiced;const int pitch=std::clamp(voiced+12*e.globalOctave,0,127);const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);
                 note(at,gate,pitch,(i==0?drop?106:94:drop?93:81)+(int)(draw(motif+i*17U)%5));
             }
         }else if(isDrumTrack(track)){

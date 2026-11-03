@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.15
+
+- Preserve crossing MIDI clips when duplicating sections and absolute harmonic phase when regenerating split clips.
+- Protect stopped VST processing during state capture; checkpoint current sound before sample/preset replacement, keeping failed loads transactional.
+- Honor electronic lead octave controls and correct interface scale reporting and Studio tab translations.
+- Add regression coverage for MIDI preservation, chord timing, octave transposition, stopped note-offs and native VST Undo.
+
 ## 0.31.14
 
 - Keep Options available in fullscreen, align master/time readouts, outline the selected sound source and give Bus & Send a distinct routing icon.

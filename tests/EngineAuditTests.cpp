@@ -157,7 +157,33 @@ struct EngineAuditTests {
         std::thread audio([&]{callback();returned.signal();});const bool nonblocking=returned.wait(1000);const bool otherAudible=nonblocking&&engine.level(1)>.001f;
         resume.signal();snapshot.join();audio.join();requireAudit(began&&nonblocking&&otherAudible&&!plugin->overlap,"slow state reads do not block the callback, race the processor or mute unrelated tracks");
     }
-    static void run(){selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
+    static void stoppedStateCapture(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);auto next=std::make_unique<AuditPlugin>();auto* plugin=next.get();engine.swapInstrument(0,std::move(next),0,{});engine.publish(project);
+        auto& instrument=*engine.instruments[0];instrument.midi.addEvent(juce::MidiMessage::noteOff(1,60),0);
+        juce::WaitableEvent started,resume;plugin->snapshotStarted=&started;plugin->snapshotResume=&resume;
+        std::thread snapshot([&]{engine.capturePluginStates(project);});const bool began=started.wait(2000);
+        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;const int calls=plugin->calls;
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        const bool deferred=plugin->calls==calls&&!instrument.midi.isEmpty();resume.signal();snapshot.join();plugin->snapshotStarted=plugin->snapshotResume=nullptr;
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        requireAudit(began&&deferred&&plugin->calls>calls&&instrument.midi.isEmpty()&&!plugin->overlap,"stopped state capture defers DSP without losing pending note-offs");
+        instrument.midi.addEvent(juce::MidiMessage::noteOff(1,61),0);plugin->suspendProcessing(true);const int suspendedCalls=plugin->calls;
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        requireAudit(plugin->calls==suspendedCalls&&!instrument.midi.isEmpty(),"stopped suspended plugins retain pending note-offs");plugin->suspendProcessing(false);
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(instrument.midi.isEmpty(),"resume delivers stopped note-offs");
+    }
+    static void sourceReplacementCheckpoint(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.tracks[0].instrument="plugin";
+        auto original=std::make_unique<ProgramStatePlugin>();auto* live=original.get();live->privateEdit=.25f;engine.swapInstrument(0,std::move(original),0,{});engine.capturePluginStates(project);live->privateEdit=.75f;
+        auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-source-checkpoint",".wav",false);
+        juce::WavAudioFormat wav;juce::AudioBuffer<float> silence(1,128);silence.clear();{std::unique_ptr<juce::AudioFormatWriter> writer(wav.createWriterFor(file.createOutputStream().release(),44100,1,16,{},0));requireAudit(writer&&writer->writeFromAudioSampleBuffer(silence,0,128),"sample replacement fixture");}
+        int checkpoints=0;auto checkpoint=[&]{++checkpoints;engine.invalidatePluginState(0,0);engine.capturePluginStates(project);};
+        const auto bad=engine.loadSample(0,file.getSiblingFile("missing-audit-sample.wav"),60,{},checkpoint);requireAudit(bad.failed()&&checkpoints==0&&engine.plugin(0)==live,"failed sample loading preserves source and Undo");
+        const auto good=engine.loadSample(0,file,60,{},checkpoint);file.deleteFile();requireAudit(good.wasOk()&&checkpoints==1&&!engine.plugin(0),"successful replacement captures exactly once before detach");
+        auto restored=std::make_unique<ProgramStatePlugin>();auto* probe=restored.get();engine.swapInstrument(0,std::move(restored),0,{});engine.restorePluginState(0,juce::String::fromUTF8(project.tracks[0].instrumentState.c_str()));
+        requireAudit(std::abs(probe->privateEdit-.75f)<1e-6,"replacement Undo snapshot retains the latest opaque sound edit");
+    }
+    static void run(){stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

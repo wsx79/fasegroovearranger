@@ -229,7 +229,13 @@ void AudioEngine::flushIdle(int count){
     // plugin until the next PLAY. Their audio is discarded (a stopped transport is silent).
     const int n=std::max(1,std::min(count,blockSize));
     for(auto& ptr:instruments){auto& i=*ptr;
-        if(i.mode==2&&i.plugin&&!i.midi.isEmpty()){i.scratch.setSize(i.scratch.getNumChannels(),n,false,false,true);i.scratch.clear();i.plugin->processBlock(i.scratch,i.midi);}
+        if(i.mode==2&&i.plugin&&!i.midi.isEmpty()){
+            const juce::ScopedTryLock processorLock(i.plugin->getCallbackLock());
+            // Keep pending note-offs until the state operation finishes. The
+            // realtime callback must neither wait nor enter DSP concurrently.
+            if(!processorLock.isLocked()||i.plugin->isSuspended())continue;
+            i.scratch.setSize(i.scratch.getNumChannels(),n,false,false,true);i.scratch.clear();i.plugin->processBlock(i.scratch,i.midi);
+        }
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();}
 }
 void AudioEngine::setTimeSignature(int numerator,int denominator){const EngineControlLock lock(*this);timeNumerator=std::clamp(numerator,1,32);timeDenominator=(denominator>0&&(denominator&(denominator-1))==0)?std::min(64,denominator):4;}
@@ -485,11 +491,14 @@ void AudioEngine::useInternal(int track){
     if(oldPlugin)oldPlugin->releaseResources();
 }
 std::shared_ptr<const SampleAsset> AudioEngine::sampleAsset(int track)const{if(track<0||track>=engineTrackCount)return {};auto* sampler=dynamic_cast<SampleSynth*>(instruments[(size_t)track]->sampler.get());return sampler?sampler->sharedAsset():nullptr;}
-juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root,const SamplerSettings& settings){
+juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root,const SamplerSettings& settings,std::function<void()> beforeReplace){
     if(track<0||track>=engineTrackCount)return juce::Result::fail("Invalid sample track.");
     std::shared_ptr<const SampleAsset> asset;if(auto r=readSampleAsset(file,asset);r.failed())return r;
     auto next=std::make_unique<SampleSynth>(asset,settings,std::clamp(root,0,127),isDrumTrack(track));
     double rate=0;{const EngineControlLock lock(*this);rate=sampleRate;}next->setCurrentPlaybackSampleRate(rate);
+    // Decode/prepare first, then capture Undo while the previous source still
+    // exists. Failed sample loads must not create checkpoints or replace sound.
+    if(beforeReplace)beforeReplace();
     std::unique_ptr<juce::AudioPluginInstance> oldPlugin;std::unique_ptr<juce::Synthesiser> oldSampler;
     {const EngineControlLock lock(*this);if(next->latencySamples()>0||hostedCount.load()>0)prepareDelayLines();if(rate!=sampleRate)next->setCurrentPlaybackSampleRate(sampleRate);detachSource(track,1,std::move(next),oldPlugin,oldSampler);}
     if(oldPlugin)oldPlugin->releaseResources();return juce::Result::ok();

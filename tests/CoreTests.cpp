@@ -16,6 +16,7 @@
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "HarmonyAuditChecks.h"
 #include "HarmonyContractChecks.h"
+#include "AuditRegressionChecks.h"
 namespace {
 int guitarMaxOn(const std::vector<fgg::NoteEvent>& events){int m=0;for(const auto& e:events)if(e.isNoteOn())m=std::max(m,e.velocity);return m;}
 bool guitarHas(const fgg::GuitarPattern& p,char symbol,int lane=-1){for(int l=0;l<fgg::numLanes;++l){if(lane>=0&&l!=lane)continue;if(p.lanes[(size_t)l].find(symbol)!=std::string::npos)return true;}return false;}
@@ -242,6 +243,7 @@ void verifySectionDevelopment(){
     }
 }
 int main(int argc,char** argv){try{
+    verifyAuditRegressions();
     verifySectionDevelopment();
     verifyHarmonyAudit();
     verifyRearrange();

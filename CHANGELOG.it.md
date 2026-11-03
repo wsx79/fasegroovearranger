@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.15
+
+- Conserva le code dei clip MIDI duplicando le sezioni e la fase armonica rigenerando clip tagliati.
+- Protegge i VST a trasporto fermo durante il salvataggio dello stato; acquisisce il suono prima della sostituzione con campione/preset, senza modificare Undo se il caricamento fallisce.
+- Applica l’ottava al lead elettronico e corregge percentuale della scala UI e traduzioni dei tab Studio.
+- Aggiunge test su note, accordi, ottava, note-off e Undo reale con VST.
+
 ## 0.31.14
 
 - Mantiene Opzioni in fullscreen, allinea Master e letture del trasporto, distingue la sorgente sonora selezionata con un bordo e assegna un’icona dedicata a Bus e mandate.

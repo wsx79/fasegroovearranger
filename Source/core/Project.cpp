@@ -1033,6 +1033,19 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             else if(clip.seed==1) clip.seed=isDrumTrack(ti)?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             clip.loopSource.clear();clip.loopLength=0;
             const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
+            const double begin=p.clipStart(ti,(int)si);
+            const double chordBeats=s.chordSteps*.25;
+            const double prefix=(ti<4||ti==leadTrack)?std::fmod(begin,std::max(4.,chordBeats)):0.;
+            const double harmonicBeats=beats+prefix;
+            const int harmonicBars=(int)std::ceil(harmonicBeats/4.);
+            auto harmonicNotes=[&](const auto& events,auto filter){
+                auto notes=notesFrom(events,harmonicBeats,filter);
+                if(prefix>0){
+                    notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return n.start+n.length<=prefix||n.start>=prefix+beats;}),notes.end());
+                    for(auto& n:notes){const double end=std::min(n.start+n.length,prefix+beats);n.start=std::max(n.start,prefix);n.length=end-n.start;n.start-=prefix;}
+                }
+                return notes;
+            };
             const auto& e=t.engine;
             // An explicit strings regenerate must write notes. Jackin' stays off
             // for a factory song, but asking again on this track turns a pad on.
@@ -1045,7 +1058,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             // the plugin's generic accelerating snare/piano build pattern.
             const auto engineType=type==Section::buildup&&!profile.rollingBuild?Section::main:type;
             const auto rhythmType=mixing?Section::main:engineType;
-            const int chordOffset=(int)(p.clipStart(ti,(int)si)/(s.chordSteps*.25))%s.chordCount;
+            const int chordOffset=(int)std::llround((begin-prefix)/chordBeats)%s.chordCount;
             for(auto* row:{&ps.progression,&ps.freeChords,&ps.inversions})
                 std::rotate(row->begin(),row->begin()+chordOffset,row->begin()+s.chordCount);
             if(mixing){ps.fillEveryBars=0;ps.variationEvery=0;}
@@ -1056,16 +1069,16 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
                 // The kit turns the corner at every section end; give the harmony the
                 // same last-bar fill instead of one every 16 bars counted from the clip.
-                if(!mixing&&renderBars>=2){ps.forcedFillBar=renderBars-1;ps.forcedFillStyle=-1;}
-                auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,renderBars,clip.seed,-1}});
-                if(ti==0&&s.guitarLead)all=sgk::Comping::comping(all,clip.seed*7919u+1u,ps,beats);
-                clip.notes=notesFrom(all,beats,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
+                if(!mixing&&renderBars>=2){ps.forcedFillBar=harmonicBars-1;ps.forcedFillStyle=-1;}
+                auto all=sgk::GrooveEngine::renderArrangement(ps,{{ps.section,harmonicBars,clip.seed,-1}});
+                if(ti==0&&s.guitarLead)all=sgk::Comping::comping(all,clip.seed*7919u+1u,ps,harmonicBeats);
+                clip.notes=harmonicNotes(all,[ti](const sgk::NoteEvent& e){return ti==0?(e.part==sgk::Part::chords||e.part==sgk::Part::fill):ti==1?e.part==sgk::Part::bass:e.part==sgk::Part::strings;});
                 // Answer stabs need a piano rest. A break holds one chord, so they
                 // would otherwise stay silent. A pad still follows that harmony.
                 if(ti==2&&(!isElectronicGenre(s.genre)||manualPart)&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){
                     auto held=ps;held.strings=sgk::StringsMode::pad;
-                    auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,renderBars,clip.seed,-1}});
-                    clip.notes=notesFrom(bed,beats,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
+                    auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,harmonicBars,clip.seed,-1}});
+                    clip.notes=harmonicNotes(bed,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
                 }
             } else if(ti==3) {
                 fgg::GuitarSettings gs; gs.pattern=e.pattern>=0&&e.pattern<(int)fgg::guitarPatterns().size()?e.pattern:fgg::randomPatternIndex(); gs.randomGenre=engineGenre(s.genre);
@@ -1082,8 +1095,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 for(int i=0;i<s.chordCount;++i) gs.chords[(size_t)i]=bandChord(s.key,s.scale,s.degrees[(size_t)i],s.freeChords[(size_t)i],ext);
                 std::rotate(gs.chords.begin(),gs.chords.begin()+chordOffset,gs.chords.begin()+s.chordCount);
                 if(mixing){gs.fillEveryBars=0;gs.variationEvery=0;}
-                auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,renderBars,clip.seed,-1}});
-                clip.notes=notesFrom(all,beats,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
+                auto all=fgg::GrooveEngine::renderArrangement(gs,{{(fgg::Section)engineType,harmonicBars,clip.seed,-1}});
+                clip.notes=harmonicNotes(all,[](const fgg::NoteEvent& e){return !e.isController()&&e.lane<fgg::numLanes;});
                 // Articulation lanes are carried directly by notesFrom, in linear time.
             } else if(ti==leadTrack) {
                 fgl::LeadSettings ls;
@@ -1099,8 +1112,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 sgk::GrooveSettings colour;colour.extension=(sgk::Extension)s.extension;colour.section=(sgk::Section)engineType;const auto ext=sgk::GrooveEngine::sectionExtension(colour);
                 for(int i=0;i<s.chordCount;++i){auto chord=bandChord(s.key,s.scale,s.degrees[(size_t)i],s.freeChords[(size_t)i],ext);ls.chords[(size_t)i]={chord.root,chord.type};}
                 std::rotate(ls.chords.begin(),ls.chords.begin()+chordOffset,ls.chords.begin()+s.chordCount);
-                auto all=fgl::GrooveEngine::renderArrangement(ls,{{(fgl::Section)engineType,renderBars,clip.seed,-1}});
-                clip.notes=notesFrom(all,beats,[](const fgl::NoteEvent& event){return !event.isController()&&event.lane<fgl::numLanes;});
+                auto all=fgl::GrooveEngine::renderArrangement(ls,{{(fgl::Section)engineType,harmonicBars,clip.seed,-1}});
+                clip.notes=harmonicNotes(all,[](const fgl::NoteEvent& event){return !event.isController()&&event.lane<fgl::numLanes;});
             } else {
                 fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=engineGenre(s.genre);
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
@@ -1120,8 +1133,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             shapeMixSection(clip,s.genre,ti,type,renderBars);
             if(ti==2&&(!isElectronicGenre(s.genre)||manualPart)&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){
                 auto held=ps;held.strings=sgk::StringsMode::pad;
-                auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,renderBars,clip.seed,-1}});
-                clip.notes=notesFrom(bed,beats,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
+                auto bed=sgk::GrooveEngine::renderArrangement(held,{{held.section,harmonicBars,clip.seed,-1}});
+                clip.notes=harmonicNotes(bed,[](const sgk::NoteEvent& e){return e.part==sgk::Part::strings;});
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
