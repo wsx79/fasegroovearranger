@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.21
+
+- Rimosso il tooltip ridondante dalla riga Armonia.
+- Il crash di inizio sezione usa la stessa durata MIDI di due beat degli altri crash, entro il bordo della clip.
+- Aggiunta la X di chiusura al popup del circolo delle quinte; il tooltip sul nome della traccia indica il doppio clic per aprire l’inspector.
+- Le forme d’onda compaiono solo nelle regioni audio registrate e rispettano offset e durata del frammento. Le clip MIDI del sampler mostrano le note senza sovrapporre l’intero campione.
+- L’ingranaggio nell’intestazione della traccia apre Studio per i campioni, l’editor del plugin caricato per gli strumenti VST/AU e i controlli originali per i suoni guida; il tooltip segue la sorgente della traccia.
+
 ## 0.31.20
 
 - Corretti il rilascio concorrente dello stato del mix e il recupero delle note MIDI live dopo lock/sospensione del plugin, compreso sustain e canali.

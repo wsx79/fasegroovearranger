@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.20**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.21**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -75,7 +75,7 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 3. Premi **NUOVO ARRANGIAMENTO**: compaiono intro, parti principali, break e outro.
 4. Premi **AVVIA** o la **barra spaziatrice** e ascolta.
 5. Fai doppio clic su un **clip del piano** nella parte principale: si apre il piano roll grande. Sposta una nota o cambia la sua dinamica.
-6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano** e, nell’inspector, scegli **BUILT-IN**, **CAMPIONE** o **VST / AU**. Con il suono guida, l’ingranaggio della riga apre il pannello musicale originale; con un VST apre il suo editor.
+6. Torna con **< ARRANGIAMENTO**. Seleziona **Piano** e, nell’inspector, scegli **BUILT-IN**, **CAMPIONE** o **VST / AU**. Con il suono guida, l’ingranaggio della riga apre il pannello musicale originale; con un VST apre il suo editor; con un campione apre il sampler in **Studio**. Il tooltip indica la destinazione.
 7. Premi **SALVA**, dai un nome al progetto e poi **EXPORT** per salvare un WAV, un MP3 o il MIDI.
 
 Vuoi un'altra versione? **RIGENERA TRACCIA** cambia solo lo strumento scelto; **RIGENERA CLIP** cambia solo quella traccia in quella sezione. **ANNULLA** ti riporta al tentativo precedente.
@@ -105,8 +105,8 @@ Cambiare **tonalità o scala** nel display superiore aggiorna subito gli accordi
 | **AVVIA · FERMA · LOOP** | Ascolto, ritorno all'inizio e ripetizione della zona scelta. Il cursore azzurro mostra dove sei. |
 | **Genere e durata** | Il genere determina la forma; la durata è un risultato di groove e frasi armoniche, mostrato senza un cursore dei minuti. |
 | **PROGRESSIONE · MODIFICA ACCORDI** | I giri pronti e la modifica dei singoli accordi. La riga HARMONY mostra il giro attuale. |
-| **Arrangiamento** | Ogni rettangolo è un clip: le note di uno strumento in una sezione. |
-| **Nome della traccia** | Seleziona la traccia; la rotella apre il pannello in una finestra separata, con groove, esecuzione, suono e mixer. |
+| **Arrangiamento** | Le clip MIDI mostrano le note, anche quando pilotano un campione. Le regioni audio registrate mostrano la forma d’onda del frammento; l’anteprima dell’intero campione è in Studio. |
+| **Nome della traccia** | Seleziona la traccia; l’ingranaggio apre il plugin caricato, il campione in Studio oppure i controlli originali del suono guida. |
 | **Doppio clic sul clip / E** | Apre l'editor MIDI grande, soltanto per quella traccia e quella sezione. |
 | **Altoparlante · ingranaggio · ?** | Audio e autosave; opzioni, lingua e crediti; guida. Le icone sono in alto a destra. |
 

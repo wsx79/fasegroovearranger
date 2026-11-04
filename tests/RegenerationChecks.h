@@ -53,7 +53,9 @@ inline void verifyRegeneration(){
                 for(size_t si=1;si<p.sections.size()&&si<p.tracks[16].clips.size();++si){
                     const double at=p.sectionStart((int)si)-p.clipStart(16,(int)si);
                     const auto& notes=p.tracks[16].clips[si].notes;
-                    check(std::any_of(notes.begin(),notes.end(),[at](const fga::Note& n){return std::abs(n.start-at)<1e-6;}),"the kit answers a filled section with a crash on its downbeat");
+                    const auto first=std::find_if(notes.begin(),notes.end(),[at](const fga::Note& n){return std::abs(n.start-at)<1e-6;});
+                    check(first!=notes.end(),"the kit answers a filled section with a crash on its downbeat");
+                    check(std::abs(first->length-std::min(fga::defaultDrumNoteLength(16),p.clipLength(16,(int)si)-at))<1e-9,"the section-opening crash has the same gate as the other crashes, bounded by its clip");
                 }
             }
         }

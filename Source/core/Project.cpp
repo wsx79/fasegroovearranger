@@ -1001,7 +1001,8 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
                     [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1e-6;}),clip.notes.end());
                 const auto place=std::upper_bound(clip.notes.begin(),clip.notes.end(),at,
                     [](double value,const Note& n){return value<n.start;});
-                clip.notes.insert(place,{at,.25,fgd::defaultNote(crashLane),110,crashLane});
+                const double gate=std::min(defaultDrumNoteLength(ti),length-at);
+                clip.notes.insert(place,{at,gate,fgd::defaultNote(crashLane),110,crashLane});
                 break;
             }
         }

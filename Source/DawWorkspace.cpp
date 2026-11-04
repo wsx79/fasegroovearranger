@@ -420,6 +420,43 @@ return false;
     ok=ok&&page==Page::arrangement&&project.tracks[4].solo;stage("header Solo without opening the engine");undo(false);
     arrangement.mouseDown(event(202,76));arrangement.mouseUp(event(202,76));
     ok=ok&&page==Page::arrangement&&instrumentIsOpen()&&selectedTrack==4;stage("explicit header engine gear");showArrangement();
+    {
+        const auto before=project;const auto language=Localisation::current();
+        Localisation::setCurrent(Localisation::Language::italian);
+        arrangement.mouseMove(event(202,76));
+        bool sourcesOk=arrangement.getTooltip()==tr("Open the original Fase Groove instrument controls.");
+        // A negative-only first half also checks both extrema of the peak cache.
+        const auto file=folder.getChildFile("clip-source.wav");juce::WavAudioFormat wav;auto stream=file.createOutputStream();
+        std::unique_ptr<juce::AudioFormatWriter> writer(stream?wav.createWriterFor(stream.get(),16000,1,16,{},0):nullptr);
+        if(writer){stream.release();juce::AudioBuffer<float> buffer(1,16000);buffer.clear();for(int n=0;n<8000;++n)buffer.setSample(0,n,-.65f);sourcesOk=writer->writeFromAudioSampleBuffer(buffer,0,16000)&&sourcesOk;writer.reset();}else sourcesOk=false;
+        const juce::Rectangle<int> body(232,80,96,12);
+        select(0,0);arrangementPort.setViewPosition(0,0);
+        const auto midiBody=arrangement.createComponentSnapshot(body);
+        sourcesOk=audio.loadSample(4,file,36).wasOk()&&sourcesOk;project.tracks[4].instrument="sample";changed(false);
+        const auto sampleBody=arrangement.createComponentSnapshot(body);
+        auto samePixels=[](const juce::Image& a,const juce::Image& b){if(a.getBounds()!=b.getBounds())return false;for(int y=0;y<a.getHeight();++y)for(int x=0;x<a.getWidth();++x)if(a.getPixelAt(x,y)!=b.getPixelAt(x,y))return false;return true;};
+        sourcesOk=samePixels(midiBody,sampleBody)&&sourcesOk;
+        const auto midi=midiFile(project);const auto history=undoStack.size();
+        arrangement.mouseMove(event(202,76));sourcesOk=arrangement.getTooltip()==tr("Open this track's sample in Studio.")&&sourcesOk;
+        arrangement.mouseDown(event(202,76));arrangement.mouseUp(event(202,76));
+        sourcesOk=studioWindow&&studioWindow->isVisible()&&selectedTrack==4&&midiFile(project)==midi&&undoStack.size()==history&&sourcesOk;
+        if(studioWindow)studioWindow->closeButtonPressed();
+        auto& region=project.tracks[4].clips[0];region.span=16;region.audioOffset=0;region.audioDuration=1;region.notes={{0,16,36,100,0}};
+        select(0,0);arrangementPort.setViewPosition(0,0);changed(false);
+        const auto whole=arrangement.createComponentSnapshot(body);
+        sourcesOk=!samePixels(whole,sampleBody)&&sourcesOk;
+        sourcesOk=project.splitClip(4,0,8)==1&&sourcesOk;changed(false);
+        const auto split=arrangement.createComponentSnapshot(body);
+        // Ignore the new clip edges: both interior source portions must stay put.
+        const juce::Rectangle<int> loud(4,0,24,12),silent(68,0,24,12);
+        sourcesOk=samePixels(whole.getClippedImage(loud),split.getClippedImage(loud))&&samePixels(whole.getClippedImage(silent),split.getClippedImage(silent))&&sourcesOk;
+        auto& tail=project.tracks[4].clips[1];tail.audioOffset=0;
+        const auto shifted=arrangement.createComponentSnapshot(body);
+        sourcesOk=!samePixels(split.getClippedImage(silent),shifted.getClippedImage(silent))&&sourcesOk;
+        folder.getChildFile("clip-source-ui.txt").replaceWithText(sourcesOk?"PASS sampler MIDI has no waveform overlay; audio waveforms retain source offsets after splitting and include negative peaks; Italian header tooltip and gear route the hovered sample to Studio without MIDI/Undo changes":"FAIL clip-source UI regression");
+        ok=sourcesOk&&ok;stage("clip source waveform, sample gear and translated tooltip");
+        project=before;audio.useInternal(4);Localisation::setCurrent(language);select(4,0);changed();arrangementPort.setViewPosition(0,0);
+    }
     const auto beforeLead=project;const auto oldLead=project.settings.guitarLead;
     ok=ok&&leadButton.isVisible()&&!leadButton.getBounds().intersects(loopSelectionButton.getBounds());
     if(leadButton.onClick)leadButton.onClick();

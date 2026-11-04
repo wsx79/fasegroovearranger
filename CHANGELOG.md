@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.21
+
+- Remove the redundant tooltip from the Harmony row.
+- Section-opening crashes use the same two-beat MIDI duration as other crashes, bounded by the clip end.
+- Add an explicit close button to the circle-of-fifths popup; the track-name tooltip explains double-clicking to open the inspector.
+- Show source waveforms only for recorded audio regions, using each region's offset and duration. MIDI sampler clips show their notes without an unrelated full-sample overlay.
+- The track-header gear opens Studio for samples, the loaded plugin editor for VST/AU instruments and the original controls for guide sounds; its tooltip follows the track's current source.
+
 ## 0.31.20
 
 - Fix concurrent mix-state reclamation and reconcile live MIDI after plugin callback-lock contention or suspension, including sustain and channels.

@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.20**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.21**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
@@ -75,7 +75,7 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 3. Click **NEW ARRANGEMENT**: the intro, main parts, break and outro appear.
 4. Press **PLAY** or the **space bar** and listen.
 5. Double-click a **piano clip** in the main part. Its large piano roll opens; move a note or change its velocity.
-6. Return with **< ARRANGEMENT**. Select **Piano** and choose **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector. With a built-in sound, the track gear opens the original musical panel; with a VST instrument it opens its editor.
+6. Return with **< ARRANGEMENT**. Select **Piano** and choose **BUILT-IN**, **SAMPLE** or **VST / AU** in the inspector. With a built-in sound, the track gear opens the original musical panel; with a VST instrument it opens its editor; with a sample it opens the sampler in **Studio**. The tooltip identifies the destination.
 7. Click **SAVE**, name the project, then **EXPORT** for WAV, MP3 or MIDI.
 
 Want another take? **REGENERATE TRACK** changes just the selected instrument; **REGENERATE CLIP** changes only that track in that section. **UNDO** takes you back to the previous attempt.
@@ -104,8 +104,8 @@ Changing **key or scale** in the top display immediately updates the chords and 
 | **PLAY · STOP · LOOP** | Listen, return to the beginning and repeat the selected region. The blue cursor shows your position. |
 | **Genre and duration** | Genre defines the form. Length follows groove development and complete harmonic phrases; the display shows the result. |
 | **PROGRESSION · EDIT CHORDS** | Ready-made progressions and individual chords. HARMONY shows the current progression. |
-| **Arrangement** | Each rectangle is a clip: one instrument's notes in one section. |
-| **Track name** | Selects the track; its gear opens a separate instrument window with groove, playing, sound and mixer controls. |
+| **Arrangement** | MIDI clips show their notes, including when playing a sampler. Recorded audio regions show the source fragment's waveform; the full-sample preview is in Studio. |
+| **Track name** | Selects the track; its gear opens the loaded plugin, the sample in Studio or the original guide-sound controls. |
 | **Double-click clip / E** | Opens the large MIDI editor for just that track and section. |
 | **Speaker · gear · ?** | Audio and autosave; options, language and credits; this guide. Icons sit at the top right. |
 
