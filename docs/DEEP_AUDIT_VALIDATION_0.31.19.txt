@@ -1,0 +1,46 @@
+Deep-audit 0.31.19: verifiche finali del 4 novembre 2026
+Base 98e9d0b16ba400713267281488dcb9045161a63c
+Branch fix/deep-audit-0.31.19
+
+PASS - Core completo con ASan, UBSan e _GLIBCXX_ASSERTIONS:
+       CTest 3/3: arranger_core, verify_midi, mp3_encoder. 116.47 s.
+PASS - Regressioni mirate del motore con ASan/UBSan e leak detection:
+       --deep-audit, uscita 0. C1, C2, C3, C4, effetti MIDI, seek/edit live.
+PASS - Audit completo del motore con ASan/UBSan e leak detection:
+       --engine-audit, uscita 0; include stress concorrente sul vero AudioEngine.
+PASS - Suite audio completa con ASan/UBSan e leak detection:
+       fga_engine_tests, uscita 0; resync, trasporto, export e MP3 gapless.
+PASS - CTest nativo finale 3/3:
+       mp3_encoder 0.04 s, project_io 5.09 s, audio_engine 161.43 s.
+       Totale 166.57 s. Il timeout del solo test audio è 300 s.
+PASS - UI mirata --piano-tools-test, uscita 0:
+       IMPORT MIDI aggiorna il MIDI armonico, conserva i blocchi e un solo Undo/Redo.
+PASS - UI completa --ui-test, uscita 0 con FGA_SKIP_EXPORT_UI_TEST=1.
+       Escluso il flusso GUI di export esteso; gli export audio sono coperti dalle suite.
+PASS - VST3 reale Arranger Host Probe --host-smoke-test, uscita 0;
+       scripts/verify-host.py, uscita 0, con export GUI esteso escluso esplicitamente.
+       Note On perso recuperato: picco 0.01062984; Note Off perso recuperato: 0.00000000.
+       WAV verificati: nota 441.0 Hz, rapporto gain 3.000, restore 1.000000,
+       copia offline 1.000000, programma riaperto 880.4 Hz.
+PASS - Confronto WAV prima/dopo il taglio: errore massimo 0.
+       Verificati spostamento, copia, sovrascrittura e registrazione da 720 beat.
+PASS - git diff --check.
+
+Ambiente: Linux, GCC 14, JUCE 8.0.9, Xvfb/xfwm4, audio offline.
+Il core è interamente strumentato; i sorgenti/test propri del motore sono
+strumentati e collegati ai moduli JUCE ordinari. Nessun errore ASan/UBSan
+né leak rilevato nelle esecuzioni strumentate concluse con uscita 0.
+Gli assert JUCE Debug rimangono nei log: le suite passate non attestano
+l'assenza di assert. Non verificati hardware audio/MIDI, macOS/AU, Windows
+oppure plugin commerciali.
+
+I primi tentativi con export UI estesi sono stati interrotti; un test CTest
+Debug aveva raggiunto il precedente timeout di 180 s. La suite eseguita
+direttamente ha poi completato con uscita 0 in 211.04 s sotto carico.
+La verifica CTest finale sopra riportata usa il limite corretto di 300 s.
+
+Log e immagini di lavoro: /workspace/scratch/
+- sanitized-core-ctest.log, ctest-final.log
+- deep-engine-latency-final.log, engine-audit-sanitized-ok.log
+- engine-full-sanitized.log, engine-full-native.log
+- piano-tools-final/, ui-complete/, host-complete/, host-verified.log

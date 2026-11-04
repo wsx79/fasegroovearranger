@@ -58,16 +58,16 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
     const auto& s=p.settings;if(!isElectronicGenre(s.genre))return false;
     if(track==2){if(requested||s.stringsMode!=0)return false;clip.notes.clear();return true;}
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
-    const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(e.density<0?s.density:e.density,0.,1.);
+    const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(takeFeel(e.density,clip.feel[0],s.density),0.,1.);
     clip.notes.clear();if(density<=0)return true;
     const auto motif=clip.motifSeed?clip.motifSeed:clip.seed;const int variant=(int)(draw(motif)%8);
     auto note=[&](double at,double length,int pitch,int velocity,int lane=0){
         if(at<0||at>=beats)return;
         const auto random=draw(clip.seed+(std::uint32_t)(at*960)+track*199U);
-        const double human=e.humanize<0?s.humanize:e.humanize;
+        const double human=takeFeel(e.humanize,clip.feel[2],s.humanize);
         const bool offbeat=((int)std::lround(at*4)&1)!=0;
         at+=((int)(random%201)-100)*human*.00015;
-        if(offbeat)at+=(e.swing<0?s.swing:e.swing)*.25;
+        if(offbeat)at+=(takeFeel(e.swing,clip.feel[1],s.swing))*.25;
         at=std::clamp(at,0.,beats-1./960.);
         clip.notes.push_back({at,std::min(length,beats-at),std::clamp(pitch,0,127),std::clamp(velocity*e.velocity/100,1,127),lane});
     };

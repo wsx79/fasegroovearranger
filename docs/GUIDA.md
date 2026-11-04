@@ -122,7 +122,7 @@ Il **volume master**, la **densità delle note**, **Swing** e **Feel** nella sch
 
 I tre potenziometri principali **Densità**, **Swing** e **Feel** applicano i valori che scegli alle parti generate sbloccate, compresi i Vocal chops. Densità modifica l’attività delle parti automatiche, Swing ritarda gli offbeat e Feel varia tempi e dinamica; i pattern scritti a mano e gli accenti fondamentali del genere possono mantenere il numero di note. Durante il trascinamento senti e vedi gli aggiornamenti; al rilascio viene sempre applicato l’ultimo valore. Le sorgenti dei loop, le loro ripetizioni e il carattere Techno/Electro House restano coerenti.
 
-Ogni **RIGENERA** che estrae una nuova variante di brano, sezione, traccia o clip sceglie anche nuovi valori di Densità, Swing e Feel adatti al genere, e aggiorna la posizione dei tre potenziometri. Le tue regolazioni manuali non congelano le rigenerazioni successive: puoi modificarle di nuovo dopo ogni variante. APPLICA e i cambi di accordi conservano invece il feel corrente. **NUOVO ARRANGIAMENTO** riutilizza il MIDI esistente; i blocchi continuano a proteggere le parti. Annulla/Ripristina comprendono note e parametri.
+Ogni **RIGENERA** che estrae una nuova variante di brano, sezione, traccia o clip sceglie anche nuovi valori di Densità, Swing e Feel adatti al genere, e aggiorna la posizione dei tre potenziometri. Le tue regolazioni manuali non congelano le rigenerazioni successive: puoi modificarle di nuovo dopo ogni variante. APPLICA e i cambi di accordi conservano il feel effettivo di ogni take. Le parti escluse da una rigenerazione parziale lo mantengono anche quando riapplichi le loro impostazioni senza modificarle. Muovere un potenziometro globale applica esplicitamente quel parametro a tutte le parti generate sbloccate. **NUOVO ARRANGIAMENTO** riutilizza il MIDI esistente; i blocchi continuano a proteggere le parti. Annulla/Ripristina comprendono note e parametri.
 
 ### Spazio di lavoro DAW
 
@@ -292,6 +292,10 @@ Trascina un file audio dal browser o dal sistema operativo sulla waveform, oppur
 5. Premi **USA TAKE AUDIO**: viene aggiunta una nuova traccia campione con un clip nella posizione registrata. Se occorre, si prolunga la guida delle sezioni. **ANNULLA** rimuove la traccia conservando il WAV sul disco.
 
 La take **Mix master** viene importata **muta** per evitare di raddoppiare il brano: attivala quando vuoi ascoltarla, tenendo conto del mix originale. Il WAV include già il trattamento del master; la traccia importata passa poi attraverso il mix corrente. La registrazione resta continua attraversando i loop: disattiva LOOP per riascoltare linearmente una take lunga.
+
+Il taglio di una take audio conserva l’offset originale di ogni frammento e ne arresta la voce al bordo. Spostamento, copia e sovrascrittura mantengono il contenuto audio corretto; le take lunghe conservano tutta la durata sulla timeline. Il taglio di un loop MIDI conserva periodo e fase della sorgente: le successive estensioni continuano sulla griglia originale.
+
+I progetti con feel dei take, regioni audio o fase dei loop usano lo schema file 5 e richiedono questa versione o una successiva per essere riaperti. Gli schemi precedenti restano leggibili.
 
 L’allineamento comprende la latenza dei plugin e, per l’ingresso, quella del dispositivo. Il pre-roll prima dello zero viene escluso con un trim del sampler, senza tagliare il WAV. Le take troppo brevi rispetto al pre-roll o oltre i limiti del sampler restano sul disco; lo Studio spiega perché **USA TAKE AUDIO** non è disponibile. Un cambio di dispositivo/frequenza o un errore di scrittura interrompe la take con un avviso. Registrazione MIDI e audio non possono funzionare contemporaneamente.
 

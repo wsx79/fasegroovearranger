@@ -364,7 +364,7 @@ void ArrangementView::mouseDoubleClick(const juce::MouseEvent& e){const int heig
 void ArrangementView::mouseDrag(const juce::MouseEvent& e){
     if(panning){const auto offset=e.getEventRelativeTo(&owner).position-panAnchor;owner.arrangementPort.setViewPosition(panStart.x-juce::roundToInt(offset.x),panStart.y-juce::roundToInt(offset.y));return;}
     if(heightTrack>=0){trackHeights[(size_t)heightTrack]=std::clamp(heightBefore+juce::roundToInt(e.position.y-heightAnchorY),40,240);owner.updateSizes();repaint();return;}
-    if(resizeBefore){const double grid=resizeTrack<0?4.:e.mods.isShiftDown()||owner.timelineSnap<=0?1./960.:owner.timelineSnap;const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,512.);
+    if(resizeBefore){const double grid=resizeTrack<0?4.:e.mods.isShiftDown()||owner.timelineSnap<=0?1./960.:owner.timelineSnap;const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,resizeTrack<0?512.:maxClipBeats);
         if(duration!=resizeLastLength){auto previous=std::move(owner.project);owner.project=*resizeBefore;
             const bool ok=resizeTrack<0?(owner.project.resizeGuide(resizeSectionIndex,(int)(duration/4)),true):owner.project.resizeClipLoop(resizeTrack,resizeSectionIndex,duration);
             if(!ok){owner.project=std::move(previous);return;}resizeLastLength=duration;owner.refreshControls();repaint();}
@@ -941,7 +941,7 @@ bool MainComponent::verifyLegacyHostedProjects(const juce::File& folder,const ju
     auto* source=audio.plugin(0);if(!check(source!=nullptr,"source instrument available"))return false;
     juce::MemoryBlock native;source->getStateInformation(native);
     auto legacy=newProject(9022);legacy.sections={{Section::main,1,"Legacy VST"}};legacy.masterGain=1;legacy.normalise();
-    for(auto& t:legacy.tracks){t.mute=true;t.effects.clear();t.parameters.clear();t.volume.enabled=false;for(auto& c:t.clips)c.notes.clear();}
+    for(auto& t:legacy.tracks){t.mute=true;t.effects.clear();t.parameters.clear();t.volume.enabled=false;for(auto& c:t.clips){c.notes.clear();c.feel={-1,-1,-1};}}
     legacy.masterAutomation.enabled=false;
     for(int ti=0;ti<3;++ti){auto& t=legacy.tracks[(size_t)ti];t.mute=false;t.gain=.5;t.instrument="plugin";t.instrumentPath=description.fileOrIdentifier.toStdString();t.instrumentId=description.createXml()->toString().toStdString();t.instrumentState=native.toBase64Encoding().toStdString();t.clips[0].notes={{0,3,69-ti*12,100,0}};}
     ParameterAutomation lane;lane.slot=0;lane.index=0;lane.name="Gain";lane.curve.enabled=true;lane.curve.points={{0,.25,0},{4,.5,0}};legacy.tracks[1].parameters.push_back(lane);

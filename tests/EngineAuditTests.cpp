@@ -57,6 +57,20 @@ public:
     }
     void setStateInformation(const void*,int)override{stateRestoredActive=prepared;getParameters()[0]->setValue(.81f);}
 };
+class MidiDeliveryProbe final : public AuditPlugin {
+public:
+    std::array<bool,2048> pressed{},ringing{};std::array<bool,16> pedal{};
+    void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer& midi)override{
+        ++calls;inside=true;
+        for(auto e:midi){const auto m=e.getMessage();const int ch=m.getChannel()-1;if(ch<0)continue;const size_t base=(size_t)ch*128;
+            if(m.isNoteOn()){pressed[base+(size_t)m.getNoteNumber()]=ringing[base+(size_t)m.getNoteNumber()]=true;}
+            else if(m.isNoteOff()){pressed[base+(size_t)m.getNoteNumber()]=false;if(!pedal[(size_t)ch])ringing[base+(size_t)m.getNoteNumber()]=false;}
+            else if(m.isController()&&m.getControllerNumber()==64){pedal[(size_t)ch]=m.getControllerValue()>=64;if(!pedal[(size_t)ch])for(size_t n=0;n<128;++n)if(!pressed[base+n])ringing[base+n]=false;}
+            else if(m.isAllSoundOff()||m.isAllNotesOff())for(size_t n=0;n<128;++n)pressed[base+n]=ringing[base+n]=false;
+        }
+        const bool active=std::any_of(ringing.begin(),ringing.end(),[](bool n){return n;});block.clear();if(active)for(int c=0;c<block.getNumChannels();++c)juce::FloatVectorOperations::fill(block.getWritePointer(c),.02f,block.getNumSamples());inside=false;
+    }
+};
 struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
     int changes=0;float value=0;
     void parameterValueChanged(int,float v)override{++changes;value=v;}
@@ -64,6 +78,34 @@ struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
 };
 }
 struct EngineAuditTests {
+    static void handoffLifetime(){
+        struct State {std::atomic<int>& destroyed;std::vector<int> lanes{37};explicit State(std::atomic<int>& count):destroyed(count){}~State(){++destroyed;}};
+        std::atomic<int> destroyed{0};Handoff<State> handoff;handoff.post(std::make_unique<State>(destroyed));handoff.adopt();auto* borrowed=handoff.current;
+        handoff.post(std::make_unique<State>(destroyed));juce::WaitableEvent migrating,resume;bool alive=false;
+        std::thread audio([&]{handoff.adopt([&](const State&){migrating.signal();resume.wait(5000);alive=borrowed->lanes[0]==37&&destroyed==0;});});
+        const bool started=migrating.wait(5000);handoff.collect();const int whileMigrating=destroyed;resume.signal();audio.join();handoff.collect();
+        requireAudit(started&&whileMigrating==0&&alive&&destroyed==1,"C1: control-side collection cannot destroy the state while audio references migrate");
+    }
+    static void liveMidiRecovery(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(4);project.sections={{Section::main,4,"Recovery"}};project.normalise();for(auto& t:project.tracks)for(auto& c:t.clips)c.notes.clear();
+        auto probe=std::make_unique<MidiDeliveryProbe>();auto* plugin=probe.get();auto& instrument=*engine.instruments[0];instrument.plugin=std::move(probe);instrument.mode=2;instrument.prepare(44100,512);engine.hostedCount=1;
+        engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};callback();
+        auto miss=[&](const juce::MidiMessage& event){juce::WaitableEvent locked,release;std::thread editor([&]{const juce::ScopedLock lock(plugin->getCallbackLock());locked.signal();release.wait(5000);});const bool ready=locked.wait(5000);engine.liveMidi(0,event);callback();release.signal();editor.join();requireAudit(ready,"processor callback-lock fixture");};
+        const size_t key=2*128+67;
+        miss(juce::MidiMessage::noteOn(3,67,(juce::uint8)100));requireAudit(!plugin->ringing[key],"missed live note was not delivered concurrently");callback();requireAudit(plugin->ringing[key]&&block.getMagnitude(0,512)>.001,"C2: missed live Note On recovers on its original MIDI channel");
+        miss(juce::MidiMessage::noteOff(3,67));requireAudit(plugin->ringing[key],"missed live Note Off reproduces a held plugin voice");callback();requireAudit(!plugin->ringing[key],"C2: missed live Note Off releases the plugin voice");
+        engine.liveMidi(0,juce::MidiMessage::noteOn(3,67,(juce::uint8)100));callback();miss(juce::MidiMessage::controllerEvent(3,64,127));callback();engine.liveMidi(0,juce::MidiMessage::noteOff(3,67));callback();requireAudit(plugin->ringing[key]&&!plugin->pressed[key],"recovered sustain holds a released note");
+        miss(juce::MidiMessage::controllerEvent(3,64,0));callback();requireAudit(!plugin->ringing[key],"C2: missed pedal release clears sustained voices");
+        plugin->suspendProcessing(true);engine.liveMidi(0,juce::MidiMessage::controllerEvent(7,64,127));engine.liveMidi(0,juce::MidiMessage::noteOn(7,72,(juce::uint8)91));callback();engine.liveMidi(0,juce::MidiMessage::noteOff(7,72));callback();
+        plugin->suspendProcessing(false);callback();requireAudit(plugin->ringing[6*128+72]&&!plugin->pressed[6*128+72]&&plugin->pedal[6],"C2: suspension recovers released but sustained notes on every channel");
+        plugin->suspendProcessing(true);engine.liveMidi(0,juce::MidiMessage::controllerEvent(7,64,0));callback();engine.liveTail=0;plugin->suspendProcessing(false);engine.playing=false;callback();requireAudit(!plugin->ringing[6*128+72],"C2: idle recovery also delivers the final pedal release");
+        engine.stop();
+    }
+    static void recordedMidiEffects(){
+        AudioEngine engine(AudioEngine::Offline{});auto p=newProject(0);for(auto& t:p.tracks)for(auto& c:t.clips)c.notes.clear();p.tracks[0].freeTimeline=true;Clip c;c.span=4;c.audioOffset=0;c.audioDuration=1;c.notes={{0,4,60,100,0}};p.tracks[0].clips={c};p.tracks[0].sampler.mode=1;p.tracks[0].effects={{1,"MIDI effect","Probe","/probe","","",false}};
+        auto asset=std::make_shared<SampleAsset>();asset->rate=44100;asset->frames=44100;asset->audio.setSize(2,44104);asset->audio.clear();auto& i=*engine.instruments[0];i.sampler=std::make_unique<SampleSynth>(asset,p.tracks[0].sampler,60,false);i.mode=1;auto effect=std::make_unique<AuditPlugin>(true);auto* probe=effect.get();i.effects[0].plugin=std::move(effect);i.prepare(44100,512);engine.hostedCount=1;
+        engine.publish(p);engine.play(true);juce::AudioBuffer<float> output(2,512);juce::AudioIODeviceCallbackContext context;engine.audioDeviceIOCallbackWithContext(nullptr,0,output.getArrayOfWritePointers(),2,512,context);requireAudit(probe->lastMidi==0,"C3: sampler-region triggers reach inserts as standard MIDI notes");engine.stop();
+    }
     static void selectiveSnapshots(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(4);
         auto a=std::make_unique<AuditPlugin>(),b=std::make_unique<AuditPlugin>(),master=std::make_unique<AuditPlugin>(true);
@@ -158,19 +200,23 @@ struct EngineAuditTests {
         resume.signal();snapshot.join();audio.join();requireAudit(began&&nonblocking&&otherAudible&&!plugin->overlap,"slow state reads do not block the callback, race the processor or mute unrelated tracks");
     }
     static void stoppedStateCapture(){
-        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);auto next=std::make_unique<AuditPlugin>();auto* plugin=next.get();engine.swapInstrument(0,std::move(next),0,{});engine.publish(project);
-        auto& instrument=*engine.instruments[0];instrument.midi.addEvent(juce::MidiMessage::noteOff(1,60),0);
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);auto next=std::make_unique<MidiDeliveryProbe>();auto* plugin=next.get();engine.swapInstrument(0,std::move(next),0,{});engine.publish(project);
+        auto& instrument=*engine.instruments[0];juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context); // settle the pending transport reset before injecting idle MIDI
+        instrument.midi.addEvent(juce::MidiMessage::noteOn(1,60,(juce::uint8)100),0);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        instrument.midi.addEvent(juce::MidiMessage::noteOff(1,60),0);
         juce::WaitableEvent started,resume;plugin->snapshotStarted=&started;plugin->snapshotResume=&resume;
         std::thread snapshot([&]{engine.capturePluginStates(project);});const bool began=started.wait(2000);
-        juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;const int calls=plugin->calls;
+        const int calls=plugin->calls;
         engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
-        const bool deferred=plugin->calls==calls&&!instrument.midi.isEmpty();resume.signal();snapshot.join();plugin->snapshotStarted=plugin->snapshotResume=nullptr;
+        const bool deferred=plugin->calls==calls&&plugin->ringing[60];resume.signal();snapshot.join();plugin->snapshotStarted=plugin->snapshotResume=nullptr;
         engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
-        requireAudit(began&&deferred&&plugin->calls>calls&&instrument.midi.isEmpty()&&!plugin->overlap,"stopped state capture defers DSP without losing pending note-offs");
+        requireAudit(began&&deferred&&plugin->calls>calls&&!plugin->ringing[60]&&!plugin->overlap,"stopped state capture defers DSP without losing pending note-offs");
+        instrument.midi.addEvent(juce::MidiMessage::noteOn(1,61,(juce::uint8)100),0);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
         instrument.midi.addEvent(juce::MidiMessage::noteOff(1,61),0);plugin->suspendProcessing(true);const int suspendedCalls=plugin->calls;
         engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
-        requireAudit(plugin->calls==suspendedCalls&&!instrument.midi.isEmpty(),"stopped suspended plugins retain pending note-offs");plugin->suspendProcessing(false);
-        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(instrument.midi.isEmpty(),"resume delivers stopped note-offs");
+        requireAudit(plugin->calls==suspendedCalls&&plugin->ringing[61],"stopped suspended plugins retain pending note-offs");plugin->suspendProcessing(false);
+        engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);requireAudit(!plugin->ringing[61],"resume delivers stopped note-offs");
     }
     static void sourceReplacementCheckpoint(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.tracks[0].instrument="plugin";
@@ -183,7 +229,7 @@ struct EngineAuditTests {
         auto restored=std::make_unique<ProgramStatePlugin>();auto* probe=restored.get();engine.swapInstrument(0,std::move(restored),0,{});engine.restorePluginState(0,juce::String::fromUTF8(project.tracks[0].instrumentState.c_str()));
         requireAudit(std::abs(probe->privateEdit-.75f)<1e-6,"replacement Undo snapshot retains the latest opaque sound edit");
     }
-    static void run(){stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
+    static void run(){handoffLifetime();liveMidiRecovery();recordedMidiEffects();stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();
@@ -198,6 +244,7 @@ struct EngineAuditTests {
         const int callsBefore=plugin->calls;const auto started=juce::Time::getMillisecondCounterHiRes();
         for(int n=0;n<40;++n){project.tracks[0].gain=.2+.01*(n%4);engine.updateMix(project);engine.reusePluginStates(project);}
         const double spent=juce::Time::getMillisecondCounterHiRes()-started;juce::Thread::sleep(20);const int callsAfter=plugin->calls;const int states=plugin->stateReads.load();running=false;playing.join();engine.stop();
+        std::cout<<"Mix handoff latency: controls_ms="<<spent<<", snapshot_reads="<<states<<", callbacks="<<callsBefore<<"->"<<callsAfter<<"\n";
         requireAudit(states==0&&spent<80&&callsAfter>callsBefore,"volume changes stay lock-free: no plugin snapshot and processBlock keeps running");
         engine.stop();project.tracks[0].parameters.clear();ParameterAutomation lane;lane.index=0;lane.curve.enabled=true;const double point=141.*120/(44100*60);lane.curve.points={{0,0,0},{point,1,0},{1,1,0}};project.tracks[0].parameters.push_back(lane);
         plugin->calls=plugin->samples=0;plugin->lastMidi=-1;engine.publish(project);engine.play(true);engine.liveMidi(0,juce::MidiMessage::noteOn(1,65,.8f),false); // zero-offset UI input
@@ -251,3 +298,5 @@ void runEngineAuditTests(){
     reader.reset();file.deleteFile();if(!audible)throw std::runtime_error("fresh offline export contains audible prepared guide audio");
     }
     fga::EngineAuditTests::run();}
+
+void runDeepAuditEngineTests(){fga::EngineAuditTests::handoffLifetime();fga::EngineAuditTests::liveMidiRecovery();fga::EngineAuditTests::recordedMidiEffects();fga::EngineAuditTests::stoppedStateCapture();std::cout<<"Deep audit handoff and hosted MIDI regressions passed\n";}

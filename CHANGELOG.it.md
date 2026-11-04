@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato — fix deep-audit 0.31.19
+
+- Corretti il rilascio concorrente dello stato del mix e il recupero delle note MIDI live dopo lock/sospensione del plugin, compreso sustain e canali.
+- I take audio conservano offset e durata durante taglio, spostamento, copia e sovrascrittura; le registrazioni lunghe mantengono tutta la durata sulla timeline.
+- Le rigenerazioni parziali conservano il feel effettivo delle parti escluse. IMPORT MIDI musicale aggiorna subito le parti armoniche sbloccate in un solo passo Annulla.
+- Il taglio dei loop conserva periodo e fase originali anche nelle successive estensioni.
+- Schema progetto 5 per i nuovi dati dei take; lettura mantenuta degli schemi 1–4. I file in schema 5 richiedono questa versione o una successiva.
+- Nuove regressioni per concorrenza, MIDI live, export WAV, durata delle registrazioni, scope, persistenza e callback UI.
+
 ## 0.31.19
 
 - Densità, Swing e Feel aggiornano il MIDI generato sbloccato durante Play, compresi i Vocal chops, con aggiornamenti accorpati durante il trascinamento e Annulla/Ripristina.

@@ -18,6 +18,8 @@ constexpr int leadTrack = 17;
 constexpr int legacyTrackCount = 17;
 constexpr int trackCount = 18; // generated tracks, stable IDs
 constexpr int maxTracks = 32;
+constexpr double maxClipBeats = 131072.;
+constexpr double maxAudioRegionSeconds = maxClipBeats*2.; // timeline extent at the minimum 30 BPM; source files remain sample-memory limited
 // Dedicated engine slot: never a MIDI track and never exported as a stem.
 constexpr int masterEffectTrack = maxTracks, engineTrackCount = maxTracks + 1;
 inline bool isManualTrack(int track) { return track >= trackCount && track < maxTracks; }
@@ -37,13 +39,17 @@ struct Clip {
     bool locked = false;
     // A zero span follows the section; explicit spans and loop periods use beats.
     // Preserve the source across shortening so extending can recover its notes.
-    double span = 0, loopLength = 0;
+    double span = 0, loopLength = 0, loopPhase = 0;
+    // Source seconds for a recorded audio region; negative offset means ordinary MIDI.
+    double audioOffset = -1, audioDuration = 0;
+    // Inherited feel frozen for this take when another scope changes the global knobs.
+    std::array<double,3> feel {-1,-1,-1};
     int role = -1;
     double position = 0; // Absolute beat when the track has an independent timeline.
     std::vector<Note> loopSource;
     // Persistent musical take, separate from performance timing. Zero loads legacy motifs.
     std::uint32_t motifSeed = 0;
-    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
+    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
@@ -227,7 +233,8 @@ bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 // `index` is the section (Scope::section) or the clip (Scope::clip). onlyLane: 0 volume,
 // 1 pan, 2 + k plugin lane k, -1 every lane of the track(s).
 void randomiseAutomation(Project&, Scope scope, int track, int index, std::uint32_t seed, int onlyLane = -1);
-sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0);
+inline double takeFeel(double track,double take,double global){return track>=0?track:take>=0?take:global;}
+sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);
 // Section-aligned clip gestures retain the fixed instrument routing.
@@ -236,7 +243,7 @@ void tidyNotes(Clip&, double beats);
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1, double limit = 0);
 void humanize(Clip&, double amount, std::uint32_t seed, double beats);
-struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; };
+struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; double audioOffset=-1,audioDuration=0,audioBeats=0; };
 std::vector<TimedEvent> events(const Project&, int onlyTrack = -1);
 // Standard MIDI File type 1, 960 PPQ, tempo, time/key signatures and section markers.
 std::vector<std::uint8_t> midiFile(const Project&, int onlyTrack = -1);

@@ -33,7 +33,8 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,ci)):ci;
             if(c.locked||(scope==Scope::clip&&ci!=section)||(scope==Scope::section&&guide!=section))continue;
             if(seed)c.seed=hash(seed+ti*131U+ci*977U);else if(c.seed<=1)c.seed=hash(p.settings.seed+ti*131U+ci*977U);
-            const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=t.engine.density>=0?t.engine.density:p.settings.density;
+            c.feel={takeFeel(t.engine.density,c.feel[0],p.settings.density),takeFeel(t.engine.swing,c.feel[1],p.settings.swing),takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize)};
+            const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=takeFeel(t.engine.density,c.feel[0],p.settings.density);
             const auto role=p.sections[(size_t)guide].type;if(t.freeTimeline)c.role=(int)role;
             c.notes.clear();c.loopSource.clear();
             if(density<=0)continue;
@@ -43,8 +44,8 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
                 if((mixing||role==Section::breakdown)&&(phrase%2==0))continue;
                 int count=1+(int)std::lround(density*5);if(mixing||role==Section::breakdown)count=1;
                 for(int n=0;n<count;++n){auto r=hash(draw+n*197U);double at=phrase*16.+figures[draw%4][n];
-                    const double swing=t.engine.swing<0?p.settings.swing:t.engine.swing;if(((int)std::lround(at*4)&1)!=0)at+=swing*.25;
-                    const double human=t.engine.humanize<0?p.settings.humanize:t.engine.humanize;at+=((int)(r%201)-100)*human*.0002;
+                    const double swing=takeFeel(t.engine.swing,c.feel[1],p.settings.swing);if(((int)std::lround(at*4)&1)!=0)at+=swing*.25;
+                    const double human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);at+=((int)(r%201)-100)*human*.0002;
                     if(at>=beats)continue;
                     const double length=std::min(beats-at,std::clamp(t.engine.gate*.5,.0625,.75));
                     const auto chord=chordAtBeat(p.settings,p.clipStart(ti,ci)+std::max(0.,at));

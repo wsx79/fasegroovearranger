@@ -12,9 +12,12 @@
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runStudioEngineTests();
 void runEngineAuditTests();
+void runDeepAuditEngineTests();
+void runRecordedRegionTests();
 int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
+        if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}
         if(argc==3&&juce::String(argv[1])=="--development-audit")return fga::writeDevelopmentAudit(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--club-audit")return fga::writeClubAudioAudit(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--electronic-audit"){

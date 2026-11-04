@@ -138,4 +138,8 @@ if(FGA_BUILD_TESTS)
     if(arranger_tests)
         set_tests_properties(${arranger_tests} PROPERTIES TIMEOUT 180)
     endif()
+    if(TARGET fga_engine_tests)
+        # Complete WAV/MP3 and recorded-region regressions also run with unoptimised DSP.
+        set_tests_properties(audio_engine PROPERTIES TIMEOUT 300)
+    endif()
 endif()

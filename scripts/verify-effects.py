@@ -31,7 +31,7 @@ for name, target in expected.items():
     print(f'PASS {name}: {count} samples, mean {total / count:.6f}, max error {maximum_error:.8f}')
 project = json.loads((folder / 'effects-project.fga').read_text(encoding='utf-8'))
 track = project['tracks'][0]
-assert project['version'] == 4
+assert project['version'] == 5
 assert len(track['effects']) == 2 and len(track['parameterAutomation']) == 2
 assert {item['slot'] for item in track['effects']} == {1, 2}
 assert all(item['state'] for item in track['effects'])

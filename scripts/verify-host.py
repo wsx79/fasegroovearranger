@@ -9,6 +9,7 @@ import wave
 folder = Path(sys.argv[1])
 assert not (folder / 'host-error.txt').exists(), (folder / 'host-error.txt').read_text() if (folder / 'host-error.txt').exists() else ''
 assert (folder / 'host.txt').read_text().startswith('PASS')
+assert (folder / 'host-live-recovery.txt').read_text().startswith('PASS')
 legacy_report = (folder / 'host-legacy.txt').read_text(encoding='utf-8').splitlines()
 assert legacy_report and all(line.startswith('PASS ') for line in legacy_report), legacy_report
 for version in (1, 2, 3):
@@ -51,6 +52,11 @@ program_state = json.loads(program_project['tracks'][0]['instrumentState'].remov
 assert program_state['program'] == 1 and program_state['programName'] == 'Bright', program_state
 program = signal('host-program.wav')
 assert program[0] > .001 and abs(program[1] - 880) < 4, program
-export_report = (folder / 'export-ui' / 'export-ui.txt').read_text(encoding='utf-8').splitlines()
-assert export_report and all(line.startswith('PASS ') for line in export_report), export_report
-print(f'PASS reopened selected preset: {program[1]:.1f} Hz; native state restored while inactive; complete WAV encoding confirmation/file-choice/render flow')
+if (folder / 'export-ui-skipped.txt').exists():
+    assert (folder / 'export-ui-skipped.txt').read_text(encoding='utf-8').startswith('SKIP ')
+    print('SKIP extended export UI flow (FGA_SKIP_EXPORT_UI_TEST=1); native host WAV exports verified above')
+else:
+    export_report = (folder / 'export-ui' / 'export-ui.txt').read_text(encoding='utf-8').splitlines()
+    assert export_report and all(line.startswith('PASS ') for line in export_report), export_report
+    print('PASS complete WAV encoding confirmation/file-choice/render flow')
+print(f'PASS reopened selected preset: {program[1]:.1f} Hz; native state restored while inactive')

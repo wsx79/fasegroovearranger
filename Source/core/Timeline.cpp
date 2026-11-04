@@ -9,7 +9,11 @@ constexpr double tick=1./960.;
 Clip slice(const Clip& source,double offset,double duration,double position){
     Clip part=source;part.notes.clear();part.position=position;part.span=duration;
     for(auto n:source.notes){const double from=std::max(offset,n.start),to=std::min(offset+duration,n.start+n.length);if(to-from<tick)continue;n.start=from-offset;n.length=to-from;part.notes.push_back(n);}
-    tidyNotes(part,duration);part.loopLength=duration;part.loopSource=part.notes;return part;
+    tidyNotes(part,duration);
+    if(source.audioOffset>=0&&source.span>0){const double secondsPerBeat=source.audioDuration/source.span;part.audioOffset=source.audioOffset+offset*secondsPerBeat;part.audioDuration=duration*secondsPerBeat;part.loopLength=0;part.loopPhase=0;part.loopSource.clear();}
+    else if(source.loopLength>0){part.loopPhase=std::fmod(source.loopPhase+offset,source.loopLength);}
+    else {part.loopLength=duration;part.loopPhase=0;part.loopSource=part.notes;}
+    return part;
 }
 void sortClips(Track& t){std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});}
 }
@@ -43,7 +47,7 @@ int Project::splitClip(int track,int index,double beat){
     *this=std::move(edited);return index+1;
 }
 int Project::placeClip(int track,Clip clip,double beat){
-    if(track<0||track>=(int)tracks.size()||!std::isfinite(beat)||!std::isfinite(clip.span)||clip.span<tick||clip.span>512)return -1;
+    if(track<0||track>=(int)tracks.size()||!std::isfinite(beat)||!std::isfinite(clip.span)||clip.span<tick||clip.span>maxClipBeats)return -1;
     beat=std::clamp(std::round(beat*960)/960.,0.,131072.);
     Project edited=*this;edited.detachTrack(track);auto& t=edited.tracks[(size_t)track];const double end=beat+clip.span;
     std::vector<Clip> keep;size_t notes=clip.notes.size()+clip.loopSource.size();

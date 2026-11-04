@@ -5,6 +5,7 @@
 #include <juce_cryptography/juce_cryptography.h>
 #include "signalsmith-stretch.h"
 #include <limits>
+#include <cstring>
 namespace fga {
 juce::Result readSampleAsset(const juce::File& file,std::shared_ptr<const SampleAsset>& result){
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
@@ -49,12 +50,14 @@ public:
     void startNote(int note,float velocity,juce::SynthesiserSound*,int wheel)override{
         const auto& p=owner.settings();data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
         begin=p.start*data->frames;finish=p.end*data->frames;
+        region=owner.regionOffset>=0;
+        if(region){begin=std::clamp(owner.regionOffset*data->rate,0.,(double)data->frames);finish=std::min((double)data->frames,begin+owner.regionDuration*data->rate);}
         if(owner.mode()==2){int index=note-p.sliceBase;if(index<0||index>=p.sliceCount){clearCurrentNote();data=nullptr;return;}begin=p.slices[(size_t)index]*data->frames;finish=(index+1<p.sliceCount?p.slices[(size_t)index+1]:p.end)*data->frames;}
         updateParameters();envelope.reset();envelope.noteOn();shaped.noteOn(p,getSampleRate());warp.reset();
         if(p.sync){Reader reader{*this,0};const int seek=warp.inputLatency();warp.seek(reader,seek,speed());sourcePos=seek;}
     }
     void stopNote(float,bool allowTailOff)override{
-        if(!allowTailOff){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;return;}
+        if(!allowTailOff||region){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;return;}
         if(owner.mode()==0&&releaseAt<0)releaseAt=elapsed+owner.latencySamples();
     }
     void pitchWheelMoved(int value)override{pitchWheel=value;}
@@ -66,7 +69,7 @@ public:
             if(p.sync){const double need=n*speed()+inputFraction;const int input=(int)need;inputFraction=need-input;Reader reader{*this,sourcePos};warp.process(reader,input,target,n);sourcePos+=input;}
             else{const double ratio=data->rate/getSampleRate()*std::pow(2.,semitones()/12.);for(int i=0;i<n;++i){left[i]=read(0,sourcePos);right[i]=read(1,sourcePos);sourcePos+=ratio;}}
             const int lag=owner.latencySamples();
-            const bool looping=p.loop&&owner.mode()==0;
+            const bool looping=!region&&p.loop&&owner.mode()==0;
             for(int i=0;i<n&&data;++i,++elapsed){
                 if(releaseAt>=0&&elapsed>=releaseAt&&!released){envelope.noteOff();shaped.noteOff();released=true;}
                 if(elapsed<lag)continue;
@@ -109,7 +112,7 @@ private:
     signalsmith::stretch::SignalsmithStretch<float> warp{0};
     juce::ADSR envelope;ShapedEnvelope shaped;juce::dsp::StateVariableTPTFilter<float> filter;
     double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0;int pitch=60,pitchWheel=8192;
-    int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false;
+    int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false,region=false;
     double semitones()const{return (owner.mode()==2?0:pitch-owner.root())+owner.settings().transpose+owner.settings().fine*.01+(pitchWheel-8192)/8192.*2.;}
     double speed()const{return owner.settings().sync?owner.tempo()/owner.settings().sourceBpm:std::pow(2.,semitones()/12.);}
     void updateParameters(){const auto& p=owner.settings();envelope.setParameters({(float)p.attack,(float)p.decay,(float)p.sustain,(float)p.release});shaped.apply(p,getSampleRate());filter.setCutoffFrequency((float)std::clamp(p.cutoff,20.,getSampleRate()*.45));filter.setResonance((float)(.5+p.resonance*8));warp.setTransposeSemitones((float)semitones());}
@@ -117,7 +120,7 @@ private:
     float read(int channel,double input)const{
         const auto& p=owner.settings();double progress=input*(p.sync?data->rate/getSampleRate():1.);bool wrapped=false;
         double pos=p.reverse?finish-1-progress:begin+progress;
-        const bool loop=p.loop&&owner.mode()==0;const double lo=std::max(begin,p.loopStart*data->frames),hi=std::min(finish,p.loopEnd*data->frames),length=hi-lo;
+        const bool loop=!region&&p.loop&&owner.mode()==0;const double lo=std::max(begin,p.loopStart*data->frames),hi=std::min(finish,p.loopEnd*data->frames),length=hi-lo;
         if(loop&&length>1){if(!p.reverse&&pos>=hi){pos=lo+std::fmod(pos-hi,length);wrapped=true;}if(p.reverse&&pos<lo){pos=hi-1-std::fmod(lo-1-pos,length);wrapped=true;}}
         auto value=raw(channel,pos);if(!loop||length<=1)return value;
         const double fade=std::min(p.crossfade*data->rate,length*.5);if(fade<1)return value;
@@ -137,8 +140,35 @@ private:
     };
 };
 }
-SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);}
+SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
 SampleSynth::~SampleSynth()=default;
+void SampleSynth::addRegionEvent(juce::MidiBuffer& midi,int sample,int note,int velocity,double offset,double duration){
+    // Non-commercial manufacturer ID, signature/version, pitch/velocity, two
+    // doubles encoded in 7-bit groups. No heap-backed MidiMessage on the callback.
+    unsigned char bytes[29]{0xf0,0x7d,'F','G','A',1,(unsigned char)note,(unsigned char)velocity};
+    for(int field=0;field<2;++field){const double value=field?duration:offset;std::uint64_t bits;std::memcpy(&bits,&value,sizeof bits);for(int j=0;j<10;++j){bytes[8+field*10+j]=(unsigned char)(bits&127);bits>>=7;}}
+    bytes[28]=0xf7;midi.addEvent(bytes,29,sample);
+}
+bool SampleSynth::isRegionEvent(const unsigned char* bytes,int size){return size==29&&bytes[0]==0xf0&&bytes[1]==0x7d&&bytes[2]=='F'&&bytes[3]=='G'&&bytes[4]=='A'&&bytes[5]==1&&bytes[28]==0xf7;}
+bool SampleSynth::handleRegion(const unsigned char* bytes,int size){
+    if(isRegionEvent(bytes,size)){
+        double values[2]{};for(int field=0;field<2;++field){std::uint64_t bits=0;for(int j=0;j<10;++j)bits|=(std::uint64_t)(bytes[8+field*10+j]&127)<<(j*7);std::memcpy(&values[field],&bits,sizeof bits);}
+        if(std::isfinite(values[0])&&values[0]>=0&&std::isfinite(values[1])&&values[1]>0){regionOffset=values[0];regionDuration=values[1];noteOn(1,bytes[6],bytes[7]/127.f);regionOffset=-1;regionDuration=0;}
+        return true;
+    }
+    return false;
+}
+void SampleSynth::handleMidiEvent(const juce::MidiMessage& message){if(!handleRegion(message.getRawData(),message.getRawDataSize()))juce::Synthesiser::handleMidiEvent(message);}
+void SampleSynth::renderNextBlock(juce::AudioBuffer<float>& output,const juce::MidiBuffer& midi,int start,int count){
+    const juce::ScopedLock guard(lock);const int end=start+count;int cursor=start;
+    for(auto it=midi.findNextSamplePosition(start);it!=midi.cend();++it){const auto event=*it;if(event.samplePosition>=end)break;
+        const int at=std::max(cursor,event.samplePosition);if(at>cursor)renderVoices(output,cursor,at-cursor);cursor=at;
+        // Read the internal region message in place: constructing a MidiMessage
+        // for this long payload would allocate on the audio thread.
+        if(!handleRegion(event.data,event.numBytes))handleMidiEvent(event.getMessage());
+    }
+    if(cursor<end)renderVoices(output,cursor,end-cursor);
+}
 bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){const auto& old=*parameters;const bool restart=old.mode!=p.mode||old.sync!=p.sync||old.reverse!=p.reverse||old.start!=p.start||old.end!=p.end||old.sliceCount!=p.sliceCount||old.slices!=p.slices;if(restart)allNotesOff(0,false);fallback=p;parameters=&fallback;rootNote=root;bpm=tempo;return restart;}
 void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(rate);}
 void SampleSynth::noteOn(int channel,int note,float velocity){

@@ -10,6 +10,7 @@
 #endif
 #include "DarkTitleBar.h"
 #include <cmath>
+#include <thread>
 namespace {
 // A crash handler that leaves the stack on disk: the Windows event log names only
 // the executable, which is not enough to find the fault.
@@ -59,7 +60,7 @@ public:
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if FGA_SELF_TESTS
-        for(const auto* flag:{"--smoke-test","--ui-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
+        for(const auto* flag:{"--smoke-test","--ui-test","--piano-tools-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
             if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
        #endif
        #if JUCE_MAC
@@ -141,10 +142,22 @@ public:
                     engine.publish(p);engine.play(true);const double at=engine.position();
                     r=copy->exportAudio(p,folder.getChildFile("host-offline.wav"),0,false,[]{return false;},[](double){});if(r.failed()){fail(r.getErrorMessage());return;}
                     if(!engine.isPlaying()||engine.position()!=at){fail("Private export disturbed the live transport");return;}engine.stop();}
+                // C2: real VST3 delivery after a single missed callback.
+                {auto live=p;for(auto& t:live.tracks)for(auto& c:t.clips)c.notes.clear();engine.publish(live);engine.seek(0);engine.play(true);
+                    juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};callback();
+                    auto miss=[&](const juce::MidiMessage& event){juce::WaitableEvent locked,resume;std::thread editor([&]{const juce::ScopedLock guard(plugin->getCallbackLock());locked.signal();resume.wait(5000);});const bool began=locked.wait(5000);engine.liveMidi(0,event);callback();resume.signal();editor.join();return began;};
+                    const bool onMissed=miss(juce::MidiMessage::noteOn(1,72,(juce::uint8)100));callback();const float on=block.getMagnitude(128,384);
+                    const bool offMissed=miss(juce::MidiMessage::noteOff(1,72));callback();const float off=block.getMagnitude(128,384);engine.stop();
+                    const bool recovered=onMissed&&offMissed&&on>1.e-4f&&off<1.e-6f;folder.getChildFile("host-live-recovery.txt").replaceWithText(juce::String(recovered?"PASS":"FAIL")+" live Note On/Off recovered after callback-lock contention; on="+juce::String(on,8)+" off="+juce::String(off,8));
+                    if(!recovered){fail("Live VST3 notes lost after callback-lock contention");return;}
+                }
                 if(!window->content->main.verifyLegacyHostedProjects(folder,description)){fail("Legacy hosted project reopen/Play regression; see host-legacy.txt");return;}
                 folder.getChildFile("host.txt").replaceWithText("PASS native VST3 load, MIDI/playhead, editor lifecycle and project state restore");
                 setApplicationReturnValue(0);quit();
             });return;
+        }
+        if(args.size()==2&&args[0]=="--piano-tools-test"){
+            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const juce::File folder(args[1]);folder.createDirectory();const bool ok=fga::verifyPianoTools(window->content->main,folder);setApplicationReturnValue(ok?0:1);quit();return;
         }
         if(args.size()==2&&args[0]=="--ui-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.writeUiEvidence(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;

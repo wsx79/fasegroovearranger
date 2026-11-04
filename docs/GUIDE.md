@@ -123,7 +123,7 @@ The home screen’s **master volume**, **note density**, **Swing** and **Feel** 
 
 The main **Density**, **Swing** and **Feel** knobs apply your chosen values to unlocked generated parts, including Vocal chops. Density changes automatic note activity, Swing delays offbeats, and Feel changes timing and dynamics; handwritten patterns and the genre’s rhythmic anchors may retain their note count. Updates are heard and displayed during a drag, with the final value always applied on release. Clip loop sources and repetitions are preserved, as is the Techno/Electro House style.
 
-Every **REGENERATE** that draws a new song, section, track or clip variation also chooses new genre-appropriate Density, Swing and Feel values and updates the three knob positions. Manual adjustments do not freeze later regenerations: adjust them again after any new take. APPLY and chord changes keep the current feel. **NEW ARRANGEMENT** reuses existing MIDI; locks continue to protect parts. Undo/Redo includes notes and settings.
+Every **REGENERATE** that draws a new song, section, track or clip variation also chooses new genre-appropriate Density, Swing and Feel values and updates the three knob positions. Manual adjustments do not freeze later regenerations: adjust them again after any new take. APPLY and chord changes keep each take’s effective feel. Parts excluded by a partial regeneration retain their feel even when you apply their unchanged instrument settings later. Moving a header feel knob explicitly applies that parameter to every unlocked generated part. **NEW ARRANGEMENT** reuses existing MIDI; locks continue to protect parts. Undo/Redo includes notes and settings.
 
 ### DAW workspace
 
@@ -291,6 +291,10 @@ Drop an audio file from the browser or operating system onto the waveform, or pr
 3. Position the cursor on the ruler, press **RECORD AUDIO**, and choose a WAV destination. Transport starts too. The file is stereo 24-bit at the device sample rate.
 4. Press **FINISH TAKE** to complete the WAV; closing Studio also finishes the take. Finishing does not return song position to the beginning.
 5. Press **USE AUDIO TAKE** to add a new sample track with a clip at the recorded position. The section guide is extended if needed. **UNDO** removes the track while keeping the WAV on disk.
+
+Splitting a recorded take retains each fragment’s original audio offset and stops it at the fragment boundary. Moving, copying or overwriting fragments preserves the same source audio. Long takes retain their complete duration on the timeline. Splitting a MIDI loop retains its source period and phase, so later extensions continue on the original grid.
+
+Projects containing take feel, audio regions or loop phase use file schema 5 and require this or a later build to reopen. Older schemas remain readable.
 
 **Master mix** takes are imported **muted** to avoid doubling the song. Unmute when you want to hear the take, accounting for the original mix. Its WAV already includes master processing; the imported track then follows the current mix. Recording remains continuous through loop boundaries: disable LOOP to hear a long take linearly.
 

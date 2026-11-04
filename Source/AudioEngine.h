@@ -7,6 +7,7 @@
 #include "MixerBuses.h"
 #include "MidiRecording.h"
 #include "AudioTake.h"
+#include "HostedMidiState.h"
 #include <juce_audio_utils/juce_audio_utils.h>
 #include "../ThirdParty/fasegroovepiano/Source/GuideVoice.h"
 #include "../ThirdParty/fasegroovedrums/Source/GuideDrums.h"
@@ -52,7 +53,10 @@ template<class T> struct Handoff {
     ~Handoff(){delete pending.load();delete retired.load();delete current;}
     void post(std::unique_ptr<T> next){collect();delete pending.exchange(next.release());}
     void collect(){delete retired.exchange(nullptr);}
-    T* adopt(){if(retired.load()!=nullptr)return nullptr;T* next=pending.exchange(nullptr);if(next==nullptr)return nullptr;retired.store(current);current=next;return next;}
+    // Migrate every borrowed reference before publishing the old state for deletion.
+    // The producer may collect immediately after the store to retired.
+    template<class Migrate> T* adopt(Migrate migrate){if(retired.load()!=nullptr)return nullptr;T* next=pending.exchange(nullptr);if(next==nullptr)return nullptr;T* old=current;current=next;migrate(*next);retired.store(old);return next;}
+    T* adopt(){return adopt([](const T&){});}
 };
 // Keeps the family renderer's vector interface, but its audio producer cannot grow it.
 template<class Event> class RealtimeEvents : public std::vector<Event> {
@@ -87,6 +91,8 @@ struct Instrument {
     RealtimeEvents<GuideLead::Event> leadEvents;
     juce::AudioBuffer<float> scratch,automationBlock;
     juce::MidiBuffer midi,effectMidi,chainMidi,automationMidi;
+    juce::MidiBuffer recoveryMidi;
+    std::array<HostedMidiState,maxTrackEffects+1> hostedMidi;
     struct HostedEffect {std::unique_ptr<juce::AudioPluginInstance> plugin;juce::PluginDescription description;};
     std::unique_ptr<juce::AudioPluginInstance> plugin;
     std::array<HostedEffect,maxTrackEffects> effects;
@@ -113,6 +119,7 @@ struct Instrument {
     std::array<bool,128> sounding{};
     std::array<double,128> soundingStart{};
     std::array<int,128> soundingVelocity{};
+    std::array<std::array<double,3>,128> soundingRegion{}; // source identity for edits while playing
     bool resync=false;
     std::uint64_t noteOns=0; // diagnostics and tests
     // Plugin delay compensation: every track is delayed to line up with the slowest one.
