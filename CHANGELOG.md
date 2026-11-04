@@ -1,12 +1,12 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased — deep-audit 0.31.19 fixes
+## 0.31.20
 
 - Fix concurrent mix-state reclamation and reconcile live MIDI after plugin callback-lock contention or suspension, including sustain and channels.
 - Preserve recorded audio offsets and durations through splitting, moving, copying and overwriting; keep long takes at their complete timeline duration.
 - Partial regeneration retains excluded takes’ effective feel. Musical IMPORT MIDI immediately updates unlocked harmonic parts in one Undo step.
 - Splitting a loop preserves its original period and phase for later extensions.
-- Project schema 5 stores the new take data; schemas 1–4 remain readable. Schema 5 files require this or a later build.
+- Project schema 5 stores the new take data; schemas 1–4 remain readable. Schema 5 files require this or a later build. Older takes without region metadata retain their existing sample/MIDI representation.
 - Add regressions for concurrency, live MIDI, WAV exports, long recordings, generation scope, persistence and the UI import callback.
 
 ## 0.31.19
