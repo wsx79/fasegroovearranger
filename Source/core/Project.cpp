@@ -155,7 +155,6 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     ps.stepsPerChord=s.chordSteps;ps.inversions=e.inversions;ps.velocityOrder=e.velocityOrder;
     // Piano and bass are separate tracks: a shared pitch must not cut or steal the other's note.
     ps.separateBass=true;
-    if(e.humanizeSeed)ps.humanizeSeed=e.humanizeSeed;
     if(e.riffSeed)ps.riffSeed=e.riffSeed;
     if(e.pattern>=0&&e.pattern<=sgk::userPatternIndex())ps.pattern=e.pattern;
     if(e.pattern==sgk::userPatternIndex()){ps.userRight=e.userRight;ps.userLeft=e.userLeft;ps.userVelRight=e.userVelRight;ps.userVelLeft=e.userVelLeft;}
@@ -317,6 +316,7 @@ bool resizedLoop(Clip& clip,double previous,double duration){
     return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes);
 }
 }
+bool rebuildClipLoop(Clip& clip,double duration){return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes);}
 bool Project::resizeClipLoop(int track,int section,double beats){
     if(track<0||track>=(int)tracks.size()||section<0||section>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beats))return false;
     beats=std::clamp(std::round(beats*960)/960.,.25,512.);auto candidate=tracks[(size_t)track].clips[(size_t)section];
@@ -528,6 +528,8 @@ void applyGenre(Project& p,int genre) {
     const int takeOffset=(int)(mix(p.settings.seed+(std::uint32_t)p.settings.genre)%3)-1;
     p.settings.bpm=std::clamp(profile.preferredBpm+feelOffset+takeOffset,profile.minBpm,profile.maxBpm);
     p.settings.swing=fgd::genreSwing(engineGenre(p.settings.genre));
+    p.settings.density=genreSound(p.settings.genre).density;
+    p.settings.humanize=p.settings.genre==(int)Genre::neoSoul?.32:p.settings.genre==(int)Genre::chill?.28:.18;
     // A named factory groove from the previous genre must not override the new
     // style. Preserve explicitly authored user patterns and all other controls.
     for(size_t ti=0;ti<p.tracks.size();++ti){
@@ -745,20 +747,40 @@ void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
 }
 }
 namespace {
-void varySongFeel(Project& p,std::uint32_t seed) {
+// New takes choose visible global values from the genre's musical range.
+void varyGenerationFeel(Project& p,std::uint32_t seed){
+    auto& s=p.settings;
+    auto pick=[&](double previous,int lo,int hi,unsigned salt){const int count=hi-lo+1;int value=lo+(int)(mix(seed+salt)%(unsigned)count);if(value==(int)std::lround(previous*100)&&count>1)value=lo+(value-lo+1)%count;return value/100.;};
+    const int centre=(int)std::lround(genreSound(s.genre).density*100);
+    s.density=pick(s.density,std::max(12,centre-18),std::min(90,centre+18),1700U);
+    const int base=(int)std::lround(fgd::genreSwing(engineGenre(s.genre))*100);
+    int low=std::max(0,base-12),high=std::min(120,base+18);
+    if(s.genre==(int)Genre::jackinHouse){low=36;high=72;}
+    if(s.genre==technoGenre){low=0;high=8;}
+    if(s.genre==electroHouseGenre){low=4;high=20;}
+    s.swing=pick(s.swing,low,high,1901U);
+    int humanLow=10,humanHigh=35;
+    if(s.genre==(int)Genre::neoSoul||s.genre==(int)Genre::chill){humanLow=22;humanHigh=48;}
+    if(s.genre==technoGenre){humanLow=8;humanHigh=24;}
+    s.humanize=pick(s.humanize,humanLow,humanHigh,2203U);
+}
+void varySongTempo(Project& p,std::uint32_t seed){
     auto& s=p.settings;const auto& profile=genreProfile(s.genre);
     const int current=(int)std::lround(s.bpm),span=profile.maxBpm-profile.minBpm;
     if(span>0){int pick=profile.minBpm+(int)(mix(seed+1301U)%(unsigned)span);if(pick>=current)++pick;s.bpm=pick;}
-    double density=0.35+(mix(seed+1700U)%46)/100.0;
-    if(std::abs(density-s.density)<0.02)density=s.density<0.55?0.72:0.38;
-    s.density=density;
-    static const double offsets[]{-0.12,-0.06,0.06,0.12,0.18};
-    const double base=fgd::genreSwing(engineGenre(s.genre));const int which=(int)(mix(seed+1901U)%5);
-    // Jackin' house shuffle stays near 56–62% (swing 0.36–0.72). A hotter offset
-    // lands on the triplet and the beat starts to feel like garage.
-    const bool jackinHouse=s.genre==(int)Genre::jackinHouse;
-    if(isElectronicGenre(s.genre)){applyElectronicFeel(s);}
-    else for(int k=0;k<5;++k){const double swing=std::clamp(base+offsets[(which+k)%5],jackinHouse?0.36:0.0,jackinHouse?0.72:1.0);if(std::abs(swing-s.swing)>1e-4){s.swing=swing;break;}}
+}
+bool editableTake(const Project& p,Scope scope,int track,int section,int ti,int ci){
+    const auto& t=p.tracks[(size_t)ti];if(!hasGenerator(t)||t.locked||t.clips[(size_t)ci].locked)return false;
+    if((scope==Scope::track||scope==Scope::clip)&&ti!=track)return false;
+    if(scope==Scope::clip)return ci==section;
+    return scope!=Scope::section||(t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,ci)):ci)==section;
+}
+void prepareGenerationFeel(Project& p,Scope scope,int track,int section,std::uint32_t seed){
+    bool editable=false;
+    for(int ti=0;ti<(int)p.tracks.size();++ti)for(int ci=0;ci<(int)p.tracks[(size_t)ti].clips.size();++ci)if(editableTake(p,scope,track,section,ti,ci)){
+        auto& e=p.tracks[(size_t)ti].engine;e.density=e.swing=e.humanize=-1;editable=true;break;
+    }
+    if(editable)varyGenerationFeel(p,seed);
 }
 // The form must answer the Harmonic cycle and the groove, not a random list: every
 // section length is a multiple of this phrase, as arrangeSong already assumes.
@@ -970,6 +992,7 @@ static void addSectionCrashes(Project& p){
     }
 }
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
+    if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed);}
     generateNotes(p,scope,track,section,seed);
     generateVocalChops(p,scope,track,section,seed);
     if(scope==Scope::song||scope==Scope::section)addSectionCrashes(p);
@@ -989,6 +1012,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(c.locked||(scope==Scope::clip&&(int)ci!=section)||(scope==Scope::section&&guide!=section))continue;
             previousPiano=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,0,c.seed,c.motifSeed));break;}
     }
+    if(seed)prepareGenerationFeel(p,scope,track,section,seed);
     const auto previousSongSeed=p.settings.seed;
     if(seed&&scope==Scope::song) {
         p.settings.seed=seed;
@@ -997,7 +1021,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
-        varySongFeel(p,seed);renewForm(p);varyForm(p,seed);
+        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);
     }
     const auto& s=p.settings;
     const auto& profile=genreProfile(s.genre);
@@ -1031,8 +1055,9 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(seed) clip.motifSeed=selectedMotif;
             if(seed) clip.seed=isDrumTrack(ti)?mix(seed+313U):mix(seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
             else if(clip.seed==1) clip.seed=isDrumTrack(ti)?mix(s.seed+313U):mix(s.seed+(std::uint32_t)ti*131U+(std::uint32_t)si*977U);
-            clip.loopSource.clear();clip.loopLength=0;
-            const double beats=p.clipLength(ti,(int)si);const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
+            const double period=clip.loopLength,duration=p.clipLength(ti,(int)si);
+            clip.loopSource.clear();
+            const double beats=period>0?period:duration;const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
             const double begin=p.clipStart(ti,(int)si);
             const double chordBeats=s.chordSteps*.25;
             const double prefix=(ti<4||ti==leadTrack)?std::fmod(begin,std::max(4.,chordBeats)):0.;
@@ -1138,6 +1163,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
+            if(period>0){clip.loopSource=clip.notes;if(!rebuildClipLoop(clip,duration))throw std::length_error("Generated loop exceeds the note limit");}
         }
     }
 }
@@ -1151,13 +1177,26 @@ void applyInstrumentChange(Project& p,int track,bool harmony) {
         generate(p,Scope::track,ti,0,0);
     }
 }
+void applyGlobalFeel(Project& p,unsigned parameters){
+    if(!(parameters&(densityFeel|swingFeel|humanizeFeel)))return;
+    p.normalise();
+    for(auto& t:p.tracks){
+        if(!hasGenerator(t)||t.locked||std::none_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return !c.locked;}))continue;
+        if(parameters&densityFeel)t.engine.density=-1;
+        if(parameters&swingFeel)t.engine.swing=-1;
+        if(parameters&humanizeFeel)t.engine.humanize=-1;
+    }
+    // Apply the existing takes once; no new form, harmony, tempo or automation.
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);
+}
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
     auto& t=p.tracks[(size_t)track];
     if(t.locked||clip<0||clip>=(int)t.clips.size()||t.clips[(size_t)clip].locked)return false;
+    prepareGenerationFeel(p,Scope::clip,track,clip,seed);
     auto& c=t.clips[(size_t)clip];
-    // The musical take (motifSeed, or the song's legacy motif) is kept, so the
-    // groove chosen in the panel stays; only the performance variation changes.
+    // Keep the selected motif and explicit pattern while varying the performance
+    // and the genre-based feel shown by the main controls.
     auto next=mix(seed^(c.seed*2654435761U)^((std::uint32_t)clip*977U));
     if(next==c.seed||next<=1)next=c.seed+2;
     c.seed=next;

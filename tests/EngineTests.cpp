@@ -31,6 +31,16 @@ int main(int argc,char** argv){
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
         runStudioEngineTests();runEngineAuditTests();
+        {
+            fga::AudioEngine live(fga::AudioEngine::Offline{});fga::Project song;song.normalise();fga::applyGenre(song,0);song.settings.bpm=120;song.sections={{fga::Section::main,4,"Live feel"}};
+            for(auto& t:song.tracks){t.clips.assign(1,{});t.gain=0;t.engine.reverb=t.engine.chorus=0;}song.tracks[0].gain=.5;song.normalise();fga::generate(song);
+            juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto tick=[&]{live.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+            auto strikes=[&](double density){song.settings.density=density;fga::applyGlobalFeel(song,fga::densityFeel);live.publish(song);const auto before=live.noteOnsSent(0);live.play(true);while(live.position()<3)tick();const auto n=live.noteOnsSent(0)-before;live.stop();tick();return n;};
+            const auto sparse=strikes(.05),busy=strikes(.95);check(busy>sparse,"global Density changes actual audio-thread MIDI note-on activity");
+            live.publish(song);live.play(true);tick();const double before=live.position();song.settings.swing=.8;fga::applyGlobalFeel(song,fga::swingFeel);live.publish(song);tick();
+            check(live.isPlaying()&&live.position()>before,"applying global feel replaces MIDI while playback continues");live.stop();tick();
+        }
+
         fga::AudioEngine engine;engine.devices.closeAudioDevice(); // drive the callback by hand
         {
             auto manual=fga::newProject(1);manual.sections={{fga::Section::main,4,"Main"}};manual.normalise();

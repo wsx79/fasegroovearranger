@@ -5,6 +5,7 @@
 #include "../../ThirdParty/fasegroovepiano/Source/engine/Theory.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <cmath>
+#include <stdexcept>
 namespace fga {
 namespace {
 std::uint32_t hash(std::uint32_t x){x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;return x^(x>>16);}
@@ -32,9 +33,9 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,ci)):ci;
             if(c.locked||(scope==Scope::clip&&ci!=section)||(scope==Scope::section&&guide!=section))continue;
             if(seed)c.seed=hash(seed+ti*131U+ci*977U);else if(c.seed<=1)c.seed=hash(p.settings.seed+ti*131U+ci*977U);
-            const double beats=p.clipLength(ti,ci),density=t.engine.density>=0?t.engine.density:.25;
+            const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=t.engine.density>=0?t.engine.density:p.settings.density;
             const auto role=p.sections[(size_t)guide].type;if(t.freeTimeline)c.role=(int)role;
-            c.notes.clear();c.loopSource.clear();c.loopLength=0;
+            c.notes.clear();c.loopSource.clear();
             if(density<=0)continue;
             // Two to three short calls per four bars at the default density.
             static constexpr double figures[][6]{{1.5,6.75,10.5,14.75,4.5,12.75},{2.75,7.5,9.5,14.5,5.75,12.5},{.75,5.5,11.5,15.25,7.75,13.5},{3.5,6.5,10.75,14.75,1.5,8.5}};
@@ -53,7 +54,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
                     c.notes.push_back({at,length,pitch,std::clamp((88+(int)((r>>16)%25))*t.engine.velocity/100,1,127),0});
                 }
             }
-            tidyNotes(c,beats);
+            tidyNotes(c,beats);if(period>0){c.loopSource=c.notes;if(!rebuildClipLoop(c,duration))throw std::length_error("Generated vocal loop exceeds the note limit");}
         }
     }
 }

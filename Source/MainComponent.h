@@ -439,6 +439,9 @@ private:
     std::deque<std::function<void()>> restorePluginTasks;
     void updateLoadingProgress();
     int loadingPlugin=0;
+    unsigned pendingGlobalFeel=0;
+    void queueGlobalFeel(juce::Slider&, unsigned);
+    void flushGlobalFeel();
     int ticks=0;
     std::unique_ptr<juce::FileChooser> chooser;
 #if FGA_SELF_TESTS
@@ -490,6 +493,7 @@ private:
     void showAudioSettings();
     void closePluginEditor(int track=-1,int slot=-1);
     void showChordMenu();
+    void applyChordMenuChoice(int);
     void showChordCirclePopover(int slot=-1);
     void showSpotlightSearch();
     void message(const juce::String&,bool error=false);

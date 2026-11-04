@@ -11,6 +11,7 @@ class InstrumentPanel : public juce::Component {
 public:
     explicit InstrumentPanel(MainComponent&);
     void rebuild();
+    void rebuildAsync();
     // Renders a knob change still waiting for its 50 ms slot (also at drag end and before undo).
     void flushRender();
     void cancelRender(){renderTimer.stopTimer();renderTrack=-1;}
@@ -36,7 +37,6 @@ private:
     bool builtGrid=true,builtInternal=true,rebuildPending=false;
     int renderTrack=-1;
     juce::TimedCallback renderTimer{[this]{flushRender();}};
-    void rebuildAsync();
     void scheduleRender();
     void updateCircle();
     void heading(const juce::String&);

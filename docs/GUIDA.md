@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.31.18**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.31.19**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 ---
 
@@ -97,7 +97,7 @@ Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
 
-Cambiare **tonalità o scala** nel display superiore aggiorna subito gli accordi e rigenera le parti armoniche sbloccate. Anche **Swing** e **Feel** aggiornano il MIDI generato; **Annulla** ripristina le note precedenti. **SEARCH** o **Ctrl/Cmd+K** apre la ricerca rapida: la **X** chiude la finestra. **MODIFICA ACCORDI** apre il circolo delle quinte interattivo; **Maiusc+clic** apre il menu accordi.
+Cambiare **tonalità o scala** nel display superiore aggiorna subito gli accordi e rigenera le parti armoniche sbloccate. Anche **Densità**, **Swing** e **Feel** aggiornano il MIDI generato; **Annulla** ripristina le note precedenti. **SEARCH** o **Ctrl/Cmd+K** apre la ricerca rapida: la **X** chiude la finestra. **MODIFICA ACCORDI** apre il circolo delle quinte interattivo; **Maiusc+clic** apre il menu accordi.
 
 | Dove | Cosa trovi |
 |---|---|
@@ -119,6 +119,10 @@ Trascina il **bordo inferiore del nome di una traccia** per cambiarne l’altezz
 Nell’arrangiamento, **doppio clic sul nome di una traccia** (per esempio Kick) seleziona la traccia e apre l’inspector. Il cursore e la riproduzione non si spostano. La **X** compatta nell’angolo dell’inspector lo chiude; **I** o l’icona nella barra superiore lo riaprono. Per rinominare usa invece il nome dentro l’inspector o nel mixer, oppure il menu destro.
 
 Il **volume master**, la **densità delle note**, **Swing** e **Feel** nella schermata principale sono potenziometri: trascina in verticale/orizzontale o modifica il valore numerico. Nell’inspector anche **Volume** e **Pan** hanno potenziometri, con valori sotto; il doppio clic riporta il volume a 0 dB o il pan al centro. Le unità e l’effetto musicale dei controlli restano quelli descritti nelle sezioni seguenti.
+
+I tre potenziometri principali **Densità**, **Swing** e **Feel** applicano i valori che scegli alle parti generate sbloccate, compresi i Vocal chops. Densità modifica l’attività delle parti automatiche, Swing ritarda gli offbeat e Feel varia tempi e dinamica; i pattern scritti a mano e gli accenti fondamentali del genere possono mantenere il numero di note. Durante il trascinamento senti e vedi gli aggiornamenti; al rilascio viene sempre applicato l’ultimo valore. Le sorgenti dei loop, le loro ripetizioni e il carattere Techno/Electro House restano coerenti.
+
+Ogni **RIGENERA** che estrae una nuova variante di brano, sezione, traccia o clip sceglie anche nuovi valori di Densità, Swing e Feel adatti al genere, e aggiorna la posizione dei tre potenziometri. Le tue regolazioni manuali non congelano le rigenerazioni successive: puoi modificarle di nuovo dopo ogni variante. APPLICA e i cambi di accordi conservano invece il feel corrente. **NUOVO ARRANGIAMENTO** riutilizza il MIDI esistente; i blocchi continuano a proteggere le parti. Annulla/Ripristina comprendono note e parametri.
 
 ### Spazio di lavoro DAW
 

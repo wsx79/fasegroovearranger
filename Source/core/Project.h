@@ -209,11 +209,16 @@ void generate(Project&, Scope scope = Scope::song, int track = 0, int section = 
 // track. Harmony edits (key, scale, chords, voicing...) also re-render the other
 // harmonic parts that follow the chords: piano, bass, strings and guitar. Locks hold.
 void applyInstrumentChange(Project&, int track, bool harmony);
+// Header edits explicitly take precedence on unlocked generated tracks.
+enum FeelParameter : unsigned { densityFeel=1, swingFeel=2, humanizeFeel=4 };
+void applyGlobalFeel(Project&, unsigned parameters);
+bool rebuildClipLoop(Clip&, double duration);
+
 SamplerSettings vocalSamplerSettings();
 void generateVocalChops(Project&,Scope,int track,int section,std::uint32_t seed);
 void remapVocalChops(Project&,int track,const SamplerSettings& previous,bool force=false);
-// A new performance take of one clip from the current instrument settings: groove,
-// riff and pattern choices are kept, only the clip's variation seed changes.
+// A new clip variation keeps explicit riff/pattern choices and renews its
+// performance seed and the visible genre-based Density, Swing and Feel.
 // Returns false (and changes nothing) for a locked track or clip.
 bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 // Musical automation for a scope (as generate): build-up sweeps and risers, volume and pan

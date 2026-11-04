@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.31.19
+
+- Density, Swing and Feel now update unlocked generated MIDI during playback, including Vocal chops. Updates are coalesced while dragging and support Undo/Redo.
+- Fresh song, section, track and clip regenerations choose new genre-appropriate Density, Swing and Feel values and update the visible knobs; manual adjustments do not freeze subsequent takes.
+- Preserve clip loop sources and periods and the Techno/Electro House renderer when applying controls or regenerating.
+- Classic chord-menu, progression and voicing changes now apply to harmonic MIDI immediately. Correct minor-mode highlighting in the chord circle.
+- New projects release native master effects. Correct Undo checkpoint grouping after history resets and remove duplicate instrument resets.
+- Added per-genre, live MIDI, UI and native master-cleanup regressions; updated both guides.
+
 ## 0.31.18
 
 - Refreshed arrangement clips, mixer and Studio with consistent controls and surfaces. Removed the extra transport meter, arrangement A/B snapshots and clip MIDI/WAV drag actions from the experimental UI.

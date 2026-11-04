@@ -56,8 +56,7 @@ void addElectronicToneAutomation(Project& p){
 }
 bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,double beats,Section role,bool requested){
     const auto& s=p.settings;if(!isElectronicGenre(s.genre))return false;
-    if(track==2){if(requested)return false;clip.notes.clear();return true;}
-    if((track==0||track==3)&&requested)return false;
+    if(track==2){if(requested||s.stringsMode!=0)return false;clip.notes.clear();return true;}
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
     const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(e.density<0?s.density:e.density,0.,1.);
     clip.notes.clear();if(density<=0)return true;

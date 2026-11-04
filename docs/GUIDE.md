@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.31.18**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.31.19**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 ---
 
@@ -96,7 +96,7 @@ Active controls are highlighted; sound sources and **LOCK TRACK** use an outline
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
-Changing **key or scale** in the top display immediately updates the chords and regenerates unlocked harmonic parts. **Swing** and **Feel** also update generated MIDI; **Undo** restores the previous notes. **SEARCH** or **Ctrl/Cmd+K** opens Quick Search; use its **X** to close it. **EDIT CHORDS** opens the interactive circle of fifths; **Shift-click** opens the chord menu.
+Changing **key or scale** in the top display immediately updates the chords and regenerates unlocked harmonic parts. **Density**, **Swing** and **Feel** also update generated MIDI; **Undo** restores the previous notes. **SEARCH** or **Ctrl/Cmd+K** opens Quick Search; use its **X** to close it. **EDIT CHORDS** opens the interactive circle of fifths; **Shift-click** opens the chord menu.
 
 | Where | What you find |
 |---|---|
@@ -120,6 +120,10 @@ Drag the **lower edge of a track header** to change that track’s height indepe
 In the arrangement, **double-click a track name** (for example Kick) to select the track and reveal its inspector. Playback and the cursor stay where they are. The inspector’s compact **X** hides it; **I** or the top-toolbar icon restores it. To rename a track, use the name inside its inspector or mixer, or the right-click menu.
 
 The home screen’s **master volume**, **note density**, **Swing** and **Feel** use rotary controls: drag vertically/horizontally or edit their numeric values. Inspector **Volume** and **Pan** are also rotary, with values below; double-click restores 0 dB or centre. Their units and musical effects remain as described below.
+
+The main **Density**, **Swing** and **Feel** knobs apply your chosen values to unlocked generated parts, including Vocal chops. Density changes automatic note activity, Swing delays offbeats, and Feel changes timing and dynamics; handwritten patterns and the genre’s rhythmic anchors may retain their note count. Updates are heard and displayed during a drag, with the final value always applied on release. Clip loop sources and repetitions are preserved, as is the Techno/Electro House style.
+
+Every **REGENERATE** that draws a new song, section, track or clip variation also chooses new genre-appropriate Density, Swing and Feel values and updates the three knob positions. Manual adjustments do not freeze later regenerations: adjust them again after any new take. APPLY and chord changes keep the current feel. **NEW ARRANGEMENT** reuses existing MIDI; locks continue to protect parts. Undo/Redo includes notes and settings.
 
 ### DAW workspace
 

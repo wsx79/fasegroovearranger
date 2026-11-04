@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.31.19
+
+- Densità, Swing e Feel aggiornano il MIDI generato sbloccato durante Play, compresi i Vocal chops, con aggiornamenti accorpati durante il trascinamento e Annulla/Ripristina.
+- Le nuove rigenerazioni di brano, sezione, traccia e clip scelgono valori adatti al genere e aggiornano i tre potenziometri; le regolazioni manuali non congelano le varianti successive.
+- Conservati sorgenti e periodi dei loop e il generatore Techno/Electro House durante applicazioni e rigenerazioni.
+- Menu accordi classico, progressione e voicing aggiornano subito il MIDI armonico. Corretta l’evidenziazione dei modi minori nel circolo.
+- Nuovo progetto libera gli effetti master nativi. Corretti i punti Annulla dopo il reset della cronologia ed eliminati reset duplicati degli strumenti.
+- Aggiunti test per genere, MIDI durante Play, UI e pulizia master; aggiornate entrambe le guide.
+
 ## 0.31.18
 
 - Rinnovati clip, mixer e Studio con controlli e superfici coerenti. Rimossi dalla UI sperimentale il meter aggiuntivo nel trasporto, gli snapshot A/B e il drag MIDI/WAV dei clip.

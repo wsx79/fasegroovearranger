@@ -159,6 +159,9 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
     loadEffectDescription(masterEffectTrack,description,{},false,1);check(settle()&&!replaced&&audio.effectPlugin(masterEffectTrack,1)->getActiveEditor(),"replacing a master insert also closes its previous native editor safely");
     effectsWindow->closeButtonPressed();
     const auto missingState=project.masterEffects.effect(1)->state;closePluginEditor(masterEffectTrack,1);audio.clearEffect(masterEffectTrack,1);audio.capturePluginStates(project);audio.capturePluginStates(project);check(!missingState.empty()&&project.masterEffects.effect(1)->state==missingState,"missing master effect retains native state across fresh and cached snapshots");
+    check(audio.effectPlugin(masterEffectTrack,2)!=nullptr,"new-project cleanup starts with a native master effect loaded");
+    createNewProject();bool cleared=project.masterEffects.effects.empty();for(int slot=1;slot<=maxTrackEffects;++slot)cleared=cleared&&!audio.effectPlugin(masterEffectTrack,slot);
+    check(cleared,"new project releases every native master insert as well as its model");
     folder.getChildFile("effects.txt").replaceWithText(report);return ok;
 }
 }
