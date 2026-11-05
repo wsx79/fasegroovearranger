@@ -499,14 +499,15 @@ return false;
         if(auto output=folder.getChildFile("close-dialog.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(dialog.createComponentSnapshot(dialog.getLocalBounds()),*output)&&ok;}else ok=false;}
     Project loaded;ok=ok&&projectFromJson(projectJson(project),loaded).wasOk()&&loaded.tracks[4].clips[0]==project.tracks[4].clips[0]&&events(loaded,4).size()==events(project,4).size();
     undo(false);ok=ok&&project.clipLength(4,0)==8;undo(false);ok=ok&&project.clipLength(4,0)==16&&project.tracks[4].clips[0].notes.size()==1;
+    const double keptStart=project.tracks[4].clips[0].notes[0].start;
     arrangement.mouseDown(event(342,16));arrangement.mouseDrag(event(406,16));arrangement.mouseUp(event(406,16));
-    ok=ok&&project.sections[0].bars==6&&project.sectionStart(1)==24&&project.tracks[4].clips[0].notes.size()==1;
-    for(int ti=0;ti<trackCount;++ti)ok=ok&&project.clipLength(ti,0)==16&&project.clipStart(ti,1)==16;
+    ok=ok&&project.sections[0].bars==6&&project.sectionStart(1)==24&&project.tracks[4].clips[0].notes.size()==1&&project.tracks[4].clips[0].notes[0].start==keptStart;
+    for(int ti=0;ti<trackCount;++ti)ok=ok&&!project.tracks[(size_t)ti].freeTimeline&&project.clipLength(ti,0)==24&&project.clipStart(ti,1)==24;
     if(auto output=folder.getChildFile("section-loop-resize.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*output)&&ok;}else ok=false;
     const auto beforeCancel=midiFile(project);const auto historySize=undoStack.size();arrangement.mouseDown(event(406,16));arrangement.mouseDrag(event(470,16));arrangement.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));arrangement.mouseUp(event(470,16));
     ok=ok&&project.sections[0].bars==6&&midiFile(project)==beforeCancel&&undoStack.size()==historySize;
     audio.seek(2);arrangement.mouseDown(event(406,76));arrangement.mouseUp(event(406,76));ok=ok&&std::abs(audio.position()-2)<1e-9;
-    stage("individual loops and independent guide resizing, persistence, Undo and Escape");
+    stage("individual loops and guide resizing that moves later music, persistence, Undo and Escape");
 
     {   // User-reported problems: loop removal, inspector sample browser and sound names,
         // editor REGENERATE and instrument-panel changes, each with Undo.
@@ -637,7 +638,7 @@ return false;
         project=before;selectedTrack=0;selectedClip=-1;changed();
     }
     project=saved;arrangement.pixelsPerBar=zoom;select(track,section);changed();showArrangement();undoStack.clear();redoStack.clear();refreshControls();
-    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and independent guide edge resizing with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor, visible Piano range thumbs with mouse dragging, MIDI update and Undo":"FAIL DAW workspace regression: "+firstFailure);return ok;
+    folder.getChildFile("daw-workspace.txt").replaceWithText(ok?"PASS inspector/mixer layout, mixer and inspector collapse/restore, drag resize with saved dimensions, MIDI/transport unchanged, audio-only fader with undo, clip select/move/undo, individual loop and guide-edge resizing that moves later music, with source recovery/Undo/Escape/project round-trip, section-header audition, grid selection without transport jumps, precise ruler seek, loop drag persisted, full MIDI editor, visible Piano range thumbs with mouse dragging, MIDI update and Undo":"FAIL DAW workspace regression: "+firstFailure);return ok;
 #endif
 }
 
