@@ -87,7 +87,14 @@ void Project::shiftFreeFrom(double beat,double delta){
 }
 bool Project::deleteFreeRange(double start,double end){
     if(!std::isfinite(start)||!std::isfinite(end)||end<=start+tick)return true;
-    if(!splitFreeAt(start)||!splitFreeAt(end))return false;
+    // Two boundary splits must be atomic: a failure on the second one must not
+    // leave the first committed.
+    std::vector<std::pair<size_t,std::vector<Clip>>> saved;
+    for(size_t ti=0;ti<tracks.size();++ti)if(tracks[ti].freeTimeline)saved.push_back({ti,tracks[ti].clips});
+    if(!splitFreeAt(start)||!splitFreeAt(end)){
+        for(auto& item:saved)tracks[item.first].clips=std::move(item.second);
+        return false;
+    }
     const double delta=end-start;
     for(auto& t:tracks)if(t.freeTimeline){std::vector<Clip> keep;keep.reserve(t.clips.size());
         for(auto& c:t.clips){if(c.position>=start-tick&&c.position<end-tick)continue;if(c.position>=end-tick)c.position-=delta;keep.push_back(std::move(c));}
@@ -95,7 +102,18 @@ bool Project::deleteFreeRange(double start,double end){
     return true;
 }
 bool Project::foldFreeTracks(){
-    for(auto& t:tracks){if(!t.freeTimeline)continue;std::vector<Clip> slots(sections.size());
+    for(auto& t:tracks){
+        if(!t.freeTimeline)continue;
+        // A folded (aligned) clip can carry only one audio region, loop source
+        // and expression set. Keep such tracks independent instead of dropping
+        // the metadata of every overlapping clip.
+        const bool keepFree=std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){
+            if(c.audioOffset>=0||c.loopLength>0||!c.loopSource.empty()||c.clipFadeIn>0||c.clipFadeOut>0)return true;
+            for(const auto& lane:c.expression)if(!lane.points.empty())return true;
+            return false;
+        });
+        if(keepFree)continue;
+        std::vector<Clip> slots(sections.size());
         for(const auto& c:t.clips)for(int s=0;s<(int)sections.size();++s){const double ss=sectionStart(s),se=sectionStart(s+1),from=std::max(c.position,ss),to=std::min(c.position+c.span,se);if(to-from<tick)continue;
             auto part=slice(c,from-c.position,to-from,0);const double local=from-ss;for(auto& n:part.notes)n.start+=local;for(auto& lane:part.expression)for(auto& point:lane.points)point.beat+=local;part.position=0;part.span=0;part.role=(int)sections[(size_t)s].type;auto& dst=slots[(size_t)s];
             if(dst.notes.empty()&&dst.loopSource.empty()&&dst.audioOffset<0)dst=std::move(part);
@@ -109,7 +127,7 @@ bool Project::resizeGuide(int index,int bars){
     const double oldEnd=sectionStart(index+1),newEnd=sectionStart(index)+bars*4.;
     if(newEnd>oldEnd+tick){if(!splitFreeAt(oldEnd))return false;shiftFreeFrom(oldEnd,newEnd-oldEnd);}
     else if(oldEnd>newEnd+tick&&!deleteFreeRange(newEnd,oldEnd))return false;
-    resizeSection(index,bars);return true;
+    resizeSection(index,bars,true);return true;
 }
 bool Project::duplicateSection(int index){
     if(index<0||index>=(int)sections.size()||sections.size()>=64)return false;
@@ -146,7 +164,13 @@ void Project::moveGuide(int from,int to){
     if(from<0||to<0||from>=(int)sections.size()||to>=(int)sections.size()||from==to)return;
     const double oldStart=sectionStart(from),oldEnd=sectionStart(from+1),duration=oldEnd-oldStart;
     const double destination=from<to?sectionStart(to+1)-duration:sectionStart(to);
-    if(!splitFreeAt(oldStart)||!splitFreeAt(oldEnd))return;
+    // Keep the two boundary splits atomic so a failure cannot leave half of them applied.
+    std::vector<std::pair<size_t,std::vector<Clip>>> saved;
+    for(size_t ti=0;ti<tracks.size();++ti)if(tracks[ti].freeTimeline)saved.push_back({ti,tracks[ti].clips});
+    if(!splitFreeAt(oldStart)||!splitFreeAt(oldEnd)){
+        for(auto& item:saved)tracks[item.first].clips=std::move(item.second);
+        return;
+    }
     moveSection(from,to);
     for(auto& t:tracks)if(t.freeTimeline)for(auto& c:t.clips){const double b=c.position;
         if(b>=oldStart&&b<oldEnd)c.position=b+destination-oldStart;

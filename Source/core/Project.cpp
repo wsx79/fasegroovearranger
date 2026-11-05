@@ -123,7 +123,19 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
 }
 Settings resolveSectionHarmony(const Project& p,int section){
     auto s=p.settings;if(section<0||section>=(int)p.sections.size())return s;const auto& h=p.sections[(size_t)section].harmony;
-    if(h.enabled){if(h.key>=0)s.key=h.key;if(h.scale>=0)s.scale=h.scale;s.chordCount=h.chordCount;s.chordSteps=h.chordSteps;s.degrees=h.degrees;s.freeChords=h.freeChords;s.manualChords=h.manualChords;}return s;
+    if(h.enabled){
+        if(h.key>=0)s.key=std::clamp(h.key,0,11);
+        if(h.scale>=0)s.scale=std::clamp(h.scale,0,12);
+        // Defensive: callers divide by chordSteps and take modulo chordCount.
+        s.chordCount=std::clamp(h.chordCount,1,8);
+        s.chordSteps=(h.chordSteps==8||h.chordSteps==16||h.chordSteps==32||h.chordSteps==64)?h.chordSteps:16;
+        for(size_t i=0;i<s.degrees.size();++i){
+            s.degrees[i]=std::clamp(h.degrees[i],0,6);
+            s.freeChords[i]=std::clamp(h.freeChords[i],-1,35);
+            s.manualChords[i]=h.manualChords[i]&&s.freeChords[i]>=0;
+        }
+    }
+    return s;
 }
 sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t seed,std::uint32_t take,const Clip* clip){
     auto s=p.settings;const auto& t=p.tracks[(size_t)track];const auto& e=t.engine;
@@ -397,7 +409,7 @@ void Project::normalise() {
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
-    for(auto& section:sections){auto& h=section.harmony;h.key=std::clamp(h.key,-1,11);h.scale=std::clamp(h.scale,-1,12);h.chordCount=std::clamp(h.chordCount,1,8);h.chordSteps=std::clamp(h.chordSteps,8,64);for(auto& d:h.degrees)d=std::clamp(d,0,6);for(auto& f:h.freeChords)f=std::clamp(f,-1,35);}for(auto& t:tracks)t.eq.normalise();
+    for(auto& section:sections){auto& h=section.harmony;h.key=std::clamp(h.key,-1,11);h.scale=std::clamp(h.scale,-1,12);h.chordCount=std::clamp(h.chordCount,1,8);h.chordSteps=std::clamp(h.chordSteps,8,64);if(h.chordSteps!=8&&h.chordSteps!=16&&h.chordSteps!=32&&h.chordSteps!=64)h.chordSteps=16;for(auto& d:h.degrees)d=std::clamp(d,0,6);for(auto& f:h.freeChords)f=std::clamp(f,-1,35);}for(auto& t:tracks)t.eq.normalise();
     for(auto& bus:buses)bus.normalise();
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
@@ -482,11 +494,13 @@ void Project::moveSection(int from,int to) {
     if(wholeSong){loopStart=0;loopEnd=length();}
     normalise();
 }
-void Project::resizeSection(int index,int bars){
+void Project::resizeSection(int index,int bars,bool shiftAfter){
     if(index<0||index>=(int)sections.size())return;
     bars=std::clamp(bars,1,128);const double start=sectionStart(index),end=sectionStart(index+1);
     const double duration=bars*4.,delta=duration-(end-start);
-    auto map=[&](double beat){return beat>=end?beat+delta:beat>start?start+(beat-start)*duration/(end-start):beat;};
+    // Guide edits only move what follows the section; proportional scaling belongs
+    // to resizeSectionLoop, where the aligned loop is actually re-timed.
+    auto map=[&](double beat){if(shiftAfter)return beat>=end?beat+delta:beat;return beat>=end?beat+delta:beat>start?start+(beat-start)*duration/(end-start):beat;};
     for(auto [envelope,ceiling]:envelopes())for(auto& point:envelope->points)point.beat=map(point.beat);
     loopStart=map(loopStart);loopEnd=map(loopEnd);sections[(size_t)index].bars=bars;normalise();
 }

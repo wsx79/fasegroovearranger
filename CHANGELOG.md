@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.34.0
+
+- Guide edits are consistent: resizing a section shifts automation and loop points after the section instead of scaling them, matching insert/move behaviour and free clips that stay in place.
+- Section harmony is validated defensively: key, scale, degrees, chord count and chord steps are clamped and chord steps are snapped to 8/16/32/64 for every generator and the chord strip.
+- NEW ARRANGEMENT keeps independent tracks carrying audio regions, loop sources, fades or expression curves instead of folding them and losing their metadata.
+- Multi-boundary guide edits (delete/move) restore the original free clips if the second split fails; the piano-roll chord strip no longer loops forever for clips placed past the last section.
+- Project loading validates MIDI pitch, velocity and lane values; loading a project with unusual section harmony values no longer produces a chord grid that disagrees with the UI.
+- Includes the unreleased 0.33.0 work: section edits following the guide, section harmony across all instruments, MIDI-recording mute releasing notes, strings regeneration, synced sample region endings, PDC silence while delay lines are prepared, and plugin editor close without holding the audio lock. Builds on the verified 0.32.2 audit fixes.
+
 ## 0.33.0
 
 - Section duration, move, delete, add and rearrange now move the music with the guide, including clips already detached from the grid, their automation and the loop.

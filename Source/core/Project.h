@@ -189,7 +189,7 @@ struct Project {
     bool duplicateSection(int index);
     void removeSection(int index);
     void moveSection(int from, int to);
-    void resizeSection(int index, int bars);
+    void resizeSection(int index, int bars, bool shiftAfter = false);
     bool resizeClipLoop(int track, int section, double beats);
     bool resizeSectionLoop(int index, int bars);
 };

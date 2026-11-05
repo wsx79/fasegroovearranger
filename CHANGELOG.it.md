@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.34.0
+
+- Modifiche guida coerenti: cambiare la durata di una sezione sposta automazioni e punti di loop dopo la sezione invece di scalarli, in linea con inserimento/spostamento e con i clip liberi che restano fermi.
+- Armonia di sezione validata: tonalità, scala, gradi, numero e durata degli accordi sono limitati e la durata è ricondotta a 8/16/32/64 per tutti i generatori e la striscia accordi.
+- NEW ARRANGEMENT conserva le tracce indipendenti con regioni audio, sorgenti di loop, fade o curve di expression invece di piegarle e perderne i metadati.
+- Le modifiche guida a due bordi (elimina/sposta) ripristinano i clip liberi originali se il secondo taglio fallisce; la striscia accordi del piano roll non entra più in un ciclo infinito con clip oltre l'ultima sezione.
+- Il caricamento dei progetti valida pitch, velocity e lane MIDI; valori di armonia di sezione anomali non producono più una griglia di accordi diversa dall'interfaccia.
+- Include il lavoro 0.33.0 non pubblicato: modifiche di sezione che seguono la guida, armonia di sezione su tutti gli strumenti, rilascio delle note al mute in registrazione MIDI, rigenerazione archi, fine delle regioni campionate synced, silenzio PDC durante la preparazione e chiusura editor plugin senza lock audio. Si appoggia ai fix verificati della 0.32.2.
+
 ## 0.33.0
 
 - Durata, sposta, elimina, aggiungi sezione e rearrange spostano la musica insieme alla guida, anche i clip già staccati, la loro automazione e il loop.
