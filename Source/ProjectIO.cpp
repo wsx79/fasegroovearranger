@@ -10,6 +10,8 @@ void set(juce::var& o,const char* key,const juce::var& v){o.getDynamicObject()->
 void set(juce::var& o,const char* key,const std::string& v){set(o,key,juce::var(juce::String::fromUTF8(v.c_str())));}
 void set(juce::var& o,const char* key,const char* v){set(o,key,juce::var(v));}
 double num(const juce::var& o,const char* key,double fallback){auto v=o.getProperty(key,fallback);if(!(v.isDouble()||v.isInt()||v.isInt64()))return fallback;double value=(double)v;return std::isfinite(value)?std::clamp(value,-1000000.,1000000.):fallback;}
+std::uint32_t seedValue(const juce::var& v){if(!(v.isInt()||v.isInt64()||v.isDouble()))return 0;const double n=(double)v;return std::isfinite(n)?(std::uint32_t)std::clamp(n,0.,4294967295.):0;}
+int boundedInteger(const juce::var& v){if(!(v.isInt()||v.isInt64()||v.isDouble()))return 0;const double n=(double)v;return std::isfinite(n)?(int)std::clamp(n,-1000000.,1000000.):0;}
 bool clipNumber(const juce::var& o,const char* key,double fallback,double& out){const auto v=o.getProperty(key,fallback);if(!(v.isDouble()||v.isInt()||v.isInt64())||!std::isfinite((double)v))return false;out=(double)v;return true;}
 std::string str(const juce::var& o,const char* key,const char* fallback=""){return o.getProperty(key,fallback).toString().toStdString();}
 juce::var engineJson(const EngineOptions& e){auto o=object();
@@ -64,14 +66,14 @@ juce::var engineJson(const EngineOptions& e){auto o=object();
     return o;
 }
 void readEngine(const juce::var& o,EngineOptions& e){
-    e.riffSeed=(std::uint32_t)(juce::int64)o.getProperty("riffSeed",0);e.humanizeSeed=(std::uint32_t)(juce::int64)o.getProperty("humanizeSeed",0);e.pumpRate=(int)num(o,"pumpRate",0);e.pumpSource=(int)num(o,"pumpSource",0);e.pedalCC=(bool)o.getProperty("pedalCC",false);
-    if(auto* a=o["inversions"].getArray())for(size_t i=0;i<e.inversions.size()&&i<(size_t)a->size();++i)e.inversions[i]=(int)(*a)[(int)i];
-    if(auto* a=o["velocityOrder"].getArray())for(size_t i=0;i<e.velocityOrder.size()&&i<(size_t)a->size();++i)e.velocityOrder[i]=(int)(*a)[(int)i];
-    if(auto* a=o["segmentLocked"].getArray())for(size_t i=0;i<e.segmentLocked.size()&&i<(size_t)a->size();++i)e.segmentLocked[i]=(int)(*a)[(int)i];
-    if(auto* a=o["userRight"].getArray())for(size_t i=0;i<e.userRight.size()&&i<(size_t)a->size();++i)e.userRight[i]=(int)(*a)[(int)i];
-    if(auto* a=o["userLeft"].getArray())for(size_t i=0;i<e.userLeft.size()&&i<(size_t)a->size();++i)e.userLeft[i]=(int)(*a)[(int)i];
-    if(auto* a=o["userVelRight"].getArray())for(size_t i=0;i<e.userVelRight.size()&&i<(size_t)a->size();++i)e.userVelRight[i]=(int)(*a)[(int)i];
-    if(auto* a=o["userVelLeft"].getArray())for(size_t i=0;i<e.userVelLeft.size()&&i<(size_t)a->size();++i)e.userVelLeft[i]=(int)(*a)[(int)i];
+    e.riffSeed=seedValue(o.getProperty("riffSeed",0));e.humanizeSeed=seedValue(o.getProperty("humanizeSeed",0));e.pumpRate=(int)num(o,"pumpRate",0);e.pumpSource=(int)num(o,"pumpSource",0);e.pedalCC=(bool)o.getProperty("pedalCC",false);
+    if(auto* a=o["inversions"].getArray())for(size_t i=0;i<e.inversions.size()&&i<(size_t)a->size();++i)e.inversions[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["velocityOrder"].getArray())for(size_t i=0;i<e.velocityOrder.size()&&i<(size_t)a->size();++i)e.velocityOrder[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["segmentLocked"].getArray())for(size_t i=0;i<e.segmentLocked.size()&&i<(size_t)a->size();++i)e.segmentLocked[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["userRight"].getArray())for(size_t i=0;i<e.userRight.size()&&i<(size_t)a->size();++i)e.userRight[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["userLeft"].getArray())for(size_t i=0;i<e.userLeft.size()&&i<(size_t)a->size();++i)e.userLeft[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["userVelRight"].getArray())for(size_t i=0;i<e.userVelRight.size()&&i<(size_t)a->size();++i)e.userVelRight[i]=boundedInteger((*a)[(int)i]);
+    if(auto* a=o["userVelLeft"].getArray())for(size_t i=0;i<e.userVelLeft.size()&&i<(size_t)a->size();++i)e.userVelLeft[i]=boundedInteger((*a)[(int)i]);
     e.pattern=(int)num(o,"pattern",e.pattern);
     e.velocity=(int)num(o,"velocity",e.velocity);
     e.grooveBars=(int)num(o,"grooveBars",e.grooveBars);
@@ -105,12 +107,12 @@ void readEngine(const juce::var& o,EngineOptions& e){
     e.afterFill=(bool)o.getProperty("afterFill",e.afterFill);
     e.genreFeel=(bool)o.getProperty("genreFeel",e.genreFeel);
     e.bassSpace=(bool)o.getProperty("bassSpace",e.bassSpace);
-    if(auto* a=o["segments"].getArray())for(size_t i=0;i<e.segments.size()&&i<(size_t)a->size();++i)e.segments[i]=(int)(*a)[(int)i];
+    if(auto* a=o["segments"].getArray())for(size_t i=0;i<e.segments.size()&&i<(size_t)a->size();++i)e.segments[i]=boundedInteger((*a)[(int)i]);
     if(auto* a=o["laneVolume"].getArray())for(size_t i=0;i<e.laneVolume.size()&&i<(size_t)a->size();++i)e.laneVolume[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneLevel"].getArray())for(size_t i=0;i<e.laneLevel.size()&&i<(size_t)a->size();++i)e.laneLevel[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneSwing"].getArray())for(size_t i=0;i<e.laneSwing.size()&&i<(size_t)a->size();++i)e.laneSwing[i]=(double)(*a)[(int)i];
     if(auto* a=o["laneShift"].getArray())for(size_t i=0;i<e.laneShift.size()&&i<(size_t)a->size();++i)e.laneShift[i]=(double)(*a)[(int)i];
-    if(auto* a=o["laneOctave"].getArray())for(size_t i=0;i<e.laneOctave.size()&&i<(size_t)a->size();++i)e.laneOctave[i]=(int)(*a)[(int)i];
+    if(auto* a=o["laneOctave"].getArray())for(size_t i=0;i<e.laneOctave.size()&&i<(size_t)a->size();++i)e.laneOctave[i]=boundedInteger((*a)[(int)i]);
     if(auto* a=o["laneMute"].getArray())for(size_t i=0;i<e.laneMute.size()&&i<(size_t)a->size();++i)e.laneMute[i]=(bool)(*a)[(int)i];
 }
 
@@ -168,15 +170,15 @@ juce::var projectJson(const Project& p){
     return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
-    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||((int)o["version"]!=1&&(int)o["version"]!=2&&(int)o["version"]!=3&&(int)o["version"]!=4&&(int)o["version"]!=5&&(int)o["version"]!=6))return juce::Result::fail("Formato progetto non supportato.");
+    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||(boundedInteger(o["version"])!=1&&boundedInteger(o["version"])!=2&&boundedInteger(o["version"])!=3&&boundedInteger(o["version"])!=4&&boundedInteger(o["version"])!=5&&boundedInteger(o["version"])!=6))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
     if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<1||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (1–32 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
-    s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=(std::uint32_t)(juce::int64)j.getProperty("seed",1979);
-    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",true);s.freeTempo=(bool)j.getProperty("freeTempo",false);
+    s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=seedValue(j.getProperty("seed",1979));
+    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",false);s.freeTempo=(bool)j.getProperty("freeTempo",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
-    for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=(int)j["degrees"][i];if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=(int)j["freeChords"][i];}
+    for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=boundedInteger(j["degrees"][i]);if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=boundedInteger(j["freeChords"][i]);}
     if(j.hasProperty("manualChords")){
         auto* manual=j["manualChords"].getArray();if(!manual||manual->size()!=8)return juce::Result::fail("Invalid manual chord mask.");
         for(int i=0;i<8;++i){if(!(*manual)[i].isBool())return juce::Result::fail("Invalid manual chord mask.");s.manualChords[(size_t)i]=(bool)(*manual)[i];}
@@ -206,9 +208,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
             for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||t.effect((int)slot))return juce::Result::fail("Invalid or duplicate effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing effect identifier.");t.effects.push_back(std::move(e));}
         }else if(!str(a,"effectPath").empty()||!str(a,"effectId").empty()){EffectSlot e;e.path=str(a,"effectPath");e.pluginId=str(a,"effectId");e.state=str(a,"effectState");if(auto xml=juce::XmlDocument::parse(juce::String::fromUTF8(e.pluginId.c_str())))e.pluginName=xml->getStringAttribute("name").toStdString();if(e.pluginName.empty())e.pluginName=juce::File(juce::String::fromUTF8(e.path.c_str())).getFileNameWithoutExtension().toStdString();t.effects.push_back(std::move(e));}
         if(a.hasProperty("eq")){auto q=a["eq"];if(!q.isObject())return juce::Result::fail("Invalid EQ");t.eq.enabled=true;t.eq.highPass=num(q,"highPass",20);t.eq.low=num(q,"low",0);t.eq.mid=num(q,"mid",0);t.eq.high=num(q,"high",0);t.eq.normalise();}
-        t.freeTimeline=(int)o["version"]>=2&&(bool)a.getProperty("freeTimeline",false);
+        t.freeTimeline=boundedInteger(o["version"])>=2&&(bool)a.getProperty("freeTimeline",false);
         auto* clips=a["clips"].getArray();if(!clips||(t.freeTimeline?clips->size()>4096:clips->size()!=sections->size()))return juce::Result::fail("Clip e sezioni non corrispondono.");
-        for(const auto& b:*clips){Clip c;c.motifSeed=(std::uint32_t)(juce::int64)b.getProperty("motifSeed",0);c.seed=(std::uint32_t)(juce::int64)b.getProperty("seed",1);c.locked=(bool)b["locked"];auto* notes=b["notes"].getArray();if(!notes)return juce::Result::fail("Note mancanti.");
+        for(const auto& b:*clips){Clip c;c.motifSeed=seedValue(b.getProperty("motifSeed",0));c.seed=seedValue(b.getProperty("seed",1));c.locked=(bool)b["locked"];auto* notes=b["notes"].getArray();if(!notes)return juce::Result::fail("Note mancanti.");
             noteCount+=(size_t)notes->size();if(noteCount>maxProjectNotes)return juce::Result::fail("Progetto troppo grande (massimo 2 milioni di note).");
             for(const auto& n:*notes){if(!n.isArray()||n.size()<4)return juce::Result::fail("Evento MIDI non valido.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Tempo MIDI non valido.");c.notes.push_back({start,length,(int)n[2],(int)n[3],n.size()>4?(int)n[4]:0});}
             if(t.freeTimeline){const auto pos=b["position"],span=b["span"];if(!(pos.isDouble()||pos.isInt()||pos.isInt64())||!(span.isDouble()||span.isInt()||span.isInt64())||!std::isfinite((double)pos)||!std::isfinite((double)span)||(double)pos<0||(double)pos>131072||(double)span<1./960.||(double)span>maxClipBeats)return juce::Result::fail("Invalid timeline clip position or duration.");c.position=(double)pos;c.role=(int)num(b,"role",-1);}
@@ -259,7 +261,7 @@ juce::Result readBoundedJson(const juce::File& file,juce::var& json,juce::int64 
 // resolution and within JUCE's stable numeric parsing precision.
 juce::Result saveProject(const Project& p,const juce::File& file){
     size_t notes=0;for(const auto& track:p.tracks)for(const auto& clip:track.clips){notes+=clip.notes.size()+clip.loopSource.size();if(notes>maxProjectNotes)return juce::Result::fail("Project exceeds the note limit (2 million notes).");}
-    auto json=projectJson(p);relativiseProjectMedia(json,file);const auto text=juce::JSON::toString(json,false,17);
+    auto canonical=p;canonical.normalise();auto json=projectJson(canonical);Project validated;auto valid=projectFromJson(json,validated);if(valid.failed())return valid;relativiseProjectMedia(json,file);const auto text=juce::JSON::toString(json,false,17);
     if((juce::int64)text.getNumBytesAsUTF8()>maxProjectBytes)return juce::Result::fail("Project exceeds the file size limit (256 MB).");
     juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(text))return juce::Result::fail("Scrittura progetto fallita.");
     return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile sostituire il progetto.");

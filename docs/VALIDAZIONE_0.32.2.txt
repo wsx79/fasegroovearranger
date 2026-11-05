@@ -1,0 +1,50 @@
+FASE GROOVE ARRANGER 0.32.2 — VALIDAZIONE AUDIT 0.32.1
+Base: 4d1c38b634ba0b10e752b967f0096b3950a188a1.
+Ambiente locale: Linux, GCC, JUCE 8.0.9, Debug, Xvfb + xfwm4.
+Riscontro completo: AUDIT_0.32.1_RISCONTRO.md.
+
+PASS Core ASan/UBSan: improvement_core, arranger_core, verify_midi (3/3).
+  Armonia indipendente su piano/basso/archi/chitarra/lead, periodo e pedal CC;
+  regioni con span implicito e riarrangiamento senza trigger ripetuti;
+  split dopo detach, delete fallito atomico, limiti insert/duplicate.
+PASS project_io completo.
+  Round-trip e salvataggio normalizzato di valori iniziali non finiti;
+  default legacy randomAutomation disattivato; versione JSON enorme rifiutata;
+  AI New Song conserva tutte le tracce escluse, anche clip audio nascoste
+  dalle sovrapposizioni; cancellazione senza modificare la destinazione.
+PASS audio_engine completo.
+  Panic su MIDI denso con note live multi-canale; byte MIDI fuori range;
+  PDC proporzionato alla latenza e rilascio delle linee inutilizzate;
+  seek/loop senza impulsi residui; LUFS finiti dopo NaN/Inf;
+  listener dei parametri VST notificati sul message thread anche da Stop.
+PASS suite UI completa, escluso il lungo export interattivo esteso.
+  Comprende indici invalidi e scollegamento dell'owner del chord popover,
+  oltre a Studio, editing MIDI, Undo, mixer, salvataggio e presentazione.
+PASS host smoke con Arranger Host Probe realmente caricato come VST3.
+  Export -> ritiro task -> Freeze -> Unfreeze, stessa istanza mantenuta,
+  MIDI e Undo invariati. Anche playback, preset e progetti legacy passano.
+PASS verifica indipendente scripts/verify-host.py:
+  441.0 Hz, gain ratio 3.000, ripristino e bounce privato ratio 1.000000.
+PASS catalogo plugin nativo:
+  scansione isolata, cache, rescan, errori e retry, link/cicli, recupero
+  interruzioni; nuovo hash cancellato non memorizzato come digest parziale.
+PASS cataloghi traduzioni: 140 chiavi comuni, 1965 prodotto, 16 override.
+PASS scripts/verify-family.py e test packaging Linux/Windows simulato.
+PASS git diff --check.
+
+PRECISAZIONI
+- I test AI precedenti richiedevano che le tracce escluse fossero svuotate.
+  Ora controllano la conservazione di ogni traccia e la durata della nuova
+  forma; take esclusi piu' lunghi possono estendere la durata totale.
+- StartThread fallito e' gestito esplicitamente; non si forza nel test
+  l'esaurimento dei thread del sistema operativo.
+- Il percorso Stop delle notifiche VST era rimasto fuori dalla coda gia'
+  presente nel normale rendering: la nuova regressione copre quel percorso.
+- La suite UI usa FGA_SKIP_EXPORT_UI_TEST=1; l'export prima di Freeze viene
+  comunque eseguito nel nuovo test mirato con il VST realmente caricato.
+- I log GUI Debug mostrano ancora assert JUCE di finestre/componenti,
+  TemporaryFile e stringhe gia' presenti nelle precedenti validazioni.
+  Il risultato delle suite non dichiara l'assenza di ogni assert GUI.
+- Hardware audio/MIDI, AU/macOS, Windows e plugin commerciali non sono
+  verificati localmente. Build e pubblicazione dei pacchetti sono subordinate
+  alla CI Linux/macOS/Windows dopo il push del commit di release.

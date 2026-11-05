@@ -116,7 +116,7 @@ void PluginCatalog::refreshPlugins(){
 }
 bool PluginCatalog::scan(ScanMode mode){
     const juce::ScopedLock lock(mutex);if(progress.scanning||isThreadRunning())return false;
-    scanMode=mode;progress.scanning=true;progress.checked=progress.total=0;progress.current.clear();startThread();return true;
+    scanMode=mode;progress.scanning=true;progress.checked=progress.total=0;progress.current.clear();if(!startThread()){progress.scanning=false;progress.current.clear();return false;}return true;
 }
 juce::String PluginCatalog::fingerprint(const juce::String& id){
     if(!juce::File::isAbsolutePath(id))return id; // AU registry identifiers are rescanned at startup.
@@ -173,7 +173,7 @@ void PluginCatalog::run(){
         {const juce::ScopedLock lock(mutex);++progress.checked;if(updated){refreshPlugins();writeCache();}}
     }
     juce::Array<juce::PluginDescription> inventory;{const juce::ScopedLock lock(mutex);refreshPlugins();inventory=progress.plugins;}
-    if(!threadShouldExit())canonicalHostedPlugins(inventory); // warm duplicate hashes outside the UI/catalogue lock
+    if(!threadShouldExit())canonicalHostedPlugins(inventory,[this]{return threadShouldExit();}); // warm duplicate hashes outside the UI/catalogue lock
     const juce::ScopedLock lock(mutex);writeCache();progress.current.clear();progress.scanning=false;
 }
 juce::String PluginCatalog::report()const{
@@ -254,7 +254,7 @@ bool PluginCatalog::verify(const juce::File& probe,const juce::File& evidence){
         {
             juce::PluginDescription root;root.name="Duplicate Bass";root.manufacturerName="Duplicate Maker";root.pluginFormatName="VST3";root.version="4.0.1";root.uniqueId=771;root.isInstrument=true;const auto copies=evidence.getSiblingFile("duplicate-modules");copies.createDirectory();auto direct=copies.getChildFile("Bass.vst3");direct.replaceWithText("identical plugin bytes");root.fileOrIdentifier=direct.getFullPathName();
             auto nested=root;auto folder=copies.getChildFile("nested");folder.createDirectory();auto duplicate=folder.getChildFile("Bass.vst3");duplicate.replaceWithText("identical plugin bytes");nested.fileOrIdentifier=duplicate.getFullPathName();juce::Array<juce::PluginDescription> duplicates;duplicates.add(nested);duplicates.add(root);
-            const auto cold=copies.getNonexistentChildFile("Cold-",".vst3",false);cold.replaceWithText("hash only off the message thread");ok=hostedBinaryHash(cold.getFullPathName()).isEmpty()&&ok;note("cold binary hashing never runs on UI");cold.deleteFile();
+            const auto cold=copies.getNonexistentChildFile("Cold-",".vst3",false);cold.replaceWithText("hash only off the message thread");ok=hostedBinaryHash(cold.getFullPathName()).isEmpty()&&ok;note("cold binary hashing never runs on UI");cold.deleteFile();{auto interrupted=copies.getChildFile("CancelledHash.vst3");juce::MemoryBlock data(8192,true);interrupted.replaceWithData(data.getData(),data.getSize());juce::String result;std::thread([&]{int calls=0;result=hostedBinaryHash(interrupted.getFullPathName(),[&]{return ++calls>=4;});}).join();ok=result.isEmpty()&&ok;std::thread([&]{result=hostedBinaryHash(interrupted.getFullPathName());}).join();ok=result.length()==64&&ok;note("cancelled binary hash is not cached as a partial digest");interrupted.deleteFile();}
             std::thread([&]{hostedBinaryHash(root.fileOrIdentifier);hostedBinaryHash(nested.fileOrIdentifier);}).join();
             auto rows=browserRows(duplicates,"Duplicate Maker",{},{});ok=rows.size()==1&&rows[0].plugin==1&&ok;
             auto pinned=browserRows(duplicates,{},{},juce::StringArray(pluginKey(nested)));ok=pinned.size()==1&&pinned[0].plugin==1&&pinned[0].key==pluginKey(nested)&&ok;

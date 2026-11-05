@@ -186,6 +186,7 @@ return false;
     arrangement.mouseMove(gear);check("VST gear tooltip follows hovered source",audio.plugin(0)&&arrangement.getTooltip()==tr("Open %plugin%").replace("%plugin%",audio.plugin(0)->getName()));
     const auto midi=midiFile(project);const auto history=undoStack.size();arrangement.mouseDown(gear);arrangement.mouseUp(gear);settleCentre();
     check("VST header gear opens native editor without MIDI or Undo changes",selectedTrack==0&&hasOpenPluginEditors()&&pluginWindow->isVisible()&&midiFile(project)==midi&&undoStack.size()==history);
+    {exportFile(5,0,folder.getChildFile("before-freeze.wav"));const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);check("Audio export retires its task before Freeze/Unfreeze",!mediaBusy&&!exportTask);}
     {auto* original=audio.plugin(0);const auto notes=midiFile(project);const auto history=undoStack.size();freezeTrack(0);const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while(exportTask&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);check("Freeze retains and suspends real VST without MIDI/Undo edits",!exportTask&&audio.trackFrozen(0)&&audio.plugin(0)==original&&original&&original->isSuspended()&&midiFile(project)==notes&&undoStack.size()==history);if(audio.trackFrozen(0))freezeTrack(0);check("Unfreeze instantly resumes same real VST instance",!audio.trackFrozen(0)&&audio.plugin(0)==original&&original&&!original->isSuspended());}
     if(auto out=folder.getChildFile("plugin-inspector.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(trackInspector.createComponentSnapshot(trackInspector.getLocalBounds()),*out);}
     folder.getChildFile("plugin-window.txt").replaceWithText(evidence);if(juce::SystemStats::getEnvironmentVariable("FGA_SKIP_EXPORT_UI_TEST","0")=="1")folder.getChildFile("export-ui-skipped.txt").replaceWithText("SKIP previously verified export UI; default CI runs the complete flow.");else ok=verifyExports(folder.getChildFile("export-ui"))&&ok;closePluginEditor();return ok;
@@ -453,6 +454,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));startTimerHz(20);
 }
 MainComponent::~MainComponent(){
+    if(dismissChordPopover)dismissChordPopover();dismissChordPopover={};
     Localisation::setSetting("inspectorVisible",inspectorVisible?"1":"0");
     Localisation::setSetting("mixerVisible",mixerVisible?"1":"0");
     Localisation::setSetting("arrangementZoom",arrangement.pixelsPerBar);
@@ -507,6 +509,11 @@ return false;
     }else if(!verifyExports(folder.getChildFile("export-ui")))return false;
     showStudio();const bool studioOk=studioWindow->verify(folder);studioWindow->closeButtonPressed();if(!studioOk)return false;
     if(!verifyAuditRepairs(folder))return false;
+    {const int section=selectedSection;audio.stop();showChordCirclePopover(0);juce::Component::SafePointer<juce::Component> content;const auto until=juce::Time::getMillisecondCounterHiRes()+1500.;
+     while(!content&&juce::Time::getMillisecondCounterHiRes()<until){juce::MessageManager::getInstance()->runDispatchLoopUntil(5);if(auto* box=dynamic_cast<juce::CallOutBox*>(juce::Component::getCurrentlyModalComponent()))content=box->findChildWithID("chord-circle-body");}bool safe=content!=nullptr;const auto history=undoStack.size();
+     if(content){selectedSection=(int)project.sections.size()+10;content->resized();for(auto* child:content->getChildren())if(auto* circle=dynamic_cast<CircleOfFifths*>(child))circle->onPick(6,false);safe=safe&&undoStack.size()==history;selectedSection=section;if(dismissChordPopover)dismissChordPopover();if(content)content->resized();}
+     selectedSection=section;folder.getChildFile("chord-popover-lifetime.txt").replaceWithText(safe?"PASS invalid section indices are guarded; explicit owner detachment releases audition and makes delayed callbacks inert":"FAIL chord popover lifetime");if(!safe)return false;}
+
     {
         const auto saved=project;const int track=selectedTrack;select(0,0);showInstrument();bool passed=false;
         for(auto* child:instrumentPanel.getChildren())if(auto* circle=dynamic_cast<CircleOfFifths*>(child)){

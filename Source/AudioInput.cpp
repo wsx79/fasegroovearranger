@@ -99,7 +99,7 @@ void AudioEngine::processLive(int count,double beat,bool recording){
         const bool hardware=event.track<0;int track=hardware?capture.target.load():event.track;
         if(track<0||track>=maxTracks||(hardware&&!capture.monitor&&!capture.active))continue;
         int at=std::clamp(pending.sample-inputSegmentOffset,0,count-1);
-        juce::MidiMessage message(event.bytes.data(),event.size);auto& i=*instruments[(size_t)track];
+        auto bytes=event.bytes;if(bytes[0]>=0x80&&bytes[0]<0xf0)for(int b=1;b<event.size&&b<(int)bytes.size();++b)bytes[(size_t)b]&=127;juce::MidiMessage message(bytes.data(),std::clamp(event.size,1,(int)bytes.size()));auto& i=*instruments[(size_t)track];
         if(isDrumTrack(track)&&i.mode==0&&message.isNoteOnOrOff())message.setNoteNumber(i.drumNotes[(size_t)track-4]);
         i.midi.addEvent(message,at);if(message.isNoteOnOrOff()){
             const int pitch=message.getNoteNumber(),ch=std::max(0,message.getChannel()-1);auto& held=liveHeld[(size_t)track][(size_t)(ch*128+pitch)];if(message.isNoteOn())held=message.getVelocity();else if(held&&livePedal[(size_t)track][(size_t)ch])held=(unsigned char)(held|128);else held=0;

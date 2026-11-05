@@ -55,7 +55,7 @@ void addElectronicToneAutomation(Project& p){
     else if(owned!=track.parameters.end())track.parameters.erase(owned);
 }
 bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,double beats,Section role,bool requested){
-    auto s=p.settings;const int section=p.sectionAtBeat(begin);if(section>=0&&section<(int)p.sections.size()){const auto& h=p.sections[(size_t)section].harmony;if(h.enabled){if(h.key>=0)s.key=h.key;if(h.scale>=0)s.scale=h.scale;s.chordCount=h.chordCount;s.chordSteps=h.chordSteps;s.degrees=h.degrees;s.freeChords=h.freeChords;s.manualChords=h.manualChords;begin-=p.sectionStart(section);}}if(!isElectronicGenre(s.genre))return false;
+    const int section=p.sectionAtBeat(begin);auto s=resolveSectionHarmony(p,section);if(section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled)begin-=p.sectionStart(section);if(!isElectronicGenre(s.genre))return false;
     if(track==2){if(requested||s.stringsMode!=0)return false;clip.notes.clear();return true;}
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
     const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(takeFeel(e.density,clip.feel[0],s.density),0.,1.);

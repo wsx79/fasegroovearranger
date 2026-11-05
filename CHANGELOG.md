@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.32.2
+
+- Fix export task cleanup, section harmony across all instruments, implicit-span audio regions, transactional split/delete and note budgets.
+- Preserve tracks excluded from AI New Song, report failed section placement, and propagate cancellation through compilation and plugin hashing.
+- Fix dense-MIDI panic delivery, PDC flushing/storage, non-finite metering, stopped-host parameter notifications and chord-popup lifetime.
+- Harden legacy defaults, project saves, numeric JSON reads, live MIDI and plugin selection after rescans.
+
 ## 0.32.1
 
 - Complete missing translations for the new sampler, freeze, EQ, MIDI-expression and preview controls; keep tooltips in sync when switching language.

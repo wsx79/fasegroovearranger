@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.32.2
+
+- Corretti fine export, armonia di sezione per tutti gli strumenti, regioni audio con durata implicita, split/delete atomici e budget note.
+- Conservate le tracce escluse da Nuovo brano IA, segnalati gli errori di applicazione e propagata la cancellazione a compilazione e hash plugin.
+- Corretti panic MIDI, reset/memoria PDC, meter con input non finiti, notifiche VST a trasporto fermo e lifetime del popover accordi.
+- Rafforzati default legacy, salvataggi, letture JSON numeriche, MIDI dal vivo e selezione plugin dopo un rescan.
+
 ## 0.32.1
 
 - Completate le traduzioni mancanti dei nuovi controlli di campionatore, freeze, EQ, espressione MIDI e anteprima; i tooltip seguono il cambio di lingua.

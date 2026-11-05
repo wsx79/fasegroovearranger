@@ -351,6 +351,7 @@ private:
     DawLookAndFeel theme;
     OptionsOverlay options;
     PluginSettings pluginSettings{pluginCatalog};
+    std::function<void()> dismissChordPopover;
     juce::Component::SafePointer<juce::CallOutBox> automationPicker;
     PluginBrowser pluginBrowser{pluginCatalog};
     std::uint64_t browserTrackSession=0,suspendedEffectsSession=0;int browserEffectSlot=0;bool effectsBrowser=false,pluginFileDialogOpen=false;

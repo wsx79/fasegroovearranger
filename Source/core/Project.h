@@ -178,6 +178,7 @@ struct Project {
     bool deleteMidiTrack(int track); // fixed instrument tracks cannot be removed
     int addVocalChopsTrack();
     int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
+    bool withinNoteBudget() const;
     void insertSection(int index, SongSection section, int copyFrom = -1);
     bool duplicateSection(int index);
     void removeSection(int index);
@@ -242,6 +243,7 @@ bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 // 1 pan, 2 + k plugin lane k, -1 every lane of the track(s).
 void randomiseAutomation(Project&, Scope scope, int track, int index, std::uint32_t seed, int onlyLane = -1);
 inline double takeFeel(double track,double take,double global){return track>=0?track:take>=0?take:global;}
+Settings resolveSectionHarmony(const Project&,int section);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);

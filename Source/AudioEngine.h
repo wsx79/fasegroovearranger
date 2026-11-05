@@ -130,7 +130,8 @@ struct Instrument {
     // Storage is reserved on source installation, never on the audio thread.
     static constexpr int maxDelay=1<<18;
     juce::AudioBuffer<float> delayLine;
-    int delayWrite=0,latency=0,delay=0;
+    int delayWrite=0,delayValid=0,latency=0,delay=0;
+    void flushDelay(){delayWrite=delayValid=0;delayUsed=false;}
     bool delayUsed=false;
     std::array<std::array<float,2>,maxTrackEffects+1> hostedTail{};
     std::array<bool,maxTrackEffects+1> hostedPaused{};
@@ -190,7 +191,7 @@ public:
     // onlyTrack: only that track's notes changed since the last normalised publish.
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
-    void collectGarbage(){for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
+    void collectGarbage(){if(delayStorageNeeded.exchange(false)){const EngineControlLock lock(*this);prepareDelayLines();}for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
     // Message thread: notify plugin editors of parameter automation queued by the audio thread.
     void flushParameterNotifications();
     // Meter uses MIDI quarter-note units, including non-quarter-note denominators.
@@ -291,6 +292,7 @@ private:
     double inputBlockTime=0,recordWallStart=0,deviceOutputLatency=0,deviceInputLatency=0;
     int liveTail=0;bool chaseRecord=false;
     void processLive(int count,double beat,bool capturing);
+    std::atomic<bool> delayStorageNeeded{false};
     void prepareDelayLines();
     void refreshLatencies();
     void publishActiveNotes(int track);

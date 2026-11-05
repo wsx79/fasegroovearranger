@@ -196,7 +196,7 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
         // reloading libraries/licences and frees the device callback during the export.
         audio.devices.removeAudioCallback(&audio);
         std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
-        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
+        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->retiredJobs.retire(std::move(safe->exportTask));safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
     };
     if(destination!=juce::File()){render(destination);return;}
     auto folder=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);const auto remembered=Localisation::setting("lastExportFolder");if(juce::File::isAbsolutePath(remembered)&&juce::File(remembered).isDirectory())folder=juce::File(remembered);

@@ -29,7 +29,7 @@ juce::Result aiReadModels(AiProvider,const juce::var&,juce::StringArray&,juce::S
 // the application uses the fixed-origin HTTPS transport when it is omitted.
 using AiCatalogueFetch=std::function<juce::Result(const AiHttpRequest&,juce::var&)>;
 juce::Result aiModels(const AiOptions&,juce::StringArray&,const std::function<bool()>& cancelled,const AiCatalogueFetch& readCatalogue={});
-juce::Result aiCompile(const Project&,const AiOptions&,const juce::String&,Project&,juce::String& summary);
+juce::Result aiCompile(const Project&,const AiOptions&,const juce::String&,Project&,juce::String& summary,const std::function<bool()>& cancelled={});
 // No credentials, paths, plugin state or audio are sent in the musical context.
 // The worker is cancellable; it never mutates the live project.
 juce::Result aiGenerate(const Project&,const AiOptions&,Project&,juce::String&,const std::function<bool()>& cancelled);

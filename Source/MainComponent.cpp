@@ -977,8 +977,8 @@ void MainComponent::chooseBrowserRow(const PluginCatalog::BrowserRow& row){
     const int track=trackForSession(browserTrackSession);if(track<0||editingRestricted())return;auto& t=effectTrack(track);
     if(row.kind==PluginCatalog::BrowserRow::Kind::noEffect){if(t.effects.empty())return;checkpoint();for(const auto& fx:t.effects)closePluginEditor(track,fx.slot);audio.clearEffect(track);t.effects.clear();t.parameters.erase(std::remove_if(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot>0;}),t.parameters.end());changed(false);message(tr("Effect removed."));return;}
     if(row.kind==PluginCatalog::BrowserRow::Kind::engine){const int family=instrumentFamily(t.kind);if(row.engine!=family){message(tr("This track keeps its own FaseGroove engine."),true);return;}checkpoint();closePluginEditor(track,0);audio.useInternal(track);t.instrument="internal";t.instrumentPath.clear();t.instrumentId.clear();t.instrumentState.clear();changed(false);message(tr("Built-in engine restored."));return;}
-    const auto plugins=pluginCatalog.state().plugins;if(!juce::isPositiveAndBelow(row.plugin,plugins.size()))return;
-    if(effectsBrowser){if(!plugins.getReference(row.plugin).isInstrument){loadEffectDescription(track,plugins.getReference(row.plugin),{},false,browserEffectSlot);pluginBrowser.setVisible(false);}}else{loadPluginDescription(track,plugins.getReference(row.plugin));if(!plugins.getReference(row.plugin).isInstrument)pluginBrowser.setVisible(false);}
+    const auto plugins=pluginCatalog.state().plugins;const juce::PluginDescription* description=nullptr;for(const auto& candidate:plugins)if(PluginCatalog::pluginKey(candidate)==row.key){description=&candidate;break;}if(!description){message(tr("The plugin catalogue changed. Select the plugin again."),true);return;}
+    if(effectsBrowser){if(!description->isInstrument){loadEffectDescription(track,*description,{},false,browserEffectSlot);pluginBrowser.setVisible(false);}}else{loadPluginDescription(track,*description);if(!description->isInstrument)pluginBrowser.setVisible(false);}
 }
 void MainComponent::loadPluginDescription(int track,const juce::PluginDescription& description,const juce::String& state,bool restoring){
     if(!description.isInstrument){loadEffectDescription(track,description,state,restoring);return;}
@@ -1041,36 +1041,37 @@ void MainComponent::filesDropped(const juce::StringArray& files,int x,int y){
     if(file.hasFileExtension("mid;midi"))importFile(file,dropBeat);else loadSampleFile(selectedTrack,file);
 }
 void MainComponent::showChordCirclePopover(int initialSlot){
-    if(editingRestricted()||loadingPlugin)return;
+    if(editingRestricted()||loadingPlugin||!juce::isPositiveAndBelow(selectedSection,(int)project.sections.size()))return;
+    if(dismissChordPopover)dismissChordPopover();
     class ChordCirclePopover : public juce::Component,private juce::Timer {
     public:
-        MainComponent& owner;
+        juce::Component::SafePointer<MainComponent> owner;
         CircleOfFifths circle;juce::ToggleButton audition{"Audition"};std::vector<int> held;
         std::array<juce::TextButton,8> slotButtons;
         ActionButton randomBtn{tr("NEW CHORDS")},presetsBtn{tr("CHORD MENU...")};
         IconButton close{IconButton::Icon::close};
         int activeSlot=0;
-        ChordCirclePopover(MainComponent& o,int slot):owner(o),activeSlot(std::clamp(slot,0,std::max(0,o.project.settings.chordCount-1))){
+        ChordCirclePopover(MainComponent& o,int slot):owner(&o),activeSlot(std::clamp(slot,0,std::max(0,o.project.settings.chordCount-1))){
             addAndMakeVisible(circle);addAndMakeVisible(audition);Localisation::bindText(audition,"Audition");Localisation::bindTip(audition,"Audition the selected chord on Piano");audition.onClick=[this]{if(audition.getToggleState())hear();else timerCallback();};
             circle.setFamilyFont(true);
             circle.setFreeMode(true);
-            circle.onPick=[this](int root,bool minor){
-                owner.checkpoint();auto& s=owner.project.settings;auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;
-                if(h.enabled){if(juce::ModifierKeys::currentModifiers.isShiftDown()){h.key=root;h.scale=minor?2:0;}else{h.freeChords[(size_t)activeSlot]=sgk::freeChordCode(root-(h.key>=0?h.key:s.key),minor);h.manualChords[(size_t)activeSlot]=true;}generate(owner.project,Scope::section,0,owner.selectedSection,0);owner.changed();refreshState();hear();return;}
+            circle.onPick=[this](int root,bool minor){if(!valid())return;
+                owner->checkpoint();auto& s=owner->project.settings;auto& h=owner->project.sections[(size_t)owner->selectedSection].harmony;
+                if(h.enabled){if(juce::ModifierKeys::currentModifiers.isShiftDown()){h.key=root;h.scale=minor?2:0;}else{h.freeChords[(size_t)activeSlot]=sgk::freeChordCode(root-(h.key>=0?h.key:s.key),minor);h.manualChords[(size_t)activeSlot]=true;}generate(owner->project,Scope::section,0,owner->selectedSection,0);owner->changed();refreshState();hear();return;}
                 if(juce::ModifierKeys::currentModifiers.isShiftDown()){
                     const bool modeMinor=sgk::scaleIsMinor(s.scale);s.key=root;if(minor!=modeMinor)s.scale=minor?2:0;
                 }else{
                     const int sc=std::clamp(activeSlot,0,std::max(0,s.chordCount-1));
                     s.freeChords[(size_t)sc]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)sc]=true;
                 }
-                owner.applyInstrumentSettings(0,true);refreshState();hear();
+                owner->applyInstrumentSettings(0,true);refreshState();hear();
             };
-            circle.onMoveChord=[this](int sl,int degree,int root,bool minor){
-                auto& s=owner.project.settings;if(sl<0||sl>=harmonySettings().progressionLength)return;
-                activeSlot=sl;owner.checkpoint();auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;if(h.enabled){if(degree>=0){h.degrees[(size_t)sl]=degree;h.freeChords[(size_t)sl]=-1;h.manualChords[(size_t)sl]=false;}else{h.freeChords[(size_t)sl]=sgk::freeChordCode(root-(h.key>=0?h.key:s.key),minor);h.manualChords[(size_t)sl]=true;}generate(owner.project,Scope::section,0,owner.selectedSection,0);owner.changed();refreshState();hear();return;}
+            circle.onMoveChord=[this](int sl,int degree,int root,bool minor){if(!valid())return;
+                auto& s=owner->project.settings;if(sl<0||sl>=harmonySettings().progressionLength)return;
+                activeSlot=sl;owner->checkpoint();auto& h=owner->project.sections[(size_t)owner->selectedSection].harmony;if(h.enabled){if(degree>=0){h.degrees[(size_t)sl]=degree;h.freeChords[(size_t)sl]=-1;h.manualChords[(size_t)sl]=false;}else{h.freeChords[(size_t)sl]=sgk::freeChordCode(root-(h.key>=0?h.key:s.key),minor);h.manualChords[(size_t)sl]=true;}generate(owner->project,Scope::section,0,owner->selectedSection,0);owner->changed();refreshState();hear();return;}
                 if(degree>=0){s.degrees[(size_t)sl]=degree;s.freeChords[(size_t)sl]=-1;s.manualChords[(size_t)sl]=false;}
                 else{s.freeChords[(size_t)sl]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)sl]=true;}
-                owner.applyInstrumentSettings(0,true);refreshState();hear();
+                owner->applyInstrumentSettings(0,true);refreshState();hear();
             };
             for(int i=0;i<8;++i){
                 auto& b=slotButtons[(size_t)i];addAndMakeVisible(b);
@@ -1078,18 +1079,20 @@ void MainComponent::showChordCirclePopover(int initialSlot){
             }
             randomBtn.setPrimary(false);presetsBtn.setPrimary(false);
             addAndMakeVisible(randomBtn);addAndMakeVisible(presetsBtn);
-            randomBtn.onClick=[this]{if(owner.harmonyButton.onClick)owner.harmonyButton.onClick();refreshState();};
-            presetsBtn.onClick=[this]{owner.showChordMenu();};
+            randomBtn.onClick=[this]{if(!valid())return;if(owner->harmonyButton.onClick)owner->harmonyButton.onClick();refreshState();};
+            presetsBtn.onClick=[this]{if(!valid())return;owner->showChordMenu();};
             addAndMakeVisible(close);close.setComponentID("chord-circle-close");close.accentHover=true;close.setTooltip(tr("Close"));
             close.onClick=[this]{if(auto* callout=findParentComponentOfClass<juce::CallOutBox>())callout->dismiss();};
-            setSize(340,410);
+            setComponentID("chord-circle-body");audition.setComponentID("chord-audition");setSize(340,410);
             refreshState();
         }
+        bool valid()const{return owner&&juce::isPositiveAndBelow(owner->selectedSection,(int)owner->project.sections.size());}
+        void detach(){timerCallback();owner=nullptr;if(auto* callout=findParentComponentOfClass<juce::CallOutBox>())callout->dismiss();}
         ~ChordCirclePopover()override{timerCallback();}
-        void timerCallback()override{stopTimer();for(int note:held)owner.audio.liveMidi(0,juce::MidiMessage::noteOff(1,note),false);held.clear();}
-        sgk::GrooveSettings harmonySettings()const{Clip context;context.position=owner.project.sectionStart(owner.selectedSection);return pianoEngineSettings(owner.project,0,owner.project.settings.seed,0,&context);}
-        void hear(){timerCallback();if(!audition.getToggleState()||owner.audio.isPlaying())return;const auto s=harmonySettings();const auto chord=sgk::voiceChord(sgk::GrooveEngine::chordForSlot(s,activeSlot),s.voicing,s.centre,nullptr);for(int i=0;i<chord.rightHand.size;++i){const int note=chord.rightHand[i];held.push_back(note);owner.audio.liveMidi(0,juce::MidiMessage::noteOn(1,note,(juce::uint8)96),false);}startTimer(650);}
-        void refreshState(){
+        void timerCallback()override{stopTimer();if(owner)for(int note:held)owner->audio.liveMidi(0,juce::MidiMessage::noteOff(1,note),false);held.clear();}
+        sgk::GrooveSettings harmonySettings()const{Clip context;context.position=owner->project.sectionStart(owner->selectedSection);return pianoEngineSettings(owner->project,0,owner->project.settings.seed,0,&context);}
+        void hear(){timerCallback();if(!valid())return;if(!audition.getToggleState()||owner->audio.isPlaying())return;const auto s=harmonySettings();const auto chord=sgk::voiceChord(sgk::GrooveEngine::chordForSlot(s,activeSlot),s.voicing,s.centre,nullptr);for(int i=0;i<chord.rightHand.size;++i){const int note=chord.rightHand[i];held.push_back(note);owner->audio.liveMidi(0,juce::MidiMessage::noteOn(1,note,(juce::uint8)96),false);}startTimer(650);}
+        void refreshState(){if(!valid()){timerCallback();return;}
             auto s=harmonySettings();activeSlot=std::clamp(activeSlot,0,s.progressionLength-1);
             std::vector<CircleOfFifths::ChordMark> chords,diatonic;
             std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
@@ -1109,8 +1112,8 @@ void MainComponent::showChordCirclePopover(int initialSlot){
             Daw::fillElevatedSurface(g,getLocalBounds().toFloat(),Daw::bgPanel(),Daw::panelRadius);
             Daw::drawCaps(g,tr("CIRCLE OF FIFTHS — CLICK TO REVOICE SLOT")+" "+juce::String(activeSlot+1),{12,6,getWidth()-52,18},Daw::accent);
         }
-        void resized()override{
-            const auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;const int count=std::clamp(h.enabled?h.chordCount:owner.project.settings.chordCount,1,8);
+        void resized()override{if(!valid())return;
+            const auto& h=owner->project.sections[(size_t)owner->selectedSection].harmony;const int count=std::clamp(h.enabled?h.chordCount:owner->project.settings.chordCount,1,8);
             const int cols=std::min(4,count),rows=(count+cols-1)/cols;
             const int bw=(getWidth()-20)/cols;
             close.setBounds(getWidth()-30,2,24,24);
@@ -1122,7 +1125,8 @@ void MainComponent::showChordCirclePopover(int initialSlot){
         }
     };
     const auto target=chordEditButton.isShowing()?chordEditButton.getScreenBounds():getScreenBounds().withSizeKeepingCentre(120,28);
-    juce::CallOutBox::launchAsynchronously(std::make_unique<ChordCirclePopover>(*this,initialSlot),target,nullptr);
+    auto content=std::make_unique<ChordCirclePopover>(*this,initialSlot);juce::Component::SafePointer<ChordCirclePopover> safe(content.get());
+    dismissChordPopover=[safe]{if(safe)safe->detach();};juce::CallOutBox::launchAsynchronously(std::move(content),target,nullptr);
 }
 void MainComponent::showSpotlightSearch(){
     if(editingRestricted()||loadingPlugin)return;
