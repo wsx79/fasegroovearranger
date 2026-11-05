@@ -12,6 +12,7 @@ struct AiOptions {
     AiProvider provider=AiProvider::ollama;
     juce::String model,key,endpoint="http://127.0.0.1:11434",prompt;
     bool wholeSong=true;
+    int section=-1; // optional editing scope; all other sections are retained
     double seconds=0; // zero: requested in the prompt, otherwise six minutes by default
     std::vector<int> tracks;
 };

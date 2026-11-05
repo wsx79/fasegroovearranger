@@ -12,6 +12,7 @@ public:
     void configure(const std::array<BusSettings,4>&,double bpm,double master,bool snap);
     void begin(int count,bool stem=false);
     void add(int channel,int sample,float value,int group,const std::array<double,2>& sends);
+    void kick(int sample,float value){if(sample>=0&&sample<(int)kickSignal.size())kickSignal[(size_t)sample]=std::max(kickSignal[(size_t)sample],std::abs(value));}
     void finish(float* const* output,int channels,int count,const float* automation);
     float level(int bus)const{return peaks[(size_t)std::clamp(bus,0,3)].load();}
 private:
@@ -24,6 +25,7 @@ private:
     juce::SmoothedValue<float> masterGain,delaySamples;
     juce::Reverb reverb;
     double rate=44100,bpm=120;
+    std::vector<float> kickSignal;float duck=0;
     int write=0;
     std::array<float,2> damping{};
     bool groupSolo=false,returnSolo=false,stem=false;

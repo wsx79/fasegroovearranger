@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.32.0
+
+- Implement the 18 improvements from the 0.31.21 PDF: audio-region conversion and fades, local feel, chord audition and section harmony, transition macros and extracted groove.
+- Add native track EQ, kick-driven group sidechain, session track freeze, LUFS meters and an optional 4x true-peak export guard.
+- Add ghost notes, per-clip MIDI expression, synchronised sample preview, spectral-note MIDI copying and section-scoped AI editing.
+- Split timeline and visual audit compilation units; bound parallel native/sampler stem exports to two private engines. Schema 6 retains reads of schemas 1–5.
+
 ## 0.31.21
 
 - Remove the redundant tooltip from the Harmony row.

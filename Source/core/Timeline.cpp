@@ -10,6 +10,8 @@ Clip slice(const Clip& source,double offset,double duration,double position){
     Clip part=source;part.notes.clear();part.position=position;part.span=duration;
     for(auto n:source.notes){const double from=std::max(offset,n.start),to=std::min(offset+duration,n.start+n.length);if(to-from<tick)continue;n.start=from-offset;n.length=to-from;part.notes.push_back(n);}
     tidyNotes(part,duration);
+    for(size_t lane=0;lane<part.expression.size();++lane){const auto& original=source.expression[lane];auto& sliced=part.expression[lane];sliced.points.clear();if(original.active()){sliced.points.push_back({0,original.valueAt(offset),0});for(auto p:original.points)if(p.beat>offset&&p.beat<offset+duration){p.beat-=offset;sliced.points.push_back(p);}sliced.points.push_back({duration,original.valueAt(offset+duration),0});}}
+    if(offset>0)part.clipFadeIn=0;if(offset+duration<source.span-1e-9)part.clipFadeOut=0;
     if(source.audioOffset>=0&&source.span>0){const double secondsPerBeat=source.audioDuration/source.span;part.audioOffset=source.audioOffset+offset*secondsPerBeat;part.audioDuration=duration*secondsPerBeat;part.loopLength=0;part.loopPhase=0;part.loopSource.clear();}
     else if(source.loopLength>0){part.loopPhase=std::fmod(source.loopPhase+offset,source.loopLength);}
     else {part.loopLength=duration;part.loopPhase=0;part.loopSource=part.notes;}

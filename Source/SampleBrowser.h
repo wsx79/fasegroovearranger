@@ -77,7 +77,7 @@ private:
     juce::ListBox placeList,fileList;
     juce::TextEditor search;
     juce::ComboBox filterBox,sortBox;
-    juce::TextButton addButton,orderButton,autoButton,loadButton,upButton;
+    juce::TextButton addButton,orderButton,autoButton,loadButton,upButton,syncButton{"SYNC"};
     IconButton closeButton{IconButton::Icon::close};
     IconButton backButton{IconButton::Icon::left},forwardButton{IconButton::Icon::right},playButton{IconButton::Icon::play};
     std::unique_ptr<juce::FileChooser> chooser;

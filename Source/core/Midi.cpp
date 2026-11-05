@@ -44,7 +44,7 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
         // GM hints make exported MIDI immediately useful in a GM player.
         if(isHarmonicTrack((int)ti)){static const int programs[]{4,33,48,26,80};data.insert(data.end(),{0,(std::uint8_t)(0xc0|channel),(std::uint8_t)programs[ti==leadTrack?4:ti]});}
         last=0;
-        for(const auto& e:all)if(e.track==(int)ti){auto at=(std::uint32_t)std::llround(std::max(0.0,e.beat)*960);variable(data,at-last);last=at;data.push_back((std::uint8_t)((e.controller>=0?0xb0:e.velocity>0?0x90:0x80)|channel));data.push_back((std::uint8_t)e.pitch);data.push_back((std::uint8_t)e.velocity);}
+        for(const auto& e:all)if(e.track==(int)ti){auto at=(std::uint32_t)std::llround(std::max(0.0,e.beat)*960);variable(data,at-last);last=at;data.push_back((std::uint8_t)((e.controller==128?0xe0:e.controller>=0?0xb0:e.velocity>0?0x90:0x80)|channel));data.push_back((std::uint8_t)(e.controller==128?(e.velocity&127):e.pitch));data.push_back((std::uint8_t)(e.controller==128?((e.velocity>>7)&127):e.velocity));}
         meta(data,std::max(end,last)-last,0x2f,{});chunk(out,std::move(data));
     }
     return out;

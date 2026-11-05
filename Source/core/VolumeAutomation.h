@@ -8,9 +8,11 @@
 #include <vector>
 namespace fga {
 struct VolumePoint {
+    bool operator==(const VolumePoint& o)const{return beat==o.beat&&value==o.value&&curve==o.curve;}
     double beat=0, value=1, curve=0; // linear gain; curve bends the outgoing segment [-1,1]
 };
 struct VolumeAutomation {
+    bool operator==(const VolumeAutomation& o)const{return enabled==o.enabled&&locked==o.locked&&points==o.points;}
     bool enabled=false;
     bool locked=false; // random automation keeps a locked lane as it is
     std::vector<VolumePoint> points;

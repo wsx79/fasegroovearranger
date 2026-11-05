@@ -3,6 +3,8 @@
 #pragma once
 #include "core/Project.h"
 #include "Sampler.h"
+#include "ChannelStrip.h"
+#include "LoudnessMeter.h"
 #include "SamplePitchMonitor.h"
 #include "MixerBuses.h"
 #include "MidiRecording.h"
@@ -17,16 +19,17 @@
 #include <optional>
 #include <juce_dsp/juce_dsp.h>
 namespace fga {
-struct AudioExportOptions {double sampleRate=0;int bitDepth=24;};
+struct AudioExportOptions {double sampleRate=0;int bitDepth=24;bool loudnessGuard=false;};
 static_assert(std::atomic<bool>::is_always_lock_free&&std::atomic<double>::is_always_lock_free,"Audio callback atomics require a lock-free 64-bit target");
 // Everything the audio thread plays, built on the message thread and handed over without a
 // lock (see Handoff). Schedules and automation are read in place: the audio thread never
 // copies, allocates or frees them.
 struct TrackMix {
+    std::uint64_t session=0;
     VolumeAutomation volume,panAutomation;
     std::vector<ParameterAutomation> parameters; // copied on the message thread, only read by the audio thread
     double gain=.75,pan=0,tone=.5,reverb=.12,chorus=0,pump=0,pumpRelease=.2;
-    SamplerSettings sampler;int sampleRoot=60;
+    SamplerSettings sampler;int sampleRoot=60;EqSettings eq;
     std::array<int,maxTrackEffects> effectOrder{};std::array<bool,maxTrackEffects> effectBypass{};int effectCount=0;
     int group=-1;std::array<double,2> sends{};
     bool mute=false,solo=false;
@@ -34,6 +37,7 @@ struct TrackMix {
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
+struct FrozenAudio {juce::AudioBuffer<float> audio;double rate=44100,bpm=120;std::uint64_t session=0;};
 struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
@@ -107,7 +111,7 @@ struct Instrument {
     std::array<float,maxParameterLanes> parameterSent{}; // last value set on each lane's parameter (-1: none yet)
     std::vector<float> volumeGains,panLeft,panRight;
     juce::SmoothedValue<float> baseGain;            // gain * master: the pan automation applies its own pan law
-    double gain=.75,pan=0;
+    double gain=.75,pan=0;ChannelStrip strip;bool frozenActive=false;std::array<bool,128> timelineCC{};bool timelineWheel=false;std::array<bool,maxTrackEffects+1> freezePaused{};
     juce::SmoothedValue<float> leftGain,rightGain;
     bool mute=false,solo=false;
     int group=-1;std::array<double,2> sends{};
@@ -137,7 +141,7 @@ struct Instrument {
 // A file being auditioned by the sample browser: decoded off the audio thread, then handed over.
 struct PreviewClip {
     juce::AudioBuffer<float> audio;
-    double rate=44100,position=0;
+    double rate=44100,position=0;std::unique_ptr<SampleSynth> synced;SamplerSettings syncSettings;juce::AudioBuffer<float> scratch;juce::MidiBuffer midi;int root=60,sourceKey=-1;bool started=false;
 };
 // Private sampler for isolated Studio audition; built and destroyed off the audio thread.
 struct SampleAudition {
@@ -159,10 +163,18 @@ public:
     // Message thread: a copy of the current instruments (samples shared, plugins re-created from
     // their state) that renders exports independently. State capture briefly quiesces this engine. nullptr when a plugin
     // cannot be duplicated: exportAudio on this engine is then the fallback.
-    std::unique_ptr<AudioEngine> offlineCopy();
+    std::unique_ptr<AudioEngine> offlineCopy(int onlyTrack=-1);
     // Sample browser audition, mixed after the master and independent of the transport.
-    void startPreview(juce::AudioBuffer<float>&& audio,double rate);
+    void startPreview(juce::AudioBuffer<float>&& audio,double rate,double sourceBpm=0,int sourceMidi=-1);
+    double previewTempo()const{return tempo.load();}
+    std::atomic<int> previewKey{0};LoudnessMeter loudness;
     void stopPreview();
+    void freezeTrack(int,const juce::File&,double bpm,std::uint64_t session);
+    void unfreezeTrack(int);
+    void invalidateFrozenTempo(double bpm){for(int i=0;i<maxTracks;++i)if(frozenFlags[(size_t)i]&&std::abs(frozenTempo[(size_t)i]-bpm)>1e-6)unfreezeTrack(i);}
+    std::array<double,maxTracks> frozenTempo{};
+    bool trackFrozen(int track)const{return track>=0&&track<maxTracks&&frozenFlags[(size_t)track].load();}
+    std::array<Handoff<FrozenAudio>,maxTracks> frozenAudio;std::array<std::atomic<bool>,maxTracks> frozenFlags{};
     bool isPreviewing() const {return previewing.load();}
     void monitorSamplePitch(int track,bool restart=false){pitchMonitor.select(track,restart);}
     SamplePitchReading samplePitch(){return pitchMonitor.poll();}
@@ -178,7 +190,7 @@ public:
     // onlyTrack: only that track's notes changed since the last normalised publish.
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
-    void collectGarbage(){schedules.collect();mixes.collect();previews.collect();}
+    void collectGarbage(){for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
     // Message thread: notify plugin editors of parameter automation queued by the audio thread.
     void flushParameterNotifications();
     // Meter uses MIDI quarter-note units, including non-quarter-note denominators.

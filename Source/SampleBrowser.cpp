@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "SampleBrowser.h"
 #include "AudioEngine.h"
+#include "SamplePreviewAnalysis.h"
 #include "Localisation.h"
 namespace fga {
 namespace {
@@ -153,7 +154,7 @@ SampleBrowser::SampleBrowser(AudioEngine& e):engine(e),shared(std::make_shared<S
     backButton.onClick=[this]{back();};forwardButton.onClick=[this]{forward();};upButton.onClick=[this]{up();};
     playButton.onColour=Palette::accent2;playButton.primary=true;
     playButton.onClick=[this]{if(engine.isPreviewing()||isTimerRunning())stopPreview();else preview(fileAt(fileList.getSelectedRow()));};
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&closeButton,&addButton,&orderButton,&autoButton,&loadButton,&backButton,&forwardButton,&upButton,&playButton})addAndMakeVisible(c);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&closeButton,&addButton,&orderButton,&autoButton,&syncButton,&loadButton,&backButton,&forwardButton,&upButton,&playButton})addAndMakeVisible(c);
     backButton.setConnectedEdges(juce::Button::ConnectedOnRight);forwardButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);upButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
     setWantsKeyboardFocus(false);refreshText();updateButtons();
 }
@@ -169,6 +170,7 @@ void SampleBrowser::refreshText(){
     sortBox.clear(juce::dontSendNotification);id=1;for(const char* name:{"Name","Date","Size","Length"})sortBox.addItem(tr(name),id++);
     filterBox.setSelectedItemIndex(prefs.filter,juce::dontSendNotification);sortBox.setSelectedItemIndex(prefs.sort,juce::dontSendNotification);quiet=false;
     search.setTextToShowWhenEmpty(tr("Search samples..."),Palette::dim);
+    syncButton.setClickingTogglesState(true);syncButton.setToggleState(Localisation::setting("browserSyncPreview","0")=="1",juce::dontSendNotification);syncButton.setTooltip(tr("Sync preview to project tempo and key (automatic estimates)"));syncButton.onClick=[this]{Localisation::setSetting("browserSyncPreview",syncButton.getToggleState()?"1":"0");if(previewFile.existsAsFile())preview(previewFile);};
     addButton.setButtonText(tr("ADD FOLDER"));autoButton.setButtonText(tr("AUTO"));upButton.setButtonText(juce::String::fromUTF8("↑"));
     orderButton.setButtonText(juce::String::fromUTF8(prefs.ascending?"↑":"↓"));
     tip(addButton,"Add folders of samples: they stay in the list for every project.");
@@ -316,7 +318,7 @@ void SampleBrowser::preview(const juce::File& f){
     if(f==juce::File()||f.isDirectory())return;
     if(!samples::isSupportedAudio(f)){showFile(f);return;}
     previewFile=f;const int gen=++shared->previewGeneration;auto state=shared;juce::Component::SafePointer<SampleBrowser> safe(this);
-    pool->addJob([state,gen,f,safe]{
+    const bool sync=syncButton.getToggleState();pool->addJob([state,gen,f,safe,sync]{
         juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(f));
         if(state->previewGeneration.load()!=gen)return;
         if(!reader||reader->sampleRate<=0||reader->lengthInSamples<=0){juce::MessageManager::callAsync([safe,gen]{if(safe!=nullptr&&safe->shared->previewGeneration.load()==gen){safe->info=tr("Unreadable audio file.");safe->infoError=true;safe->repaint();}});return;}
@@ -324,10 +326,10 @@ void SampleBrowser::preview(const juce::File& f){
         const int length=(int)std::min<juce::int64>(reader->lengthInSamples,(juce::int64)(reader->sampleRate*30));
         auto audio=std::make_shared<juce::AudioBuffer<float>>((int)std::min(2u,reader->numChannels),length);
         reader->read(audio.get(),0,length,0,true,true);const double rate=reader->sampleRate;
-        juce::MessageManager::callAsync([safe,gen,audio,rate]{
+        const auto analysis=sync?analysePreview(*audio,rate):PreviewAnalysis{};if(state->previewGeneration.load()!=gen)return;juce::MessageManager::callAsync([safe,gen,audio,rate,sync,analysis]{
             if(safe==nullptr||safe->shared->previewGeneration.load()!=gen)return;
             safe->previewDeadline=juce::Time::getMillisecondCounterHiRes()+audio->getNumSamples()/rate*1000.+750.;
-            safe->engine.startPreview(std::move(*audio),rate);safe->startTimerHz(8);safe->updateButtons();
+            if(sync)safe->previewDeadline=juce::Time::getMillisecondCounterHiRes()+audio->getNumSamples()/rate*analysis.bpm/std::max(30.,safe->engine.previewTempo())*1000.+2000.;safe->engine.startPreview(std::move(*audio),rate,sync?analysis.bpm:0,sync&&analysis.pitched?analysis.midi:-1);safe->startTimerHz(8);safe->updateButtons();
         });
     });
 }
@@ -366,7 +368,7 @@ void SampleBrowser::resized(){
     auto options=r.removeFromTop(rowH);orderButton.setBounds(options.removeFromRight(30));options.removeFromRight(6);
     filterBox.setBounds(options.removeFromLeft((options.getWidth()-6)/2));options.removeFromLeft(6);sortBox.setBounds(options);
     r.removeFromTop(6);
-    auto controls=r.removeFromBottom(28);playButton.setBounds(controls.removeFromLeft(40));controls.removeFromLeft(6);autoButton.setBounds(controls.removeFromLeft(64));controls.removeFromLeft(6);loadButton.setBounds(controls);
+    auto controls=r.removeFromBottom(28);playButton.setBounds(controls.removeFromLeft(40));controls.removeFromLeft(6);autoButton.setBounds(controls.removeFromLeft(54));syncButton.setBounds(controls.removeFromLeft(58));controls.removeFromLeft(6);loadButton.setBounds(controls);
     r.removeFromBottom(6);infoArea=r.removeFromBottom(40);r.removeFromBottom(6);
     fileList.setBounds(r);
 }

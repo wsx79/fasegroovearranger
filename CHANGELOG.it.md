@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.32.0
+
+- Implementate le 18 migliorie del PDF: conversione/fade delle regioni audio, feel locale, audition e armonia per sezione, transizioni e groove estratto.
+- EQ nativo, sidechain dei gruppi dal Kick, freeze di sessione, meter LUFS e guard true-peak opzionale con oversampling 4x.
+- Note fantasma, espressione MIDI per clip, preview sincronizzata, copia delle note spettrali e AI limitata alla sezione selezionata.
+- Timeline e audit visivi separati; export parallelo limitato a due motori privati. Schema 6 con lettura mantenuta degli schemi 1–5.
+
 ## 0.31.21
 
 - Rimosso il tooltip ridondante dalla riga Armonia.

@@ -84,6 +84,7 @@ public:
     void showLaneTargetMenu(int track);
     double pixelsPerBar=6;
     std::set<int> selectedClips;
+    int fadeTrack=-1,fadeClip=-1,fadeSide=0;
     int dropTrack=-1; // a sample dragged from the browser over this track
     double snapBeat(double beat,bool bypass=false) const;
 private:
@@ -134,6 +135,8 @@ private:
 class PianoRoll : public juce::Component,public juce::SettableTooltipClient,private juce::Timer {
 public:
     explicit PianoRoll(MainComponent&);
+    void resized()override;
+    juce::ComboBox ghostTrack,expressionLane;int ghost=-1,expressionMode=0;
     ~PianoRoll()override;
     void visibilityChanged()override;
     void paint(juce::Graphics&) override;
@@ -258,6 +261,7 @@ public:
     double songLength();
     // The track gear opens its VST editor, sample in Studio or guide controls.
     void openInstrumentFor(int track);
+    void freezeTrack(int track);
     void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
     void applyLanguage();

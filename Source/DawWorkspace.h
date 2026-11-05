@@ -41,8 +41,9 @@ private:
     std::vector<juce::Rectangle<int>> cards;
     juce::Label name,source,section;
     juce::Slider gain,pan;
+    juce::ToggleButton eqEnabled{"EQ / HP"};std::array<juce::Slider,4> eqKnobs;
     EffectChainView effects;
-    ActionButton instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},samplerEditor{"OPEN SAMPLER"},deleteTrack{"DELETE MIDI TRACK"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
+    ActionButton freeze{"FREEZE"},instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},samplerEditor{"OPEN SAMPLER"},deleteTrack{"DELETE MIDI TRACK"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
     int layout(int width);
     bool validTrack() const;
 };
@@ -93,6 +94,7 @@ private:
     juce::Component channels;
     std::vector<std::unique_ptr<MixerStrip>> strips;
     MixerStrip master;
+    juce::Label loudnessLabel;
     std::array<float,2> compactPeaks{},compactHolds{};
     std::array<int,2> compactHoldTicks{};
     ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"},masterEffectsButton{"EFFECTS"};

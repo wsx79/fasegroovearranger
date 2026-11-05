@@ -28,7 +28,7 @@ public:
     explicit AiComposerPanel(MainComponent& m):owner(m),generate(IconButton::Icon::sparkles),apply(IconButton::Icon::play){
         for(auto* c:std::initializer_list<juce::Component*>{&provider,&model,&key,&endpoint,&mode,&duration,&prompt,&preview,&status,&generate,&cancel,&apply,&listen,&keyHelp,&checkServer,&guideHelp,&tracksPort,&progress})addAndMakeVisible(c);
         provider.addItemList({"OpenAI","Anthropic / Claude",text("Gemini · free tier","Gemini · quota gratuita"),text("Ollama · local, no API key","Ollama · locale, senza API"),"DeepSeek",text("Groq · free tier","Groq · quota gratuita"),"OpenRouter Free"},1);
-        mode.addItem(text("New song","Nuovo brano"),1);mode.addItem(text("Edit selected tracks","Modifica tracce selezionate"),2);mode.setSelectedId(1,juce::dontSendNotification);
+        mode.addItem(text("New song","Nuovo brano"),1);mode.addItem(text("Edit selected tracks","Modifica tracce selezionate"),2);mode.addItem(text("Selected Section Only","Solo sezione selezionata"),3);mode.setSelectedId(1,juce::dontSendNotification);
         duration.addItem(text("From the prompt","Dal prompt"),1);for(int n:{2,3,4,5,6,8,10,15,20,30})duration.addItem(juce::String(n)+" min",duration.getNumItems()+1);duration.setSelectedId(1,juce::dontSendNotification);
         model.setEditableText(true);key.setPasswordCharacter(0x2022);key.setTextToShowWhenEmpty(text("API key · this session only","Chiave API · solo questa sessione"),Daw::textFaint);endpoint.setText(Localisation::setting("aiOllamaEndpoint","http://127.0.0.1:11434"));
         prompt.setMultiLine(true);prompt.setReturnKeyStartsNewLine(true);prompt.setScrollbarsShown(true);prompt.setTextToShowWhenEmpty(text("A 6-minute techno song at 138 BPM, DJ intro, two drops and an evolving lead...","Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop e un lead che evolve..."),Daw::textFaint);
@@ -57,6 +57,7 @@ public:
         checkServer.setButtonText(text("CHECK","VERIFICA"));checkServer.setTooltip(text("Read the selected service’s current text models. Cloud services need their API key; Ollama lists installed local models. This does not generate a song.","Leggi i modelli di testo aggiornati del servizio scelto. Il cloud richiede la chiave API; Ollama elenca quelli locali installati. Non genera un brano."));checkServer.onClick=[this]{refreshModels();};
         mode.onChange=[this]{duration.setEnabled(mode.getSelectedId()==1);invalidatePreview();};
         for(auto* box:{&provider,&model,&duration}){box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));}
+        addAndMakeVisible(energyPrompt);addAndMakeVisible(sparsePrompt);energyPrompt.setTooltip(text("Make the selected Drop more energetic","Rendi il Drop selezionato più incalzante"));sparsePrompt.setTooltip(text("Thin the selected section, keeping Piano and Vocal Chops","Sfoltisci la sezione lasciando Piano e Vocal Chops"));energyPrompt.onClick=[this]{mode.setSelectedId(3);prompt.setText("Make this selected section more energetic with stronger rhythmic development. Preserve the other sections.");};sparsePrompt.onClick=[this]{mode.setSelectedId(3);prompt.setText("Thin this selected section, retaining Piano and Vocal Chops and more space. Preserve the other sections.");};
         prompt.onTextChange=[this]{invalidatePreview();};
         generate.onClick=[this]{start();};cancel.onClick=[this]{cancelJob();};apply.onClick=[this]{if(!ready)return;const auto result=owner.applyAiComposition(base,composition,listen.getToggleState());setStatus(result.wasOk()?juce::String("Composition applied. Undo restores the previous song."):result.getErrorMessage());if(result.wasOk()){ready=false;apply.setEnabled(false);}};
         keyHelp.onClick=[this]{invalidatePreview();showSetupHelp();juce::URL(aiSetupUrl((AiProvider)activeProvider)).launchInDefaultBrowser();};
@@ -68,7 +69,7 @@ public:
     }
     void refreshText(){
         provider.changeItemText(3,text("Gemini · free tier","Gemini · quota gratuita"));provider.changeItemText(4,text("Ollama · local, no API key","Ollama · locale, senza API"));provider.changeItemText(6,text("Groq · free tier","Groq · quota gratuita"));
-        mode.changeItemText(1,text("New song","Nuovo brano"));mode.changeItemText(2,text("Edit selected tracks","Modifica tracce selezionate"));duration.changeItemText(1,text("From the prompt","Dal prompt"));
+        mode.changeItemText(1,text("New song","Nuovo brano"));mode.changeItemText(2,text("Edit selected tracks","Modifica tracce selezionate"));mode.changeItemText(3,text("Selected Section Only","Solo sezione selezionata"));energyPrompt.setButtonText(text("ENERGY +","ENERGIA +"));sparsePrompt.setButtonText(text("SPARSE","DIRADA"));duration.changeItemText(1,text("From the prompt","Dal prompt"));
         key.setTextToShowWhenEmpty(text("API key · this session only","Chiave API · solo questa sessione"),Daw::textFaint);
         prompt.setTextToShowWhenEmpty(text("A 6-minute techno song at 138 BPM, DJ intro, two drops and an evolving lead...","Una canzone techno di 6 minuti a 138 BPM, intro da DJ, due drop e un lead che evolve..."),Daw::textFaint);
         generate.setButtonText(text("COMPOSE","COMPONI"));
@@ -113,7 +114,7 @@ public:
         key.setBounds(left,189,leftWidth-268,32);endpoint.setBounds(left,189,leftWidth-268,32);checkServer.setBounds(left+leftWidth-258,189,108,32);keyHelp.setBounds(left+leftWidth-140,189,140,32);
         keyHelp.setButtonText(local?text("INSTALL / HELP","INSTALLA / AIUTO"):text("API keys / help","Chiavi API / aiuto"));
         mode.setBounds(left,253,286,32);duration.setBounds(left+300,253,leftWidth-300,32);
-        prompt.setBounds(left,319,leftWidth,132);tracksPort.setBounds(left,491,leftWidth,std::max(72,getHeight()-605));
+        energyPrompt.setBounds(left+leftWidth-186,291,92,22);sparsePrompt.setBounds(left+leftWidth-90,291,90,22);prompt.setBounds(left,319,leftWidth,132);tracksPort.setBounds(left,491,leftWidth,std::max(72,getHeight()-605));
         tracksBody.setSize(leftWidth-14,((int)tracks.size()+3)/4*29);for(size_t i=0;i<tracks.size();++i)tracks[i]->setBounds((int)(i%4)*(leftWidth-14)/4,(int)(i/4)*29,(leftWidth-14)/4,27);
         preview.setBounds(right,141,getWidth()-right-24,std::max(170,getHeight()-260));
         status.setBounds(left,getHeight()-111,getWidth()-48,24);
@@ -189,7 +190,7 @@ public:
         return ok;
     }
 private:
-    MainComponent& owner;double progressValue=-1;juce::ProgressBar progress{progressValue};juce::ComboBox provider,model,mode,duration;juce::TextEditor key,endpoint,prompt,preview;juce::Label status;IconButton generate,apply;juce::TextButton cancel,keyHelp,checkServer,guideHelp;juce::ToggleButton listen;juce::Viewport tracksPort;juce::Component tracksBody;std::vector<std::unique_ptr<juce::ToggleButton>> tracks;std::vector<std::uint64_t> trackIdentities;std::array<juce::String,(size_t)AiProvider::count> keys;int activeProvider=-1,leftWidth=548;bool ready=false,modelsReady=false;int requestId=0,modelRequestId=0;Project base,composition;std::unique_ptr<CompositionJob> job;std::unique_ptr<ModelListJob> modelsJob;
+    MainComponent& owner;double progressValue=-1;juce::ProgressBar progress{progressValue};juce::ComboBox provider,model,mode,duration;juce::TextEditor key,endpoint,prompt,preview;juce::Label status;IconButton generate,apply;juce::TextButton cancel,keyHelp,checkServer,guideHelp,energyPrompt{"ENERGY +"},sparsePrompt{"SPARSE"};juce::ToggleButton listen;juce::Viewport tracksPort;juce::Component tracksBody;std::vector<std::unique_ptr<juce::ToggleButton>> tracks;std::vector<std::uint64_t> trackIdentities;std::array<juce::String,(size_t)AiProvider::count> keys;int activeProvider=-1,leftWidth=548;bool ready=false,modelsReady=false;int requestId=0,modelRequestId=0;Project base,composition;std::unique_ptr<CompositionJob> job;std::unique_ptr<ModelListJob> modelsJob;
     juce::String statusKey,statusPrefix,previewRendered;std::function<juce::String()> previewText;
     void setStatus(juce::String sourceKey,juce::String prefix={}){statusKey=std::move(sourceKey);statusPrefix=std::move(prefix);status.setText(statusPrefix+tr(statusKey),juce::dontSendNotification);}
     void renderPreview(){previewRendered=previewText();preview.setText(previewRendered,false);}
@@ -243,7 +244,7 @@ private:
         if(job||modelsJob)return;
         refreshTracks();
         if(activeProvider==3&&!modelsReady){refreshModels();return;}auto captured=owner.captureAiProject(base);if(captured.failed()){setStatus(captured.getErrorMessage());return;}
-        AiOptions options;options.provider=(AiProvider)provider.getSelectedItemIndex();options.model=model.getText().trim();options.key=key.getText().trim();options.endpoint=endpoint.getText().trim();options.prompt=prompt.getText().trim();options.wholeSong=mode.getSelectedId()==1;options.seconds=duration.getSelectedId()==1?0:duration.getText().getDoubleValue()*60;
+        AiOptions options;options.provider=(AiProvider)provider.getSelectedItemIndex();options.model=model.getText().trim();options.key=key.getText().trim();options.endpoint=endpoint.getText().trim();options.prompt=prompt.getText().trim();options.wholeSong=mode.getSelectedId()==1;options.section=mode.getSelectedId()==3?owner.selectedSection:-1;if(options.section>=0)options.prompt+="\nEdit ONLY section "+juce::String(options.section)+". Preserve all other sections.";options.seconds=duration.getSelectedId()==1?0:duration.getText().getDoubleValue()*60;
         for(size_t i=0;i<tracks.size();++i)if(tracks[i]->getToggleState()&&tracks[i]->isEnabled())options.tracks.push_back((int)i);
         AiHttpRequest request;auto validation=aiHttpRequest(base,options,request);if(validation.failed()){setStatus(validation.getErrorMessage());return;}
         Localisation::setSetting(("aiModel"+juce::String(provider.getSelectedItemIndex())).toRawUTF8(),options.model);Localisation::setSetting("aiOllamaEndpoint",options.endpoint);

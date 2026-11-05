@@ -1,0 +1,46 @@
+FASE GROOVE ARRANGER 0.32.0 — VALIDAZIONE MIGLIORIE PDF
+Base: v0.31.21, 4d024b26c469726098dc8786b5b3e515b4f89066.
+Ambiente: Linux, GCC, JUCE 8.0.9, Debug; audio offline, display Xvfb + xfwm4.
+Esiti locali raccolti prima del commit di release; la CI verifica e pubblica
+i pacchetti Linux, macOS e Windows dopo il push.
+
+PASS Core ASan/UBSan: improvement_core, arranger_core, verify_midi (3/3).
+  Include armonia per sezione, scope/blocchi, transizioni, groove, split delle
+  curve MIDI e limite del numero di eventi nelle clip lunghe.
+PASS Native project_io e audio_engine (2/2).
+  Include schema 6 e lettura legacy, round-trip dei nuovi dati, AI limitata
+  alla sezione e conservazione del contenuto esterno nelle timeline libere.
+PASS Native --improvements:
+  rampe/fade e limiti buffer; detector del Kick; EQ trasparente se disattivato
+  e reiezione HP; LUFS K-weighted con gating; WAV con verifica indipendente
+  true peak 4x <= -1 dBTP; freeze/play/stop/unfreeze; preview sincronizzata.
+PASS UI completa (--ui-test, export UI esteso escluso):
+  routing, Studio, editing MIDI e Undo, drop, autosave, armonia,
+  inspector, mixer, localizzazione e presentazione.
+PASS Host smoke con Arranger Host Probe realmente caricato come VST3:
+  MIDI 441.0 Hz, gain ratio 3.000, ripristino e bounce privato ratio 1.000000;
+  riapertura editor e preset; progetti legacy 1/2/3 e upgrade 4;
+  freeze mantiene/sospende la stessa istanza e unfreeze la riattiva;
+  nessuna modifica a MIDI o cronologia Undo durante il freeze.
+PASS verifica indipendente scripts/verify-host.py.
+PASS cataloghi traduzioni: 140 chiavi comuni, 1939 prodotto, 16 override espliciti.
+PASS scripts/verify-family.py: asset condivisi, manuali, versioni e link locali.
+PASS tests/test-packaging.py: ZIP Linux/Windows simulati, staging pulito,
+  payload consentito, guide, licenze, sorgenti e permessi Unix.
+PASS git diff --check.
+
+NOTE DI VERIFICA
+- Il test di click vuoto sulla velocity fissa esplicitamente lo zoom: il punto
+  di prova deve distare piu' di 12 pixel dai trigger, anche dopo Fit Song.
+- La comparazione audio degli split esclude solo +/-3 ms dal bordo, dove
+  interviene deliberatamente il nuovo declick; il resto conserva la verifica.
+- Nessun assert ADSR, StateVariableTPTFilter o range AudioBuffer nelle prove
+  DSP mirate. Le prove GUI Debug mostrano ancora assert JUCE
+  relativi a finestre/componenti, TemporaryFile e stringhe; non sono stati
+  dichiarati risolti dal lavoro sul DSP.
+- FGA_SKIP_EXPORT_UI_TEST=1 esclude il lungo flusso interattivo di export;
+  esportazioni native WAV/MP3, bounce VST e guard PCM sono verificati altrove.
+- Non verificati hardware audio/MIDI, AU/macOS, Windows reale o plugin
+  commerciali. Il test packaging Windows non equivale a una build Windows.
+- Freeze e' una cache di sessione; analisi pitch/BPM e note spettrali sono
+  stime. Il guard PCM non garantisce i picchi dopo codifica lossy.

@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
+void runImprovementEngineTests();
 void runStudioEngineTests();
 void runEngineAuditTests();
 void runDeepAuditEngineTests();
@@ -17,6 +18,7 @@ void runRecordedRegionTests();
 int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
+        if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}
         if(argc==3&&juce::String(argv[1])=="--development-audit")return fga::writeDevelopmentAudit(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--club-audit")return fga::writeClubAudioAudit(juce::File(argv[2]))?0:1;
@@ -33,7 +35,7 @@ int main(int argc,char** argv){
             }return 0;
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
-        runStudioEngineTests();runEngineAuditTests();
+        runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
         {
             fga::AudioEngine live(fga::AudioEngine::Offline{});fga::Project song;song.normalise();fga::applyGenre(song,0);song.settings.bpm=120;song.sections={{fga::Section::main,4,"Live feel"}};
             for(auto& t:song.tracks){t.clips.assign(1,{});t.gain=0;t.engine.reverb=t.engine.chorus=0;}song.tracks[0].gain=.5;song.normalise();fga::generate(song);

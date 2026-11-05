@@ -33,10 +33,10 @@ public:
     void noteOn(int channel,int note,float velocity)override;
     // Internal, fixed-size event carried in the sampler MIDI stream so audio
     // regions and ordinary notes share exactly the same sample clock.
-    static void addRegionEvent(juce::MidiBuffer&,int sample,int note,int velocity,double offset,double duration);
+    static void addRegionEvent(juce::MidiBuffer&,int sample,int note,int velocity,double offset,double duration,double fadeIn=0,double fadeOut=0,bool reverse=false);
     static bool isRegionEvent(const unsigned char*,int size);
     void renderNextBlock(juce::AudioBuffer<float>&,const juce::MidiBuffer&,int start,int count);
-    double regionOffset=-1,regionDuration=0; // only set while dispatching a region trigger
+    double regionOffset=-1,regionDuration=0,regionFadeIn=0,regionFadeOut=0;bool regionReverse=false; // only set while dispatching a region trigger
     int latency=0;
 protected:
     void handleMidiEvent(const juce::MidiMessage&)override;

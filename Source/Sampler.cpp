@@ -43,14 +43,14 @@ public:
     explicit SampleVoice(SampleSynth& s):owner(s){}
     bool canPlaySound(juce::SynthesiserSound* s)override{return dynamic_cast<SampleSound*>(s)!=nullptr;}
     void setCurrentPlaybackSampleRate(double rate)override{
-        juce::SynthesiserVoice::setCurrentPlaybackSampleRate(rate);envelope.setSampleRate(rate);
+        rate=std::isfinite(rate)&&rate>=8000?rate:44100;juce::SynthesiserVoice::setCurrentPlaybackSampleRate(rate);envelope.setSampleRate(rate);
         const int size=juce::nextPowerOfTwo(std::max(256,(int)(2048*rate/48000.)));warp.configure(2,size,size/4,false);owner.latency=warp.outputLatency();
         filter.prepare({rate,512,2});filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);filter.reset();
     }
     void startNote(int note,float velocity,juce::SynthesiserSound*,int wheel)override{
         const auto& p=owner.settings();data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
         begin=p.start*data->frames;finish=p.end*data->frames;
-        region=owner.regionOffset>=0;
+        reverseRegion=owner.regionReverse||owner.settings().reverse;region=owner.regionOffset>=0;fadeIn=owner.regionFadeIn;fadeOut=owner.regionFadeOut;
         if(region){begin=std::clamp(owner.regionOffset*data->rate,0.,(double)data->frames);finish=std::min((double)data->frames,begin+owner.regionDuration*data->rate);}
         if(owner.mode()==2){int index=note-p.sliceBase;if(index<0||index>=p.sliceCount){clearCurrentNote();data=nullptr;return;}begin=p.slices[(size_t)index]*data->frames;finish=(index+1<p.sliceCount?p.slices[(size_t)index+1]:p.end)*data->frames;}
         updateParameters();envelope.reset();envelope.noteOn();shaped.noteOn(p,getSampleRate());warp.reset();
@@ -77,6 +77,7 @@ public:
                 if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
                 const float linear=envelope.getNextSample(),bent=shaped.next();
                 float gain=(shaped.curved()?bent:linear)*level;
+                if(region){const double remaining=std::max(0.,finish-begin-playedSource)/(data->rate*std::max(.001,speed()));const double elapsedSeconds=at/getSampleRate();gain*=(float)(std::clamp(elapsedSeconds/std::max(.0025,fadeIn),0.,1.)*std::clamp(remaining/std::max(.0025,fadeOut),0.,1.));}
                 if(p.fadeIn>0){const float lin=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);gain*=std::abs(p.fadeInCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeInCurve);}
                 if(!looping&&p.fadeOut>0){const float lin=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);gain*=std::abs(p.fadeOutCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeOutCurve);}
                 float l=left[i],r=right[i];if(p.filter){l=filter.processSample(0,l);r=filter.processSample(1,r);}l*=gain;r*=gain;
@@ -111,15 +112,15 @@ private:
     SampleSynth& owner;const SampleAsset* data=nullptr;
     signalsmith::stretch::SignalsmithStretch<float> warp{0};
     juce::ADSR envelope;ShapedEnvelope shaped;juce::dsp::StateVariableTPTFilter<float> filter;
-    double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0;int pitch=60,pitchWheel=8192;
-    int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false,region=false;
+    double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0,fadeIn=0,fadeOut=0;int pitch=60,pitchWheel=8192;
+    int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false,region=false,reverseRegion=false;
     double semitones()const{return (owner.mode()==2?0:pitch-owner.root())+owner.settings().transpose+owner.settings().fine*.01+(pitchWheel-8192)/8192.*2.;}
     double speed()const{return owner.settings().sync?owner.tempo()/owner.settings().sourceBpm:std::pow(2.,semitones()/12.);}
     void updateParameters(){const auto& p=owner.settings();envelope.setParameters({(float)p.attack,(float)p.decay,(float)p.sustain,(float)p.release});shaped.apply(p,getSampleRate());filter.setCutoffFrequency((float)std::clamp(p.cutoff,20.,getSampleRate()*.45));filter.setResonance((float)(.5+p.resonance*8));warp.setTransposeSemitones((float)semitones());}
     float raw(int channel,double pos)const{if(pos<begin||pos>=finish)return 0;const int i=std::clamp((int)pos,0,data->frames-1);const float frac=(float)(pos-i);auto* a=data->audio.getReadPointer(std::min(channel,data->audio.getNumChannels()-1));return a[i]+frac*(a[i+1]-a[i]);}
     float read(int channel,double input)const{
         const auto& p=owner.settings();double progress=input*(p.sync?data->rate/getSampleRate():1.);bool wrapped=false;
-        double pos=p.reverse?finish-1-progress:begin+progress;
+        double pos=(region?reverseRegion:p.reverse)?finish-1-progress:begin+progress;
         const bool loop=!region&&p.loop&&owner.mode()==0;const double lo=std::max(begin,p.loopStart*data->frames),hi=std::min(finish,p.loopEnd*data->frames),length=hi-lo;
         if(loop&&length>1){if(!p.reverse&&pos>=hi){pos=lo+std::fmod(pos-hi,length);wrapped=true;}if(p.reverse&&pos<lo){pos=hi-1-std::fmod(lo-1-pos,length);wrapped=true;}}
         auto value=raw(channel,pos);if(!loop||length<=1)return value;
@@ -140,27 +141,27 @@ private:
     };
 };
 }
-SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
+SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();setCurrentPlaybackSampleRate(44100);for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
 SampleSynth::~SampleSynth()=default;
-void SampleSynth::addRegionEvent(juce::MidiBuffer& midi,int sample,int note,int velocity,double offset,double duration){
+void SampleSynth::addRegionEvent(juce::MidiBuffer& midi,int sample,int note,int velocity,double offset,double duration,double fadeIn,double fadeOut,bool reverse){
     // Non-commercial manufacturer ID, signature/version, pitch/velocity, two
     // doubles encoded in 7-bit groups. No heap-backed MidiMessage on the callback.
-    unsigned char bytes[29]{0xf0,0x7d,'F','G','A',1,(unsigned char)note,(unsigned char)velocity};
-    for(int field=0;field<2;++field){const double value=field?duration:offset;std::uint64_t bits;std::memcpy(&bits,&value,sizeof bits);for(int j=0;j<10;++j){bytes[8+field*10+j]=(unsigned char)(bits&127);bits>>=7;}}
-    bytes[28]=0xf7;midi.addEvent(bytes,29,sample);
+    unsigned char bytes[49]{0xf0,0x7d,'F','G','A',1,(unsigned char)note,(unsigned char)velocity};
+    for(int field=0;field<4;++field){const double value=field==0?offset:field==1?duration:field==2?fadeIn:fadeOut;std::uint64_t bits;std::memcpy(&bits,&value,sizeof bits);for(int j=0;j<10;++j){bytes[8+field*10+j]=(unsigned char)(bits&127);bits>>=7;}}
+    bytes[5]=(unsigned char)(reverse?2:1);bytes[48]=0xf7;midi.addEvent(bytes,49,sample);
 }
-bool SampleSynth::isRegionEvent(const unsigned char* bytes,int size){return size==29&&bytes[0]==0xf0&&bytes[1]==0x7d&&bytes[2]=='F'&&bytes[3]=='G'&&bytes[4]=='A'&&bytes[5]==1&&bytes[28]==0xf7;}
+bool SampleSynth::isRegionEvent(const unsigned char* bytes,int size){return size==49&&bytes[0]==0xf0&&bytes[1]==0x7d&&bytes[2]=='F'&&bytes[3]=='G'&&bytes[4]=='A'&&(bytes[5]==1||bytes[5]==2)&&bytes[48]==0xf7;}
 bool SampleSynth::handleRegion(const unsigned char* bytes,int size){
     if(isRegionEvent(bytes,size)){
-        double values[2]{};for(int field=0;field<2;++field){std::uint64_t bits=0;for(int j=0;j<10;++j)bits|=(std::uint64_t)(bytes[8+field*10+j]&127)<<(j*7);std::memcpy(&values[field],&bits,sizeof bits);}
-        if(std::isfinite(values[0])&&values[0]>=0&&std::isfinite(values[1])&&values[1]>0){regionOffset=values[0];regionDuration=values[1];noteOn(1,bytes[6],bytes[7]/127.f);regionOffset=-1;regionDuration=0;}
+        double values[4]{};for(int field=0;field<4;++field){std::uint64_t bits=0;for(int j=0;j<10;++j)bits|=(std::uint64_t)(bytes[8+field*10+j]&127)<<(j*7);std::memcpy(&values[field],&bits,sizeof bits);}
+        if(std::isfinite(values[0])&&values[0]>=0&&std::isfinite(values[1])&&values[1]>0&&std::isfinite(values[2])&&std::isfinite(values[3])){regionReverse=bytes[5]==2;regionOffset=values[0];regionDuration=values[1];regionFadeIn=std::clamp(values[2],0.,30.);regionFadeOut=std::clamp(values[3],0.,30.);noteOn(1,bytes[6],bytes[7]/127.f);regionOffset=-1;regionDuration=0;}
         return true;
     }
     return false;
 }
 void SampleSynth::handleMidiEvent(const juce::MidiMessage& message){if(!handleRegion(message.getRawData(),message.getRawDataSize()))juce::Synthesiser::handleMidiEvent(message);}
 void SampleSynth::renderNextBlock(juce::AudioBuffer<float>& output,const juce::MidiBuffer& midi,int start,int count){
-    const juce::ScopedLock guard(lock);const int end=start+count;int cursor=start;
+    const juce::ScopedLock guard(lock);start=std::clamp(start,0,output.getNumSamples());count=std::clamp(count,0,output.getNumSamples()-start);const int end=start+count;int cursor=start;
     for(auto it=midi.findNextSamplePosition(start);it!=midi.cend();++it){const auto event=*it;if(event.samplePosition>=end)break;
         const int at=std::max(cursor,event.samplePosition);if(at>cursor)renderVoices(output,cursor,at-cursor);cursor=at;
         // Read the internal region message in place: constructing a MidiMessage
@@ -170,7 +171,7 @@ void SampleSynth::renderNextBlock(juce::AudioBuffer<float>& output,const juce::M
     if(cursor<end)renderVoices(output,cursor,end-cursor);
 }
 bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){const auto& old=*parameters;const bool restart=old.mode!=p.mode||old.sync!=p.sync||old.reverse!=p.reverse||old.start!=p.start||old.end!=p.end||old.sliceCount!=p.sliceCount||old.slices!=p.slices;if(restart)allNotesOff(0,false);fallback=p;parameters=&fallback;rootNote=root;bpm=tempo;return restart;}
-void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(rate);}
+void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(std::isfinite(rate)&&rate>=8000?rate:44100);}
 void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;
     for(int tries=0;tries<32;++tries){int active=0;juce::SynthesiserVoice* oldest=nullptr;for(int i=0;i<getNumVoices();++i){auto* voice=getVoice(i);if(!voice->isVoiceActive())continue;++active;if(!oldest||voice->wasStartedBefore(*oldest))oldest=voice;}if(active<settings().polyphony||!oldest)break;oldest->stopNote(0,false);}

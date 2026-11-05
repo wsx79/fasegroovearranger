@@ -4,6 +4,7 @@
 #include <set>
 #include <stdexcept>
 void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
+void runImprovementIOTests();
 void runAiTests();
 void runStudioIOTests();
 int runAiHttpTest(const juce::String&,bool);
@@ -11,7 +12,7 @@ int runAiModelsTest(const juce::String&,bool);
 int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
-    runAiTests();runStudioIOTests();
+    runImprovementIOTests();runAiTests();runStudioIOTests();
     {
         // New playback semantics require schema 5 so older builds reject rather
         // than silently dropping offsets, loop phase or the effective take feel.
@@ -24,7 +25,7 @@ int main(int argc,char** argv){try{
     }
     {auto master=fga::newProject(1);fga::EffectSlot fx;fx.slot=2;fx.name="Master colour";fx.pluginName="Probe";fx.path="/Probe.vst3";fx.state="native-master-state";fx.bypassed=true;master.masterEffects.effects.push_back(fx);fga::Project loaded;auto json=fga::projectJson(master);
      check(fga::projectFromJson(json,loaded).wasOk()&&loaded.masterEffects.effects.size()==1&&loaded.masterEffects.effects[0].slot==2&&loaded.masterEffects.effects[0].state==fx.state&&loaded.masterEffects.effects[0].bypassed,"master effects, order, native state and bypass round-trip");
-     auto* entries=json["masterEffects"].getArray();entries->add(entries->getReference(0));check(fga::projectFromJson(json,loaded).failed(),"duplicate master effect slots are rejected");}
+     auto* entries=json["masterEffects"].getArray();const auto duplicate=entries->getReference(0);entries->add(duplicate);check(fga::projectFromJson(json,loaded).failed(),"duplicate master effect slots are rejected");}
 
     {
         auto p=fga::newProject(0);p.settings.freeChords[0]=19;p.settings.manualChords[0]=true;p.settings.freeChords[1]=8;p.settings.manualChords[1]=false;

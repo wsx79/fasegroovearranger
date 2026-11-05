@@ -41,12 +41,17 @@ inline double sampleEnvelopeCurve(double t,double curve){
     if(!(std::abs(curve)>1e-6))return t;
     return std::pow(t,std::exp(std::clamp(curve,-1.,1.)*1.3862943611198906));
 }
+struct EqSettings {
+    bool enabled=false;double highPass=20,low=0,mid=0,high=0;
+    void normalise(){highPass=bounded(highPass,20,20,400);low=bounded(low,0,-18,18);mid=bounded(mid,0,-18,18);high=bounded(high,0,-18,18);}
+    bool operator==(const EqSettings& o)const{return enabled==o.enabled&&highPass==o.highPass&&low==o.low&&mid==o.mid&&high==o.high;}
+};
 struct BusSettings {
     std::string name;
-    double gain=1,pan=0,amount=.5,damping=.5,feedback=.35,division=1;
+    double gain=1,pan=0,amount=.5,damping=.5,feedback=.35,division=1,sidechainAmount=0;
     bool mute=false,solo=false;
-    void normalise(){if(name.size()>40)name.resize(40);gain=bounded(gain,1,0,2);pan=bounded(pan,0,-1,1);amount=bounded(amount,.5,0,1);damping=bounded(damping,.5,0,1);feedback=bounded(feedback,.35,0,.9);division=bounded(division,1,.125,4);}
-    bool operator==(const BusSettings& s)const{return name==s.name&&gain==s.gain&&pan==s.pan&&amount==s.amount&&damping==s.damping&&feedback==s.feedback&&division==s.division&&mute==s.mute&&solo==s.solo;}
+    void normalise(){if(name.size()>40)name.resize(40);sidechainAmount=bounded(sidechainAmount,0,0,1);gain=bounded(gain,1,0,2);pan=bounded(pan,0,-1,1);amount=bounded(amount,.5,0,1);damping=bounded(damping,.5,0,1);feedback=bounded(feedback,.35,0,.9);division=bounded(division,1,.125,4);}
+    bool operator==(const BusSettings& s)const{return sidechainAmount==s.sidechainAmount&&name==s.name&&gain==s.gain&&pan==s.pan&&amount==s.amount&&damping==s.damping&&feedback==s.feedback&&division==s.division&&mute==s.mute&&solo==s.solo;}
 };
 inline std::array<BusSettings,4> defaultBuses(){std::array<BusSettings,4> b;b[0].name="GROUP A";b[1].name="GROUP B";b[2].name="REVERB";b[3].name="DELAY";return b;}
 }

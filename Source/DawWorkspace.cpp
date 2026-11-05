@@ -67,6 +67,8 @@ void InspectorResizer::mouseDoubleClick(const juce::MouseEvent&){if(browser){own
 TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     addAndMakeVisible(effects);effects.setComponentID("effect-chain");
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&samplerEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
+    addAndMakeVisible(freeze);freeze.setTooltip(tr("Render the hosted instrument and inserts; unfreeze resumes the retained plugins"));freeze.onClick=[this]{owner.freezeTrack(owner.selectedTrack);};
+    addAndMakeVisible(eqEnabled);eqEnabled.onClick=[this]{if(!validTrack()||updating)return;owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].eq.enabled=eqEnabled.getToggleState();owner.mixChanged();};for(int i=0;i<4;++i){auto& knob=eqKnobs[(size_t)i];addAndMakeVisible(knob);knob.setRange(i==0?20:-18,i==0?400:18,.1);knob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob.setTextBoxStyle(juce::Slider::TextBoxBelow,false,45,16);knob.setTooltip(i==0?"High-pass (Hz)":i==1?"Low shelf (dB)":i==2?"Mid (dB)":"High shelf (dB)");knob.onValueChange=[this,i]{if(updating||!validTrack())return;owner.checkpointMix(&eqKnobs[(size_t)i]);auto& q=owner.project.tracks[(size_t)owner.selectedTrack].eq;(i==0?q.highPass:i==1?q.low:i==2?q.mid:q.high)=eqKnobs[(size_t)i].getValue();owner.mixChanged();};}
     name.setComponentID("track-name");name.getProperties().set("fgaRawText",true);name.setFont(Daw::font(Daw::display,true));name.setMinimumHorizontalScale(.55f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
     source.setFont(Daw::font(Daw::small));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.5f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.55f);section.setInterceptsMouseClicks(false,false);
@@ -116,6 +118,7 @@ void TrackInspector::refresh(){
     owner.updatePanDisplay(pan,t.pan,t.panAutomation,panGesture);
     // An automated volume or pan reads in blue.
     for(auto [slider,lane]:{std::pair<juce::Slider*,const VolumeAutomation*>{&gain,&t.volume},{&pan,&t.panAutomation}}){if(lane->moves()){slider->setColour(juce::Slider::textBoxTextColourId,Daw::automation);slider->setColour(juce::Slider::thumbColourId,Daw::automation);slider->setColour(juce::Slider::rotarySliderFillColourId,Daw::automation);}else{slider->removeColour(juce::Slider::textBoxTextColourId);slider->removeColour(juce::Slider::thumbColourId);slider->removeColour(juce::Slider::rotarySliderFillColourId);}}
+    freeze.setButtonText(tr(owner.audio.trackFrozen(ti)?"UNFREEZE":"FREEZE"));freeze.setEnabled(t.instrument=="plugin"&&!owner.loadingPlugin);eqEnabled.setToggleState(t.eq.enabled,juce::dontSendNotification);for(int i=0;i<4;++i)eqKnobs[(size_t)i].setValue(i==0?t.eq.highPass:i==1?t.eq.low:i==2?t.eq.mid:t.eq.high,juce::dontSendNotification);
     const bool busy=owner.loadingPlugin>0;deleteTrack.setEnabled(!busy);const bool hasPlugin=owner.audio.plugin(ti)!=nullptr;
     mute.setToggleState(t.mute,juce::dontSendNotification);solo.setToggleState(t.solo,juce::dontSendNotification);
     lockTrack.setToggleState(t.locked,juce::dontSendNotification);lockClip.setToggleState(hasClip&&t.clips[(size_t)clipIndex].locked,juce::dontSendNotification);lockClip.setEnabled(hasClip);
@@ -139,7 +142,7 @@ void TrackInspector::paint(juce::Graphics& g){
         g.drawText(juce::String(rowForTrack(owner.selectedTrack)+1).paddedLeft('0',2),badge,juce::Justification::centred);
         g.setColour(colour);g.fillRoundedRectangle(cards.front().toFloat().withHeight(2.f).reduced(10.f,0),1.f);
     }
-    for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim,title.first=="Volume"||title.first=="Pan"?juce::Justification::centred:juce::Justification::centredLeft);
+    for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim,title.first=="Volume"||title.first=="Pan"||title.first=="HP"||title.first=="Low"||title.first=="Mid"||title.first=="High"?juce::Justification::centred:juce::Justification::centredLeft);
 }
 // Four compact cards share the workstation's type, spacing and colours. Actions
 // retain their component IDs and always operate on the current selection.
@@ -159,7 +162,7 @@ int TrackInspector::layout(int width){
         for(auto* b:buttons)sum+=need(*b);int x=inset,used=0;
         for(int i=0;i<n;++i){const int room=std::max(40,avail-used-40*(n-1-i));const int width=i==n-1?std::max(1,avail-used):std::clamp(need(*buttons[i])*avail/std::max(1,sum),40,room);buttons[i]->setBounds(x,y,width,24);x+=width+gap;used+=width;}
         y+=28;}
-    row(instrument);
+    row(instrument);row(freeze);
     const bool external=validTrack()&&owner.audio.plugin(owner.selectedTrack)!=nullptr;
     pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
     const bool sampled=validTrack()&&owner.project.tracks[(size_t)owner.selectedTrack].instrument=="sample";samplerEditor.setVisible(sampled);if(sampled)row(samplerEditor);else samplerEditor.setBounds({});
@@ -168,6 +171,7 @@ int TrackInspector::layout(int width){
     title("VOLUME / PAN");
     gain.setBounds(inset,y,half,76);pan.setBounds(inset+half+gap,y,w-half-gap,76);
     captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;endCard();
+    row(eqEnabled,22);for(int i=0;i<4;++i){eqKnobs[(size_t)i].setBounds(inset+i*w/4,y,w/4,58);captions.push_back({i==0?"HP":i==1?"Low":i==2?"Mid":"High",{inset+i*w/4,y+60,w/4,14}});}y+=78;endCard();
     title("SELECTED CLIP");
     row(section,18);
     auto iconPair=[&](juce::Button& a,juce::Button& b){auto line=juce::Rectangle<int>(inset,y,w,Daw::controlHeight);const int aw=(bool)a.getProperties().getWithDefault("fgaIconOnly",false)?Daw::controlHeight:half;a.setBounds(line.removeFromLeft(aw));line.removeFromLeft(gap);const int bw=(bool)b.getProperties().getWithDefault("fgaIconOnly",false)?Daw::controlHeight:line.getWidth();b.setBounds(line.removeFromLeft(bw));y+=7*Daw::unit;};
@@ -265,7 +269,7 @@ void DawMixer::refresh(){
     while((int)strips.size()>count)strips.pop_back();
     while((int)strips.size()<count){auto strip=std::make_unique<MixerStrip>(owner,trackAtRow((int)strips.size()));channels.addAndMakeVisible(*strip);strips.push_back(std::move(strip));}
     resized();for(auto& s:strips)s->refresh();master.refresh();}
-void DawMixer::tick(){
+void DawMixer::tick(){loudnessLabel.setText("LUFS S "+juce::String(owner.audio.loudness.shortTerm.load(),1)+" / I "+juce::String(owner.audio.loudness.integrated.load(),1),juce::dontSendNotification);
     for(auto& s:strips)s->tick();master.tick();bool moved=false;
     for(size_t side=0;side<2;++side){const float before=compactPeaks[side],held=compactHolds[side];compactPeaks[side]=std::max(owner.audio.masterLevel((int)side),before*.82f);
         if(compactPeaks[side]>=held){compactHolds[side]=compactPeaks[side];compactHoldTicks[side]=24;}else if(--compactHoldTicks[side]<=0)compactHolds[side]=std::max(compactPeaks[side],held*.9f);
@@ -348,7 +352,7 @@ void DawMixer::paint(juce::Graphics& g){g.fillAll(Daw::base);g.setColour(Daw::ch
         const float peak=std::max(compactPeaks[0],compactPeaks[1]);g.setColour(peak>=1?Daw::meterHigh:Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(peak>.001f?juce::String(juce::Decibels::gainToDecibels(peak),1)+" dB":juce::String::fromUTF8("−∞ dB"),(int)(left+width+12),0,64,24,juce::Justification::centredLeft);
     }
     if(owner.mixerVisible){g.setColour(Daw::textFaint.withAlpha(.6f));for(int dot=-2;dot<=2;++dot)g.fillEllipse(getWidth()*.5f+dot*7-1.5f,10.5f,3.f,3.f);}}
-void DawMixer::resized(){auto bar=getLocalBounds().removeFromTop(Daw::toolbarHeight).reduced(0,2);auto collapse=bar.removeFromRight(36*Daw::unit);bar.removeFromRight(Daw::unit);routingButton.getProperties().set("fgaIconOnly",true);routingButton.setTitle(tr("BUS & SEND"));auto routing=bar.removeFromRight(Daw::controlHeight);routingButton.setBounds(routing);bar.removeFromRight(4);masterEffectsButton.setBounds(bar.removeFromRight(68));routingButton.setButtonText("BUS & SEND");translateControls(routingButton);collapseButton.setBounds(collapse);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);collapseButton.setTitle(collapseButton.getButtonText());port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;auto body=getLocalBounds().withTrimmedTop(Daw::toolbarHeight+Daw::unit);auto masterArea=body.removeFromRight(26*Daw::unit);port.setBounds(body);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/std::max(1,(int)strips.size()),74,100);channels.setSize((int)strips.size()*channelWidth,height);for(int row=0;row<(int)strips.size();++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-Daw::unit+1,height);master.setBounds(masterArea.withHeight(height));}
+void DawMixer::resized(){addAndMakeVisible(loudnessLabel);loudnessLabel.setFont(Daw::font(Daw::small));loudnessLabel.setColour(juce::Label::textColourId,Daw::textDim);loudnessLabel.setTooltip(tr("Short-term and integrated loudness (LUFS)"));loudnessLabel.setBounds(110,2,210,22);auto bar=getLocalBounds().removeFromTop(Daw::toolbarHeight).reduced(0,2);auto collapse=bar.removeFromRight(36*Daw::unit);bar.removeFromRight(Daw::unit);routingButton.getProperties().set("fgaIconOnly",true);routingButton.setTitle(tr("BUS & SEND"));auto routing=bar.removeFromRight(Daw::controlHeight);routingButton.setBounds(routing);bar.removeFromRight(4);masterEffectsButton.setBounds(bar.removeFromRight(68));routingButton.setButtonText("BUS & SEND");translateControls(routingButton);collapseButton.setBounds(collapse);collapseButton.setButtonText(owner.mixerVisible?"COLLAPSE MIXER":"SHOW MIXER");translateControls(collapseButton);collapseButton.setTitle(collapseButton.getButtonText());port.setVisible(owner.mixerVisible);master.setVisible(owner.mixerVisible);if(!owner.mixerVisible)return;auto body=getLocalBounds().withTrimmedTop(Daw::toolbarHeight+Daw::unit);auto masterArea=body.removeFromRight(26*Daw::unit);port.setBounds(body);const int height=std::max(100,port.getHeight()-16);channelWidth=std::clamp(port.getWidth()/std::max(1,(int)strips.size()),74,100);channels.setSize((int)strips.size()*channelWidth,height);for(int row=0;row<(int)strips.size();++row)strips[(size_t)row]->setBounds(row*channelWidth,0,channelWidth-Daw::unit+1,height);master.setBounds(masterArea.withHeight(height));}
 void DawMixer::mouseDown(const juce::MouseEvent& e){if(e.y<25&&owner.mixerVisible){resizingMixer=true;resizeOrigin=e.getEventRelativeTo(&owner).position.y;resizeHeight=getHeight();}}
 void DawMixer::mouseDrag(const juce::MouseEvent& e){if(resizingMixer){owner.mixerHeight=std::clamp(resizeHeight+juce::roundToInt(resizeOrigin-e.getEventRelativeTo(&owner).position.y),160,std::max(160,owner.getHeight()-476));owner.resized();}}
 void DawMixer::mouseUp(const juce::MouseEvent&){if(resizingMixer)Localisation::setSetting("mixerHeight",owner.mixerHeight);resizingMixer=false;}

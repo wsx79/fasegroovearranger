@@ -30,8 +30,8 @@ enum class Section { main, intro, breakdown, buildup, drop, outro };
 enum class Scope { song, track, section, clip };
 struct Note {
     double start = 0, length = .25;
-    int pitch = 60, velocity = 96, lane = 0;
-    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane; }
+    int pitch = 60, velocity = 96, lane = 0;bool reverse=false;
+    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane && reverse == o.reverse; }
 };
 struct Clip {
     std::vector<Note> notes;
@@ -41,7 +41,8 @@ struct Clip {
     // Preserve the source across shortening so extending can recover its notes.
     double span = 0, loopLength = 0, loopPhase = 0;
     // Source seconds for a recorded audio region; negative offset means ordinary MIDI.
-    double audioOffset = -1, audioDuration = 0;
+    double audioOffset = -1, audioDuration = 0, clipFadeIn = 0, clipFadeOut = 0;
+    std::array<VolumeAutomation,3> expression; // sustain, modulation, pitch bend (0..1)
     // Inherited feel frozen for this take when another scope changes the global knobs.
     std::array<double,3> feel {-1,-1,-1};
     int role = -1;
@@ -49,9 +50,14 @@ struct Clip {
     std::vector<Note> loopSource;
     // Persistent musical take, separate from performance timing. Zero loads legacy motifs.
     std::uint32_t motifSeed = 0;
-    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
+    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
 };
-struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; };
+struct SectionHarmony {
+    bool enabled=false;int key=-1,scale=-1,chordCount=4,chordSteps=16;
+    std::array<int,8> degrees{0,3,4,0,0,0,0,0},freeChords{-1,-1,-1,-1,-1,-1,-1,-1};
+    std::array<bool,8> manualChords{};
+};
+struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false; };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
 // MIDI file use musical order through trackAtRow().
 int trackAtRow(int row);
@@ -92,6 +98,7 @@ struct Track {
     std::string name;
     int kind = 0; // 0 piano, 1 bass, 2 strings, 3 guitar, 4..16 individual drums, 17 lead, 18..31 optional MIDI/vocal parts
     double gain = .75, pan = 0;
+    EqSettings eq;
     bool mute = false, solo = false, locked = false;
     int sound = 0, sampleRoot = 60;
     std::string instrument = "internal", instrumentPath, instrumentId, instrumentState;
@@ -130,6 +137,7 @@ struct Settings {
     // Regenerating (song, track, section, clip) also writes musical automation for that scope.
     // Off in projects saved before it existed; new projects start with it on.
     bool randomAutomation = false;
+    bool grooveEnabled=false;std::array<double,16> grooveOffsets{},grooveAccents{1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
     bool freeTempo = false; // AI/imported compositions may use 30..300 BPM beyond genre presets
 };
 struct Project {
@@ -243,7 +251,7 @@ void tidyNotes(Clip&, double beats);
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1, double limit = 0);
 void humanize(Clip&, double amount, std::uint32_t seed, double beats);
-struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; double audioOffset=-1,audioDuration=0,audioBeats=0; };
+struct TimedEvent { double beat; int track, pitch, velocity, lane; int controller=-1; double audioOffset=-1,audioDuration=0,audioBeats=0,fadeIn=0,fadeOut=0;bool reverse=false; };
 std::vector<TimedEvent> events(const Project&, int onlyTrack = -1);
 // Standard MIDI File type 1, 960 PPQ, tempo, time/key signatures and section markers.
 std::vector<std::uint8_t> midiFile(const Project&, int onlyTrack = -1);
