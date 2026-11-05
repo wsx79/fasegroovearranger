@@ -437,14 +437,15 @@ std::vector<std::pair<VolumeAutomation*,double>> Project::envelopes(){
     return all;
 }
 bool Project::withinNoteBudget()const{size_t count=0;for(const auto& t:tracks)for(const auto& c:t.clips){count+=c.notes.size()+c.loopSource.size();if(count>2000000)return false;}return true;}
-void Project::insertSection(int index,SongSection section,int copyFrom) {
-    if(sections.size()>=64) return;
-    size_t budget=0;for(const auto& t:tracks){for(const auto& c:t.clips)budget+=c.notes.size()+c.loopSource.size();if(!t.freeTimeline&&copyFrom>=0&&copyFrom<(int)t.clips.size()){const auto& c=t.clips[(size_t)copyFrom];budget+=c.notes.size()+c.loopSource.size();}if(budget>2000000)return;}
+bool Project::insertSection(int index,SongSection section,int copyFrom) {
+    if(sections.size()>=64) return false;
+    size_t budget=0;for(const auto& t:tracks){for(const auto& c:t.clips)budget+=c.notes.size()+c.loopSource.size();if(!t.freeTimeline&&copyFrom>=0&&copyFrom<(int)t.clips.size()){const auto& c=t.clips[(size_t)copyFrom];budget+=c.notes.size()+c.loopSource.size();}if(budget>2000000)return false;}
     index=std::clamp(index,0,(int)sections.size());
     const bool wholeSong=loopStart==0&&loopEnd==length();
     std::vector<Clip> copies;
     for(auto& t:tracks) copies.push_back(copyFrom>=0&&copyFrom<(int)t.clips.size()?t.clips[(size_t)copyFrom]:Clip{});
     const double start=sectionStart(index),duration=std::clamp(section.bars,1,128)*4.;
+    if(!splitFreeAt(start))return false;shiftFreeFrom(start,duration);
     for(auto [envelope,ceiling]:envelopes()){auto& points=envelope->points;auto original=points;for(auto& point:points)if(point.beat>=start)point.beat+=duration;
         if(copyFrom>=0&&copyFrom<(int)sections.size()){const double from=sectionStart(copyFrom),end=sectionStart(copyFrom+1);for(auto point:original)if(point.beat>=from&&point.beat<end&&point.beat-from<duration){point.beat=start+point.beat-from;points.push_back(point);}}
     }
@@ -453,7 +454,7 @@ void Project::insertSection(int index,SongSection section,int copyFrom) {
     sections.insert(sections.begin()+index,std::move(section));
     for(size_t i=0;i<tracks.size();++i) if(!tracks[i].freeTimeline)tracks[i].clips.insert(tracks[i].clips.begin()+index,copies[i]);
     if(wholeSong){loopStart=0;loopEnd=length();}
-    normalise();
+    normalise();return true;
 }
 void Project::removeSection(int index) {
     if(sections.size()<2||index<0||index>=(int)sections.size()) return;
@@ -498,44 +499,46 @@ bool transferClip(Project& p,int track,int from,int to,bool copy){
     if(!copy)tidyNotes(clips[(size_t)from],p.clipLength(track,from));
     return true;
 }
-void chooseProgression(Project& p,int preset) {
+void chooseProgression(Settings& s,int preset) {
     const auto& all=sgk::progressionPresets(); const auto& pr=all[(size_t)std::clamp(preset,0,(int)all.size()-1)];
-    p.settings.manualChords.fill(false);p.settings.freeChords.fill(-1);
-    p.settings.scale=pr.scale; auto slots=sgk::presetSlots(pr,p.settings.extension);
-    p.settings.chordCount=std::min(8,(int)slots.size());
-    for(int i=0;i<p.settings.chordCount;++i) {p.settings.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
+    s.manualChords.fill(false);s.freeChords.fill(-1);
+    s.scale=pr.scale; auto slots=sgk::presetSlots(pr,s.extension);
+    s.chordCount=std::min(8,(int)slots.size());
+    for(int i=0;i<s.chordCount;++i) {s.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);s.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
-void randomiseHarmony(Project& p,std::uint32_t seed) {
-    if(isElectronicGenre(p.settings.genre)){
-        const auto before=p.settings;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(p.settings,seed);
+void chooseProgression(Project& p,int preset) {chooseProgression(p.settings,preset);}
+void randomiseHarmony(Settings& s,std::uint32_t seed) {
+    if(isElectronicGenre(s.genre)){
+        const auto before=s;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(s,seed);
         // Explicitly authored chromatic chords keep their slots and progression length.
         if(std::any_of(before.manualChords.begin(),before.manualChords.begin()+count,[](bool manual){return manual;})){
-            p.settings.chordCount=count;
-            for(int i=0;i<count;++i)if(before.manualChords[(size_t)i]){p.settings.freeChords[(size_t)i]=before.freeChords[(size_t)i];p.settings.degrees[(size_t)i]=before.degrees[(size_t)i];p.settings.manualChords[(size_t)i]=true;}
+            s.chordCount=count;
+            for(int i=0;i<count;++i)if(before.manualChords[(size_t)i]){s.freeChords[(size_t)i]=before.freeChords[(size_t)i];s.degrees[(size_t)i]=before.degrees[(size_t)i];s.manualChords[(size_t)i]=true;}
         }
         return;
     }
     // Keep the progression length and explicit manual chords; reroll automatic
     // slots from the genre vocabulary, including generated chromatic chords.
-    const int count=std::clamp(p.settings.chordCount,1,8);
+    const int count=std::clamp(s.chordCount,1,8);
     const auto& all=sgk::progressionPresets();
     std::vector<int> candidates;
-    for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==p.settings.scale)candidates.push_back(i);
+    for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==s.scale)candidates.push_back(i);
     if(candidates.empty()){
-        auto degrees=sgk::randomProgression(seed,count,p.settings.scale,engineGenre(p.settings.genre));
-        for(int i=0;i<count;++i)if(!p.settings.manualChords[(size_t)i]){p.settings.degrees[(size_t)i]=degrees[(size_t)i];p.settings.freeChords[(size_t)i]=-1;}
+        auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
+        for(int i=0;i<count;++i)if(!s.manualChords[(size_t)i]){s.degrees[(size_t)i]=degrees[(size_t)i];s.freeChords[(size_t)i]=-1;}
         return;
     }
     const int preset=candidates[(size_t)(mix(seed)%candidates.size())];
-    const auto slots=sgk::presetSlots(all[(size_t)preset],p.settings.extension);
+    const auto slots=sgk::presetSlots(all[(size_t)preset],s.extension);
     if(slots.empty())return;
     const int shift=(int)(mix(seed+17U)%(std::uint32_t)slots.size());
     for(int i=0;i<count;++i){
-        if(p.settings.manualChords[(size_t)i])continue;
+        if(s.manualChords[(size_t)i])continue;
         const auto& slot=slots[(size_t)((i+shift)%(int)slots.size())];
-        p.settings.degrees[(size_t)i]=std::max(0,slot.degree);p.settings.freeChords[(size_t)i]=slot.freeCode;
+        s.degrees[(size_t)i]=std::max(0,slot.degree);s.freeChords[(size_t)i]=slot.freeCode;
     }
 }
+void randomiseHarmony(Project& p,std::uint32_t seed) {randomiseHarmony(p.settings,seed);}
 void applyGenre(Project& p,int genre) {
     p.settings.freeTempo=false;
     p.normalise();
@@ -678,6 +681,10 @@ std::vector<std::string> chordNames(const Settings& s) {
     auto settings=pianoSettings(s,s.seed); std::vector<std::string> out;
     for(int i=0;i<s.chordCount;++i) out.push_back(sgk::chordName(sgk::GrooveEngine::chordForSlot(settings,i),s.key,s.scale));
     return out;
+}
+std::string chordNameAt(const Project& p,double beat){
+    beat=std::max(0.,beat);const auto s=resolveSectionHarmony(p,p.sectionAtBeat(beat));
+    return sgk::chordName(chordAtBeat(s,beat),s.key,s.scale);
 }
 namespace {
 // Entrances measured on a 32-bar club intro. The outro reverses these layers.
@@ -930,7 +937,8 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
         source.push_back(matches.empty()?std::min(s,project.sections.size()-1):matches[(size_t)(mix(seed+(std::uint32_t)s*97u)%matches.size())]);
     }
     auto next=project;
-    for(size_t t=0;t<next.tracks.size();++t)if(isManualTrack((int)t)&&!next.tracks[t].freeTimeline)next.detachTrack((int)t);
+    if(!next.foldFreeTracks())return false;
+    const auto folded=next.tracks;
     next.sections=plan.sections;
     auto remap=[&](VolumeAutomation& target,const VolumeAutomation& original)->bool{
         if(original.points.empty())return true;
@@ -949,10 +957,11 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
         target.enabled=enabled;return true;
     };
     size_t notes=0;
-    for(size_t t=0;t<next.tracks.size();++t){auto& track=next.tracks[t];const auto& old=project.tracks[t];
+    for(size_t t=0;t<next.tracks.size();++t){auto& track=next.tracks[t];const bool wasFree=project.tracks[t].freeTimeline;const auto& old=wasFree?folded[t]:project.tracks[t];
         if(!track.freeTimeline){track.clips.clear();for(size_t s=0;s<source.size();++s){Clip clip;if(source[s]<old.clips.size())clip=old.clips[source[s]];
                 const double duration=next.sections[s].bars*4.;
-                if(!resizedLoop(clip,project.clipLength((int)t,(int)source[s]),duration))return false;
+                const double previous=wasFree?project.sectionStart((int)source[s]+1)-project.sectionStart((int)source[s]):project.clipLength((int)t,(int)source[s]);
+                if(!(previous>1./960.)||!resizedLoop(clip,previous,duration))return false;
                 clip.span=0;clip.position=0;clip.role=(int)next.sections[s].type;track.clips.push_back(std::move(clip));
             }
             if(!remap(track.volume,old.volume)||!remap(track.panAutomation,old.panAutomation))return false;
@@ -1101,12 +1110,12 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             };
             const auto& e=t.engine;
             clip.feel={takeFeel(e.density,clip.feel[0],s.density),takeFeel(e.swing,clip.feel[1],s.swing),takeFeel(e.humanize,clip.feel[2],s.humanize)};
-            // An explicit strings regenerate must write notes. Jackin' stays off
-            // for a factory song, but asking again on this track turns a pad on.
+            // An explicit strings regenerate must write notes. The saved style stays
+            // off, so a later song generate does not keep a pad the user never chose.
             const bool requestedPart=seed!=0&&(scope==Scope::track||scope==Scope::clip)&&ti==track;
-            const bool stringsRequest=ti==2&&seed!=0&&(!isElectronicGenre(s.genre)||requestedPart)&&scope!=Scope::song&&(scope==Scope::section||ti==track);
-            if(stringsRequest&&p.settings.stringsMode==0)p.settings.stringsMode=(int)sgk::StringsMode::pad;
+            const bool stringsRequest=ti==2&&ti==track&&seed!=0&&(!isElectronicGenre(s.genre)||requestedPart)&&scope!=Scope::song;
             auto ps=pianoEngineSettings(p,ti,clip.seed,clip.motifSeed,&clip);
+            if(stringsRequest&&p.settings.stringsMode==0)ps.strings=sgk::StringsMode::pad;
             const bool mixing=type==Section::intro||type==Section::outro;
             // Soulful/gospel/afro lifts keep the groove rather than switching to
             // the plugin's generic accelerating snare/piano build pattern.

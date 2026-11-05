@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.33.0
+
+- Section duration, move, delete, add and rearrange now move the music with the guide, including clips already detached from the grid, their automation and the loop.
+- Chord edits, key, scale, progression, the guitar brush, the piano-roll chord strip, vocal chops and MIDI key signatures follow each section's own harmony when it is enabled.
+- Muting a track during MIDI recording releases the sounding notes. Regenerating strings no longer switches the whole song to a pad. Synced sample regions end with the audio the stretch actually reads. Tracks stay silent instead of playing early while plugin delay compensation is still allocating. Closing a plugin editor no longer holds the audio lock across the native window.
+
 ## 0.32.2
 
 - Fix export task cleanup, section harmony across all instruments, implicit-span audio regions, transactional split/delete and note budgets.

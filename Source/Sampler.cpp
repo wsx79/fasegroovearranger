@@ -66,13 +66,17 @@ public:
         if(!data||!isVoiceActive())return;updateParameters();const auto& p=owner.settings();
         // Fixed stack buffers bound work and avoid allocation at any host block size.
         for(int done=0;done<count&&data;){const int n=std::min(256,count-done);float left[256]{},right[256]{};float* target[]{left,right};
-            if(p.sync){const double need=n*speed()+inputFraction;const int input=(int)need;inputFraction=need-input;Reader reader{*this,sourcePos};warp.process(reader,input,target,n);sourcePos+=input;}
+            int consumedInput=0;
+            if(p.sync){const double need=n*speed()+inputFraction;consumedInput=(int)need;inputFraction=need-consumedInput;Reader reader{*this,sourcePos};warp.process(reader,consumedInput,target,n);sourcePos+=consumedInput;}
             else{const double ratio=data->rate/getSampleRate()*std::pow(2.,semitones()/12.);for(int i=0;i<n;++i){left[i]=read(0,sourcePos);right[i]=read(1,sourcePos);sourcePos+=ratio;}}
             const int lag=owner.latencySamples();
             const bool looping=!region&&p.loop&&owner.mode()==0;
+            // Sync playback maps each stretch input sample through rate/sr. Count every
+            // consumed frame, including the latency warmup the output loop used to skip.
+            const double sourceStep=p.sync?(double)consumedInput*(data->rate/getSampleRate())/std::max(1,n):data->rate/getSampleRate()*speed();
             for(int i=0;i<n&&data;++i,++elapsed){
                 if(releaseAt>=0&&elapsed>=releaseAt&&!released){envelope.noteOff();shaped.noteOff();released=true;}
-                if(elapsed<lag)continue;
+                if(elapsed<lag){playedSource+=sourceStep;continue;}
                 const auto at=elapsed-lag;
                 if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
                 const float linear=envelope.getNextSample(),bent=shaped.next();
@@ -82,7 +86,7 @@ public:
                 if(!looping&&p.fadeOut>0){const float lin=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);gain*=std::abs(p.fadeOutCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeOutCurve);}
                 float l=left[i],r=right[i];if(p.filter){l=filter.processSample(0,l);r=filter.processSample(1,r);}l*=gain;r*=gain;
                 output.addSample(0,start+done+i,l);if(output.getNumChannels()>1)output.addSample(1,start+done+i,r);
-                playedSource+=data->rate/getSampleRate()*speed();
+                playedSource+=sourceStep;
                 if(!envelope.isActive()){clearCurrentNote();data=nullptr;}
             }done+=n;
         }

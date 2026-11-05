@@ -87,11 +87,12 @@ InstrumentPanel::InstrumentPanel(MainComponent& m):owner(m){
     addChildComponent(circle);
     circle.setFamilyFont(true);   // the arranger draws it with the family typeface
     circle.setFreeMode(Localisation::setting("freeCircle","1")!="0");
-    circle.onPick=[this](int root,bool minor){owner.checkpoint();auto& s=owner.project.settings;const bool modeMinor=sgk::scaleIsMinor(s.scale);s.key=root;if(minor!=modeMinor)s.scale=minor?2:0;owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
-    circle.onMoveChord=[this](int slot,int degree,int root,bool minor){auto& s=owner.project.settings;if(slot<0||slot>=s.chordCount)return;owner.checkpoint();if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else{s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)slot]=true;}owner.applyInstrumentSettings(owner.selectedTrack,true);updateCircle();};
+    circle.onPick=[this](int root,bool minor){owner.checkpoint();if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;const int scale=h.scale>=0?h.scale:owner.project.settings.scale;h.key=root;if(minor!=sgk::scaleIsMinor(scale))h.scale=minor?2:0;generate(owner.project,Scope::section,owner.selectedTrack,owner.selectedSection,0);owner.changed();}else{auto& s=owner.project.settings;const bool modeMinor=sgk::scaleIsMinor(s.scale);s.key=root;if(minor!=modeMinor)s.scale=minor?2:0;owner.applyInstrumentSettings(owner.selectedTrack,true);}updateCircle();};
+    circle.onMoveChord=[this](int slot,int degree,int root,bool minor){const auto current=activeHarmony(owner.project,owner.selectedSection);if(slot<0||slot>=current.chordCount)return;owner.checkpoint();if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;if(degree>=0){h.degrees[(size_t)slot]=degree;h.freeChords[(size_t)slot]=-1;h.manualChords[(size_t)slot]=false;}else{h.freeChords[(size_t)slot]=sgk::freeChordCode(root-(h.key>=0?h.key:owner.project.settings.key),minor);h.manualChords[(size_t)slot]=true;}generate(owner.project,Scope::section,owner.selectedTrack,owner.selectedSection,0);owner.changed();}else{auto& s=owner.project.settings;if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else{s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)slot]=true;}owner.applyInstrumentSettings(owner.selectedTrack,true);}updateCircle();};
 }
 void InstrumentPanel::updateCircle(){
-    auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed);
+    Clip context;context.position=owner.project.sectionStart(owner.selectedSection);
+    auto s=pianoEngineSettings(owner.project,owner.selectedTrack,owner.clip().seed,owner.clip().motifSeed,&context);
     std::vector<CircleOfFifths::ChordMark> chords,diatonic;
     std::array<sgk::Chord,8> cs;std::array<sgk::VoicedChord,8> voiced;
     for(int i=0;i<s.progressionLength;++i){cs[(size_t)i]=sgk::GrooveEngine::chordForSlot(s,i);voiced[(size_t)i]=sgk::voiceChord(cs[(size_t)i],s.voicing,s.centre,nullptr);}
@@ -101,13 +102,13 @@ void InstrumentPanel::updateCircle(){
     circle.setState(s.keyRoot,s.scale==2,tr(sgk::scaleName(s.scale)),chords,transitions,-1,diatonic);
 }
 void InstrumentPanel::refreshFromProject(){
-    const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];const auto& s=owner.project.settings;
+    const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];const auto& s=owner.project.settings;const auto harmony=activeHarmony(owner.project,owner.selectedSection);
     if((builtTrack!=owner.selectedTrack||builtGrid!=usesPianoGrid(owner.project,owner.selectedTrack)||builtInternal!=(t.instrument=="internal"))&&!rebuildPending) {
         rebuildAsync();
     }
     for(auto& c:controls){const auto name=c.component->getProperties()["fgaControl"].toString();if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){if(name=="Riff seed")slider->setValue(t.engine.riffSeed,juce::dontSendNotification);if(name=="Part volume")slider->setValue(t.engine.laneVolume[(size_t)guitarLane]*100,juce::dontSendNotification);for(int lane=0;lane<12&&(owner.selectedTrack==3||owner.selectedTrack==leadTrack);++lane)if(name==juce::String((owner.selectedTrack==leadTrack?fgl::laneShortName(lane):fgg::laneShortName(lane)))+" VOLUME")slider->setValue(t.engine.laneVolume[(size_t)lane]*100,juce::dontSendNotification);}
         if(auto* b=dynamic_cast<juce::Button*>(c.component.get())){if(name=="SOLISTA")b->setToggleState(s.guitarLead,juce::dontSendNotification);}
-        if(auto* box=dynamic_cast<juce::ComboBox*>(c.component.get())){if(name=="Sound"){box->setSelectedItemIndex(t.sound,juce::dontSendNotification);box->setEnabled(t.instrument=="internal");}if(name=="GROOVE")box->setSelectedItemIndex(t.engine.pattern+1,juce::dontSendNotification);if(name=="BASS LINE")box->setSelectedItemIndex(s.bassMode,juce::dontSendNotification);if(name=="Voicing")box->setSelectedItemIndex(s.voicing,juce::dontSendNotification);if(name=="Extensions")box->setSelectedItemIndex(s.extension,juce::dontSendNotification);if(name.startsWith("Degree "))box->setSelectedItemIndex(s.degrees[(size_t)std::clamp(name.fromLastOccurrenceOf(" ",false,false).getIntValue()-1,0,7)],juce::dontSendNotification);}
+        if(auto* box=dynamic_cast<juce::ComboBox*>(c.component.get())){if(name=="Sound"){box->setSelectedItemIndex(t.sound,juce::dontSendNotification);box->setEnabled(t.instrument=="internal");}if(name=="GROOVE")box->setSelectedItemIndex(t.engine.pattern+1,juce::dontSendNotification);if(name=="BASS LINE")box->setSelectedItemIndex(s.bassMode,juce::dontSendNotification);if(name=="Voicing")box->setSelectedItemIndex(s.voicing,juce::dontSendNotification);if(name=="Extensions")box->setSelectedItemIndex(s.extension,juce::dontSendNotification);if(name=="Length")box->setSelectedItemIndex(harmony.chordCount-1,juce::dontSendNotification);if(name=="Each chord")box->setSelectedItemIndex(harmony.chordSteps==8?0:harmony.chordSteps==16?1:harmony.chordSteps==32?2:3,juce::dontSendNotification);if(name.startsWith("Degree "))box->setSelectedItemIndex(harmony.degrees[(size_t)std::clamp(name.fromLastOccurrenceOf(" ",false,false).getIntValue()-1,0,7)],juce::dontSendNotification);}
     }
     repaintMeters();if(owner.selectedTrack<3)updateCircle();repaint();
 }
@@ -235,8 +236,10 @@ void InstrumentPanel::rebuild(){
         choice("Part octave",{"-2","-1","0","+1","+2"},e.laneOctave[(size_t)guitarLane]+2,[lane=guitarLane](auto& o,int v){o.laneOctave[(size_t)lane]=v-2;});
         toggle("Part mute",e.laneMute[(size_t)guitarLane],[lane=guitarLane](auto& o,bool v){o.laneMute[(size_t)lane]=v;});
         auto chords=std::make_unique<ChordSummary>(owner,[this]{owner.showChordMenu();},[this]{
-            owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(owner.project);owner.changed();
-            rebuildAsync();
+            owner.checkpoint();const auto seed=(std::uint32_t)juce::Random::getSystemRandom().nextInt();
+            if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto edited=resolveSectionHarmony(owner.project,owner.selectedSection);randomiseHarmony(edited,seed);storeHarmony(owner.project,owner.selectedSection,edited);generate(owner.project,Scope::section,0,owner.selectedSection,0);}
+            else{randomiseHarmony(owner.project,seed);generate(owner.project);}
+            owner.changed();rebuildAsync();
         });chords->getProperties().set("fgaControl","Chord summary");addAndMakeVisible(*chords);controls.push_back({std::move(chords),{},false});
     }
     if(track>=3)action("NEW FEEL",[this]{apply([](auto& o){o.humanizeSeed=(std::uint32_t)juce::Random::getSystemRandom().nextInt({1,100000});});});
@@ -256,12 +259,13 @@ void InstrumentPanel::rebuild(){
     });
     if(track<3){
         juce::StringArray presets;for(const auto& p:sgk::progressionPresets())presets.add(juce::String(p.category)+" / "+p.name);
-        sharedChoice("Ready progressions",presets,-1,[this](int v){chooseProgression(owner.project,v);updateCircle();rebuildAsync();});
-        action("RANDOM CHORDS",[this]{owner.checkpoint();randomiseHarmony(owner.project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());generate(owner.project);owner.changed();updateCircle();rebuildAsync();});
+        const auto harmony=activeHarmony(owner.project,owner.selectedSection);
+        sharedChoice("Ready progressions",presets,-1,[this](int v){if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto edited=resolveSectionHarmony(owner.project,owner.selectedSection);chooseProgression(edited,v);storeHarmony(owner.project,owner.selectedSection,edited);}else chooseProgression(owner.project,v);updateCircle();rebuildAsync();});
+        action("RANDOM CHORDS",[this]{owner.checkpoint();const auto seed=(std::uint32_t)juce::Random::getSystemRandom().nextInt();if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto edited=resolveSectionHarmony(owner.project,owner.selectedSection);randomiseHarmony(edited,seed);storeHarmony(owner.project,owner.selectedSection,edited);generate(owner.project,Scope::section,0,owner.selectedSection,0);}else{randomiseHarmony(owner.project,seed);generate(owner.project);}owner.changed();updateCircle();rebuildAsync();});
         juce::StringArray lengths;for(int i=1;i<=8;++i)lengths.add(juce::String(i));
-        sharedChoice("Length",lengths,owner.project.settings.chordCount-1,[this](int v){owner.project.settings.chordCount=v+1;rebuildAsync();});
-        sharedChoice("Each chord",{"1/2 bar","1 bar","2 bars","4 bars"},owner.project.settings.chordSteps==8?0:owner.project.settings.chordSteps==16?1:owner.project.settings.chordSteps==32?2:3,[this](int v){owner.project.settings.chordSteps=8<<v;});
-        for(int i=0;i<8;++i)sharedChoice("Degree "+juce::String(i+1),{"I","ii","iii","IV","V","vi","vii"},owner.project.settings.degrees[(size_t)i],[this,i](int v){owner.project.settings.degrees[(size_t)i]=v;owner.project.settings.freeChords[(size_t)i]=-1;owner.project.settings.manualChords[(size_t)i]=false;updateCircle();repaint();});
+        sharedChoice("Length",lengths,harmony.chordCount-1,[this](int v){if(sectionHarmonyEnabled(owner.project,owner.selectedSection))owner.project.sections[(size_t)owner.selectedSection].harmony.chordCount=v+1;else owner.project.settings.chordCount=v+1;rebuildAsync();});
+        sharedChoice("Each chord",{"1/2 bar","1 bar","2 bars","4 bars"},harmony.chordSteps==8?0:harmony.chordSteps==16?1:harmony.chordSteps==32?2:3,[this](int v){const int steps=8<<v;if(sectionHarmonyEnabled(owner.project,owner.selectedSection))owner.project.sections[(size_t)owner.selectedSection].harmony.chordSteps=steps;else owner.project.settings.chordSteps=steps;});
+        for(int i=0;i<8;++i)sharedChoice("Degree "+juce::String(i+1),{"I","ii","iii","IV","V","vi","vii"},harmony.degrees[(size_t)i],[this,i](int v){if(sectionHarmonyEnabled(owner.project,owner.selectedSection)){auto& h=owner.project.sections[(size_t)owner.selectedSection].harmony;h.degrees[(size_t)i]=v;h.freeChords[(size_t)i]=-1;h.manualChords[(size_t)i]=false;}else{owner.project.settings.degrees[(size_t)i]=v;owner.project.settings.freeChords[(size_t)i]=-1;owner.project.settings.manualChords[(size_t)i]=false;}updateCircle();repaint();});
     }
     const bool grid=usesPianoGrid(owner.project,track);
     const bool internal=owner.project.tracks[(size_t)track].instrument=="internal";

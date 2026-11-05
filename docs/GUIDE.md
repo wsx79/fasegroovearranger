@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.32.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.33.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+Changing a section's length, order or presence moves the MIDI, automation and loop with that section. Independent section harmony is what the chord controls, vocal chops and MIDI key signature follow while it is enabled.
 
 The new controls and compatibility notes are listed in the 0.32.0 improvement notes in the repository: audio regions/fades, section harmony, groove, EQ/sidechain/freeze, LUFS, MIDI expression and section-scoped AI.
 
