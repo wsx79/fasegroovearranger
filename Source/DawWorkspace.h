@@ -39,6 +39,7 @@ private:
     int contentHeight=0;
     std::vector<std::pair<juce::String,juce::Rectangle<int>>> captions;
     std::vector<juce::Rectangle<int>> cards;
+    std::vector<int> dividers;
     juce::Label name,source,section;
     juce::Slider gain,pan;
     juce::ToggleButton eqEnabled{"EQ / HP"};std::array<juce::Slider,4> eqKnobs;

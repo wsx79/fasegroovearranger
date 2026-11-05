@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.34.1
+
+- Track Inspector riorganizzato: badge intestazione traccia con colore della traccia, sottotitolo e barra orizzontale compatta per i controlli Mute, Solo e Blocca Traccia.
+- Sezione Clip Selezionata riorganizzata: badge compatto e griglia bilanciata su due righe per le azioni ([Modifica MIDI] / [Rigenera] e [Loop] / [Blocca Clip]), eliminando l'asimmetria del layout precedente e mostrando icona vettoriale e testo.
+- Mantenute le superfici di colore standard della UI (schede Daw::surface su Daw::base) e lo stile originale dei potenziometri rotativi.
+
 ## 0.34.0
 
 - Modifiche guida coerenti: cambiare la durata di una sezione sposta automazioni e punti di loop dopo la sezione invece di scalarli, in linea con inserimento/spostamento e con i clip liberi che restano fermi.

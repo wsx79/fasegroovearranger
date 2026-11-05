@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.34.1
+
+- Reorganized Track Inspector: track header badge with track color, subtitle, and compact horizontal row for Mute, Solo, and Lock Track controls.
+- Reorganized Selected Clip card: clean section badge and balanced two-row action grid ([Edit MIDI] / [Regenerate] and [Loop] / [Lock Clip]), eliminating legacy button asymmetry while showing both vector icons and text.
+- Retains standard UI color surfaces (Daw::surface cards over Daw::base) and original rotary potentiometer styling.
+
 ## 0.34.0
 
 - Guide edits are consistent: resizing a section shifts automation and loop points after the section instead of scaling them, matching insert/move behaviour and free clips that stay in place.

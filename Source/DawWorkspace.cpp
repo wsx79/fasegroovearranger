@@ -98,7 +98,7 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     for(auto* b:{&internal,&sample,&plugin,&lockTrack})b->getProperties().set("fgaOutlineSelected",true);
     internal.setButtonText(tr("Built-in"));sample.setButtonText(tr("Sample"));plugin.setButtonText("VST / AU");
     editor.setButtonText(tr("EDIT MIDI"));regenerate.setButtonText(tr("REGENERATE"));loop.setButtonText(tr("LOOP"));pluginEditor.setButtonText(tr("OPEN VST"));
-    for(auto* b:{&editor,&regenerate,&loop,&pluginEditor,&instrument}){b->getProperties().set("fgaIconOnly",true);b->setTitle(b->getButtonText());}
+    for(auto* b:{&pluginEditor}){b->getProperties().set("fgaIconOnly",true);b->setTitle(b->getButtonText());}
     tip(plugin,"Choose an instrument or effect from the plugin browser.");tip(regenerate,"Regenerate the selected clip, keeping track and clip locks.");
     // No refresh here: the owner is still being constructed; select() fills the inspector.
     contentHeight=layout(232);setSize(232,contentHeight);
@@ -136,27 +136,54 @@ void TrackInspector::paint(juce::Graphics& g){
     }
     if(validTrack()&&!cards.empty()){
         const auto colour=ink(owner.selectedTrack);
-        auto badge=juce::Rectangle<float>(20.f,(float)name.getY()-1.f,28.f,24.f);
-        g.setColour(colour.withAlpha(.16f));g.fillRoundedRectangle(badge,4.f);
-        g.setColour(colour);g.setFont(Daw::font(Daw::body,true));
+        auto badge=juce::Rectangle<float>(18.f,(float)name.getY()-1.f,30.f,24.f);
+        g.setColour(colour.withAlpha(.18f));g.fillRoundedRectangle(badge,4.f);
+        g.setColour(colour);g.drawRoundedRectangle(badge,4.f,1.f);
+        g.setFont(Daw::font(Daw::body,true));
         g.drawText(juce::String(rowForTrack(owner.selectedTrack)+1).paddedLeft('0',2),badge,juce::Justification::centred);
-        g.setColour(colour);g.fillRoundedRectangle(cards.front().toFloat().withHeight(2.f).reduced(10.f,0),1.f);
+        g.setColour(colour);
+        g.fillRoundedRectangle(cards.front().toFloat().withHeight(2.f).reduced(10.f,0),1.f);
     }
     for(const auto& title:captions)Daw::drawCaps(g,tr(title.first),title.second,Daw::textDim,title.first=="Volume"||title.first=="Pan"||title.first=="HP"||title.first=="Low"||title.first=="Mid"||title.first=="High"?juce::Justification::centred:juce::Justification::centredLeft);
 }
 // Four compact cards share the workstation's type, spacing and colours. Actions
 // retain their component IDs and always operate on the current selection.
 int TrackInspector::layout(int width){
-    cards.clear();captions.clear();const int margin=8,inset=20,w=std::max(120,width-inset*2),gap=6;
+    cards.clear();captions.clear();dividers.clear();
+    const int margin=8,inset=18,w=std::max(120,width-inset*2),gap=6;
     const int half=(w-gap)/2;int y=8,cardStart=y;
     auto title=[&](const char* text){captions.push_back({text,{inset,y+6,w,14}});y+=22;};
     auto row=[&](juce::Component& c,int height=24){c.setBounds(inset,y,w,height);y+=height+4;};
     auto endCard=[&]{y+=6;cards.push_back({margin,cardStart,width-margin*2,y-cardStart});y+=6;cardStart=y;};
-    const int close=24;captions.push_back({"TRACK INSPECTOR",{inset,y+(close-14)/2,std::max(40,w-close-8),14}});owner.inspectorCollapse.setBounds(width-margin-8-close,y,close,close);y+=close+6;
-    name.setBounds(inset+36,y,w-36,22);source.setBounds(inset,y+22,w,16);y+=40;
-    {auto tools=juce::Rectangle<int>(inset,y,w,Daw::controlHeight);mute.setBounds(tools.removeFromLeft(8*Daw::unit));tools.removeFromLeft(Daw::unit);solo.setBounds(tools.removeFromLeft(8*Daw::unit));tools.removeFromLeft(Daw::unit);lockTrack.setBounds(tools);}y+=7*Daw::unit;const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);deleteTrack.setVisible(manual);if(manual)row(deleteTrack);else deleteTrack.setBounds({});endCard();
+
+    const int close=24;
+    captions.push_back({"TRACK INSPECTOR",{inset,y+(close-14)/2,std::max(40,w-close-8),14}});
+    owner.inspectorCollapse.setBounds(width-margin-8-close,y,close,close);
+    y+=close+6;
+
+    const int badgeW=30;
+    name.setBounds(inset+badgeW+8,y,w-badgeW-8,22);
+    source.setBounds(inset,y+24,w,16);
+    y+=42;
+
+    // Compact horizontal toolbar: Mute, Solo, Lock Track
+    {
+        auto tools=juce::Rectangle<int>(inset,y,w,26);
+        const int btnW=32;
+        mute.setBounds(tools.removeFromLeft(btnW));
+        tools.removeFromLeft(gap);
+        solo.setBounds(tools.removeFromLeft(btnW));
+        tools.removeFromLeft(gap);
+        lockTrack.setBounds(tools);
+        y+=30;
+    }
+    const bool manual=validTrack()&&isManualTrack(owner.selectedTrack);
+    deleteTrack.setVisible(manual);
+    if(manual)row(deleteTrack,24);
+    else deleteTrack.setBounds({});
+    endCard();
+
     title("SOUND ASSIGNMENT");
-    // Width follows the translated label, so Italian Suono guida is not crushed to "SUONO G…".
     {juce::Button* buttons[]{&internal,&sample,&plugin};const int n=3,avail=w-gap*(n-1);int sum=0;
         auto need=[&](const juce::Button& b){return std::max(40,(int)std::ceil(juce::GlyphArrangement::getStringWidth(Daw::font(Daw::small,true),b.getButtonText()))+16);};
         for(auto* b:buttons)sum+=need(*b);int x=inset,used=0;
@@ -165,17 +192,43 @@ int TrackInspector::layout(int width){
     row(instrument);row(freeze);
     const bool external=validTrack()&&owner.audio.plugin(owner.selectedTrack)!=nullptr;
     pluginEditor.setVisible(external);if(external)row(pluginEditor);else pluginEditor.setBounds({});
-    const bool sampled=validTrack()&&owner.project.tracks[(size_t)owner.selectedTrack].instrument=="sample";samplerEditor.setVisible(sampled);if(sampled)row(samplerEditor);else samplerEditor.setBounds({});
+    const bool sampled=validTrack()&&owner.project.tracks[(size_t)owner.selectedTrack].instrument=="sample";
+    samplerEditor.setVisible(sampled);if(sampled)row(samplerEditor);else samplerEditor.setBounds({});
     endCard();
-    row(effects,effects.preferredHeight());endCard();
+
+    row(effects,effects.preferredHeight());
+    endCard();
+
     title("VOLUME / PAN");
     gain.setBounds(inset,y,half,76);pan.setBounds(inset+half+gap,y,w-half-gap,76);
-    captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;endCard();
-    row(eqEnabled,22);for(int i=0;i<4;++i){eqKnobs[(size_t)i].setBounds(inset+i*w/4,y,w/4,58);captions.push_back({i==0?"HP":i==1?"Low":i==2?"Mid":"High",{inset+i*w/4,y+60,w/4,14}});}y+=78;endCard();
+    captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;
+    endCard();
+
+    row(eqEnabled,22);
+    for(int i=0;i<4;++i){
+        eqKnobs[(size_t)i].setBounds(inset+i*w/4,y,w/4,58);
+        captions.push_back({i==0?"HP":i==1?"Low":i==2?"Mid":"High",{inset+i*w/4,y+60,w/4,14}});
+    }
+    y+=78;
+    endCard();
+
     title("SELECTED CLIP");
-    row(section,18);
-    auto iconPair=[&](juce::Button& a,juce::Button& b){auto line=juce::Rectangle<int>(inset,y,w,Daw::controlHeight);const int aw=(bool)a.getProperties().getWithDefault("fgaIconOnly",false)?Daw::controlHeight:half;a.setBounds(line.removeFromLeft(aw));line.removeFromLeft(gap);const int bw=(bool)b.getProperties().getWithDefault("fgaIconOnly",false)?Daw::controlHeight:line.getWidth();b.setBounds(line.removeFromLeft(bw));y+=7*Daw::unit;};
-    iconPair(editor,regenerate);iconPair(loop,lockClip);endCard();
+    row(section,20);
+    {
+        auto line1=juce::Rectangle<int>(inset,y,w,26);
+        editor.setBounds(line1.removeFromLeft(half));
+        line1.removeFromLeft(gap);
+        regenerate.setBounds(line1);
+        y+=30;
+    }
+    {
+        auto line2=juce::Rectangle<int>(inset,y,w,26);
+        loop.setBounds(line2.removeFromLeft(half));
+        line2.removeFromLeft(gap);
+        lockClip.setBounds(line2);
+        y+=30;
+    }
+    endCard();
     return y;
 }
 void TrackInspector::tick(){
