@@ -156,7 +156,7 @@ SampleBrowser::SampleBrowser(AudioEngine& e):engine(e),shared(std::make_shared<S
     playButton.onClick=[this]{if(engine.isPreviewing()||isTimerRunning())stopPreview();else preview(fileAt(fileList.getSelectedRow()));};
     for(juce::Component* c:std::initializer_list<juce::Component*>{&closeButton,&addButton,&orderButton,&autoButton,&syncButton,&loadButton,&backButton,&forwardButton,&upButton,&playButton})addAndMakeVisible(c);
     backButton.setConnectedEdges(juce::Button::ConnectedOnRight);forwardButton.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);upButton.setConnectedEdges(juce::Button::ConnectedOnLeft);
-    setWantsKeyboardFocus(false);refreshText();updateButtons();
+    Localisation::bindTip(syncButton,"Sync preview to project tempo and key (automatic estimates)");setWantsKeyboardFocus(false);refreshText();updateButtons();
 }
 SampleBrowser::~SampleBrowser(){
     ++shared->generation;++shared->previewGeneration;++shared->placesGeneration;
@@ -170,7 +170,7 @@ void SampleBrowser::refreshText(){
     sortBox.clear(juce::dontSendNotification);id=1;for(const char* name:{"Name","Date","Size","Length"})sortBox.addItem(tr(name),id++);
     filterBox.setSelectedItemIndex(prefs.filter,juce::dontSendNotification);sortBox.setSelectedItemIndex(prefs.sort,juce::dontSendNotification);quiet=false;
     search.setTextToShowWhenEmpty(tr("Search samples..."),Palette::dim);
-    syncButton.setClickingTogglesState(true);syncButton.setToggleState(Localisation::setting("browserSyncPreview","0")=="1",juce::dontSendNotification);syncButton.setTooltip(tr("Sync preview to project tempo and key (automatic estimates)"));syncButton.onClick=[this]{Localisation::setSetting("browserSyncPreview",syncButton.getToggleState()?"1":"0");if(previewFile.existsAsFile())preview(previewFile);};
+    syncButton.setClickingTogglesState(true);syncButton.setToggleState(Localisation::setting("browserSyncPreview","0")=="1",juce::dontSendNotification);syncButton.onClick=[this]{Localisation::setSetting("browserSyncPreview",syncButton.getToggleState()?"1":"0");if(previewFile.existsAsFile())preview(previewFile);};
     addButton.setButtonText(tr("ADD FOLDER"));autoButton.setButtonText(tr("AUTO"));upButton.setButtonText(juce::String::fromUTF8("↑"));
     orderButton.setButtonText(juce::String::fromUTF8(prefs.ascending?"↑":"↓"));
     tip(addButton,"Add folders of samples: they stay in the list for every project.");

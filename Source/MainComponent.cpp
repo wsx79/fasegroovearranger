@@ -26,7 +26,7 @@
 namespace fga {
 #include "WorkspaceViewHelpers.h"
 #include "NativeWindows.h"
-PianoRoll::PianoRoll(MainComponent& m):owner(m){setWantsKeyboardFocus(true);addAndMakeVisible(ghostTrack);addAndMakeVisible(expressionLane);ghostTrack.setTooltip(tr("Ghost notes from another track"));expressionLane.setTooltip(tr("Clip MIDI expression"));expressionLane.addItemList({"Velocity","Sustain CC64","ModWheel CC1","Pitch Bend"},1);expressionLane.setSelectedId(1);expressionLane.onChange=[this]{expressionMode=expressionLane.getSelectedId()-1;repaint();};ghostTrack.onChange=[this]{ghost=ghostTrack.getSelectedId()-2;repaint();};}
+PianoRoll::PianoRoll(MainComponent& m):owner(m){setWantsKeyboardFocus(true);addAndMakeVisible(ghostTrack);addAndMakeVisible(expressionLane);Localisation::bindTip(ghostTrack,"Ghost notes from another track");Localisation::bindTip(expressionLane,"Clip MIDI expression");expressionLane.addItemList({"Velocity","Sustain CC64","ModWheel CC1","Pitch Bend"},1);Localisation::bindItems(expressionLane,{"Velocity","Sustain CC64","ModWheel CC1","Pitch Bend"});expressionLane.setSelectedId(1);expressionLane.onChange=[this]{expressionMode=expressionLane.getSelectedId()-1;repaint();};ghostTrack.onChange=[this]{ghost=ghostTrack.getSelectedId()-2;repaint();};}
 void PianoRoll::resized(){ghostTrack.clear(juce::dontSendNotification);ghostTrack.addItem(tr("Ghost notes: Off"),1);for(size_t i=0;i<owner.project.tracks.size();++i)ghostTrack.addItem(utf(owner.project.tracks[i].name),(int)i+2);if(ghost>=(int)owner.project.tracks.size())ghost=-1;ghostTrack.setSelectedId(ghost+2,juce::dontSendNotification);}
 bool PianoRoll::ownerTrackIsDrum()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];return isDrumTrack(owner.selectedTrack)&&!(track.instrument=="sample"&&track.sampler.mode==2);}
 bool PianoRoll::laneView()const{const auto& track=owner.project.tracks[(size_t)owner.selectedTrack];if(track.instrument=="sample"&&track.sampler.mode==2)return false;return ownerTrackIsDrum()||(owner.selectedTrack==3&&!guitarNotes);}
@@ -1051,7 +1051,7 @@ void MainComponent::showChordCirclePopover(int initialSlot){
         IconButton close{IconButton::Icon::close};
         int activeSlot=0;
         ChordCirclePopover(MainComponent& o,int slot):owner(o),activeSlot(std::clamp(slot,0,std::max(0,o.project.settings.chordCount-1))){
-            addAndMakeVisible(circle);addAndMakeVisible(audition);audition.setTooltip(tr("Audition the selected chord on Piano"));audition.onClick=[this]{if(audition.getToggleState())hear();else timerCallback();};
+            addAndMakeVisible(circle);addAndMakeVisible(audition);Localisation::bindText(audition,"Audition");Localisation::bindTip(audition,"Audition the selected chord on Piano");audition.onClick=[this]{if(audition.getToggleState())hear();else timerCallback();};
             circle.setFamilyFont(true);
             circle.setFreeMode(true);
             circle.onPick=[this](int root,bool minor){

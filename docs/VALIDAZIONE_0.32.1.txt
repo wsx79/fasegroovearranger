@@ -1,0 +1,23 @@
+FASE GROOVE ARRANGER 0.32.1 — TRADUZIONI E LAYOUT LUFS
+Base: v0.32.0, commit 201ea4bad5985c201c79c7382596ab2d30943c5b.
+
+PASS build Debug Linux dell'applicazione.
+PASS suite UI: Studio, cambio lingua, mixer, editor MIDI, Undo,
+  persistenza delle preferenze e presentazione.
+PASS verifica specifica Studio: i tooltip Estrai groove e Note -> MIDI
+  corrispondono alle traduzioni in tutte e sei le lingue e cambiano anche
+  lasciando Studio aperto; nessun ripiego sull'inglese nelle altre lingue.
+PASS verifica specifica mixer: letture LUFS adiacenti a Effetti, all'interno
+  della barra e separate dai meter LED/peak. Screenshot del master con
+  audio reale controllato visivamente.
+PASS cataloghi: 140 chiavi comuni, 1962 prodotto, 16 override espliciti.
+PASS asset/manuali e versioni: scripts/verify-family.py.
+PASS test packaging Linux/Windows simulato: tests/test-packaging.py.
+PASS git diff --check.
+
+I controlli DSP non cambiano: si leggono gli stessi valori LUFS e lo stesso
+segnale stereo. I nomi delle tracce, dei file e dei clip restano dati del
+progetto. La verifica di build e rilascio macOS/Windows compete alla CI;
+questa validazione locale e' stata eseguita su Linux con Xvfb/xfwm4.
+La suite UI esclude il lungo flusso interattivo di export tramite
+FGA_SKIP_EXPORT_UI_TEST=1, come nella validazione 0.32.0.

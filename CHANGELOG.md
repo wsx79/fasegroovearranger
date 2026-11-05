@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.32.1
+
+- Complete missing translations for the new sampler, freeze, EQ, MIDI-expression and preview controls; keep tooltips in sync when switching language.
+- Move LUFS readouts beside Effects and shorten the compact stereo LED meter so the displays remain separate.
+
 ## 0.32.0
 
 - Implement the 18 improvements from the 0.31.21 PDF: audio-region conversion and fades, local feel, chord audition and section harmony, transition macros and extracted groove.

@@ -266,6 +266,8 @@ return false;
     for(int i=0;i<12;++i){audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);mixer.tick();}
     const auto image=mixer.createComponentSnapshot(mixer.getLocalBounds());const auto pixel=image.getPixelAt(80,7);
     stage("compact meter follows real stereo master audio",audio.masterLevel()>.001f&&pixel.getGreen()>pixel.getRed()*1.2f);
+    auto* loudness=mixer.findChildWithID("master-loudness");auto* effects=mixer.findChildWithID("master-effects");
+    stage("LUFS is beside Effects with space for LED and peak meters",loudness&&effects&&loudness->isVisible()&&loudness->getX()>160&&loudness->getRight()+4<=effects->getX()&&mixer.getLocalBounds().contains(loudness->getBounds()));
     stage("collapsed live master screenshot",snapshot("workspace-master-meter.png"));
     audio.liveMidi(0,juce::MidiMessage::noteOff(1,69),false);audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);audio.stop();
     mixerVisible=true;mixerToggle.setToggleState(true,juce::dontSendNotification);resized();bool shownPort=false;for(auto* child:mixer.getChildren())if(auto* port=dynamic_cast<juce::Viewport*>(child))shownPort=port->isVisible();stage("reopening mixer restores faders",shownPort&&mixer.getHeight()>28);

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.32.1
+
+- Completate le traduzioni mancanti dei nuovi controlli di campionatore, freeze, EQ, espressione MIDI e anteprima; i tooltip seguono il cambio di lingua.
+- Spostati i LUFS accanto a Effetti e accorciato il meter LED stereo compatto, evitando sovrapposizioni.
+
 ## 0.32.0
 
 - Implementate le 18 migliorie del PDF: conversione/fade delle regioni audio, feel locale, audition e armonia per sezione, transizioni e groove estratto.
