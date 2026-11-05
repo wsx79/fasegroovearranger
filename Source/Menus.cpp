@@ -44,31 +44,36 @@ bool MainComponent::openFromCommandLine(const juce::String& commandLine){
 void MainComponent::showChordMenu(){
     juce::PopupMenu menu;menu.addSectionHeader(tr("EDIT CHORDS"));
     menu.addItem(4000,tr("Circle of Fifths interactive editor..."));menu.addSeparator();
-    auto names=chordNames(project.settings);
-    for(int slot=0;slot<project.settings.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
-        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree")+" "+juce::String(d+1),true,project.settings.freeChords[(size_t)slot]<0&&project.settings.degrees[(size_t)slot]==d);
+    const auto harmony=activeHarmony(project,selectedSection);auto names=chordNames(harmony);
+    for(int slot=0;slot<harmony.chordCount;++slot){juce::PopupMenu chord;juce::PopupMenu degrees;
+        for(int d=0;d<7;++d)degrees.addItem(1000+slot*100+d,tr("Degree")+" "+juce::String(d+1),true,harmony.freeChords[(size_t)slot]<0&&harmony.degrees[(size_t)slot]==d);
         chord.addSubMenu(tr("Nella scala"),degrees);
-        for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-project.settings.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,project.settings.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?tr("Major"):quality==1?tr("Minor"):tr("Dominant"),roots);}
+        for(int quality=0;quality<3;++quality){juce::PopupMenu roots;for(int root=0;root<12;++root){int code=(root-harmony.key+12)%12+quality*12;roots.addItem(1000+slot*100+10+code,fgg::pitchClassName(root),true,harmony.freeChords[(size_t)slot]==code);}chord.addSubMenu(quality==0?tr("Major"):quality==1?tr("Minor"):tr("Dominant"),roots);}
         menu.addSubMenu(juce::String(slot+1)+juce::String::fromUTF8(" · ")+juce::String::fromUTF8(names[(size_t)slot].c_str()),chord);
     }
-    juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" "+tr("chords"),true,n==project.settings.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
-    juce::PopupMenu durations;const int steps[]{8,16,32,64};for(int i=0;i<4;++i)durations.addItem(2100+steps[i],tr(i==0?"1/2 bar":i==1?"1 bar":i==2?"2 bars":"4 bars"),true,project.settings.chordSteps==steps[i]);menu.addSubMenu(tr("Each chord"),durations);
+    juce::PopupMenu lengths;for(int n:{1,2,3,4,6,8})lengths.addItem(2000+n,juce::String(n)+" "+tr("chords"),true,n==harmony.chordCount);menu.addSubMenu(tr("Lunghezza progressione"),lengths);
+    juce::PopupMenu durations;const int steps[]{8,16,32,64};for(int i=0;i<4;++i)durations.addItem(2100+steps[i],tr(i==0?"1/2 bar":i==1?"1 bar":i==2?"2 bars":"4 bars"),true,harmony.chordSteps==steps[i]);menu.addSubMenu(tr("Each chord"),durations);
     menu.addItem(3000,tr("Nuova progressione casuale"));
     juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&chordEditButton),[safe](int id){if(safe)safe->applyChordMenuChoice(id);});
 }
 void MainComponent::applyChordMenuChoice(int id){
     if(id==0||loadingPlugin||editingRestricted())return;
     if(id==4000){showChordCirclePopover(0);return;}
+    const auto harmony=activeHarmony(project,selectedSection);
     const bool chord=id>=1000&&id<1800;const int slot=(id-1000)/100,value=(id-1000)%100;
-    if(chord&&(slot>=project.settings.chordCount||(value>=7&&value<10)||value>=46))return;
+    if(chord&&(slot>=harmony.chordCount||(value>=7&&value<10)||value>=46))return;
     const bool count=id>2000&&id<=2008,duration=id==2108||id==2116||id==2132||id==2164;
     if(!chord&&!count&&!duration&&id!=3000)return;
-    flushGlobalFeel();instrumentPanel.flushRender();checkpoint();auto& s=project.settings;
-    if(chord){if(value<7){s.degrees[(size_t)slot]=value;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else{s.freeChords[(size_t)slot]=value-10;s.manualChords[(size_t)slot]=true;}}
-    if(count)s.chordCount=id-2000;if(duration)s.chordSteps=id-2100;
-    if(id==3000)randomiseHarmony(project,(std::uint32_t)juce::Random::getSystemRandom().nextInt());
-    applyInstrumentSettings(0,true);if(instrumentIsOpen())instrumentPanel.rebuild();
-    message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");
+    flushGlobalFeel();instrumentPanel.flushRender();checkpoint();
+    auto edited=harmony;
+    if(chord){if(value<7){edited.degrees[(size_t)slot]=value;edited.freeChords[(size_t)slot]=-1;edited.manualChords[(size_t)slot]=false;}else{edited.freeChords[(size_t)slot]=value-10;edited.manualChords[(size_t)slot]=true;}}
+    if(count)edited.chordCount=id-2000;if(duration)edited.chordSteps=id-2100;
+    if(id==3000)randomiseHarmony(edited,(std::uint32_t)juce::Random::getSystemRandom().nextInt());
+    const bool local=sectionHarmonyEnabled(project,selectedSection);
+    if(local)storeHarmony(project,selectedSection,edited);else{project.settings.key=edited.key;project.settings.scale=edited.scale;project.settings.chordCount=edited.chordCount;project.settings.chordSteps=edited.chordSteps;project.settings.degrees=edited.degrees;project.settings.freeChords=edited.freeChords;project.settings.manualChords=edited.manualChords;if(id==3000){project.settings.extension=edited.extension;project.settings.voicing=edited.voicing;}}
+    if(local){generate(project,Scope::section,selectedTrack,selectedSection,0);changed();}else applyInstrumentSettings(0,true);
+    if(instrumentIsOpen())instrumentPanel.rebuild();
+    message(local?"Section chords written into unlocked tracks in this section.":"New chords written into unlocked tracks. GENERATE SONG draws another harmony.");
 }
 
 void MainComponent::showAddSectionMenu(){
@@ -82,7 +87,7 @@ void MainComponent::addSongSection(Section type){
     instrumentPanel.flushRender();checkpoint();const int at=std::clamp(selectedSection+1,0,(int)project.sections.size());
     // Insert a real clip per track (empty ones) and fill the new section in the same
     // undo step: detaching every track left the section silent.
-    project.insertSection(at,{type,8,sectionName(type)},-1);selectedSection=at;
+    if(!project.insertSection(at,{type,8,sectionName(type)},-1)){if(!undoStack.empty())undoStack.pop_back();message("Section change exceeds the project limits.",true);refreshControls();return;}selectedSection=at;
     generate(project,Scope::section,selectedTrack,at);
     changed();select(selectedTrack,at);
     message(tr("Section added and generated. REGENERATE rewrites it; Undo removes it."));

@@ -70,8 +70,12 @@ public:
     void audioProcessorParameterChanged(juce::AudioProcessor*,int,float)override{markState();}
     void audioProcessorChanged(juce::AudioProcessor*,const juce::AudioProcessorListener::ChangeDetails&)override{markState();}
     void mouseUp(const juce::MouseEvent& e)override{markState();juce::DocumentWindow::mouseUp(e);}
-    ~PluginWindow()override{const juce::ScopedLock processorLock(processor.getCallbackLock());processor.removeListener(this);if(auto* editor=getContentComponent())editor->removeMouseListener(this);clearContentComponent();markState();}
-    void closeButtonPressed()override{const juce::ScopedLock processorLock(processor.getCallbackLock());markState();owner.dismissAuxiliaryWindow(*this);}
+    ~PluginWindow()override{
+        {const juce::ScopedLock processorLock(processor.getCallbackLock());processor.removeListener(this);}
+        if(auto* editor=getContentComponent())editor->removeMouseListener(this);
+        clearContentComponent();markState();
+    }
+    void closeButtonPressed()override{markState();owner.dismissAuxiliaryWindow(*this);}
 };
 
 class MainComponent::AutosaveJob : public juce::Thread {

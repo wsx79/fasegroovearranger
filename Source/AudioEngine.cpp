@@ -119,7 +119,10 @@ void Instrument::adoptChannels(int block){
 }
 void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
     if(delay<=0)return;
-    const int capacity=delayLine.getNumSamples();if(delayLine.getNumChannels()<2||capacity<=delay){return;}
+    const int capacity=delayLine.getNumSamples();
+    // Silence until the message thread sizes the line. Passing the block through
+    // would play this track early against the others.
+    if(delayLine.getNumChannels()<2||capacity<=delay){auto* left=block.getWritePointer(0);auto* right=block.getNumChannels()>1?block.getWritePointer(1):nullptr;for(int s=0;s<count;++s){left[s]=0;if(right)right[s]=0;}return;}
     delayUsed=true;auto* left=delayLine.getWritePointer(0);auto* right=delayLine.getWritePointer(1);auto* inL=block.getWritePointer(0);auto* inR=block.getWritePointer(1);int w=delayWrite;
     for(int s=0;s<count;++s){const int r=(w-delay+capacity)%capacity;const bool valid=delayValid>=delay;const float l=valid?left[r]:0.f,rhs=valid?right[r]:0.f;left[w]=inL[s];right[w]=inR[s];inL[s]=l;inR[s]=rhs;w=(w+1)%capacity;delayValid=std::min(delay,delayValid+1);}
     delayWrite=w;
@@ -164,7 +167,7 @@ void AudioEngine::applyMix(const MixState& m,bool snap){
         if(auto* sampler=dynamic_cast<SampleSynth*>(i.sampler.get()))if(sampler->configure(t.sampler,t.sampleRoot,m.tempo)&&playing){i.sounding.fill(false);i.resync=true;needsResync=true;}
         i.group=t.group;i.sends=t.sends;i.controls=&t;i.effectOrder=t.effectOrder;if(i.effectBypass!=t.effectBypass)i.parameterSent.fill(-1.f);i.effectBypass=t.effectBypass;i.effectCount=t.effectCount;
         i.strip.configure(t.eq,sampleRate);i.volume=&t.volume;i.panAutomation=&t.panAutomation;i.parameters=&t.parameters;i.gain=t.gain;i.pan=t.pan;mixTargets(i,master,snap);
-        if(!i.mute&&t.mute&&!capture.active){
+        if(!i.mute&&t.mute){
             for(int ch=0;ch<16;++ch){
                 if(livePedal[ti][(size_t)ch])i.midi.addEvent(juce::MidiMessage::controllerEvent(ch+1,64,0),0);
                 for(int n=0;n<128;++n)if(liveHeld[ti][(size_t)(ch*128+n)]){

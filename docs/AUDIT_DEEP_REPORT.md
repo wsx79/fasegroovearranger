@@ -1,6 +1,8 @@
 # Audit approfondito — Fase Groove Arranger 0.32.2
 
-Analisi statica in sola lettura. Nessun test eseguito in questa passata, nessuna modifica al prodotto.
+Nota 0.33.0: le voci A1, A2, A3, M1, M2, M3, M4, M5, H1 e i rifiuti silenziosi di import/rearrange sono state implementate. La decisione di prodotto è che la musica segue la guida. R7, Link e l'unificazione dei motori chitarra/lead restano fuori scope. Questo file è il verbale dell'audit, non la specifica riga per riga.
+
+Analisi statica in sola lettura, scritta prima delle correzioni.
 
 ## 1. Snapshot
 

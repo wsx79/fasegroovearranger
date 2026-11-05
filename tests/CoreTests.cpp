@@ -219,11 +219,11 @@ void verifyRearrange(){
     original.tracks[1].freeTimeline=true;original.tracks[1].clips.resize(1);original.tracks[1].clips[0].position=12;original.tracks[1].clips[0].span=16;
     const int manual=original.addMidiTrack();original.tracks[(size_t)manual].clips[0].notes={{1,.25,77,100,0}};
     original.tracks[(size_t)manual].volume.enabled=true;original.tracks[(size_t)manual].volume.points={{0,.2,0},{10,.8,0}};
-    const auto manualNotes=original.tracks[(size_t)manual].clips;const auto freeNotes=original.tracks[1].clips;
     for(std::uint32_t seed:{1u,2u,19u}){auto p=original;check(rearrangeSong(p,seed),"rearrange existing parts succeeds");
         check(p.settings.seed==original.settings.seed&&p.settings.key==original.settings.key&&p.settings.bpm==original.settings.bpm&&p.tracks[0].instrumentState=="opaque edits"&&p.tracks[0].effects[0].state=="opaque fx","rearrange retains sound, tempo, harmony and musical seed");
-        check(p.tracks[1].clips==freeNotes&&p.tracks[(size_t)manual].clips==manualNotes,"rearrange retains independent and handwritten MIDI");
-        check(p.tracks[(size_t)manual].volume.points[1].beat==10&&p.tracks[0].volume.enabled&&p.tracks[0].volume.locked,"rearrange preserves automation flags and independent times");
+        bool keptManual=false;for(const auto& c:p.tracks[(size_t)manual].clips)for(const auto& n:c.notes)keptManual=keptManual||n.pitch==77;
+        check(!p.tracks[1].freeTimeline&&!p.tracks[(size_t)manual].freeTimeline&&keptManual,"rearrange moves independent and handwritten MIDI with the guide");
+        check(p.tracks[0].volume.enabled&&p.tracks[0].volume.locked,"rearrange preserves automation flags");
         bool changed=p.sections.size()!=original.sections.size();for(size_t c=0;c<p.sections.size();++c){if(c>=original.sections.size()||p.sections[c].bars!=original.sections[c].bars)changed=true;
             const auto& clip=p.tracks[0].clips[c];check(!clip.notes.empty(),"rearrange reuses the existing MIDI");
             for(const auto& note:clip.notes){const int src=note.pitch-48;check(src>=0&&src<6&&note.velocity==81+src&&note.length==.75,"rearrange neither regenerates nor changes notes");}
@@ -474,12 +474,12 @@ int main(int argc,char** argv){try{
                 fga::generate(held,fga::Scope::track,2,0,19);
                 check(held.tracks[2].clips[(size_t)drop].notes.empty()&&!held.tracks[2].clips[(size_t)findSection(held,fga::Section::main)].notes.empty(),"a locked strings clip stays empty while the rest of the track is written");
                 fga::generate(song,fga::Scope::track,2,0,21);
-                check(song.settings.stringsMode==(int)sgk::StringsMode::pad,"regenerating silent strings turns on a harmony pad");
+                check(song.settings.stringsMode==0&&countStrings(song)>0,"regenerating silent strings writes a pad without changing the saved style");
                 for(size_t i=0;i<song.sections.size();++i)check(!song.tracks[2].clips[i].notes.empty(),"strings track regenerate writes every unlocked section");
                 check(chordFollows(song.tracks[2].clips[(size_t)findSection(song,fga::Section::drop)]),"regenerated Jackin strings follow the next chord");
                 auto section=fga::newProject(4);const int mainIndex=findSection(section,fga::Section::main);
                 fga::generate(section,fga::Scope::section,0,mainIndex,23);
-                check(section.settings.stringsMode==(int)sgk::StringsMode::pad&&!section.tracks[2].clips[(size_t)mainIndex].notes.empty(),"section regenerate writes strings even when another track is selected");
+                check(section.settings.stringsMode==0&&section.tracks[2].clips[(size_t)mainIndex].notes.empty(),"section regenerate on another track does not invent strings or change the saved style");
                 auto clipSong=fga::newProject(4);const int clipDrop=findSection(clipSong,fga::Section::drop);
                 fga::generate(clipSong,fga::Scope::clip,2,clipDrop,29);
                 check(!clipSong.tracks[2].clips[(size_t)clipDrop].notes.empty()&&clipSong.tracks[2].clips[(size_t)findSection(clipSong,fga::Section::intro)].notes.empty(),"clip regenerate writes only the chosen strings clip");
@@ -623,6 +623,9 @@ int main(int argc,char** argv){try{
         bool later=false;for(const auto& n:t.clips[0].notes){int slot=(int)(n.start/4)%4;
             int interval=(n.pitch-slot+120)%12;check(interval==0||interval==4||interval==7,"vocal onset follows its current chromatic chord");later=later||slot>0;}
         check(later,"vocal harmony regression exercises later chord slots");
+        p.sections[0].harmony.enabled=true;p.sections[0].harmony.key=2;p.sections[0].harmony.scale=0;p.sections[0].harmony.chordCount=1;p.sections[0].harmony.chordSteps=16;p.sections[0].harmony.degrees[0]=0;p.sections[0].harmony.freeChords[0]=-1;p.sections[0].harmony.manualChords[0]=false;
+        fga::generateVocalChops(p,fga::Scope::track,ti,0,91);
+        for(const auto& n:t.clips[0].notes){const int interval=(n.pitch-2+120)%12;check(interval==0||interval==4||interval==7,"vocal chops follow section harmony rather than the global progression");}
     }
     {
         check(fga::genres().size()==fga::numGenres&&fga::genres()[fga::deepHouseGenre]=="Deep House","genre list retains Deep House and appends electronic styles");

@@ -4,6 +4,7 @@
 #include "../../ThirdParty/fasegroovepiano/Source/engine/Theory.h"
 #include <cmath>
 #include <stdexcept>
+#include <utility>
 namespace fga {
 namespace {
 using Bytes=std::vector<std::uint8_t>;
@@ -23,12 +24,14 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
     // consistently with the UI/export names; retain the exact mode in readable text.
     const int parentOffsets[]{0,-2,3,-7,-5,-4,3,3,1,0,-5,-7,-4};
     const int sharps[]{0,-5,2,-3,4,-1,-6,1,-4,3,-2,5};
-    int parent=(p.settings.key+parentOffsets[std::clamp(p.settings.scale,0,12)]+24)%12;
-    bool minor=p.settings.scale==2||p.settings.scale==6||p.settings.scale==7;
-    meta(conductor,0,0x59,{(std::uint8_t)sharps[parent],(std::uint8_t)(minor?1:0)});
-    text(conductor,0,1,"Fase Groove Arranger | key="+std::to_string(p.settings.key)+" scale="+std::to_string(p.settings.scale)+" | "+sgk::spelledNote(p.settings.key,p.settings.key,p.settings.scale)+" "+sgk::scaleName(p.settings.scale));
-    std::uint32_t last=0;
-    for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);text(conductor,at-last,6,p.sections[si].name);last=at;}
+    auto signature=[&](const Settings& s){const int parent=(s.key+parentOffsets[std::clamp(s.scale,0,12)]+24)%12;const bool minor=s.scale==2||s.scale==6||s.scale==7;return std::pair<int,bool>{sharps[parent],minor};};
+    const auto opening=resolveSectionHarmony(p,0);const auto openSig=signature(opening);
+    meta(conductor,0,0x59,{(std::uint8_t)openSig.first,(std::uint8_t)(openSig.second?1:0)});
+    text(conductor,0,1,"Fase Groove Arranger | key="+std::to_string(opening.key)+" scale="+std::to_string(opening.scale)+" | "+sgk::spelledNote(opening.key,opening.key,opening.scale)+" "+sgk::scaleName(opening.scale));
+    std::uint32_t last=0;auto previous=openSig;
+    for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);
+        if(si>0){const auto sig=signature(resolveSectionHarmony(p,(int)si));if(sig!=previous){meta(conductor,at-last,0x59,{(std::uint8_t)sig.first,(std::uint8_t)(sig.second?1:0)});previous=sig;last=at;}}
+        text(conductor,at-last,6,p.sections[si].name);last=at;}
     auto end=(std::uint32_t)std::llround(p.length()*960);meta(conductor,end-last,0x2f,{});chunk(out,std::move(conductor));
     auto all=events(p,onlyTrack);
     for(int row=0;row<(int)p.tracks.size();++row){

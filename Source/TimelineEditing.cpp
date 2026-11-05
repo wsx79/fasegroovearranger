@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
 #include "UiText.h"
+#include <cmath>
 namespace fga {
 namespace {
 std::vector<Clip> chosenClips(const Project& project,int track,const std::set<int>& indices){
@@ -93,13 +94,15 @@ return false;
     arrangement.mouseDown(event(442,76));arrangement.mouseDrag(event(458,116));arrangement.mouseUp(event(458,116));
     ok=ok&&selectedTrack==5&&clipStart()==60&&project.clipAtBeat(4,56)<0&&clip().notes[0].pitch==38&&clip().notes[0].lane==1;stage("cross-track drag and destination drum mapping");
     undo(false);ok=ok&&project.clipAtBeat(4,56)>=0&&project.clipAtBeat(5,60)<0&&!project.tracks[5].freeTimeline;stage("undo cross-track drag");
-    const auto beforeGuide=project.tracks[4].clips;const double guidePlay=audio.position();arrangement.mouseDown(event(278,16));arrangement.mouseDrag(event(310,16));arrangement.mouseUp(event(310,16));
-    ok=ok&&project.sections[0].bars==6&&project.tracks[4].clips==beforeGuide&&audio.position()==guidePlay;stage("guide edge drag leaves clips and playhead unchanged");
+    std::vector<double> guideBeats;for(const auto& eventBeat:events(project,4))if(eventBeat.velocity>0&&eventBeat.controller<0)guideBeats.push_back(eventBeat.beat);const double guidePlay=audio.position();arrangement.mouseDown(event(278,16));arrangement.mouseDrag(event(310,16));arrangement.mouseUp(event(310,16));
+    std::vector<double> movedBeats;for(const auto& eventBeat:events(project,4))if(eventBeat.velocity>0&&eventBeat.controller<0)movedBeats.push_back(eventBeat.beat);
+    bool followed=guideBeats.size()==movedBeats.size();for(size_t i=0;followed&&i<guideBeats.size();++i)followed=std::abs(movedBeats[i]-(guideBeats[i]+(guideBeats[i]>=16?8:0)))<1e-6;
+    ok=ok&&project.sections[0].bars==6&&project.sectionStart(1)==24&&followed&&audio.position()==guidePlay;stage("guide edge drag moves later music with the section and leaves the playhead");
     selectClip(4,project.clipAtBeat(4,48));arrangement.pixelsPerBar=32;updateSizes();arrangementPort.setViewPosition(0,0);
     if(auto out=folder.getChildFile("timeline-editing.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out)&&ok;}else ok=false;
     keyPressed(juce::KeyPress('A',juce::ModifierKeys::commandModifier,0));timelineCommand(6);ok=ok&&project.tracks[4].clips.empty();project.normalise();ok=ok&&project.tracks[4].clips.empty();stage("select all and delete all blocks without resurrecting placeholders");
     showEditor();ok=ok&&clipIndex()>=0&&clipLength()==4&&clip().notes.empty();stage("create editable empty clip on an empty track");
-    project.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"},{Section::outro,4,"Outro"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(3,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[2].notes={{0,.25,36,55,0}};project.resizeClipLoop(4,0,32);selectClip(4,2);project.resizeGuide(0,6);changed();ok=ok&&selectedClip==1&&clipStart()==32&&clip().notes.size()==1&&clip().notes[0].velocity==55;stage("selected clip survives materialisation of fully covered legacy blocks");
+    project.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"},{Section::outro,4,"Outro"}};for(auto& t:project.tracks){t.freeTimeline=false;t.clips.assign(3,{});}project.normalise();project.tracks[4].clips[0].notes={{0,.25,36,100,0}};project.tracks[4].clips[2].notes={{0,.25,36,55,0}};project.resizeClipLoop(4,0,32);selectClip(4,2);project.resizeGuide(0,6);changed();ok=ok&&selectedClip==2&&std::abs(clipStart()-40)<1e-6&&clip().notes.size()==1&&clip().notes[0].velocity==55&&project.sectionStart(1)==24;stage("selected clip moves with its section when the guide is resized");
     project=saved;editCursor=-1;selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();timelineClipboard=board;arrangement.pixelsPerBar=savedZoom;select(savedTrack,savedSection);showArrangement();changed();undoStack.clear();redoStack.clear();refreshControls();
     folder.getChildFile("timeline-editing.txt").replaceWithText(ok?"PASS clip split, copy/cut/paste, duplicate/delete, cross-track drag, drum remapping, Undo, editable guide, independent MIDI editor, project round trip and empty-track editing":"FAIL timeline editing: "+failed);return ok;
 #endif

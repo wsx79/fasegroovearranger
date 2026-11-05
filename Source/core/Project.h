@@ -171,15 +171,21 @@ struct Project {
     int placeClip(int track, Clip clip, double beat);
     int moveClip(int track, int clip, int targetTrack, double beat, bool copy);
     bool deleteClip(int track, int clip);
-    void resizeGuide(int section, int bars);
+    // Section length, order and removal move clips, automation and loops with the guide.
+    bool resizeGuide(int section, int bars);
     void removeGuide(int section);
     void moveGuide(int from, int to);
+    // Free-timeline time edits shared by section insert, resize, move and delete.
+    bool splitFreeAt(double beat);
+    void shiftFreeFrom(double beat, double delta);
+    bool deleteFreeRange(double start, double end);
+    bool foldFreeTracks();
     void normalise();
     bool deleteMidiTrack(int track); // fixed instrument tracks cannot be removed
     int addVocalChopsTrack();
     int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
     bool withinNoteBudget() const;
-    void insertSection(int index, SongSection section, int copyFrom = -1);
+    bool insertSection(int index, SongSection section, int copyFrom = -1);
     bool duplicateSection(int index);
     void removeSection(int index);
     void moveSection(int from, int to);
@@ -210,7 +216,9 @@ void applyGenre(Project&, int genre);
 void arrangeSong(Project&);
 // Change structure by reusing stored MIDI takes; locked projects remain unchanged.
 bool rearrangeSong(Project&, std::uint32_t seed);
+void chooseProgression(Settings&, int preset);
 void chooseProgression(Project&, int preset);
+void randomiseHarmony(Settings&, std::uint32_t seed);
 void randomiseHarmony(Project&, std::uint32_t seed);
 std::vector<std::string> chordNames(const Settings&);
 // Shared reduction of the piano harmony for generated and hand-entered guitar/lead notes.
@@ -244,6 +252,13 @@ bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 void randomiseAutomation(Project&, Scope scope, int track, int index, std::uint32_t seed, int onlyLane = -1);
 inline double takeFeel(double track,double take,double global){return track>=0?track:take>=0?take:global;}
 Settings resolveSectionHarmony(const Project&,int section);
+inline bool sectionHarmonyEnabled(const Project& p,int section){return section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled;}
+inline Settings activeHarmony(const Project& p,int section){return sectionHarmonyEnabled(p,section)?resolveSectionHarmony(p,section):p.settings;}
+inline void storeHarmony(Project& p,int section,const Settings& s){
+    if(sectionHarmonyEnabled(p,section)){auto& h=p.sections[(size_t)section].harmony;h.key=s.key;h.scale=s.scale;h.chordCount=s.chordCount;h.chordSteps=s.chordSteps;h.degrees=s.degrees;h.freeChords=s.freeChords;h.manualChords=s.manualChords;}
+    else{p.settings.key=s.key;p.settings.scale=s.scale;p.settings.chordCount=s.chordCount;p.settings.chordSteps=s.chordSteps;p.settings.degrees=s.degrees;p.settings.freeChords=s.freeChords;p.settings.manualChords=s.manualChords;}
+}
+std::string chordNameAt(const Project&,double beat);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);

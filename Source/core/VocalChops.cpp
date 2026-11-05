@@ -48,7 +48,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
                     const double human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);at+=((int)(r%201)-100)*human*.0002;
                     if(at>=beats)continue;
                     const double length=std::min(beats-at,std::clamp(t.engine.gate*.5,.0625,.75));
-                    const auto chord=chordAtBeat(p.settings,p.clipStart(ti,ci)+std::max(0.,at));
+                    const auto chord=chordAtBeat(resolveSectionHarmony(p,guide),p.clipStart(ti,ci)+std::max(0.,at));
                     int pitch=t.sampleRoot;
                     if(t.instrument=="internal"){const int intervals[]{0,chord.third,chord.fifth,12};pitch=60+chord.rootPc+intervals[(r>>8)%4];}
                     else if(t.sampler.mode==2&&t.sampler.sliceCount>0)pitch=t.sampler.sliceBase+(int)((r>>8)%(unsigned)t.sampler.sliceCount);

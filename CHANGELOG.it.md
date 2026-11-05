@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.33.0
+
+- Durata, sposta, elimina, aggiungi sezione e rearrange spostano la musica insieme alla guida, anche i clip già staccati, la loro automazione e il loop.
+- Modifica accordi, tonalità, scala, progressione, pennello chitarra, striscia del piano roll, vocal chop e tonalità del MIDI seguono l'armonia della sezione quando è attiva.
+- Il mute durante la registrazione MIDI rilascia le note. Rigenerare gli archi non imposta più un pad su tutto il brano. Le regioni campionate in sync finiscono con l'audio davvero letto dallo stretch. Le tracce restano in silenzio, invece di anticipare, finché la compensazione di latenza non è pronta. Chiudere l'editor di un plugin non tiene più il lock audio durante la distruzione della finestra nativa.
+
 ## 0.32.2
 
 - Corretti fine export, armonia di sezione per tutti gli strumenti, regioni audio con durata implicita, split/delete atomici e budget note.

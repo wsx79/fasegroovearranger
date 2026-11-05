@@ -52,4 +52,8 @@ inline void verifyHarmonyContracts(){
     project.settings.key=6;project.settings.scale=0;auto signature=conductor();check(signature.sharps==-6&&signature.minor==0&&signature.text.find("Gb")!=std::string::npos,"Gb export uses six flats and a matching tonic name");
     project.settings.key=3;project.settings.scale=2;signature=conductor();check(signature.sharps==-6&&signature.minor==1&&signature.text.find("Eb")!=std::string::npos,"Eb minor export uses six flats and the minor flag");
     project.settings.key=2;project.settings.scale=1;signature=conductor();check(signature.sharps==0&&signature.minor==0&&signature.text.find("D Dorian")!=std::string::npos,"D Dorian keeps its parent signature with exact modal text");
+    project.sections.push_back({Section::drop,1,"Drop"});project.normalise();project.sections[1].harmony.enabled=true;project.sections[1].harmony.key=0;project.sections[1].harmony.scale=2;
+    int signatures=0;const auto data=midiFile(project);const size_t end=22+((size_t)data[18]<<24)+((size_t)data[19]<<16)+((size_t)data[20]<<8)+data[21];
+    for(size_t at=22;at+2<end;++at)if(data[at]==255&&data[at+1]==0x59)++signatures;
+    check(signatures==2,"a section harmony change writes a second SMF key signature");
 }

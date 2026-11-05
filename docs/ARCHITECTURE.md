@@ -44,7 +44,7 @@ Section operations in `Project` transform loop locators and volume automation to
 
 Split clips trim crossing notes at their boundaries. Overwrite paste retains outside fragments. Manual editing ignores generation locks; regeneration respects them. Selected clip indices are independent of the selected guide section. Generation uses the guide at each clip position; section regeneration splits independent clips at guide boundaries before replacing that section.
 
-Guide removal, movement and duration APIs materialise aligned tracks without moving their audible content, automation or loop locators. Captured clip roles preserve the existing sustain/expression events when guide roles change. Legacy whole-arrangement section transforms remain separate core APIs.
+Guide removal, movement and duration move audible content, automation and loop locators with the section, including clips on an independent timeline. A separate overlay that leaves audio in place is not exposed on the section menu or ruler. Captured clip roles still preserve sustain and expression for clips that stay put inside a resized section. Legacy whole-arrangement section transforms remain separate core APIs.
 
 Edited projects use format 2 with `freeTimeline` and per-clip `position`, explicit `span` and captured `role`, preserving existing notes, loop archives and instrument assignments. Untouched projects retain format 1; the loader accepts both. Native UI, project IO and audio-render checks exercise these paths.
 
