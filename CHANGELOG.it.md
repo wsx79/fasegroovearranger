@@ -6,6 +6,7 @@
 - Conservate le tracce escluse da Nuovo brano IA, segnalati gli errori di applicazione e propagata la cancellazione a compilazione e hash plugin.
 - Corretti panic MIDI, reset/memoria PDC, meter con input non finiti, notifiche VST a trasporto fermo e lifetime del popover accordi.
 - Rafforzati default legacy, salvataggi, letture JSON numeriche, MIDI dal vivo e selezione plugin dopo un rescan.
+- Ripristinato il focus della DAW dopo la chiusura asincrona delle finestre plugin, rispettando nuovi clic, editor riaperti e passaggi ad altre applicazioni.
 
 ## 0.32.1
 

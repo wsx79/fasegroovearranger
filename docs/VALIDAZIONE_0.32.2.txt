@@ -48,3 +48,18 @@ PRECISAZIONI
 - Hardware audio/MIDI, AU/macOS, Windows e plugin commerciali non sono
   verificati localmente. Build e pubblicazione dei pacchetti sono subordinate
   alla CI Linux/macOS/Windows dopo il push del commit di release.
+
+CORREZIONE DEL GATE macOS DOPO IL PRIMO TENTATIVO CI
+La CI di 1c56122 supera family/core, Linux e Windows. macOS compila ma
+fallisce il solo ritorno del focus alla DAW dopo la chiusura VST.
+La prova aggiunta riproduce una perdita di focus successiva al hide.
+Il ripristino attende l'attivazione nativa, con tentativi limitati e
+SafePointer; non riattiva l'app dal background e si annulla dopo un nuovo
+clic, la riapertura del tool o l'apertura di una finestra modale.
+L'asserzione richiede ancora il focus esatto del MainComponent: non e'
+stata allentata. L'attesa del test segue il completamento asincrono.
+PASS host VST3 locale e verifica indipendente, compresa la nuova perdita
+ritardata del focus, centraggio, riapertura, export, freeze e unfreeze.
+Il nuovo tentativo CI deve ancora verificare la correzione su macOS.
+PASS anche la suite UI locale completa dopo il recupero differito del focus
+(export interattivo esteso escluso come sopra).

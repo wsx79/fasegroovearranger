@@ -28,14 +28,10 @@ namespace fga {
 #include "NativeWindows.h"
 namespace {
 void settleNativeFocus(juce::Component& component){
-   #if JUCE_MAC
-    // Cocoa delivers key-window activation through its event loop. Let those
-    // native notifications arrive before injecting the next synthetic click.
-    const auto until=juce::Time::getMillisecondCounterHiRes()+200.;
+    // Wait for native key-window notifications and deferred focus restoration.
+    // Keep the exact focus condition; only the asynchronous completion is awaited.
+    const auto until=juce::Time::getMillisecondCounterHiRes()+1500.;
     while(!component.hasKeyboardFocus(false)&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
-   #else
-    juce::ignoreUnused(component);
-   #endif
 }
 }
 bool MainComponent::verifyWindowFocus(const juce::File& folder){
@@ -173,13 +169,14 @@ return false;
     if(!pluginWindow)return false;
     juce::String evidence;bool ok=true;
     auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
+    auto checkFocus=[&](const char* label){check(label,hasKeyboardFocus(false));if(!hasKeyboardFocus(false)){auto* focused=juce::Component::getCurrentlyFocusedComponent();evidence+="Focus diagnostics: foreground="+juce::String((int)juce::Process::isForegroundProcess())+", DAW descendants="+juce::String((int)hasKeyboardFocus(true))+", peer="+juce::String((int)(getPeer()&&getPeer()->isFocused()))+", focused="+(focused?focused->getName()+" / "+focused->getComponentID():juce::String("none"))+"\n";}};
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
     auto settleCentre=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+1500.;while(pluginWindow&&!centred()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);};
     settleCentre();
     check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());if(!centred()){evidence+="Window bounds: "+pluginWindow->getBounds().toString()+"\n";if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())evidence+="Display user area: "+display->userArea.toString()+"\n";}
-    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
+    pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());checkFocus("DAW keyboard focus restored");
     pluginEditorButton.onClick();settleCentre();check("VST editor reopened",hasOpenPluginEditors());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
-    pluginWindow->closeButtonPressed();showArrangement();select(1,0);
+    pluginWindow->closeButtonPressed();giveAwayKeyboardFocus();settleNativeFocus(*this);checkFocus("DAW focus recovered after a late native focus-loss notification");showArrangement();select(1,0);
     const int row=rowForTrack(0);arrangementPort.setViewPosition(0,std::max(0,arrangement.rowY(row)-rulerHeight));
     const auto view=arrangementPort.getViewArea();const auto point=headerChrome(view.getX(),arrangement.rowY(row),arrangement.rowHeight(row)).gear.getCentre().toFloat();
     const juce::MouseEvent gear(juce::Desktop::getInstance().getMainMouseSource(),point,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),point,juce::Time::getCurrentTime(),1,false);

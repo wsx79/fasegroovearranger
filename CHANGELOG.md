@@ -6,6 +6,7 @@
 - Preserve tracks excluded from AI New Song, report failed section placement, and propagate cancellation through compilation and plugin hashing.
 - Fix dense-MIDI panic delivery, PDC flushing/storage, non-finite metering, stopped-host parameter notifications and chord-popup lifetime.
 - Harden legacy defaults, project saves, numeric JSON reads, live MIDI and plugin selection after rescans.
+- Restore DAW keyboard focus after asynchronous native plugin-window hiding, while respecting new clicks, reopened editors and application switches.
 
 ## 0.32.1
 

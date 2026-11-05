@@ -303,6 +303,19 @@ void MainComponent::captureUndoPluginStates(){
 bool MainComponent::hasOpenPluginEditors()const{for(const auto& window:pluginWindows)if(window->isVisible())return true;return false;}
 
 
+namespace {
+void restoreFocusAfterHide(juce::Component::SafePointer<juce::Component> target,juce::Component::SafePointer<juce::Component> closed,juce::Time mouseDown,int remaining){
+    if(!target||!target->isShowing()||!target->isEnabled()||target->hasKeyboardFocus(false)||(closed&&closed->isShowing())||target->isCurrentlyBlockedByAnotherModalComponent()||remaining<=0)return;
+    // A subsequent click or reopened tool cancels the request. Wait for native
+    // activation without bringing an application back from the background.
+    if(juce::Desktop::getInstance().getMainMouseSource().getLastMouseDownTime()!=mouseDown)return;
+    if(juce::Process::isForegroundProcess()){
+        if(auto* peer=target->getPeer();peer&&peer->isFocused()){target->grabKeyboardFocus();if(target->hasKeyboardFocus(false))return;}
+        else target->getTopLevelComponent()->toFront(true);
+    }
+    juce::Timer::callAfterDelay(50,[target,closed,mouseDown,remaining]{restoreFocusAfterHide(target,closed,mouseDown,remaining-1);});
+}
+}
 void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
     window.setVisible(false);
     auto release=[safe=juce::Component::SafePointer<juce::Component>(&window)]{
@@ -325,7 +338,13 @@ void MainComponent::dismissAuxiliaryWindow(juce::Component& window){
         juce::Desktop::getInstance().getMainMouseSource().triggerFakeMove();
     };
     release();juce::MessageManager::callAsync(release);
-    if(isShowing()&&isEnabled()){getTopLevelComponent()->toFront(true);grabKeyboardFocus();}
+    if(isShowing()&&isEnabled()){
+        getTopLevelComponent()->toFront(true);grabKeyboardFocus();
+        // Native focus-loss notifications may follow the synchronous grab.
+        const auto mouseDown=juce::Desktop::getInstance().getMainMouseSource().getLastMouseDownTime();
+        juce::Component::SafePointer<juce::Component> target(this),closed(&window);
+        juce::Timer::callAfterDelay(100,[target,closed,mouseDown]{restoreFocusAfterHide(target,closed,mouseDown,20);});
+    }
 }
 void MainComponent::closePluginEditor(int track,int slot){
     const auto session=validEffectTrack(track)?effectTrack(track).sessionId:0;
