@@ -290,7 +290,7 @@ void MainComponent::openHostedEditor(int track,int slot){
     auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin)return;const auto session=effectTrack(track).sessionId;
     pluginWindow=nullptr;for(auto& window:pluginWindows)if(window->session==session&&window->slot==slot){pluginWindow=window.get();break;}
     if(!pluginWindow){auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot,track);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
-    else if(!pluginWindow->isVisible()){pluginWindow->setVisible(true);juce::Component::SafePointer<PluginWindow> safe(pluginWindow);juce::MessageManager::callAsync([safe]{if(safe&&safe->isVisible())safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
+    else if(!pluginWindow->isVisible())pluginWindow->showCentred();
     pluginWindow->setName(plugin->getName());if(slot>0)if(auto* fx=effectTrack(track).effect(slot))if(!fx->name.empty())pluginWindow->setName(utf(fx->name)+juce::String::fromUTF8(" \xc2\xb7 ")+plugin->getName());
     lastActivePluginSession=session;lastActivePluginSlot=slot;pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
 }

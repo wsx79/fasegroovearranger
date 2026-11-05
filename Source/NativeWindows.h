@@ -54,11 +54,14 @@ class MainComponent::PluginWindow : public juce::DocumentWindow,private juce::Au
 public:
     MainComponent& owner;juce::AudioPluginInstance& processor;
     std::uint64_t session;int slot,track;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot,int trackIndex):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot),track(trackIndex){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);processor.addListener(this);editor->addMouseListener(this,true);markState();setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());setVisible(true);
-        // The native peer can size the window while showing it; centre on the next
-        // message-loop turn, when the final size is known.
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot,int trackIndex):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot),track(trackIndex){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);processor.addListener(this);editor->addMouseListener(this,true);markState();setResizable(editor->isResizable(),false);setSize(editor->getWidth(),editor->getHeight());showCentred();}
+    void showCentred(){
+        setVisible(true);centreWithSize(getWidth(),getHeight());
+        // Cocoa can apply the native frame/content size after the first message
+        // turn. Re-centre once it has settled, including on subsequent opens.
         juce::Component::SafePointer<PluginWindow> safe(this);
-        juce::MessageManager::callAsync([safe]{if(safe)safe->centreWithSize(safe->getWidth(),safe->getHeight());});}
+        juce::Timer::callAfterDelay(100,[safe]{if(safe&&safe->isVisible())safe->centreWithSize(safe->getWidth(),safe->getHeight());});
+    }
     void markState()noexcept{owner.audio.invalidatePluginState(track,slot);}
     void activeWindowStatusChanged()override{
         if(isActiveWindow()){owner.lastActivePluginSession=session;owner.lastActivePluginSlot=slot;}else markState();

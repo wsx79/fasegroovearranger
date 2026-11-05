@@ -44,3 +44,12 @@ NOTE DI VERIFICA
   commerciali. Il test packaging Windows non equivale a una build Windows.
 - Freeze e' una cache di sessione; analisi pitch/BPM e note spettrali sono
   stime. Il guard PCM non garantisce i picchi dopo codifica lossy.
+
+CI PRIMO TENTATIVO DI RELEASE (a6a0438)
+PASS family/core, build e suite Linux e Windows.
+macOS: build riuscita; host smoke fermato dal solo centraggio iniziale
+finestra VST. Reopen, freeze e unfreeze della stessa istanza superati.
+Correzione: centraggio immediato e dopo assestamento del peer nativo,
+con lo stesso percorso all'apertura e alla riapertura. Il test conserva
+la tolleranza geometrica, attende fino a 1.5 s e registra le coordinate
+in caso di errore. La pubblicazione resta subordinata alla nuova CI.

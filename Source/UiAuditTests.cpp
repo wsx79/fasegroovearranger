@@ -174,9 +174,9 @@ return false;
     juce::String evidence;bool ok=true;
     auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
-    auto settleCentre=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+500.;while(pluginWindow&&!centred()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);};
+    auto settleCentre=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+1500.;while(pluginWindow&&!centred()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);};
     settleCentre();
-    check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());
+    check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());if(!centred()){evidence+="Window bounds: "+pluginWindow->getBounds().toString()+"\n";if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())evidence+="Display user area: "+display->userArea.toString()+"\n";}
     pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());check("DAW keyboard focus restored",hasKeyboardFocus(false));
     pluginEditorButton.onClick();settleCentre();check("VST editor reopened",hasOpenPluginEditors());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
     pluginWindow->closeButtonPressed();showArrangement();select(1,0);
