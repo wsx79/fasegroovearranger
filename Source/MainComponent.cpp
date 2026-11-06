@@ -865,7 +865,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
         if(page==Page::arrangement&&code=='X'){timelineCommand(1);return true;}
         if(page==Page::arrangement&&code=='D'){timelineCommand(5);return true;}
         if(page==Page::arrangement&&code=='E'){timelineCommand(4);return true;}
-        if(page==Page::arrangement&&code=='A'){arrangement.selectedClips.clear();for(int i=0;i<(int)project.tracks[(size_t)selectedTrack].clips.size();++i)arrangement.selectedClips.insert(i);arrangement.repaint();return true;}
+        if(page==Page::arrangement&&code=='A'){arrangement.selectedClips.clear();for(int i=0;i<(int)project.tracks[(size_t)selectedTrack].clips.size();++i)arrangement.selectedClips.insert({selectedTrack,i});arrangement.repaint();return true;}
         if(page==Page::arrangement&&code=='V'){timelineCommand(3);return true;}
     }else if(!k.getModifiers().isAltDown()){
         if(code=='S'&&page==Page::arrangement){timelineCommand(4);return true;}

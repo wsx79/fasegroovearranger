@@ -3,6 +3,7 @@
 #include "Project.h"
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <utility>
 namespace fga {
 namespace {
@@ -19,6 +20,19 @@ Clip slice(const Clip& source,double offset,double duration,double position){
     return part;
 }
 void sortClips(Track& t){std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});}
+struct HeldClip { int track; Clip clip; };
+std::vector<HeldClip> gatherClips(const Project& project,const std::vector<ClipId>& ids){
+    std::map<int,std::vector<int>> byTrack;
+    for(const auto& id:ids){if(id.track<0||id.track>=(int)project.tracks.size())continue;const auto& clips=project.tracks[(size_t)id.track].clips;if(id.index<0||id.index>=(int)clips.size())continue;auto& list=byTrack[id.track];if(std::find(list.begin(),list.end(),id.index)==list.end())list.push_back(id.index);}
+    std::vector<HeldClip> out;
+    for(const auto& entry:byTrack){const int track=entry.first;Project visible=project;visible.detachTrack(track);
+        for(int index:entry.second){const double end=project.clipStart(track,index)+project.clipLength(track,index);const int mapped=visible.clipAtBeat(track,end-1./1920.);if(mapped<0)continue;const auto& clip=visible.tracks[(size_t)track].clips[(size_t)mapped];
+            if(std::any_of(out.begin(),out.end(),[&](const HeldClip& held){return held.track==track&&std::abs(held.clip.position-clip.position)<1./1920.;}))continue;out.push_back({track,clip});}}
+    return out;
+}
+bool destinationTrack(const Project& project,int source,int rowDelta,int& track){
+    const int row=rowForTrack(source)+rowDelta;if(row<0||row>=(int)project.tracks.size())return false;track=trackAtRow(row);return track>=0&&track<(int)project.tracks.size();
+}
 }
 double Project::clipStart(int track,int clip)const{
     if(track<0||track>=(int)tracks.size()||clip<0||clip>=(int)tracks[(size_t)track].clips.size())return 0;
@@ -67,6 +81,35 @@ int Project::moveClip(int track,int index,int targetTrack,double beat,bool copy)
     if(track<0||track>=(int)tracks.size()||targetTrack<0||targetTrack>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beat))return -1;
     Project edited=*this;index=edited.detachTrack(track,index);if(index<0)return -1;auto& source=edited.tracks[(size_t)track];auto clip=source.clips[(size_t)index];if(!copy)source.clips.erase(source.clips.begin()+index);
     const int placed=edited.placeClip(targetTrack,std::move(clip),beat);if(placed<0)return -1;*this=std::move(edited);return placed;
+}
+bool Project::collectClipGroup(const std::vector<ClipId>& ids,int anchorTrack,std::vector<ClipGroupPiece>& pieces,double& origin,double& endBeat)const{
+    if(anchorTrack<0||anchorTrack>=(int)tracks.size())return false;const auto items=gatherClips(*this,ids);if(items.empty())return false;
+    origin=1e300;endBeat=0;const int anchorRow=rowForTrack(anchorTrack);pieces.clear();
+    for(const auto& item:items){origin=std::min(origin,item.clip.position);endBeat=std::max(endBeat,item.clip.position+item.clip.span);}
+    for(const auto& item:items){ClipGroupPiece piece;piece.rowDelta=rowForTrack(item.track)-anchorRow;piece.clip=item.clip;piece.clip.position-=origin;pieces.push_back(std::move(piece));}
+    return true;
+}
+bool Project::removeClipGroup(const std::vector<ClipId>& ids){
+    const auto items=gatherClips(*this,ids);if(items.empty())return false;Project edited=*this;
+    for(const auto& item:items){edited.detachTrack(item.track);const int index=edited.clipAtBeat(item.track,item.clip.position+1./1920.);if(index<0||!edited.deleteClip(item.track,index))return false;}
+    *this=std::move(edited);return true;
+}
+bool Project::translateClipGroup(const std::vector<ClipId>& ids,double timeDelta,int rowDelta,bool copy,double& appliedDelta,std::vector<ClipPlacement>& placed){
+    const auto items=gatherClips(*this,ids);if(items.empty()||!std::isfinite(timeDelta))return false;
+    double minPos=1e300,maxEnd=0;for(const auto& item:items){minPos=std::min(minPos,item.clip.position);maxEnd=std::max(maxEnd,item.clip.position+item.clip.span);}
+    appliedDelta=std::clamp(timeDelta,-minPos,131072.-maxEnd);
+    struct Dest{int track;Clip clip;double at;};std::vector<Dest> dests;
+    for(const auto& item:items){int track=0;if(!destinationTrack(*this,item.track,rowDelta,track))return false;dests.push_back({track,item.clip,item.clip.position+appliedDelta});}
+    Project edited=*this;
+    if(!copy)for(const auto& item:items){edited.detachTrack(item.track);const int index=edited.clipAtBeat(item.track,item.clip.position+1./1920.);if(index<0||!edited.deleteClip(item.track,index))return false;}
+    placed.clear();for(auto& dest:dests){if(edited.placeClip(dest.track,std::move(dest.clip),dest.at)<0)return false;placed.push_back({dest.track,dest.at});}
+    *this=std::move(edited);return true;
+}
+bool Project::placeClipGroup(int anchorTrack,double anchorBeat,const std::vector<ClipGroupPiece>& pieces,std::vector<ClipPlacement>& placed){
+    if(pieces.empty()||anchorTrack<0||anchorTrack>=(int)tracks.size()||!std::isfinite(anchorBeat))return false;
+    const int anchorRow=rowForTrack(anchorTrack);Project edited=*this;placed.clear();
+    for(auto piece:pieces){const int row=anchorRow+piece.rowDelta;if(row<0||row>=(int)edited.tracks.size())return false;const int track=trackAtRow(row);if(track<0||track>=(int)edited.tracks.size())return false;const double at=anchorBeat+piece.clip.position;if(!std::isfinite(at)||at<0||at>131072.)return false;if(edited.placeClip(track,std::move(piece.clip),at)<0)return false;placed.push_back({track,at});}
+    *this=std::move(edited);return true;
 }
 bool Project::deleteClip(int track,int index){
     if(track<0||track>=(int)tracks.size()||index<0||index>=(int)tracks[(size_t)track].clips.size())return false;

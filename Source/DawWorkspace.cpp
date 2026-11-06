@@ -111,7 +111,7 @@ void TrackInspector::refresh(){
     const auto sound=owner.sourceWithEffect(ti);
     source.setText(sound,juce::dontSendNotification);source.setTooltip(sound);
     const int clipIndex=owner.clipIndex();const bool hasClip=clipIndex>=0&&clipIndex<(int)t.clips.size();
-    if(hasClip){const double bars=owner.clipLength()/4.;const int guide=std::clamp(owner.project.sectionAtBeat(owner.clipStart()),0,(int)owner.project.sections.size()-1);section.setText(text(owner.project.sections[(size_t)guide].name)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);}
+    if(hasClip){const double bars=owner.clipLength()/4.;const int guide=std::clamp(owner.project.sectionAtBeat(owner.clipStart()),0,(int)owner.project.sections.size()-1);const auto& shown=t.clips[(size_t)clipIndex].name.empty()?owner.project.sections[(size_t)guide].name:t.clips[(size_t)clipIndex].name;section.setText(text(shown)+" / "+juce::String(bars,bars==(int)bars?0:2)+" "+tr("bars"),juce::dontSendNotification);}
     else section.setText(juce::String::fromUTF8("—"),juce::dontSendNotification);
     // A fader the user is dragging keeps its own value; the model follows it.
     owner.updateGainDisplay(gain,t.gain,t.volume,gainGesture);

@@ -6,6 +6,7 @@
 // surfaces of a multitrack workstation. Every colour, size and radius used by the arranger's
 // workspace is defined here, once.
 #include "FamilyTheme.h"
+#include <cmath>
 namespace Daw {
 // Surfaces, from the darkest (the timeline well) to the lightest (a hovered control).
 inline const juce::Colour base      {0xff111317};   // window background, gaps between panels
@@ -63,8 +64,12 @@ inline juce::Colour trackColour(int track){
         0xffff8a4d,0xff58b4f5,0xff6c9cff,0xff8a93ff,                                              // kick, snare, clap, rim
         0xff5fd68a,0xff45cfa5,0xff3ec5c5,                                                         // closed hat, open hat, ride
         0xffb69cff,0xffc690ff,0xffd98cf0,0xffe68acb,                                              // shaker, tambourine, conga, cowbell
-        0xffff6b6b,0xffff9473,0xff64d6ca};                                                                   // tom, crash
-    return juce::Colour(colours[std::clamp(track,0,17)]);
+        0xffff6b6b,0xffff9473,0xff64d6ca};                                                                   // tom, crash, lead
+    // Factory tracks 0–17 keep this palette. Added MIDI tracks get a stable hue so
+    // neighbouring manual parts stay distinct from Lead and from each other.
+    if(track<18)return juce::Colour(colours[std::clamp(track,0,17)]);
+    const float hue=std::fmod(0.07f+(float)(track-18)*0.6180339887f,1.f);
+    return juce::Colour::fromHSV(hue,0.62f,0.93f,1.f);
 }
 // Section markers on the ruler, by the kind of section.
 inline juce::Colour sectionColour(int kind){

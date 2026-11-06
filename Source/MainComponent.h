@@ -83,7 +83,7 @@ public:
     juce::String envelopeValueText(int track,double value)const;
     void showLaneTargetMenu(int track);
     double pixelsPerBar=6;
-    std::set<int> selectedClips;
+    std::set<ClipId> selectedClips;
     int fadeTrack=-1,fadeClip=-1,fadeSide=0;
     int dropTrack=-1; // a sample dragged from the browser over this track
     double snapBeat(double beat,bool bypass=false) const;
@@ -246,8 +246,11 @@ public:
     double clipLength()const{return project.clipLength(selectedTrack,clipIndex());}
     double clipStart()const{return clipIndex()<0?timelinePosition():project.clipStart(selectedTrack,clipIndex());}
     void selectClip(int track,int clip,bool keepSelection=false,double at=-1);
+    void renameClip(int track,int clip);
+    bool clipSelectionSpan(double& from,double& to) const;
     void timelineCommand(int command);
     void moveSelectedClips(int sourceTrack,int anchor,int targetTrack,double beat,bool copy);
+    void adoptPlacements(int focusTrack,double focusBeat,const std::vector<ClipPlacement>&);
     void ensureTimelineClip(bool addUndo=true);
     double timelinePosition()const{return editCursor>=0&&!audio.isPlaying()?editCursor:audio.position();}
     void seekTimeline(double beat);
@@ -431,7 +434,7 @@ private:
     juce::StringArray sectionSelectorNames;
     std::array<juce::String,maxTracks> sourceNames;std::array<bool,maxTracks> sourceNameCached{};
     std::vector<Note> clipboard;
-    std::vector<Clip> timelineClipboard;
+    std::vector<ClipGroupPiece> timelineClipboard;
     Clip emptyClip;
     bool noClipSelection=false;
     double selectionBeat=0,editCursor=-1;

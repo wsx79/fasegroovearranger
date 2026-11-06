@@ -70,9 +70,15 @@ void PianoRoll::mouseWheelMove(const juce::MouseEvent& e,const juce::MouseWheelD
     if(!before.empty()||selecting||editingVelocity)return;
     owner.wheelNavigate(true,e,wheel);
 }
+bool MainComponent::clipSelectionSpan(double& from,double& to)const{
+    from=std::numeric_limits<double>::max();to=0;auto chosen=arrangement.selectedClips;if(chosen.empty()&&clipIndex()>=0)chosen.insert({selectedTrack,clipIndex()});
+    for(const auto& id:chosen){if(id.track<0||id.track>=(int)project.tracks.size())continue;const auto& clips=project.tracks[(size_t)id.track].clips;if(id.index<0||id.index>=(int)clips.size())continue;const double at=project.clipStart(id.track,id.index);from=std::min(from,at);to=std::max(to,at+project.clipLength(id.track,id.index));}
+    return to>from;
+}
 void MainComponent::zoomSelection(){
     const bool editor=page==Page::editor;double from=0,to=0;
-    if(!selectionRange(*this,editor?piano.selected:arrangement.selectedClips,editor,from,to))return;
+    if(editor){if(!selectionRange(*this,piano.selected,true,from,to))return;}
+    else if(!clipSelectionSpan(from,to))return;
     auto& port=editor?pianoPort:arrangementPort;const int margin=editor?piano.leftMargin():headerWidth;
     auto& scale=editor?piano.pixelsPerBeat:arrangement.pixelsPerBar;
     scale=std::clamp((std::max(40,port.getWidth()-margin-48))/(to-from)*(editor?1.:4.),editor?2.:.05,160.);
@@ -82,7 +88,8 @@ void MainComponent::zoomSelection(){
 }
 void MainComponent::loopSelection(){
     const bool editor=page==Page::editor;double from=0,to=0;
-    if(!selectionRange(*this,editor?piano.selected:arrangement.selectedClips,editor,from,to))return;
+    if(editor){if(!selectionRange(*this,piano.selected,true,from,to))return;}
+    else if(!clipSelectionSpan(from,to))return;
     if(editor){from+=clipStart();to+=clipStart();}
     // The same selection again removes the loop.
     checkpoint();project.toggleLoopRegion(from,to);changed(false);
@@ -164,7 +171,7 @@ return false;
     stage("horizontal wheel scroll",arrangementPort.getViewPositionX()>x);
     arrangement.mouseWheelMove(event(arrangement,arrangementPort.getViewPositionX()+430,arrangementPort.getViewPositionY()+16,0),wheel);
     stage("navigation never edits musical data",json==juce::JSON::toString(projectJson(project),false,17)&&midi==midiFile(project));
-    arrangement.selectedClips={0,1};zoomSelectionButton.onClick();
+    arrangement.selectedClips={{0,0},{0,1}};zoomSelectionButton.onClick();
     stage("fit selected timeline span",arrangementPort.getViewPositionX()==0&&project.length()/4*arrangement.pixelsPerBar<arrangementPort.getWidth()-headerWidth);
     loopSelectionButton.onClick();stage("loop complete clip selection",project.loop&&project.loopStart==0&&project.loopEnd==96);undo(false);
     stage("undo loop locators",json==juce::JSON::toString(projectJson(project),false,17));

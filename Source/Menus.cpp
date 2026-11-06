@@ -114,9 +114,15 @@ void MainComponent::showSectionMenu(int section){
         safe->project.loopEnd=std::min(safe->project.loopEnd,safe->project.length());safe->piano.clearSelection();safe->changed();
     });
 }
+void MainComponent::renameClip(int track,int index){
+    if(track<0||track>=(int)project.tracks.size())return;auto& clips=project.tracks[(size_t)track].clips;if(index<0||index>=(int)clips.size()||project.sections.empty())return;
+    const int guide=std::clamp(project.sectionAtBeat(project.clipStart(track,index)),0,(int)project.sections.size()-1);const auto fallback=u(project.sections[(size_t)guide].name);
+    const auto initial=clips[(size_t)index].name.empty()?fallback:u(clips[(size_t)index].name);juce::Component::SafePointer<MainComponent> safe(this);
+    rename("Rename clip",initial,[safe,track,index,fallback](juce::String name){if(safe==nullptr||track>=(int)safe->project.tracks.size())return;auto& live=safe->project.tracks[(size_t)track].clips;if(index<0||index>=(int)live.size())return;auto trimmed=name.trim().substring(0,128);std::string stored=trimmed.isEmpty()||trimmed==fallback?std::string():trimmed.toStdString();if(live[(size_t)index].name==stored)return;safe->checkpoint();live[(size_t)index].name=std::move(stored);safe->changed(false);});
+}
 void MainComponent::showClipMenu(int track,int index){
     const bool hasClip=index>=0&&index<(int)project.tracks[(size_t)track].clips.size();juce::PopupMenu menu;
-    menu.addItem(11,tr("Cut clip"),hasClip);menu.addItem(12,tr("Copy clip"),hasClip);menu.addItem(13,tr("Paste clips at cursor"),!timelineClipboard.empty());menu.addItem(14,tr("Split at cursor"),hasClip);menu.addItem(15,tr("Duplicate clip"),hasClip);menu.addItem(16,tr("Delete clip"),hasClip);menu.addItem(18,tr("Create empty MIDI clip"));menu.addItem(4,tr("Humanize notes"),hasClip);menu.addSeparator();
+    menu.addItem(11,tr("Cut clip"),hasClip);menu.addItem(12,tr("Copy clip"),hasClip);menu.addItem(13,tr("Paste clips at cursor"),!timelineClipboard.empty());menu.addItem(14,tr("Split at cursor"),hasClip);menu.addItem(15,tr("Duplicate clip"),hasClip);menu.addItem(16,tr("Delete clip"),hasClip);menu.addItem(18,tr("Create empty MIDI clip"));menu.addItem(19,tr("Rename clip"),hasClip);menu.addItem(4,tr("Humanize notes"),hasClip);menu.addSeparator();
     const auto& source=project.tracks[(size_t)track];
     const auto* candidate=hasClip?&source.clips[(size_t)index]:nullptr;
     const bool convertible=candidate&&candidate->audioOffset<0&&source.instrument=="sample"&&(source.sampler.mode==1||(source.sampler.mode<0&&isDrumTrack(track)))&&candidate->notes.size()==1&&candidate->notes[0].pitch==source.sampleRoot&&std::abs(candidate->notes[0].start)<1e-9&&audio.sampleAsset(track);
@@ -127,7 +133,7 @@ void MainComponent::showClipMenu(int track,int index){
         if(id==30){const auto asset=safe->audio.sampleAsset(track);if(!asset)return;safe->checkpoint();auto& t=safe->project.tracks[(size_t)track];auto& c=safe->clip();c.span=safe->clipLength();c.audioOffset=t.sampler.start*asset->seconds();c.audioDuration=std::min(c.span*60./safe->project.settings.bpm,std::max(0.,t.sampler.end*asset->seconds()-c.audioOffset));if(c.audioDuration<=0){safe->undo(false);return;}c.loopLength=c.loopPhase=0;c.loopSource.clear();c.notes[0].length=c.span;safe->changed();return;}
         if(id==32){safe->checkpoint();safe->project.settings.grooveEnabled=false;generate(safe->project);safe->changed();return;}
         if(id==31){safe->checkpoint();safe->clip().feel={-1,-1,-1};generate(safe->project,Scope::clip,track,safe->clipIndex(),0);safe->changed();return;}
-        if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id>=11){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
+        if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id==19){safe->renameClip(track,index);return;}if(id>=11&&id<=18){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
 }
 void MainComponent::showGuide(bool english){juce::DialogWindow::LaunchOptions o;o.dialogTitle=english?"Fase Groove Arranger / User guide":"Fase Groove Arranger / Guida";o.dialogBackgroundColour=Palette::background;o.useNativeTitleBar=true;o.resizable=true;o.content.setOwned(createGuidePage(english).release());if(auto* window=o.launchAsync())window->setAlwaysOnTop(true);}
 bool MainComponent::writeHelpEvidence(const juce::File& folder){
