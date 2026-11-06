@@ -50,8 +50,18 @@ struct Clip {
     std::vector<Note> loopSource;
     // Persistent musical take, separate from performance timing. Zero loads legacy motifs.
     std::uint32_t motifSeed = 0;
-    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role; }
+    // Empty shows the section name. A custom label stays with the clip through edits.
+    std::string name;
+    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
 };
+struct ClipId {
+    int track = -1, index = -1;
+    bool operator<(const ClipId& o) const { return track < o.track || (track == o.track && index < o.index); }
+    bool operator==(const ClipId& o) const { return track == o.track && index == o.index; }
+};
+struct ClipPlacement { int track = -1; double beat = 0; };
+// rowDelta is a track-row offset from the anchor. clip.position is relative to the group origin.
+struct ClipGroupPiece { int rowDelta = 0; Clip clip; };
 struct SectionHarmony {
     bool enabled=false;int key=-1,scale=-1,chordCount=4,chordSteps=16;
     std::array<int,8> degrees{0,3,4,0,0,0,0,0},freeChords{-1,-1,-1,-1,-1,-1,-1,-1};
@@ -171,6 +181,13 @@ struct Project {
     int placeClip(int track, Clip clip, double beat);
     int moveClip(int track, int clip, int targetTrack, double beat, bool copy);
     bool deleteClip(int track, int clip);
+    // Group edits keep each clip on its row, shifted by the same time and row delta.
+    // A failed edit leaves the project unchanged. Locks travel with the clip.
+    // Drum pitches are remapped by normalise when a clip lands on a drum track.
+    bool collectClipGroup(const std::vector<ClipId>&, int anchorTrack, std::vector<ClipGroupPiece>&, double& origin, double& endBeat) const;
+    bool translateClipGroup(const std::vector<ClipId>&, double timeDelta, int rowDelta, bool copy, double& appliedDelta, std::vector<ClipPlacement>& placed);
+    bool removeClipGroup(const std::vector<ClipId>&);
+    bool placeClipGroup(int anchorTrack, double anchorBeat, const std::vector<ClipGroupPiece>&, std::vector<ClipPlacement>& placed);
     // Section length, order and removal move clips, automation and loops with the guide.
     bool resizeGuide(int section, int bars);
     void removeGuide(int section);
@@ -259,6 +276,8 @@ inline void storeHarmony(Project& p,int section,const Settings& s){
     else{p.settings.key=s.key;p.settings.scale=s.scale;p.settings.chordCount=s.chordCount;p.settings.chordSteps=s.chordSteps;p.settings.degrees=s.degrees;p.settings.freeChords=s.freeChords;p.settings.manualChords=s.manualChords;}
 }
 std::string chordNameAt(const Project&,double beat);
+// One chord cell at `beat`, clipped to the section, using the same harmony as chordNameAt.
+void chordCell(const Project&, double beat, double& start, double& end, std::string& name);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);
 void setPianoPattern(EngineOptions&,const sgk::GroovePattern&);
 void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool keepHarmony,std::uint32_t seed);

@@ -405,6 +405,7 @@ void Project::normalise() {
             c.audioOffset=finite(c.audioOffset,-1,-1,maxAudioRegionSeconds);c.audioDuration=finite(c.audioDuration,0,0,maxAudioRegionSeconds);
             if(c.audioOffset<0||c.audioDuration<=0){c.audioOffset=-1;c.audioDuration=0;}
             for(size_t f=0;f<3;++f)c.feel[f]=finite(c.feel[f],-1,-1,f==1?1.5:1.);
+            {std::string cleaned;cleaned.reserve(c.name.size());for(unsigned char ch:c.name)if(ch>=32)cleaned.push_back((char)ch);while(!cleaned.empty()&&cleaned.front()==' ')cleaned.erase(cleaned.begin());while(!cleaned.empty()&&cleaned.back()==' ')cleaned.pop_back();if(cleaned.size()>128)cleaned.resize(128);c.name=std::move(cleaned);}
             if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){if(t.instrument!="sample")n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
@@ -699,6 +700,13 @@ std::vector<std::string> chordNames(const Settings& s) {
 std::string chordNameAt(const Project& p,double beat){
     beat=std::max(0.,beat);const auto s=resolveSectionHarmony(p,p.sectionAtBeat(beat));
     return sgk::chordName(chordAtBeat(s,beat),s.key,s.scale);
+}
+void chordCell(const Project& p,double beat,double& start,double& end,std::string& name){
+    beat=std::max(0.,beat);const int sec=p.sectionAtBeat(beat);const auto harmony=resolveSectionHarmony(p,sec);
+    const double chordBeats=std::max(.25,harmony.chordSteps*.25);const double secStart=p.sectionStart(sec);
+    const double into=std::max(0.,beat-secStart);start=secStart+std::floor(into/chordBeats)*chordBeats;
+    const double secEnd=p.sectionStart(sec+1);end=secEnd>start?std::min(start+chordBeats,secEnd):start+chordBeats;
+    if(end<=start)end=start+chordBeats;name=chordNameAt(p,start);
 }
 namespace {
 // Entrances measured on a 32-bar club intro. The outro reverses these layers.

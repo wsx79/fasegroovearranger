@@ -119,5 +119,13 @@ int main(int argc,char** argv){try{
         loaded.tracks[fga::leadTrack].instrument="plugin";loaded.tracks[fga::leadTrack].instrumentPath="/lead/Lead.vst3";loaded.tracks[fga::leadTrack].instrumentState="lead-state";loaded.tracks[fga::leadTrack].engine.laneShift[4]=12.5;
         fga::Project back;check(fga::projectFromJson(fga::projectJson(loaded),back).wasOk()&&back.tracks[fga::leadTrack].instrumentState=="lead-state"&&back.tracks[fga::leadTrack].engine.laneShift[4]==12.5,"Lead routing and lane settings round-trip");
     }
+    {
+        auto named=fga::newProject(1);named.tracks[0].clips[0].name="Riff A";named.tracks[4].clips[1].name="Fill";auto json=fga::projectJson(named);fga::Project loaded;
+        check(fga::projectFromJson(json,loaded).wasOk()&&loaded.tracks[0].clips[0].name=="Riff A"&&loaded.tracks[4].clips[1].name=="Fill"&&loaded.tracks[0].clips[0]==named.tracks[0].clips[0],"custom clip names round-trip");
+        check(juce::JSON::toString(json).contains("Riff A")&&!juce::JSON::toString(fga::projectJson(fga::newProject(1))).contains("Riff A"),"empty clip names stay omitted");
+        auto legacy=juce::JSON::parse(juce::JSON::toString(json));(*(*legacy["tracks"].getArray())[0]["clips"].getArray())[0].getDynamicObject()->removeProperty("name");
+        check(fga::projectFromJson(legacy,loaded).wasOk()&&loaded.tracks[0].clips[0].name.empty()&&loaded.tracks[4].clips[1].name=="Fill","projects saved before clip names still load");
+        (*(*json["tracks"].getArray())[0]["clips"].getArray())[0].getDynamicObject()->setProperty("name",12);check(fga::projectFromJson(json,loaded).failed(),"a non-text clip name is rejected");
+    }
     tmp.deleteRecursively();std::cout<<"Project persistence, schema validation and MIDI import passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

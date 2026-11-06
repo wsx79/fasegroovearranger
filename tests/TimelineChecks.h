@@ -24,4 +24,30 @@ void verifyTimelineEditing(){
     auto manual=fixture();manual.tracks[0].freeTimeline=true;manual.tracks[0].clips.clear();manual.tracks[0].engine.pedalCC=true;Clip drawn;drawn.span=4;drawn.notes={{0,2,60,100,0}};manual.placeClip(0,drawn,0);auto manualBefore=signature(manual,0);manual.sections[0].type=Section::buildup;manual.normalise();check(signature(manual,0)==manualBefore,"manual clips capture controller role independently of guide edits");
     auto generated=fixture();generated.splitClip(0,0,4);generated.splitClip(0,1,8);generated.splitClip(0,2,12);generate(generated,Scope::clip,0,3,42);check(!generated.tracks[0].clips[3].notes.empty()&&generated.clipStart(0,3)==12&&generated.clipLength(0,3)==4,"regenerate split clip with index beyond guide count keeps its position and length");
     auto invalid=fixture();check(invalid.splitClip(0,0,0)<0&&invalid.moveClip(0,0,99,4,false)<0&&!invalid.deleteClip(-1,0),"invalid edits rejected");
+    {
+        auto song=newProject(1);song.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"}};song.normalise();
+        song.sections[1].harmony.enabled=true;song.sections[1].harmony.key=0;song.sections[1].harmony.scale=0;song.sections[1].harmony.chordCount=2;song.sections[1].harmony.chordSteps=8;song.sections[1].harmony.degrees={0,4,0,0,0,0,0,0};
+        double a0=0,b0=0,a1=0,b1=0,a2=0,b2=0;std::string n0,n1,n2;chordCell(song,0,a0,b0,n0);chordCell(song,16,a1,b1,n1);chordCell(song,18,a2,b2,n2);
+        check(n0==chordNameAt(song,0)&&n1==chordNameAt(song,16)&&n1!=n0,"ruler cells follow each section's harmony instead of the selected progression");
+        check(std::abs(a1-16)<1e-9&&std::abs(b1-a1-2)<1e-9&&std::abs(a2-18)<1e-9&&n2==chordNameAt(song,18)&&n2!=n1,"section chord steps clip at the boundary and advance inside the section");
+    }
+    {
+        auto group=newProject();group.sections={{Section::main,8,"Main"}};group.normalise();
+        group.tracks[4].clips[0].notes={{0,.25,60,100,0}};group.tracks[4].clips[0].locked=true;group.tracks[4].clips[0].name="Kick phrase";
+        group.tracks[5].clips[0].notes={{1,.25,62,90,0}};group.tracks[5].clips[0].name="  Backbeat  ";group.normalise();
+        check(group.tracks[4].clips[0].name=="Kick phrase"&&group.tracks[5].clips[0].name=="Backbeat","clip names trim and survive normalisation");
+        const auto saved=group;std::vector<ClipPlacement> placed;double applied=0;
+        check(group.translateClipGroup({{4,0},{5,0}},8,0,false,applied,placed)&&applied==8,"group move keeps relative timing");
+        const int kick=group.clipAtBeat(4,8.1),snare=group.clipAtBeat(5,8.1);check(kick>=0&&snare>=0&&group.clipAtBeat(4,0.1)<0&&group.clipAtBeat(5,1.1)<0,"group move leaves the original beats empty");
+        check(group.tracks[4].clips[(size_t)kick].locked&&group.tracks[4].clips[(size_t)kick].name=="Kick phrase"&&group.tracks[4].clips[(size_t)kick].notes[0].pitch==fgd::defaultNote(0),"moved clip keeps its lock, name and drum pitch");
+        check(std::abs(group.clipStart(5,snare)-8)<1e-6&&group.tracks[5].clips[(size_t)snare].notes[0].start==1,"the later clip keeps its offset inside the group");
+        auto vertical=saved;check(vertical.translateClipGroup({{4,0},{5,0}},0,1,false,applied,placed),"group moves down one row together");
+        const int movedKick=vertical.clipAtBeat(5,0.1),movedSnare=vertical.clipAtBeat(6,0.1);
+        check(movedKick>=0&&movedSnare>=0&&vertical.clipAtBeat(4,0.1)<0&&vertical.tracks[5].clips[(size_t)movedKick].notes[0].pitch==fgd::defaultNote(1)&&vertical.tracks[6].clips[(size_t)movedSnare].notes[0].pitch==fgd::defaultNote(2)&&vertical.tracks[5].clips[(size_t)movedKick].locked,"vertical move preserves rows and remaps each drum");
+        auto rejected=saved;check(!rejected.translateClipGroup({{4,0}},0,-1,false,applied,placed)&&rejected.tracks[4].clips[0]==saved.tracks[4].clips[0],"a group that would leave the tracks is rejected whole");
+        auto copied=saved;check(copied.translateClipGroup({{4,0}},4,0,true,applied,placed)&&copied.clipAtBeat(4,0.1)>=0&&copied.clipAtBeat(4,4.1)>=0&&copied.tracks[4].clips[(size_t)copied.clipAtBeat(4,4.1)].name=="Kick phrase","copy keeps the source and the name");
+        std::vector<ClipGroupPiece> pieces;double origin=0,end=0;check(saved.collectClipGroup({{4,0},{5,0}},4,pieces,origin,end)&&pieces.size()==2&&pieces[0].rowDelta==0&&pieces[1].rowDelta==1,"collected group keeps row offsets");
+        auto pasted=saved;std::vector<ClipPlacement> again;check(pasted.placeClipGroup(4,32,pieces,again)&&pasted.clipAtBeat(4,32.1)>=0&&pasted.clipAtBeat(5,32.1)>=0&&pasted.clipAtBeat(4,0.1)>=0,"paste keeps track offsets and does not remove the source");
+        auto removed=saved;check(removed.removeClipGroup({{5,0}})&&removed.clipAtBeat(5,1)<0&&removed.tracks[4].clips[0].locked,"removing one clip leaves the other locked clip");
+    }
 }

@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.34.2
+
+- Arrangement ruler chord labels follow the harmony at each beat and section, using the same names as the piano roll.
+- Added MIDI tracks keep stable colours distinct from the factory palette, everywhere the track colour is shown.
+- Clips on different tracks can be shift-selected and moved, copied, cut, pasted or duplicated together, keeping their timing, rows, locks and drum mapping.
+- A clip can have its own name. An empty name still shows the section name. Names are saved, survive older projects and undo.
+
 ## 0.34.1
 
 - Reorganized Track Inspector: track header badge with track color, subtitle, and compact horizontal row for Mute, Solo, and Lock Track controls.
