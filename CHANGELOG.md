@@ -1,8 +1,8 @@
 # Changelog — Fase Groove Arranger
 
-## 0.34.2
+## 0.35.0
 
-- Arrangement ruler chord labels follow the harmony at each beat and section, using the same names as the piano roll.
+- Arrangement ruler chord labels follow the harmony at each beat and section, using the same names as the piano roll. Each label starts after that bar number and stops before the next numbered bar.
 - Added MIDI tracks keep stable colours distinct from the factory palette, everywhere the track colour is shown.
 - Clips on different tracks can be shift-selected and moved, copied, cut, pasted or duplicated together, keeping their timing, rows, locks and drum mapping.
 - A clip can have its own name. An empty name still shows the section name. Names are saved, survive older projects and undo.

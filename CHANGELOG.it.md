@@ -1,8 +1,8 @@
 # Novità — Fase Groove Arranger
 
-## 0.34.2
+## 0.35.0
 
-- Le etichette degli accordi sul righello seguono l'armonia di ogni battuta e sezione, con gli stessi nomi del piano roll.
+- Le etichette degli accordi sul righello seguono l'armonia di ogni battuta e sezione, con gli stessi nomi del piano roll. Ogni etichetta parte dopo il numero di battuta e si ferma prima del numero successivo.
 - Le tracce MIDI aggiunte hanno un colore stabile, distinto dalla palette delle 18 tracce di fabbrica, in tutta l'interfaccia.
 - I clip su tracce diverse si selezionano con Maiusc e si spostano, copiano, tagliano, incollano o duplicano insieme, conservando tempi, righe, blocchi e mappatura delle percussioni.
 - Un clip può avere un nome proprio. Se è vuoto resta il nome della sezione. Il nome si salva, i progetti precedenti si aprono ancora e l'annullamento lo ripristina.
