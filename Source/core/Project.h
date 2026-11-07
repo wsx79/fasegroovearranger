@@ -3,6 +3,7 @@
 #pragma once
 #include <atomic>
 #include <algorithm>
+#include <cmath>
 #include <array>
 #include <cstdint>
 #include <string>
@@ -151,6 +152,7 @@ struct Settings {
     bool freeTempo = false; // AI/imported compositions may use 30..300 BPM beyond genre presets
     bool targetEnabled = false;
     double targetSeconds = 0; // clock target; 0 or disabled leaves the arrangement unchanged
+    double targetToleranceSeconds = 5; // ± seconds; 0 is an exact target and never rewrites the song
 };
 struct Project {
     std::string name = "Untitled groove";
@@ -214,6 +216,8 @@ struct Project {
 };
 inline double projectSeconds(const Project& p){return p.settings.bpm>0?p.length()*60./p.settings.bpm:0;}
 inline double targetBeat(const Project& p){return p.settings.targetEnabled&&p.settings.targetSeconds>0&&p.settings.bpm>0?p.settings.targetSeconds*p.settings.bpm/60.:-1;}
+enum class TargetFit { off, within, below, above };
+inline TargetFit targetFit(const Project& p){if(!p.settings.targetEnabled||!(p.settings.targetSeconds>0)||!(p.settings.bpm>0))return TargetFit::off;const double delta=projectSeconds(p)-p.settings.targetSeconds;const double tol=std::max(0.,p.settings.targetToleranceSeconds);if(std::abs(delta)<=tol)return TargetFit::within;return delta<0?TargetFit::below:TargetFit::above;}
 const char* sectionName(Section);
 enum class Genre : int { pianoHouse,soulful,deepHouse,gospel,jackinHouse,pianoJack,ukGarage,afroHouse,discoHouse,ninetiesHouse,neoSoul,chill,danceStabs,techno,electroHouse,count };
 constexpr int deepHouseGenre=(int)Genre::deepHouse,technoGenre=(int)Genre::techno,electroHouseGenre=(int)Genre::electroHouse,numGenres=(int)Genre::count;

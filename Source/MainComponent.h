@@ -406,10 +406,11 @@ private:
     IconButton automationButton{IconButton::Icon::automation};
     bool automationAllTracks=false;
     void showAutomationScope(bool enabled);
-    juce::Label durationLabel,targetDurationLabel;
-    juce::TextEditor targetDurationEditor;
+    juce::Label durationLabel,targetDurationLabel,targetToleranceLabel,targetFitLabel;
+    juce::TextEditor targetDurationEditor,targetToleranceEditor;
     bool acceptTargetEdit=false;
     void commitTargetDuration();
+    void commitTargetTolerance();
     void refreshTargetDurationEditor();
     juce::ComboBox sectionSelector,panelSections;
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};

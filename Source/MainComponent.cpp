@@ -638,7 +638,7 @@ void MainComponent::resized(){
     piano.ghostTrack.setVisible(edit);piano.expressionLane.setVisible(edit);
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&generateMenuButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&spotlightButton,&durationLabel,&targetDurationLabel,&targetDurationEditor,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&generateMenuButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&spotlightButton,&durationLabel,&targetDurationLabel,&targetDurationEditor,&targetToleranceLabel,&targetToleranceEditor,&targetFitLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
     aiComposeButton.setVisible(song);studioButton.setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineZoomOut,&timelineZoomIn,&timelineFitButton,&timelineZoom})c->setVisible(song);
     zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
@@ -683,9 +683,14 @@ void MainComponent::resized(){
         // since the arrangement folds them into GENERATE.
         for(auto* b:{&trackButton,&sectionButton,&clipButton})b->setVisible(false);
         x=12;place(genreBox,x,rowA,170);x+=176;place(durationLabel,x,rowA,48);x+=52;
-        const int editorW=64,leadX=w-12-140,insertMax=leadX-8-(x+610);
-        const int labelW=std::clamp(insertMax-(4+editorW+8),72,156);
-        place(targetDurationLabel,x,rowA,labelW);x+=labelW+4;place(targetDurationEditor,x,rowA+2,editorW,24);x+=editorW+8;divider(x,rowA+4,20);x+=9;
+        const int editorW=56,tolEditorW=34,leadX=w-12-140,insertMax=leadX-8-(x+610);
+        const int labelW=std::clamp(insertMax-(4+editorW+4+64+4+tolEditorW+4+78+8),48,108);
+        const int afterTarget=insertMax-(labelW+4+editorW+4);
+        const int tolLabelW=std::clamp(afterTarget-(tolEditorW+4+8),28,72);
+        const int fitW=std::max(0,afterTarget-(tolLabelW+4+tolEditorW+8));
+        place(targetDurationLabel,x,rowA,labelW);x+=labelW+4;place(targetDurationEditor,x,rowA+2,editorW,24);x+=editorW+4;
+        place(targetToleranceLabel,x,rowA,tolLabelW);x+=tolLabelW+4;place(targetToleranceEditor,x,rowA+2,tolEditorW,24);x+=tolEditorW+4;
+        place(targetFitLabel,x,rowA,fitW);targetFitLabel.setVisible(song&&fitW>=36);x+=std::max(fitW,0)+4;divider(x,rowA+4,20);x+=9;
         place(arrangeButton,x,rowA,170);x+=176;place(songButton,x,rowA,150);place(generateMenuButton,x+150,rowA,26);x+=180;divider(x+4,rowA+4,20);x+=13;
         place(addSectionButton,x,rowA,120);place(spotlightButton,x+132,rowA,100);
         place(leadButton,w-12-140,rowA,140);
@@ -856,9 +861,12 @@ void MainComponent::presentMissingResources(){
     juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::InfoIcon,tr("Missing samples"),tr("Search a folder for the missing samples? Plugins are not guessed, and cancelling leaves every path unchanged."),tr("Locate"),tr("Not now"),nullptr,juce::ModalCallbackFunction::create([safe](int result){if(!safe||result==0)return;safe->chooseFile(tr("RELINK SAMPLES"),"*",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[safe](juce::File folder){if(!safe)return;RelinkResult report;auto done=relinkProjectMedia(safe->project,folder,report);if(done.failed()){safe->message(done.getErrorMessage(),true);return;}if(report.found>0)safe->dirty=true;safe->restoreInstruments();safe->message(tr("Samples located")+" "+juce::String(report.found)+(report.missing.isEmpty()?juce::String():"\n"+tr("Still missing")+"\n"+report.missing.joinIntoString("\n"))+(report.unverified.isEmpty()?juce::String():"\n"+tr("Matched by filename only")+"\n"+report.unverified.joinIntoString("\n")),report.missing.size()>0);});}));
 }
 void MainComponent::refreshTargetDurationEditor(){
-    if(targetDurationEditor.hasKeyboardFocus(true))return;
-    juce::String text;if(project.settings.targetEnabled){const int seconds=(int)std::lround(project.settings.targetSeconds);text=juce::String(seconds/60)+":"+juce::String(seconds%60).paddedLeft('0',2);}
-    if(targetDurationEditor.getText()!=text)targetDurationEditor.setText(text,false);
+    if(!targetDurationEditor.hasKeyboardFocus(true)){juce::String text;if(project.settings.targetEnabled){const int seconds=(int)std::lround(project.settings.targetSeconds);text=juce::String(seconds/60)+":"+juce::String(seconds%60).paddedLeft('0',2);}if(targetDurationEditor.getText()!=text)targetDurationEditor.setText(text,false);}
+    if(!targetToleranceEditor.hasKeyboardFocus(true)){const auto text=juce::String((int)std::lround(project.settings.targetToleranceSeconds));if(targetToleranceEditor.getText()!=text)targetToleranceEditor.setText(text,false);}
+    const auto fit=targetFit(project);const auto word=fit==TargetFit::within?"On target":fit==TargetFit::below?"Too short":fit==TargetFit::above?"Too long":"";
+    targetFitLabel.getProperties().set("fgaRawText",true);targetFitLabel.setText(word[0]?tr(word):juce::String(),juce::dontSendNotification);
+    const auto ink=fit==TargetFit::within?Daw::play:fit==TargetFit::below?Daw::meterMid:fit==TargetFit::above?Daw::meterHigh:Daw::text;
+    durationLabel.setColour(juce::Label::textColourId,ink);targetFitLabel.setColour(juce::Label::textColourId,ink);
 }
 void MainComponent::commitTargetDuration(){
     if(!acceptTargetEdit)return;
@@ -871,14 +879,21 @@ void MainComponent::commitTargetDuration(){
     if(project.settings.targetEnabled&&(int)std::lround(project.settings.targetSeconds)==total){show();return;}
     project.settings.targetEnabled=true;project.settings.targetSeconds=total;publish();
 }
+void MainComponent::commitTargetTolerance(){
+    if(!acceptTargetEdit)return;
+    const auto text=targetToleranceEditor.getText().trim();
+    const int seconds=text.containsOnly("0123456789")?text.getIntValue():-1;
+    if(text.isEmpty()||seconds<0||seconds>600){message(tr("Enter a tolerance from 0 to 600 seconds."),true);targetToleranceEditor.setText(juce::String((int)std::lround(project.settings.targetToleranceSeconds)),false);return;}
+    if((int)std::lround(project.settings.targetToleranceSeconds)==seconds){targetToleranceEditor.setText(juce::String(seconds),false);return;}
+    project.settings.targetToleranceSeconds=seconds;dirty=true;arrangement.repaint();showPosition(timelinePosition());refreshTargetDurationEditor();
+}
 void MainComponent::collectPortable(){
     chooseFile(tr("Collect portable project"),"*",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[this](juce::File folder){PortableReport report;auto done=packagePortableProject(project,folder,report);if(done.failed()){message(done.getErrorMessage(),true);return;}auto note=tr("Portable project saved")+" "+report.project.getFullPathName();if(report.externalPlugins.isEmpty())note+="\n"+tr("Installed plugins were not copied. This copy has no SFZ maps to bundle.");else note+="\n"+tr("Installed plugins were not copied")+"\n"+report.externalPlugins.joinIntoString("\n");message(note,true);});
 }
 void MainComponent::showPosition(double beat){
     const int ticksIn=std::clamp((int)std::floor((beat-std::floor(beat))*960+1e-6),0,959);
     positionLabel.setText(timeDisplay?timeText(beat*60/project.settings.bpm,3):juce::String((int)beat/4+1)+"."+juce::String((int)beat%4+1)+"."+juce::String(ticksIn).paddedLeft('0',3),juce::dontSendNotification);
-    const auto length=songLength();auto legend=timeDisplay?"-"+timeText(std::max(0.,length-beat)*60/project.settings.bpm)+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
-    if(project.settings.targetEnabled){const double song=projectSeconds(project),delta=project.settings.targetSeconds-song;legend+=juce::String::fromUTF8("  ")+tr("Target")+" "+timeText(project.settings.targetSeconds,0)+" "+(delta>=0?"-":"+")+timeText(std::abs(delta),0);}
+    const auto length=songLength();const auto legend=timeDisplay?"-"+timeText(std::max(0.,length-beat)*60/project.settings.bpm)+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
     if(positionLegend!=legend){positionLegend=legend;repaint(lcdArea.withWidth(132));}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}

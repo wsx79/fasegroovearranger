@@ -143,7 +143,7 @@ juce::var projectJson(const Project& p){
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
     set(s,"guitarLead",c.guitarLead);set(s,"randomAutomation",c.randomAutomation);if(c.freeTempo)set(s,"freeTempo",true);
     set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
-    if(c.targetEnabled&&c.targetSeconds>0)set(s,"targetSeconds",c.targetSeconds);
+    if(c.targetEnabled&&c.targetSeconds>0)set(s,"targetSeconds",c.targetSeconds);if(std::abs(c.targetToleranceSeconds-5.)>1e-9)set(s,"targetToleranceSeconds",c.targetToleranceSeconds);
     juce::Array<juce::var> degrees,free,manual;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);for(bool v:c.manualChords)manual.add(v);set(s,"manualChords",manual);set(o,"settings",s);
     if(extendedProject(p))set(o,"buses",busesJson(p.buses));set(o,"masterGain",p.masterGain);if(!p.masterAutomation.isDefault())set(o,"masterAutomation",envelopeJson(p.masterAutomation));set(o,"loop",p.loop);set(o,"loopStart",p.loopStart);set(o,"loopEnd",p.loopEnd);
     juce::Array<juce::var> sections,tracks;
@@ -181,6 +181,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.randomAutomation=(bool)j.getProperty("randomAutomation",false);s.freeTempo=(bool)j.getProperty("freeTempo",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     if(j.hasProperty("targetSeconds")){const double target=num(j,"targetSeconds",0);if(!std::isfinite(target)||target<=0||target>24*3600)return juce::Result::fail("Invalid target duration.");s.targetEnabled=true;s.targetSeconds=target;}
+    if(j.hasProperty("targetToleranceSeconds")){const double tol=num(j,"targetToleranceSeconds",5);if(!std::isfinite(tol)||tol<0||tol>600)return juce::Result::fail("Invalid target tolerance.");s.targetToleranceSeconds=tol;}
     for(int i=0;i<8;++i){if(j["degrees"].isArray()&&j["degrees"].size()>i)s.degrees[(size_t)i]=boundedInteger(j["degrees"][i]);if(j["freeChords"].isArray()&&j["freeChords"].size()>i)s.freeChords[(size_t)i]=boundedInteger(j["freeChords"][i]);}
     if(j.hasProperty("manualChords")){
         auto* manual=j["manualChords"].getArray();if(!manual||manual->size()!=8)return juce::Result::fail("Invalid manual chord mask.");

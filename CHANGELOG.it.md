@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.38.0
+
+- La durata obiettivo sta dopo la durata del brano e prima di Nuovo arrangiamento. Una tolleranza, cinque secondi per default, indica se il brano è in tolleranza, troppo corto o troppo lungo. Zero è la lunghezza esatta. Brano e tempo non vengono riscritti. Il tempo residuo del trasporto resta la posizione di riproduzione. I progetti precedenti si aprono con cinque secondi di tolleranza e senza obiettivo.
+
 ## 0.37.0
 
 - Le copie di recupero ruotano fuori dal file del progetto. Dopo una chiusura anomala si possono ripristinare o scartare; il file originale non cambia finché non salvi.

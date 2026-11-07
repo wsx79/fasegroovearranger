@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.38.0
+
+- Target duration sits after the song length and before New arrangement. A tolerance, five seconds by default, shows whether the song is on target, too short or too long. Zero is exact. The song and its tempo are not rewritten. The transport remaining time stays the playhead. Older projects open with the five-second tolerance and no target.
+
 ## 0.37.0
 
 - Recovery snapshots rotate separately from the project file. After an abnormal quit you can restore or discard them; the original file is not replaced until you save.

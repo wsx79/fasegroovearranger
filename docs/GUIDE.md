@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.37.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.38.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 Changing a section's length, order or presence moves the MIDI, automation and loop with that section. Independent section harmony is what the chord controls, vocal chops and MIDI key signature follow while it is enabled.
 
@@ -356,7 +356,7 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 
 Click the **position number or the small bar-count legend** next to the metronome. The transport alternates **bars.beats.ticks** and **minutes:seconds.milliseconds**. Time mode shows **remaining time** below in grey; durations above an hour also include hours.
 
-**Target duration** sits in the arrangement bar after the song length and before **NEW ARRANGEMENT**. Type a clock length such as 3:30, or leave the field empty to turn it off. A marker on the arrangement shows that position, and the transport legend shows the song length plus the time remaining or overrun. Tempo or form changes move the marker; notes stay as written. Older projects have no target.
+**Target duration** sits in the arrangement bar after the song length and before **NEW ARRANGEMENT**. Type a clock length such as 3:30, or leave that field empty to turn the target off. **Tolerance** is the allowed gap in seconds, five by default; type 0 for an exact length. The song length turns green inside that range, amber when the song is too short and red when it is too long. The transport’s remaining time is only the playhead, not this comparison. A marker on the arrangement shows the target. Tempo or form moves it; notes and tempo are not rewritten. Older projects open with a five-second tolerance and no target.
 
 The **arrangement** ruler switches from bar numbers to song times calculated from the current BPM. Lines still follow bars and beats: **metre, snap, notes, loops and automation stay unchanged**. The piano roll retains its musical references. Time follows song position, so it moves back when a loop restarts. Click again to restore bars; the choice is remembered locally.
 
