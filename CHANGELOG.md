@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.37.0
 
 - Recovery snapshots rotate separately from the project file. After an abnormal quit you can restore or discard them; the original file is not replaced until you save.
 - Opening a project lists missing samples and plugins once and can search a folder for samples without guessing plugins.

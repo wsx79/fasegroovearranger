@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## Non rilasciato
+## 0.37.0
 
 - Le copie di recupero ruotano fuori dal file del progetto. Dopo una chiusura anomala si possono ripristinare o scartare; il file originale non cambia finché non salvi.
 - All’apertura, campioni e plugin mancanti compaiono una sola volta e si può cercare una cartella per i campioni, senza indovinare i plugin.
