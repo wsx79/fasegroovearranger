@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.36.0
+
+- The chord-editor circle title and the selected-slot line follow the interface language, without the em-dash separator.
+- Piano-roll chord labels follow notes that actually sound together when they are a major, minor or seventh chord. Other lines keep the section harmony. Drum lanes are unchanged.
+
 ## 0.35.0
 
 - Arrangement ruler chord labels follow the harmony at each beat and section, using the same names as the piano roll. Each label starts after that bar number and stops before the next numbered bar.

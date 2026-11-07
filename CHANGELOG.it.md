@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.36.0
+
+- Nel circolo delle quinte dell'editor accordi, titolo e riga dello slot seguono la lingua dell'interfaccia, senza il trattino lungo.
+- Nel piano roll l'accordo mostrato segue le note che suonano insieme, se formano un accordo maggiore, minore o di settima. Negli altri casi resta l'armonia della sezione. Le corsie ritmiche non cambiano.
+
 ## 0.35.0
 
 - Le etichette degli accordi sul righello seguono l'armonia di ogni battuta e sezione, con gli stessi nomi del piano roll. Ogni etichetta parte dopo il numero di battuta e si ferma prima del numero successivo.

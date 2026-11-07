@@ -96,7 +96,7 @@ void PianoRoll::paint(juce::Graphics& g){
     if(ownerTrackIsDrum()){
         for(double b=0;b<owner.clipLength();b+=1){const float x=left+(float)(b*pixelsPerBeat);if(x<view.getX()+left||x>view.getRight())continue;label(g,juce::String((int)b%4+1),{(int)x+3,23,40,14},10,(int)b%4==0?Daw::accent:Daw::textFaint);if((int)b%4==0)label(g,tr("Bar")+" "+juce::String((int)b/4+1),{(int)x+3,2,140,18},10,Daw::text);}
     }else{
-        for(double b=0;b<owner.clipLength()-1./960.;){const double abs=owner.clipStart()+b;const int sec=owner.project.sectionAtBeat(abs);const auto harmony=resolveSectionHarmony(owner.project,sec);const double chordBeats=std::max(.25,harmony.chordSteps*.25);const double untilSection=owner.project.sectionStart(sec+1)-abs;double step=untilSection>0?std::min(chordBeats,std::max(1./960.,untilSection)):chordBeats;if(b+step>owner.clipLength())step=owner.clipLength()-b;const int x=leftMargin()+(int)(b*pixelsPerBeat);const int width=std::max(1,(int)(step*pixelsPerBeat)-2);if(x+width>=view.getX()+left&&x<=view.getRight()){auto r=juce::Rectangle<int>(x+1,3,width,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);label(g,utf(chordNameAt(owner.project,abs)),r.reduced(8,0),11,Daw::text);const double local=owner.audio.position()-owner.clipStart();const bool currentBar=local>=b&&local<b+4.;g.setFont(Daw::font(Daw::small,true));g.setColour(currentBar?Daw::accent:Daw::textDim);g.drawText(juce::String((int)(b/4)+1),x+4,24,50,14,juce::Justification::centredLeft);}b+=step;}
+        for(double b=0;b<owner.clipLength()-1./960.;){const double abs=owner.clipStart()+b;const int sec=owner.project.sectionAtBeat(abs);const auto harmony=resolveSectionHarmony(owner.project,sec);const double chordBeats=std::max(.25,harmony.chordSteps*.25);const double untilSection=owner.project.sectionStart(sec+1)-abs;double step=untilSection>0?std::min(chordBeats,std::max(1./960.,untilSection)):chordBeats;if(b+step>owner.clipLength())step=owner.clipLength()-b;const int x=leftMargin()+(int)(b*pixelsPerBeat);const int width=std::max(1,(int)(step*pixelsPerBeat)-2);if(x+width>=view.getX()+left&&x<=view.getRight()){auto r=juce::Rectangle<int>(x+1,3,width,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);label(g,utf(chordHeardInClip(owner.clip().notes,b,b+step,harmony.key,harmony.scale,chordNameAt(owner.project,abs))),r.reduced(8,0),11,Daw::text);const double local=owner.audio.position()-owner.clipStart();const bool currentBar=local>=b&&local<b+4.;g.setFont(Daw::font(Daw::small,true));g.setColour(currentBar?Daw::accent:Daw::textDim);g.drawText(juce::String((int)(b/4)+1),x+4,24,50,14,juce::Justification::centredLeft);}b+=step;}
     }
     g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(39,(float)vx,(float)view.getRight());
     g.setColour(Daw::chrome);g.fillRect(vx,0,leftMargin(),40);
@@ -1102,7 +1102,7 @@ void MainComponent::showChordCirclePopover(int initialSlot){
             presetsBtn.onClick=[this]{if(!valid())return;owner->showChordMenu();};
             addAndMakeVisible(close);close.setComponentID("chord-circle-close");close.accentHover=true;close.setTooltip(tr("Close"));
             close.onClick=[this]{if(auto* callout=findParentComponentOfClass<juce::CallOutBox>())callout->dismiss();};
-            setComponentID("chord-circle-body");audition.setComponentID("chord-audition");setSize(340,410);
+            setComponentID("chord-circle-body");audition.setComponentID("chord-audition");setSize(340,422);
             refreshState();
         }
         bool valid()const{return owner&&juce::isPositiveAndBelow(owner->selectedSection,(int)owner->project.sections.size());}
@@ -1129,15 +1129,17 @@ void MainComponent::showChordCirclePopover(int initialSlot){
         }
         void paint(juce::Graphics& g)override{
             Daw::fillElevatedSurface(g,getLocalBounds().toFloat(),Daw::bgPanel(),Daw::panelRadius);
-            Daw::drawCaps(g,tr("CIRCLE OF FIFTHS — CLICK TO REVOICE SLOT")+" "+juce::String(activeSlot+1),{12,6,getWidth()-52,18},Daw::accent);
+            Daw::drawCaps(g,tr("CIRCLE OF FIFTHS"),{12,2,getWidth()-48,14},Daw::accent);
+            g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small));
+            g.drawFittedText(tr("Edit chord")+" "+juce::String(activeSlot+1),{12,16,getWidth()-48,14},juce::Justification::centredLeft,1,.8f);
         }
         void resized()override{if(!valid())return;
             const auto& h=owner->project.sections[(size_t)owner->selectedSection].harmony;const int count=std::clamp(h.enabled?h.chordCount:owner->project.settings.chordCount,1,8);
             const int cols=std::min(4,count),rows=(count+cols-1)/cols;
             const int bw=(getWidth()-20)/cols;
             close.setBounds(getWidth()-30,2,24,24);
-            for(int i=0;i<count;++i)slotButtons[(size_t)i].setBounds(10+(i%cols)*bw,26+(i/cols)*26,bw-4,24);
-            const int topY=28+rows*26;
+            for(int i=0;i<count;++i)slotButtons[(size_t)i].setBounds(10+(i%cols)*bw,34+(i/cols)*26,bw-4,24);
+            const int topY=36+rows*26;
             circle.setBounds(10,topY,getWidth()-20,getHeight()-topY-40);
             audition.setBounds(10,getHeight()-34,80,26);randomBtn.setBounds(92,getHeight()-34,(getWidth()-108)/2,26);
             presetsBtn.setBounds(98+(getWidth()-108)/2,getHeight()-34,(getWidth()-108)/2,26);

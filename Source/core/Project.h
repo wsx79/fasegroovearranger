@@ -276,6 +276,12 @@ inline void storeHarmony(Project& p,int section,const Settings& s){
     else{p.settings.key=s.key;p.settings.scale=s.scale;p.settings.chordCount=s.chordCount;p.settings.chordSteps=s.chordSteps;p.settings.degrees=s.degrees;p.settings.freeChords=s.freeChords;p.settings.manualChords=s.manualChords;}
 }
 std::string chordNameAt(const Project&,double beat);
+// Empty when the sounding pitches are not one major, minor or seventh chord.
+// Octave duplicates collapse. The lowest note picks the root only when several roots fit.
+std::string recognizeChordPitches(const std::vector<int>& midiNotes, int key, int scale);
+// Notes are clip-local. Overlapping pitches in [from, to) replace `fallback` only when
+// every recognized sonority is the same chord. Melody, silence and mixed chords keep `fallback`.
+std::string chordHeardInClip(const std::vector<Note>&, double from, double to, int key, int scale, const std::string& fallback);
 // One chord cell at `beat`, clipped to the section, using the same harmony as chordNameAt.
 void chordCell(const Project&, double beat, double& start, double& end, std::string& name);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);
