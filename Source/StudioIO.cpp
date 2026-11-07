@@ -103,4 +103,62 @@ juce::Result relinkProjectMedia(Project& project,const juce::File& folder,Relink
 }
 juce::Result saveSamplerPreset(const SamplerPreset& preset,const juce::File& file){std::vector<juce::File> created;juce::File copied;juce::String hash;auto r=copyMedia(preset.file,file.getSiblingFile(file.getFileNameWithoutExtension()+".media"),copied,hash,created);if(r.failed())return r;auto o=object();set(o,"format","fase-groove-sampler");set(o,"version",1);set(o,"root",preset.root);set(o,"sample",copied.getRelativePathFrom(file.getParentDirectory()).replaceCharacter('\\','/'));set(o,"hash",hash);set(o,"settings",samplerJson(preset.settings));juce::TemporaryFile temp(file);if(!temp.getFile().replaceWithText(juce::JSON::toString(o,false))||!temp.overwriteTargetFileWithTemporary()){for(const auto& f:created)f.deleteFile();return juce::Result::fail("Cannot save sampler preset.");}return juce::Result::ok();}
 juce::Result loadSamplerPreset(const juce::File& file,SamplerPreset& preset){if(!file.existsAsFile()||file.getSize()>1024*1024)return juce::Result::fail("Invalid sampler preset.");juce::var o;auto r=readBoundedJson(file,o,1024*1024);if(r.failed())return r;if(o["format"].toString()!="fase-groove-sampler"||(int)o["version"]!=1)return juce::Result::fail("Unsupported sampler preset.");SamplerPreset p;p.root=std::clamp((int)number(o,"root",60),0,127);if(auto read=readSampler(o["settings"],p.settings);read.failed())return read;auto path=o["sample"].toString();if(path.isEmpty()||juce::File::isAbsolutePath(path))return juce::Result::fail("Invalid preset sample path.");p.file=file.getSiblingFile(path.replaceCharacter('\\','/'));if(!p.file.isAChildOf(file.getParentDirectory()))return juce::Result::fail("Preset sample path leaves the preset folder.");p.hash=o["hash"].toString();if(!p.file.existsAsFile()||p.hash.isEmpty()||hashFile(p.file)!=p.hash)return juce::Result::fail("Preset sample is missing or changed. Restore its media folder.");preset=std::move(p);return juce::Result::ok();}
+namespace {
+constexpr int recoverySlots=3;
+juce::File sessionMarker(const juce::File& dir){return dir.getChildFile("session.open");}
+juce::File recoveryMeta(const juce::File& dir){return dir.getChildFile("latest.txt");}
+int recoverySlot(int slot){return std::clamp(slot,0,recoverySlots-1);}
+juce::File recoverySnap(const juce::File& dir,int slot){return dir.getChildFile("snap-"+juce::String(recoverySlot(slot))+".fga");}
+juce::File recoverySide(const juce::File& dir,int slot){return dir.getChildFile("snap-"+juce::String(recoverySlot(slot))+".txt");}
+juce::Result writeTextAtomic(const juce::File& target,const juce::String& text){juce::TemporaryFile temp(target);if(!temp.getFile().replaceWithText(text)||!temp.overwriteTargetFileWithTemporary())return juce::Result::fail("Cannot record recovery.");return juce::Result::ok();}
+}
+juce::File recoveryDirectory(){return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger/recovery");}
+void openRecoverySession(const juce::File& dir){dir.createDirectory();sessionMarker(dir).replaceWithText("open");}
+void closeRecoverySession(const juce::File& dir){sessionMarker(dir).deleteFile();clearRecoverySnapshots(dir);}
+void clearRecoverySnapshots(const juce::File& dir){for(int i=0;i<recoverySlots;++i){recoverySnap(dir,i).deleteFile();recoverySide(dir,i).deleteFile();}recoveryMeta(dir).deleteFile();}
+juce::Result storeRecoverySnapshot(const Project& project,const juce::String& originalPath,const juce::File& dir){
+    if(auto made=dir.createDirectory();made.failed())return made;
+    int slot=0;if(recoveryMeta(dir).existsAsFile()){auto lines=juce::StringArray::fromLines(recoveryMeta(dir).loadFileAsString());if(lines.size()>=3)slot=(lines[2].getIntValue()+1)%recoverySlots;}
+    const auto file=recoverySnap(dir,slot);const auto saved=saveProject(project,file);if(saved.failed())return saved;
+    Project probe;if(loadProject(file,probe).failed()){file.deleteFile();return juce::Result::fail("Recovery snapshot is unreadable.");}
+    const auto path=originalPath.contains("\n")?juce::String():originalPath;const auto millis=juce::String(juce::Time::currentTimeMillis());
+    if(auto side=writeTextAtomic(recoverySide(dir,slot),path+"\n"+millis);side.failed()){file.deleteFile();return side;}
+    if(auto meta=writeTextAtomic(recoveryMeta(dir),path+"\n"+millis+"\n"+juce::String(slot));meta.failed())return meta;
+    return juce::Result::ok();
+}
+bool pendingRecovery(const juce::File& dir,RecoveryOffer& offer){
+    if(!sessionMarker(dir).existsAsFile()||!recoveryMeta(dir).existsAsFile())return false;
+    const auto lines=juce::StringArray::fromLines(recoveryMeta(dir).loadFileAsString());if(lines.size()<3)return false;
+    const int slot=lines[2].getIntValue();if(slot<0||slot>=recoverySlots)return false;
+    for(int attempt=0;attempt<recoverySlots;++attempt){const int s=(slot-attempt+recoverySlots)%recoverySlots;const auto file=recoverySnap(dir,s);Project probe;if(loadProject(file,probe).failed())continue;
+        juce::String path,when;const auto side=recoverySide(dir,s);if(side.existsAsFile()){const auto remembered=juce::StringArray::fromLines(side.loadFileAsString());if(remembered.size()>=2){path=remembered[0];when=remembered[1];}}
+        else if(attempt==0){path=lines[0];when=lines[1];}
+        offer.snapshot=file;offer.originalPath=path;offer.millis=when.getLargeIntValue();return true;}
+    return false;
+}
+void listMissingResources(const Project& project,const juce::File& projectFile,std::vector<MissingResource>& out){
+    auto add=[&](const juce::String& track,const char* kind,const juce::String& path){if(path.isEmpty())return;out.push_back({track,kind,path});};
+    for(const auto& track:project.tracks){
+        if(track.instrument=="sample"){const auto file=sampleFile(track,projectFile);if(!track.instrumentPath.empty()&&!file.existsAsFile())add(juce::String::fromUTF8(track.name.c_str()),"sample",file==juce::File()?juce::String::fromUTF8(track.instrumentPath.c_str()):file.getFullPathName());}
+        else if(track.instrument=="plugin"&&!track.instrumentPath.empty()&&!juce::File(juce::String::fromUTF8(track.instrumentPath.c_str())).exists())add(juce::String::fromUTF8(track.name.c_str()),"plugin",juce::String::fromUTF8(track.instrumentPath.c_str()));
+        for(const auto& fx:track.effects)if(!fx.path.empty()&&!juce::File(juce::String::fromUTF8(fx.path.c_str())).exists())add(juce::String::fromUTF8(track.name.c_str()),"plugin",juce::String::fromUTF8(fx.path.c_str()));
+    }
+    for(const auto& fx:project.masterEffects.effects)if(!fx.path.empty()&&!juce::File(juce::String::fromUTF8(fx.path.c_str())).exists())add("Master","plugin",juce::String::fromUTF8(fx.path.c_str()));
+}
+juce::Result packagePortableProject(const Project& source,const juce::File& folder,PortableReport& report){
+    if(folder.exists()&&!folder.isDirectory())return juce::Result::fail("Choose a folder.");
+    if(folder.getNumberOfChildFiles(juce::File::findFilesAndDirectories)>0)return juce::Result::fail("Choose an empty folder. Existing files were not changed.");
+    for(const auto& track:source.tracks)if(track.instrument=="sample"&&juce::String::fromUTF8(track.instrumentPath.c_str()).endsWithIgnoreCase(".sfz"))return juce::Result::fail("SFZ maps are not bundled. Only single audio files used by sample tracks can be copied.");
+    if(auto made=folder.createDirectory();made.failed())return made;
+    auto name=juce::File::createLegalFileName(juce::String::fromUTF8(source.name.c_str()));if(name.isEmpty())name="Song";
+    const auto target=folder.getChildFile(name+".fga");const auto media=folder.getChildFile(name+".media");
+    if(target.existsAsFile()||media.exists())return juce::Result::fail("The destination already contains this project.");
+    Project collected;auto result=collectProjectMedia(source,target,collected);if(result.failed()){target.deleteFile();media.deleteRecursively();return result;}
+    Project reloaded;auto removePartial=[&]{target.deleteFile();media.deleteRecursively();};
+    if(loadProject(target,reloaded).failed()){removePartial();return juce::Result::fail("The portable project could not be read back.");}
+    for(const auto& track:reloaded.tracks)if(track.instrument=="sample"&&!track.instrumentPath.empty()&&!sampleFile(track,target).existsAsFile()){removePartial();return juce::Result::fail("A collected sample is not inside the portable folder.");}
+    for(const auto& track:source.tracks){if(track.instrument=="plugin"&&!track.instrumentPath.empty())report.externalPlugins.add(juce::String::fromUTF8(track.name.c_str())+": "+juce::String::fromUTF8(track.instrumentPath.c_str()));for(const auto& fx:track.effects)if(!fx.path.empty())report.externalPlugins.add(juce::String::fromUTF8(fx.pluginName.c_str()));}
+    for(const auto& fx:source.masterEffects.effects)if(!fx.path.empty())report.externalPlugins.add("Master: "+juce::String::fromUTF8(fx.pluginName.c_str()));
+    report.project=target;return juce::Result::ok();
+}
 }

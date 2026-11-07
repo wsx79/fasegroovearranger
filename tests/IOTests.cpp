@@ -127,5 +127,8 @@ int main(int argc,char** argv){try{
         check(fga::projectFromJson(legacy,loaded).wasOk()&&loaded.tracks[0].clips[0].name.empty()&&loaded.tracks[4].clips[1].name=="Fill","projects saved before clip names still load");
         (*(*json["tracks"].getArray())[0]["clips"].getArray())[0].getDynamicObject()->setProperty("name",12);check(fga::projectFromJson(json,loaded).failed(),"a non-text clip name is rejected");
     }
+    {auto timed=fga::newProject(1);timed.settings.bpm=120;timed.settings.targetEnabled=true;timed.settings.targetSeconds=210;timed.normalise();fga::Project back;auto json=fga::projectJson(timed);check(fga::projectFromJson(json,back).wasOk()&&back.settings.targetEnabled&&back.settings.targetSeconds==210&&std::abs(fga::targetBeat(back)-420)<1e-6,"target duration follows tempo");
+     auto legacy=juce::JSON::parse(juce::JSON::toString(json));legacy["settings"].getDynamicObject()->removeProperty("targetSeconds");check(fga::projectFromJson(legacy,back).wasOk()&&!back.settings.targetEnabled,"older projects have no target");
+     auto bad=juce::JSON::parse(juce::JSON::toString(fga::projectJson(timed)));bad["settings"].getDynamicObject()->setProperty("targetSeconds",-3);check(fga::projectFromJson(bad,back).failed(),"an impossible target is rejected");}
     tmp.deleteRecursively();std::cout<<"Project persistence, schema validation and MIDI import passed\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}}

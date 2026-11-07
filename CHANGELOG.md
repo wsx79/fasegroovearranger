@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.37.0
+
+- Recovery snapshots rotate separately from the project file. After an abnormal quit you can restore or discard them; the original file is not replaced until you save.
+- Opening a project lists missing samples and plugins once and can search a folder for samples without guessing plugins.
+- Collect portable project writes an empty folder with relative sample paths. Plugins and SFZ maps are reported and not bundled.
+- An optional target duration shows a timeline marker plus remaining or overrun time, without rewriting notes.
+
 ## 0.36.0
 
 - The chord-editor circle title and the selected-slot line follow the interface language, without the em-dash separator.
