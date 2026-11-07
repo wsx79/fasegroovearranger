@@ -508,6 +508,7 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
 // Every visible icon-only button must explain itself with a tooltip.
 
 bool MainComponent::verifyTargetDurationControl(const juce::File& folder){
+    if(!folder.createDirectory())return false;
     showArrangement();const auto saved=Localisation::current();bool ok=true;
     for(int width:{1440,1224}){setSize(width,980);resized();const auto song=durationLabel.getBounds(),label=targetDurationLabel.getBounds(),field=targetDurationEditor.getBounds(),arrange=arrangeButton.getBounds();
         const auto tol=targetToleranceLabel.getBounds(),tolField=targetToleranceEditor.getBounds();ok=ok&&song.getRight()<=label.getX()&&label.getRight()<=field.getX()&&field.getRight()<=tol.getX()&&tol.getRight()<=tolField.getX()&&tolField.getRight()<=arrange.getX()&&!song.intersects(label)&&!field.intersects(tol)&&!tolField.intersects(arrange)&&!tolField.intersects(leadButton.getBounds())&&getLocalBounds().contains(tolField)&&label.getWidth()>=48&&field.getWidth()>=48;}
