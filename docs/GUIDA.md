@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.37.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.38.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 Cambiare durata, ordine o presenza di una sezione sposta MIDI, automazione e loop insieme a quella sezione. Con l'armonia di sezione attiva, i controlli degli accordi, i vocal chop e la tonalità del MIDI seguono quella sezione.
 
@@ -355,7 +355,7 @@ L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionat
 
 Clicca sul **numero di posizione o sulla piccola indicazione delle battute**, accanto al metronomo. Il trasporto alterna **battute.beat.tick** e **minuti:secondi.millisecondi**; in modalità tempo, sotto compare in grigio il **tempo residuo**. Per durate superiori a un’ora viene mostrata anche l’ora.
 
-**Icona altoparlante → Durata obiettivo** imposta una lunghezza in orologio, per esempio 3:30. Un segno sull’arrangiamento indica quel punto e la legenda del trasporto mostra la durata del brano e il tempo che manca o che avanza. Tempo o forma spostano il segno; le note restano quelle scritte. Disattiva lo toglie. I progetti precedenti non hanno un obiettivo.
+**Durata obiettivo** sta nella barra dell’arrangiamento, dopo la durata del brano e prima di **NUOVO ARRANGIAMENTO**. Scrivi un orario come 3:30, oppure lascia quel campo vuoto per disattivarla. **Tolleranza** è lo scarto ammesso in secondi, cinque per default; scrivi 0 per la lunghezza esatta. La durata del brano diventa verde se è dentro quell’intervallo, ambra se il brano è troppo corto e rossa se è troppo lungo. Il tempo che resta nel trasporto è solo la posizione di riproduzione, non questo confronto. Un segno sull’arrangiamento indica l’obiettivo. Tempo o forma lo spostano; note e tempo non vengono riscritti. I progetti precedenti si aprono con cinque secondi di tolleranza e senza obiettivo.
 
 Anche il righello dell’**arrangiamento** passa dai numeri di battuta ai tempi del brano, calcolati sul BPM corrente. Le linee continuano a seguire battute e beat: **metrica, snap, note, loop e automazioni non cambiano**. Il piano roll mantiene i propri riferimenti musicali. Il tempo segue la posizione nella canzone, quindi torna indietro quando il loop ricomincia. Clicca di nuovo per tornare alle battute; la scelta è ricordata nelle preferenze locali.
 

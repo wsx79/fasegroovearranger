@@ -300,6 +300,7 @@ public:
     void applyInstrumentSettings(int track,bool harmony);
     void randomPianoMaterial(bool velocities,bool bass);
     bool writeUiEvidence(const juce::File&);
+    bool verifyTargetDurationControl(const juce::File&);
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow(const juce::File&);
@@ -405,7 +406,12 @@ private:
     IconButton automationButton{IconButton::Icon::automation};
     bool automationAllTracks=false;
     void showAutomationScope(bool enabled);
-    juce::Label durationLabel;
+    juce::Label durationLabel,targetDurationLabel,targetToleranceLabel,targetFitLabel;
+    juce::TextEditor targetDurationEditor,targetToleranceEditor;
+    bool acceptTargetEdit=false;
+    void commitTargetDuration();
+    void commitTargetTolerance();
+    void refreshTargetDurationEditor();
     juce::ComboBox sectionSelector,panelSections;
     IconButton newButton{IconButton::Icon::newFile},openButton{IconButton::Icon::folder},saveButton{IconButton::Icon::save},saveAsButton{IconButton::Icon::saveAs},exportButton{IconButton::Icon::exportFile},settingsButton{IconButton::Icon::speaker},aboutButton{IconButton::Icon::gear},helpButton{IconButton::Icon::help};
     IconButton playButton{IconButton::Icon::play},stopButton{IconButton::Icon::stop},rewindButton{IconButton::Icon::rewind},undoButton{IconButton::Icon::undo},redoButton{IconButton::Icon::redo};
@@ -488,7 +494,6 @@ private:
     void applyRecovery(const RecoveryOffer&);
     void reportExternal(const juce::String&);
     void presentMissingResources();
-    void editTargetDuration();
     void collectPortable();
     juce::StringArray missingExternal;
     bool recoveryArmed=false;

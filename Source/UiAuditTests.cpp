@@ -266,6 +266,18 @@ MainComponent::MainComponent(){
     guitarNotesButton.onClick=[this]{piano.guitarNotes=!piano.guitarNotes;showEditor();};
     leadButton.setClickingTogglesState(true);leadButton.onClick=[this]{if(loadingPlugin)return;checkpoint();project.settings.guitarLead=!project.settings.guitarLead;generate(project,Scope::track,0,selectedSection);generate(project,Scope::track,3,selectedSection);changed();};
     durationLabel.getProperties().set("fgaTip","Song length follows genre, harmonic phrases and groove development.");durationLabel.setTooltip(tr("Song length follows genre, harmonic phrases and groove development."));
+    addAndMakeVisible(targetDurationLabel);addAndMakeVisible(targetDurationEditor);
+    targetDurationLabel.setText("Target duration",juce::dontSendNotification);targetDurationLabel.setJustificationType(juce::Justification::centredRight);targetDurationLabel.setMinimumHorizontalScale(.6f);targetDurationLabel.setFont(Daw::font(Daw::body));targetDurationLabel.setColour(juce::Label::textColourId,Daw::textDim);targetDurationLabel.setComponentID("target-duration-label");
+    targetDurationLabel.getProperties().set("fgaTip","Optional clock length, for example 3:30. The arrangement is not rewritten.");
+    targetDurationEditor.setComponentID("target-duration");targetDurationEditor.setJustification(juce::Justification::centred);targetDurationEditor.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(),13.f,juce::Font::plain));targetDurationEditor.setIndents(4,2);targetDurationEditor.setTextToShowWhenEmpty(juce::String::fromUTF8("—"),Daw::textFaint);targetDurationEditor.setSelectAllWhenFocused(true);
+    targetDurationEditor.getProperties().set("fgaTip","Optional clock length, for example 3:30. Leave empty to turn the target off. The arrangement is not rewritten.");
+    targetDurationEditor.onReturnKey=[this]{commitTargetDuration();};targetDurationEditor.onFocusLost=[this]{commitTargetDuration();};
+    addAndMakeVisible(targetToleranceLabel);addAndMakeVisible(targetToleranceEditor);addAndMakeVisible(targetFitLabel);
+    targetToleranceLabel.setText("Tolerance",juce::dontSendNotification);targetToleranceLabel.setJustificationType(juce::Justification::centredRight);targetToleranceLabel.setMinimumHorizontalScale(.55f);targetToleranceLabel.setFont(Daw::font(Daw::body));targetToleranceLabel.setColour(juce::Label::textColourId,Daw::textDim);targetToleranceLabel.setComponentID("target-tolerance-label");
+    targetToleranceLabel.getProperties().set("fgaTip","Tolerance in seconds around the target. Zero means an exact length. The song is not rewritten.");
+    targetToleranceEditor.setComponentID("target-tolerance");targetToleranceEditor.setJustification(juce::Justification::centred);targetToleranceEditor.setFont(juce::Font(juce::Font::getDefaultMonospacedFontName(),13.f,juce::Font::plain));targetToleranceEditor.setIndents(2,2);targetToleranceEditor.setSelectAllWhenFocused(true);targetToleranceEditor.setText("5",false);
+    targetToleranceEditor.onReturnKey=[this]{commitTargetTolerance();};targetToleranceEditor.onFocusLost=[this]{commitTargetTolerance();};
+    targetFitLabel.setJustificationType(juce::Justification::centredLeft);targetFitLabel.setMinimumHorizontalScale(.55f);targetFitLabel.setFont(Daw::font(Daw::small,true));targetFitLabel.setComponentID("target-fit");targetFitLabel.getProperties().set("fgaRawText",true);
     arrangeButton.onClick=[this]{if(loadingPlugin)return;for(const auto& t:project.tracks){if(t.locked){message("Sblocca le tracce prima di ricostruire la struttura. GENERATE SONG mantiene la struttura e i blocchi.");return;}for(const auto& c:t.clips)if(c.locked){message("Sblocca i clip prima di ricostruire la struttura.");return;}}auto next=project;if(!rearrangeSong(next,(std::uint32_t)juce::Random::getSystemRandom().nextInt())){message("Arrangement change exceeds the project limits.",true);return;}checkpoint();audio.reusePluginStates(next);audio.stop();project=std::move(next);editCursor=-1;selectedSection=0;arrangement.selectedClips.clear();noClipSelection=false;changed();showArrangement();};
     panelSections.onChange=[this]{auto names=instrumentPanel.sectionNames();int index=panelSections.getSelectedItemIndex();if(index>=0&&index<names.size())instrumentPort.setViewPosition(0,instrumentPanel.sectionPosition(names[index]));};
     sectionSelector.onChange=[this]{if(!refreshing){select(selectedTrack,sectionSelector.getSelectedItemIndex());if(page==Page::editor)showEditor();}};
@@ -320,7 +332,7 @@ MainComponent::MainComponent(){
     for(juce::Component* c:std::initializer_list<juce::Component*>{&newButton,&openButton,&saveButton,&saveAsButton,&exportButton,&settingsButton,&aboutButton,&helpButton,&playButton,&stopButton,&rewindButton,&undoButton,&redoButton,&loopButton,&songButton,&generateMenuButton,&trackButton,&sectionButton,&clipButton,&harmonyButton,&addSectionButton,&spotlightButton,&genreBox,&keyBox,&scaleBox,&extensionBox,&voicingBox,&progressionBox,&bassBox,&stringsBox,&tempoSlider,&swingSlider,&densitySlider,&humanizeSlider,&masterSlider,&zoomSlider,&positionLabel,&chordsLabel,&statusLabel,&soundButton,&pluginEditorButton,&sampleButton,&loadPluginButton,&gainSlider,&panSlider,&velocitySlider,&muteButton,&soloButton,&lockButton,&lockClipButton,&soundBox,&gridBox,&quantiseButton,&transposeUp,&transposeDown,&deleteNotes,&importButton,&copyButton,&pasteButton,&sectionLoopButton,&pianoPlayButton,&inspectorLabel,&editorLabel})addAndMakeVisible(c);
     // These four labels kept JUCE's 15 px default and towered over the 10.5-12 px
     // controls around them; the theme's body size keeps the chrome consistent.
-    for(auto* label:{&chordsLabel,&statusLabel,&editorLabel,&durationLabel}){label->setFont(Daw::font(Daw::body));label->setMinimumHorizontalScale(.65f);}
+    for(auto* label:{&chordsLabel,&statusLabel,&editorLabel,&durationLabel,&targetDurationLabel}){label->setFont(Daw::font(Daw::body));label->setMinimumHorizontalScale(.65f);}
     inspectorLabel.getProperties().set("fgaRawText",true);
     auto slider=[this](juce::Slider& s,double lo,double hi,double step,const juce::String& suffix){s.setRange(lo,hi,step);s.setSliderStyle(juce::Slider::LinearHorizontal);s.setTextBoxStyle(juce::Slider::TextBoxRight,false,64,22);s.setTextValueSuffix(suffix);s.onDragStart=[this]{checkpoint();};};
     addAndMakeVisible(automationButton);
@@ -448,11 +460,12 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     for(auto* button:{&arrangeButton,&harmonyButton})button->setMouseClickGrabsKeyboardFocus(false);
     arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);trackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
-    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));
+    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);acceptTargetEdit=true;message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));
     if(!juce::JUCEApplication::getCommandLineParameters().contains("test")){recoveryArmed=true;juce::Component::SafePointer<MainComponent> safe(this);juce::MessageManager::callAsync([safe]{if(safe)safe->offerRecovery();});}
     startTimerHz(20);
 }
 MainComponent::~MainComponent(){
+    acceptTargetEdit=false;
     if(recoveryArmed)closeRecoverySession(recoveryDirectory());
     if(dismissChordPopover)dismissChordPopover();dismissChordPopover={};
     Localisation::setSetting("inspectorVisible",inspectorVisible?"1":"0");
@@ -482,7 +495,7 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
     const auto saved=Localisation::current();const auto originalJson=juce::JSON::toString(projectJson(project),false,17);bool ok=true;static const char* codes[]{"en","it","es","fr","de","pt"};static const char* expected[]{"NEW TRACK","NUOVA TRACCIA","NUEVA PISTA","NOUVELLE PISTE","NEUE SPUR","NOVA FAIXA"};
     for(int i=0;i<6;++i){Localisation::setCurrent((Localisation::Language)i);showArrangement();applyLanguage();refreshControls();ok=tr("NEW TRACK")==juce::String::fromUTF8(expected[i])&&ok;
         ok=genreBox.getSelectedItemIndex()==project.settings.genre&&keyBox.getSelectedItemIndex()==project.settings.key&&scaleBox.getSelectedItemIndex()==project.settings.scale&&extensionBox.getSelectedItemIndex()==project.settings.extension&&voicingBox.getSelectedItemIndex()==project.settings.voicing&&ok;
-        ok=juce::JSON::toString(projectJson(project),false,17)==originalJson&&ok;auto picture=createComponentSnapshot(getLocalBounds());if(auto output=folder.getChildFile(juce::String("language-")+codes[i]+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(picture,*output)&&ok;}else ok=false;}
+        ok=juce::JSON::toString(projectJson(project),false,17)==originalJson&&targetDurationLabel.getText()==tr("Target duration")&&targetToleranceLabel.getText()==tr("Tolerance")&&durationLabel.getRight()<=targetDurationLabel.getX()&&targetDurationEditor.getRight()<=targetToleranceLabel.getX()&&targetToleranceEditor.getRight()<=arrangeButton.getX()&&!targetDurationEditor.getBounds().intersects(arrangeButton.getBounds())&&!targetToleranceEditor.getBounds().intersects(arrangeButton.getBounds())&&!targetDurationLabel.getBounds().intersects(durationLabel.getBounds())&&ok;auto picture=createComponentSnapshot(getLocalBounds());if(auto output=folder.getChildFile(juce::String("language-")+codes[i]+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(picture,*output)&&ok;}else ok=false;}
     Localisation::setCurrent(saved);applyLanguage();select(0,1);showInstrument();
     for(const auto& pair:std::initializer_list<std::pair<const char*,const char*>>{{"PERFORMANCE","piano-performance"},{"RHYTHM / VELOCITY","piano-rhythm"},{"Musical tools","piano-tools"},{"GUIDE SOUND","piano-sound"}}){instrumentPort.setViewPosition(0,instrumentPanel.sectionPosition(pair.first));auto image=instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds());if(auto output=folder.getChildFile(juce::String(pair.second)+".png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(image,*output)&&ok;}}
     Localisation::setCurrent(Localisation::Language::italian);applyLanguage();showInstrument();
@@ -494,10 +507,24 @@ bool MainComponent::writeLanguageEvidence(const juce::File& folder){
 }
 // Every visible icon-only button must explain itself with a tooltip.
 
+bool MainComponent::verifyTargetDurationControl(const juce::File& folder){
+    if(!folder.createDirectory())return false;
+    showArrangement();const auto saved=Localisation::current();bool ok=true;
+    for(int width:{1440,1224}){setSize(width,980);resized();const auto song=durationLabel.getBounds(),label=targetDurationLabel.getBounds(),field=targetDurationEditor.getBounds(),arrange=arrangeButton.getBounds();
+        const auto tol=targetToleranceLabel.getBounds(),tolField=targetToleranceEditor.getBounds();ok=ok&&song.getRight()<=label.getX()&&label.getRight()<=field.getX()&&field.getRight()<=tol.getX()&&tol.getRight()<=tolField.getX()&&tolField.getRight()<=arrange.getX()&&!song.intersects(label)&&!field.intersects(tol)&&!tolField.intersects(arrange)&&!tolField.intersects(leadButton.getBounds())&&getLocalBounds().contains(tolField)&&label.getWidth()>=48&&field.getWidth()>=48;}
+    targetDurationEditor.setText("3:30",false);commitTargetDuration();ok=ok&&project.settings.targetEnabled&&project.settings.targetSeconds==210&&targetDurationEditor.getText()=="3:30";
+    targetDurationEditor.setText("",false);commitTargetDuration();ok=ok&&!project.settings.targetEnabled&&targetDurationEditor.getText().isEmpty();
+    project.settings.targetEnabled=true;project.settings.targetSeconds=90;targetDurationEditor.setText("nope",false);commitTargetDuration();ok=ok&&project.settings.targetEnabled&&(int)std::lround(project.settings.targetSeconds)==90&&targetDurationEditor.getText()=="1:30";
+    project.settings.targetEnabled=false;project.settings.targetSeconds=0;refreshTargetDurationEditor();
+    Localisation::setCurrent(Localisation::Language::italian);applyLanguage();resized();ok=ok&&targetDurationLabel.getText()==juce::String::fromUTF8("Durata obiettivo")&&durationLabel.getRight()<=targetDurationLabel.getX()&&targetDurationEditor.getRight()<=arrangeButton.getX();
+    auto image=createComponentSnapshot({0,0,getWidth(),toolbarBottom()+4});if(auto out=folder.getChildFile("target-duration-toolbar.png").createOutputStream())ok=juce::PNGImageFormat().writeImageToStream(image,*out)&&ok;else ok=false;
+    Localisation::setCurrent(saved);applyLanguage();setSize(1440,980);folder.getChildFile("target-duration-placement.txt").replaceWithText(ok?"PASS target duration sits after the song length and before NEW ARRANGEMENT":"FAIL target duration placement");return ok;
+}
 bool MainComponent::writeUiEvidence(const juce::File& folder){
 #if !FGA_SELF_TESTS
 return false;
 #else
+    if(!verifyTargetDurationControl(folder))return false;
     // A synthesised peer press is only attributed to a JUCE component on some window
     // stacks (it depends on which peer owns the pointer), so this regression runs
     // opt-in for a local check and never gates a release by itself.

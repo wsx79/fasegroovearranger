@@ -365,7 +365,7 @@ void Project::normalise() {
     s.extension=std::clamp(s.extension,0,10); s.voicing=std::clamp(s.voicing,0,10);
     const auto& tempo=genreProfile(s.genre);
     s.bpm=finite(s.bpm,tempo.preferredBpm,s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm); s.swing=finite(s.swing,.2,0,1.5); s.density=finite(s.density,.55,0,1); s.humanize=finite(s.humanize,.2,0,1);
-    s.targetSeconds=finite(s.targetSeconds,0,0,24*3600);if(!(s.targetSeconds>0))s.targetEnabled=false;
+    s.targetSeconds=finite(s.targetSeconds,0,0,24*3600);if(!(s.targetSeconds>0))s.targetEnabled=false;s.targetToleranceSeconds=finite(s.targetToleranceSeconds,5,0,600);
     s.chordCount=std::clamp(s.chordCount,1,8); s.bassMode=std::clamp(s.bassMode,0,sgk::numBassModes-1); s.stringsMode=std::clamp(s.stringsMode,0,10);
     for(auto& d:s.degrees) d=std::clamp(d,0,6);
     for(auto& c:s.freeChords) c=std::clamp(c,-1,35);
