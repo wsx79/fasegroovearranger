@@ -80,9 +80,9 @@ public:
 
 class MainComponent::AutosaveJob : public juce::Thread {
 public:
-    AutosaveJob(Project p,juce::File file,std::function<void(juce::Result)> finished):Thread("Autosave"),snapshot(std::move(p)),target(file),complete(std::move(finished)){}
+    AutosaveJob(Project p,juce::File file,juce::File recovery,juce::String origin,std::function<void(juce::Result)> finished):Thread("Autosave"),snapshot(std::move(p)),target(file),recoveryDir(recovery),originalPath(std::move(origin)),complete(std::move(finished)){}
     ~AutosaveJob()override{signalThreadShouldExit();stopThread(-1);}
-    void run()override{if(threadShouldExit())return;auto result=saveProject(snapshot,target);if(!threadShouldExit())juce::MessageManager::callAsync([callback=complete,result]{callback(result);});}
-private:Project snapshot;juce::File target;std::function<void(juce::Result)> complete;
+    void run()override{if(threadShouldExit())return;auto result=saveProject(snapshot,target);if(result.wasOk()&&recoveryDir!=juce::File())result=storeRecoverySnapshot(snapshot,originalPath,recoveryDir);if(!threadShouldExit())juce::MessageManager::callAsync([callback=complete,result]{callback(result);});}
+private:Project snapshot;juce::File target,recoveryDir;juce::String originalPath;std::function<void(juce::Result)> complete;
 };
 

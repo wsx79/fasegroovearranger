@@ -4,6 +4,7 @@
 #include "RetiredJobs.h"
 #include "AudioEngine.h"
 #include "ProjectIO.h"
+#include "StudioIO.h"
 #include "DawTheme.h"
 #include "InstrumentPanel.h"
 #include "FamilyOptions.h"
@@ -483,6 +484,14 @@ private:
     bool autosaveDue=false;
     int autosaveRequestId=0;
     void autosaveIfIdle(const juce::File& target={});
+    void offerRecovery();
+    void applyRecovery(const RecoveryOffer&);
+    void reportExternal(const juce::String&);
+    void presentMissingResources();
+    void editTargetDuration();
+    void collectPortable();
+    juce::StringArray missingExternal;
+    bool recoveryArmed=false;
     void open(const juce::File&,bool recovered=false);
     void restoreInstruments();
     void loadPluginFile(int,const juce::File&,const juce::String& id={},const juce::String& state={});

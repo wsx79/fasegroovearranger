@@ -448,9 +448,12 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     for(auto* button:{&arrangeButton,&harmonyButton})button->setMouseClickGrabsKeyboardFocus(false);
     arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);trackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
-    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));startTimerHz(20);
+    refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));
+    if(!juce::JUCEApplication::getCommandLineParameters().contains("test")){recoveryArmed=true;juce::Component::SafePointer<MainComponent> safe(this);juce::MessageManager::callAsync([safe]{if(safe)safe->offerRecovery();});}
+    startTimerHz(20);
 }
 MainComponent::~MainComponent(){
+    if(recoveryArmed)closeRecoverySession(recoveryDirectory());
     if(dismissChordPopover)dismissChordPopover();dismissChordPopover={};
     Localisation::setSetting("inspectorVisible",inspectorVisible?"1":"0");
     Localisation::setSetting("mixerVisible",mixerVisible?"1":"0");
