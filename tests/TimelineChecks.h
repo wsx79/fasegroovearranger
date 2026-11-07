@@ -25,6 +25,25 @@ void verifyTimelineEditing(){
     auto generated=fixture();generated.splitClip(0,0,4);generated.splitClip(0,1,8);generated.splitClip(0,2,12);generate(generated,Scope::clip,0,3,42);check(!generated.tracks[0].clips[3].notes.empty()&&generated.clipStart(0,3)==12&&generated.clipLength(0,3)==4,"regenerate split clip with index beyond guide count keeps its position and length");
     auto invalid=fixture();check(invalid.splitClip(0,0,0)<0&&invalid.moveClip(0,0,99,4,false)<0&&!invalid.deleteClip(-1,0),"invalid edits rejected");
     {
+        check(recognizeChordPitches({60,64,67},-1,0)=="C","C major triad");
+        check(recognizeChordPitches({64,67,72},-1,0)=="C","first inversion stays C");
+        check(recognizeChordPitches({48,60,64,67,76},-1,0)=="C","octave doubles stay one chord");
+        check(recognizeChordPitches({60,63,67},-1,0)=="Cm","C minor");
+        check(recognizeChordPitches({60,64,67,71},-1,0)=="Cmaj7","major seventh");
+        check(recognizeChordPitches({65,69,72,74},-1,0)=="Dm7","minor seventh inversion");
+        check(recognizeChordPitches({67,71,74,77},-1,0)=="G7","dominant seventh");
+        check(recognizeChordPitches({60,64},-1,0).empty()&&recognizeChordPitches({},-1,0).empty(),"pairs and silence are not chords");
+        check(recognizeChordPitches({60,64,66},-1,0).empty(),"unrelated pitches are not labelled");
+        const std::string planned="Am";
+        std::vector<Note> held{{0,4,60,100,0},{0,4,64,100,0},{0,4,67,100,0}};
+        check(chordHeardInClip(held,0,4,-1,0,planned)=="C","overlapping triad replaces the planned name");
+        std::vector<Note> line{{0,1,60,100,0},{1,1,64,100,0},{2,1,67,100,0}};
+        check(chordHeardInClip(line,0,4,-1,0,planned)==planned,"a melody is not stacked into a chord");
+        std::vector<Note> both{{0,2,60,100,0},{0,2,64,100,0},{0,2,67,100,0},{2,2,62,100,0},{2,2,65,100,0},{2,2,69,100,0}};
+        check(chordHeardInClip(both,0,4,-1,0,planned)==planned,"two different chords in one cell keep the section harmony");
+        check(chordHeardInClip({},0,4,-1,0,planned)==planned,"silence keeps the section harmony");
+    }
+    {
         auto song=newProject(1);song.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"}};song.normalise();
         song.sections[1].harmony.enabled=true;song.sections[1].harmony.key=0;song.sections[1].harmony.scale=0;song.sections[1].harmony.chordCount=2;song.sections[1].harmony.chordSteps=8;song.sections[1].harmony.degrees={0,4,0,0,0,0,0,0};
         double a0=0,b0=0,a1=0,b1=0,a2=0,b2=0;std::string n0,n1,n2;chordCell(song,0,a0,b0,n0);chordCell(song,16,a1,b1,n1);chordCell(song,18,a2,b2,n2);
