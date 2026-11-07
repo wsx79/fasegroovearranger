@@ -355,7 +355,7 @@ L'inspector raggruppa **traccia**, **suono**, **volume/pan** e **clip selezionat
 
 Clicca sul **numero di posizione o sulla piccola indicazione delle battute**, accanto al metronomo. Il trasporto alterna **battute.beat.tick** e **minuti:secondi.millisecondi**; in modalità tempo, sotto compare in grigio il **tempo residuo**. Per durate superiori a un’ora viene mostrata anche l’ora.
 
-**Icona altoparlante → Durata obiettivo** imposta una lunghezza in orologio, per esempio 3:30. Un segno sull’arrangiamento indica quel punto e la legenda del trasporto mostra la durata del brano e il tempo che manca o che avanza. Tempo o forma spostano il segno; le note restano quelle scritte. Disattiva lo toglie. I progetti precedenti non hanno un obiettivo.
+**Durata obiettivo** sta nella barra dell’arrangiamento, dopo la durata del brano e prima di **NUOVO ARRANGIAMENTO**. Scrivi un orario come 3:30, oppure lascia il campo vuoto per disattivarla. Un segno sull’arrangiamento indica quel punto e la legenda del trasporto mostra la durata del brano e il tempo che manca o che avanza. Tempo o forma spostano il segno; le note restano quelle scritte. I progetti precedenti non hanno un obiettivo.
 
 Anche il righello dell’**arrangiamento** passa dai numeri di battuta ai tempi del brano, calcolati sul BPM corrente. Le linee continuano a seguire battute e beat: **metrica, snap, note, loop e automazioni non cambiano**. Il piano roll mantiene i propri riferimenti musicali. Il tempo segue la posizione nella canzone, quindi torna indietro quando il loop ricomincia. Clicca di nuovo per tornare alle battute; la scelta è ricordata nelle preferenze locali.
 

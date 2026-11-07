@@ -356,7 +356,7 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 
 Click the **position number or the small bar-count legend** next to the metronome. The transport alternates **bars.beats.ticks** and **minutes:seconds.milliseconds**. Time mode shows **remaining time** below in grey; durations above an hour also include hours.
 
-**Speaker icon → Target duration** sets an optional clock length such as 3:30. A marker on the arrangement shows that position, and the transport legend shows the song length plus the time remaining or overrun. Tempo or form changes move the marker; notes stay as written. Disable clears it. Older projects have no target.
+**Target duration** sits in the arrangement bar after the song length and before **NEW ARRANGEMENT**. Type a clock length such as 3:30, or leave the field empty to turn it off. A marker on the arrangement shows that position, and the transport legend shows the song length plus the time remaining or overrun. Tempo or form changes move the marker; notes stay as written. Older projects have no target.
 
 The **arrangement** ruler switches from bar numbers to song times calculated from the current BPM. Lines still follow bars and beats: **metre, snap, notes, loops and automation stay unchanged**. The piano roll retains its musical references. Time follows song position, so it moves back when a loop restarts. Click again to restore bars; the choice is remembered locally.
 

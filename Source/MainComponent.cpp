@@ -510,7 +510,7 @@ void MainComponent::select(int track,int section){++uiRevision;instrumentPanel.f
     sampleBrowser.refreshTarget();if(instrumentIsOpen()&&(previousTrack!=selectedTrack||previousSection!=selectedSection)){instrumentPanel.rebuild();instrumentWindow->refresh();}arrangement.repaint();piano.repaint();}
 void MainComponent::refreshControls(){
     ++uiRevision;
-    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
+    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     const auto songHarmony=activeHarmony(project,selectedSection);
@@ -638,7 +638,7 @@ void MainComponent::resized(){
     piano.ghostTrack.setVisible(edit);piano.expressionLane.setVisible(edit);
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
     for(auto* button:{&inspectorToggle,&mixerToggle,&fitSongButton,&followButton})button->setVisible(song);
-    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&generateMenuButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&spotlightButton,&durationLabel,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
+    for(juce::Component* c:std::initializer_list<juce::Component*>{&genreBox,&songButton,&generateMenuButton,&densitySlider,&swingSlider,&humanizeSlider,&progressionBox,&harmonyButton,&extensionBox,&voicingBox,&bassBox,&stringsBox,&addSectionButton,&spotlightButton,&durationLabel,&targetDurationLabel,&targetDurationEditor,&arrangeButton,&chordEditButton,&browserToggle})c->setVisible(song);
     aiComposeButton.setVisible(song);studioButton.setVisible(song);
     for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineZoomOut,&timelineZoomIn,&timelineFitButton,&timelineZoom})c->setVisible(song);
     zoomSlider.setVisible(edit); // the arrangement zooms with +/-, the wheel, FIT SONG and ZOOM SELECTION
@@ -682,7 +682,10 @@ void MainComponent::resized(){
         // The three scope buttons are only used by the instrument page (APPLY TRACK / CLIP)
         // since the arrangement folds them into GENERATE.
         for(auto* b:{&trackButton,&sectionButton,&clipButton})b->setVisible(false);
-        x=12;place(genreBox,x,rowA,170);x+=176;place(durationLabel,x,rowA,48);x+=52;divider(x,rowA+4,20);x+=9;
+        x=12;place(genreBox,x,rowA,170);x+=176;place(durationLabel,x,rowA,48);x+=52;
+        const int editorW=64,leadX=w-12-140,insertMax=leadX-8-(x+610);
+        const int labelW=std::clamp(insertMax-(4+editorW+8),72,156);
+        place(targetDurationLabel,x,rowA,labelW);x+=labelW+4;place(targetDurationEditor,x,rowA+2,editorW,24);x+=editorW+8;divider(x,rowA+4,20);x+=9;
         place(arrangeButton,x,rowA,170);x+=176;place(songButton,x,rowA,150);place(generateMenuButton,x+150,rowA,26);x+=180;divider(x+4,rowA+4,20);x+=13;
         place(addSectionButton,x,rowA,120);place(spotlightButton,x+132,rowA,100);
         place(leadButton,w-12-140,rowA,140);
@@ -852,11 +855,21 @@ void MainComponent::presentMissingResources(){
     if(!samples)return;juce::Component::SafePointer<MainComponent> safe(this);
     juce::AlertWindow::showOkCancelBox(juce::MessageBoxIconType::InfoIcon,tr("Missing samples"),tr("Search a folder for the missing samples? Plugins are not guessed, and cancelling leaves every path unchanged."),tr("Locate"),tr("Not now"),nullptr,juce::ModalCallbackFunction::create([safe](int result){if(!safe||result==0)return;safe->chooseFile(tr("RELINK SAMPLES"),"*",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[safe](juce::File folder){if(!safe)return;RelinkResult report;auto done=relinkProjectMedia(safe->project,folder,report);if(done.failed()){safe->message(done.getErrorMessage(),true);return;}if(report.found>0)safe->dirty=true;safe->restoreInstruments();safe->message(tr("Samples located")+" "+juce::String(report.found)+(report.missing.isEmpty()?juce::String():"\n"+tr("Still missing")+"\n"+report.missing.joinIntoString("\n"))+(report.unverified.isEmpty()?juce::String():"\n"+tr("Matched by filename only")+"\n"+report.unverified.joinIntoString("\n")),report.missing.size()>0);});}));
 }
-void MainComponent::editTargetDuration(){
-    auto* dialog=new juce::AlertWindow(tr("Target duration"),tr("Optional clock length, for example 3:30. The arrangement is not rewritten."),juce::MessageBoxIconType::NoIcon);
-    const int seconds=(int)std::lround(project.settings.targetSeconds);dialog->addTextEditor("time",project.settings.targetEnabled?juce::String(seconds/60)+":"+juce::String(seconds%60).paddedLeft('0',2):"3:30",tr("Duration"));
-    dialog->addButton(tr("OK"),1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Disable"),2);dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));
-    juce::Component::SafePointer<MainComponent> safe(this);dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,safe](int result){if(!safe||result==0)return;if(result==2){safe->project.settings.targetEnabled=false;safe->project.settings.targetSeconds=0;safe->dirty=true;safe->updateSizes();safe->arrangement.repaint();safe->showPosition(safe->timelinePosition());return;}auto text=dialog->getTextEditorContents("time").trim();int minutes=0,secs=0;if(text.contains(":")){minutes=text.upToFirstOccurrenceOf(":",false,false).getIntValue();secs=text.fromFirstOccurrenceOf(":",false,false).getIntValue();}else secs=text.getIntValue();const int total=minutes*60+secs;if(total<=0||total>24*3600){safe->message(tr("Enter a duration such as 3:30."),true);return;}safe->project.settings.targetEnabled=true;safe->project.settings.targetSeconds=total;safe->dirty=true;safe->updateSizes();safe->arrangement.repaint();safe->showPosition(safe->timelinePosition());}),true);
+void MainComponent::refreshTargetDurationEditor(){
+    if(targetDurationEditor.hasKeyboardFocus(true))return;
+    juce::String text;if(project.settings.targetEnabled){const int seconds=(int)std::lround(project.settings.targetSeconds);text=juce::String(seconds/60)+":"+juce::String(seconds%60).paddedLeft('0',2);}
+    if(targetDurationEditor.getText()!=text)targetDurationEditor.setText(text,false);
+}
+void MainComponent::commitTargetDuration(){
+    if(!acceptTargetEdit)return;
+    const auto text=targetDurationEditor.getText().trim();
+    auto show=[&]{juce::String shown;if(project.settings.targetEnabled){const int seconds=(int)std::lround(project.settings.targetSeconds);shown=juce::String(seconds/60)+":"+juce::String(seconds%60).paddedLeft('0',2);}if(targetDurationEditor.getText()!=shown)targetDurationEditor.setText(shown,false);};
+    auto publish=[&]{dirty=true;updateSizes();arrangement.repaint();showPosition(timelinePosition());show();};
+    if(text.isEmpty()){if(project.settings.targetEnabled||project.settings.targetSeconds!=0){project.settings.targetEnabled=false;project.settings.targetSeconds=0;publish();}else show();return;}
+    int minutes=0,secs=0;if(text.contains(":")){minutes=text.upToFirstOccurrenceOf(":",false,false).getIntValue();secs=text.fromFirstOccurrenceOf(":",false,false).getIntValue();}else secs=text.getIntValue();
+    const int total=minutes*60+secs;if(total<=0||total>24*3600){message(tr("Enter a duration such as 3:30."),true);show();return;}
+    if(project.settings.targetEnabled&&(int)std::lround(project.settings.targetSeconds)==total){show();return;}
+    project.settings.targetEnabled=true;project.settings.targetSeconds=total;publish();
 }
 void MainComponent::collectPortable(){
     chooseFile(tr("Collect portable project"),"*",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectDirectories,[this](juce::File folder){PortableReport report;auto done=packagePortableProject(project,folder,report);if(done.failed()){message(done.getErrorMessage(),true);return;}auto note=tr("Portable project saved")+" "+report.project.getFullPathName();if(report.externalPlugins.isEmpty())note+="\n"+tr("Installed plugins were not copied. This copy has no SFZ maps to bundle.");else note+="\n"+tr("Installed plugins were not copied")+"\n"+report.externalPlugins.joinIntoString("\n");message(note,true);});
