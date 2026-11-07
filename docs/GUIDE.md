@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.36.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.37.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 Changing a section's length, order or presence moves the MIDI, automation and loop with that section. Independent section harmony is what the chord controls, vocal chops and MIDI key signature follow while it is enabled.
 
@@ -312,7 +312,7 @@ Automatic backup waits for stopped transport and quiet audio. Explicitly saving 
 
 #### Manage samples and portable projects
 
-**MEDIA.** **COLLECT & SAVE** writes a portable project and neighbouring `.media` folder, copying and verifying samples while preserving originals. Identical samples are deduplicated. Move project and folder together. **RELINK SAMPLES** searches a folder recursively, matching content fingerprints where available, otherwise requiring a unique filename. Unresolved samples remain missing. External plugins are not copied: install them separately on the destination computer.
+**MEDIA.** **COLLECT & SAVE**, and **speaker icon → Collect portable project**, write the project into an empty folder with a neighbouring media folder. Samples are copied and checked; the originals stay where they are. Identical samples are stored once, so two files that share a name but differ in content both survive. Move that folder as a whole. If a sample is missing or unreadable, nothing is published. Opening a project lists every missing sample and plugin path in one message. **Locate** searches a folder you choose; cancelling leaves every path unchanged. A match by content is used when the project stored a fingerprint; otherwise only a unique filename is accepted. **RELINK SAMPLES** does the same search from Studio. Installed VST3/AU plugins are never copied. SFZ maps are not a project sample type here, so a `.sfz` file is reported and not treated as a self-contained instrument.
 
 A legacy project relinked by filename alone displays an unverified-content warning: audition the sample before keeping the change. **Cancel** requests a safe stop during collection or search; an interrupted collection preserves the previous project and removes partial copies. Relative project/preset sample paths stay inside their own folder; external samples can use absolute paths.
 
@@ -355,6 +355,8 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 ### Bars and elapsed time
 
 Click the **position number or the small bar-count legend** next to the metronome. The transport alternates **bars.beats.ticks** and **minutes:seconds.milliseconds**. Time mode shows **remaining time** below in grey; durations above an hour also include hours.
+
+**Speaker icon → Target duration** sets an optional clock length such as 3:30. A marker on the arrangement shows that position, and the transport legend shows the song length plus the time remaining or overrun. Tempo or form changes move the marker; notes stay as written. Disable clears it. Older projects have no target.
 
 The **arrangement** ruler switches from bar numbers to song times calculated from the current BPM. Lines still follow bars and beats: **metre, snap, notes, loops and automation stay unchanged**. The piano roll retains its musical references. Time follows song position, so it moves back when a loop restarts. Click again to restore bars; the choice is remembered locally.
 
@@ -525,7 +527,7 @@ The twelve lanes sit side by side in the mixer: **level, octave, mute, swing sha
 
 After choosing or editing a preset in the VST editor, also use **SAVE** in Arranger to retain it with the song, even if you have already saved the preset inside the plugin.
 
-Autosave becomes due about once a minute after edits. During playback, recording or export it waits for a safe stopped moment, then writes without blocking the controls. **speaker icon → restore autosave** opens it as work to save under another name. UNDO retains up to forty steps during the session.
+Autosave becomes due about once a minute after edits. During playback, recording or export it waits for a safe stopped moment, then writes without blocking the controls. The same quiet moment also stores up to three rotating recovery snapshots, separate from the project file. If Arranger did not close normally, the next launch asks whether to restore those edits or discard them. Restore never replaces the original file; save when you want to keep the recovered work. A normal quit does not offer an old recovery. **speaker icon → restore autosave** opens the latest snapshot, or the older autosave, as work to save under another name. UNDO retains up to forty steps during the session.
 
 When closing the app, opening a project or starting a new song, **Cancel** leaves an active take untouched. **Save** asks for a destination when needed; the requested action continues only after a successful save. Cancelling the file selection cancels navigation; a write error leaves your work open.
 

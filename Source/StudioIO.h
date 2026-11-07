@@ -19,4 +19,15 @@ juce::Result relinkProjectMedia(Project&,const juce::File& folder,RelinkResult&,
 struct SamplerPreset {SamplerSettings settings;int root=60;juce::File file;juce::String hash;};
 juce::Result saveSamplerPreset(const SamplerPreset&,const juce::File&);
 juce::Result loadSamplerPreset(const juce::File&,SamplerPreset&);
+struct RecoveryOffer { juce::File snapshot; juce::String originalPath; juce::int64 millis=0; };
+juce::File recoveryDirectory();
+void openRecoverySession(const juce::File& directory);
+void closeRecoverySession(const juce::File& directory);
+void clearRecoverySnapshots(const juce::File& directory);
+juce::Result storeRecoverySnapshot(const Project&,const juce::String& originalPath,const juce::File& directory);
+bool pendingRecovery(const juce::File& directory,RecoveryOffer&);
+struct MissingResource { juce::String track,kind,path; };
+void listMissingResources(const Project&,const juce::File& project,std::vector<MissingResource>&);
+struct PortableReport { juce::File project; juce::StringArray externalPlugins; };
+juce::Result packagePortableProject(const Project&,const juce::File& emptyFolder,PortableReport&);
 }

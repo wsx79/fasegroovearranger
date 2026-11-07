@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.37.0
+
+- Le copie di recupero ruotano fuori dal file del progetto. Dopo una chiusura anomala si possono ripristinare o scartare; il file originale non cambia finché non salvi.
+- All’apertura, campioni e plugin mancanti compaiono una sola volta e si può cercare una cartella per i campioni, senza indovinare i plugin.
+- Raccogli progetto portatile scrive una cartella vuota con percorsi relativi dei campioni. Plugin e mappe SFZ sono segnalati e non inclusi.
+- Una durata obiettivo facoltativa mostra un segno sulla timeline e il tempo che manca o che avanza, senza riscrivere le note.
+
 ## 0.36.0
 
 - Nel circolo delle quinte dell'editor accordi, titolo e riga dello slot seguono la lingua dell'interfaccia, senza il trattino lungo.
