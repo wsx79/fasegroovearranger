@@ -4,6 +4,7 @@
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../../ThirdParty/fasegroovedrums/Source/engine/Drums.h"
 #include <cmath>
+#include <iterator>
 namespace fga {
 namespace {
 std::uint32_t draw(std::uint32_t x){x^=x>>16;x*=0x7feb352dU;x^=x>>15;x*=0x846ca68bU;return x^(x>>16);}
@@ -55,7 +56,10 @@ void addElectronicToneAutomation(Project& p){
     else if(owned!=track.parameters.end())track.parameters.erase(owned);
 }
 bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,double beats,Section role,bool requested){
-    const int section=p.sectionAtBeat(begin);auto s=resolveSectionHarmony(p,section);if(section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled)begin-=p.sectionStart(section);if(!isElectronicGenre(s.genre))return false;
+    // Chord slots follow the song's absolute beat, exactly as the ruler (chordNameAt),
+    // the vendor engines (strings) and hand-entered guitar do. A section-relative phase
+    // made independent section harmony play other chords than the ones shown and heard.
+    const int section=p.sectionAtBeat(begin);auto s=resolveSectionHarmony(p,section);if(!isElectronicGenre(s.genre))return false;
     if(track==2){if(requested||s.stringsMode!=0)return false;clip.notes.clear();return true;}
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
     const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(takeFeel(e.density,clip.feel[0],s.density),0.,1.);
@@ -77,8 +81,12 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
         if(track==1){
             if(build&&bar>=bars-2)continue;
             if(breakdown){if(bar%4==0){const auto chord=chordAtBeat(s,begin+base);note(base,1.4,36+chord.rootPc,70);}continue;}
-            static constexpr int cells[8][7]{{0,3,6,8,11,14,-1},{2,5,6,10,13,14,-1},{0,2,6,8,11,14,-1},{0,3,7,8,10,14,15},{0,3,6,10,12,14,-1},{2,4,7,10,12,15,-1},{0,2,5,8,10,13,-1},{0,3,6,9,11,14,15}};
-            for(int cell:cells[variant]){if(cell<0)continue;if((variation+(unsigned)cell*17)%100>(unsigned)(35+density*65))continue;
+            // Sixteenth cells, -1 ends a row. Rows 8-11 add rolling, offbeat and gallop
+            // figures that leave the four-to-the-floor kick its downbeats.
+            static constexpr int cells[12][12]{{0,3,6,8,11,14,-1},{2,5,6,10,13,14,-1},{0,2,6,8,11,14,-1},{0,3,7,8,10,14,15,-1},{0,3,6,10,12,14,-1},{2,4,7,10,12,15,-1},{0,2,5,8,10,13,-1},{0,3,6,9,11,14,15,-1},
+                {1,2,3,5,6,7,9,10,11,13,14,15},{2,6,10,14,-1},{2,3,6,7,10,11,14,15,-1},{0,2,3,6,8,10,11,14,-1}};
+            const auto figure=draw(motif+97U)%(std::uint32_t)std::size(cells);
+            for(int cell:cells[figure]){if(cell<0)break;if((variation+(unsigned)cell*17)%100>(unsigned)(35+density*65))continue;
                 const double at=base+cell*.25;const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);int pitch=24+chord.rootPc;if(pitch<28)pitch+=12;
                 if(!techno&&(cell==7||cell==15))pitch+=12;else if(techno&&cell==14&&(bar%4)==3)pitch+=chord.fifth;
                 note(at,std::clamp(e.gate*.32,.08,.28),pitch,(cell%4==0?104:88)+(int)(variation%11));
@@ -86,30 +94,41 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
         }else if(track==0||track==3){
             if((build&&(!techno||track==3))||(mixing&&(!techno||track==3||bar%4!=0))||(track==3&&(bar%4!=2||breakdown)))continue;
             if(track==0&&techno){
-                const double at=base+1.5;auto colour=s;if(drop)colour.extension=1;const auto chord=chordAtBeat(colour,begin+at);
-                const int root=nearestPitch(chord.rootPc,previousRoot,48,60);previousRoot=root;const double length=breakdown?1.25:.16;
-                note(at,length,root,breakdown?55:70);note(at,length,root+chord.fifth,64);
-                if(!mixing&&!breakdown)note(at,length,root+12,57);
-                if(drop){note(at,length,root+(variant%2?5:chord.third),58);if(chord.seventh>=0)note(at,length,root+chord.seventh,52);}
+                static constexpr double stabBeats[6][2]{{1.5,-1},{1.5,2.75},{0.75,2.25},{1.5,3.5},{1.75,-1},{2.5,-1}};
+                const int fig=variant%6;
+                const int count=stabBeats[fig][1]>=0?2:1;
+                for(int h=0;h<count;++h){
+                    const double at=base+stabBeats[fig][h];auto colour=s;if(drop)colour.extension=1;const auto chord=chordAtBeat(colour,begin+at);
+                    const int root=nearestPitch(chord.rootPc,previousRoot,48,60);previousRoot=root;const double length=breakdown?1.25:.16;
+                    note(at,length,root,breakdown?55:70);note(at,length,root+chord.fifth,64);
+                    if(!mixing&&!breakdown)note(at,length,root+12,57);
+                    if(drop){note(at,length,root+(variant%2?5:chord.third),58);if(chord.seventh>=0)note(at,length,root+chord.seventh,52);}
+                }
             }else if(track==0){
-                static constexpr double offbeats[]{.5,1.5,2.5,3.5},syncopated[]{0,.75,1.5,2,2.75,3.5};
-                const int hits=breakdown?1:drop&&bar%2?6:4;
-                for(int hit=0;hit<hits;++hit){const double at=base+(breakdown?1.:hits==6?syncopated[hit]:offbeats[hit]);
+                static constexpr double offbeats[]{.5,1.5,2.5,3.5},syncopated[]{0,.75,1.5,2,2.75,3.5},anthem[]{.5,1.5,2.5,3.25},driving[]{.75,1.5,2.75,3.5};
+                const double* rhythm=offbeats;int hits=4;
+                if(breakdown){hits=1;}
+                else if(drop&&bar%2){rhythm=syncopated;hits=6;}
+                else if(variant%4==1){rhythm=anthem;hits=4;}
+                else if(variant%4==2){rhythm=driving;hits=4;}
+                for(int hit=0;hit<hits;++hit){const double at=base+(breakdown?1.:rhythm[hit]);
                     const auto chord=chordAtBeat(s,begin+at);previousVoicing=voiceTriad(chord,previousVoicing);
                     for(size_t voice=0;voice<previousVoicing.size();++voice)note(at,breakdown?1.25:.18,previousVoicing[voice],(breakdown?52:hit==0?72:63)-(int)voice*3);
                 }
-            }else{const auto chord=chordAtBeat(s,begin+base);const int root=nearestPitch(chord.rootPc,previousRoot,55,67);previousRoot=root;note(base+2.5,techno?.18:.45,root,58);note(base+2.5,techno?.18:.45,root+chord.fifth,51);}
+            }else{const auto chord=chordAtBeat(s,begin+base);const int root=nearestPitch(chord.rootPc,previousRoot,55,67);previousRoot=root;const double offset=variant==0?2.5:variant%3==1?1.5:variant%3==2?3.5:2.5;note(base+offset,techno?.18:.45,root,58);note(base+offset,techno?.18:.45,root+chord.fifth,51);}
         }else if(track==leadTrack){
             if((mixing&&bar%4!=0)||(build&&bar>=bars-1)||(breakdown&&bar%4!=0))continue;
             const bool answer=(bar%2)!=0;
-            static constexpr int electroCells[4][6]{{0,3,6,8,11,14},{0,2,6,8,10,14},{0,3,6,10,12,14},{0,2,5,8,11,14}};
-            static constexpr int electroDegrees[2][6]{{0,0,2,0,1,2},{0,0,2,1,0,1}};
-            static constexpr int technoCells[4][4]{{0,3,6,10},{0,3,6,14},{0,2,6,10},{0,3,7,10}};
-            static constexpr int technoDegrees[2][4]{{0,0,2,0},{0,0,2,1}};
+            static constexpr int electroCells[8][6]{{0,3,6,8,11,14},{0,2,6,8,10,14},{0,3,6,10,12,14},{0,2,5,8,11,14},
+                                                   {2,4,6,8,11,14},{0,3,6,9,12,14},{0,2,6,9,11,15},{0,4,6,8,10,14}};
+            static constexpr int electroDegrees[4][6]{{0,0,2,0,1,2},{0,0,2,1,0,1},{1,0,2,1,2,0},{0,2,1,2,0,1}};
+            static constexpr int technoCells[8][4]{{0,3,6,10},{0,3,6,14},{0,2,6,10},{0,3,7,10},
+                                                  {2,6,10,14},{0,4,8,12},{0,3,6,12},{0,2,7,10}};
+            static constexpr int technoDegrees[4][4]{{0,0,2,0},{0,0,2,1},{2,0,2,1},{0,2,0,2}};
             const int count=mixing?2:breakdown?1:techno?4:6;
             for(int i=0;i<count;++i){if(i>1&&density<.4&&i%2)continue;
-                const int phrase=answer?1:0,rhythm=(variant+phrase)%4,cell=techno?technoCells[rhythm][i]:electroCells[rhythm][i];const double at=base+cell*.25;
-                const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);const int tones[]{0,chord.third,chord.fifth};const int degree=techno?technoDegrees[phrase][i]:electroDegrees[phrase][i];
+                const int phrase=(answer?1:0)+(variant%2?2:0),rhythm=(variant+phrase)%8,cell=techno?technoCells[rhythm][i]:electroCells[rhythm][i];const double at=base+cell*.25;
+                const auto chord=chordPerBar?barChord:chordAtBeat(s,begin+at);const int tones[]{0,chord.third,chord.fifth};const int degree=techno?technoDegrees[phrase%4][i]:electroDegrees[phrase%4][i];
                 int interval=tones[degree];
                 if(!techno&&!mixing&&!breakdown&&i>=4&&cell%4!=0){auto colour=s;colour.extension=2;const auto extended=chordAtBeat(colour,begin+at);const int upper=i==4?extended.seventh:extended.ninth;if(upper>=0)interval=upper;}
                 const int voiced=nearestPitch(chord.rootPc+interval,previousLead,60,84);previousLead=voiced;const int pitch=std::clamp(voiced+12*e.globalOctave,0,127);const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);
@@ -120,10 +139,10 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
             auto hit=[&](double at,int velocity){note(base+at,lane==12?1.:.12,pitch,velocity,lane);};
             if(lane==0){if(!breakdown)for(int beat=0;beat<4;++beat)if(!(build&&bar==bars-1&&beat>=2))hit(beat,techno?116:120);if(!breakdown&&!mixing&&variant%3==2&&bar%4==3)hit(3.75,70);}
             else if(lane==1){if(build){const double step=bar>=bars-2?.25:bar>=bars/2?.5:1.;for(double at=0;at<4;at+=step)hit(at,75+(int)(30*bar/std::max(1,bars-1)));}else if(fill){hit(2.75,76);hit(3.5,91);hit(3.75,101);}}
-            else if(lane==2){if(!breakdown){hit(1,techno?89:111);hit(3,techno?95:115);if(variant%3==1&&bar%4==3)hit(2.75,52);if(variant%3==2&&bar%4==1)hit(3.875,58);}}
+            else if(lane==2){if(!breakdown){hit(1,techno?89:111);hit(3,techno?95:115);if(variant%3==1&&bar%4==3)hit(2.75,52);if(variant%3==2&&bar%4==1)hit(3.875,58);if(techno&&variant%4==2&&bar%2==1)hit(3.75,62);}}
             else if(lane==4){const int steps=techno||variant%2?16:8;for(int step=0;step<steps;++step){if(breakdown&&step%4!=2)continue;if(step%2&&(density<.35||(draw(motif+unsigned(step)*53U)%5==0)))continue;hit(step*4./steps,(step%4==2?85:techno?58:70)+(int)(variation%8));}}
             else if(lane==5){if(!breakdown&&!build)for(int beat=0;beat<4;++beat)if(beat==0||(draw(motif+unsigned(beat)*71U)%5!=0))hit(beat+.5,drop?96:80);}
-            else if(lane==6){if(drop&&(techno||bar%8>=4))for(int beat=0;beat<4;++beat)hit(beat+(variant%2?.0:.5),techno?80:67);}
+            else if(lane==6){if(drop&&(techno||bar%8>=4)){const int pattern=variant%3;if(pattern==0){hit(1,techno?85:75);hit(3,techno?90:82);if(bar%4==3)hit(3.75,65);}else for(int beat=0;beat<4;++beat)hit(beat+(pattern==1?.5:.0),techno?80:67);}}
             else if(lane==7){if(!breakdown)for(int step=1;step<16;step+=2)if((variation+step*31)%100<(unsigned)(density*100))hit(step*.25,54+(step%4)*7);}
             else if(lane==3){if(!mixing&&!breakdown&&bar%2==variant%2){hit(1.75,65);if(techno)hit(3.25,60);}}
             else if(lane==8){if(!techno&&drop&&bar%2==0){hit(.5,68);hit(2.5,75);}}

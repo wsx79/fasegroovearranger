@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.39.0
+
+- Independent section harmony: fixed phase alignment in electronic style generators so section-specific chords match the ruler, chord display and other instruments.
+- Electronic and Techno variety: enriched generation algorithms for Techno and Electro House while staying true to authentic genre boundaries, adding distinct chord stab rhythms, expanded lead motifs and phrases, dynamic drum variations and rolling bass patterns across different seeds.
+
 ## 0.38.0
 
 - Target duration sits after the song length and before New arrangement. A tolerance, five seconds by default, shows whether the song is on target, too short or too long. Zero is exact. The song and its tempo are not rewritten. The transport remaining time stays the playhead. Older projects open with the five-second tolerance and no target.
