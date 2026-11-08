@@ -43,8 +43,21 @@ inline double sampleEnvelopeCurve(double t,double curve){
 }
 struct EqSettings {
     bool enabled=false;double highPass=20,low=0,mid=0,high=0;
-    void normalise(){highPass=bounded(highPass,20,20,400);low=bounded(low,0,-18,18);mid=bounded(mid,0,-18,18);high=bounded(high,0,-18,18);}
-    bool operator==(const EqSettings& o)const{return enabled==o.enabled&&highPass==o.highPass&&low==o.low&&mid==o.mid&&high==o.high;}
+    double lowFreq=120,midFreq=1000,highFreq=6000,midQ=0.707;
+    void normalise(){
+        highPass=bounded(highPass,20,20,400);
+        low=bounded(low,0,-18,18);
+        mid=bounded(mid,0,-18,18);
+        high=bounded(high,0,-18,18);
+        lowFreq=bounded(lowFreq,120,30,800);
+        midFreq=bounded(midFreq,1000,200,8000);
+        highFreq=bounded(highFreq,6000,1500,18000);
+        midQ=bounded(midQ,0.707,0.1,10.0);
+    }
+    bool operator==(const EqSettings& o)const{
+        return enabled==o.enabled&&highPass==o.highPass&&low==o.low&&mid==o.mid&&high==o.high
+            &&lowFreq==o.lowFreq&&midFreq==o.midFreq&&highFreq==o.highFreq&&midQ==o.midQ;
+    }
 };
 struct BusSettings {
     std::string name;

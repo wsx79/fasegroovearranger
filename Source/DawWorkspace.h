@@ -42,7 +42,7 @@ private:
     std::vector<int> dividers;
     juce::Label name,source,section;
     juce::Slider gain,pan;
-    juce::ToggleButton eqEnabled{"EQ / HP"};std::array<juce::Slider,4> eqKnobs;
+    juce::ToggleButton eqEnabled{"EQ / HP"};juce::TextButton eqGraphButton{"GRAPH"};std::array<juce::Slider,4> eqKnobs;
     EffectChainView effects;
     ActionButton freeze{"FREEZE"},instrument{"INSTRUMENT PANEL"},editor{"EDIT MIDI"},mute{"M"},solo{"S"},lockTrack{"LOCK TRACK"},lockClip{"LOCK CLIP"},internal{"BUILT-IN"},sample{"LOAD SAMPLE"},plugin{"LOAD VST3 / AU"},pluginEditor{"OPEN VST"},samplerEditor{"OPEN SAMPLER"},deleteTrack{"DELETE MIDI TRACK"},regenerate{"REGENERATE CLIP"},loop{"LOOP CLIP"};
     int layout(int width);

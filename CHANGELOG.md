@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.40.0
+
+- Interactive Graphic Parametric Equalizer: added an Inspector "GRAPH" button opening a dedicated floating window with a real-time frequency response curve, draggable nodes for High-Pass, Low Shelf, Mid Bell (with mouse-wheel Q bandwidth control) and High Shelf, interactive floating readouts, track selector, and bidirectional synchronization with inspector knobs and the audio engine.
+
 ## 0.39.0
 
 - Independent section harmony: fixed phase alignment in electronic style generators so section-specific chords match the ruler, chord display and other instruments.

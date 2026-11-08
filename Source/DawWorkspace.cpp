@@ -68,7 +68,8 @@ TrackInspector::TrackInspector(MainComponent& m):owner(m),effects(m){
     addAndMakeVisible(effects);effects.setComponentID("effect-chain");
     for(auto* c:std::initializer_list<juce::Component*>{&name,&source,&section,&gain,&pan,&instrument,&editor,&mute,&solo,&lockTrack,&lockClip,&internal,&sample,&plugin,&pluginEditor,&samplerEditor,&deleteTrack,&regenerate,&loop})addAndMakeVisible(c);
     addAndMakeVisible(freeze);tip(freeze,"Render the hosted instrument and inserts; unfreeze resumes the retained plugins");Localisation::bindTip(freeze,"Render the hosted instrument and inserts; unfreeze resumes the retained plugins");freeze.onClick=[this]{owner.freezeTrack(owner.selectedTrack);};
-    addAndMakeVisible(eqEnabled);eqEnabled.onClick=[this]{if(!validTrack()||updating)return;owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].eq.enabled=eqEnabled.getToggleState();owner.mixChanged();};for(int i=0;i<4;++i){auto& knob=eqKnobs[(size_t)i];addAndMakeVisible(knob);knob.setRange(i==0?20:-18,i==0?400:18,.1);knob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob.setTextBoxStyle(juce::Slider::TextBoxBelow,false,45,16);Localisation::bindTip(knob,i==0?"High-pass (Hz)":i==1?"Low shelf (dB)":i==2?"Mid (dB)":"High shelf (dB)");knob.onValueChange=[this,i]{if(updating||!validTrack())return;owner.checkpointMix(&eqKnobs[(size_t)i]);auto& q=owner.project.tracks[(size_t)owner.selectedTrack].eq;(i==0?q.highPass:i==1?q.low:i==2?q.mid:q.high)=eqKnobs[(size_t)i].getValue();owner.mixChanged();};}
+    addAndMakeVisible(eqEnabled);eqEnabled.onClick=[this]{if(!validTrack()||updating)return;owner.checkpoint();owner.project.tracks[(size_t)owner.selectedTrack].eq.enabled=eqEnabled.getToggleState();owner.mixChanged();};
+addAndMakeVisible(eqGraphButton);eqGraphButton.setButtonText(tr("GRAPH"));Localisation::bindTip(eqGraphButton,"Open interactive graphical parametric EQ");eqGraphButton.onClick=[this]{if(validTrack())owner.openGraphicEq(owner.selectedTrack);};for(int i=0;i<4;++i){auto& knob=eqKnobs[(size_t)i];addAndMakeVisible(knob);knob.setRange(i==0?20:-18,i==0?400:18,.1);knob.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob.setTextBoxStyle(juce::Slider::TextBoxBelow,false,45,16);Localisation::bindTip(knob,i==0?"High-pass (Hz)":i==1?"Low shelf (dB)":i==2?"Mid (dB)":"High shelf (dB)");knob.onValueChange=[this,i]{if(updating||!validTrack())return;owner.checkpointMix(&eqKnobs[(size_t)i]);auto& q=owner.project.tracks[(size_t)owner.selectedTrack].eq;(i==0?q.highPass:i==1?q.low:i==2?q.mid:q.high)=eqKnobs[(size_t)i].getValue();owner.mixChanged();};}
     name.setComponentID("track-name");name.getProperties().set("fgaRawText",true);name.setFont(Daw::font(Daw::display,true));name.setMinimumHorizontalScale(.55f);name.setEditable(false,true,false);name.onTextChange=[this]{if(updating||!validTrack())return;auto value=name.getText().trim().substring(0,128);if(value.isEmpty()){refresh();return;}auto& t=owner.project.tracks[(size_t)owner.selectedTrack];if(t.name!=value.toStdString()){owner.checkpoint();t.name=value.toStdString();owner.changed(false);}};tip(name,"Double-click to rename this track.");
     source.setFont(Daw::font(Daw::small));source.setColour(juce::Label::textColourId,Daw::textDim);source.setMinimumHorizontalScale(.5f);source.setInterceptsMouseClicks(false,false);source.setComponentID("track-source");
     section.setFont(Daw::font(Daw::body));section.setColour(juce::Label::textColourId,Daw::textDim);section.setMinimumHorizontalScale(.55f);section.setInterceptsMouseClicks(false,false);
@@ -204,7 +205,13 @@ int TrackInspector::layout(int width){
     captions.push_back({"Volume",{inset,y+79,half,14}});captions.push_back({"Pan",{inset+half+gap,y+79,w-half-gap,14}});y+=98;
     endCard();
 
-    row(eqEnabled,22);
+    {
+        auto eqRow=juce::Rectangle<int>(inset,y,w,22);
+        eqGraphButton.setBounds(eqRow.removeFromRight(60));
+        eqRow.removeFromRight(gap);
+        eqEnabled.setBounds(eqRow);
+        y+=26;
+    }
     for(int i=0;i<4;++i){
         eqKnobs[(size_t)i].setBounds(inset+i*w/4,y,w/4,58);
         captions.push_back({i==0?"HP":i==1?"Low":i==2?"Mid":"High",{inset+i*w/4,y+60,w/4,14}});

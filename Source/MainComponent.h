@@ -17,6 +17,7 @@
 #include "SampleBrowser.h"
 #include "StudioWindow.h"
 #include "MixerRoutingWindow.h"
+#include "GraphicEqWindow.h"
 #include <set>
 #include <deque>
 namespace fga {
@@ -213,6 +214,8 @@ public:
     void itemDragExit(const SourceDetails&) override;
     void itemDropped(const SourceDetails&) override;
     void showSampleBrowser(bool);
+    void openGraphicEq(int track=-1);
+    void refreshGraphicEq();
     bool verifySampleBrowser(const juce::File&);
     std::function<void(float)> onScaleChosen;
     Project project;
@@ -347,6 +350,8 @@ private:
     friend bool verifyPianoTools(MainComponent&,const juce::File&);
     friend class StudioWindow;
     friend class MixerRoutingWindow;
+    friend class GraphicEqWindow;
+    std::unique_ptr<GraphicEqWindow> graphicEqWindow;
     std::unique_ptr<EffectChainWindow> effectsWindow;
     std::unique_ptr<StudioWindow> studioWindow;
     std::unique_ptr<MixerRoutingWindow> mixerRoutingWindow;

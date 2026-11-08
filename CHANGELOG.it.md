@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.40.0
+
+- Equalizzatore Grafico Parametrico Interattivo: aggiunto nell'Inspector il pulsante "GRAPH" che apre una finestra dedicata con curva di risposta in frequenza in tempo reale, nodi trascinabili per High-Pass, Low Shelf, Mid Bell (con regolazione della campana Q tramite rotellina del mouse) e High Shelf, badge informativi fluttuanti, selettore traccia e sincronizzazione bidirezionale con i potenziometri dell'Inspector e il motore audio.
+
 ## 0.39.0
 
 - Armonia di sezione indipendente: corretto l'allineamento di fase nei generatori di stili elettronici, facendo corrispondere gli accordi di sezione al righello, alla visualizzazione degli accordi e agli altri strumenti.

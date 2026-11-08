@@ -12,7 +12,7 @@ class ChannelStrip {
 public:
     void reset(){for(auto& f:filters){for(auto& x:f.z1)x=0;for(auto& x:f.z2)x=0;}}
     void configure(EqSettings p,double rate){p.normalise();active=p.enabled;rate=std::max(8000.,rate);
-        for(int i=0;i<4;++i){const double hz=std::min(rate*.45,i==0?p.highPass:i==1?120.:i==2?1000.:6000.);const double w=6.283185307179586*hz/rate,c=std::cos(w),s=std::sin(w),alpha=s/(2*.70710678118);auto& f=filters[i];
+        for(int i=0;i<4;++i){const double hz=std::min(rate*.45,i==0?p.highPass:i==1?p.lowFreq:i==2?p.midFreq:p.highFreq);const double qVal=i==2?p.midQ:0.70710678118;const double w=6.283185307179586*hz/rate,c=std::cos(w),s=std::sin(w),alpha=s/(2*qVal);auto& f=filters[i];
             if(i==0){f.set((1+c)/2,-1-c,(1+c)/2,1+alpha,-2*c,1-alpha);continue;}
             const double db=i==1?p.low:i==2?p.mid:p.high,A=std::pow(10.,db/40.),beta=2*std::sqrt(A)*alpha;
             if(i==2)f.set(1+alpha*A,-2*c,1-alpha*A,1+alpha/A,-2*c,1-alpha/A);
