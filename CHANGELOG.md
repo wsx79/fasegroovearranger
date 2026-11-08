@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.41.0
+
+- Professional Graphic Parametric Equalizer: complete redesign inspired by studio standards (FabFilter Pro-Q 3). Supports up to 16 dynamic bands with double-click canvas creation, quick shape pills (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch), mouse-wheel Q factor adjustment, keyboard Delete/Backspace removal, individual band curve projections in 16 dedicated colors, multi-pass neon bloom composite curve with upward/downward gradient fills, piano roll musical octave ruler (C1-C8), floating dark-glass parameter HUD, and real-time audio-reactive spectrum analyzer.
+
 ## 0.40.0
 
 - Interactive Graphic Parametric Equalizer: added an Inspector "GRAPH" button opening a dedicated floating window with a real-time frequency response curve, draggable nodes for High-Pass, Low Shelf, Mid Bell (with mouse-wheel Q bandwidth control) and High Shelf, interactive floating readouts, track selector, and bidirectional synchronization with inspector knobs and the audio engine.

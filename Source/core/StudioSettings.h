@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cstdint>
 #include <string>
+#include <vector>
 namespace fga {
 constexpr double maxSampleSeconds=1800.;
 constexpr std::int64_t maxDecodedSampleBytes=512ll*1024*1024;
@@ -41,22 +42,88 @@ inline double sampleEnvelopeCurve(double t,double curve){
     if(!(std::abs(curve)>1e-6))return t;
     return std::pow(t,std::exp(std::clamp(curve,-1.,1.)*1.3862943611198906));
 }
-struct EqSettings {
-    bool enabled=false;double highPass=20,low=0,mid=0,high=0;
-    double lowFreq=120,midFreq=1000,highFreq=6000,midQ=0.707;
-    void normalise(){
-        highPass=bounded(highPass,20,20,400);
-        low=bounded(low,0,-18,18);
-        mid=bounded(mid,0,-18,18);
-        high=bounded(high,0,-18,18);
-        lowFreq=bounded(lowFreq,120,30,800);
-        midFreq=bounded(midFreq,1000,200,8000);
-        highFreq=bounded(highFreq,6000,1500,18000);
-        midQ=bounded(midQ,0.707,0.1,10.0);
+enum class EqFilterType : int {
+    Bell = 0,
+    LowCut = 1,
+    LowShelf = 2,
+    HighShelf = 3,
+    HighCut = 4,
+    Notch = 5
+};
+
+struct EqBand {
+    bool enabled = true;
+    int type = 0; // EqFilterType
+    double freq = 1000.0;
+    double gain = 0.0;
+    double q = 0.707;
+
+    void normalise() {
+        type = std::clamp(type, 0, 5);
+        freq = bounded(freq, 1000.0, 20.0, 20000.0);
+        gain = bounded(gain, 0.0, -24.0, 24.0);
+        q = bounded(q, 0.707, 0.1, 18.0);
     }
-    bool operator==(const EqSettings& o)const{
-        return enabled==o.enabled&&highPass==o.highPass&&low==o.low&&mid==o.mid&&high==o.high
-            &&lowFreq==o.lowFreq&&midFreq==o.midFreq&&highFreq==o.highFreq&&midQ==o.midQ;
+
+    bool operator==(const EqBand& o) const {
+        return enabled == o.enabled && type == o.type
+            && std::abs(freq - o.freq) < 1e-3
+            && std::abs(gain - o.gain) < 1e-3
+            && std::abs(q - o.q) < 1e-3;
+    }
+};
+
+struct EqSettings {
+    bool enabled = false;
+    double highPass = 20, low = 0, mid = 0, high = 0;
+    double lowFreq = 120, midFreq = 1000, highFreq = 6000, midQ = 0.707;
+    std::vector<EqBand> bands;
+
+    void ensureBands() {
+        if (bands.empty()) {
+            bands.push_back({ true, (int)EqFilterType::LowCut, highPass, 0.0, 0.707 });
+            bands.push_back({ true, (int)EqFilterType::LowShelf, lowFreq, low, 0.707 });
+            bands.push_back({ true, (int)EqFilterType::Bell, midFreq, mid, midQ });
+            bands.push_back({ true, (int)EqFilterType::HighShelf, highFreq, high, 0.707 });
+        }
+    }
+
+    void syncLegacyFromBands() {
+        for (const auto& b : bands) {
+            if (b.type == (int)EqFilterType::LowCut) { highPass = b.freq; }
+            else if (b.type == (int)EqFilterType::LowShelf) { lowFreq = b.freq; low = b.gain; }
+            else if (b.type == (int)EqFilterType::Bell) { midFreq = b.freq; mid = b.gain; midQ = b.q; }
+            else if (b.type == (int)EqFilterType::HighShelf) { highFreq = b.freq; high = b.gain; }
+        }
+    }
+
+    void syncBandsFromLegacy() {
+        ensureBands();
+        for (auto& b : bands) {
+            if (b.type == (int)EqFilterType::LowCut) { b.freq = highPass; }
+            else if (b.type == (int)EqFilterType::LowShelf) { b.freq = lowFreq; b.gain = low; }
+            else if (b.type == (int)EqFilterType::Bell) { b.freq = midFreq; b.gain = mid; b.q = midQ; }
+            else if (b.type == (int)EqFilterType::HighShelf) { b.freq = highFreq; b.gain = high; }
+        }
+    }
+
+    void normalise() {
+        highPass = bounded(highPass, 20, 20, 400);
+        low = bounded(low, 0, -24, 24);
+        mid = bounded(mid, 0, -24, 24);
+        high = bounded(high, 0, -24, 24);
+        lowFreq = bounded(lowFreq, 120, 20, 800);
+        midFreq = bounded(midFreq, 1000, 100, 12000);
+        highFreq = bounded(highFreq, 6000, 1000, 20000);
+        midQ = bounded(midQ, 0.707, 0.1, 18.0);
+        if (bands.size() > 16) bands.resize(16);
+        for (auto& b : bands) b.normalise();
+    }
+
+    bool operator==(const EqSettings& o) const {
+        return enabled == o.enabled && highPass == o.highPass && low == o.low && mid == o.mid && high == o.high
+            && lowFreq == o.lowFreq && midFreq == o.midFreq && highFreq == o.highFreq && midQ == o.midQ
+            && bands == o.bands;
     }
 };
 struct BusSettings {

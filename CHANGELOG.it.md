@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.41.0
+
+- Equalizzatore Grafico Parametrico Professionale: riprogettazione completa ispirata agli standard di studio (FabFilter Pro-Q 3). Supporta fino a 16 bande dinamiche con creazione rapida tramite doppio click sulla tela, selettore di filtri a pillole (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch), regolazione della campana Q tramite rotellina del mouse, cancellazione con tasto Canc/Backspace o pulsante dedicato, curve analitiche individuali per ciascuna banda in 16 colori professionali, curva composita neon master multi-pass con gradienti differenziati per boost e cut, righello musicale a ottave di pianoforte (C1-C8), floating HUD dei parametri in vetro scuro e analizzatore di spettro audio-reattivo in tempo reale.
+
 ## 0.40.0
 
 - Equalizzatore Grafico Parametrico Interattivo: aggiunto nell'Inspector il pulsante "GRAPH" che apre una finestra dedicata con curva di risposta in frequenza in tempo reale, nodi trascinabili per High-Pass, Low Shelf, Mid Bell (con regolazione della campana Q tramite rotellina del mouse) e High Shelf, badge informativi fluttuanti, selettore traccia e sincronizzazione bidirezionale con i potenziometri dell'Inspector e il motore audio.
