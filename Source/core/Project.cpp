@@ -1163,7 +1163,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                         if(attacks>best){best=attacks;reference=ci;}
                     }
                     const double start=p.clipStart(ti,(int)reference);const int guide=p.sectionAtBeat(start);
-                    selectedMotif=freshElectronicMotif(p,t.clips[reference],ti,start,p.clipLength(ti,(int)reference),p.sections[(size_t)guide].type,selectedMotif);
+                    const double sourceBeats=t.clips[reference].loopLength>0?t.clips[reference].loopLength:p.clipLength(ti,(int)reference);
+                    selectedMotif=freshElectronicMotif(p,t.clips[reference],ti,start,sourceBeats,p.sections[(size_t)guide].type,selectedMotif);
                 }else if(ti==0){auto settings=s;if(scope!=Scope::song&&e.density>=0)settings.density=e.density;selectedMotif=freshPianoMotif(settings,previousPiano,selectedMotif);}
                 if(ti<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})) {
                     const auto previousMotif=clip.motifSeed?clip.motifSeed:mix(previousSongSeed+(std::uint32_t)ti*131U);

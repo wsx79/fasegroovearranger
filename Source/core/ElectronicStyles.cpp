@@ -101,7 +101,9 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
     };
     std::array<int,4> previousVoicing{55,60,64,67};int previousLead=67,previousRoot=55;
     const int bars=(int)std::ceil(beats/4.);
-    for(int bar=0;bar<bars&&(previewBeats<=0||bar*4.<previewBeats);++bar){const double base=bar*4.;const double segment=s.chordSteps*.25;const bool chordPerBar=segment>=4.&&std::fmod(begin,4.)<1e-9;const auto barChord=chordAtBeat(s,begin+base);const auto variation=draw(motif+bar*313U);const bool fill=!mixing&&e.fillEvery>0&&(bar+1)%e.fillEvery==0;
+    // Include the following bar in previews: humanisation can anticipate its
+    // first attack across the window boundary. The fingerprint trims the tail.
+    for(int bar=0;bar<bars&&(previewBeats<=0||bar*4.<previewBeats+4.);++bar){const double base=bar*4.;const double segment=s.chordSteps*.25;const bool chordPerBar=segment>=4.&&std::fmod(begin,4.)<1e-9;const auto barChord=chordAtBeat(s,begin+base);const auto variation=draw(motif+bar*313U);const bool fill=!mixing&&e.fillEvery>0&&(bar+1)%e.fillEvery==0;
         if(track==1){
             if(build&&bar>=bars-2)continue;
             if(breakdown){if(bar%4==0){const auto chord=chordAtBeat(s,begin+base);note(base,1.4,36+chord.rootPc,70);}continue;}
@@ -196,7 +198,8 @@ std::uint32_t freshElectronicMotif(const Project& p,const Clip& previous,int tra
     const double window=std::min(beats,16.);
     auto fingerprint=[&](const Clip& clip,bool pitches){
         std::vector<std::pair<int,int>> result;int first=-1;
-        for(const auto& n:clip.notes){if(n.start>=window)break;if(first<0)first=n.pitch;result.emplace_back((int)std::lround(n.start*4),pitches?n.pitch-first:0);}
+        const auto& source=clip.loopSource.empty()?clip.notes:clip.loopSource;
+        for(const auto& n:source){if(n.start>=window)break;if(first<0)first=n.pitch;result.emplace_back((int)std::lround(n.start*4),pitches?n.pitch-first:0);}
         std::sort(result.begin(),result.end());result.erase(std::unique(result.begin(),result.end()),result.end());return result;
     };
     const auto old=fingerprint(previous,true),oldRhythm=fingerprint(previous,false);

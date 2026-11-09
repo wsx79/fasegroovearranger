@@ -246,6 +246,7 @@ void verifySectionDevelopment(){
     }
 }
 int main(int argc,char** argv){try{
+    if(argc==2&&std::string(argv[1])=="--musical-review"){musicalchecks::verify();std::cout<<"All-genre musical regressions passed\n";return 0;}
     deepauditchecks::verify();
     if(argc==2&&std::string(argv[1])=="--deep-audit"){std::cout<<"Deep audit core regressions passed\n";return 0;}
     globalfeelchecks::verify();

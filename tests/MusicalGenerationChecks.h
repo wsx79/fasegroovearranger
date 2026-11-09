@@ -58,13 +58,16 @@ inline void verify(){
         auto p=newProject(genre);p.sections={{Section::main,8,"Grid"}};for(auto& t:p.tracks)t.clips.assign(1,{});p.normalise();
         p.settings.chordCount=4;p.settings.scale=0;p.settings.degrees={0,3,4,5,0,3,4,5};p.settings.freeChords.fill(-1);
         for(auto& t:p.tracks){t.engine.density=1;t.engine.humanize=0;t.engine.swing=0;}
-        for(auto role:{Section::main,Section::buildup,Section::drop})for(int track:{0,1,3,leadTrack}){
+        for(double human:{0.,.3})for(auto role:{Section::main,Section::buildup,Section::drop})for(int track:{0,1,3,leadTrack}){
+            p.tracks[(size_t)track].engine.humanize=human;
             Clip complete,preview;complete.seed=complete.motifSeed=preview.seed=preview.motifSeed=31;
             generateElectronicClip(p,complete,track,0,32,role,true);
             generateElectronicClip(p,preview,track,0,32,role,true,16);
             complete.notes.erase(std::remove_if(complete.notes.begin(),complete.notes.end(),[](const Note& n){return n.start>=16;}),complete.notes.end());
+            preview.notes.erase(std::remove_if(preview.notes.begin(),preview.notes.end(),[](const Note& n){return n.start>=16;}),preview.notes.end());
             check(complete.notes==preview.notes,"anti-repeat previews preserve the real section's build timing and phrase endings");
         }
+        for(auto& t:p.tracks)t.engine.humanize=0;
         for(int key=0;key<12;++key)for(int steps:{8,16,32})for(double begin:{0.,1.25}){
             p.settings.key=key;p.settings.chordSteps=steps;
             Clip clip;clip.seed=clip.motifSeed=31;generateElectronicClip(p,clip,3,begin,16,Section::main,true);
@@ -78,6 +81,16 @@ inline void verify(){
                 check(iv==0||iv==chord.third||iv==chord.fifth,"electronic stabs never introduce an unauthored suspension against the lead");
                 const double boundary=(std::floor((.75+note.start)/4)+1)*4;
                 check(.75+note.start+note.length<=boundary+1.e-8,"sustained electronic harmony stops at the next changed chord");}
+        }
+        p.sections[0].bars=2;p.normalise();generate(p,Scope::clip,leadTrack,0,93);
+        check(p.resizeClipLoop(leadTrack,0,32),"electronic loop fixture can be extended");
+        const double period=p.tracks[leadTrack].clips[0].loopLength;
+        check(period==8,"extended electronic clip retains its two-bar source");
+        for(unsigned seed=1;seed<=16;++seed){
+            generate(p,Scope::clip,leadTrack,0,seed);const auto take=p.tracks[leadTrack].clips[0];
+            check(take.loopLength==period&&!take.loopSource.empty(),"fresh electronic motifs retain the loop source period");
+            generate(p,Scope::clip,leadTrack,0,0);
+            check(take.notes==p.tracks[leadTrack].clips[0].notes,"APPLY reproduces extended electronic loops");
         }
     }
 }
