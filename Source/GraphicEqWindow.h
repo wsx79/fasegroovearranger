@@ -13,6 +13,7 @@ public:
     void open(int track = -1);
     void refresh();
     void closeButtonPressed() override;
+    void resized() override;
 private:
     MainComponent& owner;
     class Panel;

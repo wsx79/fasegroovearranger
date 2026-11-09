@@ -365,6 +365,30 @@ void AudioEngine::refreshLatencies(){for(int ti=0;ti<maxTracks;++ti){auto& i=*in
     latencyLimited=maxLatency>Instrument::maxDelay-1||instruments[(size_t)masterEffectTrack]->latency>Instrument::maxDelay-1;maxLatency=std::min(maxLatency,Instrument::maxDelay-1);reportedLatency=maxLatency+std::min(instruments[(size_t)masterEffectTrack]->latency,Instrument::maxDelay-1);
     for(auto& ptr:instruments){auto& i=*ptr;const int next=i.kind==masterEffectTrack?0:std::clamp(maxLatency-i.latency,0,Instrument::maxDelay-1);if(next!=i.delay)i.flushDelay();i.delay=next;if(delayStorageMissing(i)||(i.delay==0&&i.delayLine.getNumSamples()>0))delayStorageNeeded=true;}
 }
+void AudioEngine::captureSpectrum(int track,const juce::AudioBuffer<float>& block,int count,bool processed){
+    if(count<=0||spectrumTrack.load(std::memory_order_relaxed)!=track||!spectrumStorage)return;
+    auto& storage=*spectrumStorage;
+    const auto write=storage.write.load(std::memory_order_relaxed);
+    auto& ring=storage.samples[processed?1:0];
+    const int channels=block.getNumChannels();
+    for(int i=0;i<count;++i){
+        const float value=channels>1?0.5f*(block.getSample(0,i)+block.getSample(1,i)):block.getSample(0,i);
+        ring[(write+(std::uint32_t)i)&(std::uint32_t)(spectrumCapacity-1)]=value;
+    }
+    if(processed)storage.write.store(write+(std::uint32_t)count,std::memory_order_release);
+}
+void AudioEngine::readSpectrum(int track,std::vector<float>& pre,std::vector<float>& post,int count) const {
+    const int n=std::max(0,count);
+    pre.assign((size_t)n,0.f);post.assign((size_t)n,0.f);
+    if(n<=0||spectrumTrack.load(std::memory_order_acquire)!=track||!spectrumStorage)return;
+    const auto& storage=*spectrumStorage;
+    const auto write=storage.write.load(std::memory_order_acquire);
+    for(int i=0;i<n;++i){
+        const auto index=(write-(std::uint32_t)(n-i))&(std::uint32_t)(spectrumCapacity-1);
+        pre[(size_t)i]=storage.samples[0][index];
+        post[(size_t)i]=storage.samples[1][index];
+    }
+}
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled){
     const juce::ScopedNoDenormals noDenormals;
     RenderingScope renderingScope(rendering);
@@ -427,7 +451,10 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
             if(i.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
 
-        i.strip.process(block,count);i.applyDelay(block,count);
+        captureSpectrum((int)ti,block,count,false);
+        i.strip.process(block,count);
+        captureSpectrum((int)ti,block,count,true);
+        i.applyDelay(block,count);
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0,side[2]{};

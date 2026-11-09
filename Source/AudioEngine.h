@@ -214,6 +214,9 @@ public:
     double position() const {return currentBeat.load();}
     float level(int track) const {return meters[(size_t)track].load();}
     float masterLevel() const {return masterMeter.load();}
+    // Real-time spectrum tap for the graphical EQ (pre/post strip processing).
+    void setSpectrumTrack(int track){spectrumTrack.store(track,std::memory_order_release);}
+    void readSpectrum(int track,std::vector<float>& pre,std::vector<float>& post,int count) const;
     float cpuLoad() const {return cpuLoadPct.load(std::memory_order_relaxed);}
     // Per side (0 left, 1 right) peaks of the last block, for the stereo meters.
     float level(int track,int side) const {return sideMeters[(size_t)track][(size_t)(side&1)].load();}
@@ -331,6 +334,15 @@ private:
     std::atomic<float> masterMeter{0},cpuLoadPct{0.f};
     std::array<std::array<std::atomic<float>,2>,engineTrackCount> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
+    static constexpr int spectrumCapacity=4096;
+    // Kept on the heap: AudioEngine instances live on the stack in tests and tools.
+    struct SpectrumStorage {
+        std::array<std::array<float,spectrumCapacity>,2> samples{};
+        std::atomic<std::uint32_t> write{0};
+    };
+    std::unique_ptr<SpectrumStorage> spectrumStorage=std::make_unique<SpectrumStorage>();
+    std::atomic<int> spectrumTrack{-1};
+    void captureSpectrum(int track,const juce::AudioBuffer<float>& block,int count,bool processed);
     void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
     std::atomic<double> currentBeat{0},tempo{122};
     std::atomic<int> clipPlaybackTrack{-1};

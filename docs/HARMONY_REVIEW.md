@@ -1,6 +1,6 @@
 # Revisione armonia e rigenerazione — 9 novembre 2026
 
-Base: 0.41.0, `ba61de9`. Verifica del generatore locale, senza Composer IA.
+Base dell’analisi: 0.41.0, `ba61de9`; integrati anche gli aggiornamenti 0.42.0 fino a `bfbc0f7`, senza modifiche a core o test di questa revisione. Verifica del generatore locale, senza Composer IA.
 
 ## Difetti riprodotti
 

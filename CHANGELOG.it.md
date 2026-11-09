@@ -6,6 +6,14 @@
 - Corretti gli accordi fuori fase nell’accompagnamento elettronico e le sospensioni Techno non richieste. Ritmo, contorno melodico e risposte indipendenti; confronto dei take effettivi contro le ripetizioni immediate, con anteprime limitate e fedeli.
 - Aggiunte regressioni su tutti i generi per varietà musicale, scope, blocchi, determinismo e cambi di accordo. Vedi docs/HARMONY_REVIEW.md.
 
+## 0.42.0
+
+- EQ grafico riportato al tema piatto dell'app: niente bagliori neon, spettro decorativo o righello del pianoforte; griglia neutra, colori delle bande smorzati e barra parametri compatta.
+- FREQ, GAIN e Q modificabili a mano: doppio click sul valore, digitazione (la frequenza accetta `1k`/`2.5k`), Invio applica, Esc annulla.
+- I tipi di filtro sono disegnati come icone della risposta con tooltip al passaggio del mouse, al posto delle etichette BELL/LCUT/LSHF/HSHF/HCUT/NOTCH.
+- Analizzatore di spettro in tempo reale: il segnale originale pre-EQ è in grigio, il risultato post-EQ in ciano quando l'EQ è attivo, tramite un tap lock-free nel motore audio per la traccia selezionata.
+- La finestra EQ si apre con dimensioni e posizione sicure, entra nel display e si ridimensiona col contenuto; la barra parametri non può più essere tagliata.
+
 ## 0.41.0
 
 - Equalizzatore Grafico Parametrico Professionale: riprogettazione completa ispirata agli standard di studio (FabFilter Pro-Q 3). Supporta fino a 16 bande dinamiche con creazione rapida tramite doppio click sulla tela, selettore di filtri a pillole (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch), regolazione della campana Q tramite rotellina del mouse, cancellazione con tasto Canc/Backspace o pulsante dedicato, curve analitiche individuali per ciascuna banda in 16 colori professionali, curva composita neon master multi-pass con gradienti differenziati per boost e cut, righello musicale a ottave di pianoforte (C1-C8), floating HUD dei parametri in vetro scuro e analizzatore di spettro audio-reattivo in tempo reale.

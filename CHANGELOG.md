@@ -6,6 +6,14 @@
 - Fix electronic accompaniment chord timing and unintended Techno suspensions. Separate rhythm, melodic contour and replies; compare actual musical takes to avoid immediate repetition, with bounded faithful previews.
 - Add all-genre regeneration, scope/lock, determinism, chord-boundary and musical-content diversity regressions. See docs/HARMONY_REVIEW.md.
 
+## 0.42.0
+
+- Graphic EQ restyled to the app's flat studio theme: no neon glow, no decorative spectrum and no piano-key ruler; neutral grid, muted band colours and a compact parameter strip.
+- FREQ, GAIN and Q are editable by hand: double-click a value, type it (frequency accepts `1k`/`2.5k`), Enter applies it, Esc cancels.
+- Filter types are drawn as response icons with hover tooltips, replacing the BELL/LCUT/LSHF/HSHF/HCUT/NOTCH labels.
+- Real-time spectrum analyzer: the original pre-EQ signal is shown in grey and the post-EQ result in cyan while the EQ is active, using a lock-free tap in the audio engine for the selected track.
+- The EQ window opens at a safe size and position, fits the display and resizes with its content; the parameter strip can no longer be clipped.
+
 ## 0.41.0
 
 - Professional Graphic Parametric Equalizer: complete redesign inspired by studio standards (FabFilter Pro-Q 3). Supports up to 16 dynamic bands with double-click canvas creation, quick shape pills (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch), mouse-wheel Q factor adjustment, keyboard Delete/Backspace removal, individual band curve projections in 16 dedicated colors, multi-pass neon bloom composite curve with upward/downward gradient fills, piano roll musical octave ruler (C1-C8), floating dark-glass parameter HUD, and real-time audio-reactive spectrum analyzer.
