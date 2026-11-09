@@ -9,6 +9,7 @@
 #include <vector>
 #include <array>
 #include <algorithm>
+#include <juce_dsp/juce_dsp.h>
 
 namespace fga {
 namespace {
@@ -87,22 +88,14 @@ static BiquadCoeffs computeBandCoeffs(const EqBand& b, double rate) {
 }
 
 static const juce::Colour bandColours[] = {
-    juce::Colour(0xff00e5ff), // 1: Electric Cyan
-    juce::Colour(0xffffa000), // 2: Amber
-    juce::Colour(0xffff4081), // 3: Neon Rose
-    juce::Colour(0xff00e676), // 4: Emerald Green
-    juce::Colour(0xff7c4dff), // 5: Deep Violet
-    juce::Colour(0xffff6d00), // 6: Tangerine
-    juce::Colour(0xff2979ff), // 7: Azure
-    juce::Colour(0xffe040fb), // 8: Fuchsia
-    juce::Colour(0xffaeea00), // 9: Lime
-    juce::Colour(0xff00b0ff), // 10: Sky
-    juce::Colour(0xffff5252), // 11: Coral Red
-    juce::Colour(0xffffd600), // 12: Gold
-    juce::Colour(0xff1de9b6), // 13: Teal
-    juce::Colour(0xffb388ff), // 14: Lavender
-    juce::Colour(0xffffab40), // 15: Apricot
-    juce::Colour(0xff69f0ae)  // 16: Mint
+    juce::Colour(0xff7aa2f7), // slate blue
+    juce::Colour(0xff7dcfff), // cool cyan
+    juce::Colour(0xff9ece6a), // muted green
+    juce::Colour(0xffe0af68), // sand
+    juce::Colour(0xffbb9af7), // soft violet
+    juce::Colour(0xff73daca), // teal
+    juce::Colour(0xfff7768e), // dusty rose
+    juce::Colour(0xffa9b1d6)  // steel
 };
 
 static inline juce::Colour getBandColour(size_t index) {
@@ -118,23 +111,32 @@ static const char* filterTypeNames[] = {
     "NOTCH"
 };
 
-class EqDisplayComponent : public juce::Component, public juce::Timer {
+class EqDisplayComponent : public juce::Component, private juce::Timer {
 public:
     std::function<void()> onSettingsChanged;
     std::function<void()> onDragStart;
     std::function<void()> onDragEnd;
-    std::function<float()> getTrackLevel;
+    std::function<void(std::vector<float>&, std::vector<float>&)> getSpectrum;
 
     EqDisplayComponent() {
         setOpaque(true);
         setWantsKeyboardFocus(true);
+        addChildComponent(editor);
+        editor.setVisible(false);
+        editor.setFont(Daw::font(Daw::body, true));
+        editor.setJustification(juce::Justification::centred);
+        editor.setColour(juce::TextEditor::backgroundColourId, Daw::well);
+        editor.setColour(juce::TextEditor::textColourId, Daw::text);
+        editor.setColour(juce::TextEditor::outlineColourId, Daw::lineStrong);
+        editor.setColour(juce::TextEditor::focusedOutlineColourId, Daw::accent);
+        editor.setColour(juce::TextEditor::highlightColourId, Daw::accent.withAlpha(0.3f));
+        editor.onReturnKey = [this] { commitEdit(); };
+        editor.onFocusLost = [this] { commitEdit(); };
+        editor.onEscapeKey = [this] { cancelEdit(); };
         startTimerHz(30);
-        spectrumBins.fill(0.0f);
     }
 
-    ~EqDisplayComponent() override {
-        stopTimer();
-    }
+    ~EqDisplayComponent() override { stopTimer(); }
 
     void setEq(const EqSettings& settings, int trackIndex, const juce::String& trackName) {
         currentEq = settings;
@@ -181,26 +183,6 @@ public:
         }
     }
 
-    void timerCallback() override {
-        float lvl = getTrackLevel ? getTrackLevel() : 0.0f;
-        bool changed = false;
-        for (size_t i = 0; i < spectrumBins.size(); ++i) {
-            float target = 0.0f;
-            if (lvl > 0.001f) {
-                float freqFactor = std::sin((float)i * 0.22f + (float)juce::Time::getMillisecondCounterHiRes() * 0.006f);
-                target = std::clamp(lvl * (0.6f + 0.4f * freqFactor), 0.0f, 1.2f);
-            }
-            float cur = spectrumBins[i];
-            if (target > cur) cur += (target - cur) * 0.55f;
-            else cur *= 0.82f;
-            if (std::abs(cur - spectrumBins[i]) > 0.002f) {
-                spectrumBins[i] = cur;
-                changed = true;
-            }
-        }
-        if (changed) repaint();
-    }
-
     bool keyPressed(const juce::KeyPress& key) override {
         if (key.isKeyCode(juce::KeyPress::deleteKey) || key.isKeyCode(juce::KeyPress::backspaceKey)) {
             deleteSelectedBand();
@@ -214,249 +196,272 @@ public:
         return false;
     }
 
+    void timerCallback() override {
+        if (!getSpectrum) return;
+        std::vector<float> pre, post;
+        getSpectrum(pre, post);
+        analyseSpectrum(pre, preBands);
+        analyseSpectrum(post, postBands);
+        repaint();
+    }
+
+    void analyseSpectrum(const std::vector<float>& samples, std::array<float, 96>& target) {
+        if (samples.size() < 2048) return;
+        constexpr int n = 2048;
+        for (int i = 0; i < n; ++i)
+            fftData[(size_t)i] = samples[samples.size() - (size_t)n + (size_t)i]
+                * (0.5f - 0.5f * std::cos(2.0 * 3.141592653589793 * (double)i / (double)(n - 1)));
+        fft.performFrequencyOnlyForwardTransform(fftData.data());
+        std::array<float, 96> bins{};
+        bins.fill(-120.0f);
+        for (int i = 1; i < n / 2; ++i) {
+            const double hz = (double)i * 48000.0 / (double)n;
+            if (hz < 20.0 || hz > 20000.0) continue;
+            const double t = std::log(hz / 20.0) / std::log(1000.0);
+            const int b = std::clamp((int)std::lround(t * 95.0), 0, 95);
+            const float db = 20.0f * std::log10(std::max(1.0e-6f, fftData[(size_t)i] / (float)n));
+            bins[(size_t)b] = std::max(bins[(size_t)b], db);
+        }
+        for (int b = 0; b < 96; ++b) {
+            const float v = std::clamp((bins[(size_t)b] + 90.0f) / 90.0f, 0.0f, 1.0f);
+            target[(size_t)b] = v > target[(size_t)b]
+                ? target[(size_t)b] + (v - target[(size_t)b]) * 0.7f
+                : target[(size_t)b] * 0.86f;
+        }
+    }
+
+    void beginEdit(int param) {
+        if (selectedBand < 0 || selectedBand >= (int)currentEq.bands.size()) return;
+        const auto& b = currentEq.bands[(size_t)selectedBand];
+        editParam = param;
+        const juce::String text = param == 0 ? juce::String(b.freq, b.freq < 100.0 ? 1 : 0)
+                                : param == 1 ? juce::String(b.gain, 1)
+                                             : juce::String(b.q, 2);
+        editor.setText(text, false);
+        const auto l = hudLayout(getHudBounds(getPlotArea()));
+        editor.setBounds((param == 0 ? l.freq : param == 1 ? l.gain : l.q).toNearestInt().reduced(3));
+        editor.setVisible(true);
+        editor.grabKeyboardFocus();
+        editor.selectAll();
+    }
+
+    void cancelEdit() {
+        editParam = -1;
+        editor.setVisible(false);
+        repaint();
+    }
+
+    void commitEdit() {
+        if (editParam < 0) return;
+        auto text = editor.getText().trim().toLowerCase();
+        if (text.isEmpty()) { cancelEdit(); return; }
+        double value = 0.0;
+        if (editParam == 0) {
+            value = text.endsWithChar('k') ? text.dropLastCharacters(1).getDoubleValue() * 1000.0 : text.getDoubleValue();
+            value = std::clamp(value, 20.0, 20000.0);
+        } else if (editParam == 1) {
+            value = std::clamp(text.getDoubleValue(), -24.0, 24.0);
+        } else {
+            value = std::clamp(text.getDoubleValue(), 0.1, 18.0);
+        }
+        auto& b = currentEq.bands[(size_t)selectedBand];
+        if (onDragStart) onDragStart();
+        if (editParam == 0) b.freq = value;
+        else if (editParam == 1) b.gain = value;
+        else b.q = value;
+        b.normalise();
+        currentEq.syncLegacyFromBands();
+        editParam = -1;
+        editor.setVisible(false);
+        if (onSettingsChanged) onSettingsChanged();
+        if (onDragEnd) onDragEnd();
+        repaint();
+    }
+
+    void resized() override {
+        if (editor.isVisible()) cancelEdit();
+    }
+
+    void mouseExit(const juce::MouseEvent&) override {
+        if (hoverBand != -1 || hoverPill != -1) {
+            hoverBand = hoverPill = -1;
+            repaint();
+        }
+    }
+
     void paint(juce::Graphics& g) override {
-        const auto bounds = getLocalBounds().toFloat();
+        g.fillAll(Daw::base);
+        const auto plotArea = getPlotArea();
 
-        // 1. Sleek studio backdrop: dark graphite radial vignette
-        juce::Colour bgCenter(0xff121822);
-        juce::Colour bgBorder(0xff090c10);
-        juce::ColourGradient bgGrad(bgCenter, bounds.getCentreX(), bounds.getCentreY(),
-                                   bgBorder, 0.0f, 0.0f, true);
-        g.setGradientFill(bgGrad);
-        g.fillAll();
+        g.setColour(Daw::lcd);
+        g.fillRoundedRectangle(plotArea, 4.0f);
+        g.setColour(Daw::line);
+        g.drawRoundedRectangle(plotArea, 4.0f, 1.0f);
 
-        const float padL = 40.0f, padR = 28.0f, padT = 24.0f, padB = 40.0f;
-        const auto plotArea = juce::Rectangle<float>(padL, padT, bounds.getWidth() - padL - padR, bounds.getHeight() - padT - padB);
-
-        // 2. High precision logarithmic grid
-        // dB Grid
-        static constexpr double dbTicks[] = { 24.0, 18.0, 12.0, 6.0, 0.0, -6.0, -12.0, -18.0, -24.0 };
-        g.setFont(Daw::font(Daw::small, false));
-        for (double db : dbTicks) {
-            const float y = yFromDb(db, plotArea);
-            const bool isZero = std::abs(db) < 1e-4;
-            if (isZero) {
-                // Accentuated 0 dB line with luminous blue glow
-                g.setColour(juce::Colour(0x334488ff));
-                g.drawHorizontalLine(std::lround(y - 1.0f), plotArea.getX(), plotArea.getRight());
-                g.drawHorizontalLine(std::lround(y + 1.0f), plotArea.getX(), plotArea.getRight());
-                g.setColour(juce::Colour(0xff4488ff));
-                g.drawHorizontalLine(std::lround(y), plotArea.getX(), plotArea.getRight());
-            } else {
-                g.setColour(juce::Colour(0x18ffffff));
-                g.drawHorizontalLine(std::lround(y), plotArea.getX(), plotArea.getRight());
-            }
-
-            g.setColour(isZero ? juce::Colour(0xff66aaff) : juce::Colour(0x889bb0c2));
-            juce::String txt = (db > 0 ? "+" : "") + juce::String((int)db) + " dB";
-            g.drawText(txt, 2, std::lround(y - 7.0f), (int)padL - 6, 14, juce::Justification::centredRight);
-            g.drawText(txt, (int)plotArea.getRight() + 4, std::lround(y - 7.0f), (int)padR - 4, 14, juce::Justification::centredLeft);
-        }
-
-        // Frequency Grid (Logarithmic)
-        static constexpr double majorFreqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
-        for (double hz : majorFreqs) {
-            const float x = xFromFreq(hz, plotArea);
-            g.setColour(juce::Colour(0x22ffffff));
-            g.drawVerticalLine(std::lround(x), plotArea.getY(), plotArea.getBottom());
-            g.setColour(juce::Colour(0x999bb0c2));
-            juce::String label = hz >= 1000 ? juce::String((int)(hz / 1000)) + "k" : juce::String((int)hz);
-            g.drawText(label, std::lround(x - 20.0f), std::lround(plotArea.getBottom() + 4.0f), 40, 14, juce::Justification::centred);
-        }
-        // Intermediate subtle frequency ticks
-        static constexpr double minorFreqs[] = { 30, 40, 60, 70, 80, 90, 300, 400, 600, 700, 800, 900, 3000, 4000, 6000, 7000, 8000, 9000, 15000 };
-        g.setColour(juce::Colour(0x0affffff));
-        for (double hz : minorFreqs) {
-            const float x = xFromFreq(hz, plotArea);
-            g.drawVerticalLine(std::lround(x), plotArea.getY(), plotArea.getBottom());
-        }
-
-        // Piano Key / Octave Musical Ruler along bottom
-        const float rulerY = plotArea.getBottom() + 19.0f;
-        const float rulerH = 14.0f;
-        g.setColour(juce::Colour(0x10ffffff));
-        g.fillRect(plotArea.getX(), rulerY, plotArea.getWidth(), rulerH);
-        g.setColour(juce::Colour(0x25ffffff));
-        g.drawRect(plotArea.getX(), rulerY, plotArea.getWidth(), rulerH, 1.0f);
-
-        // Musical pitches C1 to C8
-        static const struct { double hz; const char* note; } notes[] = {
-            { 32.7, "C1" }, { 65.4, "C2" }, { 130.8, "C3" }, { 261.6, "C4" },
-            { 523.2, "C5" }, { 1046.5, "C6" }, { 2093.0, "C7" }, { 4186.0, "C8" }
-        };
-        g.setFont(Daw::font(Daw::small, true));
-        for (const auto& n : notes) {
-            const float x = xFromFreq(n.hz, plotArea);
-            g.setColour(juce::Colour(0x3344aaff));
-            g.drawVerticalLine(std::lround(x), rulerY, rulerY + rulerH);
-            g.setColour(juce::Colour(0x889bb0c2));
-            g.drawText(n.note, std::lround(x - 12.0f), std::lround(rulerY), 24, (int)rulerH, juce::Justification::centred);
-        }
-
-        // 3. Live Spectrum Analyzer (Smooth audio-reactive background glow)
         {
-            juce::Path specPath;
-            specPath.startNewSubPath(plotArea.getX(), plotArea.getBottom());
-            const float binW = plotArea.getWidth() / (float)(spectrumBins.size() - 1);
-            for (size_t b = 0; b < spectrumBins.size(); ++b) {
-                const float x = plotArea.getX() + (float)b * binW;
-                const float h = spectrumBins[b] * (plotArea.getHeight() * 0.7f);
-                const float y = plotArea.getBottom() - h;
-                specPath.lineTo(x, y);
-            }
-            specPath.lineTo(plotArea.getRight(), plotArea.getBottom());
-            specPath.closeSubPath();
+            const juce::Graphics::ScopedSaveState saved(g);
+            g.reduceClipRegion(plotArea.toNearestInt());
 
-            juce::ColourGradient specGrad(juce::Colour(0x2e8844ff), 0.0f, plotArea.getY() + 30.0f,
-                                          juce::Colour(0x028844ff), 0.0f, plotArea.getBottom(), false);
-            g.setGradientFill(specGrad);
-            g.fillPath(specPath);
+            static constexpr double dbTicks[] = { 24.0, 18.0, 12.0, 6.0, 0.0, -6.0, -12.0, -18.0, -24.0 };
+            for (double db : dbTicks) {
+                const float y = yFromDb(db, plotArea);
+                const bool zero = std::abs(db) < 1e-4;
+                g.setColour(zero ? Daw::lineStrong : Daw::line.withMultipliedAlpha(0.7f));
+                g.drawHorizontalLine(juce::roundToInt(y), plotArea.getX(), plotArea.getRight());
+            }
+
+            static constexpr double majorFreqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
+            static constexpr double minorFreqs[] = { 30, 40, 60, 70, 80, 90, 300, 400, 600, 700, 800, 900, 3000, 4000, 6000, 7000, 8000, 9000, 15000 };
+            g.setColour(Daw::line.withMultipliedAlpha(0.45f));
+            for (double hz : minorFreqs)
+                g.drawVerticalLine(juce::roundToInt(xFromFreq(hz, plotArea)), plotArea.getY(), plotArea.getBottom());
+            g.setColour(Daw::line.withMultipliedAlpha(0.9f));
+            for (double hz : majorFreqs)
+                g.drawVerticalLine(juce::roundToInt(xFromFreq(hz, plotArea)), plotArea.getY(), plotArea.getBottom());
         }
 
-        // 4. Compute filter coefficients for all bands
+        g.setFont(Daw::smallFont(9.5f));
+        static constexpr double dbLabels[] = { 24.0, 12.0, 0.0, -12.0, -24.0 };
+        for (double db : dbLabels) {
+            const float y = yFromDb(db, plotArea);
+            g.setColour(std::abs(db) < 1e-4 ? Daw::textDim : Daw::textFaint);
+            const juce::String t = (db > 0 ? "+" : "") + juce::String((int)db);
+            g.drawText(t, 0, juce::roundToInt(y - 7.0f), juce::roundToInt(plotArea.getX()) - 8, 14, juce::Justification::centredRight);
+        }
+
+        static constexpr struct { double hz; const char* label; } freqLabels[] = {
+            { 20, "20" }, { 50, "50" }, { 100, "100" }, { 200, "200" }, { 500, "500" },
+            { 1000, "1k" }, { 2000, "2k" }, { 5000, "5k" }, { 10000, "10k" }, { 20000, "20k" }
+        };
+        for (const auto& f : freqLabels) {
+            const float x = xFromFreq(f.hz, plotArea);
+            g.setColour(Daw::textFaint);
+            g.drawText(f.label, juce::roundToInt(x - 18.0f), juce::roundToInt(plotArea.getBottom() + 6.0f), 36, 14, juce::Justification::centred);
+        }
+
+        if (name.isNotEmpty()) {
+            g.setColour(Daw::textFaint);
+            g.setFont(Daw::caps(9.5f));
+            g.drawText(name.toUpperCase(), juce::roundToInt(plotArea.getX() + 8.0f), juce::roundToInt(plotArea.getY() + 6.0f),
+                       juce::roundToInt(plotArea.getWidth() - 16.0f), 14, juce::Justification::centredLeft);
+        }
+
+        {
+            const juce::Graphics::ScopedSaveState saved(g);
+            g.reduceClipRegion(plotArea.toNearestInt());
+            auto drawSpectrum = [&](const std::array<float, 96>& values, juce::Colour fill, juce::Colour line) {
+                juce::Path path;
+                path.startNewSubPath(plotArea.getX(), plotArea.getBottom());
+                for (int i = 0; i < 96; ++i) {
+                    const float x = plotArea.getX() + plotArea.getWidth() * (float)i / 95.0f;
+                    const float y = plotArea.getBottom() - values[(size_t)i] * plotArea.getHeight() * 0.92f;
+                    path.lineTo(x, y);
+                }
+                path.lineTo(plotArea.getRight(), plotArea.getBottom());
+                path.closeSubPath();
+                g.setColour(fill);
+                g.fillPath(path);
+                g.setColour(line);
+                g.strokePath(path, juce::PathStrokeType(1.0f));
+            };
+            drawSpectrum(preBands, Daw::textFaint.withAlpha(0.08f), Daw::textFaint.withAlpha(0.22f));
+            if (currentEq.enabled)
+                drawSpectrum(postBands, juce::Colour(0xff4cc3f0).withAlpha(0.10f), juce::Colour(0xff4cc3f0).withAlpha(0.45f));
+        }
+
         std::vector<BiquadCoeffs> bandCoeffs;
         bandCoeffs.reserve(currentEq.bands.size());
-        for (const auto& b : currentEq.bands) {
-            bandCoeffs.push_back(computeBandCoeffs(b, 48000.0));
-        }
+        for (const auto& b : currentEq.bands) bandCoeffs.push_back(computeBandCoeffs(b, 48000.0));
 
-        // 5. Draw Individual Band Response Curves (when hovered or selected, or faint)
-        const int steps = (int)plotArea.getWidth();
+        const int steps = std::max(2, (int)plotArea.getWidth());
         const float yZero = yFromDb(0.0, plotArea);
 
-        if (steps > 20 && currentEq.enabled) {
-            for (size_t bIdx = 0; bIdx < currentEq.bands.size(); ++bIdx) {
-                const auto& b = currentEq.bands[bIdx];
-                if (!b.enabled) continue;
-                const bool isSel = (selectedBand == (int)bIdx);
-                const bool isHov = (hoverBand == (int)bIdx);
-                if (!isSel && !isHov && currentEq.bands.size() > 6) continue;
+        {
+            const juce::Graphics::ScopedSaveState saved(g);
+            g.reduceClipRegion(plotArea.toNearestInt());
 
-                juce::Path bandPath;
-                for (int i = 0; i < steps; i += 2) {
-                    const float x = plotArea.getX() + (float)i;
-                    const double hz = freqFromX(x, plotArea);
-                    const double db = bandCoeffs[bIdx].magnitudeDb(hz, 48000.0);
-                    const float y = yFromDb(std::clamp(db, -26.0, 26.0), plotArea);
-                    if (i == 0) bandPath.startNewSubPath(x, y);
-                    else bandPath.lineTo(x, y);
+            if (currentEq.enabled && (selectedBand >= 0 || hoverBand >= 0)) {
+                const int which = selectedBand >= 0 ? selectedBand : hoverBand;
+                if (which >= 0 && which < (int)currentEq.bands.size() && currentEq.bands[(size_t)which].enabled) {
+                    juce::Path bandPath;
+                    for (int i = 0; i < steps; ++i) {
+                        const float x = plotArea.getX() + (float)i * (plotArea.getWidth() / (float)(steps - 1));
+                        const double hz = freqFromX(x, plotArea);
+                        const float y = yFromDb(std::clamp(bandCoeffs[(size_t)which].magnitudeDb(hz, 48000.0), -26.0, 26.0), plotArea);
+                        if (i == 0) bandPath.startNewSubPath(x, y);
+                        else bandPath.lineTo(x, y);
+                    }
+                    g.setColour(getBandColour((size_t)which).withAlpha(0.55f));
+                    g.strokePath(bandPath, juce::PathStrokeType(1.0f, juce::PathStrokeType::curved));
                 }
-
-                auto bCol = getBandColour(bIdx);
-                float alpha = isSel ? 0.85f : (isHov ? 0.65f : 0.35f);
-                g.setColour(bCol.withAlpha(alpha));
-                g.strokePath(bandPath, juce::PathStrokeType(isSel ? 1.8f : 1.2f, juce::PathStrokeType::curved));
             }
-        }
 
-        // 6. Draw Composite Master Curve with multi-pass luminous glow & gradient fill
-        if (steps > 20) {
-            juce::Path curvePath;
-            juce::Path fillBoostPath;
-            juce::Path fillCutPath;
-
-            fillBoostPath.startNewSubPath(plotArea.getX(), yZero);
-            fillCutPath.startNewSubPath(plotArea.getX(), yZero);
-
+            juce::Path curvePath, fillPath;
             for (int i = 0; i < steps; ++i) {
-                const float x = plotArea.getX() + (float)i;
+                const float x = plotArea.getX() + (float)i * (plotArea.getWidth() / (float)(steps - 1));
                 const double hz = freqFromX(x, plotArea);
                 double totalDb = 0.0;
-                if (currentEq.enabled) {
-                    for (const auto& coeff : bandCoeffs) {
-                        totalDb += coeff.magnitudeDb(hz, 48000.0);
-                    }
-                }
+                if (currentEq.enabled)
+                    for (const auto& coeff : bandCoeffs) totalDb += coeff.magnitudeDb(hz, 48000.0);
                 const float y = yFromDb(std::clamp(totalDb, -26.0, 26.0), plotArea);
-                if (i == 0) curvePath.startNewSubPath(x, y);
-                else curvePath.lineTo(x, y);
-
-                fillBoostPath.lineTo(x, std::min(y, yZero));
-                fillCutPath.lineTo(x, std::max(y, yZero));
+                if (i == 0) {
+                    curvePath.startNewSubPath(x, y);
+                    fillPath.startNewSubPath(x, yZero);
+                } else {
+                    curvePath.lineTo(x, y);
+                }
+                fillPath.lineTo(x, y);
             }
+            fillPath.lineTo(plotArea.getRight(), yZero);
+            fillPath.closeSubPath();
 
-            fillBoostPath.lineTo(plotArea.getRight(), yZero);
-            fillBoostPath.closeSubPath();
-
-            fillCutPath.lineTo(plotArea.getRight(), yZero);
-            fillCutPath.closeSubPath();
-
-            // Boost fill (warm neon cyan upward glow)
-            juce::Colour neonCyan(0xff00f0ff);
-            juce::Colour glowCyan = neonCyan.withAlpha(currentEq.enabled ? 0.28f : 0.05f);
-            juce::ColourGradient boostGrad(glowCyan, 0.0f, plotArea.getY(), juce::Colour(0x0000f0ff), 0.0f, yZero, false);
-            g.setGradientFill(boostGrad);
-            g.fillPath(fillBoostPath);
-
-            // Cut fill (deep subtle azure downward fade)
-            juce::Colour cutAzure(0xff0055aa);
-            juce::Colour glowAzure = cutAzure.withAlpha(currentEq.enabled ? 0.22f : 0.04f);
-            juce::ColourGradient cutGrad(juce::Colour(0x000055aa), 0.0f, yZero, glowAzure, 0.0f, plotArea.getBottom(), false);
-            g.setGradientFill(cutGrad);
-            g.fillPath(fillCutPath);
-
-            // Curve stroke: multi-pass bloom
-            if (currentEq.enabled) {
-                // Soft outer aura
-                g.setColour(neonCyan.withAlpha(0.25f));
-                g.strokePath(curvePath, juce::PathStrokeType(6.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-                // Core sharp stroke
-                g.setColour(neonCyan);
-                g.strokePath(curvePath, juce::PathStrokeType(2.4f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            } else {
-                g.setColour(juce::Colour(0x668899aa));
-                g.strokePath(curvePath, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-            }
+            const auto curveColour = currentEq.enabled ? Daw::accent : Daw::textFaint;
+            g.setColour(curveColour.withMultipliedAlpha(0.12f));
+            g.fillPath(fillPath);
+            g.setColour(curveColour.withAlpha(currentEq.enabled ? 0.95f : 0.6f));
+            g.strokePath(curvePath, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
 
-        // 7. Draw Band Nodes (FabFilter Pro-Q style handle circles)
         for (size_t i = 0; i < currentEq.bands.size(); ++i) {
             const auto& b = currentEq.bands[i];
             const auto pt = getNodePosition((int)i, plotArea);
-            const bool isHovered = (hoverBand == (int)i);
-            const bool isSelected = (selectedBand == (int)i);
-            const bool isDragging = (dragBand == (int)i);
+            const bool isHovered = hoverBand == (int)i;
+            const bool isSelected = selectedBand == (int)i;
+            const bool isDragging = dragBand == (int)i;
             const auto col = getBandColour(i);
 
-            // Axis projection lines when dragging/hovered
-            if (isDragging || isHovered) {
-                static const float dashLengths[] = { 3.0f, 3.0f };
-                g.setColour(col.withAlpha(0.35f));
-                g.drawDashedLine(juce::Line<float>(pt.x, plotArea.getY(), pt.x, plotArea.getBottom()), dashLengths, 2, 1.0f);
-                g.drawDashedLine(juce::Line<float>(plotArea.getX(), pt.y, plotArea.getRight(), pt.y), dashLengths, 2, 1.0f);
+            if (isDragging || isSelected || isHovered) {
+                g.setColour(Daw::lineStrong.withAlpha(isDragging ? 0.8f : 0.5f));
+                g.drawVerticalLine(juce::roundToInt(pt.x), plotArea.getY(), plotArea.getBottom());
+                g.drawHorizontalLine(juce::roundToInt(pt.y), plotArea.getX(), plotArea.getRight());
             }
 
-            // Outer glowing aura
-            if (isSelected || isDragging || isHovered) {
-                g.setColour(col.withAlpha(isSelected ? 0.45f : 0.25f));
-                g.fillEllipse(pt.x - 18.0f, pt.y - 18.0f, 36.0f, 36.0f);
-            }
-
-            // Outer ring
-            g.setColour(isSelected ? juce::Colours::white : (b.enabled ? col : col.withAlpha(0.4f)));
-            g.drawEllipse(pt.x - 12.0f, pt.y - 12.0f, 24.0f, 24.0f, isSelected ? 2.5f : 2.0f);
-
-            // Dark inner disc
-            g.setColour(juce::Colour(0xff0c1017));
-            g.fillEllipse(pt.x - 10.0f, pt.y - 10.0f, 20.0f, 20.0f);
-
-            // Band index text inside disc
-            g.setColour(b.enabled ? (isSelected ? juce::Colours::white : col) : Daw::textDim);
-            g.setFont(Daw::font(Daw::small, true));
-            g.drawText(juce::String((int)i + 1), std::lround(pt.x - 10.0f), std::lround(pt.y - 9.0f), 20, 18, juce::Justification::centred);
+            const float radius = isSelected ? 9.0f : 8.0f;
+            g.setColour(Daw::base);
+            g.fillEllipse(pt.x - radius, pt.y - radius, radius * 2.0f, radius * 2.0f);
+            g.setColour(b.enabled ? col : col.withAlpha(0.35f));
+            g.drawEllipse(pt.x - radius, pt.y - radius, radius * 2.0f, radius * 2.0f, isSelected ? 2.0f : 1.5f);
+            g.setFont(Daw::font(9.0f, true));
+            g.setColour(b.enabled ? (isSelected ? Daw::text : col) : Daw::textFaint);
+            g.drawText(juce::String((int)i + 1), juce::roundToInt(pt.x - radius), juce::roundToInt(pt.y - radius),
+                       juce::roundToInt(radius * 2.0f), juce::roundToInt(radius * 2.0f), juce::Justification::centred);
         }
 
-        // 8. Floating Parameter Card HUD (FabFilter Pro-Q style docked at bottom)
-        if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
-            drawBandHud(g, plotArea);
-        }
+        if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) drawBandHud(g, plotArea);
     }
 
     void mouseMove(const juce::MouseEvent& e) override {
         const auto plotArea = getPlotArea();
-        int found = findBandAt(e.position, plotArea);
-        if (hoverBand != found) {
+        const int found = findBandAt(e.position, plotArea);
+        int pill = -1;
+        if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
+            const auto l = hudLayout(getHudBounds(plotArea));
+            for (int i = 0; i < 6; ++i)
+                if (l.pills[i].contains(e.position)) { pill = i; break; }
+        }
+        if (hoverBand != found || hoverPill != pill) {
             hoverBand = found;
+            hoverPill = pill;
             repaint();
         }
     }
@@ -516,6 +521,12 @@ public:
 
     void mouseDoubleClick(const juce::MouseEvent& e) override {
         if (e.mods.isPopupMenu()) return;
+        if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
+            const auto l = hudLayout(getHudBounds(getPlotArea()));
+            if (l.freq.contains(e.position)) { beginEdit(0); return; }
+            if (l.gain.contains(e.position)) { beginEdit(1); return; }
+            if (l.q.contains(e.position)) { beginEdit(2); return; }
+        }
         const auto plotArea = getPlotArea();
         if (!plotArea.contains(e.position)) return;
 
@@ -593,17 +604,21 @@ private:
     int track = 0;
     juce::String name;
     int hoverBand = -1;
+    int hoverPill = -1;
     int dragBand = -1;
     int selectedBand = -1;
 
     // HUD parameter dragging
     int dragHudParam = -1; // 0: freq, 1: gain, 2: q
     double dragStartParamVal = 0.0;
-
-    std::array<float, 32> spectrumBins{};
+    juce::dsp::FFT fft{11};
+    std::array<float, 4096> fftData{};
+    std::array<float, 96> preBands{}, postBands{};
+    juce::TextEditor editor;
+    int editParam = -1;
 
     juce::Rectangle<float> getPlotArea() const {
-        const float padL = 40.0f, padR = 28.0f, padT = 24.0f, padB = 40.0f;
+        const float padL = 44.0f, padR = 16.0f, padT = 18.0f, padB = 34.0f;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
     }
 
@@ -646,144 +661,142 @@ private:
         return -1;
     }
 
+    struct HudLayout {
+        juce::Rectangle<float> badge, pills[6], freq, gain, q, bypass, invert, del;
+    };
+
+    HudLayout hudLayout(const juce::Rectangle<float>& hud) const {
+        HudLayout l;
+        auto r = hud.reduced(6.0f, 6.0f);
+        l.badge = r.removeFromLeft(52.0f).reduced(1.0f);
+        r.removeFromLeft(6.0f);
+        for (auto& pill : l.pills) pill = r.removeFromLeft(38.0f).reduced(1.0f, 4.0f);
+        r.removeFromLeft(8.0f);
+        l.freq = r.removeFromLeft(78.0f).reduced(2.0f);
+        r.removeFromLeft(6.0f);
+        l.gain = r.removeFromLeft(66.0f).reduced(2.0f);
+        r.removeFromLeft(6.0f);
+        l.q = r.removeFromLeft(56.0f).reduced(2.0f);
+        r.removeFromLeft(8.0f);
+        l.bypass = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
+        r.removeFromLeft(4.0f);
+        l.invert = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
+        r.removeFromLeft(4.0f);
+        l.del = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
+        return l;
+    }
+
     juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>& plotArea) const {
-        const float hudW = std::min(700.0f, plotArea.getWidth() - 20.0f);
+        const float hudW = std::min(624.0f, plotArea.getWidth() - 20.0f);
         const float hudH = 50.0f;
         const float hudX = plotArea.getX() + (plotArea.getWidth() - hudW) * 0.5f;
         const float hudY = plotArea.getBottom() - hudH - 8.0f;
         return { hudX, hudY, hudW, hudH };
     }
 
+    static void drawFilterIcon(juce::Graphics& g, juce::Rectangle<float> r, int type, juce::Colour colour) {
+        const float x0 = r.getX(), x1 = r.getRight(), yTop = r.getY(), yBottom = r.getBottom();
+        const float mid = r.getCentreY();
+        juce::Path p;
+        auto pt = [&](float x, float y) { return juce::Point<float>(x0 + (x1 - x0) * x, y); };
+        switch (type) {
+            case (int)EqFilterType::LowCut:
+                p.startNewSubPath(pt(0.0f, yBottom)); p.lineTo(pt(0.45f, yBottom)); p.lineTo(pt(0.75f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
+            case (int)EqFilterType::LowShelf:
+                p.startNewSubPath(pt(0.0f, yBottom)); p.lineTo(pt(0.38f, yBottom)); p.lineTo(pt(0.62f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
+            case (int)EqFilterType::HighShelf:
+                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.38f, yTop)); p.lineTo(pt(0.62f, yBottom)); p.lineTo(pt(1.0f, yBottom)); break;
+            case (int)EqFilterType::HighCut:
+                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.25f, yTop)); p.lineTo(pt(0.55f, yBottom)); p.lineTo(pt(1.0f, yBottom)); break;
+            case (int)EqFilterType::Notch:
+                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.4f, yTop)); p.lineTo(pt(0.5f, yBottom)); p.lineTo(pt(0.6f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
+            default:
+                p.startNewSubPath(pt(0.0f, mid)); p.quadraticTo(pt(0.5f, yTop - 1.0f), pt(1.0f, mid)); break;
+        }
+        g.setColour(colour);
+        g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    }
+
     void drawBandHud(juce::Graphics& g, const juce::Rectangle<float>& plotArea) {
         auto hud = getHudBounds(plotArea);
+        auto l = hudLayout(hud);
         const auto& b = currentEq.bands[(size_t)selectedBand];
-        const auto bCol = getBandColour(selectedBand);
 
-        // Glass background with neon band border
-        g.setColour(juce::Colour(0xf00b0f16));
-        g.fillRoundedRectangle(hud, 8.0f);
-        g.setColour(bCol.withAlpha(0.85f));
-        g.drawRoundedRectangle(hud, 8.0f, 1.5f);
+        g.setColour(Daw::chrome);
+        g.fillRoundedRectangle(hud, Daw::panelRadius);
+        g.setColour(Daw::lineStrong);
+        g.drawRoundedRectangle(hud, Daw::panelRadius, 1.0f);
 
-        auto r = hud.reduced(6.0f, 6.0f);
+        g.setFont(Daw::caps(9.0f));
+        g.setColour(getBandColour(selectedBand));
+        g.drawText("BAND " + juce::String(selectedBand + 1), l.badge, juce::Justification::centred);
 
-        // 1. Band Badge capsule
-        auto badgeRect = r.removeFromLeft(68.0f).reduced(2.0f);
-        g.setColour(bCol.withAlpha(0.25f));
-        g.fillRoundedRectangle(badgeRect, 4.0f);
-        g.setColour(bCol);
-        g.drawRoundedRectangle(badgeRect, 4.0f, 1.0f);
-        g.setFont(Daw::font(Daw::small, true));
-        g.setColour(juce::Colours::white);
-        g.drawText("BAND " + juce::String(selectedBand + 1), badgeRect, juce::Justification::centred);
-
-        r.removeFromLeft(6.0f);
-
-        // 2. Shape Pills (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch)
-        const float pillW = 44.0f;
-        static const char* pillLabels[] = { "BELL", "LCUT", "LSHF", "HSHF", "HCUT", "NOTCH" };
         for (int i = 0; i < 6; ++i) {
-            auto pill = r.removeFromLeft(pillW).reduced(1.0f, 4.0f);
             const bool active = (b.type == i);
-            if (active) {
-                g.setColour(bCol);
-                g.fillRoundedRectangle(pill, 4.0f);
-                g.setColour(juce::Colour(0xff090c10));
-            } else {
-                g.setColour(juce::Colour(0x22ffffff));
-                g.fillRoundedRectangle(pill, 4.0f);
-                g.setColour(Daw::textDim);
-            }
-            g.setFont(Daw::font(Daw::small, true));
-            g.drawText(pillLabels[i], pill, juce::Justification::centred);
+            g.setColour(active ? Daw::accent : Daw::control);
+            g.fillRoundedRectangle(l.pills[i], Daw::radius);
+            drawFilterIcon(g, l.pills[i].reduced(7.0f, 5.0f), i, active ? Daw::onAccent : Daw::textDim);
         }
 
-        r.removeFromLeft(10.0f);
+        auto valueBox = [&](juce::Rectangle<float> box, const char* label, const juce::String& value, juce::Colour colour) {
+            g.setColour(Daw::well);
+            g.fillRoundedRectangle(box, Daw::radius);
+            auto inner = box.reduced(4.0f, 2.0f);
+            g.setFont(Daw::caps(7.5f));
+            g.setColour(Daw::textFaint);
+            g.drawText(label, inner.removeFromTop(11.0f), juce::Justification::centredLeft);
+            g.setFont(Daw::font(Daw::body, true));
+            g.setColour(colour);
+            g.drawText(value, inner, juce::Justification::centredLeft);
+        };
 
-        // 3. Frequency Box
-        auto freqBox = r.removeFromLeft(88.0f).reduced(2.0f, 2.0f);
-        g.setColour(juce::Colour(0x18ffffff));
-        g.fillRoundedRectangle(freqBox, 4.0f);
-        g.setFont(Daw::font(Daw::small, false));
-        g.setColour(Daw::textDim);
-        g.drawText("FREQ", freqBox.removeFromTop(12.0f), juce::Justification::centred);
-        g.setFont(Daw::font(Daw::body, true));
-        g.setColour(Daw::text);
-        juce::String fStr = (b.freq >= 1000.0) ? juce::String(b.freq / 1000.0, 2) + " kHz" : juce::String((int)b.freq) + " Hz";
-        g.drawText(fStr, freqBox, juce::Justification::centred);
-
-        r.removeFromLeft(6.0f);
-
-        // 4. Gain Box
-        auto gainBox = r.removeFromLeft(76.0f).reduced(2.0f, 2.0f);
         const bool gainDisabled = (b.type == (int)EqFilterType::LowCut || b.type == (int)EqFilterType::HighCut || b.type == (int)EqFilterType::Notch);
-        g.setColour(juce::Colour(0x18ffffff));
-        g.fillRoundedRectangle(gainBox, 4.0f);
-        g.setFont(Daw::font(Daw::small, false));
-        g.setColour(Daw::textDim);
-        g.drawText("GAIN", gainBox.removeFromTop(12.0f), juce::Justification::centred);
-        g.setFont(Daw::font(Daw::body, true));
-        if (gainDisabled) {
-            g.setColour(Daw::textDim.withAlpha(0.4f));
-            g.drawText("—", gainBox, juce::Justification::centred);
-        } else {
-            g.setColour(b.gain > 0.1 ? juce::Colour(0xffffbb33) : (b.gain < -0.1 ? juce::Colour(0xff33bbff) : Daw::text));
-            g.drawText((b.gain > 0 ? "+" : "") + juce::String(b.gain, 1) + " dB", gainBox, juce::Justification::centred);
+        valueBox(l.freq, "FREQ", (b.freq >= 1000.0) ? juce::String(b.freq / 1000.0, 2) + " kHz" : juce::String((int)b.freq) + " Hz", Daw::text);
+        valueBox(l.gain, "GAIN", gainDisabled ? juce::String("—") : (b.gain > 0 ? "+" : "") + juce::String(b.gain, 1) + " dB", gainDisabled ? Daw::textFaint : Daw::text);
+        valueBox(l.q, "Q", juce::String(b.q, 2), Daw::text);
+
+        auto chip = [&](juce::Rectangle<float> box, const juce::String& text, bool active, juce::Colour activeColour) {
+            g.setColour(active ? activeColour.withAlpha(0.22f) : Daw::control);
+            g.fillRoundedRectangle(box, Daw::radius);
+            g.setColour(active ? activeColour : Daw::textDim);
+            g.setFont(Daw::caps(8.0f));
+            g.drawText(text, box, juce::Justification::centred);
+        };
+
+        chip(l.bypass, b.enabled ? "ON" : "OFF", b.enabled, Daw::accent);
+        chip(l.invert, "INV", false, Daw::textDim);
+        chip(l.del, "DEL", true, Daw::meterHigh);
+
+        if (hoverPill >= 0 && hoverPill < 6) {
+            static const char* tips[] = {
+                "Bell: boost or cut around the frequency",
+                "Low cut: removes frequencies below the cutoff",
+                "Low shelf: boosts or cuts the low end",
+                "High shelf: boosts or cuts the high end",
+                "High cut: removes frequencies above the cutoff",
+                "Notch: removes a narrow band of frequencies"
+            };
+            const auto& pill = l.pills[hoverPill];
+            const juce::String tip(tips[hoverPill]);
+            const int tipW = 320, tipH = 26;
+            juce::Rectangle<int> box((int)pill.getCentreX() - tipW / 2, (int)pill.getY() - tipH - 8, tipW, tipH);
+            if (box.getY() < 4) box.setY((int)pill.getBottom() + 8);
+            g.setColour(Daw::chrome);
+            g.fillRoundedRectangle(box.toFloat(), Daw::radius);
+            g.setColour(Daw::lineStrong);
+            g.drawRoundedRectangle(box.toFloat(), Daw::radius, 1.0f);
+            g.setFont(Daw::font(Daw::small));
+            g.setColour(Daw::text);
+            g.drawFittedText(tip, box.reduced(8, 0), 1, 0.8f);
         }
-
-        r.removeFromLeft(6.0f);
-
-        // 5. Q Factor Box
-        auto qBox = r.removeFromLeft(68.0f).reduced(2.0f, 2.0f);
-        g.setColour(juce::Colour(0x18ffffff));
-        g.fillRoundedRectangle(qBox, 4.0f);
-        g.setFont(Daw::font(Daw::small, false));
-        g.setColour(Daw::textDim);
-        g.drawText("Q", qBox.removeFromTop(12.0f), juce::Justification::centred);
-        g.setFont(Daw::font(Daw::body, true));
-        g.setColour(Daw::text);
-        g.drawText(juce::String(b.q, 2), qBox, juce::Justification::centred);
-
-        r.removeFromLeft(8.0f);
-
-        // 6. Action Buttons: Bypass, Invert, Delete
-        auto bypassBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        g.setColour(b.enabled ? bCol.withAlpha(0.3f) : juce::Colour(0x22ffffff));
-        g.fillRoundedRectangle(bypassBtn, 4.0f);
-        g.setColour(b.enabled ? bCol : Daw::textDim);
-        g.drawRoundedRectangle(bypassBtn, 4.0f, 1.0f);
-        g.drawText("⏻", bypassBtn, juce::Justification::centred);
-
-        r.removeFromLeft(4.0f);
-
-        auto invertBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        g.setColour(juce::Colour(0x22ffffff));
-        g.fillRoundedRectangle(invertBtn, 4.0f);
-        g.setColour(gainDisabled ? Daw::textDim.withAlpha(0.3f) : Daw::text);
-        g.drawRoundedRectangle(invertBtn, 4.0f, 1.0f);
-        g.drawText("±", invertBtn, juce::Justification::centred);
-
-        r.removeFromLeft(4.0f);
-
-        auto delBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        g.setColour(juce::Colour(0x33ff4444));
-        g.fillRoundedRectangle(delBtn, 4.0f);
-        g.setColour(juce::Colour(0xffff5555));
-        g.drawRoundedRectangle(delBtn, 4.0f, 1.0f);
-        g.drawText("✕", delBtn, juce::Justification::centred);
     }
 
     void handleHudMouseDown(const juce::MouseEvent& e, const juce::Rectangle<float>& hud) {
-        auto r = hud.reduced(6.0f, 6.0f);
-        r.removeFromLeft(68.0f + 6.0f); // Badge
-
+        auto l = hudLayout(hud);
         auto& b = currentEq.bands[(size_t)selectedBand];
 
-        // 6 Shape Pills
-        const float pillW = 44.0f;
         for (int i = 0; i < 6; ++i) {
-            auto pill = r.removeFromLeft(pillW).reduced(1.0f, 4.0f);
-            if (pill.contains(e.position)) {
+            if (l.pills[i].contains(e.position)) {
                 b.type = i;
                 b.normalise();
                 currentEq.syncLegacyFromBands();
@@ -793,72 +806,42 @@ private:
             }
         }
 
-        r.removeFromLeft(10.0f);
-
-        // Frequency Box
-        auto freqBox = r.removeFromLeft(88.0f).reduced(2.0f, 2.0f);
-        if (freqBox.contains(e.position)) {
-            dragHudParam = 0;
-            dragStartParamVal = b.freq;
+        if (l.freq.contains(e.position)) {
+            dragHudParam = 0; dragStartParamVal = b.freq;
             if (onDragStart) onDragStart();
             return;
         }
-
-        r.removeFromLeft(6.0f);
-
-        // Gain Box
-        auto gainBox = r.removeFromLeft(76.0f).reduced(2.0f, 2.0f);
-        if (gainBox.contains(e.position)) {
-            dragHudParam = 1;
-            dragStartParamVal = b.gain;
+        if (l.gain.contains(e.position)) {
+            dragHudParam = 1; dragStartParamVal = b.gain;
             if (onDragStart) onDragStart();
             return;
         }
-
-        r.removeFromLeft(6.0f);
-
-        // Q Box
-        auto qBox = r.removeFromLeft(68.0f).reduced(2.0f, 2.0f);
-        if (qBox.contains(e.position)) {
-            dragHudParam = 2;
-            dragStartParamVal = b.q;
+        if (l.q.contains(e.position)) {
+            dragHudParam = 2; dragStartParamVal = b.q;
             if (onDragStart) onDragStart();
             return;
         }
-
-        r.removeFromLeft(8.0f);
-
-        // Bypass
-        auto bypassBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        if (bypassBtn.contains(e.position)) {
+        if (l.bypass.contains(e.position)) {
             b.enabled = !b.enabled;
             currentEq.syncLegacyFromBands();
             if (onSettingsChanged) onSettingsChanged();
             repaint();
             return;
         }
-
-        r.removeFromLeft(4.0f);
-
-        // Invert
-        auto invertBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        if (invertBtn.contains(e.position)) {
+        if (l.invert.contains(e.position)) {
             b.gain = -b.gain;
             currentEq.syncLegacyFromBands();
             if (onSettingsChanged) onSettingsChanged();
             repaint();
             return;
         }
-
-        r.removeFromLeft(4.0f);
-
-        // Delete
-        auto delBtn = r.removeFromLeft(36.0f).reduced(2.0f, 4.0f);
-        if (delBtn.contains(e.position)) {
+        if (l.del.contains(e.position)) {
             deleteSelectedBand();
             return;
         }
     }
+
+
 
     void showBandMenu(int bandIndex, juce::Point<int> screenPos) {
         selectedBand = bandIndex;
@@ -940,9 +923,8 @@ public:
         Localisation::bindTip(enableButton, "Toggle EQ on or off for this track.");
         Localisation::bindTip(resetButton, "Reset all EQ bands to flat (0 dB).");
 
-        eqDisplay.getTrackLevel = [this] {
-            if (currentTrack < 0 || currentTrack >= (int)owner.project.tracks.size()) return 0.0f;
-            return owner.audio.level(currentTrack);
+        eqDisplay.getSpectrum = [this](std::vector<float>& pre, std::vector<float>& post) {
+            owner.audio.readSpectrum(currentTrack, pre, post, 2048);
         };
 
         addBandButton.onClick = [this] {
@@ -1021,27 +1003,23 @@ public:
         resetButton.setButtonText(tr("FLAT"));
 
         eqDisplay.setEq(t.eq, currentTrack, juce::String::fromUTF8(t.name.c_str()));
+        owner.audio.setSpectrumTrack(currentTrack);
         updating = false;
         repaint();
     }
 
     void paint(juce::Graphics& g) override {
-        // Sleek dark toolbar
-        g.fillAll(juce::Colour(0xff0e131b));
+        g.fillAll(Daw::base);
 
-        // Pro title with track color badge
-        g.setColour(juce::Colour(0xff00e5ff));
-        g.fillRoundedRectangle(16.0f, 13.0f, 6.0f, 18.0f, 2.0f);
+        g.setColour(Daw::accent);
+        g.fillRoundedRectangle(16.0f, 14.0f, 3.0f, 16.0f, 1.5f);
 
-        g.setColour(juce::Colours::white);
-        g.setFont(Daw::font(Daw::display, true));
-        g.drawText("PRO PARAMETRIC EQUALIZER", 28, 10, 260, 24, juce::Justification::centredLeft);
+        g.setColour(Daw::text);
+        g.setFont(Daw::font(Daw::title, true));
+        g.drawText(tr("GRAPHIC EQ"), 28, 8, 240, 26, juce::Justification::centredLeft);
 
-        // Hints
         g.setFont(Daw::font(Daw::small, false));
-        g.setColour(juce::Colour(0x889bb0c2));
-        g.drawText(tr("Double-click to add band • Drag to sculpt • Wheel adjusts Q • Del to remove"),
-                   getWidth() - 480, 12, 460, 20, juce::Justification::centredRight);
+        g.setColour(Daw::textFaint);
     }
 
     void resized() override {
@@ -1049,7 +1027,7 @@ public:
         auto topBar = r.removeFromTop(34);
         r.removeFromTop(10);
 
-        topBar.removeFromLeft(280); // Title spacing
+        topBar.removeFromLeft(180); // Title spacing
         trackSelector.setBounds(topBar.removeFromLeft(180));
         topBar.removeFromLeft(10);
         addBandButton.setBounds(topBar.removeFromLeft(110));
@@ -1077,15 +1055,20 @@ private:
 };
 
 GraphicEqWindow::GraphicEqWindow(MainComponent& m)
-    : DocumentWindow("FASE GROOVE - PRO PARAMETRIC EQ", juce::Colour(0xff0e131b), juce::DocumentWindow::closeButton),
+    : DocumentWindow("Graphic Equalizer", Daw::base, juce::DocumentWindow::closeButton),
       owner(m) {
     setLookAndFeel(&m.theme);
     setUsingNativeTitleBar(true);
     panel = new Panel(m);
-    setContentOwned(panel, true);
+    setContentOwned(panel, false);
     setResizable(true, false);
-    setResizeLimits(760, 460, 2560, 1440);
-    setSize(960, 580);
+    // Fit the editor inside the display's usable area (DPI and small screens included).
+    const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+    const auto area = display ? display->userArea : juce::Rectangle<int>(0, 0, 1280, 800);
+    const int maxW = juce::jmax(760, area.getWidth() - 32);
+    const int maxH = juce::jmax(460, area.getHeight() - 48);
+    setResizeLimits(760, 460, maxW, maxH);
+    setSize(juce::jmin(900, area.getWidth() - 80), juce::jmin(560, area.getHeight() - 100));
     setAlwaysOnTop(true);
 }
 
@@ -1096,7 +1079,12 @@ GraphicEqWindow::~GraphicEqWindow() {
 
 void GraphicEqWindow::open(int track) {
     panel->setTrack(track);
-    if (!isVisible()) centreWithSize(getWidth(), getHeight());
+    if (!isVisible()) {
+        // Open at a safe offset; centring a scaled top-level window can push it off-screen.
+        const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
+        const auto area = display ? display->userArea : juce::Rectangle<int>(0, 0, 1280, 800);
+        setTopLeftPosition(area.getX() + 40, area.getY() + 40);
+    }
     setAlwaysOnTop(true);
     setVisible(true);
     toFront(true);
@@ -1106,7 +1094,13 @@ void GraphicEqWindow::refresh() {
     if (panel) panel->refresh();
 }
 
+void GraphicEqWindow::resized() {
+    DocumentWindow::resized();
+    if (panel) panel->setBounds(getLocalBounds());
+}
+
 void GraphicEqWindow::closeButtonPressed() {
+    owner.audio.setSpectrumTrack(-1);
     owner.dismissAuxiliaryWindow(*this);
 }
 
