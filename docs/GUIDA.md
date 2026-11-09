@@ -30,7 +30,9 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.42.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.43.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
+Nella **0.43.0**, tutti i 15 generi usano frasi armoniche e arrangiamenti più vari e coerenti. Le nuove canzoni cambiano anche la sequenza delle sezioni; intro e outro automatici offrono 16/32 battute con finestre ritmiche pulite di otto battute per il mix DJ. Risposte del Lead e ingressi delle percussioni sviluppano il brano, con lift differenti per generi organici ed elettronici. Forme personalizzate, armonie locali e blocchi sono rispettati. L’EQ parametrico aggiunge potenziometri Frequenza/Guadagno/Q, valori editabili, icone dei filtri basate sulla risposta reale, impostazioni dell’analizzatore salvate e Undo/Redo coerente. Vedi le revisioni di [arrangiamento](ARRANGEMENT_REVIEW.md), [armonia](HARMONY_REVIEW.md) ed [EQ](EQ_REVIEW.md).
 
 Cambiare durata, ordine o presenza di una sezione sposta MIDI, automazione e loop insieme a quella sezione. Con l'armonia di sezione attiva, i controlli degli accordi, i vocal chop e la tonalità del MIDI seguono quella sezione.
 

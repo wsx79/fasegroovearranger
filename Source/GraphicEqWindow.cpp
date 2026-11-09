@@ -36,7 +36,7 @@ static inline juce::Colour getBandColour(size_t index) {
 }
 
 static const char* filterTypeNames[] = {
-    "BELL",
+    "Bell",
     "LOW CUT",
     "LOW SHELF",
     "HIGH SHELF",

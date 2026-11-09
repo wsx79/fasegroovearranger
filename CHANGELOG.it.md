@@ -2,6 +2,10 @@
 
 ## Non pubblicato
 
+## 0.43.0
+
+- Corretta la chiave di traduzione del filtro a campana EQ, distinta dalla campana della batteria, per superare la validazione della famiglia e avviare le build multipiattaforma.
+
 - Sviluppati gli arrangiamenti di tutti i 15 generi: sequenze di sezioni alternative, intro/outro DJ di 16/32 battute e frasi ritmiche pulite di otto battute, incluso il Lead. Entrate e pause reali degli strumenti, respiro prima dei drop e fill organici coerenti; conservati forme personalizzate, blocchi e riuso del MIDI in NUOVO ARRANGIAMENTO. Aggiunti audit dedicati su struttura, MIDI e finestre audio. Vedi docs/ARRANGEMENT_REVIEW.md.
 
 - Revisione di tutti i 15 generi: frasi armoniche complete per genere, sviluppo A/B compatibile, conservazione degli accordi manuali e meno estrazioni armoniche ripetute.

@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+## 0.43.0
+
+- Fix the EQ Bell translation key collision with the drum bell label so the family validation and cross-platform builds can run.
+
 - Develop all 15 genre arrangements with alternative section-role sequences, 16/32-bar DJ bookends and clean eight-bar mixing phrases including Lead. Add real orchestration/rest development, pre-drop breathing space and genre-appropriate organic fills; preserve authored forms, locks and layout-only MIDI reuse. Add dedicated arrangement, independent MIDI and native audio-window audits. See docs/ARRANGEMENT_REVIEW.md.
 
 - Review all 15 genres: complete genre-specific harmonic phrases, compatible A/B development, manual-chord preservation and fewer repeated harmony draws.
