@@ -1,5 +1,23 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+## 0.43.0
+
+- Fix the EQ Bell translation key collision with the drum bell label so the family validation and cross-platform builds can run.
+
+- Develop all 15 genre arrangements with alternative section-role sequences, 16/32-bar DJ bookends and clean eight-bar mixing phrases including Lead. Add real orchestration/rest development, pre-drop breathing space and genre-appropriate organic fills; preserve authored forms, locks and layout-only MIDI reuse. Add dedicated arrangement, independent MIDI and native audio-window audits. See docs/ARRANGEMENT_REVIEW.md.
+
+- Review all 15 genres: complete genre-specific harmonic phrases, compatible A/B development, manual-chord preservation and fewer repeated harmony draws.
+- Fix electronic accompaniment chord timing and unintended Techno suspensions. Separate rhythm, melodic contour and replies; compare actual musical takes to avoid immediate repetition, with bounded faithful previews.
+- Add all-genre regeneration, scope/lock, determinism, chord-boundary and musical-content diversity regressions. See docs/HARMONY_REVIEW.md.
+
+- Professional parametric EQ editing: responsive controls below the graph, band selection, fine dragging, strict Hz/kHz/dB/Q entry, keyboard F/G/Q, undoable edits and reset that also bypasses cuts/notches.
+- Calibrated stereo pre/post analyzer with the actual processing rate, saved display/response preferences and race-free atomic taps. Display curves and processing now share filter coefficients; compact controls preserve other custom bands.
+- Bypassed EQ curves survive project saves without being re-enabled; native UI/DSP, concurrent capture and persistence regressions cover these workflows.
+
+- Replace the EQ parameter strip with real Frequency/Gain/Q rotary controls, editable readouts, graduated arcs and a dedicated flat studio skin. Redraw all six filter glyphs from actual DSP responses, with labeled filter cards and native gesture Undo.
+
 ## 0.42.0
 
 - Graphic EQ restyled to the app's flat studio theme: no neon glow, no decorative spectrum and no piano-key ruler; neutral grid, muted band colours and a compact parameter strip.

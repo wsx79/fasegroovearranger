@@ -89,13 +89,26 @@ struct EqSettings {
     }
 
     void syncLegacyFromBands() {
+        std::array<bool,6> seen{};
         for (const auto& b : bands) {
+            if(b.type<0||b.type>=6||seen[(size_t)b.type])continue;
+            seen[(size_t)b.type]=true;
             if (b.type == (int)EqFilterType::LowCut) { highPass = b.freq; }
             else if (b.type == (int)EqFilterType::LowShelf) { lowFreq = b.freq; low = b.gain; }
             else if (b.type == (int)EqFilterType::Bell) { midFreq = b.freq; mid = b.gain; midQ = b.q; }
             else if (b.type == (int)EqFilterType::HighShelf) { highFreq = b.freq; high = b.gain; }
         }
     }
+
+    // The compact inspector edits one band, without collapsing every bell or
+    // shelf onto the legacy frequency/gain. Explicit bands are authoritative.
+    bool setLegacyControl(int control,double value){
+        ensureBands();const int types[]{1,2,0,3};if(control<0||control>3)return false;
+        auto it=std::find_if(bands.begin(),bands.end(),[&](const EqBand& b){return b.type==types[control];});
+        if(it==bands.end()){if(bands.size()>=16)return false;EqBand b;b.type=types[control];b.freq=control==0?highPass:control==1?lowFreq:control==2?midFreq:highFreq;bands.push_back(b);it=bands.end()-1;}
+        if(control==0)it->freq=value;else it->gain=value;it->enabled=true;it->normalise();syncLegacyFromBands();return true;
+    }
+    void flatten(){ensureBands();for(auto& b:bands){b.gain=0;if(b.type==1||b.type==4||b.type==5)b.enabled=false;}syncLegacyFromBands();}
 
     void syncBandsFromLegacy() {
         ensureBands();

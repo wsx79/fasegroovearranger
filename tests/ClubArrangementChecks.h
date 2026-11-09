@@ -17,7 +17,7 @@ inline void verifyClubProject(const fga::Project& p,int genre,const std::string&
     }
     // The first/final phrase offers a rhythm-only blend. Musical layers are
     // introduced/removed within the same intro/outro, not outside the song.
-    for(int ti=0;ti<4;++ti){
+    for(int ti:{0,1,2,3,fga::leadTrack}){
         for(auto n:p.tracks[(size_t)ti].clips.front().notes)check(n.start>=32,"melodic instrument enters before the first mix phrase ends");
         for(auto n:p.tracks[(size_t)ti].clips.back().notes)check(n.start+n.length<=outroEnd-32+1e-8,"held harmony crosses into the final mix phrase");
     }

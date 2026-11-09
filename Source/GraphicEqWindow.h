@@ -14,6 +14,9 @@ public:
     void refresh();
     void closeButtonPressed() override;
     void resized() override;
+#if FGA_SELF_TESTS
+    bool writeUiEvidence(const juce::File&);
+#endif
 private:
     MainComponent& owner;
     class Panel;

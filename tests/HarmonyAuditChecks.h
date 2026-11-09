@@ -25,7 +25,7 @@ inline void verifyHarmonyAudit(){
         check(s.degrees[0]==0&&(s.chordSteps==32||s.chordSteps==64),"Techno anchors its drone/vamp to the tonic");
         for(int i=0;i<s.chordCount;++i)check(chordAtBeat(s,i*s.chordSteps*.25).fifth==7,"Techno vamps avoid unintended diminished chords");
     }
-    check(progressions.size()==8&&speeds==std::set<int>{16,32},"Electro has eight progressions and one/two bars per chord");
+    check(progressions.size()>=16&&speeds==std::set<int>{16,32},"Electro has a wider harmonic vocabulary and one/two bars per chord");
     check(modes==std::set<int>{1,2,5}&&counts==std::set<int>{1,2},"Techno varies mode and drone/vamp");
     check(distribution[1]>150&&distribution[2]>120&&distribution[5]>80,"Techno mode weighting retains Dorian, Aeolian and Phrygian vocabulary");
     for(int genre:{technoGenre,electroHouseGenre})for(unsigned seed=1;seed<=16;++seed){
@@ -37,7 +37,7 @@ inline void verifyHarmonyAudit(){
     project.settings.key=0;project.settings.scale=2;project.settings.chordSteps=16;project.settings.chordCount=4;project.settings.degrees={0,5,2,6,0,5,2,6};project.settings.freeChords.fill(-1);project.settings.humanize=0;project.settings.swing=0;
     for(int track:{0,leadTrack}){auto& e=project.tracks[(size_t)track].engine;e.humanize=0;e.swing=0;e.density=1;}
     Clip chords;chords.seed=chords.motifSeed=1;generateElectronicClip(project,chords,0,0,32,Section::main,false);
-    check(!chords.notes.empty()&&chords.notes.front().start==.5,"Electro chord stabs start on offbeats");
+    check(!chords.notes.empty()&&std::any_of(chords.notes.begin(),chords.notes.end(),[](const Note& n){return std::fmod(n.start,1.)==.5;}),"Electro chord stabs retain offbeat drive");
     std::array<int,4> previous{};bool first=true;
     for(size_t i=0;i<chords.notes.size();i+=4){check(i+3<chords.notes.size(),"every Electro stab has four voices");std::set<int> actual;const auto chord=chordAtBeat(project.settings,chords.notes[i].start);std::set<int> expected{chord.rootPc,(chord.rootPc+chord.third)%12,(chord.rootPc+chord.fifth)%12};
         for(size_t voice=0;voice<4;++voice){const auto& note=chords.notes[i+voice];check(note.start==chords.notes[i].start&&note.pitch>=55&&note.pitch<=72,"Electro chord voices stay together in their intended register");actual.insert(note.pitch%12);if(!first)check(std::abs(note.pitch-previous[voice])<=7,"Electro inversions keep voice movement bounded");previous[voice]=note.pitch;}

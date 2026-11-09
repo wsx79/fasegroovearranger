@@ -7,6 +7,48 @@
 #include <iostream>
 
 namespace fga {
+// Render stored eight-bar windows from a regenerated song, including the actual
+// guide mix and absolute-time automation. Complements structural MIDI checks.
+inline bool writeArrangementAudit(const juce::File& folder){
+    if(folder.createDirectory().failed())return false;
+    AudioEngine audio(AudioEngine::Offline{});juce::AudioFormatManager formats;formats.registerBasicFormats();
+    juce::String report="genre\twindow\trms\traw_peak\n";bool ok=true;
+    for(int genre=0;genre<numGenres;++genre){
+        auto p=newProject(genre);generate(p,Scope::song,0,0,42);
+        int main=-1,space=-1,drop=-1,final=-1;
+        for(int s=0;s<(int)p.sections.size();++s){const auto type=p.sections[(size_t)s].type;
+            if(type==Section::main&&main<0)main=s;
+            if(type==Section::breakdown&&space<0)space=s;
+            if(type==Section::drop){if(drop<0&&space>=0)drop=s;final=s;}}
+        if(main<0||space<0||drop<0||final<0)return false;
+        struct Window{const char* name;int section;double from;};
+        const Window windows[]{{"mix-in",0,0},{"theme",main,0},{"break",space,0},{"return",drop,0},{"final",final,0},{"mix-out",(int)p.sections.size()-1,p.sections.back().bars*4.-32.}};
+        double breakRms=0,returnRms=0;
+        for(const auto& w:windows){
+            auto excerpt=p;excerpt.sections={p.sections[(size_t)w.section]};excerpt.sections[0].bars=8;excerpt.clearLoop();
+            for(size_t t=0;t<excerpt.tracks.size();++t){auto c=p.tracks[t].clips[(size_t)w.section];c.notes.clear();c.loopSource.clear();c.loopLength=c.loopPhase=c.span=c.position=0;
+                for(auto n:p.tracks[t].clips[(size_t)w.section].notes){const double end=std::min(n.start+n.length,w.from+32.);n.start=std::max(n.start,w.from);if(end<=n.start)continue;n.length=end-n.start;n.start-=w.from;c.notes.push_back(n);}
+                excerpt.tracks[t].clips={std::move(c)};}
+            const double offset=p.sectionStart(w.section)+w.from;
+            for(auto entry:excerpt.envelopes()){auto& curve=*entry.first;if(!curve.active())continue;const auto original=curve;curve.points.clear();for(int tick=0;tick<=128;++tick){const double beat=tick*.25;curve.points.push_back({beat,original.valueAt(offset+beat),0});}}
+            excerpt.normalise();double peak=0;
+            const auto file=folder.getChildFile(juce::String(genre)+"-"+w.name+".wav");
+            if(audio.exportAudio(excerpt,file,-1,false,[]{return false;},[](double){},&peak).failed())return false;
+            std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));if(!reader)return false;
+            const auto end=std::min(reader->lengthInSamples,(juce::int64)(32.*60./p.settings.bpm*reader->sampleRate));
+            double sum=0;juce::int64 count=0;juce::AudioBuffer<float> buffer(2,8192);
+            for(juce::int64 at=0;at<end;at+=8192){const int n=(int)std::min<juce::int64>(8192,end-at);if(!reader->read(&buffer,0,n,at,true,true))return false;
+                for(int ch=0;ch<2;++ch)for(int i=0;i<n;++i){const double v=buffer.getSample(ch,i);if(!std::isfinite(v))return false;sum+=v*v;++count;}}
+            const double rms=std::sqrt(sum/std::max<juce::int64>(1,count));ok=std::isfinite(peak)&&peak<.9985&&rms>.00001&&ok;
+            if(juce::String(w.name)=="break")breakRms=rms;if(juce::String(w.name)=="return")returnRms=rms;
+            report+=juce::String(genres()[(size_t)genre])+"\t"+w.name+"\t"+juce::String(rms,7)+"\t"+juce::String(peak,7)+"\n";
+            folder.getChildFile("arrangement-audio.tsv").replaceWithText(report);
+        }
+        ok=returnRms>breakRms&&ok;
+        std::cout<<"Arrangement audio genre="<<genre<<" break="<<breakRms<<" return="<<returnRms<<std::endl;
+    }
+    folder.getChildFile("arrangement-audio.txt").replaceWithText(ok?"PASS all 15 genres: finite audible guide audio, raw headroom and break/return contrast":"FAIL arrangement rendering/headroom/contrast");return ok;
+}
 // Compare actual stored MIDI in equal eight-bar windows of early/late body
 // sections. Do not regenerate the excerpts or include quiet DJ bookends.
 inline bool writeDevelopmentAudit(const juce::File& folder){

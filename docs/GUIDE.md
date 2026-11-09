@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.42.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.43.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+In **0.43.0**, all 15 genres use more varied, coherent harmonic phrases and arrangements. New full songs vary the section sequence; automatic intro/outro sections provide 16/32 bars with clean eight-bar DJ mixing windows. Lead replies and percussion entrances develop the track, with different lift choices for organic and electronic genres. Authored forms, local harmony and locks are preserved. The parametric EQ adds Frequency/Gain/Q rotary controls, editable values, actual-response filter icons, saved analyzer settings and consistent Undo/Redo. See the [arrangement review](ARRANGEMENT_REVIEW.md), [harmony review](HARMONY_REVIEW.md) and [EQ review](EQ_REVIEW.md).
 
 Changing a section's length, order or presence moves the MIDI, automation and loop with that section. Independent section harmony is what the chord controls, vocal chops and MIDI key signature follow while it is enabled.
 

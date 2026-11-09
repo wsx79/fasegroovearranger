@@ -1,5 +1,23 @@
 # Novità — Fase Groove Arranger
 
+## Non pubblicato
+
+## 0.43.0
+
+- Corretta la chiave di traduzione del filtro a campana EQ, distinta dalla campana della batteria, per superare la validazione della famiglia e avviare le build multipiattaforma.
+
+- Sviluppati gli arrangiamenti di tutti i 15 generi: sequenze di sezioni alternative, intro/outro DJ di 16/32 battute e frasi ritmiche pulite di otto battute, incluso il Lead. Entrate e pause reali degli strumenti, respiro prima dei drop e fill organici coerenti; conservati forme personalizzate, blocchi e riuso del MIDI in NUOVO ARRANGIAMENTO. Aggiunti audit dedicati su struttura, MIDI e finestre audio. Vedi docs/ARRANGEMENT_REVIEW.md.
+
+- Revisione di tutti i 15 generi: frasi armoniche complete per genere, sviluppo A/B compatibile, conservazione degli accordi manuali e meno estrazioni armoniche ripetute.
+- Corretti gli accordi fuori fase nell’accompagnamento elettronico e le sospensioni Techno non richieste. Ritmo, contorno melodico e risposte indipendenti; confronto dei take effettivi contro le ripetizioni immediate, con anteprime limitate e fedeli.
+- Aggiunte regressioni su tutti i generi per varietà musicale, scope, blocchi, determinismo e cambi di accordo. Vedi docs/HARMONY_REVIEW.md.
+
+- Editor EQ parametrico professionale: controlli sotto il grafico, selezione banda, trascinamento fine, valori Hz/kHz/dB/Q validati, tasti F/G/Q, Undo e azzeramento che esclude anche passa-alto, passa-basso e notch.
+- Analizzatore stereo ingresso/uscita calibrato al sample rate reale, preferenze salvate e acquisizione atomica senza corse di memoria. Curva e audio condividono i coefficienti; i controlli compatti preservano le altre bande personalizzate.
+- Le curve EQ escluse sopravvivono al salvataggio senza riattivarsi. Regressioni native su grafica, DSP, acquisizione concorrente e persistenza.
+
+- Sostituita la barra parametri EQ con veri potenziometri Frequenza/Guadagno/Q, valori editabili, archi graduati e una grafica dedicata da console. Le sei icone dei filtri ora derivano dalle risposte reali del DSP, con schede etichettate e Undo per gesto rotativo.
+
 ## 0.42.0
 
 - EQ grafico riportato al tema piatto dell'app: niente bagliori neon, spettro decorativo o righello del pianoforte; griglia neutra, colori delle bande smorzati e barra parametri compatta.
