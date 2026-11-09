@@ -10,6 +10,8 @@
 - Calibrated stereo pre/post analyzer with the actual processing rate, saved display/response preferences and race-free atomic taps. Display curves and processing now share filter coefficients; compact controls preserve other custom bands.
 - Bypassed EQ curves survive project saves without being re-enabled; native UI/DSP, concurrent capture and persistence regressions cover these workflows.
 
+- Replace the EQ parameter strip with real Frequency/Gain/Q rotary controls, editable readouts, graduated arcs and a dedicated flat studio skin. Redraw all six filter glyphs from actual DSP responses, with labeled filter cards and native gesture Undo.
+
 ## 0.42.0
 
 - Graphic EQ restyled to the app's flat studio theme: no neon glow, no decorative spectrum and no piano-key ruler; neutral grid, muted band colours and a compact parameter strip.

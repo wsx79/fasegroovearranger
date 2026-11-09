@@ -1222,3 +1222,10 @@
 { "High shelf: boosts or cuts the high end", "Shelf alti: aumenta o attenua le alte frequenze", "Estante alto: realza o atenúa los agudos", "Plateau aigu : amplifie ou atténue les aigus", "High-Shelf: hohe Frequenzen anheben oder absenken", "Shelf agudos: realça ou atenua os agudos" },
 { "High cut: removes frequencies above the cutoff", "Passa-basso: attenua le frequenze sopra il taglio", "Pasabajos: atenúa frecuencias por encima del corte", "Coupe-haut : atténue au-dessus de la coupure", "Tiefpass: Frequenzen oberhalb der Grenzfrequenz absenken", "Passa-baixo: atenua acima do corte" },
 { "Notch: removes a narrow band of frequencies", "Notch: attenua una stretta banda di frequenze", "Muesca: atenúa una banda estrecha", "Réjecteur : atténue une bande étroite", "Kerbfilter: schmales Frequenzband absenken", "Rejeita-faixa: atenua uma banda estreita" },
+
+{ "FILTER SHAPE", "TIPO DI FILTRO", "TIPO DE FILTRO", "TYPE DE FILTRE", "FILTERFORM", "TIPO DE FILTRO" },
+{ "FREQUENCY", "FREQUENZA", "FRECUENCIA", "FRÉQUENCE", "FREQUENZ", "FREQUÊNCIA" },
+{ "GAIN", "GUADAGNO", "GANANCIA", "GAIN", "VERSTÄRKUNG", "GANHO" },
+{ "INVERT", "INVERTI", "INVERTIR", "INVERSER", "UMKEHREN", "INVERTER" },
+
+{ "PARAMETRIC", "PARAMETRICO", "PARAMÉTRICO", "PARAMÉTRIQUE", "PARAMETRISCH", "PARAMÉTRICO" },

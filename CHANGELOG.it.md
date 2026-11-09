@@ -10,6 +10,8 @@
 - Analizzatore stereo ingresso/uscita calibrato al sample rate reale, preferenze salvate e acquisizione atomica senza corse di memoria. Curva e audio condividono i coefficienti; i controlli compatti preservano le altre bande personalizzate.
 - Le curve EQ escluse sopravvivono al salvataggio senza riattivarsi. Regressioni native su grafica, DSP, acquisizione concorrente e persistenza.
 
+- Sostituita la barra parametri EQ con veri potenziometri Frequenza/Guadagno/Q, valori editabili, archi graduati e una grafica dedicata da console. Le sei icone dei filtri ora derivano dalle risposte reali del DSP, con schede etichettate e Undo per gesto rotativo.
+
 ## 0.42.0
 
 - EQ grafico riportato al tema piatto dell'app: niente bagliori neon, spettro decorativo o righello del pianoforte; griglia neutra, colori delle bande smorzati e barra parametri compatta.

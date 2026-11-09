@@ -44,6 +44,82 @@ static const char* filterTypeNames[] = {
     "NOTCH"
 };
 
+// The filter glyphs are miniature DSP responses, not decorative approximations.
+static void drawEqShape(juce::Graphics& g,juce::Rectangle<float> area,int type,juce::Colour colour){
+    const EqBand band{true,type,1000,6,type==(int)EqFilterType::Notch?2.5:.707};
+    const auto filter=eqCoefficients(band,48000);
+    const float zero=area.getY()+area.getHeight()*.32f;
+    g.setColour(colour.withAlpha(.17f));g.drawHorizontalLine((int)zero,area.getX(),area.getRight());
+    juce::Path curve,fill;
+    for(int i=0;i<72;++i){const float x=area.getX()+area.getWidth()*i/71.f;const double hz=80*std::pow(150.,i/71.);
+        const float y=zero-(float)std::clamp(filter.magnitudeDb(hz,48000),-18.,8.)*area.getHeight()/26.f;
+        if(i==0){curve.startNewSubPath(x,y);fill.startNewSubPath(x,zero);}else curve.lineTo(x,y);fill.lineTo(x,y);
+    }
+    fill.lineTo(area.getRight(),zero);fill.closeSubPath();g.setColour(colour.withAlpha(.07f));g.fillPath(fill);
+    g.setColour(colour);g.strokePath(curve,juce::PathStrokeType(1.7f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+}
+class EqShapeButton final:public juce::Button{
+public:
+    EqShapeButton():Button("Filter shape"){setClickingTogglesState(false);}
+    int type=0;juce::Colour accent=Daw::accent;
+    void paintButton(juce::Graphics& g,bool hover,bool down)override{
+        const bool active=getToggleState();auto r=getLocalBounds().toFloat().reduced(.5f);
+        const auto ink=!isEnabled()?Daw::textFaint:active?accent: hover?Daw::text:Daw::textDim;
+        g.setColour(active?accent.withAlpha(.09f):juce::Colour(hover?0xff272c34:0xff20242b));g.fillRoundedRectangle(r,4);
+        g.setColour(active?accent.withAlpha(.72f):juce::Colour(down?0xff626b79:0xff333a44));g.drawRoundedRectangle(r,4,active?1.2f:.8f);
+        auto icon=r.reduced(11,6);icon.removeFromBottom(15);drawEqShape(g,icon,type,ink);
+        g.setFont(Daw::font(9.2f,true));g.setColour(ink);g.drawFittedText(getButtonText(),getLocalBounds().removeFromBottom(18).reduced(3,0),juce::Justification::centred,1);
+    }
+};
+class EqLookAndFeel final:public juce::LookAndFeel_V4{
+public:
+    EqLookAndFeel(){
+        setColour(juce::ComboBox::textColourId,Daw::text);setColour(juce::ComboBox::backgroundColourId,juce::Colour(0xff1d2229));
+        setColour(juce::TextButton::textColourOffId,Daw::textDim);setColour(juce::TextButton::textColourOnId,Daw::text);
+        setColour(juce::Slider::textBoxTextColourId,Daw::text);setColour(juce::Slider::textBoxBackgroundColourId,juce::Colour(0xff12161b));
+        setColour(juce::Slider::textBoxOutlineColourId,juce::Colour(0xff343b45));
+        setColour(juce::TextEditor::backgroundColourId,juce::Colour(0xff12161b));setColour(juce::TextEditor::textColourId,Daw::text);
+        setColour(juce::PopupMenu::backgroundColourId,juce::Colour(0xff1d2229));setColour(juce::PopupMenu::textColourId,Daw::text);
+    }
+    juce::Font getTextButtonFont(juce::TextButton&,int)override{return Daw::font(10.5f,true);}
+    juce::Font getComboBoxFont(juce::ComboBox&)override{return Daw::font(11.5f);}
+    juce::Font getLabelFont(juce::Label&)override{return Daw::font(13.f,true);}
+    void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool hover,bool down)override{
+        auto r=b.getLocalBounds().toFloat().reduced(.5f);const bool on=b.getToggleState();
+        g.setColour(on?Daw::accent.withAlpha(.11f):juce::Colour(down?0xff303640:hover?0xff292f38:0xff20252d));g.fillRoundedRectangle(r,4);
+        g.setColour(on?Daw::accent.withAlpha(.6f):juce::Colour(hover?0xff515b69:0xff363e49));g.drawRoundedRectangle(r,4,.8f);
+    }
+    void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool hover,bool down)override{
+        drawButtonBackground(g,b,{},hover,down);auto r=b.getLocalBounds().toFloat();const auto ink=b.getToggleState()?Daw::accent:Daw::textDim;
+        const float cx=17,cy=r.getCentreY();juce::Path power;power.addCentredArc(cx,cy,5,5,0,.6f,juce::MathConstants<float>::twoPi-.6f,true);
+        g.setColour(ink);g.strokePath(power,juce::PathStrokeType(1.4f));g.drawLine(cx,cy-7,cx,cy-1,1.4f);
+        g.setFont(Daw::font(10.5f,true));g.drawFittedText(b.getButtonText(),b.getLocalBounds().withTrimmedLeft(30).reduced(3,0),juce::Justification::centredLeft,1);
+    }
+    void drawComboBox(juce::Graphics& g,int w,int h,bool down,int,int,int,int,juce::ComboBox&)override{
+        auto r=juce::Rectangle<float>(.5f,.5f,(float)w-1,(float)h-1);g.setColour(juce::Colour(down?0xff292f38:0xff1b2027));g.fillRoundedRectangle(r,4);
+        g.setColour(juce::Colour(0xff343c47));g.drawRoundedRectangle(r,4,.8f);
+        const float x=w-14.f,y=h*.5f;juce::Path arrow;arrow.startNewSubPath(x-3,y-2);arrow.lineTo(x,y+1);arrow.lineTo(x+3,y-2);g.setColour(Daw::textDim);g.strokePath(arrow,juce::PathStrokeType(1.2f));
+    }
+    void positionComboBoxText(juce::ComboBox& b,juce::Label& l)override{l.setBounds(10,0,b.getWidth()-32,b.getHeight());l.setFont(getComboBoxFont(b));}
+    juce::Slider::SliderLayout getSliderLayout(juce::Slider& slider)override{
+        juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(27);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(104,value.getWidth()),25);r.removeFromBottom(7);layout.sliderBounds=r;return layout;
+    }
+    void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& slider)override{
+        const float radius=std::max(4.f,std::min(w,h)*.5f-13),cx=x+w*.5f,cy=y+h*.5f;
+        const bool enabled=slider.isEnabled();const auto accent=slider.findColour(juce::Slider::rotarySliderFillColourId).withMultipliedAlpha(enabled?1.f:.2f);
+        for(int i=0;i<=10;++i){const float a=start+(end-start)*i/10.f;const float inner=radius+7,outer=radius+(i%5==0?11:9);
+            g.setColour(juce::Colour(enabled?0xff5a626e:0xff343a43));g.drawLine(cx+std::sin(a)*inner,cy-std::cos(a)*inner,cx+std::sin(a)*outer,cy-std::cos(a)*outer,i%5==0?1.2f:.8f);}
+        juce::Path track;track.addCentredArc(cx,cy,radius+3,radius+3,0,start,end,true);g.setColour(juce::Colour(0xff343b45));g.strokePath(track,juce::PathStrokeType(2));
+        const float angle=start+(end-start)*pos,origin=(bool)slider.getProperties()["eqBipolar"]?(start+end)*.5f:start;
+        if(std::abs(angle-origin)>.001f){juce::Path arc;arc.addCentredArc(cx,cy,radius+3,radius+3,0,std::min(origin,angle),std::max(origin,angle),true);g.setColour(accent);g.strokePath(arc,juce::PathStrokeType(2.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
+        g.setColour(juce::Colours::black.withAlpha(.22f));g.fillEllipse(cx-radius,cy-radius+2,radius*2,radius*2);
+        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff373e48),cx,cy-radius,juce::Colour(0xff1e242d),cx,cy+radius,false));g.fillEllipse(cx-radius,cy-radius,radius*2,radius*2);
+        g.setColour(juce::Colour(enabled?0xff515a67:0xff343c46));g.drawEllipse(cx-radius,cy-radius,radius*2,radius*2,.8f);
+        g.setColour(juce::Colour(0xff161b22));g.drawEllipse(cx-radius+3,cy-radius+3,radius*2-6,radius*2-6,.7f);
+        g.setColour(enabled?juce::Colour(0xffedf0f4):Daw::textFaint);g.drawLine(cx+std::sin(angle)*radius*.45f,cy-std::cos(angle)*radius*.45f,cx+std::sin(angle)*radius*.82f,cy-std::cos(angle)*radius*.82f,2.2f);
+    }
+};
+
 class EqDisplayComponent : public juce::Component, private juce::Timer {
 public:
     std::function<void()> onSettingsChanged;
@@ -69,6 +145,22 @@ public:
         editor.onReturnKey = [this] { commitEdit(); };
         editor.onFocusLost = [this] { commitEdit(); };
         editor.onEscapeKey = [this] { cancelEdit(); };
+        auto logarithmic=[](double low,double high){return juce::NormalisableRange<double>(low,high,[](double a,double b,double t){return a*std::pow(b/a,t);},[](double a,double b,double value){return std::log(value/a)/std::log(b/a);});};
+        knobs[0].setNormalisableRange(logarithmic(20,20000));knobs[1].setRange(-24,24,.1);knobs[2].setNormalisableRange(logarithmic(.1,18));
+        knobs[1].getProperties().set("eqBipolar",true);
+        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];addAndMakeVisible(dial);dial.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);dial.setRotaryParameters(juce::MathConstants<float>::pi*1.25f,juce::MathConstants<float>::pi*2.75f,true);dial.setTextBoxStyle(juce::Slider::TextBoxBelow,false,104,25);dial.setMouseDragSensitivity(280);dial.setDoubleClickReturnValue(true,i==0?1000:i==1?0:.707);
+            dial.textFromValueFunction=[this,i](double value){if(i==0)return value>=1000?juce::String(value/1000,2)+" kHz":juce::String(value,value<100?1:0)+" Hz";if(i==1)return (value>0?"+":"")+juce::String(value,1)+" dB";return juce::String(value,2);};
+            dial.valueFromTextFunction=[this,i](const juce::String& text){double value=0;return parseEqValue(text.toStdString(),i,value)?value:knobs[(size_t)i].getValue();};
+            dial.onDragStart=[this]{knobDragging=true;knobCaptured=false;};
+            dial.onValueChange=[this,i]{changeKnob(i);};
+            dial.onDragEnd=[this]{knobDragging=false;if(knobCaptured&&onDragEnd)onDragEnd();knobCaptured=false;};
+        }
+        for(int i=0;i<6;++i){auto& button=shapes[(size_t)i];button.type=i;addAndMakeVisible(button);button.onClick=[this,i]{if(validBand())editOnce([&]{currentEq.bands[(size_t)selectedBand].type=i;});updateControls();};}
+        for(auto* button:{&bandPower,&invertButton,&removeButton})addAndMakeVisible(button);
+        bandPower.onClick=[this]{if(validBand())editOnce([&]{auto& b=currentEq.bands[(size_t)selectedBand];b.enabled=!b.enabled;});updateControls();};
+        invertButton.onClick=[this]{if(validBand()&&eqHasGain(currentEq.bands[(size_t)selectedBand].type))editOnce([&]{auto& b=currentEq.bands[(size_t)selectedBand];b.gain=-b.gain;});updateControls();};
+        removeButton.onClick=[this]{deleteSelectedBand();updateControls();};
+        updateControls();
         startTimerHz(30);
     }
 
@@ -78,25 +170,27 @@ public:
         auto canonical=settings;canonical.ensureBands();
         const bool moved=track!=trackIndex||trackIdentity!=identity;
         if(moved||!(currentEq==canonical))++revision;
-        if(moved){cancelEdit();selectedBand=-1;preBands.fill(0);postBands.fill(0);}
+        if(moved){cancelEdit();for(auto& dial:knobs)dial.hideTextBox(true);knobDragging=knobCaptured=false;selectedBand=-1;preBands.fill(0);postBands.fill(0);}
         currentEq = std::move(canonical);
         currentEq.ensureBands();
         track = trackIndex;trackIdentity=identity;
         name = trackName;
+        if(moved&&!currentEq.bands.empty()){selectedBand=0;for(size_t i=0;i<currentEq.bands.size();++i)if(currentEq.bands[i].type==(int)EqFilterType::Bell){selectedBand=(int)i;break;}}
         if (selectedBand >= (int)currentEq.bands.size()) selectedBand = -1;
-        repaint();
+        updateControls();repaint();
     }
 
     const EqSettings& getEq() const { return currentEq; }
 
     int getSelectedBand() const { return selectedBand; }
-    void selectBand(int index){cancelEdit();selectedBand=index>=0&&index<(int)currentEq.bands.size()?index:-1;if(onSelectionChanged)onSelectionChanged();repaint();}
+    void selectBand(int index){cancelEdit();selectedBand=index>=0&&index<(int)currentEq.bands.size()?index:-1;updateControls();if(onSelectionChanged)onSelectionChanged();repaint();}
     void setView(int mode,int speed,double range){analyzerMode=mode;spectrumSpeed=speed;displayRange=range;repaint();}
-    void editOnce(const std::function<void()>& action){const auto before=currentEq;action();currentEq.syncLegacyFromBands();if(currentEq==before){repaint();return;}if(onDragStart)onDragStart();if(onSettingsChanged)onSettingsChanged();if(onDragEnd)onDragEnd();repaint();}
+    void editOnce(const std::function<void()>& action){const auto before=currentEq;action();currentEq.syncLegacyFromBands();if(currentEq==before){repaint();return;}if(onDragStart)onDragStart();if(onSettingsChanged)onSettingsChanged();if(onDragEnd)onDragEnd();updateControls();repaint();}
     void flatten(){editOnce([this]{currentEq.flatten();});}
 
 
 #if FGA_SELF_TESTS
+    void simulateKnobGesture(int parameter,double first,double last){auto& dial=knobs[(size_t)parameter];dial.onDragStart();dial.setValue(first,juce::sendNotificationSync);dial.setValue(last,juce::sendNotificationSync);dial.onDragEnd();}
     bool verifyInteractions(juce::StringArray& checks){
         bool ok=true;auto expect=[&](bool passed,const char* label){checks.add(juce::String(passed?"PASS ":"FAIL ")+label);ok=passed&&ok;};
         int undos=0;onDragStart=[&]{++undos;};onSettingsChanged=[]{};onDragEnd=[]{};
@@ -112,6 +206,14 @@ public:
         beginEdit(0);editor.setText("200");setEq(authored,1,"Another track");commitEdit();expect(currentEq==authored&&!editor.isVisible(),"track changes discard stale editor input");
         selectBand(0);const auto wheelEvent=event(getNodePosition(0,getPlotArea()));juce::MouseWheelDetails wheel;wheel.deltaY=.1f;const int scroll=undos;mouseWheelMove(wheelEvent,wheel);expect(undos==scroll+1,"Q wheel edit participates in Undo");
         for(auto size:std::initializer_list<juce::Point<int>>{{732,354},{932,514}}){setSize(size.x,size.y);const auto hud=getHudBounds(getPlotArea());const auto l=hudLayout(hud);expect(hud.contains(l.del)&&hud.contains(l.freq)&&hud.contains(l.q)&&getPlotArea().getBottom()<hud.getY(),"parameter strip fits the minimum and normal sizes without covering the graph");}
+        setEq(authored,0,"Knobs");selectBand(1);const int gestureStart=undos;
+        knobs[0].onDragStart();knobs[0].setValue(2100,juce::sendNotificationSync);knobs[0].setValue(2500,juce::sendNotificationSync);knobs[0].onDragEnd();
+        expect(currentEq.bands[1].freq==2500&&undos==gestureStart+1,"rotary frequency drag updates the band with one Undo gesture");
+        knobs[1].setValue(-8,juce::sendNotificationSync);expect(currentEq.bands[1].gain==-8,"rotary gain controls the selected band");
+        knobs[2].setValue(3.2,juce::sendNotificationSync);expect(std::abs(currentEq.bands[1].q-3.2)<.001,"rotary Q controls the selected band");
+        expect(knobs[0].getValueFromText("1,25 kHz")==1250,"rotary readout accepts manual frequency units");
+        selectBand(2);expect(!knobs[1].isEnabled()&&knobs[0].isEnabled()&&knobs[2].isEnabled(),"gain knob is disabled for a cut while frequency and Q remain active");
+        selectBand(0);shapes[5].onClick();expect(currentEq.bands[0].type==5&&!knobs[1].isEnabled(),"filter cards update the real shape and knob availability");
         onDragStart=nullptr;onSettingsChanged=nullptr;onDragEnd=nullptr;return ok;
     }
 #endif
@@ -132,7 +234,7 @@ public:
         dragBand = -1;
         if (onSettingsChanged) onSettingsChanged();
         if (onDragEnd) onDragEnd();
-        if(onSelectionChanged)onSelectionChanged();
+        updateControls();if(onSelectionChanged)onSelectionChanged();
         repaint();
     }
 
@@ -145,7 +247,7 @@ public:
             dragBand = -1;
             if (onSettingsChanged) onSettingsChanged();
             if (onDragEnd) onDragEnd();
-            if(onSelectionChanged)onSelectionChanged();
+            updateControls();if(onSelectionChanged)onSelectionChanged();
             repaint();
         }
     }
@@ -218,7 +320,19 @@ public:
     }
 
     void resized() override {
-        if (editor.isVisible()) cancelEdit();
+        if(editor.isVisible())cancelEdit();
+        const auto rack=getHudBounds(getPlotArea()).reduced(14,10);auto area=rack;
+        const float leftWidth=std::clamp(area.getWidth()*.27f,216.f,250.f);
+        auto types=area.removeFromLeft(leftWidth);area.removeFromLeft(14);
+        auto actions=area.removeFromRight(82);area.removeFromRight(14);
+        const int order[]{0,2,3,1,4,5};auto grid=types.withTrimmedTop(38);
+        const float cellWidth=grid.getWidth()/3;
+        for(int cell=0;cell<6;++cell)shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*61,cellWidth-5,54).toNearestInt());
+        const float column=area.getWidth()/3;
+        for(int i=0;i<3;++i)knobs[(size_t)i].setBounds(juce::Rectangle<float>(area.getX()+i*column+4,area.getY()+28,column-8,area.getHeight()-31).toNearestInt());
+        bandPower.setBounds(actions.withY(actions.getY()+49).withHeight(29).toNearestInt());
+        invertButton.setBounds(actions.withY(actions.getY()+89).withHeight(29).toNearestInt());
+        removeButton.setBounds(actions.withY(actions.getY()+129).withHeight(29).toNearestInt());
     }
 
     void mouseExit(const juce::MouseEvent&) override {
@@ -356,8 +470,8 @@ public:
             fillPath.lineTo(plotArea.getRight(), yZero);
             fillPath.closeSubPath();
 
-            const auto curveColour = currentEq.enabled ? Daw::accent : Daw::textFaint;
-            g.setColour(curveColour.withMultipliedAlpha(0.12f));
+            const auto curveColour=currentEq.enabled?juce::Colour(0xffe7dfc8):Daw::textFaint;
+            g.setColour(curveColour.withMultipliedAlpha(.045f));
             g.fillPath(fillPath);
             g.setColour(curveColour.withAlpha(currentEq.enabled ? 0.95f : 0.6f));
             g.strokePath(curvePath, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
@@ -371,7 +485,7 @@ public:
             const bool isDragging = dragBand == (int)i;
             const auto col = getBandColour(i);
 
-            if (isDragging || isSelected || isHovered) {
+            if (isDragging || isHovered) {
                 g.setColour(Daw::lineStrong.withAlpha(isDragging ? 0.8f : 0.5f));
                 g.drawVerticalLine(juce::roundToInt(pt.x), plotArea.getY(), plotArea.getBottom());
                 g.drawHorizontalLine(juce::roundToInt(pt.y), plotArea.getX(), plotArea.getRight());
@@ -393,8 +507,7 @@ public:
         g.drawText("dBFS",(int)plotArea.getRight()+6,3,38,16,juce::Justification::centredLeft);
         for(int db:{0,-24,-48,-72,-96}){const float y=plotArea.getY()+plotArea.getHeight()*(-db/96.f);g.drawText(juce::String(db),(int)plotArea.getRight()+7,(int)y-7,34,14,juce::Justification::centredLeft);}
         if(analyzerMode==1||analyzerMode==2){g.setColour(Daw::textDim);g.drawText(tr("INPUT"),getWidth()-174,2,72,16,juce::Justification::centred);}if(analyzerMode==1||analyzerMode==3){g.setColour(juce::Colour(0xff4cc3f0));g.drawText(tr("OUTPUT"),getWidth()-100,2,72,16,juce::Justification::centred);}
-        if(selectedBand>=0&&selectedBand<(int)currentEq.bands.size())drawBandHud(g,plotArea);
-        else{const auto box=getHudBounds(plotArea);g.setColour(Daw::surface);g.fillRoundedRectangle(box,Daw::radius);g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::body));g.drawFittedText(tr("Select a band, or double-click the graph to add one."),box.toNearestInt().reduced(18),juce::Justification::centred,2);}
+        drawBandHud(g,plotArea);
 
     }
 
@@ -417,14 +530,13 @@ public:
     void mouseDown(const juce::MouseEvent& e) override {
         const auto plotArea = getPlotArea();
         dragBand = -1;
-        dragHudParam = -1;
         gesture=false;
 
         // Check if clicked in HUD
         if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
             auto hudRect = getHudBounds(plotArea);
             if (hudRect.contains(e.position)) {
-                handleHudMouseDown(e, hudRect);
+                // Native knobs and buttons own the parameter-rack input.
                 return;
             }
         }
@@ -486,26 +598,8 @@ public:
 
     void mouseDrag(const juce::MouseEvent& e) override {
         const auto plotArea = getPlotArea();
-        if((dragBand>=0||dragHudParam>=0)&&e.getDistanceFromDragStart()>1&&!gesture){if(onDragStart)onDragStart();gesture=true;}
+        if((dragBand>=0)&&e.getDistanceFromDragStart()>1&&!gesture){if(onDragStart)onDragStart();gesture=true;}
         if(!gesture)return;
-
-        // Dragging HUD parameter slider
-        if (dragHudParam >= 0 && selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
-            auto& b = currentEq.bands[(size_t)selectedBand];
-            const float dx=(float)e.getDistanceFromDragStartX()*(e.mods.isShiftDown()?.1f:1.f);
-            if (dragHudParam == 0) { // Frequency
-                b.freq = std::clamp(dragStartParamVal * std::pow(2.0, (double)dx * 0.005), 20.0, 20000.0);
-            } else if (dragHudParam == 1) { // Gain
-                b.gain = std::clamp(dragStartParamVal + (double)dx * 0.1, -24.0, 24.0);
-            } else if (dragHudParam == 2) { // Q
-                b.q = std::clamp(dragStartParamVal * std::pow(2.0, (double)dx * 0.008), 0.1, 18.0);
-            }
-            b.normalise();
-            currentEq.syncLegacyFromBands();
-            if (onSettingsChanged) onSettingsChanged();
-            repaint();
-            return;
-        }
 
         // Dragging band node
         if (dragBand >= 0 && dragBand < (int)currentEq.bands.size()) {
@@ -523,10 +617,9 @@ public:
     }
 
     void mouseUp(const juce::MouseEvent&) override {
-        if (dragBand >= 0 || dragHudParam >= 0) {
+        if (dragBand >= 0) {
             dragBand = -1;
-            dragHudParam = -1;
-            if(gesture&&onDragEnd)onDragEnd();
+                if(gesture&&onDragEnd)onDragEnd();
             gesture=false;
             repaint();
         }
@@ -558,8 +651,28 @@ private:
 
     // HUD parameter dragging
     bool gesture=false;
-    int dragHudParam = -1; // 0: freq, 1: gain, 2: q
-    double dragStartParamVal = 0.0;
+    std::array<juce::Slider,3> knobs;
+    std::array<EqShapeButton,6> shapes;
+    juce::TextButton bandPower,invertButton,removeButton;
+    bool controlsUpdating=false,knobDragging=false,knobCaptured=false;
+    bool validBand()const{return selectedBand>=0&&selectedBand<(int)currentEq.bands.size();}
+    void updateControls(){
+        controlsUpdating=true;const bool selected=validBand();
+        const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
+        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];dial.setEnabled(selected&&(i!=1||eqHasGain(currentEq.bands[(size_t)selectedBand].type)));dial.setName(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"));dial.setColour(juce::Slider::rotarySliderFillColourId,colour);
+            if(selected){const auto& b=currentEq.bands[(size_t)selectedBand];dial.setValue(i==0?b.freq:i==1?b.gain:b.q,juce::dontSendNotification);}}
+        for(int i=0;i<6;++i){auto& shape=shapes[(size_t)i];shape.setEnabled(selected);shape.accent=colour;shape.setButtonText(tr(filterTypeNames[i]));shape.setTooltip(tr(filterTypeNames[i]));shape.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].type==i,juce::dontSendNotification);shape.repaint();}
+        bandPower.setButtonText(tr(selected&&currentEq.bands[(size_t)selectedBand].enabled?"ON":"OFF"));bandPower.setEnabled(selected);bandPower.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].enabled,juce::dontSendNotification);
+        invertButton.setButtonText(tr("INVERT"));invertButton.setTooltip(tr("Invert Gain"));invertButton.setEnabled(selected&&eqHasGain(currentEq.bands[(size_t)selectedBand].type));
+        removeButton.setButtonText(tr("DELETE"));removeButton.setTooltip(tr("Delete Band"));removeButton.setColour(juce::TextButton::textColourOffId,juce::Colour(0xffc69a9a));removeButton.setEnabled(selected);controlsUpdating=false;
+    }
+    void changeKnob(int parameter){
+        if(controlsUpdating||!validBand())return;
+        const double value=knobs[(size_t)parameter].getValue();
+        auto apply=[&]{auto& b=currentEq.bands[(size_t)selectedBand];if(parameter==0)b.freq=value;else if(parameter==1)b.gain=value;else b.q=value;b.normalise();};
+        if(knobDragging){if(!knobCaptured){if(onDragStart)onDragStart();knobCaptured=true;}apply();currentEq.syncLegacyFromBands();if(onSettingsChanged)onSettingsChanged();repaint();}
+        else editOnce(apply);
+    }
     EqAnalyzer analyzer;
     EqAnalyzer::Trace preBands{},postBands{};
     double sampleRate=44100,displayRange=12,nodeStartFreq=1000,nodeStartGain=0;
@@ -569,7 +682,7 @@ private:
     int editParam = -1;
 
     juce::Rectangle<float> getPlotArea() const {
-        const float padL=44, padR=48, padT=24, padB=136;
+        const float padL=44, padR=48, padT=24, padB=246;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
     }
 
@@ -615,156 +728,24 @@ private:
         juce::Rectangle<float> badge, pills[6], freq, gain, q, bypass, invert, del;
     };
 
-    HudLayout hudLayout(const juce::Rectangle<float>& hud) const {
-        HudLayout l;auto r=hud.reduced(10,8);auto top=r.removeFromTop(30);
-        l.badge=top.removeFromLeft(82);top.removeFromLeft(8);
-        for(auto& pill:l.pills)pill=top.removeFromLeft(44).reduced(2,1);
-        r.removeFromTop(6);auto row=r.removeFromTop(38);const float gap=6;
-        const float valueWidth=std::max(65.f,(row.getWidth()-3*58.f-5*gap)/3.f);
-        l.freq=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
-        l.gain=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
-        l.q=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
-        l.bypass=row.removeFromLeft(58);row.removeFromLeft(gap);
-        l.invert=row.removeFromLeft(58);row.removeFromLeft(gap);l.del=row.removeFromLeft(58);
-        return l;
+    HudLayout hudLayout(const juce::Rectangle<float>& hud)const{
+        HudLayout l;l.badge=hud.reduced(14,10).withHeight(25);
+        for(int i=0;i<6;++i)l.pills[i]=shapes[(size_t)i].getBounds().toFloat();
+        auto readout=[](const juce::Slider& dial){auto r=dial.getBounds().toFloat();return r.withY(r.getBottom()-27).withHeight(25).withSizeKeepingCentre(std::min(104.f,r.getWidth()),25);};
+        l.freq=readout(knobs[0]);l.gain=readout(knobs[1]);l.q=readout(knobs[2]);
+        l.bypass=bandPower.getBounds().toFloat();l.invert=invertButton.getBounds().toFloat();l.del=removeButton.getBounds().toFloat();return l;
     }
-    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{return {14.f,(float)getHeight()-98.f,(float)getWidth()-28.f,90.f};}
-
-    static void drawFilterIcon(juce::Graphics& g, juce::Rectangle<float> r, int type, juce::Colour colour) {
-        const float x0 = r.getX(), x1 = r.getRight(), yTop = r.getY(), yBottom = r.getBottom();
-        const float mid = r.getCentreY();
-        juce::Path p;
-        auto pt = [&](float x, float y) { return juce::Point<float>(x0 + (x1 - x0) * x, y); };
-        switch (type) {
-            case (int)EqFilterType::LowCut:
-                p.startNewSubPath(pt(0.0f, yBottom)); p.lineTo(pt(0.45f, yBottom)); p.lineTo(pt(0.75f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
-            case (int)EqFilterType::LowShelf:
-                p.startNewSubPath(pt(0.0f, yBottom)); p.lineTo(pt(0.38f, yBottom)); p.lineTo(pt(0.62f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
-            case (int)EqFilterType::HighShelf:
-                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.38f, yTop)); p.lineTo(pt(0.62f, yBottom)); p.lineTo(pt(1.0f, yBottom)); break;
-            case (int)EqFilterType::HighCut:
-                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.25f, yTop)); p.lineTo(pt(0.55f, yBottom)); p.lineTo(pt(1.0f, yBottom)); break;
-            case (int)EqFilterType::Notch:
-                p.startNewSubPath(pt(0.0f, yTop)); p.lineTo(pt(0.4f, yTop)); p.lineTo(pt(0.5f, yBottom)); p.lineTo(pt(0.6f, yTop)); p.lineTo(pt(1.0f, yTop)); break;
-            default:
-                p.startNewSubPath(pt(0.0f, mid)); p.quadraticTo(pt(0.5f, yTop - 1.0f), pt(1.0f, mid)); break;
-        }
-        g.setColour(colour);
-        g.strokePath(p, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{return {14.f,(float)getHeight()-214.f,(float)getWidth()-28.f,206.f};}
+    void drawBandHud(juce::Graphics& g,const juce::Rectangle<float>& plot){
+        const auto rack=getHudBounds(plot);g.setColour(juce::Colour(0xff1a1f26));g.fillRoundedRectangle(rack,6);g.setColour(juce::Colour(0xff333b46));g.drawRoundedRectangle(rack,6,.8f);
+        auto left=rack.reduced(14,10);const bool selected=validBand();const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
+        g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,25,4);
+        g.setColour(colour);g.setFont(Daw::font(13,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,25),juce::Justification::centred);
+        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+39,left.getY()+1,172,25),juce::Justification::centredLeft);
+        for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(left.getY()+2).withHeight(20),juce::Justification::centred);}
+        const float line=knobs[0].getX()-8.f;g.setColour(juce::Colour(0xff303740));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
+        if(!selected){g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawFittedText(tr("SELECT BAND"),removeButton.getBounds().withY((int)left.getY()).withHeight(27),juce::Justification::centred,2);}
     }
-
-    void drawBandHud(juce::Graphics& g, const juce::Rectangle<float>& plotArea) {
-        auto hud = getHudBounds(plotArea);
-        auto l = hudLayout(hud);
-        const auto& b = currentEq.bands[(size_t)selectedBand];
-
-        g.setColour(Daw::chrome);
-        g.fillRoundedRectangle(hud, Daw::panelRadius);
-        g.setColour(Daw::lineStrong);
-        g.drawRoundedRectangle(hud, Daw::panelRadius, 1.0f);
-
-        g.setFont(Daw::caps(9.0f));
-        g.setColour(getBandColour(selectedBand));
-        g.drawText(tr("BAND")+" "+juce::String(selectedBand+1), l.badge, juce::Justification::centred);
-
-        for (int i = 0; i < 6; ++i) {
-            const bool active = (b.type == i);
-            g.setColour(active ? Daw::accent : Daw::control);
-            g.fillRoundedRectangle(l.pills[i], Daw::radius);
-            drawFilterIcon(g, l.pills[i].reduced(7.0f, 5.0f), i, active ? Daw::onAccent : Daw::textDim);
-        }
-
-        auto valueBox = [&](juce::Rectangle<float> box, const char* label, const juce::String& value, juce::Colour colour) {
-            g.setColour(Daw::well);
-            g.fillRoundedRectangle(box, Daw::radius);
-            auto inner = box.reduced(4.0f, 2.0f);
-            g.setFont(Daw::caps(9.5f));
-            g.setColour(Daw::textFaint);
-            g.drawText(label, inner.removeFromTop(11.0f), juce::Justification::centredLeft);
-            g.setFont(Daw::font(Daw::body, true));
-            g.setColour(colour);
-            g.drawText(value, inner, juce::Justification::centredLeft);
-        };
-
-        const bool gainDisabled = (b.type == (int)EqFilterType::LowCut || b.type == (int)EqFilterType::HighCut || b.type == (int)EqFilterType::Notch);
-        valueBox(l.freq, "Hz", (b.freq >= 1000.0) ? juce::String(b.freq / 1000.0, 2) + " kHz" : juce::String((int)b.freq) + " Hz", Daw::text);
-        valueBox(l.gain, "dB", gainDisabled ? juce::String(juce::String::fromUTF8("—")) : (b.gain > 0 ? "+" : "") + juce::String(b.gain, 1) + " dB", gainDisabled ? Daw::textFaint : Daw::text);
-        valueBox(l.q, "Q", juce::String(b.q, 2), Daw::text);
-
-        auto chip = [&](juce::Rectangle<float> box, const juce::String& text, bool active, juce::Colour activeColour) {
-            g.setColour(active ? activeColour.withAlpha(0.22f) : Daw::control);
-            g.fillRoundedRectangle(box, Daw::radius);
-            g.setColour(active ? activeColour : Daw::textDim);
-            g.setFont(Daw::caps(10.0f));
-            g.drawText(text, box, juce::Justification::centred);
-        };
-
-        chip(l.bypass, b.enabled ? "ON" : "OFF", b.enabled, Daw::accent);
-        g.setColour(Daw::control);g.fillRoundedRectangle(l.invert,Daw::radius);
-        g.setColour(gainDisabled?Daw::textFaint:Daw::textDim);g.setFont(Daw::caps(10));g.drawText("+/-",l.invert,juce::Justification::centred);
-        chip(l.del,tr("DELETE"),true,Daw::meterHigh);
-
-        if (hoverPill >= 0 && hoverPill < 6) {
-            static const char* tips[] = {
-                "Bell: boost or cut around the frequency",
-                "Low cut: removes frequencies below the cutoff",
-                "Low shelf: boosts or cuts the low end",
-                "High shelf: boosts or cuts the high end",
-                "High cut: removes frequencies above the cutoff",
-                "Notch: removes a narrow band of frequencies"
-            };
-            const auto& pill = l.pills[hoverPill];
-            const juce::String tip=tr(tips[hoverPill]);
-            const int tipW = 320, tipH = 26;
-            juce::Rectangle<int> box((int)pill.getCentreX() - tipW / 2, (int)pill.getY() - tipH - 8, tipW, tipH);
-            if (box.getY() < 4) box.setY((int)pill.getBottom()+8);
-            box.setX(std::clamp(box.getX(),4,std::max(4,getWidth()-tipW-4)));
-            g.setColour(Daw::chrome);
-            g.fillRoundedRectangle(box.toFloat(), Daw::radius);
-            g.setColour(Daw::lineStrong);
-            g.drawRoundedRectangle(box.toFloat(), Daw::radius, 1.0f);
-            g.setFont(Daw::font(Daw::small));
-            g.setColour(Daw::text);
-            g.drawFittedText(tip, box.reduced(8, 0), 1, 0.8f);
-        }
-    }
-
-    void handleHudMouseDown(const juce::MouseEvent& e, const juce::Rectangle<float>& hud) {
-        auto l = hudLayout(hud);
-        auto& b = currentEq.bands[(size_t)selectedBand];
-
-        for (int i = 0; i < 6; ++i) {
-            if (l.pills[i].contains(e.position)) {
-                editOnce([&]{b.type=i;b.normalise();});
-                return;
-            }
-        }
-
-        if (l.freq.contains(e.position)) {
-            dragHudParam = 0; dragStartParamVal = b.freq;
-            return;
-        }
-        if (l.gain.contains(e.position)&&eqHasGain(b.type)) {
-            dragHudParam = 1; dragStartParamVal = b.gain;
-            return;
-        }
-        if (l.q.contains(e.position)) {
-            dragHudParam = 2; dragStartParamVal = b.q;
-            return;
-        }
-        if (l.bypass.contains(e.position)) {
-            editOnce([&]{b.enabled=!b.enabled;});return;
-        }
-        if(l.invert.contains(e.position)&&eqHasGain(b.type)){
-            editOnce([&]{b.gain=-b.gain;});return;
-        }
-        if (l.del.contains(e.position)) {
-            deleteSelectedBand();
-            return;
-        }
-    }
-
-
 
     void showBandMenu(int index,juce::Point<int> screen){
         selectBand(index);juce::PopupMenu menu;
@@ -797,6 +778,7 @@ private:
 class GraphicEqWindow::Panel : public juce::Component {
 public:
     explicit Panel(MainComponent& m):owner(m){
+        setLookAndFeel(&consoleLook);
         for(juce::Component* c:std::initializer_list<juce::Component*>{&eqDisplay,&trackSelector,&bandSelector,&addBandButton,&enableButton,&resetButton,&analyzerMode,&speed,&range})addAndMakeVisible(c);
         Localisation::bindTip(addBandButton,"Add a new parametric band to the EQ.");
         Localisation::bindTip(enableButton,"Toggle EQ on or off for this track.");
@@ -823,6 +805,7 @@ public:
         speed.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1,juce::dontSendNotification);
         range.setSelectedId(std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1,juce::dontSendNotification);
     }
+    ~Panel()override{setLookAndFeel(nullptr);}
     void setTrack(int track){meterTrack=-2;currentTrack=std::clamp(track>=0?track:owner.selectedTrack,0,(int)owner.project.tracks.size()-1);refresh();}
     void refresh(){
         if(owner.project.tracks.empty())return;updating=true;
@@ -851,8 +834,8 @@ public:
         if(wanted!=meterTrack){owner.audio.setSpectrumTrack(wanted);meterTrack=wanted;spectrumGate=lastSpectrumRevision=owner.audio.spectrumRevision();}
     }
     void paint(juce::Graphics& g)override{
-        g.fillAll(Daw::base);g.setColour(Daw::accent);g.fillRoundedRectangle(15,16,3,18,1.5f);
-        g.setColour(Daw::text);g.setFont(Daw::font(Daw::body,true));g.drawText(tr("PARAMETRIC EQ"),27,10,148,29,juce::Justification::centredLeft);
+        g.fillAll(Daw::base);g.setColour(Daw::text);g.setFont(Daw::font(25.f,true));g.drawText("EQ",16,7,45,34,juce::Justification::centredLeft);
+        g.setColour(Daw::textDim);g.setFont(Daw::font(9.5f,true));g.drawText(tr("PARAMETRIC"),62,12,106,24,juce::Justification::centredLeft);
         g.setColour(Daw::line);g.drawHorizontalLine(eqDisplay.getY()-8,14.f,(float)getWidth()-14);
         g.setColour(Daw::textFaint);g.setFont(Daw::smallFont(9));
         g.drawFittedText(tr(juce::String::fromUTF8("Double-click: add band · Wheel: Q · Shift: fine adjustment")),getLocalBounds().removeFromBottom(22).reduced(18,1).withTrimmedRight(118),juce::Justification::centredLeft,1);
@@ -861,15 +844,15 @@ public:
     void resized()override{
         auto r=getLocalBounds().reduced(14);auto top=r.removeFromTop(34);
         if(getWidth()>=740){
-            resetButton.setBounds(top.removeFromRight(72));top.removeFromRight(8);enableButton.setBounds(top.removeFromRight(132));top.removeFromRight(8);addBandButton.setBounds(top.removeFromRight(114));top.removeFromRight(12);top.removeFromLeft(150);trackSelector.setBounds(top);
+            resetButton.setBounds(top.removeFromRight(72));top.removeFromRight(8);enableButton.setBounds(top.removeFromRight(132));top.removeFromRight(8);addBandButton.setBounds(top.removeFromRight(114));top.removeFromRight(12);top.removeFromLeft(150);trackSelector.setBounds(top.removeFromLeft(std::min(280,top.getWidth())));
         }else{
-            top.removeFromLeft(150);trackSelector.setBounds(top);r.removeFromTop(8);auto actions=r.removeFromTop(30);
+            top.removeFromLeft(150);trackSelector.setBounds(top.removeFromLeft(std::min(280,top.getWidth())));r.removeFromTop(8);auto actions=r.removeFromTop(30);
             addBandButton.setBounds(actions.removeFromLeft(114));actions.removeFromLeft(8);enableButton.setBounds(actions.removeFromLeft(132));actions.removeFromLeft(8);resetButton.setBounds(actions.removeFromLeft(96));
         }
         r.removeFromTop(10);auto settings=r.removeFromTop(30);
         if(getWidth()<680){bandSelector.setBounds(settings);r.removeFromTop(6);settings=r.removeFromTop(30);}
         range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(144));settings.removeFromRight(8);
-        if(getWidth()<680)analyzerMode.setBounds(settings);else{analyzerMode.setBounds(settings.removeFromRight(174));settings.removeFromRight(10);bandSelector.setBounds(settings);}
+        if(getWidth()<680)analyzerMode.setBounds(settings);else{analyzerMode.setBounds(settings.removeFromRight(174));settings.removeFromRight(10);bandSelector.setBounds(settings.removeFromLeft(std::min(260,settings.getWidth())));}
         r.removeFromTop(13);r.removeFromBottom(12);eqDisplay.setBounds(r);
     }
 
@@ -877,8 +860,9 @@ public:
     bool writeEvidence(const juce::File& folder);
 #endif
 private:
-    MainComponent& owner;EqDisplayComponent eqDisplay;
+    MainComponent& owner;EqLookAndFeel consoleLook;EqDisplayComponent eqDisplay;
     juce::ComboBox trackSelector,bandSelector,analyzerMode,speed,range;
+    juce::TooltipWindow tooltip{this,650};
     juce::TextButton addBandButton,resetButton;juce::ToggleButton enableButton;
     int currentTrack=0,meterTrack=-2;bool updating=false;
     std::uint32_t lastSpectrumRevision=0,spectrumGate=0;
@@ -898,8 +882,8 @@ GraphicEqWindow::GraphicEqWindow(MainComponent& m)
     const auto area = display ? display->userArea : juce::Rectangle<int>(0, 0, 1280, 800);
     const int maxW=juce::jmax(480,area.getWidth()-32);
     const int maxH=juce::jmax(360,area.getHeight()-48);
-    setResizeLimits(std::min(760,maxW),std::min(520,maxH),maxW,maxH);
-    setSize(std::min(1020,maxW),std::min(680,maxH));
+    setResizeLimits(std::min(780,maxW),std::min(620,maxH),maxW,maxH);
+    setSize(std::min(1040,maxW),std::min(760,maxH));
     setAlwaysOnTop(true);
 }
 
@@ -963,6 +947,10 @@ bool GraphicEqWindow::Panel::writeEvidence(const juce::File& folder){
     expect(added.bands.size()==eqDisplay.getEq().bands.size()&&owner.undoStack.size()==1,"adding a band records exactly one real mix Undo");
     owner.undo(false);expect(owner.project.tracks[0].eq==original,"real Undo restores the previous EQ without regeneration");
     owner.undo(true);expect(owner.project.tracks[0].eq==added,"real Redo restores the added band");
+    eqDisplay.selectBand((int)added.bands.size()-1);const auto historyBefore=owner.undoStack.size();
+    eqDisplay.simulateKnobGesture(0,2800,3100);
+    expect(owner.project.tracks[0].eq.bands.back().freq==3100&&owner.undoStack.size()==historyBefore+1,"real rotary gesture remains one Undo despite live graph and inspector refresh");
+    owner.undo(false);expect(owner.project.tracks[0].eq==added,"real rotary Undo restores the previous parameter and selected curve");
     eqDisplay.flatten();owner.undo(false);expect(owner.project.tracks[0].eq==added&&midiFile(owner.project)==midiBefore,"reset/Undo preserves the curve and the song MIDI");
     owner.undoStack.clear();owner.redoStack.clear();
     auto& eq=owner.project.tracks[0].eq;eq.enabled=true;
@@ -970,7 +958,7 @@ bool GraphicEqWindow::Panel::writeEvidence(const juce::File& folder){
     const auto language=Localisation::current();
     for(auto lang:{Localisation::Language::italian,Localisation::Language::english}){
         Localisation::setCurrent(lang);refresh();
-        for(auto size:std::initializer_list<juce::Point<int>>{{760,520},{1020,680}}){setSize(size.x,size.y);const auto image=createComponentSnapshot(getLocalBounds());const auto name=juce::String(lang==Localisation::Language::italian?"eq-it-":"eq-en-")+juce::String(size.x)+".png";if(auto stream=folder.getChildFile(name).createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}}
+        for(auto size:std::initializer_list<juce::Point<int>>{{780,620},{1040,760}}){setSize(size.x,size.y);const auto image=createComponentSnapshot(getLocalBounds());const auto name=juce::String(lang==Localisation::Language::italian?"eq-it-":"eq-en-")+juce::String(size.x)+".png";if(auto stream=folder.getChildFile(name).createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}}
     }
     Localisation::setCurrent(language);folder.getChildFile("eq-checks.txt").replaceWithText(checks.joinIntoString("\n"));return ok;
 }
