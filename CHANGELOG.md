@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Review all 15 genres: complete genre-specific harmonic phrases, compatible A/B development, manual-chord preservation and fewer repeated harmony draws.
+- Fix electronic accompaniment chord timing and unintended Techno suspensions. Separate rhythm, melodic contour and replies; compare actual musical takes to avoid immediate repetition, with bounded faithful previews.
+- Add all-genre regeneration, scope/lock, determinism, chord-boundary and musical-content diversity regressions. See docs/HARMONY_REVIEW.md.
+
 ## 0.41.0
 
 - Professional Graphic Parametric Equalizer: complete redesign inspired by studio standards (FabFilter Pro-Q 3). Supports up to 16 dynamic bands with double-click canvas creation, quick shape pills (Bell, Low Cut, Low Shelf, High Shelf, High Cut, Notch), mouse-wheel Q factor adjustment, keyboard Delete/Backspace removal, individual band curve projections in 16 dedicated colors, multi-pass neon bloom composite curve with upward/downward gradient fills, piano roll musical octave ruler (C1-C8), floating dark-glass parameter HUD, and real-time audio-reactive spectrum analyzer.

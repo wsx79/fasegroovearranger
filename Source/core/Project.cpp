@@ -19,6 +19,15 @@ namespace fga {
 namespace {
 std::uint32_t mix(std::uint32_t x) { x ^= x >> 16; x *= 0x7feb352dU; x ^= x >> 15; x *= 0x846ca68bU; return x ^ (x >> 16); }
 double finite(double x, double fallback, double lo, double hi) { return std::isfinite(x) ? std::clamp(x, lo, hi) : fallback; }
+bool sameHarmony(const Settings& a,const Settings& b){
+    if(a.chordCount!=b.chordCount)return false;
+    for(int i=0;i<a.chordCount;++i){
+        const auto x=chordAtBeat(a,i*a.chordSteps*.25),y=chordAtBeat(b,i*b.chordSteps*.25);
+        if(x.rootPc!=y.rootPc||x.tones.size!=y.tones.size)return false;
+        for(int n=0;n<x.tones.size;++n)if(x.tones[n]!=y.tones[n])return false;
+    }
+    return true;
+}
 sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     sgk::GrooveSettings p;
     p.keyRoot=s.key; p.scale=s.scale; p.extension=(sgk::Extension)s.extension; p.voicing=(sgk::Voicing)s.voicing;
@@ -523,7 +532,7 @@ void chooseProgression(Settings& s,int preset) {
     for(int i=0;i<s.chordCount;++i) {s.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);s.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void chooseProgression(Project& p,int preset) {chooseProgression(p.settings,preset);}
-void randomiseHarmony(Settings& s,std::uint32_t seed) {
+static void drawHarmony(Settings& s,std::uint32_t seed) {
     if(isElectronicGenre(s.genre)){
         const auto before=s;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(s,seed);
         // Explicitly authored chromatic chords keep their slots and progression length.
@@ -537,8 +546,16 @@ void randomiseHarmony(Settings& s,std::uint32_t seed) {
     // slots from the genre vocabulary, including generated chromatic chords.
     const int count=std::clamp(s.chordCount,1,8);
     const auto& all=sgk::progressionPresets();
-    std::vector<int> candidates;
-    for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==s.scale)candidates.push_back(i);
+    std::vector<int> candidates,exact,complete;
+    for(int i=0;i<(int)all.size();++i)if(all[(size_t)i].scale==s.scale){
+        candidates.push_back(i);const auto size=(int)sgk::presetSlots(all[(size_t)i],s.extension).size();
+        if(size==count)exact.push_back(i);
+        if(size>0&&count%size==0)complete.push_back(i);
+    }
+    // Preserve a written phrase and its cadence. Cutting an arbitrary rotated
+    // window out of a longer progression used to leave half a harmonic sentence.
+    if(!exact.empty())candidates=std::move(exact);
+    else if(!complete.empty())candidates=std::move(complete);
     if(candidates.empty()){
         auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
         for(int i=0;i<count;++i)if(!s.manualChords[(size_t)i]){s.degrees[(size_t)i]=degrees[(size_t)i];s.freeChords[(size_t)i]=-1;}
@@ -547,11 +564,17 @@ void randomiseHarmony(Settings& s,std::uint32_t seed) {
     const int preset=candidates[(size_t)(mix(seed)%candidates.size())];
     const auto slots=sgk::presetSlots(all[(size_t)preset],s.extension);
     if(slots.empty())return;
-    const int shift=(int)(mix(seed+17U)%(std::uint32_t)slots.size());
     for(int i=0;i<count;++i){
         if(s.manualChords[(size_t)i])continue;
-        const auto& slot=slots[(size_t)((i+shift)%(int)slots.size())];
+        const auto& slot=slots[(size_t)(i%(int)slots.size())];
         s.degrees[(size_t)i]=std::max(0,slot.degree);s.freeChords[(size_t)i]=slot.freeCode;
+    }
+}
+void randomiseHarmony(Settings& s,std::uint32_t seed) {
+    const auto before=s;
+    for(unsigned attempt=0;attempt<32;++attempt){
+        s=before;drawHarmony(s,attempt?mix(seed+attempt*0x9e3779b9U):seed);
+        if(!sameHarmony(s,before))return;
     }
 }
 void randomiseHarmony(Project& p,std::uint32_t seed) {randomiseHarmony(p.settings,seed);}
@@ -922,30 +945,41 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     if(isElectronicGenre(s.genre)){
         s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;applyElectronicHarmony(s,seed);return;
     }
-    auto differs=[&]{return s.scale!=before.scale||s.chordCount!=before.chordCount
-        ||!std::equal(s.degrees.begin(),s.degrees.begin()+s.chordCount,before.degrees.begin())
-        ||!std::equal(s.freeChords.begin(),s.freeChords.begin()+s.chordCount,before.freeChords.begin());};
-    if(mix(seed)%3!=0){
-        int length=4;const auto roll=mix(seed+53U)%5;if(roll==0)length=8;else if(roll==1)length=3;
-        const auto degrees=sgk::randomProgression(seed,length,s.scale,engineGenre(s.genre));
-        if((int)degrees.size()>=length){s.chordCount=length;s.freeChords.fill(-1);s.manualChords.fill(false);std::copy(degrees.begin(),degrees.begin()+length,s.degrees.begin());}
-        if(!differs())s=before;
-    }
-    // Curated alternatives retain each style's harmonic vocabulary.
+    // Complete genre phrases avoid the unrelated modal/diminished turns of an
+    // unrestricted walk. All these library entries contain two, four or eight
+    // chords, so automatic dance forms retain their phrase boundaries.
     static const std::vector<int> progressions[]{
-        {4,8,27,33,19,12}, {2,3,4,8,19,29,12}, {0,1,6,7,20,27},
-        {2,8,19,22,24,12}, {17,18,28,30,31,37}, {17,28,30,31,33,37},
-        {9,17,18,27,28,31}, {0,9,16,20,21,28}, {9,21,32,33,4,12},
-        {4,6,8,27,28,33}, {2,3,19,24,29,12}, {0,6,7,10,20,27},
-        {4,6,9,17,27,28}
+        {4,5,8,11,12,19,27,33,54,59,60,76},
+        {2,3,4,8,12,19,29,54,57,59,61,62},
+        {0,1,6,7,20,27,65,66,67,68,69,70,71,72,73,94,95,97,101,104,105,109},
+        {2,8,11,12,19,22,24,40,51,53,54,58,59,62,63,64,85,86},
+        {17,18,28,30,31,34,35,37,74,75,78,79,80,94,95,97},
+        {17,28,30,31,33,37,54,58,74,75,76,79,94,101},
+        {9,17,18,27,28,31,34,37,67,71,75,78,79,95},
+        {0,9,16,20,21,28,65,66,70,73,75,94,95,97},
+        {9,21,32,33,4,12,54,57,60,74,76,77,80},
+        {4,6,8,27,28,33,54,56,59,60,76},
+        {2,3,19,24,29,12,40,41,46,51,53,54,57,61,85},
+        {0,6,7,10,20,27,65,67,68,69,70,71,72,91},
+        {4,6,9,17,27,28,33,54,56,60,74,76}
     };
-    if(!differs()){
     const auto& choices=progressions[engineGenre(s.genre)];
     const auto first=mix(seed+701U)%choices.size();
     for(size_t i=0;i<choices.size();++i) {
         chooseProgression(p,choices[(first+i)%choices.size()]);
-        if(differs())break;
-    }
+        if(s.chordCount==4&&mix(seed+349U)%3==0){
+            const auto opening=chordAtBeat(s,0);const auto at=mix(seed+503U)%choices.size();
+            for(size_t n=0;n<choices.size();++n){auto answer=s;chooseProgression(answer,choices[(at+n)%choices.size()]);
+                if(answer.scale!=s.scale||answer.chordCount!=4||sameHarmony(answer,s))continue;
+                const auto anchor=chordAtBeat(answer,0);
+                if(anchor.rootPc!=opening.rootPc||anchor.third!=opening.third||anchor.fifth!=opening.fifth)continue;
+                // An eight-chord A/B phrase returns to the same harmonic anchor
+                // and develops it with another complete, compatible four-chord line.
+                for(int slot=0;slot<4;++slot){s.degrees[(size_t)slot+4]=answer.degrees[(size_t)slot];s.freeChords[(size_t)slot+4]=answer.freeChords[(size_t)slot];}
+                s.chordCount=8;break;
+            }
+        }
+        if(!sameHarmony(s,before))break;
     }
     // Exclude the current key: a new take must audibly move its tonal centre.
     s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
@@ -1118,7 +1152,19 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 // Explicit regeneration leaves fixed presets and seed overrides behind.
                 // APPLY (zero seed) continues to render the chosen settings exactly.
                 auto& e=t.engine;
-                if(ti==0){auto settings=s;if(scope!=Scope::song&&e.density>=0)settings.density=e.density;selectedMotif=freshPianoMotif(settings,previousPiano,selectedMotif);}
+                if(isElectronicGenre(s.genre)&&(ti==0||ti==1||ti==3||ti==leadTrack)
+                    &&!std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})){
+                    // A main/drop take is more representative than a sparse intro.
+                    // Scan only editable targets so a locked/excluded take never
+                    // steers a local regeneration, and share the result across sections.
+                    size_t reference=si,best=0;
+                    for(size_t ci=0;ci<t.clips.size();++ci)if(editableTake(p,scope,track,section,ti,(int)ci)){
+                        size_t attacks=0;for(const auto& note:t.clips[ci].notes){if(note.start>=16.)break;++attacks;}
+                        if(attacks>best){best=attacks;reference=ci;}
+                    }
+                    const double start=p.clipStart(ti,(int)reference);const int guide=p.sectionAtBeat(start);
+                    selectedMotif=freshElectronicMotif(p,t.clips[reference],ti,start,p.clipLength(ti,(int)reference),p.sections[(size_t)guide].type,selectedMotif);
+                }else if(ti==0){auto settings=s;if(scope!=Scope::song&&e.density>=0)settings.density=e.density;selectedMotif=freshPianoMotif(settings,previousPiano,selectedMotif);}
                 if(ti<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})) {
                     const auto previousMotif=clip.motifSeed?clip.motifSeed:mix(previousSongSeed+(std::uint32_t)ti*131U);
                     const auto source=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,ti,clip.seed,previousMotif));

@@ -16,6 +16,7 @@
 void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "HarmonyAuditChecks.h"
 #include "HarmonyContractChecks.h"
+#include "MusicalGenerationChecks.h"
 #include "AuditRegressionChecks.h"
 #include "GlobalFeelChecks.h"
 #include "DeepAuditChecks.h"
@@ -251,6 +252,7 @@ int main(int argc,char** argv){try{
     verifyAuditRegressions();
     verifySectionDevelopment();
     verifyHarmonyAudit();
+    musicalchecks::verify();
     verifyRearrange();
     verifyAuditFixes();
     verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
