@@ -156,6 +156,9 @@ public:
                 setApplicationReturnValue(0);quit();
             });return;
         }
+        if(args.size()==2&&args[0]=="--eq-ui-test"){
+            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();fga::GraphicEqWindow eq(window->content->main);eq.open(0);const bool ok=eq.writeUiEvidence(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
+        }
         if(args.size()==2&&args[0]=="--target-layout-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const juce::File folder(args[1]);folder.createDirectory();const bool ok=window->content->main.verifyTargetDurationControl(folder);setApplicationReturnValue(ok?0:1);quit();return;
         }

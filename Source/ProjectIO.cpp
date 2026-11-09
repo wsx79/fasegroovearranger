@@ -149,7 +149,7 @@ juce::var projectJson(const Project& p){
     juce::Array<juce::var> sections,tracks;
     for(const auto& section:p.sections){auto a=object();set(a,"type",(int)section.type);set(a,"bars",section.bars);set(a,"name",section.name);const auto& h=section.harmony;if(h.enabled){auto v=object();set(v,"key",h.key);set(v,"scale",h.scale);set(v,"count",h.chordCount);set(v,"steps",h.chordSteps);juce::Array<juce::var> d,f,m;for(int i=0;i<8;++i){d.add(h.degrees[(size_t)i]);f.add(h.freeChords[(size_t)i]);m.add(h.manualChords[(size_t)i]);}set(v,"degrees",d);set(v,"free",f);set(v,"manual",m);set(a,"harmony",v);}set(a,"preDropSilence",section.preDropSilence);set(a,"snareRoll",section.snareRoll);set(a,"reverseCrash",section.reverseCrash);sections.add(a);}set(o,"sections",sections);
     for(const auto& t:p.tracks){auto a=object();set(a,"name",t.name);set(a,"kind",t.kind);set(a,"gain",t.gain);set(a,"pan",t.pan);set(a,"mute",t.mute);set(a,"solo",t.solo);set(a,"locked",t.locked);set(a,"sound",t.sound);set(a,"sampleRoot",t.sampleRoot);
-        if(t.eq.enabled){
+        if(!(t.eq==EqSettings{})){
             auto q=object();set(q,"highPass",t.eq.highPass);set(q,"low",t.eq.low);set(q,"mid",t.eq.mid);set(q,"high",t.eq.high);
             if(t.eq.lowFreq!=120)set(q,"lowFreq",t.eq.lowFreq);if(t.eq.midFreq!=1000)set(q,"midFreq",t.eq.midFreq);if(t.eq.highFreq!=6000)set(q,"highFreq",t.eq.highFreq);if(std::abs(t.eq.midQ-0.707)>1e-4)set(q,"midQ",t.eq.midQ);
             if(!t.eq.bands.empty()){
@@ -160,7 +160,8 @@ juce::var projectJson(const Project& p){
                 }
                 set(q,"bands",bandList);
             }
-            set(a,"eq",q);
+            // Old readers keep a bypassed curve silent; new readers also retain it.
+            set(a,t.eq.enabled?"eq":"eqBypassed",q);
         }if(!t.sampler.isDefault())set(a,"sampler",samplerJson(t.sampler));if(!t.sampleHash.empty())set(a,"sampleHash",t.sampleHash);if(t.group>=0)set(a,"group",t.group);if(t.sends[0]!=0||t.sends[1]!=0){juce::Array<juce::var> sends;for(auto v:t.sends)sends.add(v);set(a,"sends",sends);}
         if(t.vocalChops)set(a,"vocalChops",true);set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
         set(a,"volumeAutomation",envelopeJson(t.volume));
@@ -180,7 +181,7 @@ juce::var projectJson(const Project& p){
     if(!p.masterEffects.effects.empty()){juce::Array<juce::var> effects;for(const auto& e:p.masterEffects.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);effects.add(fx);}set(o,"masterEffects",effects);set(o,"version",4);}
     const bool takeMetadata=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.audioOffset>=0||c.loopPhase!=0||c.span>512||c.loopLength>512||std::any_of(c.feel.begin(),c.feel.end(),[](double f){return f>=0;});});});
     if(takeMetadata)set(o,"version",5);
-    const bool extended=std::any_of(p.sections.begin(),p.sections.end(),[](const auto& s){return s.harmony.enabled||s.preDropSilence||s.snareRoll||s.reverseCrash;})||std::any_of(p.buses.begin(),p.buses.end(),[](const auto& b){return b.sidechainAmount>0;})||std::any_of(p.tracks.begin(),p.tracks.end(),[](const auto& t){return t.eq.enabled||std::any_of(t.clips.begin(),t.clips.end(),[](const auto& c){return std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.reverse;})||c.clipFadeIn>0||c.clipFadeOut>0||std::any_of(c.expression.begin(),c.expression.end(),[](const auto& l){return !l.isDefault();});});});if(extended||p.settings.grooveEnabled)set(o,"version",6);
+    const bool extended=std::any_of(p.sections.begin(),p.sections.end(),[](const auto& s){return s.harmony.enabled||s.preDropSilence||s.snareRoll||s.reverseCrash;})||std::any_of(p.buses.begin(),p.buses.end(),[](const auto& b){return b.sidechainAmount>0;})||std::any_of(p.tracks.begin(),p.tracks.end(),[](const auto& t){return !(t.eq==EqSettings{})||std::any_of(t.clips.begin(),t.clips.end(),[](const auto& c){return std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.reverse;})||c.clipFadeIn>0||c.clipFadeOut>0||std::any_of(c.expression.begin(),c.expression.end(),[](const auto& l){return !l.isDefault();});});});if(extended||p.settings.grooveEnabled)set(o,"version",6);
     return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
@@ -223,9 +224,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
         if(a.hasProperty("effects")){auto* effects=a["effects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid effect chain.");
             for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||t.effect((int)slot))return juce::Result::fail("Invalid or duplicate effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing effect identifier.");t.effects.push_back(std::move(e));}
         }else if(!str(a,"effectPath").empty()||!str(a,"effectId").empty()){EffectSlot e;e.path=str(a,"effectPath");e.pluginId=str(a,"effectId");e.state=str(a,"effectState");if(auto xml=juce::XmlDocument::parse(juce::String::fromUTF8(e.pluginId.c_str())))e.pluginName=xml->getStringAttribute("name").toStdString();if(e.pluginName.empty())e.pluginName=juce::File(juce::String::fromUTF8(e.path.c_str())).getFileNameWithoutExtension().toStdString();t.effects.push_back(std::move(e));}
-        if(a.hasProperty("eq")){
-            auto q=a["eq"];if(!q.isObject())return juce::Result::fail("Invalid EQ");
-            t.eq.enabled=true;t.eq.highPass=num(q,"highPass",20);t.eq.low=num(q,"low",0);t.eq.mid=num(q,"mid",0);t.eq.high=num(q,"high",0);
+        if(a.hasProperty("eq")||a.hasProperty("eqBypassed")){
+            const bool enabled=a.hasProperty("eq");auto q=a[enabled?"eq":"eqBypassed"];if(!q.isObject())return juce::Result::fail("Invalid EQ");
+            t.eq.enabled=enabled;t.eq.highPass=num(q,"highPass",20);t.eq.low=num(q,"low",0);t.eq.mid=num(q,"mid",0);t.eq.high=num(q,"high",0);
             t.eq.lowFreq=num(q,"lowFreq",120);t.eq.midFreq=num(q,"midFreq",1000);t.eq.highFreq=num(q,"highFreq",6000);t.eq.midQ=num(q,"midQ",0.707);
             if(q.hasProperty("bands")){
                 if(auto* bArr=q["bands"].getArray()){

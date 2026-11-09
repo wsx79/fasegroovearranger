@@ -3,6 +3,12 @@
 #include "GraphicEqWindow.h"
 #include "MainComponent.h"
 #include "AudioEngine.h"
+#include "core/EqResponse.h"
+#include "core/EqEditing.h"
+#include "EqAnalyzer.h"
+#if FGA_SELF_TESTS
+#include "ChannelStrip.h"
+#endif
 #include "Localisation.h"
 #include "StudioTheme.h"
 #include <cmath>
@@ -13,79 +19,6 @@
 
 namespace fga {
 namespace {
-
-struct BiquadCoeffs {
-    double b0 = 1, b1 = 0, b2 = 0, a1 = 0, a2 = 0;
-
-    void setCoeffs(double b0_, double b1_, double b2_, double a0_, double a1_, double a2_) {
-        b0 = b0_ / a0_; b1 = b1_ / a0_; b2 = b2_ / a0_;
-        a1 = a1_ / a0_; a2 = a2_ / a0_;
-    }
-
-    double magnitudeDb(double f, double rate) const {
-        const double phi = 6.283185307179586 * std::min(f, rate * 0.499) / rate;
-        const double c1 = std::cos(phi), s1 = std::sin(phi);
-        const double c2 = std::cos(2.0 * phi), s2 = std::sin(2.0 * phi);
-        const double reNum = b0 + b1 * c1 + b2 * c2;
-        const double imNum = -b1 * s1 - b2 * s2;
-        const double reDen = 1.0 + a1 * c1 + a2 * c2;
-        const double imDen = -a1 * s1 - a2 * s2;
-        const double numSq = reNum * reNum + imNum * imNum;
-        const double denSq = reDen * reDen + imDen * imDen;
-        if (denSq < 1e-12) return 0.0;
-        return 10.0 * std::log10(std::max(1e-12, numSq / denSq));
-    }
-};
-
-static BiquadCoeffs computeBandCoeffs(const EqBand& b, double rate) {
-    BiquadCoeffs f;
-    if (!b.enabled) return f;
-    const double hz = std::clamp(b.freq, 20.0, rate * 0.45);
-    const double qVal = std::clamp(b.q, 0.1, 18.0);
-    const double w = 6.283185307179586 * hz / rate;
-    const double c = std::cos(w), s = std::sin(w), alpha = s / (2.0 * qVal);
-
-    switch (b.type) {
-        case (int)EqFilterType::LowCut:
-            f.setCoeffs((1.0 + c) * 0.5, -(1.0 + c), (1.0 + c) * 0.5, 1.0 + alpha, -2.0 * c, 1.0 - alpha);
-            break;
-        case (int)EqFilterType::HighCut:
-            f.setCoeffs((1.0 - c) * 0.5, 1.0 - c, (1.0 - c) * 0.5, 1.0 + alpha, -2.0 * c, 1.0 - alpha);
-            break;
-        case (int)EqFilterType::Notch:
-            f.setCoeffs(1.0, -2.0 * c, 1.0, 1.0 + alpha, -2.0 * c, 1.0 - alpha);
-            break;
-        case (int)EqFilterType::LowShelf: {
-            const double A = std::pow(10.0, b.gain / 40.0);
-            const double beta = 2.0 * std::sqrt(A) * alpha;
-            f.setCoeffs(A * ((A + 1.0) - (A - 1.0) * c + beta),
-                        2.0 * A * ((A - 1.0) - (A + 1.0) * c),
-                        A * ((A + 1.0) - (A - 1.0) * c - beta),
-                        (A + 1.0) + (A - 1.0) * c + beta,
-                        -2.0 * ((A - 1.0) + (A + 1.0) * c),
-                        (A + 1.0) + (A - 1.0) * c - beta);
-            break;
-        }
-        case (int)EqFilterType::HighShelf: {
-            const double A = std::pow(10.0, b.gain / 40.0);
-            const double beta = 2.0 * std::sqrt(A) * alpha;
-            f.setCoeffs(A * ((A + 1.0) + (A - 1.0) * c + beta),
-                        -2.0 * A * ((A - 1.0) + (A + 1.0) * c),
-                        A * ((A + 1.0) + (A - 1.0) * c - beta),
-                        (A + 1.0) - (A - 1.0) * c + beta,
-                        2.0 * ((A - 1.0) - (A + 1.0) * c),
-                        (A + 1.0) - (A - 1.0) * c - beta);
-            break;
-        }
-        case (int)EqFilterType::Bell:
-        default: {
-            const double A = std::pow(10.0, b.gain / 40.0);
-            f.setCoeffs(1.0 + alpha * A, -2.0 * c, 1.0 - alpha * A, 1.0 + alpha / A, -2.0 * c, 1.0 - alpha / A);
-            break;
-        }
-    }
-    return f;
-}
 
 static const juce::Colour bandColours[] = {
     juce::Colour(0xff7aa2f7), // slate blue
@@ -116,7 +49,10 @@ public:
     std::function<void()> onSettingsChanged;
     std::function<void()> onDragStart;
     std::function<void()> onDragEnd;
-    std::function<void(std::vector<float>&, std::vector<float>&)> getSpectrum;
+    std::function<bool(std::vector<float>&, std::vector<float>&)> getSpectrum;
+    std::function<double()> getSampleRate;
+    std::function<void()> onSelectionChanged;
+    std::function<void()> onWheelStart;
 
     EqDisplayComponent() {
         setOpaque(true);
@@ -138,10 +74,14 @@ public:
 
     ~EqDisplayComponent() override { stopTimer(); }
 
-    void setEq(const EqSettings& settings, int trackIndex, const juce::String& trackName) {
-        currentEq = settings;
+    void setEq(const EqSettings& settings, int trackIndex, const juce::String& trackName,std::uint64_t identity=0) {
+        auto canonical=settings;canonical.ensureBands();
+        const bool moved=track!=trackIndex||trackIdentity!=identity;
+        if(moved||!(currentEq==canonical))++revision;
+        if(moved){cancelEdit();selectedBand=-1;preBands.fill(0);postBands.fill(0);}
+        currentEq = std::move(canonical);
         currentEq.ensureBands();
-        track = trackIndex;
+        track = trackIndex;trackIdentity=identity;
         name = trackName;
         if (selectedBand >= (int)currentEq.bands.size()) selectedBand = -1;
         repaint();
@@ -150,6 +90,31 @@ public:
     const EqSettings& getEq() const { return currentEq; }
 
     int getSelectedBand() const { return selectedBand; }
+    void selectBand(int index){cancelEdit();selectedBand=index>=0&&index<(int)currentEq.bands.size()?index:-1;if(onSelectionChanged)onSelectionChanged();repaint();}
+    void setView(int mode,int speed,double range){analyzerMode=mode;spectrumSpeed=speed;displayRange=range;repaint();}
+    void editOnce(const std::function<void()>& action){const auto before=currentEq;action();currentEq.syncLegacyFromBands();if(currentEq==before){repaint();return;}if(onDragStart)onDragStart();if(onSettingsChanged)onSettingsChanged();if(onDragEnd)onDragEnd();repaint();}
+    void flatten(){editOnce([this]{currentEq.flatten();});}
+
+
+#if FGA_SELF_TESTS
+    bool verifyInteractions(juce::StringArray& checks){
+        bool ok=true;auto expect=[&](bool passed,const char* label){checks.add(juce::String(passed?"PASS ":"FAIL ")+label);ok=passed&&ok;};
+        int undos=0;onDragStart=[&]{++undos;};onSettingsChanged=[]{};onDragEnd=[]{};
+        EqSettings authored;authored.enabled=true;authored.bands={{true,0,150,3,1},{true,0,1500,-4,2},{true,1,35,0,.707}};authored.syncLegacyFromBands();setEq(authored,0,"Test");
+        auto event=[&](juce::Point<float> pos,int clicks=1){return juce::MouseEvent(juce::Desktop::getInstance().getMainMouseSource(),pos,juce::ModifierKeys::leftButtonModifier,1,0,0,0,0,this,this,juce::Time::getCurrentTime(),pos,juce::Time::getCurrentTime(),clicks,false);};
+        const int selectionUndo=undos;mouseDown(event(getNodePosition(0,getPlotArea())));mouseUp(event(getNodePosition(0,getPlotArea())));expect(undos==selectionUndo,"selecting a band does not add an empty Undo step");
+        selectBand(1);const int before=undos;mouseDoubleClick(event(getNodePosition(0,getPlotArea()),2));
+        expect(currentEq.bands.size()==3&&currentEq.bands[0].gain==0&&currentEq.bands[1].gain==-4&&undos==before+1,"double-click resets the clicked band, never deletes another one");
+        selectBand(1);beginEdit(0);editor.setText("nonsense");const auto saved=currentEq;const int edits=undos;commitEdit();expect(currentEq==saved&&undos==edits&&editor.isVisible(),"invalid text keeps the band and Undo unchanged");
+        editor.setText("2,5 kHz");commitEdit();expect(currentEq.bands[1].freq==2500&&undos==edits+1,"unit/decimal frequency entry updates exactly one band and Undo step");
+        beginEdit(1);editor.setText("-6.5 dB");commitEdit();expect(currentEq.bands[1].gain==-6.5&&undos==edits+2,"valid entry is one undoable edit");
+        selectBand(2);beginEdit(1);expect(editParam<0,"cut/notch gain editor is disabled");
+        beginEdit(0);editor.setText("200");setEq(authored,1,"Another track");commitEdit();expect(currentEq==authored&&!editor.isVisible(),"track changes discard stale editor input");
+        selectBand(0);const auto wheelEvent=event(getNodePosition(0,getPlotArea()));juce::MouseWheelDetails wheel;wheel.deltaY=.1f;const int scroll=undos;mouseWheelMove(wheelEvent,wheel);expect(undos==scroll+1,"Q wheel edit participates in Undo");
+        for(auto size:std::initializer_list<juce::Point<int>>{{732,354},{932,514}}){setSize(size.x,size.y);const auto hud=getHudBounds(getPlotArea());const auto l=hudLayout(hud);expect(hud.contains(l.del)&&hud.contains(l.freq)&&hud.contains(l.q)&&getPlotArea().getBottom()<hud.getY(),"parameter strip fits the minimum and normal sizes without covering the graph");}
+        onDragStart=nullptr;onSettingsChanged=nullptr;onDragEnd=nullptr;return ok;
+    }
+#endif
 
     void addBandAt(double hz, double db, int type = (int)EqFilterType::Bell) {
         if (currentEq.bands.size() >= 16) return;
@@ -164,9 +129,10 @@ public:
         currentEq.bands.push_back(b);
         currentEq.syncLegacyFromBands();
         selectedBand = (int)currentEq.bands.size() - 1;
-        dragBand = selectedBand;
+        dragBand = -1;
         if (onSettingsChanged) onSettingsChanged();
         if (onDragEnd) onDragEnd();
+        if(onSelectionChanged)onSelectionChanged();
         repaint();
     }
 
@@ -179,64 +145,48 @@ public:
             dragBand = -1;
             if (onSettingsChanged) onSettingsChanged();
             if (onDragEnd) onDragEnd();
+            if(onSelectionChanged)onSelectionChanged();
             repaint();
         }
     }
 
     bool keyPressed(const juce::KeyPress& key) override {
+        if(!key.getModifiers().isCommandDown()&&!key.getModifiers().isCtrlDown()){
+            const auto letter=juce::CharacterFunctions::toLowerCase(key.getTextCharacter());
+            if(letter=='f'||letter=='g'||letter=='q'){beginEdit(letter=='f'?0:letter=='g'?1:2);return true;}
+        }
         if (key.isKeyCode(juce::KeyPress::deleteKey) || key.isKeyCode(juce::KeyPress::backspaceKey)) {
             deleteSelectedBand();
             return true;
         }
         if (key.isKeyCode(juce::KeyPress::escapeKey)) {
-            selectedBand = -1;
-            repaint();
+            selectBand(-1);
             return true;
         }
         return false;
     }
 
     void timerCallback() override {
-        if (!getSpectrum) return;
-        std::vector<float> pre, post;
-        getSpectrum(pre, post);
-        analyseSpectrum(pre, preBands);
-        analyseSpectrum(post, postBands);
+        if(!isShowing())return;
+        if(getSampleRate){const double rate=getSampleRate();if(std::isfinite(rate)&&rate>=8000)sampleRate=rate;}
+        std::vector<float> pre,post;
+        if(analyzerMode!=0&&getSpectrum)getSpectrum(pre,post);
+        analyzer.analyse(pre,sampleRate,preBands,spectrumSpeed);
+        analyzer.analyse(post,sampleRate,postBands,spectrumSpeed);
         repaint();
-    }
-
-    void analyseSpectrum(const std::vector<float>& samples, std::array<float, 96>& target) {
-        if (samples.size() < 2048) return;
-        constexpr int n = 2048;
-        for (int i = 0; i < n; ++i)
-            fftData[(size_t)i] = samples[samples.size() - (size_t)n + (size_t)i]
-                * (0.5f - 0.5f * std::cos(2.0 * 3.141592653589793 * (double)i / (double)(n - 1)));
-        fft.performFrequencyOnlyForwardTransform(fftData.data());
-        std::array<float, 96> bins{};
-        bins.fill(-120.0f);
-        for (int i = 1; i < n / 2; ++i) {
-            const double hz = (double)i * 48000.0 / (double)n;
-            if (hz < 20.0 || hz > 20000.0) continue;
-            const double t = std::log(hz / 20.0) / std::log(1000.0);
-            const int b = std::clamp((int)std::lround(t * 95.0), 0, 95);
-            const float db = 20.0f * std::log10(std::max(1.0e-6f, fftData[(size_t)i] / (float)n));
-            bins[(size_t)b] = std::max(bins[(size_t)b], db);
-        }
-        for (int b = 0; b < 96; ++b) {
-            const float v = std::clamp((bins[(size_t)b] + 90.0f) / 90.0f, 0.0f, 1.0f);
-            target[(size_t)b] = v > target[(size_t)b]
-                ? target[(size_t)b] + (v - target[(size_t)b]) * 0.7f
-                : target[(size_t)b] * 0.86f;
-        }
     }
 
     void beginEdit(int param) {
         if (selectedBand < 0 || selectedBand >= (int)currentEq.bands.size()) return;
         const auto& b = currentEq.bands[(size_t)selectedBand];
+        if(param==1&&!eqHasGain(b.type))return;
+        editor.setColour(juce::TextEditor::outlineColourId,Daw::lineStrong);
+        editor.setColour(juce::TextEditor::focusedOutlineColourId,Daw::accent);
         editParam = param;
         const juce::String text = param == 0 ? juce::String(b.freq, b.freq < 100.0 ? 1 : 0)
                                 : param == 1 ? juce::String(b.gain, 1)
                                              : juce::String(b.q, 2);
+        editor.setInputRestrictions(24);
         editor.setText(text, false);
         const auto l = hudLayout(getHudBounds(getPlotArea()));
         editor.setBounds((param == 0 ? l.freq : param == 1 ? l.gain : l.q).toNearestInt().reduced(3));
@@ -252,30 +202,19 @@ public:
     }
 
     void commitEdit() {
-        if (editParam < 0) return;
-        auto text = editor.getText().trim().toLowerCase();
-        if (text.isEmpty()) { cancelEdit(); return; }
-        double value = 0.0;
-        if (editParam == 0) {
-            value = text.endsWithChar('k') ? text.dropLastCharacters(1).getDoubleValue() * 1000.0 : text.getDoubleValue();
-            value = std::clamp(value, 20.0, 20000.0);
-        } else if (editParam == 1) {
-            value = std::clamp(text.getDoubleValue(), -24.0, 24.0);
-        } else {
-            value = std::clamp(text.getDoubleValue(), 0.1, 18.0);
+        if(editParam<0)return;
+        if(selectedBand<0||selectedBand>=(int)currentEq.bands.size()){cancelEdit();return;}
+        double value=0;
+        if(!parseEqValue(editor.getText().toStdString(),editParam,value)){
+            editor.setColour(juce::TextEditor::outlineColourId,Daw::meterHigh);
+            editor.setColour(juce::TextEditor::focusedOutlineColourId,Daw::meterHigh);
+            editor.setTooltip(tr("Enter a valid frequency, gain or Q within its range."));return;
         }
-        auto& b = currentEq.bands[(size_t)selectedBand];
-        if (onDragStart) onDragStart();
-        if (editParam == 0) b.freq = value;
-        else if (editParam == 1) b.gain = value;
-        else b.q = value;
-        b.normalise();
-        currentEq.syncLegacyFromBands();
-        editParam = -1;
-        editor.setVisible(false);
-        if (onSettingsChanged) onSettingsChanged();
-        if (onDragEnd) onDragEnd();
-        repaint();
+        const int parameter=editParam,index=selectedBand;
+        cancelEdit();
+        const auto& old=currentEq.bands[(size_t)index];
+        if(value==(parameter==0?old.freq:parameter==1?old.gain:old.q))return;
+        editOnce([&]{auto& b=currentEq.bands[(size_t)index];if(parameter==0)b.freq=value;else if(parameter==1)b.gain=value;else b.q=value;b.normalise();});
     }
 
     void resized() override {
@@ -302,7 +241,7 @@ public:
             const juce::Graphics::ScopedSaveState saved(g);
             g.reduceClipRegion(plotArea.toNearestInt());
 
-            static constexpr double dbTicks[] = { 24.0, 18.0, 12.0, 6.0, 0.0, -6.0, -12.0, -18.0, -24.0 };
+            const double dbTicks[] = {displayRange,displayRange*.75,displayRange*.5,displayRange*.25,0,-displayRange*.25,-displayRange*.5,-displayRange*.75,-displayRange};
             for (double db : dbTicks) {
                 const float y = yFromDb(db, plotArea);
                 const bool zero = std::abs(db) < 1e-4;
@@ -321,7 +260,7 @@ public:
         }
 
         g.setFont(Daw::smallFont(9.5f));
-        static constexpr double dbLabels[] = { 24.0, 12.0, 0.0, -12.0, -24.0 };
+        const double dbLabels[] = {displayRange,displayRange*.5,0,-displayRange*.5,-displayRange};
         for (double db : dbLabels) {
             const float y = yFromDb(db, plotArea);
             g.setColour(std::abs(db) < 1e-4 ? Daw::textDim : Daw::textFaint);
@@ -334,6 +273,7 @@ public:
             { 1000, "1k" }, { 2000, "2k" }, { 5000, "5k" }, { 10000, "10k" }, { 20000, "20k" }
         };
         for (const auto& f : freqLabels) {
+            if(f.hz>maxFrequency())continue;
             const float x = xFromFreq(f.hz, plotArea);
             g.setColour(Daw::textFaint);
             g.drawText(f.label, juce::roundToInt(x - 18.0f), juce::roundToInt(plotArea.getBottom() + 6.0f), 36, 14, juce::Justification::centred);
@@ -349,12 +289,13 @@ public:
         {
             const juce::Graphics::ScopedSaveState saved(g);
             g.reduceClipRegion(plotArea.toNearestInt());
-            auto drawSpectrum = [&](const std::array<float, 96>& values, juce::Colour fill, juce::Colour line) {
+            auto drawSpectrum = [&](const EqAnalyzer::Trace& values, juce::Colour fill, juce::Colour line) {
+                if(*std::max_element(values.begin(),values.end())<.001f)return;
                 juce::Path path;
                 path.startNewSubPath(plotArea.getX(), plotArea.getBottom());
-                for (int i = 0; i < 96; ++i) {
-                    const float x = plotArea.getX() + plotArea.getWidth() * (float)i / 95.0f;
-                    const float y = plotArea.getBottom() - values[(size_t)i] * plotArea.getHeight() * 0.92f;
+                for (int i = 0; i < EqAnalyzer::points; ++i) {
+                    const float x = plotArea.getX() + plotArea.getWidth() * (float)i / (EqAnalyzer::points-1);
+                    const float y = plotArea.getBottom() - values[(size_t)i] * plotArea.getHeight();
                     path.lineTo(x, y);
                 }
                 path.lineTo(plotArea.getRight(), plotArea.getBottom());
@@ -364,14 +305,14 @@ public:
                 g.setColour(line);
                 g.strokePath(path, juce::PathStrokeType(1.0f));
             };
-            drawSpectrum(preBands, Daw::textFaint.withAlpha(0.08f), Daw::textFaint.withAlpha(0.22f));
-            if (currentEq.enabled)
+            if(analyzerMode==1||analyzerMode==2)drawSpectrum(preBands, Daw::textFaint.withAlpha(0.08f), Daw::textFaint.withAlpha(0.22f));
+            if (analyzerMode==1||analyzerMode==3)
                 drawSpectrum(postBands, juce::Colour(0xff4cc3f0).withAlpha(0.10f), juce::Colour(0xff4cc3f0).withAlpha(0.45f));
         }
 
-        std::vector<BiquadCoeffs> bandCoeffs;
+        std::vector<EqCoefficients> bandCoeffs;
         bandCoeffs.reserve(currentEq.bands.size());
-        for (const auto& b : currentEq.bands) bandCoeffs.push_back(computeBandCoeffs(b, 48000.0));
+        for (const auto& b : currentEq.bands) bandCoeffs.push_back(eqCoefficients(b, sampleRate));
 
         const int steps = std::max(2, (int)plotArea.getWidth());
         const float yZero = yFromDb(0.0, plotArea);
@@ -387,7 +328,7 @@ public:
                     for (int i = 0; i < steps; ++i) {
                         const float x = plotArea.getX() + (float)i * (plotArea.getWidth() / (float)(steps - 1));
                         const double hz = freqFromX(x, plotArea);
-                        const float y = yFromDb(std::clamp(bandCoeffs[(size_t)which].magnitudeDb(hz, 48000.0), -26.0, 26.0), plotArea);
+                        const float y = yFromDb(std::clamp(bandCoeffs[(size_t)which].magnitudeDb(hz, sampleRate), -26.0, 26.0), plotArea);
                         if (i == 0) bandPath.startNewSubPath(x, y);
                         else bandPath.lineTo(x, y);
                     }
@@ -402,7 +343,7 @@ public:
                 const double hz = freqFromX(x, plotArea);
                 double totalDb = 0.0;
                 if (currentEq.enabled)
-                    for (const auto& coeff : bandCoeffs) totalDb += coeff.magnitudeDb(hz, 48000.0);
+                    for (const auto& coeff : bandCoeffs) totalDb += coeff.magnitudeDb(hz, sampleRate);
                 const float y = yFromDb(std::clamp(totalDb, -26.0, 26.0), plotArea);
                 if (i == 0) {
                     curvePath.startNewSubPath(x, y);
@@ -447,7 +388,14 @@ public:
                        juce::roundToInt(radius * 2.0f), juce::roundToInt(radius * 2.0f), juce::Justification::centred);
         }
 
-        if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) drawBandHud(g, plotArea);
+        g.setFont(Daw::smallFont(9));g.setColour(Daw::textFaint);
+        g.drawText("dB",2,3,34,16,juce::Justification::centredRight);
+        g.drawText("dBFS",(int)plotArea.getRight()+6,3,38,16,juce::Justification::centredLeft);
+        for(int db:{0,-24,-48,-72,-96}){const float y=plotArea.getY()+plotArea.getHeight()*(-db/96.f);g.drawText(juce::String(db),(int)plotArea.getRight()+7,(int)y-7,34,14,juce::Justification::centredLeft);}
+        if(analyzerMode==1||analyzerMode==2){g.setColour(Daw::textDim);g.drawText(tr("INPUT"),getWidth()-174,2,72,16,juce::Justification::centred);}if(analyzerMode==1||analyzerMode==3){g.setColour(juce::Colour(0xff4cc3f0));g.drawText(tr("OUTPUT"),getWidth()-100,2,72,16,juce::Justification::centred);}
+        if(selectedBand>=0&&selectedBand<(int)currentEq.bands.size())drawBandHud(g,plotArea);
+        else{const auto box=getHudBounds(plotArea);g.setColour(Daw::surface);g.fillRoundedRectangle(box,Daw::radius);g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::body));g.drawFittedText(tr("Select a band, or double-click the graph to add one."),box.toNearestInt().reduced(18),juce::Justification::centred,2);}
+
     }
 
     void mouseMove(const juce::MouseEvent& e) override {
@@ -470,6 +418,7 @@ public:
         const auto plotArea = getPlotArea();
         dragBand = -1;
         dragHudParam = -1;
+        gesture=false;
 
         // Check if clicked in HUD
         if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
@@ -487,19 +436,9 @@ public:
                 showBandMenu(found, e.getScreenPosition());
                 return;
             }
-            if (e.getNumberOfClicks() >= 2) {
-                // Double-click node toggles / resets
-                auto& b = currentEq.bands[(size_t)found];
-                if (std::abs(b.gain) > 0.1) b.gain = 0.0;
-                else deleteSelectedBand();
-                currentEq.syncLegacyFromBands();
-                if (onSettingsChanged) onSettingsChanged();
-                repaint();
-                return;
-            }
-            selectedBand = found;
+            selectBand(found);
+            nodeStartFreq=currentEq.bands[(size_t)found].freq;nodeStartGain=currentEq.bands[(size_t)found].gain;
             dragBand = found;
-            if (onDragStart) onDragStart();
             repaint();
             return;
         }
@@ -514,20 +453,23 @@ public:
 
         // Click outside: deselect band
         if (selectedBand != -1) {
-            selectedBand = -1;
-            repaint();
+            selectBand(-1);
         }
     }
 
     void mouseDoubleClick(const juce::MouseEvent& e) override {
         if (e.mods.isPopupMenu()) return;
         if (selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
+            const auto& b=currentEq.bands[(size_t)selectedBand];
             const auto l = hudLayout(getHudBounds(getPlotArea()));
             if (l.freq.contains(e.position)) { beginEdit(0); return; }
-            if (l.gain.contains(e.position)) { beginEdit(1); return; }
+            if (l.gain.contains(e.position)&&eqHasGain(b.type)) { beginEdit(1); return; }
             if (l.q.contains(e.position)) { beginEdit(2); return; }
         }
         const auto plotArea = getPlotArea();
+        if(getHudBounds(plotArea).contains(e.position))return;
+        const int hit=findBandAt(e.position,plotArea);
+        if(hit>=0){selectBand(hit);if(eqHasGain(currentEq.bands[(size_t)hit].type)&&currentEq.bands[(size_t)hit].gain!=0)editOnce([&]{currentEq.bands[(size_t)hit].gain=0;});return;}
         if (!plotArea.contains(e.position)) return;
 
         // Double-click creates a new band!
@@ -544,11 +486,13 @@ public:
 
     void mouseDrag(const juce::MouseEvent& e) override {
         const auto plotArea = getPlotArea();
+        if((dragBand>=0||dragHudParam>=0)&&e.getDistanceFromDragStart()>1&&!gesture){if(onDragStart)onDragStart();gesture=true;}
+        if(!gesture)return;
 
         // Dragging HUD parameter slider
         if (dragHudParam >= 0 && selectedBand >= 0 && selectedBand < (int)currentEq.bands.size()) {
             auto& b = currentEq.bands[(size_t)selectedBand];
-            const float dx = (float)e.getDistanceFromDragStartX();
+            const float dx=(float)e.getDistanceFromDragStartX()*(e.mods.isShiftDown()?.1f:1.f);
             if (dragHudParam == 0) { // Frequency
                 b.freq = std::clamp(dragStartParamVal * std::pow(2.0, (double)dx * 0.005), 20.0, 20000.0);
             } else if (dragHudParam == 1) { // Gain
@@ -566,9 +510,10 @@ public:
         // Dragging band node
         if (dragBand >= 0 && dragBand < (int)currentEq.bands.size()) {
             auto& b = currentEq.bands[(size_t)dragBand];
-            b.freq = std::clamp(freqFromX(e.position.x, plotArea), 20.0, 20000.0);
+            const double precision=e.mods.isShiftDown()?.1:1.;
+            b.freq=std::clamp(nodeStartFreq*std::pow(maxFrequency()/20.,e.getDistanceFromDragStartX()*precision/plotArea.getWidth()),20.,20000.);
             if (b.type != (int)EqFilterType::LowCut && b.type != (int)EqFilterType::HighCut && b.type != (int)EqFilterType::Notch) {
-                b.gain = std::clamp(dbFromY(e.position.y, plotArea), -24.0, 24.0);
+                b.gain=std::clamp(nodeStartGain-e.getDistanceFromDragStartY()*precision*2*displayRange/plotArea.getHeight(),-24.,24.);
             }
             b.normalise();
             currentEq.syncLegacyFromBands();
@@ -581,7 +526,8 @@ public:
         if (dragBand >= 0 || dragHudParam >= 0) {
             dragBand = -1;
             dragHudParam = -1;
-            if (onDragEnd) onDragEnd();
+            if(gesture&&onDragEnd)onDragEnd();
+            gesture=false;
             repaint();
         }
     }
@@ -590,11 +536,13 @@ public:
         int targetBand = (hoverBand >= 0) ? hoverBand : selectedBand;
         if (targetBand >= 0 && targetBand < (int)currentEq.bands.size()) {
             auto& b = currentEq.bands[(size_t)targetBand];
-            const double factor = wheel.deltaY > 0 ? 1.12 : 0.89;
-            b.q = std::clamp(b.q * factor, 0.1, 18.0);
+            if(wheel.deltaY==0)return;
+            if(onWheelStart)onWheelStart();else if(onDragStart)onDragStart();
+            b.q=std::clamp(b.q*std::pow(2.,wheel.deltaY*2.),.1,18.);
             b.normalise();
             currentEq.syncLegacyFromBands();
             if (onSettingsChanged) onSettingsChanged();
+            if(onDragEnd)onDragEnd();
             repaint();
         }
     }
@@ -609,38 +557,43 @@ private:
     int selectedBand = -1;
 
     // HUD parameter dragging
+    bool gesture=false;
     int dragHudParam = -1; // 0: freq, 1: gain, 2: q
     double dragStartParamVal = 0.0;
-    juce::dsp::FFT fft{11};
-    std::array<float, 4096> fftData{};
-    std::array<float, 96> preBands{}, postBands{};
+    EqAnalyzer analyzer;
+    EqAnalyzer::Trace preBands{},postBands{};
+    double sampleRate=44100,displayRange=12,nodeStartFreq=1000,nodeStartGain=0;
+    int analyzerMode=1,spectrumSpeed=1;
+    std::uint64_t revision=0,trackIdentity=0;
     juce::TextEditor editor;
     int editParam = -1;
 
     juce::Rectangle<float> getPlotArea() const {
-        const float padL = 44.0f, padR = 16.0f, padT = 18.0f, padB = 34.0f;
+        const float padL=44, padR=48, padT=24, padB=136;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
     }
 
-    static float xFromFreq(double hz, const juce::Rectangle<float>& r) {
-        hz = std::clamp(hz, 20.0, 20000.0);
-        const double norm = std::log10(hz / 20.0) / std::log10(20000.0 / 20.0);
+    double maxFrequency()const{return std::min(20000.,sampleRate*.499);}
+
+    float xFromFreq(double hz, const juce::Rectangle<float>& r) const {
+        hz=std::clamp(hz,20.,maxFrequency());
+        const double norm=std::log10(hz/20.)/std::log10(maxFrequency()/20.);
         return r.getX() + (float)(norm * r.getWidth());
     }
 
-    static double freqFromX(float x, const juce::Rectangle<float>& r) {
+    double freqFromX(float x, const juce::Rectangle<float>& r) const {
         const double norm = std::clamp((double)(x - r.getX()) / (double)r.getWidth(), 0.0, 1.0);
-        return 20.0 * std::pow(20000.0 / 20.0, norm);
+        return 20.*std::pow(maxFrequency()/20.,norm);
     }
 
-    static float yFromDb(double db, const juce::Rectangle<float>& r) {
-        const double minDb = -26.0, maxDb = 26.0;
+    float yFromDb(double db, const juce::Rectangle<float>& r) const {
+        const double minDb=-displayRange,maxDb=displayRange;
         const double norm = (std::clamp(db, minDb, maxDb) - minDb) / (maxDb - minDb);
         return r.getY() + (float)((1.0 - norm) * r.getHeight());
     }
 
-    static double dbFromY(float y, const juce::Rectangle<float>& r) {
-        const double minDb = -26.0, maxDb = 26.0;
+    double dbFromY(float y, const juce::Rectangle<float>& r) const {
+        const double minDb=-displayRange,maxDb=displayRange;
         const double norm = 1.0 - std::clamp((double)(y - r.getY()) / (double)r.getHeight(), 0.0, 1.0);
         return minDb + norm * (maxDb - minDb);
     }
@@ -649,16 +602,13 @@ private:
         if (index < 0 || index >= (int)currentEq.bands.size()) return { 0, 0 };
         const auto& b = currentEq.bands[(size_t)index];
         const double db = (b.type == (int)EqFilterType::LowCut || b.type == (int)EqFilterType::HighCut || b.type == (int)EqFilterType::Notch) ? 0.0 : b.gain;
-        return { xFromFreq(b.freq, r), yFromDb(db, r) };
+        return {xFromFreq(b.freq,r),yFromDb(std::clamp(db,-displayRange,displayRange),r)};
     }
 
-    int findBandAt(juce::Point<float> pos, const juce::Rectangle<float>& r) const {
-        for (int i = 0; i < (int)currentEq.bands.size(); ++i) {
-            if (pos.getDistanceFrom(getNodePosition(i, r)) <= 15.0f) {
-                return i;
-            }
-        }
-        return -1;
+    int findBandAt(juce::Point<float> pos,const juce::Rectangle<float>& r)const{
+        int best=-1;float distance=15;
+        for(int i=0;i<(int)currentEq.bands.size();++i){const float d=pos.getDistanceFrom(getNodePosition(i,r));if(d<distance||(d==distance&&i==selectedBand)){distance=d;best=i;}}
+        return best;
     }
 
     struct HudLayout {
@@ -666,33 +616,19 @@ private:
     };
 
     HudLayout hudLayout(const juce::Rectangle<float>& hud) const {
-        HudLayout l;
-        auto r = hud.reduced(6.0f, 6.0f);
-        l.badge = r.removeFromLeft(52.0f).reduced(1.0f);
-        r.removeFromLeft(6.0f);
-        for (auto& pill : l.pills) pill = r.removeFromLeft(38.0f).reduced(1.0f, 4.0f);
-        r.removeFromLeft(8.0f);
-        l.freq = r.removeFromLeft(78.0f).reduced(2.0f);
-        r.removeFromLeft(6.0f);
-        l.gain = r.removeFromLeft(66.0f).reduced(2.0f);
-        r.removeFromLeft(6.0f);
-        l.q = r.removeFromLeft(56.0f).reduced(2.0f);
-        r.removeFromLeft(8.0f);
-        l.bypass = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
-        r.removeFromLeft(4.0f);
-        l.invert = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
-        r.removeFromLeft(4.0f);
-        l.del = r.removeFromLeft(30.0f).reduced(2.0f, 4.0f);
+        HudLayout l;auto r=hud.reduced(10,8);auto top=r.removeFromTop(30);
+        l.badge=top.removeFromLeft(82);top.removeFromLeft(8);
+        for(auto& pill:l.pills)pill=top.removeFromLeft(44).reduced(2,1);
+        r.removeFromTop(6);auto row=r.removeFromTop(38);const float gap=6;
+        const float valueWidth=std::max(65.f,(row.getWidth()-3*58.f-5*gap)/3.f);
+        l.freq=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
+        l.gain=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
+        l.q=row.removeFromLeft(valueWidth);row.removeFromLeft(gap);
+        l.bypass=row.removeFromLeft(58);row.removeFromLeft(gap);
+        l.invert=row.removeFromLeft(58);row.removeFromLeft(gap);l.del=row.removeFromLeft(58);
         return l;
     }
-
-    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>& plotArea) const {
-        const float hudW = std::min(624.0f, plotArea.getWidth() - 20.0f);
-        const float hudH = 50.0f;
-        const float hudX = plotArea.getX() + (plotArea.getWidth() - hudW) * 0.5f;
-        const float hudY = plotArea.getBottom() - hudH - 8.0f;
-        return { hudX, hudY, hudW, hudH };
-    }
+    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{return {14.f,(float)getHeight()-98.f,(float)getWidth()-28.f,90.f};}
 
     static void drawFilterIcon(juce::Graphics& g, juce::Rectangle<float> r, int type, juce::Colour colour) {
         const float x0 = r.getX(), x1 = r.getRight(), yTop = r.getY(), yBottom = r.getBottom();
@@ -729,7 +665,7 @@ private:
 
         g.setFont(Daw::caps(9.0f));
         g.setColour(getBandColour(selectedBand));
-        g.drawText("BAND " + juce::String(selectedBand + 1), l.badge, juce::Justification::centred);
+        g.drawText(tr("BAND")+" "+juce::String(selectedBand+1), l.badge, juce::Justification::centred);
 
         for (int i = 0; i < 6; ++i) {
             const bool active = (b.type == i);
@@ -742,7 +678,7 @@ private:
             g.setColour(Daw::well);
             g.fillRoundedRectangle(box, Daw::radius);
             auto inner = box.reduced(4.0f, 2.0f);
-            g.setFont(Daw::caps(7.5f));
+            g.setFont(Daw::caps(9.5f));
             g.setColour(Daw::textFaint);
             g.drawText(label, inner.removeFromTop(11.0f), juce::Justification::centredLeft);
             g.setFont(Daw::font(Daw::body, true));
@@ -751,21 +687,22 @@ private:
         };
 
         const bool gainDisabled = (b.type == (int)EqFilterType::LowCut || b.type == (int)EqFilterType::HighCut || b.type == (int)EqFilterType::Notch);
-        valueBox(l.freq, "FREQ", (b.freq >= 1000.0) ? juce::String(b.freq / 1000.0, 2) + " kHz" : juce::String((int)b.freq) + " Hz", Daw::text);
-        valueBox(l.gain, "GAIN", gainDisabled ? juce::String("—") : (b.gain > 0 ? "+" : "") + juce::String(b.gain, 1) + " dB", gainDisabled ? Daw::textFaint : Daw::text);
+        valueBox(l.freq, "Hz", (b.freq >= 1000.0) ? juce::String(b.freq / 1000.0, 2) + " kHz" : juce::String((int)b.freq) + " Hz", Daw::text);
+        valueBox(l.gain, "dB", gainDisabled ? juce::String(juce::String::fromUTF8("—")) : (b.gain > 0 ? "+" : "") + juce::String(b.gain, 1) + " dB", gainDisabled ? Daw::textFaint : Daw::text);
         valueBox(l.q, "Q", juce::String(b.q, 2), Daw::text);
 
         auto chip = [&](juce::Rectangle<float> box, const juce::String& text, bool active, juce::Colour activeColour) {
             g.setColour(active ? activeColour.withAlpha(0.22f) : Daw::control);
             g.fillRoundedRectangle(box, Daw::radius);
             g.setColour(active ? activeColour : Daw::textDim);
-            g.setFont(Daw::caps(8.0f));
+            g.setFont(Daw::caps(10.0f));
             g.drawText(text, box, juce::Justification::centred);
         };
 
         chip(l.bypass, b.enabled ? "ON" : "OFF", b.enabled, Daw::accent);
-        chip(l.invert, "INV", false, Daw::textDim);
-        chip(l.del, "DEL", true, Daw::meterHigh);
+        g.setColour(Daw::control);g.fillRoundedRectangle(l.invert,Daw::radius);
+        g.setColour(gainDisabled?Daw::textFaint:Daw::textDim);g.setFont(Daw::caps(10));g.drawText("+/-",l.invert,juce::Justification::centred);
+        chip(l.del,tr("DELETE"),true,Daw::meterHigh);
 
         if (hoverPill >= 0 && hoverPill < 6) {
             static const char* tips[] = {
@@ -777,10 +714,11 @@ private:
                 "Notch: removes a narrow band of frequencies"
             };
             const auto& pill = l.pills[hoverPill];
-            const juce::String tip(tips[hoverPill]);
+            const juce::String tip=tr(tips[hoverPill]);
             const int tipW = 320, tipH = 26;
             juce::Rectangle<int> box((int)pill.getCentreX() - tipW / 2, (int)pill.getY() - tipH - 8, tipW, tipH);
-            if (box.getY() < 4) box.setY((int)pill.getBottom() + 8);
+            if (box.getY() < 4) box.setY((int)pill.getBottom()+8);
+            box.setX(std::clamp(box.getX(),4,std::max(4,getWidth()-tipW-4)));
             g.setColour(Daw::chrome);
             g.fillRoundedRectangle(box.toFloat(), Daw::radius);
             g.setColour(Daw::lineStrong);
@@ -797,43 +735,28 @@ private:
 
         for (int i = 0; i < 6; ++i) {
             if (l.pills[i].contains(e.position)) {
-                b.type = i;
-                b.normalise();
-                currentEq.syncLegacyFromBands();
-                if (onSettingsChanged) onSettingsChanged();
-                repaint();
+                editOnce([&]{b.type=i;b.normalise();});
                 return;
             }
         }
 
         if (l.freq.contains(e.position)) {
             dragHudParam = 0; dragStartParamVal = b.freq;
-            if (onDragStart) onDragStart();
             return;
         }
-        if (l.gain.contains(e.position)) {
+        if (l.gain.contains(e.position)&&eqHasGain(b.type)) {
             dragHudParam = 1; dragStartParamVal = b.gain;
-            if (onDragStart) onDragStart();
             return;
         }
         if (l.q.contains(e.position)) {
             dragHudParam = 2; dragStartParamVal = b.q;
-            if (onDragStart) onDragStart();
             return;
         }
         if (l.bypass.contains(e.position)) {
-            b.enabled = !b.enabled;
-            currentEq.syncLegacyFromBands();
-            if (onSettingsChanged) onSettingsChanged();
-            repaint();
-            return;
+            editOnce([&]{b.enabled=!b.enabled;});return;
         }
-        if (l.invert.contains(e.position)) {
-            b.gain = -b.gain;
-            currentEq.syncLegacyFromBands();
-            if (onSettingsChanged) onSettingsChanged();
-            repaint();
-            return;
+        if(l.invert.contains(e.position)&&eqHasGain(b.type)){
+            editOnce([&]{b.gain=-b.gain;});return;
         }
         if (l.del.contains(e.position)) {
             deleteSelectedBand();
@@ -843,219 +766,127 @@ private:
 
 
 
-    void showBandMenu(int bandIndex, juce::Point<int> screenPos) {
-        selectedBand = bandIndex;
-        repaint();
-
-        juce::PopupMenu m;
-        m.addSectionHeader("BAND " + juce::String(bandIndex + 1) + " FILTER TYPE");
-        for (int i = 0; i < 6; ++i) {
-            m.addItem(10 + i, filterTypeNames[i], true, currentEq.bands[(size_t)bandIndex].type == i);
-        }
-        m.addSeparator();
-        m.addItem(1, "Invert Gain", true);
-        m.addItem(2, currentEq.bands[(size_t)bandIndex].enabled ? "Bypass Band" : "Enable Band", true);
-        m.addSeparator();
-        m.addItem(3, "Delete Band", true);
-
-        m.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({ screenPos.x, screenPos.y, 1, 1 }),
-            [this, bandIndex](int result) {
-                if (result >= 10 && result <= 15 && bandIndex < (int)currentEq.bands.size()) {
-                    currentEq.bands[(size_t)bandIndex].type = result - 10;
-                    currentEq.syncLegacyFromBands();
-                    if (onSettingsChanged) onSettingsChanged();
-                    repaint();
-                } else if (result == 1 && bandIndex < (int)currentEq.bands.size()) {
-                    currentEq.bands[(size_t)bandIndex].gain = -currentEq.bands[(size_t)bandIndex].gain;
-                    currentEq.syncLegacyFromBands();
-                    if (onSettingsChanged) onSettingsChanged();
-                    repaint();
-                } else if (result == 2 && bandIndex < (int)currentEq.bands.size()) {
-                    currentEq.bands[(size_t)bandIndex].enabled = !currentEq.bands[(size_t)bandIndex].enabled;
-                    currentEq.syncLegacyFromBands();
-                    if (onSettingsChanged) onSettingsChanged();
-                    repaint();
-                } else if (result == 3) {
-                    deleteSelectedBand();
-                }
-            });
+    void showBandMenu(int index,juce::Point<int> screen){
+        selectBand(index);juce::PopupMenu menu;
+        menu.addSectionHeader(tr("BAND")+" "+juce::String(index+1));
+        for(int i=0;i<6;++i)menu.addItem(10+i,tr(filterTypeNames[i]),true,currentEq.bands[(size_t)index].type==i);
+        menu.addSeparator();menu.addItem(1,tr("Invert Gain"),eqHasGain(currentEq.bands[(size_t)index].type));
+        menu.addItem(2,tr(currentEq.bands[(size_t)index].enabled?"Bypass Band":"Enable Band"));menu.addItem(3,tr("Delete Band"));
+        const auto epoch=revision;juce::Component::SafePointer<EqDisplayComponent> safe(this);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screen.x,screen.y,1,1}),[safe,index,epoch](int result){
+            if(!safe||safe->revision!=epoch||index>=(int)safe->currentEq.bands.size()||result==0)return;
+            if(result==3){safe->deleteSelectedBand();return;}
+            safe->editOnce([&]{auto& b=safe->currentEq.bands[(size_t)index];if(result>=10&&result<=15)b.type=result-10;else if(result==1&&eqHasGain(b.type))b.gain=-b.gain;else if(result==2)b.enabled=!b.enabled;b.normalise();});
+        });
+    }
+    void showCanvasMenu(double hz,double db,juce::Point<int> screen){
+        juce::PopupMenu menu;menu.addSectionHeader(tr("+ ADD BAND"));
+        for(int i=0;i<6;++i)menu.addItem(10+i,tr(filterTypeNames[i]),currentEq.bands.size()<16);
+        menu.addSeparator();menu.addItem(1,tr("RESET EQ"));
+        const auto epoch=revision;juce::Component::SafePointer<EqDisplayComponent> safe(this);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({screen.x,screen.y,1,1}),[safe,hz,db,epoch](int result){
+            if(!safe||safe->revision!=epoch)return;
+            if(result>=10&&result<=15)safe->addBandAt(hz,db,result-10);else if(result==1)safe->flatten();
+        });
     }
 
-    void showCanvasMenu(double hz, double db, juce::Point<int> screenPos) {
-        juce::PopupMenu m;
-        m.addSectionHeader("ADD EQ BAND");
-        m.addItem(10, "Add Bell Filter here", currentEq.bands.size() < 16);
-        m.addItem(11, "Add Low Cut here", currentEq.bands.size() < 16);
-        m.addItem(12, "Add Low Shelf here", currentEq.bands.size() < 16);
-        m.addItem(13, "Add High Shelf here", currentEq.bands.size() < 16);
-        m.addItem(14, "Add High Cut here", currentEq.bands.size() < 16);
-        m.addItem(15, "Add Notch here", currentEq.bands.size() < 16);
-        m.addSeparator();
-        m.addItem(1, "Reset All to Flat", true);
-
-        m.showMenuAsync(juce::PopupMenu::Options().withTargetScreenArea({ screenPos.x, screenPos.y, 1, 1 }),
-            [this, hz, db](int result) {
-                if (result >= 10 && result <= 15) {
-                    addBandAt(hz, db, result - 10);
-                } else if (result == 1) {
-                    for (auto& b : currentEq.bands) b.gain = 0.0;
-                    currentEq.syncLegacyFromBands();
-                    if (onSettingsChanged) onSettingsChanged();
-                    repaint();
-                }
-            });
-    }
 };
 
 } // namespace
 
 class GraphicEqWindow::Panel : public juce::Component {
 public:
-    explicit Panel(MainComponent& m) : owner(m) {
-        addAndMakeVisible(eqDisplay);
-        addAndMakeVisible(trackSelector);
-        addAndMakeVisible(addBandButton);
-        addAndMakeVisible(enableButton);
-        addAndMakeVisible(resetButton);
-
-        addBandButton.setButtonText(tr("+ ADD BAND"));
-        Localisation::bindTip(addBandButton, "Add a new parametric band to the EQ.");
-        Localisation::bindTip(enableButton, "Toggle EQ on or off for this track.");
-        Localisation::bindTip(resetButton, "Reset all EQ bands to flat (0 dB).");
-
-        eqDisplay.getSpectrum = [this](std::vector<float>& pre, std::vector<float>& post) {
-            owner.audio.readSpectrum(currentTrack, pre, post, 2048);
+    explicit Panel(MainComponent& m):owner(m){
+        for(juce::Component* c:std::initializer_list<juce::Component*>{&eqDisplay,&trackSelector,&bandSelector,&addBandButton,&enableButton,&resetButton,&analyzerMode,&speed,&range})addAndMakeVisible(c);
+        Localisation::bindTip(addBandButton,"Add a new parametric band to the EQ.");
+        Localisation::bindTip(enableButton,"Toggle EQ on or off for this track.");
+        Localisation::bindTip(resetButton,"Flatten gains and bypass cut/notch filters. Undo restores the EQ.");
+        eqDisplay.getSampleRate=[this]{return owner.audio.spectrumSampleRate();};
+        eqDisplay.getSpectrum=[this](std::vector<float>& pre,std::vector<float>& post){
+            const auto stamp=owner.audio.spectrumRevision();
+            if(stamp==lastSpectrumRevision)return false;
+            lastSpectrumRevision=stamp;if(stamp-spectrumGate<(std::uint32_t)EqAnalyzer::size)return false;
+            owner.audio.readSpectrum(currentTrack,pre,post,EqAnalyzer::size,true);return true;
         };
-
-        addBandButton.onClick = [this] {
-            if (!validTrack()) return;
-            owner.checkpointMix();
-            eqDisplay.addBandAt(1000.0, 0.0, (int)EqFilterType::Bell);
-        };
-
-        enableButton.onClick = [this] {
-            if (updating || !validTrack()) return;
-            owner.checkpoint();
-            owner.project.tracks[(size_t)currentTrack].eq.enabled = enableButton.getToggleState();
-            owner.mixChanged();
-            refresh();
-        };
-
-        resetButton.onClick = [this] {
-            if (!validTrack()) return;
-            owner.checkpoint();
-            auto& q = owner.project.tracks[(size_t)currentTrack].eq;
-            for (auto& b : q.bands) b.gain = 0.0;
-            q.syncLegacyFromBands();
-            owner.mixChanged();
-            refresh();
-        };
-
-        trackSelector.onChange = [this] {
-            if (!updating && trackSelector.getSelectedId() > 0) {
-                currentTrack = trackSelector.getSelectedId() - 1;
-                owner.select(currentTrack, owner.selectedSection);
-                refresh();
-            }
-        };
-
-        eqDisplay.onDragStart = [this] {
-            if (validTrack()) owner.checkpointMix();
-        };
-
-        eqDisplay.onSettingsChanged = [this] {
-            if (updating || !validTrack()) return;
-            owner.project.tracks[(size_t)currentTrack].eq = eqDisplay.getEq();
-            owner.mixChanged();
-        };
-
-        eqDisplay.onDragEnd = [this] {
-            refresh();
-        };
+        addBandButton.onClick=[this]{if(validTrack())eqDisplay.addBandAt(1000,0);};
+        enableButton.onClick=[this]{if(updating||!validTrack())return;owner.checkpointMix();owner.project.tracks[(size_t)currentTrack].eq.enabled=enableButton.getToggleState();owner.mixChanged();};
+        resetButton.onClick=[this]{if(validTrack())eqDisplay.flatten();};
+        trackSelector.onChange=[this]{if(updating||trackSelector.getSelectedId()<1)return;currentTrack=trackSelector.getSelectedId()-1;owner.select(currentTrack,owner.selectedSection);refresh();};
+        bandSelector.onChange=[this]{if(!updating)eqDisplay.selectBand(bandSelector.getSelectedId()-2);};
+        eqDisplay.onSelectionChanged=[this]{refresh();};
+        eqDisplay.onDragStart=[this]{if(validTrack())owner.checkpointMix();};
+        eqDisplay.onSettingsChanged=[this]{if(updating||!validTrack())return;owner.project.tracks[(size_t)currentTrack].eq=eqDisplay.getEq();owner.mixChanged();};
+        eqDisplay.onDragEnd=[this]{refresh();};
+        eqDisplay.onWheelStart=[this]{if(validTrack())owner.checkpointMix(&eqDisplay);};
+        for(auto* combo:{&analyzerMode,&speed,&range})combo->onChange=[this]{if(updating)return;Localisation::setSetting("eqAnalyzerMode",analyzerMode.getSelectedId()-1);Localisation::setSetting("eqAnalyzerSpeed",speed.getSelectedId()-1);Localisation::setSetting("eqDisplayRange",range.getSelectedId()-1);updateView();};
+        analyzerMode.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerMode","1").getIntValue(),0,3)+1,juce::dontSendNotification);
+        speed.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1,juce::dontSendNotification);
+        range.setSelectedId(std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1,juce::dontSendNotification);
     }
-
-    void setTrack(int track) {
-        if (track >= 0 && track < (int)owner.project.tracks.size()) {
-            currentTrack = track;
-        } else {
-            currentTrack = std::clamp(owner.selectedTrack, 0, (int)owner.project.tracks.size() - 1);
+    void setTrack(int track){meterTrack=-2;currentTrack=std::clamp(track>=0?track:owner.selectedTrack,0,(int)owner.project.tracks.size()-1);refresh();}
+    void refresh(){
+        if(owner.project.tracks.empty())return;updating=true;
+        currentTrack=std::clamp(currentTrack,0,(int)owner.project.tracks.size()-1);
+        const auto& track=owner.project.tracks[(size_t)currentTrack];
+        trackSelector.clear(juce::dontSendNotification);for(size_t i=0;i<owner.project.tracks.size();++i)trackSelector.addItem(juce::String::fromUTF8(owner.project.tracks[i].name.c_str()),(int)i+1);
+        trackSelector.setSelectedId(currentTrack+1,juce::dontSendNotification);
+        eqDisplay.setEq(track.eq,currentTrack,juce::String::fromUTF8(track.name.c_str()),track.sessionId);
+        bandSelector.clear(juce::dontSendNotification);bandSelector.addItem(tr("SELECT BAND"),1);
+        const auto& bands=eqDisplay.getEq().bands;
+        for(size_t i=0;i<bands.size();++i){const auto& b=bands[i];bandSelector.addItem(juce::String((int)i+1)+juce::String::fromUTF8(" · ")+tr(filterTypeNames[b.type])+juce::String::fromUTF8(" · ")+(b.freq>=1000?juce::String(b.freq/1000,2)+"k":juce::String((int)b.freq))+(!b.enabled?" ["+tr("OFF")+"]":""),(int)i+2);}
+        bandSelector.setSelectedId(eqDisplay.getSelectedBand()+2,juce::dontSendNotification);
+        addBandButton.setButtonText(tr("+ ADD BAND"));addBandButton.setEnabled(bands.size()<16);
+        enableButton.setButtonText(tr(track.eq.enabled?"EQ ACTIVE":"EQ BYPASSED"));enableButton.setToggleState(track.eq.enabled,juce::dontSendNotification);
+        resetButton.setButtonText(tr("RESET EQ"));
+        auto populate=[](juce::ComboBox& c,std::initializer_list<juce::String> texts,int fallback){const int id=c.getSelectedId()>0?c.getSelectedId():fallback;c.clear(juce::dontSendNotification);int i=1;for(const auto& t:texts)c.addItem(t,i++);c.setSelectedId(id,juce::dontSendNotification);};
+        populate(analyzerMode,{tr("ANALYZER OFF"),tr("INPUT / OUTPUT"),tr("INPUT ONLY"),tr("OUTPUT ONLY")},std::clamp(Localisation::setting("eqAnalyzerMode","1").getIntValue(),0,3)+1);
+        populate(speed,{tr("RESPONSE: FAST"),tr("RESPONSE: MEDIUM"),tr("RESPONSE: SLOW")},std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1);
+        populate(range,{juce::String::fromUTF8("±6 dB"),juce::String::fromUTF8("±12 dB"),juce::String::fromUTF8("±24 dB")},std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1);
+        updating=false;updateView();repaint();
+    }
+    void updateView(){
+        const int mode=std::max(0,analyzerMode.getSelectedId()-1),selectedRange=std::max(0,range.getSelectedId()-1);
+        eqDisplay.setView(mode,std::max(0,speed.getSelectedId()-1),selectedRange==0?6:selectedRange==1?12:24);
+        const int wanted=mode==0?-1:currentTrack;
+        if(wanted!=meterTrack){owner.audio.setSpectrumTrack(wanted);meterTrack=wanted;spectrumGate=lastSpectrumRevision=owner.audio.spectrumRevision();}
+    }
+    void paint(juce::Graphics& g)override{
+        g.fillAll(Daw::base);g.setColour(Daw::accent);g.fillRoundedRectangle(15,16,3,18,1.5f);
+        g.setColour(Daw::text);g.setFont(Daw::font(Daw::body,true));g.drawText(tr("PARAMETRIC EQ"),27,10,148,29,juce::Justification::centredLeft);
+        g.setColour(Daw::line);g.drawHorizontalLine(eqDisplay.getY()-8,14.f,(float)getWidth()-14);
+        g.setColour(Daw::textFaint);g.setFont(Daw::smallFont(9));
+        g.drawFittedText(tr(juce::String::fromUTF8("Double-click: add band · Wheel: Q · Shift: fine adjustment")),getLocalBounds().removeFromBottom(22).reduced(18,1).withTrimmedRight(118),juce::Justification::centredLeft,1);
+        g.drawText(juce::String(owner.audio.spectrumSampleRate()/1000.,1)+juce::String::fromUTF8(" kHz · ")+juce::String((int)eqDisplay.getEq().bands.size())+"/16",getWidth()-140,getHeight()-22,122,20,juce::Justification::centredRight);
+    }
+    void resized()override{
+        auto r=getLocalBounds().reduced(14);auto top=r.removeFromTop(34);
+        if(getWidth()>=740){
+            resetButton.setBounds(top.removeFromRight(72));top.removeFromRight(8);enableButton.setBounds(top.removeFromRight(132));top.removeFromRight(8);addBandButton.setBounds(top.removeFromRight(114));top.removeFromRight(12);top.removeFromLeft(150);trackSelector.setBounds(top);
+        }else{
+            top.removeFromLeft(150);trackSelector.setBounds(top);r.removeFromTop(8);auto actions=r.removeFromTop(30);
+            addBandButton.setBounds(actions.removeFromLeft(114));actions.removeFromLeft(8);enableButton.setBounds(actions.removeFromLeft(132));actions.removeFromLeft(8);resetButton.setBounds(actions.removeFromLeft(96));
         }
-        refresh();
+        r.removeFromTop(10);auto settings=r.removeFromTop(30);
+        if(getWidth()<680){bandSelector.setBounds(settings);r.removeFromTop(6);settings=r.removeFromTop(30);}
+        range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(144));settings.removeFromRight(8);
+        if(getWidth()<680)analyzerMode.setBounds(settings);else{analyzerMode.setBounds(settings.removeFromRight(174));settings.removeFromRight(10);bandSelector.setBounds(settings);}
+        r.removeFromTop(13);r.removeFromBottom(12);eqDisplay.setBounds(r);
     }
 
-    void refresh() {
-        if (owner.project.tracks.empty()) return;
-        updating = true;
-        currentTrack = std::clamp(currentTrack, 0, (int)owner.project.tracks.size() - 1);
-        auto& t = owner.project.tracks[(size_t)currentTrack];
-        t.eq.ensureBands();
-
-        juce::StringArray names;
-        for (const auto& trk : owner.project.tracks) {
-            names.add(juce::String::fromUTF8(trk.name.c_str()));
-        }
-        trackSelector.clear(juce::dontSendNotification);
-        trackSelector.addItemList(names, 1);
-        trackSelector.setSelectedId(currentTrack + 1, juce::dontSendNotification);
-
-        enableButton.setButtonText(t.eq.enabled ? tr("EQ ACTIVE") : tr("EQ BYPASSED"));
-        enableButton.setToggleState(t.eq.enabled, juce::dontSendNotification);
-        resetButton.setButtonText(tr("FLAT"));
-
-        eqDisplay.setEq(t.eq, currentTrack, juce::String::fromUTF8(t.name.c_str()));
-        owner.audio.setSpectrumTrack(currentTrack);
-        updating = false;
-        repaint();
-    }
-
-    void paint(juce::Graphics& g) override {
-        g.fillAll(Daw::base);
-
-        g.setColour(Daw::accent);
-        g.fillRoundedRectangle(16.0f, 14.0f, 3.0f, 16.0f, 1.5f);
-
-        g.setColour(Daw::text);
-        g.setFont(Daw::font(Daw::title, true));
-        g.drawText(tr("GRAPHIC EQ"), 28, 8, 240, 26, juce::Justification::centredLeft);
-
-        g.setFont(Daw::font(Daw::small, false));
-        g.setColour(Daw::textFaint);
-    }
-
-    void resized() override {
-        auto r = getLocalBounds().reduced(14);
-        auto topBar = r.removeFromTop(34);
-        r.removeFromTop(10);
-
-        topBar.removeFromLeft(180); // Title spacing
-        trackSelector.setBounds(topBar.removeFromLeft(180));
-        topBar.removeFromLeft(10);
-        addBandButton.setBounds(topBar.removeFromLeft(110));
-        topBar.removeFromLeft(10);
-        enableButton.setBounds(topBar.removeFromLeft(120));
-        topBar.removeFromLeft(10);
-        resetButton.setBounds(topBar.removeFromLeft(70));
-
-        eqDisplay.setBounds(r);
-    }
-
+#if FGA_SELF_TESTS
+    bool writeEvidence(const juce::File& folder);
+#endif
 private:
-    MainComponent& owner;
-    EqDisplayComponent eqDisplay;
-    juce::ComboBox trackSelector;
-    juce::TextButton addBandButton;
-    juce::ToggleButton enableButton;
-    juce::TextButton resetButton;
-    int currentTrack = 0;
-    bool updating = false;
-
-    bool validTrack() const {
-        return currentTrack >= 0 && currentTrack < (int)owner.project.tracks.size();
-    }
+    MainComponent& owner;EqDisplayComponent eqDisplay;
+    juce::ComboBox trackSelector,bandSelector,analyzerMode,speed,range;
+    juce::TextButton addBandButton,resetButton;juce::ToggleButton enableButton;
+    int currentTrack=0,meterTrack=-2;bool updating=false;
+    std::uint32_t lastSpectrumRevision=0,spectrumGate=0;
+    bool validTrack()const{return currentTrack>=0&&currentTrack<(int)owner.project.tracks.size();}
 };
 
 GraphicEqWindow::GraphicEqWindow(MainComponent& m)
-    : DocumentWindow("Graphic Equalizer", Daw::base, juce::DocumentWindow::closeButton),
+    : DocumentWindow(tr("PARAMETRIC EQ"), Daw::base, juce::DocumentWindow::closeButton),
       owner(m) {
     setLookAndFeel(&m.theme);
     setUsingNativeTitleBar(true);
@@ -1065,14 +896,15 @@ GraphicEqWindow::GraphicEqWindow(MainComponent& m)
     // Fit the editor inside the display's usable area (DPI and small screens included).
     const auto* display = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();
     const auto area = display ? display->userArea : juce::Rectangle<int>(0, 0, 1280, 800);
-    const int maxW = juce::jmax(760, area.getWidth() - 32);
-    const int maxH = juce::jmax(460, area.getHeight() - 48);
-    setResizeLimits(760, 460, maxW, maxH);
-    setSize(juce::jmin(900, area.getWidth() - 80), juce::jmin(560, area.getHeight() - 100));
+    const int maxW=juce::jmax(480,area.getWidth()-32);
+    const int maxH=juce::jmax(360,area.getHeight()-48);
+    setResizeLimits(std::min(760,maxW),std::min(520,maxH),maxW,maxH);
+    setSize(std::min(1020,maxW),std::min(680,maxH));
     setAlwaysOnTop(true);
 }
 
 GraphicEqWindow::~GraphicEqWindow() {
+    owner.audio.setSpectrumTrack(-1);
     clearContentComponent();
     setLookAndFeel(nullptr);
 }
@@ -1091,17 +923,66 @@ void GraphicEqWindow::open(int track) {
 }
 
 void GraphicEqWindow::refresh() {
+    setName(tr("PARAMETRIC EQ"));
     if (panel) panel->refresh();
 }
 
 void GraphicEqWindow::resized() {
     DocumentWindow::resized();
-    if (panel) panel->setBounds(getLocalBounds());
+
 }
 
 void GraphicEqWindow::closeButtonPressed() {
     owner.audio.setSpectrumTrack(-1);
     owner.dismissAuxiliaryWindow(*this);
 }
+
+#if FGA_SELF_TESTS
+bool GraphicEqWindow::Panel::writeEvidence(const juce::File& folder){
+    juce::StringArray checks;bool ok=true;auto expect=[&](bool passed,const char* label){checks.add(juce::String(passed?"PASS ":"FAIL ")+label);ok=passed&&ok;};
+    EqDisplayComponent test;addAndMakeVisible(test);test.setBounds(eqDisplay.getBounds());ok=test.verifyInteractions(checks)&&ok;removeChildComponent(&test);
+    for(double rate:{44100.,48000.,96000.}){
+        EqAnalyzer analyzer;EqAnalyzer::Trace trace{};std::vector<float> sine(EqAnalyzer::size*2);
+        const int bin=(int)std::lround(1000.*EqAnalyzer::size/rate);const double hz=bin*rate/EqAnalyzer::size;
+        for(int i=0;i<EqAnalyzer::size;++i){sine[(size_t)i]=(float)std::sin(juce::MathConstants<double>::twoPi*bin*i/EqAnalyzer::size);sine[(size_t)i+EqAnalyzer::size]=-sine[(size_t)i];}
+        for(int frame=0;frame<20;++frame)analyzer.analyse(sine,rate,trace,0);
+        const auto peak=std::max_element(trace.begin(),trace.end());const double measuredHz=20.*std::pow(1000.,std::distance(trace.begin(),peak)/(double)(EqAnalyzer::points-1));
+        expect(std::abs(measuredHz/hz-1)<.1&&std::abs((*peak-1)*96)<1,"spectrum follows the actual sample rate and retains opposite-phase stereo energy");
+        for(int frame=0;frame<80;++frame)analyzer.analyse({},rate,trace,0);expect(*std::max_element(trace.begin(),trace.end())<.01,"stopped/missing input decays instead of freezing an old spectrum");
+        for(int shape=0;shape<6;++shape){
+            EqSettings eq;eq.enabled=true;eq.bands={{true,shape,700,4,1.2},{true,0,1200,-3,.9},{true,0,3200,2,2},{true,0,5200,-1,1}};eq.syncLegacyFromBands();
+            ChannelStrip strip;strip.configure(eq,rate);const int frames=(int)rate;juce::AudioBuffer<float> audio(2,frames);
+            for(int i=0;i<frames;++i)for(int ch=0;ch<2;++ch)audio.setSample(ch,i,(float)(.1*std::sin(juce::MathConstants<double>::twoPi*1000*i/rate)));
+            const float dry=audio.getRMSLevel(0,frames/2,frames/2);strip.process(audio,frames);const double measured=20*std::log10(audio.getRMSLevel(0,frames/2,frames/2)/dry);double response=0;for(const auto& band:eq.bands)response+=eqCoefficients(band,rate).magnitudeDb(1000,rate);
+            expect(std::abs(measured-response)<.15,"all six graph filter shapes match the processed audio, including four custom bands");
+        }
+    }
+    setTrack(0);owner.undoStack.clear();owner.redoStack.clear();
+    const auto original=owner.project.tracks[0].eq;const auto midiBefore=midiFile(owner.project);
+    eqDisplay.addBandAt(2500,3);const auto added=owner.project.tracks[0].eq;
+    expect(added.bands.size()==eqDisplay.getEq().bands.size()&&owner.undoStack.size()==1,"adding a band records exactly one real mix Undo");
+    owner.undo(false);expect(owner.project.tracks[0].eq==original,"real Undo restores the previous EQ without regeneration");
+    owner.undo(true);expect(owner.project.tracks[0].eq==added,"real Redo restores the added band");
+    eqDisplay.flatten();owner.undo(false);expect(owner.project.tracks[0].eq==added&&midiFile(owner.project)==midiBefore,"reset/Undo preserves the curve and the song MIDI");
+    owner.undoStack.clear();owner.redoStack.clear();
+    auto& eq=owner.project.tracks[0].eq;eq.enabled=true;
+    eq.bands={{true,1,35,0,.707},{true,2,110,2,.707},{true,0,420,-3.5,1.4},{true,0,2400,2.8,1.1},{true,3,9000,1.5,.707}};eq.syncLegacyFromBands();setTrack(0);eqDisplay.selectBand(2);
+    const auto language=Localisation::current();
+    for(auto lang:{Localisation::Language::italian,Localisation::Language::english}){
+        Localisation::setCurrent(lang);refresh();
+        for(auto size:std::initializer_list<juce::Point<int>>{{760,520},{1020,680}}){setSize(size.x,size.y);const auto image=createComponentSnapshot(getLocalBounds());const auto name=juce::String(lang==Localisation::Language::italian?"eq-it-":"eq-en-")+juce::String(size.x)+".png";if(auto stream=folder.getChildFile(name).createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(image,*stream);}}
+    }
+    Localisation::setCurrent(language);folder.getChildFile("eq-checks.txt").replaceWithText(checks.joinIntoString("\n"));return ok;
+}
+bool GraphicEqWindow::writeUiEvidence(const juce::File& folder){
+    folder.createDirectory();const auto before=owner.project.tracks[0].eq;
+    owner.openGraphicEq(0);auto* live=owner.graphicEqWindow.get();
+    const bool readOnly=owner.project.tracks[0].eq==before;
+    const bool ok=live&&live->panel->writeEvidence(folder);
+    folder.getChildFile("eq-checks.txt").appendText(juce::String(readOnly?"\nPASS ":"\nFAIL ")+"opening the editor does not mutate stored settings");
+    return readOnly&&ok;
+}
+
+#endif
 
 } // namespace fga

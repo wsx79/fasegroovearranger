@@ -6,6 +6,10 @@
 - Corretti gli accordi fuori fase nell’accompagnamento elettronico e le sospensioni Techno non richieste. Ritmo, contorno melodico e risposte indipendenti; confronto dei take effettivi contro le ripetizioni immediate, con anteprime limitate e fedeli.
 - Aggiunte regressioni su tutti i generi per varietà musicale, scope, blocchi, determinismo e cambi di accordo. Vedi docs/HARMONY_REVIEW.md.
 
+- Editor EQ parametrico professionale: controlli sotto il grafico, selezione banda, trascinamento fine, valori Hz/kHz/dB/Q validati, tasti F/G/Q, Undo e azzeramento che esclude anche passa-alto, passa-basso e notch.
+- Analizzatore stereo ingresso/uscita calibrato al sample rate reale, preferenze salvate e acquisizione atomica senza corse di memoria. Curva e audio condividono i coefficienti; i controlli compatti preservano le altre bande personalizzate.
+- Le curve EQ escluse sopravvivono al salvataggio senza riattivarsi. Regressioni native su grafica, DSP, acquisizione concorrente e persistenza.
+
 ## 0.42.0
 
 - EQ grafico riportato al tema piatto dell'app: niente bagliori neon, spettro decorativo o righello del pianoforte; griglia neutra, colori delle bande smorzati e barra parametri compatta.

@@ -24,5 +24,9 @@ startup = folder / 'startup'
 run_application(build, '--startup-splash-test', startup, timeout=60)
 if not (startup / 'startup.txt').read_text().startswith('PASS '):
     raise RuntimeError('Startup splash did not transition to the visible application')
+eq_folder = folder / 'equalizer'
+run_application(build, '--eq-ui-test', eq_folder, timeout=90)
+if 'FAIL ' in (eq_folder / 'eq-checks.txt').read_text():
+    raise RuntimeError('Parametric EQ UI or DSP regression')
 run_application(build, '--smoke-test', folder, timeout=600)
 verify('verify-audio.py', folder)

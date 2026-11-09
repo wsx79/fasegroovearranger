@@ -10,6 +10,7 @@
 #include <iostream>
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
+#include "SpectrumChecks.h"
 void runImprovementEngineTests();
 void runStudioEngineTests();
 void runEngineAuditTests();
@@ -18,6 +19,7 @@ void runRecordedRegionTests();
 int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
+        if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}
         if(argc==3&&juce::String(argv[1])=="--development-audit")return fga::writeDevelopmentAudit(juce::File(argv[2]))?0:1;
@@ -35,7 +37,7 @@ int main(int argc,char** argv){
             }return 0;
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
-        runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
+        runSpectrumChecks();runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
         {
             fga::AudioEngine live(fga::AudioEngine::Offline{});fga::Project song;song.normalise();fga::applyGenre(song,0);song.settings.bpm=120;song.sections={{fga::Section::main,4,"Live feel"}};
             for(auto& t:song.tracks){t.clips.assign(1,{});t.gain=0;t.engine.reverb=t.engine.chorus=0;}song.tracks[0].gain=.5;song.normalise();fga::generate(song);

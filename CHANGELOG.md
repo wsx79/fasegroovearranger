@@ -6,6 +6,10 @@
 - Fix electronic accompaniment chord timing and unintended Techno suspensions. Separate rhythm, melodic contour and replies; compare actual musical takes to avoid immediate repetition, with bounded faithful previews.
 - Add all-genre regeneration, scope/lock, determinism, chord-boundary and musical-content diversity regressions. See docs/HARMONY_REVIEW.md.
 
+- Professional parametric EQ editing: responsive controls below the graph, band selection, fine dragging, strict Hz/kHz/dB/Q entry, keyboard F/G/Q, undoable edits and reset that also bypasses cuts/notches.
+- Calibrated stereo pre/post analyzer with the actual processing rate, saved display/response preferences and race-free atomic taps. Display curves and processing now share filter coefficients; compact controls preserve other custom bands.
+- Bypassed EQ curves survive project saves without being re-enabled; native UI/DSP, concurrent capture and persistence regressions cover these workflows.
+
 ## 0.42.0
 
 - Graphic EQ restyled to the app's flat studio theme: no neon glow, no decorative spectrum and no piano-key ruler; neutral grid, muted band colours and a compact parameter strip.

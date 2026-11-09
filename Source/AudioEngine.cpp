@@ -369,26 +369,28 @@ void AudioEngine::captureSpectrum(int track,const juce::AudioBuffer<float>& bloc
     if(count<=0||spectrumTrack.load(std::memory_order_relaxed)!=track||!spectrumStorage)return;
     auto& storage=*spectrumStorage;
     const auto write=storage.write.load(std::memory_order_relaxed);
-    auto& ring=storage.samples[processed?1:0];
     const int channels=block.getNumChannels();
-    for(int i=0;i<count;++i){
-        const float value=channels>1?0.5f*(block.getSample(0,i)+block.getSample(1,i)):block.getSample(0,i);
-        ring[(write+(std::uint32_t)i)&(std::uint32_t)(spectrumCapacity-1)]=value;
+    count=std::min(count,block.getNumSamples());
+    for(int ch=0;ch<2;++ch)for(int i=0;i<count;++i){
+        const float value=channels>0?block.getSample(std::min(ch,channels-1),i):0.f;
+        storage.samples[(processed?2:0)+ch][(write+(std::uint32_t)i)&(std::uint32_t)(spectrumCapacity-1)].store(value,std::memory_order_relaxed);
     }
     if(processed)storage.write.store(write+(std::uint32_t)count,std::memory_order_release);
 }
-void AudioEngine::readSpectrum(int track,std::vector<float>& pre,std::vector<float>& post,int count) const {
-    const int n=std::max(0,count);
-    pre.assign((size_t)n,0.f);post.assign((size_t)n,0.f);
+void AudioEngine::readSpectrum(int track,std::vector<float>& pre,std::vector<float>& post,int count,bool stereo) const {
+    const int n=std::clamp(count,0,spectrumCapacity),channels=stereo?2:1;
+    pre.assign((size_t)(n*channels),0.f);post.assign((size_t)(n*channels),0.f);
     if(n<=0||spectrumTrack.load(std::memory_order_acquire)!=track||!spectrumStorage)return;
     const auto& storage=*spectrumStorage;
     const auto write=storage.write.load(std::memory_order_acquire);
-    for(int i=0;i<n;++i){
+    for(int ch=0;ch<channels;++ch)for(int i=0;i<n;++i){
         const auto index=(write-(std::uint32_t)(n-i))&(std::uint32_t)(spectrumCapacity-1);
-        pre[(size_t)i]=storage.samples[0][index];
-        post[(size_t)i]=storage.samples[1][index];
+        const size_t out=(size_t)(ch*n+i);
+        pre[out]=storage.samples[ch][index].load(std::memory_order_relaxed);
+        post[out]=storage.samples[2+ch][index].load(std::memory_order_relaxed);
     }
 }
+
 void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled){
     const juce::ScopedNoDenormals noDenormals;
     RenderingScope renderingScope(rendering);
