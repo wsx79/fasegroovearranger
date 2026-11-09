@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Develop all 15 genre arrangements with alternative section-role sequences, 16/32-bar DJ bookends and clean eight-bar mixing phrases including Lead. Add real orchestration/rest development, pre-drop breathing space and genre-appropriate organic fills; preserve authored forms, locks and layout-only MIDI reuse. Add dedicated arrangement, independent MIDI and native audio-window audits. See docs/ARRANGEMENT_REVIEW.md.
+
 - Review all 15 genres: complete genre-specific harmonic phrases, compatible A/B development, manual-chord preservation and fewer repeated harmony draws.
 - Fix electronic accompaniment chord timing and unintended Techno suspensions. Separate rhythm, melodic contour and replies; compare actual musical takes to avoid immediate repetition, with bounded faithful previews.
 - Add all-genre regeneration, scope/lock, determinism, chord-boundary and musical-content diversity regressions. See docs/HARMONY_REVIEW.md.

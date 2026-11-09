@@ -11,7 +11,7 @@ Fase Groove Arranger 0.4.2 · 20 ottobre 2026
 
 Le durate e le soglie implementate sotto sono scelte di Arranger basate su questi riferimenti e sui suoi motori. Non sono regole universali né una trascrizione dei brani analizzati.
 
-## Tempo e identità dei tredici stili
+## Tempo e identità dei quindici stili
 
 | Categoria presente nei motori | Range operativo BPM | Centro | Forma / carattere |
 |---|---:|---:|---|
@@ -28,6 +28,8 @@ Le durate e le soglie implementate sotto sono scelte di Arranger basate su quest
 | Neo Soul & Broken | 92–112 | 98 | Strofa, chorus e bridge su ritmo spezzato |
 | Chill & Pads | 90–115 | 100 | Warm-up, paesaggi armonici e ritorno morbido |
 | Dance Stabs | 124–130 | 128 | Tema a stab, tensione, drop e reprise |
+| Techno | 126–145 | 132 | Intro ritmica, groove ipnotico, atmosfera, pressione e sviluppo |
+| Electro House | 124–132 | 128 | Hook, break filtrati, build e ritorni contrastati |
 
 I sottostili Piano/Gospel/Jackin'/Stabs restringono deliberatamente la famiglia house al carattere dei motori. Neo Soul & Broken e Chill & Pads sono categorie ibride già presenti nei plugin: i loro range sono una scelta da warm-up/downtempo dell'app, non una definizione di tutto il broken beat o di tutta la chill music.
 
@@ -72,3 +74,15 @@ Le rampe di velocity aggiunte dall’arranger alle parti melodiche di intro/outr
 La calibrazione 0.4.2 del solo master è sostituita, per i nuovi brani, da livelli di traccia e preset diversi per genere con master 0,55. Il margine è verificato sul rendering completo. Dettagli e limiti: [suoni per genere](GENRE_SOUND.md).
 
 La 0.4.6 porta il master dei nuovi progetti a 0,45 per il margine di codifica MP3 e ribilancia le tracce tenendo conto dei guadagni interni del kit originale; i mix salvati restano invariati.
+
+## Revisione delle strutture — 9 novembre 2026
+
+La forma automatica ora sceglie fra quattro architetture per ciascuno dei 15 generi: classica, sviluppo esteso con ritorno conclusivo, versione compatta o risposta aggiuntiva al tema e anticipo del tema. Le nuove canzoni evitano di ripetere subito la stessa sequenza di ruoli; variano anche le durate. I nomi o le armonie di sezione modificati dall’utente, le parti manuali e i blocchi impediscono la sostituzione automatica della struttura.
+
+Intro e outro generati rimangono di 16/32 battute. Le prime e ultime otto battute hanno il riferimento ritmico e lasciano libero lo spazio armonico, compreso il Lead. I cicli armonici lunghi continuano attraverso i confini: non gonfiano intro, outro e break.
+
+Lo sviluppo comprende risposte e pause del Lead, ingresso differito di ride/tamburello e maggiore presenza nelle riprese. I build energici lasciano un beat di respiro a cassa e basso prima del drop; i lift organici mantengono il groove e scelgono piccoli turnaround invece delle rullate automatiche generiche. I pattern utente e i fill esplicitamente selezionati vengono rispettati.
+
+NUOVO ARRANGIAMENTO continua a riutilizzare i take esistenti: cambia la disposizione senza rigenerare le note e conserva la durata delle intro/outro factory per mantenere il passaggio DJ. I MIDI salvati vengono modificati soltanto con le normali azioni di editing o generazione.
+
+Prove, comandi e risultati aggiornati: [revisione degli arrangiamenti](ARRANGEMENT_REVIEW.md). La descrizione dell’audit completo 0.4.2 sopra resta una verifica storica dei tredici generi allora disponibili; il nuovo audit per finestre comprende tutti e quindici.

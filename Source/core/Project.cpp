@@ -614,7 +614,7 @@ void applyGenre(Project& p,int genre) {
     if(p.settings.genre!=technoGenre)addElectronicToneAutomation(p);
 }
 namespace {
-const std::vector<SongSection>& genreForm(int genre) {
+std::vector<SongSection> genreForm(int genre,int variant=0) {
     static const std::vector<SongSection> forms[]{
         {{Section::intro,32,"Intro"},{Section::main,32,"Piano theme"},{Section::breakdown,16,"Piano break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Piano drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}},
         {{Section::intro,32,"Intro"},{Section::main,32,"Soulful verse"},{Section::main,16,"Answer"},{Section::breakdown,16,"Soul break"},{Section::buildup,8,"Lift"},{Section::drop,32,"Soulful chorus"},{Section::outro,32,"Outro"}},
@@ -634,23 +634,50 @@ const std::vector<SongSection>& genreForm(int genre) {
     };
 
     static_assert(std::size(forms)==numGenres);
-    return forms[normaliseGenre(genre)];
+    auto form=forms[normaliseGenre(genre)];
+    // Curated alternatives develop the same genre vocabulary into different
+    // arcs. Mix-in/out remain the actual first and last sections.
+    if(variant==1){
+        auto at=form.end()-1;at=form.insert(at,{Section::breakdown,8,"Second break"});++at;
+        if(genreProfile(genre).rollingBuild){at=form.insert(at,{Section::buildup,8,"Closing lift"});++at;}
+        form.insert(at,{Section::drop,16,"Closing return"});
+    }else if(variant==2){
+        bool removed=false,seenMain=false;
+        for(size_t i=1;i+1<form.size();++i)if(form[i].type==Section::main){if(seenMain){form.erase(form.begin()+(int)i);removed=true;break;}seenMain=true;}
+        if(!removed){
+            const auto first=std::find_if(form.begin(),form.end(),[](const SongSection& sec){return sec.type==Section::drop;});
+            if(first!=form.end()&&std::count_if(form.begin(),form.end(),[](const SongSection& sec){return sec.type==Section::drop;})>1){
+                auto from=first;
+                if(from!=form.begin()&&(from-1)->type==Section::buildup){--from;if(from!=form.begin()&&(from-1)->type==Section::breakdown)--from;}
+                form.erase(from,first+1);removed=true;
+            }
+        }
+        if(!removed){const auto before=std::find_if(form.begin()+1,form.end(),[](const SongSection& sec){return sec.type==Section::breakdown;});form.insert(before,{Section::main,8,"Theme response"});}
+    }else if(variant==3)form.insert(form.begin()+1,{Section::drop,8,"Theme preview"});
+    return form;
 }
 // A form nobody restructured: the factory section sequence of some genre.
 bool factoryForm(const Project& p,int genre) {
-    const auto& form=genreForm(genre);
-    if(form.size()!=p.sections.size())return false;
-    for(size_t i=0;i<form.size();++i)if(form[i].type!=p.sections[i].type||form[i].name!=p.sections[i].name)return false;
-    return true;
+    for(int variant=0;variant<4;++variant){const auto form=genreForm(genre,variant);if(form.size()!=p.sections.size())continue;
+        bool same=true;for(size_t i=0;i<form.size();++i)if(form[i].type!=p.sections[i].type||form[i].name!=p.sections[i].name){same=false;break;}
+        if(same)return true;
+    }return false;
+}
+int freshFormVariant(const Project& p,std::uint32_t seed){
+    const int first=(int)(mix(seed+(unsigned)p.settings.genre*733U+307U)%4);
+    for(int attempt=0;attempt<4;++attempt){const int variant=(first+attempt)%4;const auto next=genreForm(p.settings.genre,variant);
+        bool same=next.size()==p.sections.size();for(size_t i=0;same&&i<next.size();++i)same=next[i].type==p.sections[i].type;
+        if(!same)return variant;
+    }return first;
 }
 }
-void arrangeSong(Project& p) {
+static void arrangeSongVariant(Project& p,int variant) {
     p.normalise();
     // Each style has its own phrase lengths and dramatic arc.
     // Transitions belong to the musical form; the instrument engines shape intro/outro.
     // Mix-in/out development is part of these sections, never appended elsewhere.
     const int genre=normaliseGenre(p.settings.genre);
-    auto sections=genreForm(genre);
+    auto sections=genreForm(genre,variant);
     // A phrase resolves both the harmonic cycle and the selected groove. Longer
     // evolving motifs need more room; dense material answers sooner. This changes
     // musical repeats, never stretches a form to an arbitrary clock duration.
@@ -706,6 +733,11 @@ void arrangeSong(Project& p) {
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
     p.sections=std::move(bounded);for(auto& t:p.tracks)if(!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     p.normalise();p.loopStart=0;p.loopEnd=p.length();
+}
+void arrangeSong(Project& p){
+    // Preserve the established factory default; explicit new seeds also vary form.
+    const int variant=p.settings.seed==Settings{}.seed?0:(int)(mix(p.settings.seed+(unsigned)normaliseGenre(p.settings.genre)*733U+307U)%4);
+    arrangeSongVariant(p,variant);
 }
 Project newProject(int genre) {
     Project p;
@@ -788,19 +820,34 @@ int mixEntry(int genre,int track,int bars) {
 }
 void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     const auto& sec=p.sections[(size_t)section];const int genre=p.settings.genre;
-    if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
     const auto& e=p.tracks[(size_t)track].engine;
     const int user=track<3?sgk::userPatternIndex():track==3?fgg::userPatternIndex():track==leadTrack?fgl::userPatternIndex():fgd::userPatternIndex();
     if(e.pattern==user)return;
+    if(sec.type==Section::buildup&&genreProfile(genre).rollingBuild&&section+1<(int)p.sections.size()&&p.sections[(size_t)section+1].type==Section::drop&&(track==1||track==4)){
+        const double end=sec.bars*4.-1.;
+        // Treat an early humanised attack as belonging to the silent beat,
+        // rather than leaving a millisecond fragment before the boundary.
+        clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),[&](const Note& n){return n.start>=end-1./32.;}),clip.notes.end());
+        for(auto& n:clip.notes)n.length=std::min(n.length,end-n.start);
+    }
+    if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
     // Repeated verses/drops develop across the song, independently of seed
     // variation. Preserve the kick/bass foundation and explicit user patterns.
     int preceding=0,total=0;
     for(int i=0;i<(int)p.sections.size();++i)if(p.sections[(size_t)i].type==Section::main||p.sections[(size_t)i].type==Section::drop){++total;if(i<section)++preceding;}
     const double development=total>1?double(preceding)/(total-1):0.;
     if(track!=1&&track!=4)for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*(1.+.12*development)),1,127);
-    if(isElectronicGenre(genre))return;
     const bool later=development>=.5;
     auto active=[&](double start){const int bar=(int)(start/4),phrase=bar%8;
+        const int block=bar/8;
+        if(track==leadTrack){
+            if(isElectronicGenre(genre))return sec.type==Section::drop?(later||phrase<6):(phrase<4||phrase>=6);
+            return sec.type==Section::drop?(later||phrase<6):phrase>=(later?2:4);
+        }
+        if(track==10||track==12){
+            if(sec.type==Section::drop)return later||phrase>=2;
+            return block>0?phrase>=2:phrase>=6;
+        }
         // Strings follow the harmony for the whole verse and chorus. Gating them
         // to the last two bars of a phrase removed every chord that did not
         // start in that window, so most songs never grew a string part.
@@ -812,7 +859,7 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         }
         // Different percussion layers announce phrases; never gate the kick,
         // backbeat or closed hat. These are compositional rests, not audio mute.
-        if(track==10||track==12||track==14||track==15){
+        if(track==14||track==15){
             if(genre==(int)Genre::jackinHouse&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
             return genre==(int)Genre::afroHouse?phrase>=(later?1:2):phrase>=(later?2:4);
         }
@@ -881,43 +928,45 @@ void prepareGenerationFeel(Project& p,Scope scope,int track,int section,std::uin
     }
     varyGenerationFeel(p,seed);
 }
-// The form must answer the Harmonic cycle and the groove, not a random list: every
-// section length is a multiple of this phrase, as arrangeSong already assumes.
+// Main sections can resolve the harmony and groove together. Very long/odd
+// cycles continue across boundaries; mix passages keep their own DJ grid.
 static int formPhraseBars(const Project& p){
     const int steps=std::max(1,p.settings.chordSteps);
     const int harmonic=std::max(1,(std::max(1,p.settings.chordCount)*steps)/16);
     int motif=1;for(const auto& t:p.tracks)motif=std::max(motif,t.engine.grooveBars);
     int phrase=8;
     for(int g:{harmonic,motif}){int a=phrase,b=g;while(b){const int r=a%b;a=b;b=r;}phrase=phrase/std::max(1,a)*g;}
-    return std::clamp(phrase,4,48);
+    return phrase<=32&&phrase%8==0?phrase:8;
 }
 void varyForm(Project& p,std::uint32_t seed) {
     const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
     const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;});
     if(locked||free||p.sections.empty())return;
     const int phrase=formPhraseBars(p);
-    auto pickLength=[&](const int* choices,int count,int index)->int{
-        std::vector<int> valid;for(int i=0;i<count;++i)if(choices[i]%phrase==0)valid.push_back(choices[i]);
-        if(valid.empty())return std::clamp(phrase,8,48);
+    auto pickLength=[&](const int* choices,int count,int index,int grid)->int{
+        std::vector<int> valid;for(int i=0;i<count;++i)if(choices[i]%grid==0)valid.push_back(choices[i]);
+        if(valid.empty())return grid;
         return valid[(size_t)(mix(seed+(std::uint32_t)index*97U)%valid.size())];
     };
     std::vector<int> next;int before=0,after=0;
     for(size_t i=0;i<p.sections.size();++i){
         const auto type=p.sections[i].type;
-        const int io[]{16,24,32},bb[]{8,16},body[]{8,16,24,32,48};
-        const int* choices=body;int count=5;
-        if(type==Section::intro||type==Section::outro){choices=io;count=3;}
+        const int io[]{16,32},bb[]{8,16},body[]{16,24,32,48};
+        const int* choices=body;int count=4;
+        if(type==Section::intro||type==Section::outro){choices=io;count=2;}
         else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
-        const int pick=pickLength(choices,count,(int)i);
+        const int grid=type==Section::main||type==Section::drop?phrase:8;
+        const int shortPhrase[]{8,16};const bool preview=p.sections[i].name=="Theme preview"||p.sections[i].name=="Theme response";
+        const int pick=preview?pickLength(shortPhrase,2,(int)i,8):pickLength(choices,count,(int)i,grid);
         next.push_back(pick);before+=p.sections[i].bars;after+=pick;
     }
     if(after==before){
         const auto type=p.sections.back().type;
-        const int io[]{16,24,32},bb[]{8,16},body[]{8,16,24,32,48};
-        const int* choices=body;int count=5;
-        if(type==Section::intro||type==Section::outro){choices=io;count=3;}
+        const int io[]{16,32},bb[]{8,16},body[]{16,24,32,48};
+        const int* choices=body;int count=4;
+        if(type==Section::intro||type==Section::outro){choices=io;count=2;}
         else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
-        for(int k=0;k<count;++k)if(choices[k]!=next.back()&&choices[k]%phrase==0){next.back()=choices[k];break;}
+        for(int k=0;k<count;++k)if(choices[k]!=next.back()&&choices[k]%8==0){next.back()=choices[k];break;}
     }
     for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)p.resizeSection((int)i,next[i]);
 }
@@ -931,8 +980,10 @@ void renewForm(Project& p) {
     const double from=p.loopStart,to=p.loopEnd;
     bool otherGenre=false;
     for(int genre=0;genre<numGenres;++genre)if(genre!=p.settings.genre&&factoryForm(p,genre))otherGenre=true;
-    if(otherGenre&&!factoryForm(p,p.settings.genre)){
-        arrangeSong(p);
+    const bool authored=std::any_of(p.sections.begin(),p.sections.end(),[](const SongSection& sec){return sec.harmony.enabled||sec.preDropSilence||sec.snareRoll||sec.reverseCrash;})
+        ||std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline||(isManualTrack(t.kind)&&!t.vocalChops&&std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& clip){return !clip.notes.empty();}));});
+    if(!authored&&(otherGenre||factoryForm(p,p.settings.genre))){
+        arrangeSongVariant(p,freshFormVariant(p,p.settings.seed));
         if(!hadRegion)p.clearLoop();else if(!wholeLoop){p.loopStart=std::min(from,p.length());p.loopEnd=std::min(to,p.length());}
         p.loop=wasLooping&&p.hasLoopRegion();
         return;
@@ -1001,7 +1052,10 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
     for(const auto& t:project.tracks){if(t.locked)return false;for(const auto& c:t.clips)if(c.locked)return false;}
     auto plan=project;plan.tracks.resize(trackCount);
     for(auto& t:plan.tracks){t.freeTimeline=false;t.clips.clear();}
-    arrangeSong(plan);varyForm(plan,seed);
+    arrangeSongVariant(plan,freshFormVariant(project,seed));varyForm(plan,seed);
+    // Reusing MIDI must not shorten an already clean DJ outro into its harmonic
+    // portion. Preserve factory mix passages at their original lengths.
+    if(factoryForm(project,project.settings.genre)&&project.sections.front().type==Section::intro&&project.sections.back().type==Section::outro){plan.sections.front().bars=project.sections.front().bars;plan.sections.back().bars=project.sections.back().bars;}
     // Vary against the current form too, rather than occasionally choosing the
     // same layout again on a repeated press.
     bool identical=plan.sections.size()==project.sections.size();
@@ -1038,7 +1092,8 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
         if(!track.freeTimeline){track.clips.clear();for(size_t s=0;s<source.size();++s){Clip clip;if(source[s]<old.clips.size())clip=old.clips[source[s]];
                 const double duration=next.sections[s].bars*4.;
                 const double previous=wasFree?project.sectionStart((int)source[s]+1)-project.sectionStart((int)source[s]):project.clipLength((int)t,(int)source[s]);
-                if(!(previous>1./960.)||!resizedLoop(clip,previous,duration))return false;
+                if(!(previous>1./960.))return false;
+                if(duration!=previous&&!resizedLoop(clip,previous,duration))return false;
                 clip.span=0;clip.position=0;clip.role=(int)next.sections[s].type;track.clips.push_back(std::move(clip));
             }
             if(!remap(track.volume,old.volume)||!remap(track.panAutomation,old.panAutomation))return false;
@@ -1271,6 +1326,12 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 ds.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+313U)); ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
                 ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
                 ds.tempo=s.bpm; ds.bassSpace=e.bassSpace; ds.fillEveryBars=e.fillEvery; ds.variationEvery=e.variationEvery; ds.fillStyle=(fgd::FillStyle)(e.fillStyle<0?(int)fgd::FillStyle::mix:std::min(e.fillStyle,fgd::numFillStyles-1));
+                if(type==Section::buildup&&!profile.rollingBuild&&ds.fillStyle==fgd::FillStyle::mix&&e.pattern!=fgd::userPatternIndex()){
+                    // The generic "mix" also selects snare/clap rolls. Organic
+                    // lifts use small kit turnarounds, shared by all stems.
+                    const fgd::FillStyle organic[]{fgd::FillStyle::hatLift,fgd::FillStyle::congaRun,fgd::FillStyle::rimShuffle,fgd::FillStyle::percBreak};
+                    ds.fillStyle=organic[mix(clip.seed+(unsigned)si*977U)%std::size(organic)];
+                }
                 ds.velocity=e.velocity;ds.accentGroove=(float)e.accent;ds.genreFeel=e.genreFeel;ds.crashAfterFill=e.afterFill;ds.grooveBars=e.grooveBars;ds.segmentOrder=e.segments;
                 ds.laneSwing[(size_t)(ti-4)]=(float)e.laneSwing[0];ds.laneShift[(size_t)(ti-4)]=(float)e.laneShift[0];
                 if(e.midiNote>=0)ds.notes[(size_t)(ti-4)]=e.midiNote;

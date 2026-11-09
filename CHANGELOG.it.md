@@ -2,6 +2,8 @@
 
 ## Non pubblicato
 
+- Sviluppati gli arrangiamenti di tutti i 15 generi: sequenze di sezioni alternative, intro/outro DJ di 16/32 battute e frasi ritmiche pulite di otto battute, incluso il Lead. Entrate e pause reali degli strumenti, respiro prima dei drop e fill organici coerenti; conservati forme personalizzate, blocchi e riuso del MIDI in NUOVO ARRANGIAMENTO. Aggiunti audit dedicati su struttura, MIDI e finestre audio. Vedi docs/ARRANGEMENT_REVIEW.md.
+
 - Revisione di tutti i 15 generi: frasi armoniche complete per genere, sviluppo A/B compatibile, conservazione degli accordi manuali e meno estrazioni armoniche ripetute.
 - Corretti gli accordi fuori fase nell’accompagnamento elettronico e le sospensioni Techno non richieste. Ritmo, contorno melodico e risposte indipendenti; confronto dei take effettivi contro le ripetizioni immediate, con anteprime limitate e fedeli.
 - Aggiunte regressioni su tutti i generi per varietà musicale, scope, blocchi, determinismo e cambi di accordo. Vedi docs/HARMONY_REVIEW.md.

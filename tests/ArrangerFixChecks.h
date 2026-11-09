@@ -28,9 +28,9 @@ inline void verifyGenerateSong(){
     // A genre change followed by GENERATE SONG builds the new genre's form.
     auto p=fga::newProject(1);const auto soulful=p.sections;
     fga::applyGenre(p,6);fga::generate(p,fga::Scope::song,0,0,4242);
-    auto garage=fga::newProject(6);
-    check(p.sections.size()==garage.sections.size(),"new genre form after GENERATE SONG");
-    for(size_t i=0;i<p.sections.size();++i)check(p.sections[i].name==garage.sections[i].name&&p.sections[i].type==garage.sections[i].type,"sections follow the current genre");
+    check(std::any_of(p.sections.begin(),p.sections.end(),[](const fga::SongSection& s){return s.name=="UK shuffle";}),"new song keeps the current genre's theme across alternate forms");
+    check(std::none_of(p.sections.begin(),p.sections.end(),[](const fga::SongSection& s){return s.name=="Soulful verse"||s.name=="Soulful chorus";}),"new genre does not retain the previous genre's sections");
+    verifyClubProject(p,6,"");
     // Timeline edits detach tracks; without locks a new song still varies the form.
     auto q=fga::newProject(1);q.detachTrack(4);q.detachTrack(0);
     std::vector<int> bars;for(const auto& s:q.sections)bars.push_back(s.bars);

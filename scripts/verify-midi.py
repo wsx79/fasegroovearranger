@@ -4,7 +4,7 @@ from pathlib import Path
 import struct
 import sys
 
-def read(path, expected_tracks, require_cc=False):
+def read(path, expected_tracks, require_cc=False, min_markers=6):
     data = Path(path).read_bytes()
     assert data[:4] == b'MThd'
     header_len, fmt, tracks, ppq = struct.unpack('>IHHH', data[4:14])
@@ -59,15 +59,17 @@ def read(path, expected_tracks, require_cc=False):
                     assert tick > active.pop(key), 'zero note duration'
         assert not active, f'hanging notes in track: {active}'
         assert pos == end
-    assert pos == len(data) and tempos == 1 and markers >= 6 and note_count > 0
+    assert pos == len(data) and tempos == 1 and markers >= min_markers and note_count > 0
     if require_cc: assert {11,64}.issubset(controllers) and last_cc[64]==0 and last_cc[11]==127, 'pedal/expression export and reset'
     print(f'PASS {path}: {tracks} tracks, {note_count} matched notes, {markers} section markers')
 
 folder = Path(sys.argv[1] if len(sys.argv) > 1 else 'build/core')
-read(folder / 'test-song.mid', 19)
-read(folder / 'test-kick.mid', 2)
-
-read(folder / "test-piano-cc.mid",2,True)
+if '--club-only' not in sys.argv[2:]:
+    read(folder / 'test-song.mid', 19)
+    read(folder / 'test-kick.mid', 2)
+    read(folder / 'test-piano-cc.mid',2,True)
+else:
+    assert len(list(folder.glob('club-*.mid'))) == 15, 'all 15 genre arrangements must be exported'
 
 for path in sorted(folder.glob("club-*.mid")):
-    read(path,19)
+    read(path,19,min_markers=5)

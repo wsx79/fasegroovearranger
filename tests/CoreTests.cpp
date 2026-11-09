@@ -149,6 +149,7 @@ void verifyGenreIdentity(){
 }
 }
 #include "ClubArrangementChecks.h"
+#include "ArrangementDevelopmentChecks.h"
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
 #include "ArrangerFixChecks.h"
@@ -246,6 +247,7 @@ void verifySectionDevelopment(){
     }
 }
 int main(int argc,char** argv){try{
+    if(argc>=2&&std::string(argv[1])=="--arrangement-review"){arrangementchecks::verify(argc>2?argv[2]:"");std::cout<<"All-genre arrangement regressions passed\n";return 0;}
     if(argc==2&&std::string(argv[1])=="--musical-review"){musicalchecks::verify();std::cout<<"All-genre musical regressions passed\n";return 0;}
     deepauditchecks::verify();
     if(argc==2&&std::string(argv[1])=="--deep-audit"){std::cout<<"Deep audit core regressions passed\n";return 0;}
