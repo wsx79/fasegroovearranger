@@ -335,8 +335,12 @@ private:
     std::array<std::array<std::atomic<float>,2>,engineTrackCount> sideMeters{};
     std::array<std::atomic<float>,2> masterSides{};
     static constexpr int spectrumCapacity=4096;
-    std::array<std::array<float,spectrumCapacity>,2> spectrumSamples{};
-    std::atomic<std::uint32_t> spectrumWrite{0};
+    // Kept on the heap: AudioEngine instances live on the stack in tests and tools.
+    struct SpectrumStorage {
+        std::array<std::array<float,spectrumCapacity>,2> samples{};
+        std::atomic<std::uint32_t> write{0};
+    };
+    std::unique_ptr<SpectrumStorage> spectrumStorage=std::make_unique<SpectrumStorage>();
     std::atomic<int> spectrumTrack{-1};
     void captureSpectrum(int track,const juce::AudioBuffer<float>& block,int count,bool processed);
     void clearMeters(){for(auto& track:activeKeyMasks)for(auto& word:track)word.store(0,std::memory_order_relaxed);masterMeter=0;for(auto& meter:meters)meter=0;for(auto& side:masterSides)side=0;for(auto& pair:sideMeters)for(auto& side:pair)side=0;}
