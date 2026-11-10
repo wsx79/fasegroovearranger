@@ -238,6 +238,8 @@ public:
     void showTrackMenu(int);
     void showAddTrackMenu();
     void addMidiTrack(bool vocal=false);
+    void showVocalStudio();
+    bool verifyVocalStudio(const juce::File&);
     void deleteMidiTrack(int);
     void showAddSectionMenu();
     void addSongSection(Section);
@@ -354,6 +356,8 @@ public:
 private:
     friend bool verifyPianoTools(MainComponent&,const juce::File&);
     friend class StudioWindow;
+    friend class VocalStudioEditor;
+    std::unique_ptr<juce::DialogWindow> vocalStudioWindow;
     friend class MixerRoutingWindow;
     friend class GraphicEqWindow;
     std::unique_ptr<GraphicEqWindow> graphicEqWindow;

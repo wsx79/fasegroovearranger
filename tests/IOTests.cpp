@@ -7,12 +7,13 @@ void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runImprovementIOTests();
 void runAiTests();
 void runStudioIOTests();
+void runVocalStudioIOTests();
 int runAiHttpTest(const juce::String&,bool);
 int runAiModelsTest(const juce::String&,bool);
 int main(int argc,char** argv){try{
     if(argc==3&&(juce::String(argv[1])=="--ai-models-test"||juce::String(argv[1])=="--ai-models-cancel"))return runAiModelsTest(argv[2],juce::String(argv[1])=="--ai-models-cancel");
     if(argc==3&&(juce::String(argv[1])=="--ai-http-test"||juce::String(argv[1])=="--ai-http-cancel"))return runAiHttpTest(argv[2],juce::String(argv[1])=="--ai-http-cancel");
-    runImprovementIOTests();runAiTests();runStudioIOTests();
+    runVocalStudioIOTests();runImprovementIOTests();runAiTests();runStudioIOTests();
     {
         // New playback semantics require schema 5 so older builds reject rather
         // than silently dropping offsets, loop phase or the effective take feel.

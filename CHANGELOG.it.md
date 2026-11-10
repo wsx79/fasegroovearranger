@@ -2,6 +2,8 @@
 
 ## Non pubblicato
 
+- Vocal Studio 01B: dati opzionali per testo/sillabe inglesi con associazioni persistenti alle note, editor che riutilizza piano roll/timeline, regioni vocali e test Undo/salvataggio. Qixuan resta candidata non attivata; rendering cantato non implementato. Dettagli in docs/VOCAL_STUDIO.md.
+
 ## 0.43.2
 
 - Piano roll: Selezione è lo strumento iniziale e viene ripristinato quando si rientra nell’editor; restano memorizzati scala evidenziata, griglia, traccia di riferimento, corsia MIDI e vista note della chitarra.

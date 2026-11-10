@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Vocal Studio 01B: optional English lyric/syllable metadata with persistent note links, a modeless editor reusing the piano roll/timeline, vocal-region policy and Undo/save/reopen coverage. Qixuan is a non-activated candidate; singing rendering is not implemented. See docs/VOCAL_STUDIO.md.
+
 ## 0.43.2
 
 - Piano roll defaults to Select and restores that tool when re-entering the editor; scale highlighting, grid, reference track, MIDI lane and guitar note view persist.

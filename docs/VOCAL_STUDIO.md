@@ -1,0 +1,21 @@
+# Vocal Studio — 01B (English only)
+
+This version prepares lyrics and MIDI assignments. **It does not synthesize, preview or render singing.** Transport still plays the track's existing MIDI guide/instrument. Vocal Chops remains the separate sample slicing workflow.
+
+1. Use **Add track → Vocal Studio (English)** for a new manual MIDI track, or right-click an existing manual MIDI clip and select **Vocal Studio (English)…**. Fixed generated instruments, Vocal Chops and audio regions cannot become Vocal Studio clips.
+2. Edit pitch, onset, duration and velocity in the existing piano roll. The modeless Vocal Studio window remains open alongside it; **Show clip in piano roll** returns to the linked clip.
+3. Enter the English lyric draft. Add a syllable/word, edit its text and optionally store a pronunciation override draft, then apply. No automatic lyric rewriting, syllabification or phoneme conversion is performed.
+4. Select the syllable, select one or more notes in the piano roll, then **Assign selected roll notes**. Multiple notes on one syllable form a melisma. A note belongs to at most one syllable; reassignment removes its former link. **Rest / unassign** clears that syllable's links. Unassigned notes are intended to remain silent in a future sung render. Gaps between MIDI notes represent temporal rests.
+5. Set a clip-relative region `[start, end)` in quarter-note beats. The stored vocal policy excludes DJ intro/outro sections unless explicitly overridden. This policy does not mute the existing MIDI guide; it will be consumed by the later renderer. Notes and authored edits are preserved.
+
+**Apply text / settings** commits a draft to the project with Undo support. Add/assign/rest/delete also apply pending text/settings first. Apply before selecting a different syllable or closing the window; unapplied text is a temporary form draft. Undo/Redo updates committed editor values. Syllable labels appear on the existing piano-roll notes where space permits; vocal clips are marked on the existing timeline.
+
+Note IDs survive pitch/timing edits and reordering. Deleted links are removed; new/pasted notes have fresh IDs and require explicit assignment. Split clips shift their regions and retain only links to their surviving notes. Copied clips have independent identities; moved clips retain theirs. Newly expanded loop repetitions require explicit assignment. Vocal tracks stay independent when the timeline is folded, avoiding loss of their metadata.
+
+Voice selection offers **No voice selected** and **Qixuan (candidate only)**. A local folder can be remembered, with errors for a missing directory/configuration. Finding `dsconfig.yaml` is not compatibility validation. No model is loaded, downloaded, activated, bundled or redistributed. Pronunciation and expression support remain unverified; stored overrides are drafts, not an operational engine feature.
+
+Approved direction: DiffSinger/OpenUtau, local helper, offline rendering, English only, no mandatory cloud/subscription/proprietary model. The helper and render pipeline belong to 01C and are not implemented here. Qixuan must pass a precise license review before actual use. Its [published terms](https://github.com/yqzhishen/qixuan-diffsinger/blob/main/terms_of_use/Terms_of_Use.zh-CN.md) distinguish output use, AI/voice/engine attribution, model modification and redistribution obligations. The [required community vocoder](https://openvpi.github.io/vocoders/) has separate terms. Selecting the candidate does not approve those terms. Voice folders are not collected into portable projects.
+
+Existing `.fga` projects default to ordinary MIDI. Vocal metadata uses an optional, validated `vocalStudio` extension (schema 1, language `en`) without changing existing MIDI arrays or project version semantics. Use this build to preserve vocal metadata: older applications may ignore and drop unknown fields when saving. Audio blobs are not embedded.
+
+Validation entry points: the existing core/IO suites include Vocal Studio tests; `--vocal-studio-test <absolute-output-folder>` exercises the real editor controls, Undo/Redo, note identity, region policy, actual file save/reopen and missing-model/stale-window handling. This is a data/UI check, not an audio quality or singing test. See `02_STATUS.md` for results actually executed.

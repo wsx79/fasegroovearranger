@@ -1,18 +1,23 @@
 # Codex persistent state (keep brief)
 
-- Last verified baseline by planning assistant: v0.43.2; re-check current HEAD.
-- Current phase: 01 VOCAL STUDIO
-- Current substep: 01A DISCOVERY / DECISION GATE
-- Status: NOT STARTED
-- Product decisions: voice first; existing musical generation satisfactory; guide sounds remain guides.
-- Confirmed changes: none.
-- Tests executed in this plan: none.
-- Open decisions: vocal engine architecture, licensed voicebanks, local vs opt-in service, supported languages, minimum target platforms.
-- Next action: read `phases/01_VOCAL_STUDIO.md`, perform **01A only**, return recommendation and wait for authorization before implementing 01B.
-
-Update after every authorized substep. Keep <=35 lines; archive lengthy evidence in targeted docs only if necessary.
-
-## Vocal architecture clarification
-- Phase 01: Vocal Studio = synthesized singing from lyrics and MIDI.
-- Phase 02: Vocal Chops = edit/sequence user-supplied vocal audio; inspect existing implementation first.
-- These are two distinct engines/workflows.
+- Baseline: v0.43.2; branch Vocaltest; starting HEAD 0dcf59a58fdb5680809d7e27511b3b71d9fbed23.
+- Current phase: 01 VOCAL STUDIO.
+- Current substep: 01B PROJECT DATA / UI MVP.
+- Status: 01B COMPLETE (data/UI only); Linux validation passed. Singing remains unavailable.
+- 01A approved: DiffSinger/OpenUtau, local helper, offline rendering.
+- Language: ENGLISH ONLY; Italian is not required.
+- No mandatory cloud, subscription or proprietary model.
+- Qixuan: candidate only; no model installed/loaded/activated/redistributed.
+- Before use: verify exact voicebank/vocoder versions, output rights, attribution and redistribution terms.
+- Vocal Studio and sample-based Vocal Chops remain separate.
+- Data: optional vocal clip extension, stable clip/note/syllable IDs, English lyrics and phoneme drafts.
+- UI: existing piano roll/timeline; assignments, melisma, rests, clip-relative vocal region and intro/outro override.
+- Voice selection: none or Qixuan candidate; missing folder/config errors; capabilities explicitly unverified.
+- Persistence: optional validated metadata, existing MIDI arrays/old projects preserved; Undo/Redo.
+- Audio: existing MIDI guide only. No helper, singing synthesis, render, preview, cache or audio bounce implemented.
+- PASS: Linux app/IO/engine builds; final core CTest 8/8; project_io and audio_engine 2/2.
+- PASS: --vocal-studio-test (14 checks, including screenshot); --piano-roll-test (12 checks); git diff --check.
+- NOT RUN: Windows/macOS, physical audio device, family_updater/sample_browser suites and VST3 host tests.
+- NOT RUN: singing render/alignment/listening (01C not authorized; no models installed).
+- Docs: docs/VOCAL_STUDIO.md; relevant Unreleased changelogs only; version unchanged.
+- Next gate: report verified 01B results; await explicit authorization for 01C.

@@ -469,6 +469,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     startTimerHz(20);
 }
 MainComponent::~MainComponent(){
+    vocalStudioWindow.reset();
     acceptTargetEdit=false;
     if(recoveryArmed)closeRecoverySession(recoveryDirectory());
     if(dismissChordPopover)dismissChordPopover();dismissChordPopover={};
