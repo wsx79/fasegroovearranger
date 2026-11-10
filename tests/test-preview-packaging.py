@@ -29,6 +29,9 @@ with TemporaryDirectory() as temp:
         repo.mkdir();(repo / licence).write_text('synthetic licence fixture')
         (repo / 'code.cpp').write_text('source fixture')
         if repo == root: (repo / 'VOCALTEST_QUICKSTART.it.md').write_text('synthetic manual')
+        else:
+            scanner = repo / 'modules/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp'
+            scanner.parent.mkdir(parents=True);scanner.write_text('upstream scanner fixture')
         git(repo, 'init');git(repo, 'add', '.')
         git(repo, '-c', 'user.name=Fixture', '-c', 'user.email=fixture@example.invalid', 'commit', '-m', 'fixture')
     (stage / 'Standalone').mkdir(parents=True)
@@ -47,6 +50,17 @@ with TemporaryDirectory() as temp:
                 if p.is_file():z.write(p,p.relative_to(stage))
     pack();verify_preview(archive)
     manifest=json.loads((stage/'PREVIEW.json').read_text());assert manifest['guide_render'].startswith('NOT RUN')
+    scanner.write_text('actual configured scanner fixture')
+    patched = base / 'patched-stage';patched.mkdir()
+    add_preview(patched,root,juce,app,sha)
+    with zipfile.ZipFile(patched/'Source/JUCE-source.zip') as src:
+        assert src.read(scanner.relative_to(juce).as_posix()) == scanner.read_bytes()
+        assert 'FGA_MODIFICATIONS.md' in src.namelist() and 'FGA_MODIFICATIONS.diff' in src.namelist()
+    changed=json.loads((patched/'PREVIEW.json').read_text())['source']['JUCE']['modified_files']
+    assert scanner.relative_to(juce).as_posix() in changed
+    (juce/'code.cpp').write_text('unexpected source change')
+    rejects(lambda: add_preview(base/'unknown-juce-stage',root,juce,app,sha))
+    (juce/'code.cpp').write_text('source fixture')
     (stage/'sox.exe').write_text('unapproved runtime');pack();rejects(lambda: verify_preview(archive));(stage/'sox.exe').unlink()
     (stage/'Source/JUCE-source.zip').unlink();pack();rejects(lambda: verify_preview(archive))
     (root/'code.cpp').write_text('uncommitted changed source');rejects(lambda: add_preview(base/'other',root,juce,app,sha))

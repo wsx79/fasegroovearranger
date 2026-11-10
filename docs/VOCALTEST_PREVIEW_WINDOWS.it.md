@@ -14,7 +14,9 @@ presente nel workflow standard: FFmpeg non entra nello ZIP. Risultati definitivi
 e run di riferimento sono riportati in 02_STATUS.md. La terza run ha superato
 anche UI/WAV/MP3 ed effetti VST3, rilevando poi il caso di focus logico perso con
 peer nativo già focalizzato e processo non foreground. Correzione UI minima;
-la stessa asserzione viene mantenuta per la ripetizione Windows.
+la stessa asserzione è passata nella run 42917662978, insieme a tutti i test
+nativi. Il gate dei sorgenti ha poi intercettato gli adattamenti CMake legittimi di
+JUCE: il packaging è stato corretto per includerli effettivamente e viene ripetuto.
 
 ## Gate automatici
 
@@ -43,7 +45,9 @@ licenze, helper **solo sorgente** prepare.pl/COPYING, `LEGGIMI-PRIMA.it.md`,
 PREVIEW.json con SHA e limiti, SOURCE.txt e Source/ con archivi Git dei sorgenti
 esatti FGA e JUCE compilati, rispettive notice e istruzioni rebuild/relink Shine.
 I source ZIP sono completi per i file tracciati, non semplici URL a commit locali;
-checkout modificati o submodule non censiti vengono rifiutati. Il verificatore
+modifiche inattese o submodule non censiti vengono rifiutati. Gli adattamenti
+JUCE già applicati dal CMake del progetto sono inclusi nello snapshot effettivo,
+con diff, notice datata e hash dei file modificati, invece di copiare solo HEAD upstream. Il verificatore
 controlla checksum e integrità degli archivi prima dell'upload.
 
 ## Sintesi vocale e limiti

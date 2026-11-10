@@ -30,13 +30,36 @@ def add_preview(stage, root, juce, app, sha):
         revision = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
         if name == 'FaseGrooveArranger' and revision != sha:
             raise ValueError('Source SHA differs from tested checkout')
-        if subprocess.check_output(['git', '-C', str(repo), 'diff', 'HEAD', '--name-only']).strip():
-            raise ValueError('Source changed after checkout: ' + name)
+        changed = subprocess.check_output(['git', '-C', str(repo), 'diff', 'HEAD', '--name-only', '-z']).decode().split('\0')
+        changed = [path for path in changed if path]
+        adaptations = {'modules/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp',
+                       'modules/juce_events/native/juce_Messaging_linux.cpp'}
+        if changed and (name != 'JUCE' or not set(changed).issubset(adaptations)):
+            raise ValueError('Unexpected source changes: ' + name + ': ' + ', '.join(changed))
         if b'160000 ' in subprocess.check_output(['git', '-C', str(repo), 'ls-files', '--stage']):
             raise ValueError('Submodule sources need an explicit complete-source review')
         archive = source / (name + '-source.zip')
-        subprocess.run(['git', '-C', str(repo), 'archive', '--format=zip', 'HEAD', '--output', str(archive)], check=True)
-        revisions[name] = {'commit': revision, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest()}
+        modified = {}
+        if name == 'JUCE':
+            # CMake applies the project's existing WaveShell/host-context fixes.
+            # Archive actual compiled bytes, not the unpatched upstream Git tree.
+            paths = subprocess.check_output(['git', '-C', str(repo), 'ls-files', '-z']).decode().split('\0')
+            with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as out:
+                for relative in filter(None, paths):
+                    path = repo / relative
+                    if path.is_symlink() or not path.is_file():
+                        raise ValueError('Review source link/missing file: ' + relative)
+                    out.write(path, relative)
+                date = subprocess.check_output(['git', '-C', str(root), 'show', '-s', '--format=%cs', 'HEAD'], text=True).strip()
+                out.writestr('FGA_MODIFICATIONS.md', f'JUCE adapted by FaseGroove Arranger build scripts, {date}.\n'
+                    f'Application revision: {sha}; upstream JUCE revision: {revision}.\n'
+                    'Original copyright/licence notices are retained. See the included patch and application cmake/ScanWaveShell.cmake and cmake/LinuxEventLoop.cmake.\n'
+                    'Archive files contain the exact working-tree source used by this build.\n')
+                out.writestr('FGA_MODIFICATIONS.diff', subprocess.check_output(['git', '-C', str(repo), 'diff', 'HEAD', '--binary']))
+            modified = {p: hashlib.sha256((repo / p).read_bytes()).hexdigest() for p in changed}
+        else:
+            subprocess.run(['git', '-C', str(repo), 'archive', '--format=zip', 'HEAD', '--output', str(archive)], check=True)
+        revisions[name] = {'commit': revision, 'sha256': hashlib.sha256(archive.read_bytes()).hexdigest(), 'modified_files': modified}
     (source / 'BUILD.txt').write_text('Extract both source ZIPs into separate directories.\n'
         'Build with MSVC x64, CMake >=3.22 and Python 3:\n'
         'cd FaseGrooveArranger\n'
@@ -77,3 +100,6 @@ def verify_preview(archive):
             with zipfile.ZipFile(io.BytesIO(data)) as src:
                 if licence not in src.namelist() or src.testzip() is not None:
                     raise ValueError('Corresponding source/licence missing: ' + name)
+                for path, checksum in manifest['source'][name].get('modified_files', {}).items():
+                    if hashlib.sha256(src.read(path)).hexdigest() != checksum:
+                        raise ValueError('Compiled source mismatch: ' + path)
