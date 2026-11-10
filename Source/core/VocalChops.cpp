@@ -22,7 +22,8 @@ int Project::addVocalChopsTrack(){
     t.engine.density=.25;t.engine.gate=.5;t.engine.humanize=.1;t.engine.swing=-1;
     generateVocalChops(*this,Scope::track,index,0,settings.seed);return index;
 }
-void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32_t seed){
+void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32_t seed){generateVocalChops(p,scope,track,section,seed,-1);}
+void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32_t seed,int lastClip){
     if(std::none_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.vocalChops;}))return;
     p.normalise();
     for(int ti=trackCount;ti<(int)p.tracks.size();++ti){
@@ -31,7 +32,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
         if(scope==Scope::section&&p.tracks[(size_t)ti].freeTimeline){for(double at:{p.sectionStart(section),p.sectionStart(section+1)}){const int ci=p.clipAtBeat(ti,at);if(ci>=0&&!p.tracks[(size_t)ti].clips[(size_t)ci].locked&&p.clipStart(ti,ci)<at)p.splitClip(ti,ci,at);}}
         auto& t=p.tracks[(size_t)ti];
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,ci)):ci;
-            if(c.locked||(scope==Scope::clip&&ci!=section)||(scope==Scope::section&&guide!=section))continue;
+            if(c.locked||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&guide!=section))continue;
             if(seed)c.seed=hash(seed+ti*131U+ci*977U);else if(c.seed<=1)c.seed=hash(p.settings.seed+ti*131U+ci*977U);
             c.feel={takeFeel(t.engine.density,c.feel[0],p.settings.density),takeFeel(t.engine.swing,c.feel[1],p.settings.swing),takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize)};
             const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=takeFeel(t.engine.density,c.feel[0],p.settings.density);
@@ -48,7 +49,9 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
                     const double human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);at+=((int)(r%201)-100)*human*.0002;
                     if(at>=beats)continue;
                     const double length=std::min(beats-at,std::clamp(t.engine.gate*.5,.0625,.75));
-                    const auto chord=chordAtBeat(resolveSectionHarmony(p,guide),p.clipStart(ti,ci)+std::max(0.,at));
+                    const auto harmony=resolveSectionHarmony(p,guide);const double cycle=harmony.chordCount*harmony.chordSteps*.25;
+                    const double absolute=p.clipStart(ti,ci)-(period>0?c.loopPhase:0.)+std::max(0.,at);
+                    const auto chord=chordAtBeat(harmony,std::fmod(std::fmod(absolute,cycle)+cycle,cycle));
                     int pitch=t.sampleRoot;
                     if(t.instrument=="internal"){const int intervals[]{0,chord.third,chord.fifth,12};pitch=60+chord.rootPc+intervals[(r>>8)%4];}
                     else if(t.sampler.mode==2&&t.sampler.sliceCount>0)pitch=t.sampler.sliceBase+(int)((r>>8)%(unsigned)t.sampler.sliceCount);

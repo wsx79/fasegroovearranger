@@ -2,6 +2,17 @@
 
 ## Non pubblicato
 
+## 0.43.1
+
+- Corretti i loop generati di una/due battute che diventavano silenziosi a causa delle pause previste per sezioni lunghe.
+- Le Strings rigenerate esplicitamente con stile globale Off sopravvivono ad Applica e ai cambi armonici; una successiva selezione di Off e un nuovo brano continuano a rispettare lo stile scelto. Lo stato della take viene salvato.
+- Corrette le clip MIDI libere rigenerate attraverso armonie di sezione indipendenti: la take selezionata viene separata ai cambi armonici conservando periodo/fase dei loop, blocchi, materiale escluso e l’intervallo completo delle automazioni. Inclusi i Vocal chops con suono guida intonato.
+- Corretta la rigenerazione dei loop con fase non nulla, anche quando la sorgente precede il beat zero; celle degli accordi nel righello allineate alla fase armonica realmente suonata.
+- Eliminate le micro-note del Lead prodotte dalle collisioni fra lane umanizzate e dagli attacchi anticipati prima delle pause di frase.
+- Chitarra e Lead Techno/Electro rispettano mute, livelli e ottave delle proprie lane.
+- Evitate le ripetizioni della frase principale di chitarra in Deep e '90s House anche quando cambia il fill finale, con estrazioni limitate dal motore originale del genere.
+- Aggiunte regressioni su armonia/fase/scope/controlli di tutti i generi, 4.800 estrazioni normalizzate e confronti audio reali prima/dopo. Vedi docs/HARMONY_RECHECK.md.
+
 ## 0.43.0
 
 - Corretta la chiave di traduzione del filtro a campana EQ, distinta dalla campana della batteria, per superare la validazione della famiglia e avviare le build multipiattaforma.

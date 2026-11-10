@@ -22,6 +22,7 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}
+        if(argc==3&&juce::String(argv[1])=="--harmony-recheck-audio")return fga::writeHarmonyRecheckAudio(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--arrangement-audit")return fga::writeArrangementAudit(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--development-audit")return fga::writeDevelopmentAudit(juce::File(argv[2]))?0:1;
         if(argc==3&&juce::String(argv[1])=="--club-audit")return fga::writeClubAudioAudit(juce::File(argv[2]))?0:1;

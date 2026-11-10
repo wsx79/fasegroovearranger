@@ -77,14 +77,15 @@ std::uint32_t freshPianoMotif(const Settings& settings,const sgk::GroovePattern&
     }
     return best;
 }
-// MIDI clips have a one-tick minimum duration. Very close humanized attacks must
-// not turn that minimum into a second lead voice; keep the later attack instead.
+// Competing lanes can humanize the same attack a few milliseconds apart.
+// Keep one attack even when the vendor already cut the preceding voice short.
 void monophonicLead(Clip& clip){
-    constexpr double tick=1./960.;size_t written=0;
+    constexpr double minimumAttack=1./64.;size_t written=0;
     for(size_t read=0;read<clip.notes.size();++read){const Note note=clip.notes[read];
-        while(written>0&&clip.notes[written-1].start+clip.notes[written-1].length>note.start){
+        while(written>0){
             auto& previous=clip.notes[written-1];const double length=note.start-previous.start;
-            if(length<tick){--written;continue;}previous.length=length;break;
+            if(length<minimumAttack){--written;continue;}
+            if(previous.start+previous.length>note.start)previous.length=length;break;
         }
         clip.notes[written++]=note;
     }
@@ -409,7 +410,7 @@ void Project::normalise() {
         for(auto* row:{&e.userVelRight,&e.userVelLeft})for(auto& v:*row)v=std::min((unsigned char)127,v);
         for(auto& v:e.segments)v=std::clamp(v,0,3);
         for(int lane=0;lane<12;++lane){auto i=(size_t)lane;e.laneVolume[i]=finite(e.laneVolume[i],1,0,2);e.laneLevel[i]=finite(e.laneLevel[i],1,0,2);e.laneSwing[i]=finite(e.laneSwing[i],1,0,1.5);e.laneShift[i]=finite(e.laneShift[i],0,-100,100);e.laneOctave[i]=std::clamp(e.laneOctave[i],-2,2);}
-        for(size_t k=0;k<t.clips.size();++k){auto& c=t.clips[k];c.role=std::clamp(c.role,-1,5);if(t.freeTimeline){c.position=finite(c.position,0,0,131072);if(c.role<0)c.role=(int)sections[(size_t)sectionAtBeat(c.position)].type;c.span=finite(c.span,4,1./960.,maxClipBeats);}c.span=finite(c.span,0,0,maxClipBeats);if(c.span>0)c.span=std::max(t.freeTimeline?1./960.:.25,c.span);c.loopLength=finite(c.loopLength,0,0,maxClipBeats);if(c.loopLength>0)c.loopLength=std::max(.25,c.loopLength);
+        for(size_t k=0;k<t.clips.size();++k){auto& c=t.clips[k];c.stringsStyleAtGeneration=std::clamp(c.stringsStyleAtGeneration,-1,10);if(i==2&&c.stringsStyleAtGeneration<0)c.stringsStyleAtGeneration=settings.stringsMode;c.role=std::clamp(c.role,-1,5);if(t.freeTimeline){c.position=finite(c.position,0,0,131072);if(c.role<0)c.role=(int)sections[(size_t)sectionAtBeat(c.position)].type;c.span=finite(c.span,4,1./960.,maxClipBeats);}c.span=finite(c.span,0,0,maxClipBeats);if(c.span>0)c.span=std::max(t.freeTimeline?1./960.:.25,c.span);c.loopLength=finite(c.loopLength,0,0,maxClipBeats);if(c.loopLength>0)c.loopLength=std::max(.25,c.loopLength);
             c.loopPhase=c.loopLength>0?std::fmod(finite(c.loopPhase,0,0,maxClipBeats),c.loopLength):0;
             c.clipFadeIn=finite(c.clipFadeIn,0,0,30);c.clipFadeOut=finite(c.clipFadeOut,0,0,30);for(auto& lane:c.expression)lane.normalise(clipLength((int)(&t-tracks.data()),(int)(&c-t.clips.data())),1);
             c.audioOffset=finite(c.audioOffset,-1,-1,maxAudioRegionSeconds);c.audioDuration=finite(c.audioDuration,0,0,maxAudioRegionSeconds);
@@ -780,8 +781,8 @@ std::string chordNameAt(const Project& p,double beat){
 void chordCell(const Project& p,double beat,double& start,double& end,std::string& name){
     beat=std::max(0.,beat);const int sec=p.sectionAtBeat(beat);const auto harmony=resolveSectionHarmony(p,sec);
     const double chordBeats=std::max(.25,harmony.chordSteps*.25);const double secStart=p.sectionStart(sec);
-    const double into=std::max(0.,beat-secStart);start=secStart+std::floor(into/chordBeats)*chordBeats;
-    const double secEnd=p.sectionStart(sec+1);end=secEnd>start?std::min(start+chordBeats,secEnd):start+chordBeats;
+    start=std::max(secStart,std::floor(beat/chordBeats)*chordBeats);
+    const double secEnd=p.sectionStart(sec+1);const double next=(std::floor(beat/chordBeats)+1)*chordBeats;end=secEnd>start?std::min(next,secEnd):next;
     if(end<=start)end=start+chordBeats;name=chordNameAt(p,start);
 }
 namespace {
@@ -831,6 +832,9 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         for(auto& n:clip.notes)n.length=std::min(n.length,end-n.start);
     }
     if(sec.bars<8||(sec.type!=Section::main&&sec.type!=Section::drop))return;
+    // A short explicit source must contain its phrase before it is repeated.
+    // Applying a full-section entry mask here could loop silence indefinitely.
+    if(clip.loopLength>0&&clip.loopLength<32)return;
     // Repeated verses/drops develop across the song, independently of seed
     // variation. Preserve the kick/bass foundation and explicit user patterns.
     int preceding=0,total=0;
@@ -865,7 +869,17 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         }
         return true;
     };
-    auto& notes=clip.notes;notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return !active(n.start);}),notes.end());
+    auto& notes=clip.notes;
+    for(auto& n:notes){
+        const double boundary=(std::floor(n.start/4)+1)*4;
+        // An early humanised downbeat belongs to the following phrase. Avoid
+        // chopping it into a click immediately before a compositional rest.
+        if(boundary-n.start<=1./32.&&active(n.start)!=active(boundary)){
+            if(!active(boundary))n.length=-1;
+            else{n.length-=boundary-n.start;n.start=boundary;}
+        }
+    }
+    notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return n.length<=0||!active(n.start);}),notes.end());
     for(auto& n:notes){const double next=(std::floor(n.start/4)+1)*4;for(double at=next;at<n.start+n.length;at+=4)if(!active(at)){n.length=at-n.start;break;}}
 }
 void shapeMixSection(Clip& clip,int genre,int track,Section type,int bars) {
@@ -908,20 +922,20 @@ void varySongTempo(Project& p,std::uint32_t seed){
     const int current=(int)std::lround(s.bpm),span=profile.maxBpm-profile.minBpm;
     if(span>0){int pick=profile.minBpm+(int)(mix(seed+1301U)%(unsigned)span);if(pick>=current)++pick;s.bpm=pick;}
 }
-bool editableTake(const Project& p,Scope scope,int track,int section,int ti,int ci){
+bool editableTake(const Project& p,Scope scope,int track,int section,int ti,int ci,int lastClip=-1){
     const auto& t=p.tracks[(size_t)ti];if(!hasGenerator(t)||t.locked||t.clips[(size_t)ci].locked)return false;
     if((scope==Scope::track||scope==Scope::clip)&&ti!=track)return false;
-    if(scope==Scope::clip)return ci==section;
+    if(scope==Scope::clip)return ci>=section&&ci<=(lastClip<0?section:lastClip);
     return scope!=Scope::section||(t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,ci)):ci)==section;
 }
-void prepareGenerationFeel(Project& p,Scope scope,int track,int section,std::uint32_t seed){
+void prepareGenerationFeel(Project& p,Scope scope,int track,int section,std::uint32_t seed,int lastClip=-1){
     bool editable=false;
     for(int ti=0;ti<(int)p.tracks.size();++ti)for(int ci=0;ci<(int)p.tracks[(size_t)ti].clips.size();++ci)
-        editable=editable||editableTake(p,scope,track,section,ti,ci);
+        editable=editable||editableTake(p,scope,track,section,ti,ci,lastClip);
     if(!editable)return;
     for(int ti=0;ti<(int)p.tracks.size();++ti){auto& t=p.tracks[(size_t)ti];if(!hasGenerator(t)||t.locked)continue;bool selected=false;
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];if(c.locked)continue;
-            if(editableTake(p,scope,track,section,ti,ci)){c.feel={-1,-1,-1};selected=true;}
+            if(editableTake(p,scope,track,section,ti,ci,lastClip)){c.feel={-1,-1,-1};selected=true;}
             else c.feel={takeFeel(t.engine.density,c.feel[0],p.settings.density),takeFeel(t.engine.swing,c.feel[1],p.settings.swing),takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize)};
         }
         if(selected)t.engine.density=t.engine.swing=t.engine.humanize=-1;
@@ -1105,7 +1119,59 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
     next.loopStart=0;next.loopEnd=next.length();next.normalise();project=std::move(next);return true;
 }
 
-static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed);
+// A free MIDI clip may cross independently harmonised sections. Partition only
+// editable generated material; loop sources keep their period and phase through
+// the normal timeline slice operation. Work on a copy so resource limits cannot
+// leave a partially split selection behind.
+static int partitionHarmonyClips(Project& p,Scope scope,int track,int section){
+    struct Cut{int track,index;double beat;bool loop;};std::vector<Cut> cuts;
+    for(int ti=(int)p.tracks.size()-1;ti>=0;--ti){const auto& t=p.tracks[(size_t)ti];
+        if((!isHarmonicTrack(t.kind)&&!(t.vocalChops&&t.instrument=="internal"))||!t.freeTimeline||t.locked)continue;
+        for(int ci=(int)t.clips.size()-1;ci>=0;--ci){const auto& c=t.clips[(size_t)ci];
+            if(c.audioOffset>=0||!editableTake(p,scope,track,section,ti,ci))continue;
+            const double begin=p.clipStart(ti,ci),end=begin+p.clipLength(ti,ci);
+            for(int si=(int)p.sections.size()-1;si>0;--si){const double at=p.sectionStart(si);if(at<=begin+1./960.||at>=end-1./960.)continue;
+                const auto a=resolveSectionHarmony(p,si-1),b=resolveSectionHarmony(p,si);
+                if(a.key!=b.key||a.scale!=b.scale||a.chordSteps!=b.chordSteps||!sameHarmony(a,b))cuts.push_back({ti,ci,at,c.loopLength>0});
+            }
+        }
+    }
+    if(cuts.empty())return -1;
+    auto edited=p;int lastClip=scope==Scope::clip?section:-1;
+    for(const auto& cut:cuts){if(edited.splitClip(cut.track,cut.index,cut.beat)<0)throw std::length_error("Cannot partition the generated harmony selection");if(!cut.loop)for(int ci:{cut.index,cut.index+1}){auto& c=edited.tracks[(size_t)cut.track].clips[(size_t)ci];c.loopLength=c.loopPhase=0;c.loopSource.clear();}if(scope==Scope::clip)++lastClip;}
+    // Keep track/engine references held by the inspector valid.
+    std::vector<bool> changed(p.tracks.size());for(const auto& cut:cuts)changed[(size_t)cut.track]=true;
+    for(size_t ti=0;ti<changed.size();++ti)if(changed[ti])p.tracks[ti].clips=std::move(edited.tracks[ti].clips);
+    return lastClip;
+}
+static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed,int lastClip=-1);
+static void randomiseAutomationRange(Project&,Scope,int,int,std::uint32_t,int,double);
+// Compare the audible entry and its phrase, rather than the distant turnaround.
+// No velocity, octave/transposition or sub-sixteenth timing can count as variety.
+static std::vector<std::pair<int,int>> primaryGuitarPhrase(const Clip& clip){
+    std::vector<std::pair<int,int>> result;if(clip.notes.empty())return result;
+    const double from=std::floor(clip.notes.front().start/4)*4,to=std::max(from+4,std::min(from+16,28.));int first=-1;
+    for(const auto& note:clip.notes){if(note.start<from)continue;if(note.start>=to)break;if(note.length<1./64.)continue;if(first<0)first=note.pitch;result.emplace_back((int)std::lround((note.start-from)*4),note.pitch-first);}
+    std::sort(result.begin(),result.end());result.erase(std::unique(result.begin(),result.end()),result.end());return result;
+}
+static std::uint32_t freshGuitarMotif(const Project& p,int index,std::uint32_t seed,std::uint32_t performance){
+    const auto& previous=p.tracks[3].clips[(size_t)index];const auto old=primaryGuitarPhrase(previous);
+    if(old.empty()||performance==1||(previous.loopLength>32&&previous.loopPhase>0))return seed;
+    auto probe=p;
+    // Keep form, harmony and instrument settings, but discard unrelated MIDI.
+    // Candidate work is limited to an eight-bar source and sixteen family draws.
+    for(auto& t:probe.tracks)for(auto& c:t.clips){c.notes.clear();c.loopSource.clear();}
+    auto& track=probe.tracks[3];track.engine.pattern=-1;track.engine.riffSeed=0;
+    auto& clip=track.clips[(size_t)index];clip.span=std::min(32.,p.clipLength(3,index));if(clip.loopLength>32)clip.loopLength=32;
+    for(unsigned attempt=0;attempt<16;++attempt){const auto candidate=attempt?mix(seed+attempt*0x9e3779b9U):seed;
+        clip.seed=performance;clip.motifSeed=candidate;clip.notes.clear();clip.loopSource.clear();
+        generateNotes(probe,Scope::clip,3,index,0);
+        const auto next=primaryGuitarPhrase(clip);if(!next.empty()&&next!=old)return candidate;
+    }
+    return seed;
+}
+
+
 // Guitar and lead share the piano's section colour. Their engines only have a few
 // chord types, so each piano chord is reduced to the nearest one that does not
 // put a third against a sus, or a natural 9 against b9/#9.
@@ -1159,17 +1225,18 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
         }
     }
 }
-static void transitionMacros(Project& p,Scope scope,int track,int section){for(int si=0;si+1<(int)p.sections.size();++si){if(p.sections[(size_t)(si+1)].type!=Section::drop)continue;const auto& options=p.sections[(size_t)si];const double finish=p.sectionStart(si+1);for(int ti:{0,1,4,5,6,16}){auto& t=p.tracks[(size_t)ti];for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci))continue;auto& c=t.clips[ci];const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=finish-4)continue;if(options.preDropSilence&&(ti==1||ti==4)){const double silence=finish-2-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[silence](const Note& n){return n.start>=silence;}),c.notes.end());for(auto& n:c.notes)n.length=std::min(n.length,std::max(0.,silence-n.start));}if(options.snareRoll&&(ti==5||ti==6)){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[from,to](const Note& n){return n.start>=from&&n.start<to;}),c.notes.end());for(double at=from;at<to-1e-6;){const double remaining=to-at,step=remaining>2?.5:remaining>1?.25:.125;c.notes.push_back({at,std::min(step*.7,to-at),fgd::defaultNote(ti-4),std::clamp((int)(65+60*(1-remaining/4)),1,127),ti-4});at+=step;}}if(options.reverseCrash&&ti==16&&t.instrument=="sample"){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);if(to>from)c.notes.push_back({from,to-from,t.sampleRoot,105,12,true});}tidyNotes(c,options.preDropSilence&&(ti==1||ti==4)?std::clamp(finish-2-start,0.,length):length);}}}}
+static void transitionMacros(Project& p,Scope scope,int track,int section,int lastClip=-1){for(int si=0;si+1<(int)p.sections.size();++si){if(p.sections[(size_t)(si+1)].type!=Section::drop)continue;const auto& options=p.sections[(size_t)si];const double finish=p.sectionStart(si+1);for(int ti:{0,1,4,5,6,16}){auto& t=p.tracks[(size_t)ti];for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=finish-4)continue;if(options.preDropSilence&&(ti==1||ti==4)){const double silence=finish-2-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[silence](const Note& n){return n.start>=silence;}),c.notes.end());for(auto& n:c.notes)n.length=std::min(n.length,std::max(0.,silence-n.start));}if(options.snareRoll&&(ti==5||ti==6)){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[from,to](const Note& n){return n.start>=from&&n.start<to;}),c.notes.end());for(double at=from;at<to-1e-6;){const double remaining=to-at,step=remaining>2?.5:remaining>1?.25:.125;c.notes.push_back({at,std::min(step*.7,to-at),fgd::defaultNote(ti-4),std::clamp((int)(65+60*(1-remaining/4)),1,127),ti-4});at+=step;}}if(options.reverseCrash&&ti==16&&t.instrument=="sample"){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);if(to>from)c.notes.push_back({from,to-from,t.sampleRoot,105,12,true});}tidyNotes(c,options.preDropSilence&&(ti==1||ti==4)?std::clamp(finish-2-start,0.,length):length);}}}}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
-    if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed);}
-    generateNotes(p,scope,track,section,seed);
-    generateVocalChops(p,scope,track,section,seed);
-    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section);
+    p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
+    if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
+    generateNotes(p,scope,track,section,seed,lastClip);
+    generateVocalChops(p,scope,track,section,seed,lastClip);
+    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
-    if(seed&&p.settings.randomAutomation)randomiseAutomation(p,scope,track,section,seed);
+    if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
 }
-static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
+static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed,int lastClip) {
     p.normalise();
     if(isManualTrack(track)&&(scope==Scope::track||scope==Scope::clip))return;
     if(track<0||track>=(int)p.tracks.size()||section<0||(scope==Scope::clip?section>=(int)p.tracks[(size_t)track].clips.size():section>=(int)p.sections.size())) throw std::out_of_range("Generation selection");
@@ -1178,10 +1245,10 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
     if(seed&&!p.tracks[0].locked&&(scope==Scope::song||scope==Scope::section||track==0)){
         const auto& piano=p.tracks[0];
         for(size_t ci=0;ci<piano.clips.size();++ci){const auto& c=piano.clips[ci];const int guide=piano.freeTimeline?p.sectionAtBeat(p.clipStart(0,(int)ci)):(int)ci;
-            if(c.locked||(scope==Scope::clip&&(int)ci!=section)||(scope==Scope::section&&guide!=section))continue;
+            if(c.locked||(scope==Scope::clip&&((int)ci<section||(int)ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&guide!=section))continue;
             previousPiano=sgk::GrooveEngine::basePattern(pianoEngineSettings(p,0,c.seed,c.motifSeed));break;}
     }
-    if(seed)prepareGenerationFeel(p,scope,track,section,seed);
+    if(seed)prepareGenerationFeel(p,scope,track,section,seed,lastClip);
     const auto previousSongSeed=p.settings.seed;
     if(seed&&scope==Scope::song) {
         p.settings.seed=seed;
@@ -1192,6 +1259,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
         varySongTempo(p,seed);renewForm(p);varyForm(p,seed);
     }
+    if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);
     const auto& s=p.settings;
     const auto& profile=genreProfile(s.genre);
     for(int ti=0;ti<trackCount;++ti) {
@@ -1201,7 +1269,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         auto selectedMotif=mix(seed+(isDrumTrack(ti)?313U:(std::uint32_t)ti*131U));
         for(size_t si=0;si<t.clips.size();++si) {
             const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,(int)si)):(int)si;
-            if((scope==Scope::section&&guide!=section)||(scope==Scope::clip&&(int)si!=section))continue;
+            if((scope==Scope::section&&guide!=section)||(scope==Scope::clip&&((int)si<section||(int)si>(lastClip<0?section:lastClip))))continue;
             auto& clip=t.clips[si]; if(clip.locked) continue;
             if(seed&&!prepared) {
                 // Explicit regeneration leaves fixed presets and seed overrides behind.
@@ -1213,13 +1281,22 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                     // Scan only editable targets so a locked/excluded take never
                     // steers a local regeneration, and share the result across sections.
                     size_t reference=si,best=0;
-                    for(size_t ci=0;ci<t.clips.size();++ci)if(editableTake(p,scope,track,section,ti,(int)ci)){
+                    for(size_t ci=0;ci<t.clips.size();++ci)if(editableTake(p,scope,track,section,ti,(int)ci,lastClip)){
                         size_t attacks=0;for(const auto& note:t.clips[ci].notes){if(note.start>=16.)break;++attacks;}
                         if(attacks>best){best=attacks;reference=ci;}
                     }
                     const double start=p.clipStart(ti,(int)reference);const int guide=p.sectionAtBeat(start);
                     const double sourceBeats=t.clips[reference].loopLength>0?t.clips[reference].loopLength:p.clipLength(ti,(int)reference);
                     selectedMotif=freshElectronicMotif(p,t.clips[reference],ti,start,sourceBeats,p.sections[(size_t)guide].type,selectedMotif);
+                }else if(ti==3&&!isElectronicGenre(s.genre)){
+                    size_t reference=si,best=0;
+                    for(size_t ci=0;ci<t.clips.size();++ci)if(editableTake(p,scope,track,section,ti,(int)ci,lastClip)){
+                        const int guide=t.freeTimeline?p.sectionAtBeat(p.clipStart(ti,(int)ci)):(int)ci;
+                        const auto role=p.sections[(size_t)guide].type;if(role!=Section::main&&role!=Section::drop)continue;
+                        size_t notes=0;for(const auto& n:t.clips[ci].notes)if(n.start<28)++notes;
+                        if(notes>best){best=notes;reference=ci;}
+                    }
+                    if(best)selectedMotif=freshGuitarMotif(p,(int)reference,selectedMotif,mix(seed+3U*131U+(std::uint32_t)reference*977U));
                 }else if(ti==0){auto settings=s;if(scope!=Scope::song&&e.density>=0)settings.density=e.density;selectedMotif=freshPianoMotif(settings,previousPiano,selectedMotif);}
                 if(ti<3&&std::any_of(e.segmentLocked.begin(),e.segmentLocked.end(),[](bool locked){return locked;})) {
                     const auto previousMotif=clip.motifSeed?clip.motifSeed:mix(previousSongSeed+(std::uint32_t)ti*131U);
@@ -1240,9 +1317,10 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             const double period=clip.loopLength,duration=p.clipLength(ti,(int)si);
             clip.loopSource.clear();
             const double beats=period>0?period:duration;const int renderBars=(int)std::ceil(beats/4.); const auto type=p.sections[(size_t)guide].type;if(t.freeTimeline)clip.role=(int)type;
-            const double begin=p.clipStart(ti,(int)si);
+            const double begin=p.clipStart(ti,(int)si)-(period>0?clip.loopPhase:0.);
             const double chordBeats=resolveSectionHarmony(p,guide).chordSteps*.25;
-            const double prefix=(ti<4||ti==leadTrack)?std::fmod(begin,std::max(4.,chordBeats)):0.;
+            const double grid=std::max(4.,chordBeats);
+            const double prefix=(ti<4||ti==leadTrack)?std::fmod(std::fmod(begin,grid)+grid,grid):0.;
             const double harmonicBeats=beats+prefix;
             const int harmonicBars=(int)std::ceil(harmonicBeats/4.);
             auto harmonicNotes=[&](const auto& events,auto filter){
@@ -1259,19 +1337,21 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             // off, so a later song generate does not keep a pad the user never chose.
             const bool requestedPart=seed!=0&&(scope==Scope::track||scope==Scope::clip)&&ti==track;
             const bool stringsRequest=ti==2&&ti==track&&seed!=0&&(!isElectronicGenre(s.genre)||requestedPart)&&scope!=Scope::song;
+            const bool keepStrings=ti==2&&s.stringsMode==0&&!clip.notes.empty()&&clip.stringsStyleAtGeneration==0&&!(seed&&scope==Scope::song);
             auto ps=pianoEngineSettings(p,ti,clip.seed,clip.motifSeed,&clip);
-            if(stringsRequest&&p.settings.stringsMode==0)ps.strings=sgk::StringsMode::pad;
+            if((stringsRequest||keepStrings)&&p.settings.stringsMode==0)ps.strings=sgk::StringsMode::pad;
             const bool mixing=type==Section::intro||type==Section::outro;
             // Soulful/gospel/afro lifts keep the groove rather than switching to
             // the plugin's generic accelerating snare/piano build pattern.
             const auto engineType=type==Section::buildup&&!profile.rollingBuild?Section::main:type;
             const auto rhythmType=mixing?Section::main:engineType;
-            const int chordOffset=(int)std::llround((begin-prefix)/(ps.stepsPerChord*.25))%ps.progressionLength;
+            const int rawOffset=(int)std::llround((begin-prefix)/(ps.stepsPerChord*.25));
+            const int chordOffset=(rawOffset%ps.progressionLength+ps.progressionLength)%ps.progressionLength;
             for(auto* row:{&ps.progression,&ps.freeChords,&ps.inversions})
                 std::rotate(row->begin(),row->begin()+chordOffset,row->begin()+ps.progressionLength);
             if(mixing){ps.fillEveryBars=0;ps.variationEvery=0;}
-            const bool manualPart=requestedPart||(scope!=Scope::song&&!clip.notes.empty());
-            const bool electronicRendered=isElectronicGenre(s.genre)&&e.pattern<0&&generateElectronicClip(p,clip,ti,p.clipStart(ti,(int)si),beats,type,manualPart);
+            const bool manualPart=requestedPart||keepStrings||(scope!=Scope::song&&!clip.notes.empty());
+            const bool electronicRendered=isElectronicGenre(s.genre)&&e.pattern<0&&generateElectronicClip(p,clip,ti,begin,beats,type,manualPart,0,guide);
             if(!electronicRendered){
             if(ti<3) {
                 ps.section=(sgk::Section)(ti==1?rhythmType:engineType); ps.sectionVariation=clip.seed;
@@ -1350,6 +1430,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
             if(p.settings.grooveEnabled)for(auto& n:clip.notes){const int slot=((int)std::llround(n.start*4)%16+16)%16;n.start=std::max(0.,n.start+p.settings.grooveOffsets[(size_t)slot]);n.velocity=std::clamp((int)std::lround(n.velocity*p.settings.grooveAccents[(size_t)slot]),1,127);}
+            if(ti==2)clip.stringsStyleAtGeneration=s.stringsMode;
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
             if(period>0){clip.loopSource=clip.notes;if(!rebuildClipLoop(clip,duration))throw std::length_error("Generated loop exceeds the note limit");}
         }
@@ -1388,9 +1469,10 @@ bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     // and the genre-based feel shown by the main controls.
     auto next=mix(seed^(c.seed*2654435761U)^((std::uint32_t)clip*977U));
     if(next==c.seed||next<=1)next=c.seed+2;
+    const double selectionEnd=p.clipStart(track,clip)+p.clipLength(track,clip);
     c.seed=next;
     generate(p,Scope::clip,track,clip,0);
-    if(p.settings.randomAutomation)randomiseAutomation(p,Scope::clip,track,clip,next);
+    if(p.settings.randomAutomation)randomiseAutomationRange(p,Scope::clip,track,clip,next,-1,selectionEnd);
     return true;
 }
 namespace {
@@ -1406,12 +1488,12 @@ struct AutomationDice {
 bool volumeMoves(int ti){return ti==0||ti==2||ti==3||ti==leadTrack||ti==8||ti==9||ti==11||ti==12||ti==13;}
 bool panMoves(int ti){return ti==2||ti==3||ti==leadTrack||ti==9||ti==11||ti==12||ti==13||ti==14;}
 }
-void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){
+static void randomiseAutomationRange(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane,double clipEnd){
     p.normalise();
     if(track<0||track>=(int)p.tracks.size())return;
     double from=0,to=p.length();
     if(scope==Scope::section){if(index<0||index>=(int)p.sections.size())return;from=p.sectionStart(index);to=p.sectionStart(index+1);}
-    if(scope==Scope::clip){const auto& clips=p.tracks[(size_t)track].clips;if(index<0||index>=(int)clips.size())return;from=p.clipStart(track,index);to=from+p.clipLength(track,index);}
+    if(scope==Scope::clip){const auto& clips=p.tracks[(size_t)track].clips;if(index<0||index>=(int)clips.size())return;from=p.clipStart(track,index);to=clipEnd>=0?clipEnd:from+p.clipLength(track,index);}
     if(to-from<1./960.)return;
     const double tick=1./16.;
     for(int ti=0;ti<(int)p.tracks.size();++ti){
@@ -1475,6 +1557,7 @@ void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_
         }
     }
 }
+void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){randomiseAutomationRange(p,scope,track,index,seed,onlyLane,-1.);}
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;
     c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[beats,tick](const Note& n){return !std::isfinite(n.start)||!std::isfinite(n.length)||n.start>beats-tick||n.length<=0||n.pitch<0||n.pitch>127||n.velocity<1||n.velocity>127;}),c.notes.end());

@@ -18,3 +18,4 @@ fi
   tests/CoreTests.cpp -o build/core/arranger-tests
 build/core/arranger-tests build/core
 build/core/arranger-tests --arrangement-review build/core
+build/core/arranger-tests --harmony-recheck

@@ -7,6 +7,33 @@
 #include <iostream>
 
 namespace fga {
+// Eight-bar genre examples with free harmonic clips crossing a local progression
+// change. Store the actual project/MIDI and render its guide mix without redraws.
+inline bool writeHarmonyRecheckAudio(const juce::File& folder){
+    if(folder.createDirectory().failed())return false;
+    AudioEngine audio(AudioEngine::Offline{});juce::AudioFormatManager formats;formats.registerBasicFormats();
+    juce::String report="genre\tbpm\tnotes\trms\traw_peak\n";bool ok=true;
+    for(int genre=0;genre<numGenres;++genre){
+        auto p=newProject(genre);p.settings.randomAutomation=false;p.sections={{Section::main,4,"Theme"},{Section::main,4,"Harmonic reply"}};
+        auto& h=p.sections[1].harmony;h.enabled=true;h.key=p.settings.key;h.scale=p.settings.scale;h.chordCount=p.settings.chordCount;h.chordSteps=p.settings.chordSteps;h.degrees=p.settings.degrees;h.freeChords=p.settings.freeChords;
+        if(h.chordCount>1){const int shift=std::max(1,h.chordCount/2);std::rotate(h.degrees.begin(),h.degrees.begin()+shift,h.degrees.begin()+h.chordCount);std::rotate(h.freeChords.begin(),h.freeChords.begin()+shift,h.freeChords.begin()+h.chordCount);}
+        else h.degrees[0]=3;
+        for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];t.clips.assign(isHarmonicTrack(ti)?1:2,{});t.freeTimeline=isHarmonicTrack(ti);if(t.freeTimeline)t.clips[0].span=32;}
+        p.normalise();generate(p);p.clearLoop();
+        const auto stem="harmony-"+juce::String(genre);const auto midi=midiFile(p);if(!folder.getChildFile(stem+".mid").replaceWithData(midi.data(),midi.size()))return false;
+        if(saveProject(p,folder.getChildFile(stem+".fga")).failed())return false;
+        double peak=0;const auto wav=folder.getChildFile(stem+".wav");if(audio.exportAudio(p,wav,-1,false,[]{return false;},[](double){},&peak).failed())return false;
+        std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(wav));if(!reader)return false;
+        double energy=0;juce::int64 count=0;juce::AudioBuffer<float> buffer(2,8192);
+        for(juce::int64 at=0;at<reader->lengthInSamples;at+=8192){const int n=(int)std::min<juce::int64>(8192,reader->lengthInSamples-at);if(!reader->read(&buffer,0,n,at,true,true))return false;
+            for(int ch=0;ch<2;++ch)for(int i=0;i<n;++i){const double v=buffer.getSample(ch,i);if(!std::isfinite(v))return false;energy+=v*v;++count;}}
+        const double rms=std::sqrt(energy/std::max<juce::int64>(1,count));ok=std::isfinite(peak)&&peak<.9985&&rms>.0001&&ok;
+        size_t notes=0;for(const auto& t:p.tracks)for(const auto& c:t.clips)notes+=c.notes.size();
+        report+=juce::String(genres()[(size_t)genre])+"\t"+juce::String(p.settings.bpm)+"\t"+juce::String((int)notes)+"\t"+juce::String(rms,7)+"\t"+juce::String(peak,7)+"\n";folder.getChildFile("harmony-audio.tsv").replaceWithText(report);
+        std::cout<<"Harmony audio genre="<<genre<<" rms="<<rms<<" raw_peak="<<peak<<std::endl;
+    }
+    folder.getChildFile("harmony-audio.txt").replaceWithText(ok?"PASS all 15 genre excerpts: finite audible guide audio and raw headroom":"FAIL harmony guide rendering/headroom");return ok;
+}
 // Render stored eight-bar windows from a regenerated song, including the actual
 // guide mix and absolute-time automation. Complements structural MIDI checks.
 inline bool writeArrangementAudit(const juce::File& folder){

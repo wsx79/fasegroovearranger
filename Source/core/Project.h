@@ -53,7 +53,10 @@ struct Clip {
     std::uint32_t motifSeed = 0;
     // Empty shows the section name. A custom label stays with the clip through edits.
     std::string name;
-    bool operator==(const Clip& o) const { return notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
+    // Saved default when this take was rendered; preserves an explicit Strings take
+    // while distinguishing a later user change to Off. -1 migrates legacy clips.
+    int stringsStyleAtGeneration = -1;
+    bool operator==(const Clip& o) const { return stringsStyleAtGeneration == o.stringsStyleAtGeneration && notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
 };
 struct ClipId {
     int track = -1, index = -1;
@@ -264,6 +267,7 @@ bool rebuildClipLoop(Clip&, double duration);
 
 SamplerSettings vocalSamplerSettings();
 void generateVocalChops(Project&,Scope,int track,int section,std::uint32_t seed);
+void generateVocalChops(Project&, Scope, int track, int section, std::uint32_t seed, int lastClip);
 void remapVocalChops(Project&,int track,const SamplerSettings& previous,bool force=false);
 // A new clip variation keeps explicit riff/pattern choices and renews its
 // performance seed and the visible genre-based Density, Swing and Feel.

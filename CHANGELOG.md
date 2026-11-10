@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+## 0.43.1
+
+- Fixed generated one/two-bar loops becoming silent when full-section entry masks removed their entire source.
+- Explicit Strings takes survive Apply and harmony edits while the new-song default is Off; changing the actual style to Off and generating a new song still respect the chosen default. Take provenance survives save/load.
+- Fix regenerated free MIDI clips that cross independent section harmony: partition the selected take at harmonic changes while retaining loop period/phase, locks, excluded material and the full automation range. Include pitched guide vocal chops.
+- Correct nonzero-phase loop regeneration, including source preroll before beat zero, and align ruler chord cells with the harmonic phase actually played.
+- Remove millisecond Lead fragments from competing humanized lanes and early downbeats before phrase rests.
+- Techno/Electro guitar and Lead now respect their actual lane mute, level and octave controls.
+- Avoid repeated primary guitar phrases in Deep and '90s House even when the ending fill differs, with bounded draws from the original genre engine.
+- Add all-genre harmony/phase/scope/control regressions, 4,800 normalized phrase draws and real before/after guide-audio evidence. See docs/HARMONY_RECHECK.md.
+
 ## 0.43.0
 
 - Fix the EQ Bell translation key collision with the drum bell label so the family validation and cross-platform builds can run.

@@ -30,7 +30,9 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.43.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.43.1**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
+La **0.43.1** corregge l’armonia delle clip rigenerate che attraversano progressioni di sezione diverse. Le clip vengono separate al cambio armonico conservando periodo e fase del loop; blocchi e altre clip restano protetti. Gli accordi del righello seguono la fase suonata, il Lead evita micro-note involontarie, le lane elettroniche rispettano i controlli e la rigenerazione della chitarra varia anche la frase principale. I loop corti conservano una sorgente udibile. Una take Strings richiesta con lo stile globale Off non sparisce più premendo Applica: Off rimane il valore predefinito per un nuovo brano. Le note salvate rimangono intatte finché non modifichi o rigeneri. Vedi il [nuovo controllo armonico](HARMONY_RECHECK.md).
 
 Nella **0.43.0**, tutti i 15 generi usano frasi armoniche e arrangiamenti più vari e coerenti. Le nuove canzoni cambiano anche la sequenza delle sezioni; intro e outro automatici offrono 16/32 battute con finestre ritmiche pulite di otto battute per il mix DJ. Risposte del Lead e ingressi delle percussioni sviluppano il brano, con lift differenti per generi organici ed elettronici. Forme personalizzate, armonie locali e blocchi sono rispettati. L’EQ parametrico aggiunge potenziometri Frequenza/Guadagno/Q, valori editabili, icone dei filtri basate sulla risposta reale, impostazioni dell’analizzatore salvate e Undo/Redo coerente. Vedi le revisioni di [arrangiamento](ARRANGEMENT_REVIEW.md), [armonia](HARMONY_REVIEW.md) ed [EQ](EQ_REVIEW.md).
 

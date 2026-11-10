@@ -38,6 +38,11 @@ int main(int argc,char** argv){try{
         invalid=juce::JSON::parse(juce::JSON::toString(fga::projectJson(p)));invalid["tracks"][0]["parameterAutomation"][0].getDynamicObject()->setProperty("index",1);check(fga::projectFromJson(invalid,restored).failed(),"generated Tone ownership cannot target another parameter");
         auto old=juce::JSON::parse(juce::JSON::toString(fga::projectJson(p)));for(auto& lane:*old["tracks"][0]["parameterAutomation"].getArray())lane.getDynamicObject()->removeProperty("generatedTone");check(fga::projectFromJson(old,restored).wasOk()&&!restored.tracks[0].parameters[0].generatedTone,"legacy automation remains user-owned");
     }
+    {auto p=fga::newProject(0);p.settings.stringsMode=1;fga::applyInstrumentChange(p,2,false);p.tracks[2].clips[0].locked=true;p.settings.stringsMode=0;
+        fga::Project loaded;check(fga::projectFromJson(fga::projectJson(p),loaded).wasOk()&&loaded.tracks[2].clips[0]==p.tracks[2].clips[0],"Strings take style and locked notes survive save/load independently of the new global default");
+        loaded.tracks[2].clips[0].locked=false;fga::applyInstrumentChange(loaded,2,false);check(loaded.tracks[2].clips[0].notes.empty(),"a saved change from Pad to Off is applied after unlocking");
+        auto legacy=fga::projectJson(p);for(auto& c:*legacy["tracks"][2]["clips"].getArray())c.getDynamicObject()->removeProperty("stringsStyle");check(fga::projectFromJson(legacy,loaded).wasOk()&&loaded.tracks[2].clips[0].stringsStyleAtGeneration==0,"legacy Strings take metadata migrates from its saved default without changing MIDI");
+        auto invalid=fga::projectJson(p);invalid["tracks"][2]["clips"][0].getDynamicObject()->setProperty("stringsStyle",1.5);check(fga::projectFromJson(invalid,loaded).failed(),"malformed Strings take style rejected");}
     for(int genre:{fga::deepHouseGenre,fga::technoGenre,fga::electroHouseGenre}){
         auto p=fga::newProject(genre);fga::Project loaded;
         check(fga::projectFromJson(fga::projectJson(p),loaded).wasOk()&&loaded.settings.genre==genre,"house/techno style IDs round-trip");
