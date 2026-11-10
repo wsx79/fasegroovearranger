@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Prepare the Vocaltest Preview Windows x64 audit, native PowerShell build/test recipe and manual checklist. Portable staging includes verified GPL helper preparation source/licence and vocal setup guides; `package.py` supports a separate build directory and staging without ZIP creation. Native Windows validation, dependency archive review and complete corresponding-source delivery remain release blockers; no preview binary is certified or published.
+
 - Approved Vocal Chops gate 02A: cancellable background file/preset/project sample preparation and recorded-take import, bounded PCM/peak reservations with configurable limits, and optional project-tempo slice grids with snap off. Existing source, MIDI and Undo survive failed/cancelled/stale requests; optional grid metadata defaults safely for old projects. No new dependencies or generator changes. See docs/VOCAL_CHOPS_IMPORT.md for verification and local performance.
 
 - Vocal Chops phase 02: enforce the one-slice detector limit, isolate interpolation at sample-aligned cuts, and release monophonic retriggers on the stretcher output clock. Sync slices retain their full audible duration, including very short chops; MIDI All Sound Off now silences one-shot/slice voices on its channel. Existing editor, project schema and musical generators retained. See docs/VOCAL_CHOPS_PHASE02.md for audit, regressions, performance and remaining limits.

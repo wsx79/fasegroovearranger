@@ -9,6 +9,7 @@ from zipfile import ZipFile
 import os
 import runpy
 import shutil
+import sys
 
 repo = Path(__file__).resolve().parent.parent
 for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
@@ -18,6 +19,7 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
                      'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
                      'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
                      'Resources/arranger.svg', 'Resources/arranger-project.ico', 'ThirdParty/shine/COPYING',
+                     'helpers/ecantorix/prepare.pl', 'helpers/ecantorix/COPYING', 'helpers/ecantorix/README.md',
                      'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-linear/LICENSE.txt',
                      'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
                      'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
@@ -32,7 +34,8 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
         (binary.parent / 'debug.pdb').write_text('not a runtime file')
         (root / 'dist/package').mkdir(parents=True)
         (root / 'dist/package/stale.txt').write_text('from a previous build')
-        with patch('platform.system', return_value=system), patch('platform.machine', return_value='x86_64'), patch.dict(os.environ, FGA_SOURCE_SHA='a' * 40):
+        with patch('platform.system', return_value=system), patch('platform.machine', return_value='x86_64'), \
+                patch.dict(os.environ, FGA_SOURCE_SHA='a' * 40), patch.object(sys, 'argv', ['package.py']):
             runpy.run_path(str(root / 'scripts/package.py'))
         with ZipFile(root / 'dist' / f'FaseGrooveArranger-{system}.zip') as archive:
             assert archive.read('Standalone/' + binary.name) == binary.read_bytes()
@@ -44,6 +47,18 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
             assert 'docs/ARCHITECTURE.md' not in names and 'docs/VALIDATION.md' not in names
             assert 'Resources/Inter-Regular.otf' not in names and 'Resources/Inter-SemiBold.otf' not in names
             assert 'Resources/Inter-OFL.txt' in names and 'ThirdParty/shine/COPYING' in names
+            for helper in ['prepare.pl', 'COPYING', 'README.md']:
+                entry = 'helpers/ecantorix/' + helper
+                assert archive.read(entry) == (repo / entry).read_bytes()
+            for guide in ['VOCAL_STUDIO.md', 'VOCAL_GUIDE_LICENSES.md', 'VOCAL_GUIDE_VALIDATION.md',
+                          'VOCAL_GUIDE_MANUAL_TEST.it.md', 'VOCAL_CHOPS_PHASE02.md',
+                          'VOCAL_CHOPS_IMPORT.md', 'VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
+                          'VOCALTEST_PREVIEW_WINDOWS.it.md']:
+                entry = 'docs/' + guide
+                assert archive.read(entry) == (repo / entry).read_bytes()
+            assert not any(name.lower().endswith(('.dll', '/perl.exe', '/sox.exe', '/espeak.exe',
+                                                  '/ecantorix.pl', '/util.pm')) for name in names)
+            assert not any('espeak-data/' in name.lower() for name in names)
             assert 'ThirdParty/fasegroovelead/LICENSE' in names and 'docs/images/inspector.png' in names
             for dependency in ['signalsmith-stretch', 'signalsmith-linear']:
                 assert f'ThirdParty/{dependency}/LICENSE.txt' in names
@@ -56,4 +71,21 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
             if system == 'Linux':
                 assert archive.getinfo('Standalone/' + binary.name).external_attr >> 16 & 0o111
         assert len([p for p in (root / 'dist').glob('FaseGrooveArranger-*.*') if p.is_file()]) == 1
-print('PASS one family ZIP per platform, explicit runtime payload, clean staging, linked guide images, licences, source offer and Unix permissions')
+        # Staging a separately tested build must not emit a preview/ZIP early.
+        archive_path = root / 'dist' / f'FaseGrooveArranger-{system}.zip'
+        archive_path.unlink()
+        alternate = root / 'build/preview/FaseGrooveArranger_artefacts/Release' / binary.name
+        alternate.parent.mkdir(parents=True)
+        alternate.write_bytes(b'other native build fixture')
+        with patch('platform.system', return_value=system), patch.dict(os.environ, FGA_SOURCE_SHA='b' * 40), \
+                patch.object(sys, 'argv', ['package.py', '--stage-only', '--build-dir', 'build/preview']):
+            try:
+                runpy.run_path(str(root / 'scripts/package.py'))
+            except SystemExit as result:
+                assert result.code == 0
+            else:
+                raise AssertionError('stage-only must finish before archive generation')
+        assert not list((root / 'dist').glob('*.zip'))
+        assert (root / 'dist/package/Standalone' / binary.name).read_bytes() == alternate.read_bytes()
+        assert b'b' * 40 in (root / 'dist/package/SOURCE.txt').read_bytes()
+print('PASS simulated Linux/Windows payloads, GPL source/licence files, source pointer, clean staging, alternate build and stage-only; NOT native Windows validation')

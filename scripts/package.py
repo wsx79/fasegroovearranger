@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build one family ZIP per platform from an explicit runtime payload."""
 from pathlib import Path
+import argparse
 import os
 import platform
 import re
@@ -8,9 +9,13 @@ import shutil
 import subprocess
 import zipfile
 
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--build-dir', default='build', help='Native CMake build directory')
+parser.add_argument('--stage-only', action='store_true', help='Prepare payload without creating a ZIP')
+args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 system = {'Darwin': 'macOS'}.get(platform.system(), platform.system())
-native = root / 'build/FaseGrooveArranger_artefacts/Release'
+native = root / args.build_dir / 'FaseGrooveArranger_artefacts/Release'
 app_name = 'Fase Groove Arranger' + ('.app' if system == 'macOS' else '.exe' if system == 'Windows' else '')
 source_app = native / app_name
 assert source_app.exists(), f'Native app missing: {source_app}'
@@ -30,10 +35,18 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
          'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
+# Verified source-only guide adapter and its licence; external runtimes/voices
+# remain user-installed. Keep the setup/manual links usable in portable copies.
+files.update({'helpers/ecantorix/prepare.pl', 'helpers/ecantorix/COPYING',
+              'helpers/ecantorix/README.md', 'docs/VOCAL_STUDIO.md',
+              'docs/VOCAL_GUIDE_LICENSES.md', 'docs/VOCAL_GUIDE_VALIDATION.md',
+              'docs/VOCAL_GUIDE_MANUAL_TEST.it.md', 'docs/VOCAL_CHOPS_PHASE02.md',
+              'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
+              'docs/VOCALTEST_PREVIEW_WINDOWS.it.md'})
 if system == 'Windows':
     files.add('Resources/arranger-project.ico')
-# Include the user manuals and their local links/images, not the development
-# documentation, source assets or duplicate embedded fonts.
+# Follow the general manuals' local links/images. Vocal setup/audit documents
+# are explicitly allowlisted above; unrelated development assets stay out.
 pending = [root / 'docs/GUIDE.md', root / 'docs/GUIDA.md']
 while pending:
     path = pending.pop().resolve()
@@ -55,6 +68,9 @@ for file in sorted(files):
 sha = os.environ.get('FGA_SOURCE_SHA') or os.environ.get('GITHUB_SHA') or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
 (stage / 'SOURCE.txt').write_text('Complete corresponding source and build instructions\n'
                                f'https://github.com/wsx79/fasegroovearranger/tree/{sha}\n', encoding='utf-8')
+if args.stage_only:
+    print(f'Staged {stage}; no ZIP created. Validate runtime and corresponding source before distribution.')
+    raise SystemExit(0)
 archive = dist / f'FaseGrooveArranger-{system}.zip'
 if archive.exists():
     archive.unlink()

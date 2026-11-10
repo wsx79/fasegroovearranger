@@ -63,3 +63,21 @@ confirms list-form pipes on native Windows from that version; binary mode is exp
 No mandatory WSL/Bash; no unverified installers downloaded or bundled.
 
 Preparation/setup: [helper instructions](../helpers/ecantorix/README.md).
+
+## Vocaltest Preview Windows audit (2026-11-10)
+
+Official download pages were read again: eSpeak offers 1.48.04 for Windows,
+SoX 14.4.2 offers Win32 packages, and Strawberry Perl provides native Windows
+Perl. No Windows installer/archive/DLL/XS module was downloaded or approved.
+The Linux package versions in the table are not evidence for these Windows
+payloads. WAV/raw and tempo/bend/remix/reverse/silence need actual runtime checks;
+no optional compressed codec is required for the guide route.
+
+Portable packaging now retains the verified GPL preparation **source** with
+COPYING and its modification notice, plus the setup documentation. It still
+excludes external interpreters, synthesis binaries, voice data, modules and
+codecs. Review their exact archives before any redistribution; process separation
+and commercial output use do not remove software/source obligations.
+The unpublished local commit also prevents relying on the current SOURCE.txt URL
+alone for FGA/JUCE/Shine corresponding source. No distributable preview was made.
+See [Windows build, manual and source-distribution gates](VOCALTEST_PREVIEW_WINDOWS.it.md).
