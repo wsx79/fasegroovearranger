@@ -1,0 +1,2 @@
+# PHASE 06 — Non-destructive Mix Assistant
+Build on existing EQ/analyzer/mixer/loudness. Local deterministic analysis only; no automatic remote AI or uploads. Measure headroom, clipping, stereo correlation, kick/bass conflicts and spectral masking; output clearly labeled **suggestions**, not definitive aesthetic judgments. User must approve each change; preview A/B and Undo required. Run heavy analysis off callback; test fixture projects including rendered vocals. Do not duplicate EQ or mixer, do not rewrite arrangements. Update status; commit after tests.

@@ -1,0 +1,2 @@
+# PHASE 08 — Release quality gate
+No new features. Verify old/new `.fga`, vocal assets and missing-model recovery, deterministic existing arrangements, VST3/AU hosting, CPU/RAM baseline, playback, realtime thread, PDC, freeze, MIDI, automation, WAV/MP3/stems, Windows/macOS/Linux CI where available, sanitizers, localization, packaging and privacy/license notices for voice models. Fix only reproduced regressions. Produce GO/NO-GO with PASS/FAIL/NOT RUN and risks. Never tag/push/release without explicit approval.

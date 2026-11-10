@@ -1,0 +1,2 @@
+# PHASE 07 — Mastering Assistant (after vocals + mix)
+Reuse master insert chain, EQ, dynamics, loudness and true-peak verification. Add optional local reference comparison with loudness-normalized A/B, configurable targets (no universal mandatory LUFS), dynamic/headroom and tonal suggestions, reversible preview and export QA. Validate WAV/stems and vocal presence, clipping, oversampling and latency. Do not add duplicate limiter. Clearly distinguish measured results from subjective recommendations. Update status; commit after tests.
