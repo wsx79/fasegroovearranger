@@ -294,6 +294,7 @@ std::string recognizeChordPitches(const std::vector<int>& midiNotes, int key, in
 // Notes are clip-local. Overlapping pitches in [from, to) replace `fallback` only when
 // every recognized sonority is the same chord. Melody, silence and mixed chords keep `fallback`.
 std::string chordHeardInClip(const std::vector<Note>&, double from, double to, int key, int scale, const std::string& fallback);
+std::string chordHeardInClip(const std::vector<Note>&, double from, double to, int key, int scale, const std::string& fallback, const std::string& preferred);
 // One chord cell at `beat`, clipped to the section, using the same harmony as chordNameAt.
 void chordCell(const Project&, double beat, double& start, double& end, std::string& name);
 sgk::GrooveSettings pianoEngineSettings(const Project&,int track,std::uint32_t seed,std::uint32_t motifSeed=0,const Clip* clip=nullptr);

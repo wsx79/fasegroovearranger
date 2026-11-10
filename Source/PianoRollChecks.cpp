@@ -29,6 +29,7 @@ bool MainComponent::verifyPianoRoll(const juce::File& folder){
     check("Re-entering the roll selects the Select tool",piano.tool==1&&selectTool.getToggleState()&&!drawTool.getToggleState());
     if(!piano.showScaleGuide)scaleGuideButton.onClick();piano.ghostTrack.setSelectedId(3,juce::sendNotificationSync);gridBox.setSelectedId(4,juce::sendNotificationSync);
     piano.expressionLane.setSelectedId(1,juce::sendNotificationSync);piano.setActiveNotesVisible(true);piano.fitNotes();
+    {auto sixth=project.tracks[0].clips[0].notes;sixth.push_back({1,2,69,100,0});check("Sixth context survives both sixth and relative seventh interpretations",chordHeardInClip(sixth,0,4,0,0,{},"C6")=="C6"&&chordHeardInClip(sixth,0,4,0,0,{},"Am7")=="Am7");}
     const auto notes=project.tracks[0].clips[0].notes;const auto json=juce::JSON::toString(projectJson(project),false,17);const auto history=undoStack.size();
     const float x=piano.leftMargin()+(float)(1.5*piano.pixelsPerBeat),y=piano.noteY(notes[0])+piano.noteHeight()/2;
     auto pixel=[&]{return piano.createComponentSnapshot(piano.getLocalBounds()).getPixelAt((int)x,(int)y);};

@@ -37,6 +37,14 @@ void verifyTimelineEditing(){
         for(int transpose=0;transpose<12;++transpose){
             auto chord=[&](std::initializer_list<int> tones){std::vector<int> pitches;for(int n:tones)pitches.push_back(48+transpose+n);return pitches;};
             const std::string root=sgk::noteName(transpose);
+            std::vector<Note> sixth,minorSixth;for(int interval:{0,4,7,9})sixth.push_back({0,4,48+transpose+interval,100,0});for(int interval:{0,3,7,9})minorSixth.push_back({0,4,48+transpose+interval,100,0});
+            check(chordHeardInClip(sixth,0,4,-1,0,{},root+"6")==root+"6","written major sixth is not reinterpreted as its relative minor seventh");
+            check(chordHeardInClip(minorSixth,0,4,-1,0,{},root+"m6")==root+"m6","written minor sixth is not reinterpreted as a half-diminished seventh");
+            const auto relative=std::string(sgk::noteName((transpose+9)%12));
+            check(chordHeardInClip(sixth,0,4,-1,0,{},relative+"m7")==relative+"m7","the same pitch set can retain an explicitly written minor seventh");
+            check(chordHeardInClip(sixth,0,4,-1,0,{},root+"maj7")==root+"6","edited notes override a planned chord that no longer fits");
+            sixth[0].pitch+=12;check(chordHeardInClip(sixth,0,4,-1,0,{},root+"6")==root+"6","context disambiguates sixth inversions without imposing the bass as root");
+
             check(recognizeChordPitches(chord({0,4,7,11,14}),-1,0)==root+"maj9","major ninth across every root");
             check(recognizeChordPitches(chord({0,3,7,10,14}),-1,0)==root+"m9","minor ninth across every root");
             check(recognizeChordPitches(chord({0,4,7,10,14}),-1,0)==root+"9","dominant ninth across every root");

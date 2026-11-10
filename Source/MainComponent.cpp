@@ -133,7 +133,7 @@ void PianoRoll::paint(juce::Graphics& g){
             const int x=leftMargin()+(int)(b*pixelsPerBeat),width=std::max(1,(int)(step*pixelsPerBeat)-2);
             if(x+width>=view.getX()+left&&x<=view.getRight()){
                 auto r=juce::Rectangle<int>(x+1,3,width,19);g.setColour(Daw::control);g.fillRoundedRectangle(r.toFloat(),Daw::radius);g.setColour(Daw::accent);g.fillRoundedRectangle(r.toFloat().withWidth(3.f),1.f);
-                const auto detected=chordHeardInClip(notes,b,b+step,harmony.key,harmony.scale,{});
+                const auto detected=chordHeardInClip(notes,b,b+step,harmony.key,harmony.scale,{},planned);
                 label(g,utf(detected.empty()?planned:detected),r.reduced(8,0),11,detected.empty()?Daw::textDim:Daw::text);
                 const double local=owner.audio.position()-owner.clipStart();g.setFont(Daw::font(Daw::small,true));g.setColour(local>=b&&local<b+step?Daw::accent:Daw::textDim);g.drawText(juce::String((int)(b/4)+1),x+4,24,50,14,juce::Justification::centredLeft);
             }b+=step;

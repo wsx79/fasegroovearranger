@@ -754,11 +754,11 @@ std::vector<std::string> chordNames(const Settings& s) {
     for(int i=0;i<s.chordCount;++i) out.push_back(sgk::chordName(sgk::GrooveEngine::chordForSlot(settings,i),s.key,s.scale));
     return out;
 }
-std::string recognizeChordPitches(const std::vector<int>& midiNotes,int key,int scale){
+static std::string recognizeChordPitchesContext(const std::vector<int>& midiNotes,int key,int scale,const std::string& preferred,bool sixths){
     unsigned pcs=0;int bass=128;for(int note:midiNotes)if(note>=0&&note<=127){pcs|=1U<<(note%12);bass=std::min(bass,note);}
     // Exact pitch-class sets, including octave doubles and inversions. Never
     // invent a missing root/third from a melody or an incomplete dyad.
-    struct Shape{const char* suffix;int count;int tones[6];};
+    struct Shape{const char* suffix;int count;int tones[6];bool sixth=false;};
     static constexpr Shape shapes[]{
         {"maj7",4,{0,4,7,11}},{"7",4,{0,4,7,10}},{"m(maj7)",4,{0,3,7,11}},{"m7",4,{0,3,7,10}},
         {"m7b5",4,{0,3,6,10}},{"dim7",4,{0,3,6,9}},{"",3,{0,4,7}},{"m",3,{0,3,7}},
@@ -771,16 +771,27 @@ std::string recognizeChordPitches(const std::vector<int>& midiNotes,int key,int 
         {"7(b9)",5,{0,1,4,7,10}},{"7(#9)",5,{0,3,4,7,10}},
         {"7#5",4,{0,4,8,10}},{"maj7#5",4,{0,4,8,11}},{"7b5",4,{0,4,6,10}},
         {"11",6,{0,2,4,5,7,10}},{"m11",6,{0,2,3,5,7,10}},
-        {"13",6,{0,2,4,7,9,10}},{"maj13",6,{0,2,4,7,9,11}},{"m13",6,{0,2,3,7,9,10}}
+        {"13",6,{0,2,4,7,9,10}},{"maj13",6,{0,2,4,7,9,11}},{"m13",6,{0,2,3,7,9,10}},
+        {"6",4,{0,4,7,9},true},{"m6",4,{0,3,7,9},true}
     };
     struct Hit{int root;const char* suffix;};std::vector<Hit> hits;
-    for(const auto& shape:shapes)for(int root=0;root<12;++root){unsigned mask=0;for(int i=0;i<shape.count;++i)mask|=1U<<((root+shape.tones[i])%12);if(mask==pcs)hits.push_back({root,shape.suffix});}
+    for(const auto& shape:shapes){if(shape.sixth&&!sixths)continue;for(int root=0;root<12;++root){unsigned mask=0;for(int i=0;i<shape.count;++i)mask|=1U<<((root+shape.tones[i])%12);if(mask==pcs)hits.push_back({root,shape.suffix});}}
     auto name=[&](const Hit& hit){return std::string(key<0?sgk::noteName(hit.root):sgk::spelledNote(hit.root,key,scale))+hit.suffix;};
+    // C6 and Am7 (or Cm6 and Am7b5) can be the same sounding set.
+    // Keep the written harmony only when every pitch actually matches it.
+    if(!preferred.empty())for(const auto& hit:hits)if(name(hit)==preferred)return preferred;
     if(hits.size()==1)return name(hits.front());
     if(bass<128){const Hit* chosen=nullptr;for(const auto& hit:hits)if(hit.root==bass%12){if(chosen)return {};chosen=&hit;}if(chosen)return name(*chosen);}
     return {};
 }
+std::string recognizeChordPitches(const std::vector<int>& midiNotes,int key,int scale){
+    // Context-free callers retain the conventional seventh interpretation.
+    return recognizeChordPitchesContext(midiNotes,key,scale,{},false);
+}
 std::string chordHeardInClip(const std::vector<Note>& notes,double from,double to,int key,int scale,const std::string& fallback){
+    return chordHeardInClip(notes,from,to,key,scale,fallback,fallback);
+}
+std::string chordHeardInClip(const std::vector<Note>& notes,double from,double to,int key,int scale,const std::string& fallback,const std::string& preferred){
     if(!std::isfinite(from)||!std::isfinite(to)||!(to>from))return fallback;
     struct Event{double time;int pitch,delta;};std::vector<Event> events;
     for(const auto& n:notes)if(n.pitch>=0&&n.pitch<=127&&n.velocity>0&&std::isfinite(n.start)&&std::isfinite(n.length)&&n.length>0&&n.start<to&&n.start+n.length>from){events.push_back({std::max(from,n.start),n.pitch,1});events.push_back({std::min(to,n.start+n.length),n.pitch,-1});}
@@ -791,7 +802,7 @@ std::string chordHeardInClip(const std::vector<Note>& notes,double from,double t
         if(i==events.size())break;const double duration=events[i].time-at;if(duration<minimumSlice)continue;
         std::vector<int> sounding;unsigned pcs=0;for(int pitch=0;pitch<128;++pitch)if(active[(size_t)pitch]>0){sounding.push_back(pitch);pcs|=1U<<(pitch%12);}
         if((pcs&(pcs-1))==0)continue;int count=0;for(unsigned mask=pcs;mask;mask&=mask-1)++count;if(count<3)continue;
-        polyphonic+=duration;const auto name=recognizeChordPitches(sounding,key,scale);if(name.empty())continue;
+        polyphonic+=duration;const auto name=recognizeChordPitchesContext(sounding,key,scale,preferred,true);if(name.empty())continue;
         auto found=std::find_if(heard.begin(),heard.end(),[&](const auto& h){return h.first==name;});if(found==heard.end())heard.emplace_back(name,duration);else found->second+=duration;
     }
     std::string agreed;for(const auto& h:heard)if(h.second>=std::min(1./8.,(to-from)/4.)){if(!agreed.empty())return fallback;agreed=h.first;}
