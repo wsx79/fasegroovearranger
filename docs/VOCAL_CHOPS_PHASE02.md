@@ -47,7 +47,7 @@ può ancora produrre discontinuità. Nessuna promessa di assenza universale di c
 o di qualità soggettiva: la misura riguarda i fixture descritti. La breve
 sovrapposizione può alzare i picchi: lasciare margine di livello.
 
-## Verifiche e confronto
+## Verifiche e confronto del primo intervento (baseline 8cc5487)
 
 Risultati finali Linux: build completa PASS; CTest **14/14 PASS** in 117,96 s;
 UI completa predefinita PASS, incluso Studio (import/trim/Undo/routing/export);
@@ -77,27 +77,19 @@ Nessun aumento del tetto di 32 voci e nessuna copia PCM aggiunta. Questi numeri 
 certificano dispositivi reali o stress estremo.
 PCM sorgente: 384032 byte; buffer di confronto 8-bar stereo: 5898240 byte per output.
 
-## Limiti e interventi maggiori da pianificare
+## Gate 02A approvato: import e griglia musicale
 
-- Il caricamento da UI è ancora sincrono (`MainComponent::loadSampleFile`): decode,
-  hash, picchi e detector possono bloccare l'interfaccia con file grandi. Sono fuori
-  dal callback audio, ma non esiste ancora un job di importazione annullabile.
-- Il limite di memoria è per file, non globale fra tutte le tracce; le copie offline
-  condividono il PCM, ma importazioni indipendenti possono duplicarlo.
-- Lo snap è a zero crossing sul canale sinistro; non esiste uno snap musicale dei
-  marker a beat/bar né una ricerca multicanale. Tagli uguali e WRITE SLICE MIDI già
-  usano il tempo sorgente; non sono uno snap musicale interattivo.
-- Loop interno di ogni slice e scelta di un render offline di qualità superiore
-  non sono implementati. Lo stretch usa il processore già disponibile, senza nuove
-  dipendenze o modelli. Nessuna sintesi testo→canto viene aggiunta a Vocal Chops.
-- Windows/macOS, ASan/TSan, dispositivo reale, stress estremo e ascolto di voci reali
-  non sono validati qui. Qualità dei tagli/pitch/formanti va ascoltata su materiale
-  autorizzato; niente voce protetta scaricata come fixture.
+L'utente ha approvato importazione asincrona, limiti configurabili e snap
+musicale. L'implementazione riusa sampler, Studio, restore queue, Undo e RetiredJobs.
+Dettagli, risultati attuali e nuove prove manuali sono in
+[VOCAL_CHOPS_IMPORT.md](VOCAL_CHOPS_IMPORT.md). Il confronto numerico sopra resta
+quello delle cinque correzioni iniziali, non quello dell'import asincrono.
 
-La fase 02A richiede una proposta/approvazione prima di modifiche maggiori:
-prossimi candidati sono importazione asincrona con budget globale e snap musicale.
-La fase 03 non è iniziata. Licenze esistenti di JUCE/Signalsmith e degli eventuali
-campioni forniti dall'utente restano applicabili; nessuna dipendenza aggiunta.
+Limiti ancora aperti: loop interno di ogni singola slice e render offline di
+qualità superiore non sono aggiunti da questo gate. Windows/macOS, ASan/TSan,
+dispositivo reale, stress estremo e ascolto non sono validati. Lo zero crossing
+resta sul canale sinistro. Vocal Studio è separato; nessun generatore modificato,
+nessuna dipendenza o campione esterno aggiunti. Fase 03 non iniziata.
 
 ## Prova manuale ancora da eseguire
 
@@ -113,5 +105,3 @@ campioni forniti dall'utente restano applicabili; nessuna dipendenza aggiunta.
    con la funzione esistente e confrontarlo con il playback e con la sorgente originale.
 6. Registrare esito di ascolto e sistema: i test numerici non certificano qualità
    di voci reali né comportamento su Windows/macOS.
-
-Coordinate principali del sampler verificato: `Source/Sampler.cpp:10` (juce::Result readSampleAsset), `Source/Sampler.cpp:23` (double snapSamplePoint), `Source/Sampler.cpp:25` (std::vector<double> detectSampleSlices), `Source/Sampler.cpp:41` (class SampleVoice), `Source/Sampler.cpp:181` (void SampleSynth::handleMidiEvent), `Source/Sampler.cpp:199` (void SampleSynth::noteOn).

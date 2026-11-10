@@ -745,7 +745,8 @@ return false;
     stage("preview starts",audio.isPreviewing());sampleBrowser.stopPreview();stage("preview stops",!audio.isPreviewing());
     // Double-click / Enter / LOAD: into the selected track's sampler, with Undo.
     select(6,selectedSection);const auto undoBefore=undoStack.size();
-    stage("import into the selected track",sampleBrowser.loadSelected()&&project.tracks[6].instrument=="sample"&&juce::File(juce::String::fromUTF8(project.tracks[6].instrumentPath.c_str())).getFileName()=="Kick Deep.wav"&&undoStack.size()==undoBefore+1);
+    const bool requested=sampleBrowser.loadSelected();waitForSampleImportForTests();
+    stage("import into the selected track",requested&&project.tracks[6].instrument=="sample"&&juce::File(juce::String::fromUTF8(project.tracks[6].instrumentPath.c_str())).getFileName()=="Kick Deep.wav"&&undoStack.size()==undoBefore+1);
     sampleBrowser.setSearch("");
     // Drag onto another track's row in the arrangement.
     arrangementPort.setViewPosition(0,0);const int row=rowForTrack(7);const auto target=getLocalPoint(&arrangement,juce::Point<int>(216+40,arrangement.rowY(row)+arrangement.rowHeight(row)/2));
@@ -756,7 +757,7 @@ return false;
     {const int height=getHeight();for(int h:{760,1100}){setSize(1440,h);const bool fits=sampleBrowser.verifyLayout()&&!sampleBrowser.getBounds().intersects(arrangementPort.getBounds())&&!sampleBrowser.getBounds().intersects(mixer.getBounds())&&sampleBrowser.getBottom()<=getHeight()-31;
         stage(h==760?"browser layout 760":"browser layout 1100",fits);if(auto out=folder.getChildFile("sample-browser-"+juce::String(h)+".png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(createComponentSnapshot(getLocalBounds()),*out);}}
         setSize(1440,height);}
-    itemDropped(drag);stage("drop loads the hovered track",project.tracks[7].instrument=="sample"&&selectedTrack==7&&juce::String::fromUTF8(project.tracks[7].instrumentPath.c_str()).endsWith("Kick Short.wav")&&arrangement.dropTrack<0);
+    itemDropped(drag);waitForSampleImportForTests();stage("drop loads the hovered track",project.tracks[7].instrument=="sample"&&selectedTrack==7&&juce::String::fromUTF8(project.tracks[7].instrumentPath.c_str()).endsWith("Kick Short.wav")&&arrangement.dropTrack<0);
     // Unsupported and unavailable.
     sampleBrowser.navigate(library);sampleBrowser.waitForListing(5000);sampleBrowser.selectRow(2);
     stage("unsupported file",!sampleBrowser.loadSelected()&&sampleBrowser.infoIsError()&&project.tracks[(size_t)selectedTrack].instrumentPath.find("Loop.mp3")==std::string::npos);

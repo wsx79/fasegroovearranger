@@ -10,6 +10,7 @@ public:
     ~StudioWindow() override;
     void closeButtonPressed()override;
     void finishRecording();
+    void refreshSampleState();
     void open(int tab=0);
     bool verify(const juce::File& folder);
 private:

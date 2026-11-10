@@ -249,6 +249,8 @@ public:
     bool recordingOverflow()const{return capture.overflow.load();}
     void setRecordOffset(double ms){capture.timingOffsetMs=std::clamp(ms,-200.,200.);}
     juce::Result loadSample(int,const juce::File&,int root,const SamplerSettings& settings={},std::function<void()> beforeReplace={});
+    juce::Result installPreparedSample(int,std::unique_ptr<SampleSynth>&,std::unique_ptr<juce::Synthesiser>& retired,
+        std::function<void()> beforeReplace={});
     std::shared_ptr<const SampleAsset> sampleAsset(int)const;
     void loadPlugin(int,const juce::PluginDescription&,std::function<void(juce::Result)>);
     void loadEffect(int,const juce::PluginDescription&,std::function<void(juce::Result)>,int slot=1);

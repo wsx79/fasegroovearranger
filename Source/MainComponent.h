@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include "RetiredJobs.h"
+#include "SampleImport.h"
 #include "AudioEngine.h"
 #include "ProjectIO.h"
 #include "StudioIO.h"
@@ -240,6 +241,7 @@ public:
     void addMidiTrack(bool vocal=false);
     void showVocalStudio();
     bool verifyVocalStudio(const juce::File&);
+    bool verifySampleImport(const juce::File&);
     void deleteMidiTrack(int);
     void showAddSectionMenu();
     void addSongSection(Section);
@@ -487,6 +489,14 @@ private:
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
     int musicalToolKind=0;
     std::unique_ptr<juce::ThreadWithProgressWindow> exportTask;
+    std::optional<Project> sampleImportNext;
+    std::uint64_t sampleImportProjectRevision=0;int sampleImportNextTrack=-1;
+    std::unique_ptr<SampleImportJob> sampleImportJob;
+    std::uint64_t sampleImportSession=0;
+    std::string sampleImportInstrument,sampleImportPath;
+    SamplerSettings sampleImportBefore;
+    int sampleImportRoot=60;bool sampleImportRestore=false;
+    juce::String lastSampleImportStatus;
     std::uint64_t uiRevision=0;
     void refreshControls();
     void refreshTrack();
@@ -523,6 +533,16 @@ private:
     void exportMenu();
     void exportFile(int type,int track,const juce::File& destination={},bool configured=false);
     void loadSampleFile(int,const juce::File&);
+    void loadSamplePreset(int,const juce::File&);
+    void importAudioTakeAsync(const AudioTake&,bool muted);
+    void startSampleImport(int,const juce::File&,SamplerSettings,int root,bool automaticSlices,bool preset,bool restore=false);
+    void pollSampleImport();
+    void cancelSampleImport();
+    bool sampleImportActive()const{return sampleImportJob!=nullptr;}
+    juce::String sampleImportMessage()const;
+    SampleLoadLimits sampleImportLimits()const;
+    void showSampleImportLimits();
+    bool waitForSampleImportForTests(int timeoutMs=30000);
     void showAbout();
     bool writeHelpEvidence(const juce::File&);
     void showDocument(const juce::String&,const juce::String&);

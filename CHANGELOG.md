@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Approved Vocal Chops gate 02A: cancellable background file/preset/project sample preparation and recorded-take import, bounded PCM/peak reservations with configurable limits, and optional project-tempo slice grids with snap off. Existing source, MIDI and Undo survive failed/cancelled/stale requests; optional grid metadata defaults safely for old projects. No new dependencies or generator changes. See docs/VOCAL_CHOPS_IMPORT.md for verification and local performance.
+
 - Vocal Chops phase 02: enforce the one-slice detector limit, isolate interpolation at sample-aligned cuts, and release monophonic retriggers on the stretcher output clock. Sync slices retain their full audible duration, including very short chops; MIDI All Sound Off now silences one-shot/slice voices on its channel. Existing editor, project schema and musical generators retained. See docs/VOCAL_CHOPS_PHASE02.md for audit, regressions, performance and remaining limits.
 
 - Vocal Studio 01C: external offline English eCantorix/eSpeak guide rendering, cancellation, validated WAV cache, existing AudioTake import/Undo and single-track WAV export. Final review bounds process diagnostics, retains WAV stream ownership on writer failure and rejects pending lyric edits before take import. Source-only native process adaptation; Windows/macOS execution remains unverified. See docs/VOCAL_GUIDE_LICENSES.md.

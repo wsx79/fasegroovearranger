@@ -1,0 +1,112 @@
+{
+  "baseline_commit": "8cc548708394609a02182d64ad1609df52b4d322",
+  "binary_sha256": {
+    "before": "5f1be04b7a15f43dc3271d01bcea2c80aa8fba4f0505b73a1260dfae47ba3e29",
+    "after": "9c3575dfcced0263b35edce7a408997737fbe5997ba9f1dfbd9444437a6f1cd4"
+  },
+  "runs": [
+    {
+      "variant": "before",
+      "iteration": 0,
+      "exit": 0,
+      "wall_ms": 4410.658054002852,
+      "cpu_ms": 4407.237,
+      "rss_kib": 47664,
+      "fixture_ms": 274.779,
+      "latency_samples": 1024
+    },
+    {
+      "variant": "after",
+      "iteration": 0,
+      "exit": 0,
+      "wall_ms": 4464.16000300087,
+      "cpu_ms": 4457.145,
+      "rss_kib": 47692,
+      "fixture_ms": 271.861,
+      "latency_samples": 1024
+    },
+    {
+      "variant": "before",
+      "iteration": 1,
+      "exit": 0,
+      "wall_ms": 4671.45205199995,
+      "cpu_ms": 4660.472000000001,
+      "rss_kib": 47544,
+      "fixture_ms": 273.663,
+      "latency_samples": 1024
+    },
+    {
+      "variant": "after",
+      "iteration": 1,
+      "exit": 0,
+      "wall_ms": 4384.325588998763,
+      "cpu_ms": 4382.322999999999,
+      "rss_kib": 47888,
+      "fixture_ms": 278.702,
+      "latency_samples": 1024
+    },
+    {
+      "variant": "before",
+      "iteration": 2,
+      "exit": 0,
+      "wall_ms": 4356.675674000144,
+      "cpu_ms": 4348.168,
+      "rss_kib": 47808,
+      "fixture_ms": 271.526,
+      "latency_samples": 1024
+    },
+    {
+      "variant": "after",
+      "iteration": 2,
+      "exit": 0,
+      "wall_ms": 5399.443250000331,
+      "cpu_ms": 5366.681,
+      "rss_kib": 47648,
+      "fixture_ms": 279.219,
+      "latency_samples": 1024
+    }
+  ],
+  "medians": {
+    "before": {
+      "wall_ms": 4410.658054002852,
+      "cpu_ms": 4407.237,
+      "rss_kib": 47664,
+      "fixture_ms": 273.663,
+      "latency_samples": 1024
+    },
+    "after": {
+      "wall_ms": 4464.16000300087,
+      "cpu_ms": 4457.145,
+      "rss_kib": 47692,
+      "fixture_ms": 278.702,
+      "latency_samples": 1024
+    }
+  },
+  "import": {
+    "fixture": "8 s stereo 48 kHz, 32-bit WAV; same current decoder/DSP on caller thread is synchronous reference, not historical executable",
+    "runs": [
+      {
+        "synchronous_ms": 50.472,
+        "dispatch_ms": 0.231,
+        "completion_ms": 91.161
+      },
+      {
+        "synchronous_ms": 77.876,
+        "dispatch_ms": 1.578,
+        "completion_ms": 104.596
+      },
+      {
+        "synchronous_ms": 58.271,
+        "dispatch_ms": 0.529,
+        "completion_ms": 60.848
+      }
+    ],
+    "medians": {
+      "synchronous_ms": 58.271,
+      "dispatch_ms": 0.529,
+      "completion_ms": 91.161
+    }
+  },
+  "environment": "Linux x86_64 6.18.57; 3 virtual Intel Xeon Platinum 8573C CPUs; 8 GiB container; GCC 14; JUCE 8.0.9; Release; no simultaneous build/tests during measurements",
+  "method": "Three alternating executions per binary: --vocal-chops-test, same unchanged test source; os.wait4 CPU/RSS, fixture self-timing; fixture includes synth preparation, not isolated callback CPU."
+}

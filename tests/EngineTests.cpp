@@ -15,12 +15,14 @@ void runImprovementEngineTests();
 void runStudioEngineTests();
 void runGuideVocalTests();
 void runVocalChopsTests();
+void runSampleImportTests();
 void runEngineAuditTests();
 void runDeepAuditEngineTests();
 void runRecordedRegionTests();
 int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
+        if(argc==2&&juce::String(argv[1])=="--sample-import-test"){runSampleImportTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}

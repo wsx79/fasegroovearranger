@@ -220,7 +220,7 @@ bool MainComponent::verifyVocalStudio(const juce::File& folder){
         undo(false);panel->timerCallback();panel->use.onClick();
         check(project.tracks.size()==count+1&&project.tracks[(size_t)track].mute&&panel->importedTrack()>=0,"editor adds existing audio take and mutes source MIDI");
         undo(false);panel->timerCallback();check(project.tracks.size()==count&&!project.tracks[(size_t)track].mute,"Undo guide import restores tracks and source mute");
-        undo(true);panel->timerCallback();check(project.tracks.size()==count+1&&panel->importedTrack()>=0,"Redo guide import");
+        undo(true);waitForSampleImportForTests();panel->timerCallback();check(project.tracks.size()==count+1&&panel->importedTrack()>=0,"Redo guide import");
         const auto exported=exportNamedFile(folder.getChildFile("english-guide-"+juce::Uuid().toString()+".wav"),project,"wav");
         exportFile(5,panel->importedTrack(),exported,true);
         const auto exportDeadline=juce::Time::getMillisecondCounterHiRes()+60000;

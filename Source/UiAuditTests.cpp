@@ -132,7 +132,7 @@ return false;
     auto wavFile=folder.getChildFile("drop-routing.wav");juce::WavAudioFormat wav;
     {std::unique_ptr<juce::AudioFormatWriter> writer(wav.createWriterFor(wavFile.createOutputStream().release(),44100,1,16,{},0));juce::AudioBuffer<float> signal(1,1024);for(int i=0;i<1024;++i)signal.setSample(0,i,.2f*std::sin(i*.07f));if(writer)writer->writeFromAudioSampleBuffer(signal,0,1024);else stage("drop WAV fixture",false);}
     const auto drop=getLocalPoint(&arrangement,juce::Point<int>(216+72,arrangement.rowY(1)+10));audio.seek(5.25);audio.play(true);const double position=audio.position();
-    filesDropped({wavFile.getFullPathName()},drop.x,drop.y);
+    filesDropped({wavFile.getFullPathName()},drop.x,drop.y);waitForSampleImportForTests();
     stage("sample drop targets its row without seeking or stopping",selectedTrack==5&&project.tracks[5].instrument=="sample"&&project.tracks[0].instrument=="internal"&&audio.position()==position&&audio.isPlaying());
     auto midiProject=project;for(auto& t:midiProject.tracks)for(auto& c:t.clips)c.notes.clear();midiProject.tracks[0].clips[0].notes={{0,.5,69,100,0}};
     const auto bytes=midiFile(midiProject,0);const auto midi=folder.getChildFile("drop-routing.mid");midi.replaceWithData(bytes.data(),bytes.size());select(0,0);arrangementPort.setViewPosition(0,0);
@@ -231,8 +231,8 @@ bool MainComponent::verifyLegacyHostedProjects(const juce::File& folder,const ju
         source=audio.plugin(0);check(source&&source->getCurrentProgram()==1&&source->getProgramName(1)=="Bright"&&std::abs(source->getParameters()[0]->getValue()-.37f)<1.e-5f,"reopening retains the selected program and its saved custom gain");
         check(audio.exportAudio(project,folder.getChildFile("host-program.wav"),0,false,[]{return false;},[](double){}).wasOk(),"export the restored instrument program");
         source->getParameters()[0]->setValueNotifyingHost(.61f);const auto undoCount=undoStack.size();
-        loadSampleFile(0,folder.getChildFile("missing-sample.wav"));check(audio.plugin(0)==source&&undoStack.size()==undoCount,"failed sample replacement retains native instrument and Undo");
-        loadSampleFile(0,folder.getChildFile("host-program.wav"));check(!audio.plugin(0)&&project.tracks[0].instrument=="sample"&&undoStack.size()==undoCount+1,"sample replacement creates one real Undo checkpoint");
+        loadSampleFile(0,folder.getChildFile("missing-sample.wav"));waitForSampleImportForTests();check(audio.plugin(0)==source&&undoStack.size()==undoCount,"failed sample replacement retains native instrument and Undo");
+        loadSampleFile(0,folder.getChildFile("host-program.wav"));waitForSampleImportForTests();check(!audio.plugin(0)&&project.tracks[0].instrument=="sample"&&undoStack.size()==undoCount+1,"sample replacement creates one real Undo checkpoint");
         undo(false);const auto end=juce::Time::getMillisecondCounterHiRes()+15000.;while((loadingPlugin||loadingView.isVisible())&&juce::Time::getMillisecondCounterHiRes()<end)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
         source=audio.plugin(0);check(source&&source->getCurrentProgram()==1&&std::abs(source->getParameters()[0]->getValue()-.61f)<1.e-5f,"Undo sample replacement restores the latest VST program and parameter edit");
     }
@@ -394,7 +394,7 @@ MainComponent::MainComponent(){
     copyButton.onClick=[this]{clipboard.clear();for(size_t i=0;i<clip().notes.size();++i)if(piano.selected.empty()||piano.selected.count((int)i))clipboard.push_back(clip().notes[i]);message("Notes copied. Paste inserts at the cursor inside the clip.");};
     pasteButton.onClick=[this]{piano.pasteNotes();};
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{useBuiltInSound(selectedTrack);};
-    sampleButton.onClick=[this]{browseSamplesFor(selectedTrack);};
+    sampleButton.onClick=[this]{if(sampleImportActive())cancelSampleImport();else browseSamplesFor(selectedTrack);};
     loadPluginButton.onClick=[this]{showPluginMenu();};
     pluginEditorButton.onClick=[this]{openHostedEditor(selectedTrack,0);};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
@@ -469,6 +469,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     startTimerHz(20);
 }
 MainComponent::~MainComponent(){
+    cancelSampleImport();
     vocalStudioWindow.reset();
     acceptTargetEdit=false;
     if(recoveryArmed)closeRecoverySession(recoveryDirectory());
@@ -592,7 +593,7 @@ return false;
         regenerate(Scope::track);vocalOk=vocalOk&&project.tracks[(size_t)vocal].clips!=initial;undo(false);vocalOk=vocalOk&&project.tracks[(size_t)vocal].clips==initial;
         showInstrument();const auto names=instrumentPanel.controlNames();vocalOk=vocalOk&&names.contains("DENSITY")&&names.contains("GATE")&&names.contains("HUMANIZE")&&names.contains("STUDIO")&&!names.contains("Voicing")&&instrumentPanel.layoutProblems().isEmpty();
         for(auto* child:instrumentPanel.getChildren())if(child->getProperties()["fgaControl"].toString()=="DENSITY")if(auto* tip=dynamic_cast<juce::SettableTooltipClient*>(child))vocalOk=vocalOk&&tip->getTooltip()==tr("Number of short vocal triggers per phrase; zero leaves silence.");
-        loadSampleFile(vocal,folder.getChildFile("drop-routing.wav"));showInstrument();const auto& part=project.tracks[(size_t)vocal];vocalOk=vocalOk&&part.instrument=="sample"&&part.sampler.mode==2&&part.sampler.sliceCount>0&&instrumentPanel.layoutProblems().isEmpty();
+        loadSampleFile(vocal,folder.getChildFile("drop-routing.wav"));waitForSampleImportForTests();showInstrument();const auto& part=project.tracks[(size_t)vocal];vocalOk=vocalOk&&part.instrument=="sample"&&part.sampler.mode==2&&part.sampler.sliceCount>0&&instrumentPanel.layoutProblems().isEmpty();
         for(const auto& c:part.clips)for(const auto& n:c.notes)vocalOk=vocalOk&&n.pitch>=part.sampler.sliceBase&&n.pitch<part.sampler.sliceBase+part.sampler.sliceCount;
         if(auto output=folder.getChildFile("vocal-chops.png").createOutputStream()){juce::PNGImageFormat png;vocalOk=png.writeImageToStream(instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()),*output)&&vocalOk;}
         auto sound=project;sound.sections={{Section::main,4,"Vocal test"}};for(auto& t:sound.tracks){t.freeTimeline=false;t.clips.resize(1);}auto& voice=sound.tracks[(size_t)vocal];voice.clips[0].notes={{.5,.25,voice.sampler.sliceBase,100,0},{2.5,.25,voice.sampler.sliceBase+voice.sampler.sliceCount-1,100,0}};

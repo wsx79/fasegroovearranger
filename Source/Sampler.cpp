@@ -7,18 +7,74 @@
 #include <limits>
 #include <cstring>
 namespace fga {
-juce::Result readSampleAsset(const juce::File& file,std::shared_ptr<const SampleAsset>& result){
+namespace {std::atomic<std::int64_t> reservedSampleMemory{0};}
+void SampleLoadLimits::normalise(){
+    constexpr std::int64_t mib=1024*1024;
+    fileBytes=std::clamp(fileBytes,mib,512*mib);decodedBytes=std::clamp(decodedBytes,mib,maxDecodedSampleBytes);
+    totalBytes=std::clamp(totalBytes,64*mib,2048*mib);seconds=bounded(seconds,maxSampleSeconds,1,maxSampleSeconds);
+}
+std::int64_t sampleMemoryInUse(){return reservedSampleMemory.load(std::memory_order_acquire);}
+SampleAsset::~SampleAsset(){
+    // Release accounting only after the large buffers have actually been freed.
+    audio.setSize(0,0);std::vector<std::array<float,2>>().swap(peaks);
+    if(reservedBytes)reservedSampleMemory.fetch_sub(reservedBytes,std::memory_order_release);
+}
+juce::Result readSampleAsset(const juce::File& file,std::shared_ptr<const SampleAsset>& result,
+    SampleLoadLimits limits,const std::function<bool()>& cancelled,const std::function<void(double)>& progress){
+    limits.normalise();auto stopped=[&]{return cancelled&&cancelled();};
+    auto report=[&](double value){if(progress)progress(value);};
+    if(stopped())return juce::Result::fail("Sample import cancelled.");
+    if(file.getSize()>limits.fileBytes)return juce::Result::fail("Sample file exceeds the configured file limit ("+juce::String(limits.fileBytes/(1024*1024))+" MiB).");
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
-    if(!reader||reader->lengthInSamples<2||reader->sampleRate<8000||reader->sampleRate>384000)return juce::Result::fail("Sample audio cannot be read.");
-    if(!fitsSampleMemory(reader->lengthInSamples,reader->sampleRate,(int)reader->numChannels))return juce::Result::fail("Sampler limit: 30 minutes and 512 MiB of decoded audio per file.");
-    auto asset=std::make_shared<SampleAsset>();asset->file=file;asset->rate=reader->sampleRate;asset->frames=(int)reader->lengthInSamples;
-    asset->audio.setSize(std::min(2,(int)reader->numChannels),asset->frames+4);asset->audio.clear();
-    if(!reader->read(&asset->audio,0,asset->frames,0,true,true))return juce::Result::fail("Sample decoding failed.");
-    for(int c=0;c<asset->audio.getNumChannels();++c)for(int i=0;i<asset->frames;++i){auto x=asset->audio.getSample(c,i);if(!std::isfinite(x))asset->audio.setSample(c,i,0);}
-    auto in=file.createInputStream();if(!in)return juce::Result::fail("Cannot read sample fingerprint.");asset->hash=juce::SHA256(*in).toHexString();
-    const int bins=std::min(8192,asset->frames);asset->peaks.resize((size_t)bins);
-    for(int bin=0;bin<bins;++bin){float lo=0,hi=0;const int a=(int)((int64_t)bin*asset->frames/bins),b=(int)((int64_t)(bin+1)*asset->frames/bins);for(int c=0;c<asset->audio.getNumChannels();++c)for(int i=a;i<b;++i){auto x=asset->audio.getSample(c,i);lo=std::min(lo,x);hi=std::max(hi,x);}asset->peaks[(size_t)bin]={lo,hi};}
-    result=std::move(asset);return juce::Result::ok();
+    if(!reader||!fitsSampleMemory(reader->lengthInSamples,reader->sampleRate,(int)reader->numChannels))return juce::Result::fail("Sample audio is invalid or exceeds the hard 30 minute / 512 MiB decoded limit.");
+    if(reader->lengthInSamples/reader->sampleRate>limits.seconds)return juce::Result::fail("Sample exceeds the configured duration limit ("+juce::String(limits.seconds,0)+" seconds).");
+    const int frames=(int)reader->lengthInSamples,channels=std::min(2,(int)reader->numChannels),bins=std::min(8192,frames);
+    const std::int64_t bytes=(std::int64_t)(frames+4)*channels*sizeof(float)+(std::int64_t)bins*sizeof(std::array<float,2>);
+    if(bytes>limits.decodedBytes)return juce::Result::fail("Sample exceeds the configured decoded-memory limit ("+juce::String(limits.decodedBytes/(1024*1024))+" MiB).");
+    auto asset=std::make_shared<SampleAsset>();auto used=sampleMemoryInUse();
+    do{if(bytes>limits.totalBytes-used)return juce::Result::fail("Sample exceeds the total decoded-memory budget ("+juce::String(limits.totalBytes/(1024*1024))+" MiB); the previous sample remains reserved during replacement.");}
+    while(!reservedSampleMemory.compare_exchange_weak(used,used+bytes,std::memory_order_acq_rel));
+    asset->reservedBytes=bytes;asset->file=file;asset->rate=reader->sampleRate;asset->frames=frames;
+    asset->audio.setSize(channels,frames+4);asset->audio.clear();
+    for(int at=0;at<frames;at+=16384){
+        if(stopped())return juce::Result::fail("Sample import cancelled.");
+        const int n=std::min(16384,frames-at);
+        if(!reader->read(&asset->audio,at,n,at,true,true))return juce::Result::fail("Sample decoding failed.");
+        for(int c=0;c<channels;++c)for(int i=at;i<at+n;++i)if(!std::isfinite(asset->audio.getSample(c,i)))asset->audio.setSample(c,i,0);
+        report(.6*(at+n)/frames);
+    }
+    auto in=file.createInputStream();if(!in)return juce::Result::fail("Cannot read sample fingerprint.");
+    // InputStream adapter lets JUCE SHA256 read bounded, cancellable blocks.
+    struct Input final:juce::InputStream {
+        juce::InputStream& source;const std::function<bool()>& stop;
+        Input(juce::InputStream& s,const std::function<bool()>& c):source(s),stop(c){}
+        bool stopped()const{return stop&&stop();}
+        juce::int64 getTotalLength()override{return source.getTotalLength();}
+        juce::int64 getPosition()override{return source.getPosition();}
+        bool setPosition(juce::int64 p)override{return !stopped()&&source.setPosition(p);}
+        bool isExhausted()override{return stopped()||source.isExhausted();}
+        int read(void* data,int size)override{return stopped()?0:source.read(data,std::min(size,65536));}
+    } checked(*in,cancelled);
+    asset->hash=juce::SHA256(checked).toHexString();
+    if(stopped())return juce::Result::fail("Sample import cancelled.");
+    if(in->getStatus().failed()||in->getPosition()!=file.getSize())return juce::Result::fail("Cannot read complete sample fingerprint.");
+    report(.8);asset->peaks.resize((size_t)bins);
+    for(int bin=0;bin<bins;++bin){
+        if((bin%128)==0&&stopped())return juce::Result::fail("Sample import cancelled.");
+        float lo=0,hi=0;const int a=(int)((int64_t)bin*frames/bins),b=(int)((int64_t)(bin+1)*frames/bins);
+        for(int c=0;c<channels;++c)for(int i=a;i<b;++i){auto x=asset->audio.getSample(c,i);lo=std::min(lo,x);hi=std::max(hi,x);}asset->peaks[(size_t)bin]={lo,hi};
+    }
+    if(stopped())return juce::Result::fail("Sample import cancelled.");
+    result=std::move(asset);report(1);return juce::Result::ok();
+}
+double snapSlicePoint(const SampleAsset& asset,double point,const SamplerSettings& settings,double bpm){
+    point=bounded(point,settings.start,settings.start,settings.end);
+    if(settings.sliceSnapBeats<=0)return settings.snap?snapSamplePoint(asset,point):point;
+    if(!std::isfinite(bpm)||bpm<=0||asset.seconds()<=0)return point;
+    const double speed=settings.sync?bpm/settings.sourceBpm:std::pow(2.,(settings.transpose+settings.fine*.01)/12.);
+    const double step=settings.sliceSnapBeats*60./bpm*speed/asset.seconds();
+    if(!std::isfinite(step)||step<=0)return point;
+    return std::clamp(settings.start+std::round((point-settings.start)/step)*step,settings.start,settings.end);
 }
 double snapSamplePoint(const SampleAsset& a,double p){const int centre=std::clamp((int)std::llround(p*a.frames),0,a.frames-1),radius=(int)std::min(512.,a.rate*.01);int best=centre;double score=std::numeric_limits<double>::max();const auto* x=a.audio.getReadPointer(0);
     for(int i=std::max(1,centre-radius);i<std::min(a.frames-1,centre+radius);++i)if((x[i-1]<=0&&x[i]>=0)||(x[i-1]>=0&&x[i]<=0)){double v=std::abs(i-centre)+std::abs(x[i])*8;if(v<score){score=v;best=i;}}return best/(double)a.frames;}

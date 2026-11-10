@@ -16,6 +16,7 @@ struct SamplerSettings {
     // -1 preserves the old track-dependent gate/one-shot behaviour on legacy projects.
     int mode=-1,polyphony=32,transpose=0,sliceBase=36,sliceCount=0;
     bool loop=false,reverse=false,snap=true,filter=false,sync=false;
+    double sliceSnapBeats=0; // optional musical slice grid; zero preserves legacy snap behavior
     double start=0,end=1,loopStart=0,loopEnd=1,crossfade=.01,fadeIn=.002,fadeOut=.005;
     double attack=.002,decay=.1,sustain=1,release=.1,fine=0,velocity=1,cutoff=20000,resonance=.1,sourceBpm=120,sensitivity=.5;
     // Segment bend: -1 is logarithmic (fast start), 0 is linear, +1 is exponential (slow start).
@@ -23,6 +24,8 @@ struct SamplerSettings {
     std::array<double,128> slices{};
     void normalise(){
         mode=std::clamp(mode,-1,2);polyphony=std::clamp(polyphony,1,32);transpose=std::clamp(transpose,-48,48);sliceBase=std::clamp(sliceBase,0,127);sliceCount=std::clamp(sliceCount,0,std::min(128,128-sliceBase));
+        constexpr std::array<double,11> grids{{0,.125,1./6.,.25,1./3.,.5,1,2,4,8,16}};
+        double grid=0;for(double candidate:grids)if(std::isfinite(sliceSnapBeats)&&std::abs(sliceSnapBeats-candidate)<1e-8)grid=candidate;sliceSnapBeats=grid;
         start=bounded(start,0,0,.99999);end=bounded(end,1,start+.00001,1);loopStart=bounded(loopStart,start,start,end-.000001);loopEnd=bounded(loopEnd,end,loopStart+.000001,end);
         crossfade=bounded(crossfade,.01,0,.25);fadeIn=bounded(fadeIn,.002,0,2);fadeOut=bounded(fadeOut,.005,0,2);
         attack=bounded(attack,.002,0,10);decay=bounded(decay,.1,0,10);sustain=bounded(sustain,1,0,1);release=bounded(release,.1,.001,20);
@@ -32,7 +35,7 @@ struct SamplerSettings {
         std::sort(slices.begin(),slices.begin()+sliceCount);auto last=std::unique(slices.begin(),slices.begin()+sliceCount,[](double a,double b){return std::abs(a-b)<.000001;});sliceCount=(int)(last-slices.begin());std::fill(slices.begin()+sliceCount,slices.end(),0);
     }
     bool operator==(const SamplerSettings& s)const{
-        return mode==s.mode&&polyphony==s.polyphony&&transpose==s.transpose&&sliceBase==s.sliceBase&&sliceCount==s.sliceCount&&loop==s.loop&&reverse==s.reverse&&snap==s.snap&&filter==s.filter&&sync==s.sync&&start==s.start&&end==s.end&&loopStart==s.loopStart&&loopEnd==s.loopEnd&&crossfade==s.crossfade&&fadeIn==s.fadeIn&&fadeOut==s.fadeOut&&attack==s.attack&&decay==s.decay&&sustain==s.sustain&&release==s.release&&fine==s.fine&&velocity==s.velocity&&cutoff==s.cutoff&&resonance==s.resonance&&sourceBpm==s.sourceBpm&&sensitivity==s.sensitivity&&fadeInCurve==s.fadeInCurve&&fadeOutCurve==s.fadeOutCurve&&attackCurve==s.attackCurve&&decayCurve==s.decayCurve&&releaseCurve==s.releaseCurve&&slices==s.slices;
+        return sliceSnapBeats==s.sliceSnapBeats&&mode==s.mode&&polyphony==s.polyphony&&transpose==s.transpose&&sliceBase==s.sliceBase&&sliceCount==s.sliceCount&&loop==s.loop&&reverse==s.reverse&&snap==s.snap&&filter==s.filter&&sync==s.sync&&start==s.start&&end==s.end&&loopStart==s.loopStart&&loopEnd==s.loopEnd&&crossfade==s.crossfade&&fadeIn==s.fadeIn&&fadeOut==s.fadeOut&&attack==s.attack&&decay==s.decay&&sustain==s.sustain&&release==s.release&&fine==s.fine&&velocity==s.velocity&&cutoff==s.cutoff&&resonance==s.resonance&&sourceBpm==s.sourceBpm&&sensitivity==s.sensitivity&&fadeInCurve==s.fadeInCurve&&fadeOutCurve==s.fadeOutCurve&&attackCurve==s.attackCurve&&decayCurve==s.decayCurve&&releaseCurve==s.releaseCurve&&slices==s.slices;
     }
     bool isDefault()const{return *this==SamplerSettings{};}
 };

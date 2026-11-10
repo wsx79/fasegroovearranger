@@ -564,11 +564,21 @@ juce::Result AudioEngine::loadSample(int track,const juce::File& file,int root,c
     std::shared_ptr<const SampleAsset> asset;if(auto r=readSampleAsset(file,asset);r.failed())return r;
     auto next=std::make_unique<SampleSynth>(asset,settings,std::clamp(root,0,127),isDrumTrack(track));
     double rate=0;{const EngineControlLock lock(*this);rate=sampleRate;}next->setCurrentPlaybackSampleRate(rate);
-    // Decode/prepare first, then capture Undo while the previous source still
-    // exists. Failed sample loads must not create checkpoints or replace sound.
-    if(beforeReplace)beforeReplace();
-    std::unique_ptr<juce::AudioPluginInstance> oldPlugin;std::unique_ptr<juce::Synthesiser> oldSampler;
-    {const EngineControlLock lock(*this);if(next->latencySamples()>0||hostedCount.load()>0)prepareDelayLines();if(rate!=sampleRate)next->setCurrentPlaybackSampleRate(sampleRate);detachSource(track,1,std::move(next),oldPlugin,oldSampler);prepareDelayLines();}
+    std::unique_ptr<juce::Synthesiser> retired;
+    return installPreparedSample(track,next,retired,std::move(beforeReplace));
+}
+juce::Result AudioEngine::installPreparedSample(int track,std::unique_ptr<SampleSynth>& next,
+    std::unique_ptr<juce::Synthesiser>& retired,std::function<void()> beforeReplace){
+    if(track<0||track>=engineTrackCount||!next)return juce::Result::fail("Invalid prepared sample.");
+    {const EngineControlLock lock(*this);if(next->getSampleRate()!=sampleRate)return juce::Result::fail("Audio sample rate changed; retry sample import.");}
+    // File I/O, hashing, peak generation and voice construction are already done.
+    // Keep plugin editor/state handling on its established control thread.
+    std::unique_ptr<juce::AudioPluginInstance> oldPlugin;
+    {const EngineControlLock lock(*this);
+        if(next->getSampleRate()!=sampleRate)return juce::Result::fail("Audio sample rate changed; retry sample import.");
+        if(beforeReplace)beforeReplace();
+        if(next->latencySamples()>0||hostedCount.load()>0)prepareDelayLines();
+        detachSource(track,1,std::move(next),oldPlugin,retired);prepareDelayLines();}
     if(oldPlugin)oldPlugin->releaseResources();return juce::Result::ok();
 }
 void AudioEngine::swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,int effectSlot,const juce::PluginDescription& description){

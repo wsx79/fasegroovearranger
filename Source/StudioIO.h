@@ -18,7 +18,7 @@ struct RelinkResult {int found=0;juce::StringArray missing,unverified;};
 juce::Result relinkProjectMedia(Project&,const juce::File& folder,RelinkResult&,std::function<bool()> cancelled={});
 struct SamplerPreset {SamplerSettings settings;int root=60;juce::File file;juce::String hash;};
 juce::Result saveSamplerPreset(const SamplerPreset&,const juce::File&);
-juce::Result loadSamplerPreset(const juce::File&,SamplerPreset&);
+juce::Result loadSamplerPreset(const juce::File&,SamplerPreset&,bool verifyHash=true);
 struct RecoveryOffer { juce::File snapshot; juce::String originalPath; juce::int64 millis=0; };
 juce::File recoveryDirectory();
 void openRecoverySession(const juce::File& directory);

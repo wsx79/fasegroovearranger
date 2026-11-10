@@ -5,7 +5,18 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <memory>
 namespace fga {
+struct SampleLoadLimits {
+    std::int64_t fileBytes=512ll*1024*1024,decodedBytes=maxDecodedSampleBytes,totalBytes=2048ll*1024*1024;
+    double seconds=maxSampleSeconds;
+    void normalise();
+};
+std::int64_t sampleMemoryInUse(); // decoded file PCM + waveform peaks, including pending imports
 struct SampleAsset {
+    SampleAsset()=default;
+    ~SampleAsset();
+    SampleAsset(const SampleAsset&)=delete;
+    SampleAsset& operator=(const SampleAsset&)=delete;
+    std::int64_t reservedBytes=0;
     juce::File file;
     juce::String hash;
     juce::AudioBuffer<float> audio;
@@ -14,7 +25,9 @@ struct SampleAsset {
     std::vector<std::array<float,2>> peaks;
     double seconds()const{return frames/rate;}
 };
-juce::Result readSampleAsset(const juce::File&,std::shared_ptr<const SampleAsset>&);
+juce::Result readSampleAsset(const juce::File&,std::shared_ptr<const SampleAsset>&,
+    SampleLoadLimits limits={},const std::function<bool()>& cancelled={},const std::function<void(double)>& progress={});
+double snapSlicePoint(const SampleAsset&,double normalised,const SamplerSettings&,double projectBpm);
 double snapSamplePoint(const SampleAsset&,double normalised);
 std::vector<double> detectSampleSlices(const SampleAsset&,double start,double end,double sensitivity,int limit=128);
 class SampleSynth : public juce::Synthesiser {
