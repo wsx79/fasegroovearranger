@@ -23,7 +23,7 @@ juce::Result readSampleAsset(const juce::File& file,std::shared_ptr<const Sample
 double snapSamplePoint(const SampleAsset& a,double p){const int centre=std::clamp((int)std::llround(p*a.frames),0,a.frames-1),radius=(int)std::min(512.,a.rate*.01);int best=centre;double score=std::numeric_limits<double>::max();const auto* x=a.audio.getReadPointer(0);
     for(int i=std::max(1,centre-radius);i<std::min(a.frames-1,centre+radius);++i)if((x[i-1]<=0&&x[i]>=0)||(x[i-1]>=0&&x[i]<=0)){double v=std::abs(i-centre)+std::abs(x[i])*8;if(v<score){score=v;best=i;}}return best/(double)a.frames;}
 std::vector<double> detectSampleSlices(const SampleAsset& a,double start,double end,double sensitivity,int limit){
-    std::vector<double> points;start=std::clamp(start,0.,.99999);end=std::clamp(end,start+.00001,1.);limit=std::clamp(limit,1,128);points.push_back(start);
+    std::vector<double> points;start=std::clamp(start,0.,.99999);end=std::clamp(end,start+.00001,1.);limit=std::clamp(limit,1,128);points.push_back(start);if(limit==1)return points;
     const int first=(int)(start*a.frames),last=(int)(end*a.frames),window=std::max(16,(int)(a.rate*.005));double previous=0,average=0;int lastHit=first;
     for(int at=first;at<last;at+=window){double energy=0;for(int i=at;i<std::min(at+window,last);++i)for(int c=0;c<a.audio.getNumChannels();++c){auto v=a.audio.getSample(c,i);energy+=v*v;}energy=std::sqrt(energy/(window*a.audio.getNumChannels()));
         const double floor=.002+(1-sensitivity)*.035,ratio=1.25+(1-sensitivity)*3.;
@@ -47,17 +47,20 @@ public:
         const int size=juce::nextPowerOfTwo(std::max(256,(int)(2048*rate/48000.)));warp.configure(2,size,size/4,false);owner.latency=warp.outputLatency();
         filter.prepare({rate,512,2});filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);filter.reset();
     }
+    bool retiring()const{return retriggerLeft>0;}
+    // Release on the output clock, when the replacement voice becomes audible.
+    void fadeForRetrigger(){retriggerDelay=owner.latencySamples();retriggerTotal=retriggerLeft=std::max(1,(int)std::lround(getSampleRate()*.0025));}
     void startNote(int note,float velocity,juce::SynthesiserSound*,int wheel)override{
-        const auto& p=owner.settings();data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
+        const auto& p=owner.settings();retriggerDelay=retriggerLeft=0;data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
         begin=p.start*data->frames;finish=p.end*data->frames;
         reverseRegion=owner.regionReverse||owner.settings().reverse;region=owner.regionOffset>=0;fadeIn=owner.regionFadeIn;fadeOut=owner.regionFadeOut;
         if(region){begin=std::clamp(owner.regionOffset*data->rate,0.,(double)data->frames);finish=std::min((double)data->frames,begin+owner.regionDuration*data->rate);}
-        if(owner.mode()==2){int index=note-p.sliceBase;if(index<0||index>=p.sliceCount){clearCurrentNote();data=nullptr;return;}begin=p.slices[(size_t)index]*data->frames;finish=(index+1<p.sliceCount?p.slices[(size_t)index+1]:p.end)*data->frames;}
+        if(owner.mode()==2){int index=note-p.sliceBase;if(index<0||index>=p.sliceCount){clearCurrentNote();data=nullptr;return;}begin=std::round(p.slices[(size_t)index]*data->frames);finish=std::round((index+1<p.sliceCount?p.slices[(size_t)index+1]:p.end)*data->frames);}
         updateParameters();envelope.reset();envelope.noteOn();shaped.noteOn(p,getSampleRate());warp.reset();
         if(p.sync){Reader reader{*this,0};const int seek=warp.inputLatency();warp.seek(reader,seek,speed());sourcePos=seek;}
     }
     void stopNote(float,bool allowTailOff)override{
-        if(!allowTailOff||region){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;return;}
+        if(!allowTailOff||region){retriggerDelay=retriggerLeft=0;envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;return;}
         if(owner.mode()==0&&releaseAt<0)releaseAt=elapsed+owner.latencySamples();
     }
     void pitchWheelMoved(int value)override{pitchWheel=value;}
@@ -71,22 +74,25 @@ public:
             else{const double ratio=data->rate/getSampleRate()*std::pow(2.,semitones()/12.);for(int i=0;i<n;++i){left[i]=read(0,sourcePos);right[i]=read(1,sourcePos);sourcePos+=ratio;}}
             const int lag=owner.latencySamples();
             const bool looping=!region&&p.loop&&owner.mode()==0;
-            // Sync playback maps each stretch input sample through rate/sr. Count every
-            // consumed frame, including the latency warmup the output loop used to skip.
+            // Sync input maps through rate/sr. Slice duration starts on the audible
+            // output clock; regions/legacy modes retain their source-clock behavior.
             const double sourceStep=p.sync?(double)consumedInput*(data->rate/getSampleRate())/std::max(1,n):data->rate/getSampleRate()*speed();
             for(int i=0;i<n&&data;++i,++elapsed){
                 if(releaseAt>=0&&elapsed>=releaseAt&&!released){envelope.noteOff();shaped.noteOff();released=true;}
-                if(elapsed<lag){playedSource+=sourceStep;continue;}
+                if(elapsed<lag){if(region||p.mode!=2)playedSource+=sourceStep;if(retriggerDelay>0)--retriggerDelay;continue;}
                 const auto at=elapsed-lag;
                 if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
                 const float linear=envelope.getNextSample(),bent=shaped.next();
                 float gain=(shaped.curved()?bent:linear)*level;
+                if(retriggerLeft>0&&retriggerDelay==0)gain*=(float)retriggerLeft/retriggerTotal;
                 if(region){const double remaining=std::max(0.,finish-begin-playedSource)/(data->rate*std::max(.001,speed()));const double elapsedSeconds=at/getSampleRate();gain*=(float)(std::clamp(elapsedSeconds/std::max(.0025,fadeIn),0.,1.)*std::clamp(remaining/std::max(.0025,fadeOut),0.,1.));}
                 if(p.fadeIn>0){const float lin=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);gain*=std::abs(p.fadeInCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeInCurve);}
                 if(!looping&&p.fadeOut>0){const float lin=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);gain*=std::abs(p.fadeOutCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeOutCurve);}
                 float l=left[i],r=right[i];if(p.filter){l=filter.processSample(0,l);r=filter.processSample(1,r);}l*=gain;r*=gain;
                 output.addSample(0,start+done+i,l);if(output.getNumChannels()>1)output.addSample(1,start+done+i,r);
                 playedSource+=sourceStep;
+                if(retriggerDelay>0)--retriggerDelay;
+                else if(retriggerLeft>0&&--retriggerLeft==0){clearCurrentNote();data=nullptr;}
                 if(!envelope.isActive()){clearCurrentNote();data=nullptr;}
             }done+=n;
         }
@@ -117,11 +123,20 @@ private:
     signalsmith::stretch::SignalsmithStretch<float> warp{0};
     juce::ADSR envelope;ShapedEnvelope shaped;juce::dsp::StateVariableTPTFilter<float> filter;
     double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0,fadeIn=0,fadeOut=0;int pitch=60,pitchWheel=8192;
+    int retriggerDelay=0,retriggerLeft=0,retriggerTotal=1;
     int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false,region=false,reverseRegion=false;
     double semitones()const{return (owner.mode()==2?0:pitch-owner.root())+owner.settings().transpose+owner.settings().fine*.01+(pitchWheel-8192)/8192.*2.;}
     double speed()const{return owner.settings().sync?owner.tempo()/owner.settings().sourceBpm:std::pow(2.,semitones()/12.);}
     void updateParameters(){const auto& p=owner.settings();envelope.setParameters({(float)p.attack,(float)p.decay,(float)p.sustain,(float)p.release});shaped.apply(p,getSampleRate());filter.setCutoffFrequency((float)std::clamp(p.cutoff,20.,getSampleRate()*.45));filter.setResonance((float)(.5+p.resonance*8));warp.setTransposeSemitones((float)semitones());}
-    float raw(int channel,double pos)const{if(pos<begin||pos>=finish)return 0;const int i=std::clamp((int)pos,0,data->frames-1);const float frac=(float)(pos-i);auto* a=data->audio.getReadPointer(std::min(channel,data->audio.getNumChannels()-1));return a[i]+frac*(a[i+1]-a[i]);}
+    float raw(int channel,double pos)const{
+        if(pos<begin||pos>=finish)return 0;
+        const int i=std::clamp((int)pos,0,data->frames-1);
+        const float frac=(float)(pos-i);
+        const auto* a=data->audio.getReadPointer(std::min(channel,data->audio.getNumChannels()-1));
+        // Keep interpolation inside the crop/slice and the actual asset frames.
+        const int next=i+1<finish?std::min(i+1,data->frames-1):i;
+        return a[i]+frac*(a[next]-a[i]);
+    }
     float read(int channel,double input)const{
         const auto& p=owner.settings();double progress=input*(p.sync?data->rate/getSampleRate():1.);bool wrapped=false;
         double pos=(region?reverseRegion:p.reverse)?finish-1-progress:begin+progress;
@@ -163,7 +178,12 @@ bool SampleSynth::handleRegion(const unsigned char* bytes,int size){
     }
     return false;
 }
-void SampleSynth::handleMidiEvent(const juce::MidiMessage& message){if(!handleRegion(message.getRawData(),message.getRawDataSize()))juce::Synthesiser::handleMidiEvent(message);}
+void SampleSynth::handleMidiEvent(const juce::MidiMessage& message){
+    // JUCE treats CC120 like a note release; one-shot/slice voices ignore releases.
+    // Panic must stop all sounding audio on its channel, including retiring voices.
+    if(message.isAllSoundOff()){allNotesOff(message.getChannel(),false);return;}
+    if(!handleRegion(message.getRawData(),message.getRawDataSize()))juce::Synthesiser::handleMidiEvent(message);
+}
 void SampleSynth::renderNextBlock(juce::AudioBuffer<float>& output,const juce::MidiBuffer& midi,int start,int count){
     const juce::ScopedLock guard(lock);start=std::clamp(start,0,output.getNumSamples());count=std::clamp(count,0,output.getNumSamples()-start);const int end=start+count;int cursor=start;
     for(auto it=midi.findNextSamplePosition(start);it!=midi.cend();++it){const auto event=*it;if(event.samplePosition>=end)break;
@@ -178,7 +198,14 @@ bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){cons
 void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(std::isfinite(rate)&&rate>=8000?rate:44100);}
 void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;
-    for(int tries=0;tries<32;++tries){int active=0;juce::SynthesiserVoice* oldest=nullptr;for(int i=0;i<getNumVoices();++i){auto* voice=getVoice(i);if(!voice->isVoiceActive())continue;++active;if(!oldest||voice->wasStartedBefore(*oldest))oldest=voice;}if(active<settings().polyphony||!oldest)break;oldest->stopNote(0,false);}
+    // Slices can use a spare preallocated voice for a short release. Retiring
+    // voices do not consume the playable polyphony budget; total voices stay 32.
+    for(int tries=0;tries<32;++tries){
+        int active=0;SampleVoice* oldest=nullptr;
+        for(int i=0;i<getNumVoices();++i){auto* voice=dynamic_cast<SampleVoice*>(getVoice(i));if(!voice||!voice->isVoiceActive()||voice->retiring())continue;++active;if(!oldest||voice->wasStartedBefore(*oldest))oldest=voice;}
+        if(active<settings().polyphony||!oldest)break;
+        if(mode()==2&&settings().polyphony<getNumVoices())oldest->fadeForRetrigger();else oldest->stopNote(0,false);
+    }
     juce::Synthesiser::noteOn(channel,note,velocity);
 }
 }

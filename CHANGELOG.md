@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Vocal Chops phase 02: enforce the one-slice detector limit, isolate interpolation at sample-aligned cuts, and release monophonic retriggers on the stretcher output clock. Sync slices retain their full audible duration, including very short chops; MIDI All Sound Off now silences one-shot/slice voices on its channel. Existing editor, project schema and musical generators retained. See docs/VOCAL_CHOPS_PHASE02.md for audit, regressions, performance and remaining limits.
+
 - Vocal Studio 01C: external offline English eCantorix/eSpeak guide rendering, cancellation, validated WAV cache, existing AudioTake import/Undo and single-track WAV export. Final review bounds process diagnostics, retains WAV stream ownership on writer failure and rejects pending lyric edits before take import. Source-only native process adaptation; Windows/macOS execution remains unverified. See docs/VOCAL_GUIDE_LICENSES.md.
 
 - Vocal Studio 01B: optional English lyric/syllable metadata with persistent note links, a modeless editor reusing the piano roll/timeline, vocal-region policy and Undo/save/reopen coverage. Legacy candidate metadata is retained without activating a model. See docs/VOCAL_STUDIO.md.
