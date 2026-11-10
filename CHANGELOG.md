@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.43.2
+
+- Piano roll defaults to Select and restores that tool when re-entering the editor; scale highlighting, grid, reference track, MIDI lane and guitar note view persist.
+- New CURRENT NOTES button hides active notes without changing MIDI or muting playback, revealing other instruments even at identical positions. Hidden notes cannot be edited in the roll; pitch fitting includes the reference notes.
+- Chord cells follow the actual harmonic grid, including shifted clips; scale highlighting follows independent section harmony.
+- Chord recognition covers full sus, add9, ninth, eleventh, thirteenth and 6/9 voicings. Analysis considers attacks and releases, ignores fleeting overlaps and never stacks a melody into a chord.
+- Added chord regressions and native checks for persistent preferences, overlapping reference notes, protection against invisible edits and unchanged MIDI/Undo. See docs/PIANO_ROLL_REVIEW.md.
+
 ## 0.43.1
 
 - Fixed generated one/two-bar loops becoming silent when full-section entry masks removed their entire source.

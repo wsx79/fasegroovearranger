@@ -150,10 +150,12 @@ public:
     bool keyPressed(const juce::KeyPress&) override;
     void clearSelection(){selected.clear();}
     bool guitarNotes=false;
-    bool showScaleGuide=false;
+    bool showScaleGuide=false,showActiveNotes=true;
+    void setActiveNotesVisible(bool);
+    std::vector<Note> ghostNotes()const;
     int lowNote=48,highNote=72,brushVelocity=100;
     bool flamBrush=false;
-    int tool=0;
+    int tool=1;
     bool selecting=false;
     juce::Rectangle<float> marquee;
     void fitNotes();
@@ -167,7 +169,7 @@ public:
     void eraseAt(juce::Point<float>);
     bool laneView() const;
     bool scaleGuideAvailable() const;
-    bool noteInScale(int midiNote) const;
+    bool noteInScale(int midiNote,double relativeBeat=0) const;
     float noteY(const Note&) const;
     float noteHeight() const;
     float noteWidth(const Note&) const;
@@ -184,6 +186,7 @@ private:
     std::vector<Note> gestureOriginal;
     int previewTrack=-1;std::vector<int> previewPitches;
     void previewSelection();
+    void finishGesture();
     void stopPreview();
     void timerCallback()override{stopPreview();}
     juce::Point<float> anchor;
@@ -241,6 +244,8 @@ public:
     void fitGeneratedView();
     void showInstrument();
     void showEditor();
+    void updatePianoEditingState();
+    bool verifyPianoRoll(const juce::File&);
     void showArrangement();
     void showSectionMenu(int);
     void showClipMenu(int,int);
@@ -433,7 +438,7 @@ private:
     juce::ToggleButton lockButton{"LOCK TRACK"},lockClipButton{"LOCK CLIP"};
     juce::ComboBox soundBox,gridBox;
     ActionButton brushAccent{"ACCENT"},brushHit{"HIT"},brushGhost{"GHOST"},brushFlam{"FLAM"};
-    ActionButton fitNotesButton{"FIT"},scaleGuideButton{"SCALE NOTES"};
+    ActionButton fitNotesButton{"FIT"},scaleGuideButton{"SCALE NOTES"},activeNotesButton{"CURRENT NOTES"};
     IconButton drawTool{IconButton::Icon::pencil},selectTool{IconButton::Icon::pointer},eraseTool{IconButton::Icon::eraser},regenerateClipButton{IconButton::Icon::dice};
     ActionButton quantiseButton{"QUANTISE"},transposeUp{"+12"},transposeDown{"-12"},deleteNotes{"DELETE"},importButton{"IMPORT MIDI"},copyButton{"COPY"},pasteButton{"PASTE"};
     ActionButton sectionLoopButton{"LOOP CLIP"},pianoPlayButton{"PLAY CLIP"};

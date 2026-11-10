@@ -105,6 +105,7 @@ void PianoRoll::retainSelection(const std::vector<Note>& wanted){
     repaint();
 }
 void PianoRoll::pasteNotes(){
+    if(!showActiveNotes)return;
     if(owner.clipIndex()<0||owner.clipLength()<=0||owner.clipboard.empty())return;
     auto copied=owner.clipboard;double origin=copied.front().start;for(const auto& n:copied)origin=std::min(origin,n.start);
     const double cursor=owner.timelinePosition()-owner.clipStart();const double at=cursor>=0&&cursor<owner.clipLength()?std::floor(cursor/grid)*grid:0;
@@ -119,6 +120,7 @@ void PianoRoll::pasteNotes(){
     retainSelection(copied);
 }
 bool PianoRoll::editKeys(const juce::KeyPress& key){
+    if(!showActiveNotes)return false;
     // Never let a shortcut change the project underneath an unfinished gesture.
     if(!before.empty()||selecting||editingVelocity)return true;
     const int code=key.getKeyCode();const bool command=key.getModifiers().isCommandDown();

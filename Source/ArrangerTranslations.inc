@@ -1229,3 +1229,7 @@
 { "INVERT", "INVERTI", "INVERTIR", "INVERSER", "UMKEHREN", "INVERTER" },
 
 { "PARAMETRIC", "PARAMETRICO", "PARAMÉTRICO", "PARAMÉTRIQUE", "PARAMETRISCH", "PARAMÉTRICO" },
+
+{ "CURRENT NOTES", "NOTE TRACCIA", "NOTAS DE PISTA", "NOTES DE PISTE", "SPURNOTEN", "NOTAS DA FAIXA" },
+{ "Current track notes hidden", "Note della traccia attiva nascoste", "Notas de la pista activa ocultas", "Notes de la piste active masquées", "Noten der aktuellen Spur ausgeblendet", "Notas da faixa ativa ocultas" },
+{ "Show or hide the current track's notes without muting playback. Hidden notes cannot be edited.", "Mostra o nasconde le note della traccia attiva senza silenziare la riproduzione. Le note nascoste non sono modificabili.", "Muestra u oculta las notas de la pista activa sin silenciar la reproducción. Las notas ocultas no se pueden editar.", "Afficher ou masquer les notes de la piste active sans couper la lecture. Les notes masquées ne sont pas modifiables.", "Noten der aktuellen Spur ein-/ausblenden, ohne die Wiedergabe stummzuschalten. Ausgeblendete Noten können nicht bearbeitet werden.", "Mostra ou oculta as notas da faixa ativa sem silenciar a reprodução. As notas ocultas não podem ser editadas." },

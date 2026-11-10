@@ -28,5 +28,9 @@ eq_folder = folder / 'equalizer'
 run_application(build, '--eq-ui-test', eq_folder, timeout=90)
 if 'FAIL ' in (eq_folder / 'eq-checks.txt').read_text():
     raise RuntimeError('Parametric EQ UI or DSP regression')
+piano_folder = folder / 'piano-roll'
+run_application(build, '--piano-roll-test', piano_folder, timeout=90)
+if 'FAIL ' in (piano_folder / 'piano-roll.txt').read_text():
+    raise RuntimeError('Piano roll chords, preferences or reference-note view regression')
 run_application(build, '--smoke-test', folder, timeout=600)
 verify('verify-audio.py', folder)

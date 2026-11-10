@@ -2,6 +2,14 @@
 
 ## Non pubblicato
 
+## 0.43.2
+
+- Piano roll: Selezione è lo strumento iniziale e viene ripristinato quando si rientra nell’editor; restano memorizzati scala evidenziata, griglia, traccia di riferimento, corsia MIDI e vista note della chitarra.
+- Nuovo pulsante NOTE TRACCIA: nasconde le note attive senza mutare il MIDI o silenziare la riproduzione, per leggere quelle degli altri strumenti anche quando coincidono. Le note nascoste non sono modificabili dal piano roll; l’inquadratura include la traccia di riferimento.
+- Celle degli accordi allineate alla griglia armonica reale, anche nelle clip spostate; evidenziazione della scala coerente con le armonie locali delle sezioni.
+- Riconoscimento degli accordi esteso a sus, add9, none, undicesime, tredicesime e 6/9 completi. L’analisi considera attacchi e rilasci, ignora sovrapposizioni fugaci e non somma una melodia in un accordo.
+- Aggiunti test del riconoscimento e prove native su preferenze, note di riferimento sovrapposte, blocco delle modifiche invisibili e integrità di MIDI/Undo. Vedi docs/PIANO_ROLL_REVIEW.md.
+
 ## 0.43.1
 
 - Corretti i loop generati di una/due battute che diventavano silenziosi a causa delle pause previste per sezioni lunghe.

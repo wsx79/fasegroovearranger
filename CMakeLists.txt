@@ -8,7 +8,7 @@ if(CMAKE_HOST_APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     endif()
 endif()
 
-project(FaseGrooveArranger VERSION 0.43.1 LANGUAGES C CXX)
+project(FaseGrooveArranger VERSION 0.43.2 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(MSVC)
@@ -85,7 +85,7 @@ if(FGA_BUILD_APP)
     endif()
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
         Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png docs/images/guide_sampler.png docs/images/guide_recording.png docs/images/guide_buses.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
-    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/StudioWindow.cpp Source/MixerRoutingWindow.cpp Source/GraphicEqWindow.cpp Source/AiComposer.cpp Source/AiComposerWindow.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/EffectsUi.cpp Source/AutomationPicker.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/ArrangementView.cpp Source/UiAuditTests.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/Sampler.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp Source/ProjectIO.cpp Source/StudioIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
+    target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/StudioWindow.cpp Source/MixerRoutingWindow.cpp Source/GraphicEqWindow.cpp Source/AiComposer.cpp Source/AiComposerWindow.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/EffectsUi.cpp Source/AutomationPicker.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/ArrangementView.cpp Source/UiAuditTests.cpp Source/PianoRollChecks.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/Sampler.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp Source/ProjectIO.cpp Source/StudioIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)
     target_include_directories(FaseGrooveArranger PRIVATE ThirdParty/fasegroove-common ThirdParty/signalsmith-stretch ThirdParty/signalsmith-linear/include)

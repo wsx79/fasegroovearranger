@@ -34,6 +34,17 @@ void verifyTimelineEditing(){
         check(recognizeChordPitches({67,71,74,77},-1,0)=="G7","dominant seventh");
         check(recognizeChordPitches({60,64},-1,0).empty()&&recognizeChordPitches({},-1,0).empty(),"pairs and silence are not chords");
         check(recognizeChordPitches({60,64,66},-1,0).empty(),"unrelated pitches are not labelled");
+        for(int transpose=0;transpose<12;++transpose){
+            auto chord=[&](std::initializer_list<int> tones){std::vector<int> pitches;for(int n:tones)pitches.push_back(48+transpose+n);return pitches;};
+            const std::string root=sgk::noteName(transpose);
+            check(recognizeChordPitches(chord({0,4,7,11,14}),-1,0)==root+"maj9","major ninth across every root");
+            check(recognizeChordPitches(chord({0,3,7,10,14}),-1,0)==root+"m9","minor ninth across every root");
+            check(recognizeChordPitches(chord({0,4,7,10,14}),-1,0)==root+"9","dominant ninth across every root");
+            check(recognizeChordPitches(chord({0,5,7}),-1,0)==root+"sus4","suspended fourth keeps the bass root");
+            check(recognizeChordPitches(chord({0,2,7}),-1,0)==root+"sus2","suspended second keeps the bass root");
+            check(recognizeChordPitches(chord({0,4,7,14}),-1,0)==root+"add9","added ninth is not a seventh");
+            check(recognizeChordPitches(chord({0,4,7,10,14,21}),-1,0)==root+"13","six pitch classes are recognised without dropping the thirteenth");
+        }
         const std::string planned="Am";
         std::vector<Note> held{{0,4,60,100,0},{0,4,64,100,0},{0,4,67,100,0}};
         check(chordHeardInClip(held,0,4,-1,0,planned)=="C","overlapping triad replaces the planned name");
@@ -42,6 +53,14 @@ void verifyTimelineEditing(){
         std::vector<Note> both{{0,2,60,100,0},{0,2,64,100,0},{0,2,67,100,0},{2,2,62,100,0},{2,2,65,100,0},{2,2,69,100,0}};
         check(chordHeardInClip(both,0,4,-1,0,planned)==planned,"two different chords in one cell keep the section harmony");
         check(chordHeardInClip({},0,4,-1,0,planned)==planned,"silence keeps the section harmony");
+        std::vector<Note> strummed{{0,4,60,100,0},{.02,3.98,64,100,0},{.04,3.96,67,100,0},{.06,3.94,71,100,0}};
+        check(chordHeardInClip(strummed,0,4,-1,0,planned)=="Cmaj7","a fleeting triad in a strummed seventh does not hide its sustained harmony");
+        std::vector<Note> released{{0,4,60,100,0},{0,4,64,100,0},{0,4,67,100,0},{0,2,71,100,0}};
+        check(chordHeardInClip(released,0,4,-1,0,planned)==planned,"note releases are analysed: Cmaj7 followed by C is not labelled as one seventh");
+        strummed.push_back({2,.02,66,100,0});check(chordHeardInClip(strummed,0,4,-1,0,planned)=="Cmaj7","brief passing notes do not erase the sustained chord label");
+        std::vector<Note> cluster{{0,4,60,100,0},{0,4,64,100,0},{.2,3.8,66,100,0},{0,4,67,100,0}};
+        check(chordHeardInClip(cluster,0,4,-1,0,planned)==planned,"a brief recognised fragment cannot label a predominantly unrelated cluster");
+
     }
     {
         auto song=newProject(1);song.sections={{Section::main,4,"Main"},{Section::drop,4,"Drop"}};song.normalise();

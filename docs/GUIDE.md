@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.43.1**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.43.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+**0.43.2** updates the piano roll: entering it selects **Select**, while scale highlighting, grid and other view options persist. Use **CURRENT NOTES** to hide active notes and read the reference track, even at overlapping positions. Playback continues; turn the button back on to edit notes. Scale highlighting follows section harmony and chord cells follow the timeline grid. See the [piano roll review](PIANO_ROLL_REVIEW.md).
 
 **0.43.1** fixes harmony when regenerated clips cross different section progressions. Such clips are split at the harmonic change while keeping their loop period and phase; locks and other clips stay protected. Ruler chords follow the played phase, Lead avoids unintended micro-notes, electronic lane controls work consistently and guitar regeneration changes the primary phrase too. Short loops retain an audible source. An explicit Strings take created while the global style is Off survives Apply; Off remains the new-song default. Saved notes stay intact until you edit or regenerate. See the [new harmony check](HARMONY_RECHECK.md).
 

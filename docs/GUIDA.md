@@ -30,7 +30,9 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.43.1**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.43.2**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
+La **0.43.2** aggiorna il piano roll: entrando è attiva **Selezione**, mentre scala evidenziata, griglia e altre opzioni restano memorizzate. Usa **NOTE TRACCIA** per nascondere temporaneamente le note attive e leggere quelle della traccia di riferimento, anche se si sovrappongono. La riproduzione continua; riattiva il pulsante per modificare le note. La scala segue le armonie delle sezioni e le celle degli accordi seguono la griglia della timeline. Vedi la [revisione del piano roll](PIANO_ROLL_REVIEW.md).
 
 La **0.43.1** corregge l’armonia delle clip rigenerate che attraversano progressioni di sezione diverse. Le clip vengono separate al cambio armonico conservando periodo e fase del loop; blocchi e altre clip restano protetti. Gli accordi del righello seguono la fase suonata, il Lead evita micro-note involontarie, le lane elettroniche rispettano i controlli e la rigenerazione della chitarra varia anche la frase principale. I loop corti conservano una sorgente udibile. Una take Strings richiesta con lo stile globale Off non sparisce più premendo Applica: Off rimane il valore predefinito per un nuovo brano. Le note salvate rimangono intatte finché non modifichi o rigeneri. Vedi il [nuovo controllo armonico](HARMONY_RECHECK.md).
 

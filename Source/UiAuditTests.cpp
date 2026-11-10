@@ -252,10 +252,13 @@ MainComponent::MainComponent(){
     instrumentPort.setViewedComponent(&instrumentPanel,false);instrumentPort.setScrollBarsShown(true,true);addAndMakeVisible(instrumentPort);
     backButton.onClick=[this]{showArrangement();};instrumentButton.onClick=[this]{showInstrument();};
     addAndMakeVisible(addTrackButton);addTrackButton.onClick=[this]{showAddTrackMenu();};addTrackButton.getProperties().set("fgaTip","Add a handwritten MIDI track or a sparse vocal chops part for Studio slices.");editButton.onClick=[this]{showEditor();};
-    addAndMakeVisible(fitNotesButton);addAndMakeVisible(scaleGuideButton);piano.showScaleGuide=Localisation::setting("pianoScaleGuide","0")=="1";scaleGuideButton.setToggleState(piano.showScaleGuide,juce::dontSendNotification);scaleGuideButton.getProperties().set("fgaTip","Show or hide the note lanes belonging to the current key and scale.");
+    addAndMakeVisible(fitNotesButton);addAndMakeVisible(scaleGuideButton);scaleGuideButton.setToggleState(piano.showScaleGuide,juce::dontSendNotification);scaleGuideButton.getProperties().set("fgaTip","Show or hide the note lanes belonging to the current key and scale.");
     scaleGuideButton.onClick=[this]{piano.showScaleGuide=!piano.showScaleGuide;scaleGuideButton.setToggleState(piano.showScaleGuide,juce::dontSendNotification);Localisation::setSetting("pianoScaleGuide",piano.showScaleGuide?"1":"0");piano.repaint();};
+    addAndMakeVisible(activeNotesButton);activeNotesButton.setComponentID("piano-active-notes");activeNotesButton.setToggleState(piano.showActiveNotes,juce::dontSendNotification);
+    Localisation::bindTip(activeNotesButton,"Show or hide the current track's notes without muting playback. Hidden notes cannot be edited.");
+    activeNotesButton.onClick=[this]{piano.setActiveNotesVisible(!piano.showActiveNotes);};
     muteButton.setClickingTogglesState(true);soloButton.setClickingTogglesState(true);
-    int toolIndex=0;for(auto* button:{&drawTool,&selectTool,&eraseTool}){addAndMakeVisible(button);button->setClickingTogglesState(true);button->setRadioGroupId(4001);const int index=toolIndex++;button->onClick=[this,index]{piano.tool=index;};}drawTool.setToggleState(true,juce::dontSendNotification);
+    int toolIndex=0;for(auto* button:{&drawTool,&selectTool,&eraseTool}){addAndMakeVisible(button);button->setClickingTogglesState(true);button->setRadioGroupId(4001);const int index=toolIndex++;button->onClick=[this,index]{piano.tool=index;};}selectTool.setToggleState(true,juce::dontSendNotification);
     drawTool.setConnectedEdges(juce::Button::ConnectedOnRight);selectTool.setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);eraseTool.setConnectedEdges(juce::Button::ConnectedOnLeft);
     drawTool.setComponentID("tool-draw");selectTool.setComponentID("tool-select");eraseTool.setComponentID("tool-erase");
     drawTool.getProperties().set("fgaTip","Pencil: click to draw notes, drag to move, drag the edge for duration.");selectTool.getProperties().set("fgaTip","Select: drag a rectangle to select notes, then move or edit them.");eraseTool.getProperties().set("fgaTip","Eraser: click or drag over notes to delete them.");
@@ -263,7 +266,7 @@ MainComponent::MainComponent(){
     regenerateClipButton.getProperties().set("fgaTip","Regenerate this clip from the instrument panel settings: a new variation of the same groove. Locked clips are kept; Undo restores the notes.");
     int brushIndex=0;for(auto* button:{&brushAccent,&brushHit,&brushGhost,&brushFlam}){addAndMakeVisible(button);button->setClickingTogglesState(true);button->setRadioGroupId(4002);const int index=brushIndex++;button->onClick=[this,index]{piano.brushVelocity=index==0?127:index==2?45:100;piano.flamBrush=index==3;};button->setTooltip(tr("Choose the hit to draw, as in the Drums and Guitar editor."));button->setConnectedEdges(juce::Button::ConnectedOnLeft|juce::Button::ConnectedOnRight);}brushAccent.setConnectedEdges(juce::Button::ConnectedOnRight);brushFlam.setConnectedEdges(juce::Button::ConnectedOnLeft);brushHit.setToggleState(true,juce::dontSendNotification);
     fitNotesButton.onClick=[this]{piano.fitNotes();piano.repaint();};
-    guitarNotesButton.onClick=[this]{piano.guitarNotes=!piano.guitarNotes;showEditor();};
+    guitarNotesButton.onClick=[this]{piano.guitarNotes=!piano.guitarNotes;Localisation::setSetting("pianoGuitarNotes",piano.guitarNotes?"1":"0");showEditor();};
     leadButton.setClickingTogglesState(true);leadButton.onClick=[this]{if(loadingPlugin)return;checkpoint();project.settings.guitarLead=!project.settings.guitarLead;generate(project,Scope::track,0,selectedSection);generate(project,Scope::track,3,selectedSection);changed();};
     durationLabel.getProperties().set("fgaTip","Song length follows genre, harmonic phrases and groove development.");durationLabel.setTooltip(tr("Song length follows genre, harmonic phrases and groove development."));
     addAndMakeVisible(targetDurationLabel);addAndMakeVisible(targetDurationEditor);
@@ -386,7 +389,8 @@ MainComponent::MainComponent(){
     harmonyButton.onClick=[this]{checkpoint();const auto seed=(std::uint32_t)juce::Random::getSystemRandom().nextInt();if(sectionHarmonyEnabled(project,selectedSection)){auto edited=resolveSectionHarmony(project,selectedSection);randomiseHarmony(edited,seed);storeHarmony(project,selectedSection,edited);generate(project,Scope::section,selectedTrack,selectedSection,0);changed();message("Section chords written into unlocked tracks in this section.");}else{randomiseHarmony(project,seed);applyInstrumentSettings(0,true);message("New chords written into unlocked tracks. GENERATE SONG draws another harmony.");}};
     undoButton.onClick=[this]{undo(false);};redoButton.onClick=[this]{undo(true);};
     quantiseButton.onClick=[this]{modifySelected([this](Clip& c){quantise(c,piano.grid,1,clipLength());});};transposeUp.onClick=[this]{modifySelected([](Clip& c){transpose(c,12);});};transposeDown.onClick=[this]{modifySelected([](Clip& c){transpose(c,-12);});};deleteNotes.onClick=[this]{piano.deleteSelected();};
-    gridBox.onChange=[this]{piano.grid=std::pow(.5,gridBox.getSelectedItemIndex());piano.repaint();};
+    gridBox.setSelectedId(std::clamp(Localisation::setting("pianoGrid","3").getIntValue(),1,4),juce::dontSendNotification);piano.grid=std::pow(.5,gridBox.getSelectedItemIndex());
+    gridBox.onChange=[this]{piano.grid=std::pow(.5,gridBox.getSelectedItemIndex());Localisation::setSetting("pianoGrid",gridBox.getSelectedId());piano.repaint();};
     copyButton.onClick=[this]{clipboard.clear();for(size_t i=0;i<clip().notes.size();++i)if(piano.selected.empty()||piano.selected.count((int)i))clipboard.push_back(clip().notes[i]);message("Notes copied. Paste inserts at the cursor inside the clip.");};
     pasteButton.onClick=[this]{piano.pasteNotes();};
     soundButton.setButtonText("BUILT-IN");soundButton.onClick=[this]{useBuiltInSound(selectedTrack);};
