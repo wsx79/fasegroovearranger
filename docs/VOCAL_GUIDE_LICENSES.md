@@ -81,3 +81,12 @@ and commercial output use do not remove software/source obligations.
 The unpublished local commit also prevents relying on the current SOURCE.txt URL
 alone for FGA/JUCE/Shine corresponding source. No distributable preview was made.
 See [Windows build, manual and source-distribution gates](VOCALTEST_PREVIEW_WINDOWS.it.md).
+
+## Preview Actions con stack esterno escluso
+
+Il job branch-only Vocaltest prepara sorgenti corrispondenti FGA/JUCE completi,
+notice e istruzioni di rebuild/relink insieme al programma; non dipende più
+soltanto dal vecchio URL locale. Lo stack eCantorix/Perl/eSpeak/SoX resta esterno:
+nessun archivio Windows aggiuntivo è approvato o distribuito da questa CI.
+La GUI senza helper e i test della DAW non provano il rendering inglese su Windows.
+Per risultati reali del job e checklist vedere VOCALTEST_PREVIEW_WINDOWS.it.md.

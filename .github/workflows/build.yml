@@ -48,6 +48,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/test-preview-packaging.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Windows MP3 verification dependency (QA only, never packaged)
+        run: if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg -y --no-progress }
       - name: Configure native MSVC x64
         run: cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=ON
       - name: Build Release
