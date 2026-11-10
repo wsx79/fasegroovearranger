@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Fix the Windows late-focus regression exposed by the native VST test: restore missing JUCE focus when the DAW peer already owns native thread focus, without raising a background application or replacing an existing child focus. Keep foreground gating for native window activation and preserve the existing regression assertion.
+
 - Run a branch-only Vocaltest Preview Windows x64 job in the existing Actions workflow, gated on native tests and extracted-payload verification. Bundle corresponding app/JUCE source, checksums and a non-developer quickstart without external singing runtimes. Native guide synthesis and Windows 11 listening remain unverified until separately tested; no tags or GitHub Releases.
 
 - Prepare the Vocaltest Preview Windows x64 audit, native PowerShell build/test recipe and manual checklist. Portable staging includes verified GPL helper preparation source/licence and vocal setup guides; `package.py` supports a separate build directory and staging without ZIP creation. Native Windows validation, dependency archive review and complete corresponding-source delivery remain release blockers; no preview binary is certified or published.

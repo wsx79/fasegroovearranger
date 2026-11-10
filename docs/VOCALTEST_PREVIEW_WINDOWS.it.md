@@ -11,7 +11,10 @@ corretto l'harness affinché quel controllo resti su POSIX, mantenendo i test Wi
 Il secondo tentativo ha superato build e CTest 15/15 (80,76 s), poi ha rilevato
 FFmpeg assente nella verifica MP3. Riutilizzato il passo di installazione QA già
 presente nel workflow standard: FFmpeg non entra nello ZIP. Risultati definitivi
-e run di riferimento sono riportati in 02_STATUS.md.
+e run di riferimento sono riportati in 02_STATUS.md. La terza run ha superato
+anche UI/WAV/MP3 ed effetti VST3, rilevando poi il caso di focus logico perso con
+peer nativo già focalizzato e processo non foreground. Correzione UI minima;
+la stessa asserzione viene mantenuta per la ripetizione Windows.
 
 ## Gate automatici
 

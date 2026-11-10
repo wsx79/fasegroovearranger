@@ -355,10 +355,12 @@ void restoreFocusAfterHide(juce::Component::SafePointer<juce::Component> target,
     // A subsequent click or reopened tool cancels the request. Wait for native
     // activation without bringing an application back from the background.
     if(juce::Desktop::getInstance().getMainMouseSource().getLastMouseDownTime()!=mouseDown)return;
-    if(juce::Process::isForegroundProcess()){
-        if(auto* peer=target->getPeer();peer&&peer->isFocused()){target->grabKeyboardFocus();if(target->hasKeyboardFocus(false))return;}
-        else target->getTopLevelComponent()->toFront(true);
-    }
+    // Windows can retain native thread focus while another process is foreground.
+    // Reconcile JUCE focus on that already-focused peer without raising a window.
+    const bool foreground=juce::Process::isForegroundProcess();
+    if(auto* peer=target->getPeer();peer&&peer->isFocused()){
+        if(foreground||juce::Component::getCurrentlyFocusedComponent()==nullptr){target->grabKeyboardFocus();if(target->hasKeyboardFocus(false))return;}
+    }else if(foreground)target->getTopLevelComponent()->toFront(true);
     juce::Timer::callAfterDelay(50,[target,closed,mouseDown,remaining]{restoreFocusAfterHide(target,closed,mouseDown,remaining-1);});
 }
 }
