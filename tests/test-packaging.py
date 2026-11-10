@@ -12,7 +12,10 @@ import shutil
 import sys
 
 repo = Path(__file__).resolve().parent.parent
-for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
+# NTFS does not provide the Unix execute mode required by a Linux payload.
+# Keep that regression on POSIX; Windows still exercises its real package shape.
+systems = [('Windows', '.exe')] if os.name == 'nt' else [('Linux', ''), ('Windows', '.exe')]
+for system, suffix in systems:
     with TemporaryDirectory() as tmp:
         root = Path(tmp)
         for path in ['scripts/package.py', 'CMakeLists.txt', 'LICENSE', 'README.md', 'README.it.md',
@@ -88,4 +91,4 @@ for system, suffix in [('Linux', ''), ('Windows', '.exe')]:
         assert not list((root / 'dist').glob('*.zip'))
         assert (root / 'dist/package/Standalone' / binary.name).read_bytes() == alternate.read_bytes()
         assert b'b' * 40 in (root / 'dist/package/SOURCE.txt').read_bytes()
-print('PASS simulated Linux/Windows payloads, GPL source/licence files, source pointer, clean staging, alternate build and stage-only; NOT native Windows validation')
+print('PASS platform packaging fixtures, GPL source/licence files, source pointer, clean staging, alternate build and stage-only; NOT native executable validation')
