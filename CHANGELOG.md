@@ -2,7 +2,9 @@
 
 ## Unreleased
 
-- Vocal Studio 01B: optional English lyric/syllable metadata with persistent note links, a modeless editor reusing the piano roll/timeline, vocal-region policy and Undo/save/reopen coverage. Qixuan is a non-activated candidate; singing rendering is not implemented. See docs/VOCAL_STUDIO.md.
+- Vocal Studio 01C: external offline English eCantorix/eSpeak guide rendering, cancellation, validated WAV cache, existing AudioTake import/Undo and single-track WAV export. Final review bounds process diagnostics, retains WAV stream ownership on writer failure and rejects pending lyric edits before take import. Source-only native process adaptation; Windows/macOS execution remains unverified. See docs/VOCAL_GUIDE_LICENSES.md.
+
+- Vocal Studio 01B: optional English lyric/syllable metadata with persistent note links, a modeless editor reusing the piano roll/timeline, vocal-region policy and Undo/save/reopen coverage. Legacy candidate metadata is retained without activating a model. See docs/VOCAL_STUDIO.md.
 
 ## 0.43.2
 

@@ -140,7 +140,7 @@ static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
 // Optional Vocal Studio extension: legacy MIDI arrays and project versions stay intact.
 static juce::var vocalJson(const Clip& clip){
     const auto& v=*clip.vocal;auto o=object();
-    set(o,"schema",1);set(o,"language","en");set(o,"engine","diffsinger-openutau-local");
+    set(o,"schema",1);set(o,"language","en");set(o,"engine",v.voice=="ecantorix-en"?"ecantorix-local":"diffsinger-openutau-local");
     set(o,"id",v.id);set(o,"lyrics",v.lyrics);set(o,"voice",v.voice);set(o,"modelPath",v.modelPath);
     set(o,"nextNoteId",v.nextNoteId);set(o,"nextSyllableId",v.nextSyllableId);
     set(o,"regionStart",v.regionStart);set(o,"regionEnd",v.regionEnd);set(o,"allowIntroOutro",v.allowIntroOutro);
@@ -151,11 +151,11 @@ static juce::var vocalJson(const Clip& clip){
 }
 static juce::Result readVocal(const juce::var& o,Clip& clip){
     const auto fail=[] {return juce::Result::fail("Invalid Vocal Studio data.");};
-    if(!o.isObject()||!o["schema"].isInt()||(int)o["schema"]!=1||o["language"].toString()!="en"||o["engine"].toString()!="diffsinger-openutau-local")return fail();
+    if(!o.isObject()||!o["schema"].isInt()||(int)o["schema"]!=1||o["language"].toString()!="en"||(o["engine"].toString()!="diffsinger-openutau-local"&&o["engine"].toString()!="ecantorix-local"))return fail();
     const auto text=[&](const char* key,size_t limit,std::string& target){if(!o[key].isString())return false;target=str(o,key);return target.size()<=limit;};
     const auto id=[](const juce::var& value){return value.isInt()&&(int)value>0&&(int)value<1000000000;};
     VocalClip v;
-    if(!text("id",32,v.id)||v.id.size()!=32||v.id.find_first_not_of("0123456789abcdef")!=std::string::npos||!text("lyrics",65536,v.lyrics)||!text("voice",64,v.voice)||(!v.voice.empty()&&v.voice!="qixuan-candidate")||!text("modelPath",4096,v.modelPath))return fail();
+    if(!text("id",32,v.id)||v.id.size()!=32||v.id.find_first_not_of("0123456789abcdef")!=std::string::npos||!text("lyrics",65536,v.lyrics)||!text("voice",64,v.voice)||(!v.voice.empty()&&v.voice!="qixuan-candidate"&&v.voice!="ecantorix-en")||!text("modelPath",4096,v.modelPath))return fail();
     if(!id(o["nextNoteId"])||!id(o["nextSyllableId"])||!o["allowIntroOutro"].isBool())return fail();
     v.nextNoteId=(int)o["nextNoteId"];v.nextSyllableId=(int)o["nextSyllableId"];v.allowIntroOutro=(bool)o["allowIntroOutro"];
     if(!clipNumber(o,"regionStart",0,v.regionStart)||!clipNumber(o,"regionEnd",0,v.regionEnd)||v.regionStart<0||v.regionEnd<v.regionStart||v.regionEnd>maxClipBeats)return fail();

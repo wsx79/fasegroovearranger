@@ -1,23 +1,21 @@
 # Codex persistent state (keep brief)
 
-- Baseline: v0.43.2; branch Vocaltest; starting HEAD 0dcf59a58fdb5680809d7e27511b3b71d9fbed23.
-- Current phase: 01 VOCAL STUDIO.
-- Current substep: 01B PROJECT DATA / UI MVP.
-- Status: 01B COMPLETE (data/UI only); Linux validation passed. Singing remains unavailable.
-- 01A approved: DiffSinger/OpenUtau, local helper, offline rendering.
-- Language: ENGLISH ONLY; Italian is not required.
-- No mandatory cloud, subscription or proprietary model.
-- Qixuan: candidate only; no model installed/loaded/activated/redistributed.
-- Before use: verify exact voicebank/vocoder versions, output rights, attribution and redistribution terms.
-- Vocal Studio and sample-based Vocal Chops remain separate.
-- Data: optional vocal clip extension, stable clip/note/syllable IDs, English lyrics and phoneme drafts.
-- UI: existing piano roll/timeline; assignments, melisma, rests, clip-relative vocal region and intro/outro override.
-- Voice selection: none or Qixuan candidate; missing folder/config errors; capabilities explicitly unverified.
-- Persistence: optional validated metadata, existing MIDI arrays/old projects preserved; Undo/Redo.
-- Audio: existing MIDI guide only. No helper, singing synthesis, render, preview, cache or audio bounce implemented.
-- PASS: Linux app/IO/engine builds; final core CTest 8/8; project_io and audio_engine 2/2.
-- PASS: --vocal-studio-test (14 checks, including screenshot); --piano-roll-test (12 checks); git diff --check.
-- NOT RUN: Windows/macOS, physical audio device, family_updater/sample_browser suites and VST3 host tests.
-- NOT RUN: singing render/alignment/listening (01C not authorized; no models installed).
-- Docs: docs/VOCAL_STUDIO.md; relevant Unreleased changelogs only; version unchanged.
-- Next gate: report verified 01B results; await explicit authorization for 01C.
+- Branch Vocaltest; 01C baseline ac8744ab190137932a9bbc4f322057205010251f; v0.43.2 unchanged.
+- Phase 01: 01B complete; 01C reviewed and technically validated on Linux. Windows/macOS and sound quality NOT validated. Phase 02 NOT STARTED.
+- Approved goal: ENGLISH SYNTHETIC GUIDE for subsequent real-singer recording; eCantorix/eSpeak external offline MIDI karaoke/WAV. No mandatory Bash/WSL/cloud/subscription.
+- Qixuan/DiffSinger/neural vocoders excluded from execution; legacy metadata is readable only. Vocal Chops, harmony, arrangement and musical generators unchanged.
+- Existing piano roll/timeline, AudioTake, sampler, mixer, export and asset references reused; worker snapshot rendering, staged progress, process-tree cancel/timeout, exact silence masks, source MIDI mute, Undo/Redo and separate WAV export implemented.
+- Limits: monophonic, 256 sung segments, 60 s/render, 180 s synthesis timeout; mono 22050 Hz/16-bit. Pronunciation drafts ignored. Audio callbacks contain no new file/process/synthesis work.
+- Native adaptation: separate GPL prepare.pl, upstream 069317157287ce1a6390c109d1a9310556bc0002, normalized SHA checks, direct argument lists/binary pipes, Perl >=5.22. No engine rewrite or GPL engine linked into JUCE.
+- Final review fixes: enforce limits after fast child exit; bounded diagnostic reads; owning WAV-writer API prevents stream leak on creation failure; pending lyric drafts applied/checked before import. Thread lifetime, cancellation, buffers and call sites reviewed; no ASan/TSan run.
+- Cache: exact duration/rest-mask identity fixes a reproduced same-MIDI/sub-tick collision; helper/runtime/English data hashes and WAV checksum. Tests verify ten explicit hits/backdated timestamps, edit isolation and corruption repair.
+- Historical prototype cache FAIL remains unproven: original assertion component not retained; diagnostic rerun passed. Do NOT attribute that historical failure to the independently reproduced collision or label it solved.
+- PASS final Linux: full build of app and all configured test targets; full native CTest 13/13 (87.26 s), including core/MIDI, IO, updater, engine, real vocal guide and sample browser; editor 22/22; piano roll 12/12.
+- PASS vocal tests: real 8-bar/125 BPM WAV, C4 correlation, start/duration/rests, intro/outro exclusion/override and exported silence, cache, repeated cancel/retry/cleanup, POSIX descendants, fast log limit, failure diagnostics, timeout, AudioTake/save/reopen/stem export. GUI additionally covers stale notes/drafts, import Undo/Redo and async WAV export.
+- PASS helper checks: pinned-source/CRLF preparation, rejected unsupported source, syntax/direct calls/binary pipes. Linux checks only. Real synthesis tests require FGA_ECANTORIX; otherwise explicitly NOT RUN.
+- File integrity: 18 original pending 01C files backed up/hashed outside repo; 19 reviewed text/source/license files included with manual procedure. No dependency binaries or generated audio added; see git manifest.
+- GPL review: eCantorix/eSpeak GPL-3.0+; SoX GPL-2.0+ executable/LGPL-2.1+ library; Perl/MIDI/URI/Math::FFT Perl terms. Helper COPYING/notices separate. Process separation is NOT an automatic exemption. Exact platform-package/source/notices/build/codec audit required before authorized redistribution.
+- NOT RUN: Windows/macOS compile/runtime/XS install, Unicode paths, live devices/DAW listening, sound-quality assessment, full host/UI-audit/sanitizer suites. No cross-platform completion claim.
+- Manual procedure: docs/VOCAL_GUIDE_MANUAL_TEST.it.md; setup: helpers/ecantorix/README.md; licensing/evidence: docs/VOCAL_GUIDE_LICENSES.md and docs/VOCAL_GUIDE_VALIDATION.md.
+- Final logs/artifacts: /workspace/scratch/01c-final-review (build logs, ctest.log, gui and piano-roll reports); backup before-review.tar.gz and SHA inventory retained there.
+- Local 01C commit authorized by user after these PASS results; see git log for resulting SHA. No push, tag or release. Remaining: manual listening, native platform/package validation and historical cache uncertainty.
