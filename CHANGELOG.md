@@ -2,11 +2,13 @@
 
 ## Unreleased
 
+- Vocaltest Preview Windows x64 is available as a tested Actions artifact (run 42920754927, build 0649e93): MSVC Release, 15/15 CTest, native UI/WAV/MP3/VST3, vocal metadata/import controls and extracted EXE pass. The ZIP includes the exact configured JUCE source adaptations and complete app source/notices. External Windows guide synthesis and Windows 11 hardware/listening remain untested. No public release or tag.
+
 - Fix the Windows late-focus regression exposed by the native VST test: restore missing JUCE focus when the DAW peer already owns native thread focus, without raising a background application or replacing an existing child focus. Keep foreground gating for native window activation and preserve the existing regression assertion.
 
 - Run a branch-only Vocaltest Preview Windows x64 job in the existing Actions workflow, gated on native tests and extracted-payload verification. Bundle corresponding app/JUCE source, checksums and a non-developer quickstart without external singing runtimes. Native guide synthesis and Windows 11 listening remain unverified until separately tested; no tags or GitHub Releases.
 
-- Prepare the Vocaltest Preview Windows x64 audit, native PowerShell build/test recipe and manual checklist. Portable staging includes verified GPL helper preparation source/licence and vocal setup guides; `package.py` supports a separate build directory and staging without ZIP creation. Native Windows validation, dependency archive review and complete corresponding-source delivery remain release blockers; no preview binary is certified or published.
+- Prepare the Vocaltest Preview Windows x64 audit, native PowerShell build/test recipe and manual checklist. Portable staging includes verified GPL helper preparation source/licence and vocal setup guides; `package.py` supports a separate build directory and staging without ZIP creation. Native results are now recorded in docs/VOCALTEST_PREVIEW_WINDOWS.it.md; external helper archive review and manual Windows 11 checks remain separate pending gates.
 
 - Approved Vocal Chops gate 02A: cancellable background file/preset/project sample preparation and recorded-take import, bounded PCM/peak reservations with configurable limits, and optional project-tempo slice grids with snap off. Existing source, MIDI and Undo survive failed/cancelled/stale requests; optional grid metadata defaults safely for old projects. No new dependencies or generator changes. See docs/VOCAL_CHOPS_IMPORT.md for verification and local performance.
 

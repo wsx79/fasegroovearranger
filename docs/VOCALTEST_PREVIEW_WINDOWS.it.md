@@ -18,6 +18,25 @@ la stessa asserzione è passata nella run 42917662978, insieme a tutti i test
 nativi. Il gate dei sorgenti ha poi intercettato gli adattamenti CMake legittimi di
 JUCE: il packaging è stato corretto per includerli effettivamente e viene ripetuto.
 
+## Risultato verificato
+
+**PASS** [run 42920754927](https://github.com/wsx79/fasegroovearranger/actions/runs/42920754927),
+commit di build `0649e93d915f762f29e85adf427bfe08ded164d5`.
+Windows Server 2025 / windows-2025-vs2026, MSVC 19.51.36260.0, Release x64.
+CTest **15/15** (80,76 s), UI/avvio/WAV/MP3, VST3 effetti/strumenti, regressione
+focus, import asincrono **11** e Vocal Studio senza helper **14**: tutti PASS.
+Anche eseguibile estratto, packaging e upload sono PASS. Scaricato e ricontrollato
+l'archivio: digest Actions, PE64, risorse, sorgenti/licenze e checksum confermati;
+import table dell'EXE con sole DLL di sistema Windows, senza runtime aggiuntivi.
+
+[Scarica l'artifact](https://github.com/wsx79/fasegroovearranger/actions/runs/42920754927/artifacts/13811964799),
+41.692.092 byte per lo ZIP portabile interno, disponibile fino al 10 dicembre 2026.
+[Dettagli riproducibili e SHA256](https://github.com/wsx79/fasegroovearranger/blob/Vocaltest/docs/VOCALTEST_PREVIEW_RESULT.json).
+Resta una preview per test manuali: sintesi esterna e Windows 11/hardware/ascolto
+non sono PASS. I precedenti blocchi (fixture Unix su NTFS, decoder QA assente,
+recupero focus e inclusione degli adattamenti JUCE) sono risolti nella run verde;
+nessuna asserzione nativa è stata saltata per ottenere il risultato.
+
 ## Gate automatici
 
 - Runner `windows-latest`, MSVC x64, Release; C++17, CRT statico e JUCE 8.0.9 come

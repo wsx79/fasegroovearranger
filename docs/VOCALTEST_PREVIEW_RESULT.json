@@ -1,0 +1,76 @@
+{
+  "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/42920754927",
+  "build_commit": "0649e93d915f762f29e85adf427bfe08ded164d5",
+  "runner": "Windows Server 2025, windows-2025-vs2026, native MSVC 19.51.36260.0 x64 Release",
+  "windows_results": {
+    "ctest": "15/15 PASS, 80.76 s; real eCantorix skipped explicitly",
+    "native_ui_wav_mp3": "PASS",
+    "native_vst3_effects": "PASS",
+    "native_vst3_instruments_and_focus_regression": "PASS",
+    "vocal_studio_without_external_helper": "14 PASS",
+    "async_sample_import": "11 PASS",
+    "extracted_preview_executable": "PASS",
+    "external_guide_render": "NOT RUN",
+    "windows_11_hardware_and_listening": "PENDING"
+  },
+  "artifact": {
+    "id": 13811964799,
+    "name": "Vocaltest-Preview-Windows-x64",
+    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/42920754927/artifacts/13811964799",
+    "expires": "2026-12-10",
+    "outer_sha256": "1984554e2584b1ddf7823665cedbd70918269d4cb315122fddd06096a2c71009"
+  },
+  "portable_zip": {
+    "name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
+    "bytes": 41692092,
+    "sha256": "609b9b9eaad4b48908f3833c4803794a51df3639039e85a2ac9ffa2502b0b79c"
+  },
+  "exe_sha256": "d5e6c2258f3efee2e85a88489df8fa9f5ab89d8bd5ac597347fde4a2d5cf5d52",
+  "source": {
+    "FaseGrooveArranger": {
+      "commit": "0649e93d915f762f29e85adf427bfe08ded164d5",
+      "sha256": "bdc8dc04fbb991f315679ca0f6114c97cfb6e17b5b3bb8d8f5a149f0ea49f17c",
+      "modified_files": {}
+    },
+    "JUCE": {
+      "commit": "f72bad64d29715216226685810c5196bd0d79d77",
+      "sha256": "39e21f09a06054e45a609ff504cbd003853bcf2eb6b2b3d79aa9a36a6bae278b",
+      "modified_files": {
+        "modules/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp": "7cf070cef2df8dde4ef3c724c32ec21492d459680d7c752c2888e486d69326f3"
+      }
+    }
+  },
+  "download_and_zip_integrity": "PASS: downloaded artifact digest, PE64, resource/source/license presence and source/EXE hashes verified",
+  "imported_system_dlls": [
+    "KERNEL32.dll",
+    "USER32.dll",
+    "GDI32.dll",
+    "SHELL32.dll",
+    "ole32.dll",
+    "OLEAUT32.dll",
+    "COMDLG32.dll",
+    "ADVAPI32.dll",
+    "dwmapi.dll",
+    "WININET.dll",
+    "WS2_32.dll",
+    "VERSION.dll",
+    "SHLWAPI.dll",
+    "WINMM.dll",
+    "IMM32.dll",
+    "COMCTL32.dll",
+    "d2d1.dll",
+    "dxgi.dll",
+    "d3d11.dll",
+    "dcomp.dll",
+    "dbghelp.dll"
+  ],
+  "not_bundled": [
+    "eCantorix runtime",
+    "Perl/modules",
+    "eSpeak/voice data",
+    "SoX",
+    "FFmpeg",
+    "additional DLLs/codecs",
+    "neural models"
+  ]
+}
