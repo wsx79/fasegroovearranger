@@ -7,8 +7,9 @@ riverbero iniziale in A, delay in B, compressore con sorgente sidechain selezion
 Prima implementazione: 2f7eb7a, preview Windows verificata. Revisione corrente
 locale da fe4c060, su nuova richiesta: livello comune A/B, colori distinti,
 correzione del testo pan e redesign dei tre editor; DSP conservato.
-Implementazione tecnica verificata localmente su Linux; validazione Windows e
-funzionale/sonora ancora pendente. Nessun push, release o fase 07.
+Implementazione tecnica verificata su Linux e runner Windows; validazione
+funzionale/sonora manuale ancora pendente. Prerelease di test autorizzata
+pubblicata dal branch Vocaltest; fase 07 non avviata.
 Vocal Studio/Chops e generatori non modificati. Nessuna dipendenza nuova:
 wrapper nativi per JUCE e codice del progetto, con le licenze già applicabili.
 
@@ -113,9 +114,13 @@ Log fuori repository: `/workspace/scratch/bus-send-review/` (`pan-caption-before
 `shared-return-final`, `shared-compressor-final`, `shared-general-ui`,
 `shared-ctest.log`, `build-shared-*.log`).
 
-**NOT RUN per questa revisione:** build/test nativi Windows/macOS, clic reali e
-DPI Windows, ascolto/hardware/dropout, plugin vendor e nuovi sanitizers. Nessun
-push/tag/release; la preview 2f7eb7a non contiene queste correzioni. Vocali
+**Aggiornamento Windows:** [run 43102064454](https://github.com/wsx79/fasegroovearranger/actions/runs/43102064454) **PASS**:
+Release, CTest 18/18 (164,58 s), ritorni 33/33, compressore 16/16, guard pan
+11.737 e test nativi/export/VST3/EXE estratto. [Prerelease di test](https://github.com/wsx79/fasegroovearranger/releases/tag/preview-vocaltest-2026-11-11-839f6e8)
+pubblicata su autorizzazione esplicita; ZIP e download pubblico verificati.
+La build è **839f6e8**; 2f7eb7a non contiene queste correzioni.
+**NOT RUN:** macOS, clic reali/DPI Windows, ascolto/hardware/dropout, plugin
+vendor e nuovi sanitizers. Pubblicazione separata dalla stable, main invariato. Vocali
 congelati, generatori e Transparent invariati; fase 07 non avviata.
 
 ## Percorso audio

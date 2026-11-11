@@ -1,10 +1,44 @@
 # Vocaltest Preview Windows x64 — Actions
 
-La revisione locale successiva dei livelli comuni A/B, design e ridisegno del
-testo pan non è inclusa nella preview sotto. Su questa nuova revisione i test
-Windows restano NOT RUN: vedere [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md).
+## Prerelease di test: livelli comuni A/B, pan e nuovo design
 
-## Preview ritorni A/B e sidechain verificata — 2026-11-11
+**Pubblicata**: [Vocaltest Preview](https://github.com/wsx79/fasegroovearranger/releases/tag/preview-vocaltest-2026-11-11-839f6e8).
+**[Download diretto ZIP Windows x64](https://github.com/wsx79/fasegroovearranger/releases/download/preview-vocaltest-2026-11-11-839f6e8/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip)**, **42.201.127 byte** (42,2 MB).
+La stable Latest resta **v0.43.2**; main invariato. Tag di test **preview-vocaltest-2026-11-11-839f6e8**,
+commit binario **839f6e8398ea16d04c6759846226ff32c36f3698** sul branch Vocaltest.
+
+**SUCCESS** [build Windows 43102064454](https://github.com/wsx79/fasegroovearranger/actions/runs/43102064454), MSVC 19.51.36260.0 x64 Release
+su Windows Server 2025. CTest **18/18**, **164,58 s**, zero test falliti;
+ritorni **33/33**, compressore **16/16**, guard pan **11.737** con il nuovo test
+di repaint parziale. UI/WAV/MP3, VST3 fixture, dati vocali/import campioni e avvio
+EXE estratto PASS. Nessuna correzione al codice/build necessaria su Windows.
+Download indipendente dell'artifact e del **link pubblico della release PASS**,
+hash identici; PE AMD64, risorse, sorgenti completi app/JUCE/licenze e import
+soltanto dalle 21 DLL di sistema verificati. Nessun helper vocale runtime,
+modello/voicebank, codec o DLL esterna aggiunta.
+
+ZIP SHA256: `08d713953fb472c25d8a98189badea5003faff6e997b2b38be5a03210f8d51c8`.
+EXE: **17,473,024 byte**, SHA256 `8fb1078950950706a180d860c765d815aa8d47c91aba7b010e7eb7734124e097`.
+Checksum allegato alla release; registro [JSON](VOCALTEST_PREVIEW_RESULT.json).
+Estrarre in una cartella nuova e avviare **Standalone\Fase Groove Arranger.exe**.
+Livello A 62% comune a tutte le tracce con A attivo, A turchese/B viola;
+[checklist manuale](WINDOWS_AUDIO_CHECKLIST.it.md), [report](BUS_SEND_REVIEW.it.md).
+
+La pubblicazione ha richiesto un passaggio separato: upload locale 401, poi job
+temporaneo [43106621631](https://github.com/wsx79/fasegroovearranger/actions/runs/43106621631)
+con caricamento e riscaricamento degli asset **PASS**, ma ultimo publish **FAIL 403**.
+Completato il solo publish tramite API locale autorizzata, poi verificato il
+file pubblico. Non è un fallimento della build/test nativi. Rimosso il job
+operativo temporaneo, ripristinato il workflow preview originale con permessi
+read-only. I successivi commit documentali non cambiano il binario del tag.
+
+**NOT RUN:** clic/DPI reali Windows 11, ascolto/hardware/dropout, vendor plugin,
+sintesi eCantorix reale, input sintetico opzionale, nuovi sanitizers e macOS.
+Il fix pan è tecnicamente verificato anche su Windows, non ancora confermato
+con mouse/hardware dell'utente. Salvare copie: formato 7 e adozione esplicita dei
+livelli comuni sui file storici con Undo. Vocali congelati; fase 07 non avviata.
+
+## Archivio: prima preview ritorni A/B — 2026-11-11
 
 **SUCCESS** [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681), build **`2f7eb7ade201209e698f765f8524171ae7ed7a72`**.
 Push normale su `origin/Vocaltest`, autorizzato dall'utente; nessuna divergenza,

@@ -1,16 +1,16 @@
 {
-  "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681",
-  "build_commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
+  "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43102064454",
+  "build_commit": "839f6e8398ea16d04c6759846226ff32c36f3698",
   "runner": "Windows Server 2025, windows-2025-vs2026; Visual Studio 18 2026; native MSVC 19.51.36260.0 x64 Release",
   "windows_results": {
-    "ctest": "18/18 PASS, 181.65 s; real external guide synthesis explicitly NOT RUN",
+    "ctest": "18/18 PASS, 164.58 s; real external guide synthesis explicitly NOT RUN",
     "ctest_counts": {
       "PASS": 18,
       "FAIL": 0,
       "framework_skipped": 0
     },
     "native_compressor_ui": "16 PASS, 0 FAIL; selectable detector source, compact editor and Undo/Redo",
-    "sidechain_ui": "PASS; A/B return chains 24/24; pan guard 11736 checks using Button::triggerClick, not OS mouse clicks",
+    "sidechain_ui": "PASS; common A/B return chains 33/33; cached pan partial-repaint regression included",
     "native_ui_wav_mp3": "PASS; export UI 17/17",
     "native_vst3_effects": "79 PASS, 0 FAIL; independent 18 PCM fixtures and state checks PASS",
     "native_vst3_instruments_and_focus_regression": "PASS",
@@ -25,32 +25,32 @@
       "Opt-in synthetic peer-input regression (window-focus.txt explicitly SKIP)",
       "Windows ASan/TSan (Release build; earlier scoped sanitizer results are Linux only)"
     ],
-    "native_return_chains_ui": "24 PASS, 0 FAIL; native reverb/delay, compressor source, order/removal/Undo and schema 7 persistence",
-    "pan_toggle_guard": "11736 checks PASS on Windows; original user defect remains unreproduced; native mouse/DPI/manual check NOT RUN"
+    "native_return_chains_ui": "33 PASS, 0 FAIL; common level/selection/zero/Undo/reopen and native editor layouts",
+    "pan_toggle_guard": "11737 checks PASS on native Windows, including regression FAIL before fix on Linux/PASS after; real OS mouse/DPI validation remains pending"
   },
   "artifact": {
-    "id": 13890261519,
+    "id": 13893786560,
     "name": "Vocaltest-Preview-Windows-x64",
-    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890261519",
-    "bytes": 41884527,
-    "expires": "2026-12-11T20:10:24Z",
-    "outer_sha256": "8bdbee79f6f18c5a97782c88d8659510dd3af28a929a3497d0ec94352a458b92"
+    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43102064454/artifacts/13893786560",
+    "bytes": 42201345,
+    "expires": "2026-12-11T21:44:23Z",
+    "outer_sha256": "17611f232a7e2f1a6bb34c6e67078066fb7aedc158b88fee9c9de6cb41cdbf3f"
   },
   "portable_zip": {
     "name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
-    "bytes": 41884309,
-    "sha256": "a7ed19a0d59fb382646f82cf5282a02a5126e55b35ecd9be028ce026ef6beb51"
+    "bytes": 42201127,
+    "sha256": "08d713953fb472c25d8a98189badea5003faff6e997b2b38be5a03210f8d51c8"
   },
-  "exe_sha256": "f4b344bf6b26eacbdf1114c55fe5ff4d3e789790eaced589848aa67bef08eef7",
+  "exe_sha256": "8fb1078950950706a180d860c765d815aa8d47c91aba7b010e7eb7734124e097",
   "source": {
     "FaseGrooveArranger": {
-      "commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
-      "sha256": "68d34ff7db0770641d3fff60eb6098bda22e8141bfc60678b47937996bde4015",
+      "commit": "839f6e8398ea16d04c6759846226ff32c36f3698",
+      "sha256": "fc5a87e9addf3faf95108716e3d73914c235312c40a2d54237e5c04204567191",
       "modified_files": {}
     },
     "JUCE": {
       "commit": "f72bad64d29715216226685810c5196bd0d79d77",
-      "sha256": "0be7d9a9ebb456fa3800234eb46b64d35070c4ad9a0b67a09ca17b89afcc6cf9",
+      "sha256": "1468f738f8205a8cd8996a15320eefcfc8d09231c5ac9a7682c69688edbb51d6",
       "modified_files": {
         "modules/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp": "7cf070cef2df8dde4ef3c724c32ec21492d459680d7c752c2888e486d69326f3"
       }
@@ -80,15 +80,15 @@
     "dbghelp.dll"
   ],
   "delayed_system_dlls": [],
-  "exe_bytes": 17450496,
+  "exe_bytes": 17473024,
   "download_and_zip_integrity": "PASS PE AMD64, executable/resources/source hashes, complete sources/licences, no extra DLL/helper runtime, Windows system imports only",
   "source_comparison": "App critical source files/workflow match the build commit after CRLF/LF normalization only; archive/EXE digests and actual JUCE adaptation bytes verified exactly.",
   "diagnostics_artifact": {
-    "id": 13890790313,
+    "id": 13894510746,
     "name": "Vocaltest-Windows-diagnostics",
-    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890790313",
-    "bytes": 67186938,
-    "outer_sha256": "b7446ab1d13a8245794068fb5ae4ccb330513e7b5f30b60bf3bf3ee6eefd388f"
+    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43102064454/artifacts/13894510746",
+    "bytes": 67629185,
+    "outer_sha256": "65241f743345a8ef6bbb0b0ff60b3817e7eed7dcd53f37578c7b68974596d137"
   },
   "corrections": [],
   "attempts": [
@@ -116,37 +116,56 @@
       "run_id": 43089785681,
       "build_commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
       "result": "SUCCESS all required steps; editable A/B routing and compressor sidechain included; program artifact downloaded and verified; no CI/production fix required"
+    },
+    {
+      "run_id": 43102064454,
+      "build_commit": "839f6e8398ea16d04c6759846226ff32c36f3698",
+      "result": "SUCCESS native Windows build/tests/extracted EXE; exact program ZIP downloaded, checked and published as test prerelease"
     }
   ],
   "previous_preview": {
-    "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202",
-    "build_commit": "353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1",
+    "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681",
+    "build_commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
     "artifact": {
-      "id": 13865383703,
+      "id": 13890261519,
       "name": "Vocaltest-Preview-Windows-x64",
-      "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202/artifacts/13865383703",
-      "bytes": 41795309,
-      "expires": "2026-12-11T14:57:13Z",
-      "outer_sha256": "8a3d7d1b8f84b3960df4035b56fae3686e9a38023fec46e4ca9e975988cee785"
+      "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890261519",
+      "bytes": 41884527,
+      "expires": "2026-12-11T20:10:24Z",
+      "outer_sha256": "8bdbee79f6f18c5a97782c88d8659510dd3af28a929a3497d0ec94352a458b92"
     },
     "portable_zip": {
       "name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
-      "bytes": 41795091,
-      "sha256": "7202efd3267879e0384ce2369e08b88a2cbb70d6e92f89d5af244e9b42ad8f76"
-    },
-    "corrections": [
-      "Existing preview workflow now invokes existing native compressor and sidechain UI harnesses.",
-      "Self-test-only VST3 + driver selects the real Plugin menu item introduced in phase 05; old assertions retained.",
-      "Self-test browser cancellation awaits asynchronous restoration (bounded 2 s) instead of a fixed 30 ms slice; no forced restoration or production/DSP changes."
-    ]
+      "bytes": 41884309,
+      "sha256": "a7ed19a0d59fb382646f82cf5282a02a5126e55b35ecd9be028ce026ef6beb51"
+    }
   },
-  "publication": "Actions test artifact only; no merge, PR, main update, tag or GitHub Release; phase 07 not started. A later documentation-only commit records these results without rebuilding the tested binary.",
+  "publication": "User explicitly authorized push/test release. Published prerelease only, tag targets verified Vocaltest commit; stable Latest v0.43.2 and main unchanged. Later documentation/workflow cleanup commits do not rebuild the binary. Phase 07 not started.",
   "verification": "PASS PE AMD64, executable/resources/source hashes, complete sources/licences, no extra DLL/helper runtime, Windows system imports only",
-  "changes_required_for_this_windows_build": "None: existing workflow and committed production code compiled and passed without changes. Subsequent documentation-only commit records results.",
+  "changes_required_for_this_windows_build": "None in production/build/tests. Temporary publication-only workflow used runner upload credentials; final publication via authorized local API.",
   "known_open_issues": [
-    "Reported visual pan changes on A/B clicks not reproduced; Button::triggerClick regression is not native mouse-input validation.",
-    "Real Windows 11 listening/hardware/dropouts, vendor plugins, macOS and new sanitizers remain pending.",
-    "Schema 7 required for new effects; keep copies for old preview. Return/master insert automation UI remains unavailable.",
+    "Real Windows 11 mouse/DPI confirmation of the reported pan issue and listening/hardware/dropouts remain pending; automated stale-caption regression now passes on Windows.",
+    "Vendor plugins, macOS and new sanitizers remain unvalidated.",
+    "Old individual sends are preserved on load; explicit common-level edits normalize active sends with Undo. New effects use schema 7; keep project copies.",
     "Vocal Studio/Vocal Chops remain frozen and functionally/qualitatively unapproved; actual external guide synthesis not tested."
-  ]
+  ],
+  "test_release": {
+    "id": 442223393,
+    "tag": "preview-vocaltest-2026-11-11-839f6e8",
+    "url": "https://github.com/wsx79/fasegroovearranger/releases/tag/preview-vocaltest-2026-11-11-839f6e8",
+    "target_commit": "839f6e8398ea16d04c6759846226ff32c36f3698",
+    "draft": false,
+    "prerelease": true,
+    "latest": false,
+    "zip_url": "https://github.com/wsx79/fasegroovearranger/releases/download/preview-vocaltest-2026-11-11-839f6e8/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
+    "zip_asset_id": 737029014,
+    "checksum_asset_id": 737029019,
+    "public_download": "PASS direct HTTP download and exact SHA256/size match",
+    "zip_sha256": "08d713953fb472c25d8a98189badea5003faff6e997b2b38be5a03210f8d51c8"
+  },
+  "publication_attempt": {
+    "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43106621631",
+    "commit": "1defe42f893779f6449afa22acbbf939d24b7f9e",
+    "result": "FAIL only publication step: runner token HTTP 403. Guarded source/hash/ZIP verification, draft upload and draft re-download SHA256 all PASS. Local API then published successfully. Initial local uploads.github.com asset upload returned 401; runner uploaded those exact verified bytes. Temporary dispatch-only job removed after use; original read-only preview workflow restored."
+  }
 }

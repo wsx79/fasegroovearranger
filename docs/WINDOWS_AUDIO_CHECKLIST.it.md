@@ -10,9 +10,10 @@ ASIO/dispositivi reali o i propri plugin e non sostituiscono l'ascolto.
 
 ## Ritorni A/B: collaudo aggiuntivo
 
-**Attenzione:** la successiva revisione locale dei livelli comuni, colori,
-grafica e testo pan non è nell'artifact 2f7eb7a. Attendere una nuova build verificata
-prima di validare queste modifiche su Windows; i PASS della preview restano storici.
+La revisione dei livelli comuni, colori, grafica e testo pan è nella
+[prerelease **839f6e8**](https://github.com/wsx79/fasegroovearranger/releases/tag/preview-vocaltest-2026-11-11-839f6e8), con build/test automatici Windows PASS.
+La preview 2f7eb7a contiene soltanto la prima implementazione; usare la nuova
+per i controlli seguenti, ancora **manuali e pendenti**.
 
 - Impostare A al 62%; attivare A su Piano e Chitarra. Cambiare selezione: il livello
   comune e gli effetti devono restare uguali. B viola deve restare distinto da A turchese.
