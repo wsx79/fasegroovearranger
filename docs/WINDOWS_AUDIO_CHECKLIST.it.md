@@ -8,11 +8,12 @@ con `PREVIEW.json`. Il precedente artifact `0649e93` precede le fasi 03–06 e
 non può validarle. Le prove sintetiche del runner non validano Windows 11,
 ASIO/dispositivi reali o i propri plugin e non sostituiscono l'ascolto.
 
-## Revisione locale dei ritorni A/B: collaudo aggiuntivo
+## Ritorni A/B: collaudo aggiuntivo
 
-La revisione locale descritta in [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md)
-non è contenuta nell'artifact storico linkato sopra. Prima di provarla occorre una
-nuova build verificata, con SHA corrispondente; nessun nuovo PASS Windows è implicito.
+La revisione descritta in [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md) è inclusa
+nella build **2f7eb7a**, [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681).
+Build e controlli automatici Windows PASS; i seguenti controlli umani rimangono
+da eseguire. Gli artifact precedenti non contengono questo redesign.
 
 - Creare un nuovo progetto: in **Bus e mandate → Ritorni A/B** verificare A con
   riverbero, B con delay. Dosare le mandate della traccia selezionata e i ritorni.

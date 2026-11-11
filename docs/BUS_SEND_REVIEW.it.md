@@ -135,10 +135,16 @@ salvati, curve, valori e pixel, a trasporto fermo/in riproduzione, con Undo/Redo
 11.736 confronti PASS. Non equivale al clic nativo Windows o alla riproduzione
 con hardware. Nessuna causa o correzione del difetto è dichiarata.
 
-NOT RUN: nuova build Windows/macOS, ascolto, hardware/dropout, vendor plugin reali
-con il nuovo routing e sanitizers della nuova estensione. Non riutilizzare i
-vecchi PASS per certificare questi cambiamenti. La preview Windows precedente
-non contiene questa revisione e i nuovi sorgenti non sono stati pubblicati.
+Aggiornamento Windows: **2f7eb7a**, [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681),
+MSVC x64 Release **PASS**, CTest **18/18** (181,65 s), ritorni **24/24**,
+compressore **16/16**, guard pan **11.736 confronti**, UI/export/VST3 fixture e
+avvio del pacchetto estratto **PASS**. Nessuna correzione richiesta dal runner;
+workflow riutilizzato. Artifact e download verificati, sorgenti/licenze inclusi:
+[VOCALTEST_PREVIEW_WINDOWS.it.md](VOCALTEST_PREVIEW_WINDOWS.it.md).
+Il guard Windows usa ancora `Button::triggerClick`, non clic OS: il problema
+originale rimane aperto. **NOT RUN**: macOS, ascolto, Windows 11/hardware/dropout,
+vendor plugin con il nuovo routing e sanitizers della nuova estensione.
+La vecchia preview non contiene questa revisione; usare lo SHA sopra.
 
 Sorgenti: tracce presenti fino ai 32 ID stabili; nessun ingresso detector da
 ritorno/master, rete o bus sidechain di plugin esterni. L'automazione degli insert

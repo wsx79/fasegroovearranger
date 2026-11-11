@@ -1,6 +1,59 @@
 # Vocaltest Preview Windows x64 — Actions
 
-## Preview fasi 03–06 verificata — 2026-11-11
+## Preview ritorni A/B e sidechain verificata — 2026-11-11
+
+**SUCCESS** [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681), build **`2f7eb7ade201209e698f765f8524171ae7ed7a72`**.
+Push normale su `origin/Vocaltest`, autorizzato dall'utente; nessuna divergenza,
+nessun force push, main/tag/release. Riutilizzato il workflow esistente, senza
+correzioni di compilazione, codice o test. MSVC **19.51.36260.0 x64 Release**,
+Windows Server 2025 / windows-2025-vs2026, Visual Studio 18 2026; nessun WSL.
+
+- **PASS** build; CTest **18/18**, **181,65 s**, **0 FAIL**.
+- **PASS** ritorni A/B **24/24**, compressore **16/16**, gruppi/sidechain;
+  aggiunta/ordine/rimozione/bypass, sorgente Kick, Undo/Redo e persistenza formato 7.
+- **PASS** guard pan **11.736 controlli** anche su Windows. Usa
+  `Button::triggerClick`: **non riproduce né risolve il difetto riferito dall'utente
+  con clic reali/DPI**; resta da verificare manualmente.
+- **PASS** UI/WAV/MP3, export UI **17/17**, VST3 effetti **79 asserzioni**
+  e verifiche PCM indipendenti, strumenti VST3/focus (fixture del progetto).
+- **PASS** dati/UI vocali **14**, import campioni **11**, EXE estratto **11**;
+  non validano sintesi esterna né qualità delle funzioni vocali congelate.
+
+Scaricare [**Vocaltest-Preview-Windows-x64**](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890261519),
+**41.884.527 byte** (circa **41,9 MB**), scadenza **2026-12-11 20:10 UTC**.
+ZIP interno **FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip**,
+**41.884.309 byte**, SHA256
+`a7ed19a0d59fb382646f82cf5282a02a5126e55b35ecd9be028ce026ef6beb51`.
+EXE **17.450.496 byte**, SHA256
+`f4b344bf6b26eacbdf1114c55fe5ff4d3e789790eaced589848aa67bef08eef7`.
+Dati completi: [VOCALTEST_PREVIEW_RESULT.json](VOCALTEST_PREVIEW_RESULT.json).
+
+Download indipendente **PASS**: digest Actions, ZIP/PE AMD64, hash risorse/EXE,
+sorgenti app/JUCE completi e licenze/adattamenti esatti. Confrontati anche i
+sorgenti critici dei nuovi ritorni e del formato progetto (CRLF normalizzati
+solo per il confronto testuale). Import normali e ritardati verificati:
+**21 DLL di sistema, nessuna DLL aggiuntiva necessaria**. Inclusi manuali, risorse,
+licenze, sorgenti e istruzioni build/relink; nessun runtime eCantorix, Perl,
+eSpeak, SoX, FFmpeg, codec/modello/voicebank o altro binario esterno.
+
+Per provare: estrarre l'archivio Actions e lo ZIP portabile interno, poi avviare
+**Standalone\Fase Groove Arranger.exe** conservando tutte le cartelle.
+Creare un nuovo progetto, aprire **Bus e mandate → Ritorni A/B**: A riverbero,
+B delay; regolare mandate e ritorni. Aggiungere un compressore e scegliere Kick
+come sorgente, abbassando la soglia. Confrontare bypass e meter GR.
+[Checklist pratica](WINDOWS_AUDIO_CHECKLIST.it.md) e
+[guida alle nuove catene](BUS_SEND_REVIEW.it.md). Usare **copie** dei progetti:
+i nuovi dati richiedono formato 7; quelli vecchi mantengono il routing storico
+fino a conversione esplicita a trasporto fermo.
+
+**NOT RUN: 5 ambiti Windows**: Windows 11/ascolto/hardware/dropout/clic reali;
+plugin vendor; sintesi eCantorix reale; input sintetico opzionale (SKIP esplicito);
+sanitizers Windows. macOS e qualità restano pendenti. Il candidato Loud continua
+a fallire intenzionalmente il gate IMD e non è esposto: non è un FAIL della suite.
+Nessun audit Linux ripetuto. Un successivo commit documentale `[skip ci]` registra
+questo risultato; il binario verificato resta **2f7eb7a**. Fase 07 non iniziata.
+
+## Archivio: preview fasi 03–06 precedente al redesign — 2026-11-11
 
 **SUCCESS** [run 43040178202](https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202), build **`353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1`**.
 Runner Windows Server 2025 / windows-2025-vs2026, Visual Studio 18 2026,

@@ -1,16 +1,16 @@
 {
-  "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202",
-  "build_commit": "353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1",
+  "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681",
+  "build_commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
   "runner": "Windows Server 2025, windows-2025-vs2026; Visual Studio 18 2026; native MSVC 19.51.36260.0 x64 Release",
   "windows_results": {
-    "ctest": "18/18 PASS, 126.38 s; real external guide synthesis explicitly NOT RUN",
+    "ctest": "18/18 PASS, 181.65 s; real external guide synthesis explicitly NOT RUN",
     "ctest_counts": {
       "PASS": 18,
       "FAIL": 0,
       "framework_skipped": 0
     },
-    "native_compressor_ui": "14 PASS, 0 FAIL; actual Native/Plugin menu and deferred cancellation",
-    "sidechain_ui": "PASS",
+    "native_compressor_ui": "16 PASS, 0 FAIL; selectable detector source, compact editor and Undo/Redo",
+    "sidechain_ui": "PASS; A/B return chains 24/24; pan guard 11736 checks using Button::triggerClick, not OS mouse clicks",
     "native_ui_wav_mp3": "PASS; export UI 17/17",
     "native_vst3_effects": "79 PASS, 0 FAIL; independent 18 PCM fixtures and state checks PASS",
     "native_vst3_instruments_and_focus_regression": "PASS",
@@ -24,31 +24,33 @@
       "Actual external eCantorix synthesis/editor render/import/cache/cancellation (stack absent)",
       "Opt-in synthetic peer-input regression (window-focus.txt explicitly SKIP)",
       "Windows ASan/TSan (Release build; earlier scoped sanitizer results are Linux only)"
-    ]
+    ],
+    "native_return_chains_ui": "24 PASS, 0 FAIL; native reverb/delay, compressor source, order/removal/Undo and schema 7 persistence",
+    "pan_toggle_guard": "11736 checks PASS on Windows; original user defect remains unreproduced; native mouse/DPI/manual check NOT RUN"
   },
   "artifact": {
-    "id": 13865383703,
+    "id": 13890261519,
     "name": "Vocaltest-Preview-Windows-x64",
-    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202/artifacts/13865383703",
-    "bytes": 41795309,
-    "expires": "2026-12-11T14:57:13Z",
-    "outer_sha256": "8a3d7d1b8f84b3960df4035b56fae3686e9a38023fec46e4ca9e975988cee785"
+    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890261519",
+    "bytes": 41884527,
+    "expires": "2026-12-11T20:10:24Z",
+    "outer_sha256": "8bdbee79f6f18c5a97782c88d8659510dd3af28a929a3497d0ec94352a458b92"
   },
   "portable_zip": {
     "name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
-    "bytes": 41795091,
-    "sha256": "7202efd3267879e0384ce2369e08b88a2cbb70d6e92f89d5af244e9b42ad8f76"
+    "bytes": 41884309,
+    "sha256": "a7ed19a0d59fb382646f82cf5282a02a5126e55b35ecd9be028ce026ef6beb51"
   },
-  "exe_sha256": "2fc33af410d2fb07a34d82dd8a9f77300ac1595f15665b1573a12e11f40c06fa",
+  "exe_sha256": "f4b344bf6b26eacbdf1114c55fe5ff4d3e789790eaced589848aa67bef08eef7",
   "source": {
     "FaseGrooveArranger": {
-      "commit": "353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1",
-      "sha256": "18eb6131e951d197b616740185812266e8caf745552a729dc23f39e74151918a",
+      "commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
+      "sha256": "68d34ff7db0770641d3fff60eb6098bda22e8141bfc60678b47937996bde4015",
       "modified_files": {}
     },
     "JUCE": {
       "commit": "f72bad64d29715216226685810c5196bd0d79d77",
-      "sha256": "7fb2a154f9ebaf88ff35b57c1311850c3603625242c519f95f070c338307440a",
+      "sha256": "0be7d9a9ebb456fa3800234eb46b64d35070c4ad9a0b67a09ca17b89afcc6cf9",
       "modified_files": {
         "modules/juce_audio_processors/format_types/juce_VST3PluginFormat.cpp": "7cf070cef2df8dde4ef3c724c32ec21492d459680d7c752c2888e486d69326f3"
       }
@@ -78,19 +80,17 @@
     "dbghelp.dll"
   ],
   "delayed_system_dlls": [],
-  "exe_bytes": 17317376,
+  "exe_bytes": 17450496,
   "download_and_zip_integrity": "PASS PE AMD64, executable/resources/source hashes, complete sources/licences, no extra DLL/helper runtime, Windows system imports only",
   "source_comparison": "App critical source files/workflow match the build commit after CRLF/LF normalization only; archive/EXE digests and actual JUCE adaptation bytes verified exactly.",
   "diagnostics_artifact": {
-    "id": 13865253920,
+    "id": 13890790313,
     "name": "Vocaltest-Windows-diagnostics",
-    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202/artifacts/13865253920"
+    "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681/artifacts/13890790313",
+    "bytes": 67186938,
+    "outer_sha256": "b7446ab1d13a8245794068fb5ae4ccb330513e7b5f30b60bf3bf3ee6eefd388f"
   },
-  "corrections": [
-    "Existing preview workflow now invokes existing native compressor and sidechain UI harnesses.",
-    "Self-test-only VST3 + driver selects the real Plugin menu item introduced in phase 05; old assertions retained.",
-    "Self-test browser cancellation awaits asynchronous restoration (bounded 2 s) instead of a fixed 30 ms slice; no forced restoration or production/DSP changes."
-  ],
+  "corrections": [],
   "attempts": [
     {
       "run_id": 43029786229,
@@ -111,11 +111,42 @@
       "run_id": 43040178202,
       "build_commit": "353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1",
       "result": "SUCCESS all required steps; program artifact downloaded and verified"
+    },
+    {
+      "run_id": 43089785681,
+      "build_commit": "2f7eb7ade201209e698f765f8524171ae7ed7a72",
+      "result": "SUCCESS all required steps; editable A/B routing and compressor sidechain included; program artifact downloaded and verified; no CI/production fix required"
     }
   ],
   "previous_preview": {
-    "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/42920754927",
-    "build_commit": "0649e93d915f762f29e85adf427bfe08ded164d5"
+    "workflow_run": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202",
+    "build_commit": "353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1",
+    "artifact": {
+      "id": 13865383703,
+      "name": "Vocaltest-Preview-Windows-x64",
+      "url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202/artifacts/13865383703",
+      "bytes": 41795309,
+      "expires": "2026-12-11T14:57:13Z",
+      "outer_sha256": "8a3d7d1b8f84b3960df4035b56fae3686e9a38023fec46e4ca9e975988cee785"
+    },
+    "portable_zip": {
+      "name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
+      "bytes": 41795091,
+      "sha256": "7202efd3267879e0384ce2369e08b88a2cbb70d6e92f89d5af244e9b42ad8f76"
+    },
+    "corrections": [
+      "Existing preview workflow now invokes existing native compressor and sidechain UI harnesses.",
+      "Self-test-only VST3 + driver selects the real Plugin menu item introduced in phase 05; old assertions retained.",
+      "Self-test browser cancellation awaits asynchronous restoration (bounded 2 s) instead of a fixed 30 ms slice; no forced restoration or production/DSP changes."
+    ]
   },
-  "publication": "Actions test artifact only; no merge, PR, main update, tag or GitHub Release; phase 07 not started. A later documentation-only commit records these results without rebuilding the tested binary."
+  "publication": "Actions test artifact only; no merge, PR, main update, tag or GitHub Release; phase 07 not started. A later documentation-only commit records these results without rebuilding the tested binary.",
+  "verification": "PASS PE AMD64, executable/resources/source hashes, complete sources/licences, no extra DLL/helper runtime, Windows system imports only",
+  "changes_required_for_this_windows_build": "None: existing workflow and committed production code compiled and passed without changes. Subsequent documentation-only commit records results.",
+  "known_open_issues": [
+    "Reported visual pan changes on A/B clicks not reproduced; Button::triggerClick regression is not native mouse-input validation.",
+    "Real Windows 11 listening/hardware/dropouts, vendor plugins, macOS and new sanitizers remain pending.",
+    "Schema 7 required for new effects; keep copies for old preview. Return/master insert automation UI remains unavailable.",
+    "Vocal Studio/Vocal Chops remain frozen and functionally/qualitatively unapproved; actual external guide synthesis not tested."
+  ]
 }
