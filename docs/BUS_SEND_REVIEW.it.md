@@ -4,8 +4,9 @@
 
 Richiesta e approvazione esplicita dell'utente: ritorni A/B con catene modificabili,
 riverbero iniziale in A, delay in B, compressore con sorgente sidechain selezionabile.
-Base acquisita con fast-forward: fc856b532239036e89910ea474f7138ff9e98a0c;
-preservata la grafica del compressore dei commit a411461/fc856b5.
+Prima implementazione: 2f7eb7a, preview Windows verificata. Revisione corrente
+locale da fe4c060, su nuova richiesta: livello comune A/B, colori distinti,
+correzione del testo pan e redesign dei tre editor; DSP conservato.
 Implementazione tecnica verificata localmente su Linux; validazione Windows e
 funzionale/sonora ancora pendente. Nessun push, release o fase 07.
 Vocal Studio/Chops e generatori non modificati. Nessuna dipendenza nuova:
@@ -14,9 +15,11 @@ wrapper nativi per JUCE e codice del progetto, con le licenze già applicabili.
 ## Utilizzo
 
 1. Aprire **BUS E MANDATE**, ora con testo visibile nel mixer.
-2. In **RITORNI A/B**, scegliere la traccia e dosare **MANDATA A/B**. I fader
-   dei ritorni regolano quanto effetto torna al master; l'uscita della traccia
-   rimane un controllo distinto.
+2. In **RITORNI A/B**, impostare il **livello comune** di A e B. Non cambia
+   scegliendo Piano, Chitarra o altre tracce. A nel mixer è turchese, B viola:
+   sono attivazioni del medesimo ritorno condiviso, non memorie di intensità
+   indipendenti. Un livello A del 62% vale per tutte le tracce con A attivo.
+   Il volume diretto della traccia resta distinto.
 3. Con **+** aggiungere riverbero, delay, compressore nativo o un proprio plugin.
    Il menu di ogni dispositivo permette di rimuoverlo o riordinarlo; il pulsante
    di alimentazione effettua il bypass e quello di apertura mostra l'editor.
@@ -35,8 +38,12 @@ wrapper nativi per JUCE e codice del progetto, con le licenze già applicabili.
 **GRUPPI 1/2** sono separati dai ritorni A/B: ricevono l'intera uscita di una
 traccia e conservano il ducking storico. La vista mostra le tracce assegnate e
 segnala un gruppo vuoto. Il ducking del gruppo non è un secondo compressore.
-I pulsanti A/B del mixer mantengono il toggle storico; la regolazione continua
-si trova nel pannello. Il difetto Windows dei pan rimane aperto, vedi sotto.
+I pulsanti A/B attivano/disattivano il ritorno con coefficiente uniforme.
+Lo zero del livello comune conserva le attivazioni. I nuovi progetti partono al
+25%; doppio clic sul livello ripristina il 25%. Il range 0–200% riusa il guadagno
+del ritorno (0–2) già previsto. Nessun secondo controllo duplicato del guadagno.
+Il difetto di ridisegno del testo pan è riprodotto/corretto, vedi sotto; il
+ricollaudo manuale Windows rimane pendente.
 
 ## Compatibilità e stato
 
@@ -52,6 +59,64 @@ ignorare il sidechain e produrre un suono diverso. Un compressore storico v1 non
 modificato non forza il cambio di formato. ID MIDI e formato dei dati precedenti
 restano leggibili; il progetto attuale non promette apertura dei nuovi file sulle
 vecchie build. Riordino e rinomina conservano gli ID degli insert.
+
+## Revisione corrente: livello comune, pan e design
+
+Nessun nuovo campo o formato: i livelli comuni usano `buses[2/3].gain`, con la
+rampa audio esistente. L'attivazione A/B usa i campi `Track::sends` già presenti
+(0/1). Scompaiono le memorie per strip e la manopola dipendente dalla selezione.
+La pagina dei ritorni non mostra il selettore traccia/uscita dei gruppi.
+
+**Compatibilità:** caricare o convertire un vecchio file conserva i livelli di
+mandata individuali e il suono. Un messaggio segnala i valori storici. La modifica
+esplicita del livello comune uniforma a 1 solo le mandate già attive di quel
+ritorno; lascia invariati l'altro ritorno e le tracce disattivate. Una singola
+Undo ripristina anche i vecchi coefficienti diseguali. Riapertura, zero/ripristino,
+cambio di selezione e Undo/Redo sono coperti dalla prova UI. Gli effetti e il
+routing nativo già presenti rimangono condivisi, non vengono duplicati.
+
+**Pan, riproduzione reale del difetto di repaint:** la manopola è un figlio JUCE;
+il numero C/L/R è dipinto dal genitore. Il timer aggiornava solo il figlio,
+lasciando vecchio il numero fino a un repaint completo come quello del click A/B.
+Il test precedente fotografava direttamente la manopola e ridisegnava tutto:
+non poteva rilevare questa invalidazione mancante. Nuovo test con cache di
+painting JUCE, avanzamento dell'automazione e confronto della sola didascalia
+prima/dopo ridisegno completo: **FAIL prima della correzione**, **PASS dopo**.
+Il fix invalida esclusivamente i 40×12 pixel logici del numero quando cambia il valore.
+Non scrive pan o automazioni: in play continuano a seguire le curve previste.
+Gli screenshot dell'utente supportano questa diagnosi, ma il mouse/DPI Windows
+reale deve ancora confermarla; non è una certificazione di tutte le possibili
+cause del report originale.
+
+**Design:** testata e materiali condivisi per i dispositivi nativi, A turchese e
+B viola anche nei pulsanti spenti. Compressore: curva e meter GR in primo piano,
+parametri in riquadri inferiori, sorgente dedicata, layout compatto. Riverbero:
+schema di spazio/assorbimento e controlli esistenti. Delay: tempo in ms/BPM e
+schema stereo delle ripetizioni. Gli schemi sono etichettati come tali: non sono
+analizzatori del segnale o misure RT60. Nessun parametro fittizio, modifica DSP,
+nuova dipendenza o modifica di identificatori/stati degli effetti.
+
+Anteprime **Linux**, non screenshot Windows:
+[compressore](images/bus-send/compressor.png),
+[riverbero](images/bus-send/reverb.png), [delay](images/bus-send/delay.png),
+[ritorni](images/bus-send/returns.png).
+
+Verifica corrente: Release PASS; CTest **18/18, 198,72 s**; UI ritorni **33/33**,
+compressore **16/16**, guard pan **11.737** controlli incluso repaint parziale.
+CTest comprende le regressioni legacy, 72 casi delay, detector/PDC, export
+Transparent/annullamento/sovrascrittura e la misura di zero allocazioni C++
+ordinarie nel callback. Nessun nuovo buffer DSP o latenza algoritmica; nessun
+benchmark CPU/memoria comparativo nuovo. L'invalidazione aggiunta è limitata al
+testo nel thread UI; gli schemi si aggiornano sui cambi parametri/BPM.
+Test generale UI finale **PASS**, incluse automazione/seek/loop/bypass, routing e lingue.
+Log fuori repository: `/workspace/scratch/bus-send-review/` (`pan-caption-before`,
+`shared-return-final`, `shared-compressor-final`, `shared-general-ui`,
+`shared-ctest.log`, `build-shared-*.log`).
+
+**NOT RUN per questa revisione:** build/test nativi Windows/macOS, clic reali e
+DPI Windows, ascolto/hardware/dropout, plugin vendor e nuovi sanitizers. Nessun
+push/tag/release; la preview 2f7eb7a non contiene queste correzioni. Vocali
+congelati, generatori e Transparent invariati; fase 07 non avviata.
 
 ## Percorso audio
 
@@ -129,7 +194,7 @@ anche le riserve dell'host. Il delay nativo mantiene una linea stereo di circa
 Le capacità possono essere trattenute per il riuso; nessuna stima del consumo
 complessivo della DAW è dedotta da queste sole dimensioni.
 
-**Pan A/B:** l'utente conferma un cambiamento visuale su Windows. Non riprodotto
+**Pan A/B, test storico precedente alla correzione sopra:** l'utente conferma un cambiamento visuale su Windows. Non riprodotto
 su Linux. Il test ora usa `Button::triggerClick`, verifica tutti i canali, pan
 salvati, curve, valori e pixel, a trasporto fermo/in riproduzione, con Undo/Redo:
 11.736 confronti PASS. Non equivale al clic nativo Windows o alla riproduzione

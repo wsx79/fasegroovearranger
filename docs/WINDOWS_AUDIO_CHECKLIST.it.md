@@ -10,13 +10,29 @@ ASIO/dispositivi reali o i propri plugin e non sostituiscono l'ascolto.
 
 ## Ritorni A/B: collaudo aggiuntivo
 
-La revisione descritta in [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md) è inclusa
+**Attenzione:** la successiva revisione locale dei livelli comuni, colori,
+grafica e testo pan non è nell'artifact 2f7eb7a. Attendere una nuova build verificata
+prima di validare queste modifiche su Windows; i PASS della preview restano storici.
+
+- Impostare A al 62%; attivare A su Piano e Chitarra. Cambiare selezione: il livello
+  comune e gli effetti devono restare uguali. B viola deve restare distinto da A turchese.
+- Portare A a zero e di nuovo al 62%: attivazioni conservate. Provare Undo/Redo,
+  disattivazione di una traccia e salvataggio/riapertura. Su file storici verificare
+  avviso dei valori individuali, adozione esplicita e Undo esatto.
+- Con automazione pan in play, osservare il numero sotto ogni manopola senza
+  toccare A/B: deve aggiornarsi continuamente con il knob. Premendo A/B non deve
+  comparire un salto dovuto a testo vecchio. Ripetere con DPI 100/125/150%, mixer
+  compatto e normale, finestra ritorni aperta/chiusa e a trasporto fermo.
+- Aprire i tre editor nativi; controllare grafica, valori digitati/drag/reset e
+  dimensione minima. I diagrammi di riverbero/delay sono schemi dei parametri.
+
+La prima implementazione descritta in [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md) è inclusa
 nella build **2f7eb7a**, [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681).
 Build e controlli automatici Windows PASS; i seguenti controlli umani rimangono
 da eseguire. Gli artifact precedenti non contengono questo redesign.
 
 - Creare un nuovo progetto: in **Bus e mandate → Ritorni A/B** verificare A con
-  riverbero, B con delay. Dosare le mandate della traccia selezionata e i ritorni.
+  riverbero, B con delay. Nella nuova revisione dosare i livelli comuni e usare A/B nel mixer.
 - Aggiungere un compressore dopo il riverbero in A, scegliere Kick come sorgente,
   abbassare la soglia e controllare riduzione/ascolto. Provare anche un compressore
   sugli insert del basso. Verificare mute/solo, source change, bypass e Undo/Redo.

@@ -69,7 +69,6 @@ private:
     juce::Label name;
     juce::Slider gain,pan;
     juce::TextButton mute{"M"},solo{"S"},instrument{"INSTRUMENT"},clip{"CLIP"},sendA{"A"},sendB{"B"},output{"M"},effects{"FX"};
-    std::array<double,2> sendMemory{.25,.25};
 };
 class DawMixer : public juce::Component,public juce::SettableTooltipClient {
 public:

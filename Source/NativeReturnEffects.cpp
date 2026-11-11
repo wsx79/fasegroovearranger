@@ -53,6 +53,8 @@ public:
     int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Default";}void changeProgramName(int,const juce::String&)override{}
     bool hasEditor()const override{return true;}juce::AudioProcessorEditor* createEditor()override;
+    bool delayDevice()const{return isDelay;}
+    double currentBpm()const{return tempo();}
     std::function<void()> beforeEdit;
     void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaReturn");state.setAttribute("version",1);state.setAttribute("delay",isDelay);for(size_t i=0;i<parameters.size();++i)state.setAttribute("p"+juce::String((int)i),(double)parameters[i]->getValue());copyXmlToBinary(state,data);}
     void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaReturn")||state->getIntAttribute("version")!=1||state->getBoolAttribute("delay")!=isDelay)return;for(size_t i=0;i<parameters.size();++i)if(state->hasAttribute("p"+juce::String((int)i)))parameters[i]->setValue((float)state->getDoubleAttribute("p"+juce::String((int)i)));}
@@ -62,21 +64,70 @@ private:
 };
 class ReturnEditor final : public juce::AudioProcessorEditor,private juce::Timer {
 public:
-    explicit ReturnEditor(ReturnEffect& p):AudioProcessorEditor(p),processor(p){
-        for(int i=0;i<p.getParameters().size();++i){auto* parameter=p.getParameters()[i];auto slider=std::make_unique<juce::Slider>();auto label=std::make_unique<juce::Label>();auto* control=slider.get();
-            addAndMakeVisible(*slider);addAndMakeVisible(*label);label->setText(tr(parameter->getName(64)),juce::dontSendNotification);label->setJustificationType(juce::Justification::centred);label->setFont(Daw::font(Daw::body,true));
-            slider->setComponentID("native-return-parameter-"+juce::String(i));slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);slider->setTextBoxStyle(juce::Slider::TextBoxBelow,false,120,22);slider->setRange(0,1,0);slider->setScrollWheelEnabled(false);slider->setDoubleClickReturnValue(true,parameter->getDefaultValue());
+    explicit ReturnEditor(ReturnEffect& p):AudioProcessorEditor(p),processor(p),delay(p.delayDevice()),colour(Daw::returnColour(delay?1:0)){
+        setLookAndFeel(&theme);
+        for(int i=0;i<p.getParameters().size();++i){
+            auto* parameter=p.getParameters()[i];auto slider=std::make_unique<juce::Slider>();auto label=std::make_unique<juce::Label>();auto* control=slider.get();
+            addAndMakeVisible(*slider);addAndMakeVisible(*label);label->setText(tr(parameter->getName(64)),juce::dontSendNotification);label->setJustificationType(juce::Justification::centred);label->setFont(Daw::caps(11));label->setColour(juce::Label::textColourId,colour);
+            slider->setComponentID("native-return-parameter-"+juce::String(i));slider->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);slider->setTextBoxStyle(juce::Slider::TextBoxBelow,false,118,26);slider->setRange(0,1,0);slider->setScrollWheelEnabled(false);slider->setDoubleClickReturnValue(true,parameter->getDefaultValue());
+            slider->setColour(juce::Slider::rotarySliderFillColourId,colour);slider->setColour(juce::Slider::textBoxBackgroundColourId,Daw::lcd);slider->setColour(juce::Slider::textBoxOutlineColourId,Daw::lineStrong);
             slider->textFromValueFunction=[parameter](double value){return parameter->getText((float)value,32)+" "+parameter->getLabel();};slider->valueFromTextFunction=[parameter](const juce::String& text){return parameter->getValueForText(text);};slider->setValue(parameter->getValue(),juce::dontSendNotification);
             slider->onDragStart=[this,parameter,i]{if(processor.beforeEdit)processor.beforeEdit();gestures[(size_t)i]=true;parameter->beginChangeGesture();};slider->onDragEnd=[this,parameter,i]{parameter->endChangeGesture();gestures[(size_t)i]=false;};
-            slider->onValueChange=[this,parameter,control,i]{const bool discrete=!gestures[(size_t)i];if(discrete){if(processor.beforeEdit)processor.beforeEdit();parameter->beginChangeGesture();}parameter->setValueNotifyingHost((float)control->getValue());if(discrete)parameter->endChangeGesture();};
+            slider->onValueChange=[this,parameter,control,i]{const bool discrete=!gestures[(size_t)i];if(discrete){if(processor.beforeEdit)processor.beforeEdit();parameter->beginChangeGesture();}parameter->setValueNotifyingHost((float)control->getValue());if(discrete)parameter->endChangeGesture();repaint(diagram);};
             sliders.push_back(std::move(slider));labels.push_back(std::move(label));
-        }setSize(520,sliders.size()>2?370:230);startTimerHz(20);
+        }
+        setResizable(true,false);setResizeLimits(740,440,1200,760);setSize(820,500);startTimerHz(20);
     }
-    void paint(juce::Graphics& g)override{g.fillAll(Daw::base);g.setColour(Daw::text);g.setFont(Daw::font(22,true));g.drawText(processor.getName(),16,10,getWidth()-32,30,juce::Justification::centredLeft);g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small));g.drawText(tr("100% wet - use the send and return levels to mix"),16,42,getWidth()-32,20,juce::Justification::centredLeft);}
-    void resized()override{auto area=getLocalBounds().reduced(16).withTrimmedTop(56);const int rows=sliders.size()>2?2:1;for(size_t i=0;i<sliders.size();++i){auto cell=juce::Rectangle<int>(area.getX()+((int)i%2)*area.getWidth()/2,area.getY()+((int)i/2)*area.getHeight()/rows,area.getWidth()/2,area.getHeight()/rows).reduced(6,3);labels[i]->setBounds(cell.removeFromTop(22));sliders[i]->setBounds(cell);}}
+    ~ReturnEditor()override{stopTimer();setLookAndFeel(nullptr);}
+    void paint(juce::Graphics& g)override{
+        g.fillAll(Daw::base);
+        Daw::deviceHeader(g,{20,12,440,50},delay?"TEMPO DELAY":"REVERB",delay?"ECHO / TIME":"SPACE / STEREO",colour);
+        auto badge=juce::Rectangle<int>(getWidth()-157,26,135,28);g.setColour(colour.withAlpha(.13f));g.fillRoundedRectangle(badge.toFloat(),14.f);Daw::drawCaps(g,"100% WET",badge,colour,juce::Justification::centred);
+        Daw::devicePanel(g,diagram.toFloat(),colour);
+        for(const auto& tile:tiles)Daw::devicePanel(g,tile.toFloat(),colour);
+        drawDiagram(g);
+        for(size_t i=0;i<tiles.size();++i){const char* description=delay?(i==0?"Project tempo sync":i==1?"Repeats / decay":i==2?"Stereo exchange":"Repeat tone"):(i==0?"Size of the space":"High-frequency absorption");g.setFont(Daw::font(10));g.setColour(Daw::textDim);g.drawFittedText(tr(description),tiles[i].withTrimmedTop(tiles[i].getHeight()-26).reduced(6,0),juce::Justification::centred,1);}
+        g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Shared effect. Balance it with the common A / B return level."),getLocalBounds().removeFromBottom(30).reduced(20,0),juce::Justification::centredLeft,1);
+    }
+    void resized()override{
+        auto body=getLocalBounds().reduced(20).withTrimmedTop(64).withTrimmedBottom(22);diagram=body.removeFromLeft((int)(body.getWidth()*.43f));body.removeFromLeft(14);
+        tiles.clear();const int rows=delay?2:1;
+        for(size_t i=0;i<sliders.size();++i){auto tile=juce::Rectangle<int>(body.getX()+((int)i%2)*body.getWidth()/2,body.getY()+((int)i/2)*body.getHeight()/rows,body.getWidth()/2,body.getHeight()/rows).reduced(4);tiles.push_back(tile);auto controls=tile.reduced(8,12);labels[i]->setBounds(controls.removeFromTop(24));controls.removeFromBottom(22);sliders[i]->setBounds(controls);}
+    }
 private:
-    void timerCallback()override{for(size_t i=0;i<sliders.size();++i){bool editing=gestures[i];for(auto* child:sliders[i]->getChildren())if(auto* label=dynamic_cast<juce::Label*>(child))editing=editing||label->isBeingEdited();if(!editing)sliders[i]->setValue(processor.getParameters()[(int)i]->getValue(),juce::dontSendNotification);}}
-    ReturnEffect& processor;std::vector<std::unique_ptr<juce::Slider>> sliders;std::vector<std::unique_ptr<juce::Label>> labels;std::array<bool,4> gestures{};
+    void drawDiagram(juce::Graphics& g){
+        auto box=diagram.reduced(18);auto title=box.removeFromTop(20);Daw::drawCaps(g,delay?"TEMPO / STEREO":"ROOM / ABSORPTION",title,colour);
+        box.removeFromTop(16);auto footer=box.removeFromBottom(58);const float x=(float)box.getX(),y=(float)box.getY(),w=(float)box.getWidth(),h=(float)box.getHeight();
+        if(delay){
+            const double beats=.125+sliders[0]->getValue()*3.875,bpm=processor.currentBpm();
+            const float feedback=(float)sliders[1]->getValue()*.9f,cross=(float)sliders[2]->getValue();
+            g.setFont(Daw::font(32,true));g.setColour(Daw::text);g.drawText(juce::String(beats*60000/bpm,1)+" ms",box.removeFromTop(44),juce::Justification::centredLeft);
+            g.setFont(Daw::font(12));g.setColour(colour);g.drawText(juce::String(bpm,1)+" BPM  /  "+juce::String(beats,3)+" beats",box.removeFromTop(24),juce::Justification::centredLeft);
+            const float left=y+h*.57f,right=y+h*.80f;g.setColour(Daw::lineStrong);g.drawLine(x,left,x+w,left);g.drawLine(x,right,x+w,right);
+            for(int n=0;n<5;++n){const float at=x+12+n*(w-28)/5,amplitude=std::pow(feedback,(float)n);const float alternate=n%2?cross:1.f-cross;
+                g.setColour(colour.withAlpha(.25f+.75f*amplitude));g.fillRoundedRectangle(at,left-8.f-30.f*amplitude,7.f,8.f+30.f*amplitude,2.f);
+                g.setColour(Daw::returnA.withAlpha(.3f+.7f*amplitude));g.fillRoundedRectangle(at,right-8.f-30.f*amplitude*alternate,7.f,8.f+30.f*amplitude*alternate,2.f);
+            }
+            Daw::drawCaps(g,"L",{box.getRight()-18,(int)left-18,18,16},colour);Daw::drawCaps(g,"R",{box.getRight()-18,(int)right-18,18,16},Daw::returnA);
+        }else{
+            const float room=(float)sliders[0]->getValue(),damp=(float)sliders[1]->getValue();
+            const auto outer=juce::Rectangle<float>(x+8,y+12,w-16,h-48);const auto inner=outer.reduced(26.f+room*28.f,24.f+room*22.f);
+            g.setColour(colour.withAlpha(.12f));g.fillRoundedRectangle(outer,6);g.setColour(colour.withAlpha(.5f));g.drawRoundedRectangle(outer,6,1.5f);g.drawRoundedRectangle(inner,4,1.f);
+            for(const auto& corners:std::array<std::pair<juce::Point<float>,juce::Point<float>>,4>{{{outer.getTopLeft(),inner.getTopLeft()},{outer.getTopRight(),inner.getTopRight()},{outer.getBottomLeft(),inner.getBottomLeft()},{outer.getBottomRight(),inner.getBottomRight()}}})g.drawLine({corners.first,corners.second},1.f);
+            const auto centre=outer.getCentre();g.setColour(Daw::text);g.fillEllipse(centre.x-4,centre.y-4,8,8);
+            for(int i=0;i<4;++i){const float radius=18.f+i*17.f;g.setColour(colour.withAlpha((1.f-i*.18f)*(1.f-damp*.7f)));g.drawEllipse(centre.x-radius,centre.y-radius,radius*2,radius*2,1.5f);}
+        }
+        g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr(delay?"Tap diagram follows time, feedback and stereo exchange.":"Room size and damping visualization."),footer.removeFromTop(34),juce::Justification::centredLeft,2);
+        g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawText(tr("Parameter schematic, not a measured response"),footer,juce::Justification::centredLeft);
+    }
+    void timerCallback()override{
+        bool changed=false;
+        for(size_t i=0;i<sliders.size();++i){bool editing=gestures[i];for(auto* child:sliders[i]->getChildren())if(auto* label=dynamic_cast<juce::Label*>(child))editing=editing||label->isBeingEdited();const auto next=processor.getParameters()[(int)i]->getValue();if(!editing&&std::abs(sliders[i]->getValue()-next)>1.e-7){sliders[i]->setValue(next,juce::dontSendNotification);changed=true;}}
+        const auto bpm=processor.currentBpm();if(delay&&std::abs(bpm-lastBpm)>.001){lastBpm=bpm;changed=true;}if(changed)repaint(diagram);
+    }
+    ReturnEffect& processor;bool delay;juce::Colour colour;DawLookAndFeel theme;double lastBpm=0;
+    juce::Rectangle<int> diagram;std::vector<juce::Rectangle<int>> tiles;
+    std::vector<std::unique_ptr<juce::Slider>> sliders;std::vector<std::unique_ptr<juce::Label>> labels;std::array<bool,4> gestures{};
 };
 juce::AudioProcessorEditor* ReturnEffect::createEditor(){return new ReturnEditor(*this);}
 }

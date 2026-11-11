@@ -35,6 +35,9 @@ inline const juce::Colour accent    {Palette::accent};
 inline const juce::Colour onAccent  {0xff16130f};   // text and icons on the accent
 // Functional colours stay off the track palette: piano/accent are amber, bass and
 // accent2 are cyan, guitar is gold. Mute, solo and automation each have their own hue.
+inline const juce::Colour returnA   {0xff52d4c8};
+inline const juce::Colour returnB   {0xffb494ff};
+inline juce::Colour returnColour(int index){return index==0?returnA:returnB;}
 inline const juce::Colour automation{0xffff5ec8};   // magenta, not bass cyan or cowbell pink
 inline const juce::Colour play      {0xff52d273};
 inline const juce::Colour mute      {0xff8d9070};   // olive grey, not piano amber
@@ -56,6 +59,20 @@ inline float hairline(){const float s=juce::Desktop::getInstance().getGlobalScal
 // Small caps captions: section titles, field labels, LCD legends.
 inline juce::Font caps(float size=small){auto f=FamilyTheme::font(size,true);f.setExtraKerningFactor(.06f);return f;}
 inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int> r,juce::Colour c=textFaint,juce::Justification j=juce::Justification::centredLeft){g.setColour(c);g.setFont(caps());g.drawFittedText(s.toUpperCase(),r,j,1,.72f);}
+
+// Shared material for native devices; graphs and controls retain their own
+// semantics. No simulated meters or DSP-dependent resources on the UI thread.
+inline void devicePanel(juce::Graphics& g,juce::Rectangle<float> r,juce::Colour colour){
+    r=r.reduced(.5f);g.setGradientFill(juce::ColourGradient(surfaceHi,r.getX(),r.getY(),well,r.getRight(),r.getBottom(),false));g.fillRoundedRectangle(r,8.f);
+    g.setColour(lineStrong.withAlpha(.7f));g.drawRoundedRectangle(r,8.f,1.f);
+    g.setColour(colour.withAlpha(.5f));g.fillRoundedRectangle(r.getX()+14,r.getY(),std::max(1.f,r.getWidth()-28),2.f,1.f);
+}
+inline void deviceHeader(juce::Graphics& g,juce::Rectangle<int> r,const juce::String& titleText,const juce::String& category,juce::Colour colour){
+    auto icon=r.removeFromLeft(42).toFloat().reduced(0,8);g.setColour(colour.withAlpha(.13f));g.fillRoundedRectangle(icon,8.f);
+    g.setColour(colour);for(int i=0;i<4;++i){const float h=i%2?20.f:12.f;g.fillRoundedRectangle(icon.getX()+9+i*6,icon.getCentreY()-h*.5f,3.f,h,1.5f);}
+    r.removeFromLeft(14);g.setFont(caps(9));g.setColour(colour);g.drawText("FASEGROOVE  /  "+category,r.removeFromTop(16),juce::Justification::centredLeft);
+    g.setFont(font(26,true));g.setColour(text);g.drawText(titleText,r,juce::Justification::centredLeft);
+}
 
 // Each track keeps the colour of its instrument family, with a different shade per drum lane
 // so that neighbouring lanes stay distinguishable.

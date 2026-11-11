@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Make A/B levels common across enabled tracks using existing return gains and uniform mixer activations, with turquoise/violet identities; preserve historic sends until explicit common-level editing, with Undo and no project migration. Fix a reproduced stale pan caption: automation repainted the child knob but omitted parent text until an unrelated A/B refresh. Add cached partial-repaint regression (FAIL before/PASS after). Redesign native compressor, reverb and delay editors using shared device styling and clearly labelled parameter diagrams; preserve DSP, effect state/IDs, vocal modules and Transparent. New revision validated locally on Linux; native Windows/manual quality checks pending. See docs/BUS_SEND_REVIEW.it.md.
+
 - Verify the editable A/B returns and selectable compressor sidechain on native Windows MSVC x64 Release (2f7eb7a, Actions 43089785681): CTest 18/18, return UI 24/24, compressor UI 16/16, VST3 fixtures/export and extracted portable EXE pass without build or workflow fixes. Downloaded ZIP hashes, complete corresponding sources/licences and system-only DLL imports verified. Original visual-pan report remains open: automated toggle checks do not validate native mouse/DPI behavior or listening/hardware. See docs/VOCALTEST_PREVIEW_WINDOWS.it.md.
 
 - Redesign Bus & Send with separate editable A/B return racks and numbered groups, explicit track/output labels, group membership and empty-group feedback. New UI projects start with removable native Reverb/Tempo Delay; reuse the serial insert host for add/remove/reorder/bypass/state/Undo. Preserve historical projects through an explicit conversion; new effect data require format 7 and an explicit current-host marker.

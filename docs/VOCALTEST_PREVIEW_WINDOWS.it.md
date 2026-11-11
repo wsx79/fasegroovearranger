@@ -1,5 +1,9 @@
 # Vocaltest Preview Windows x64 — Actions
 
+La revisione locale successiva dei livelli comuni A/B, design e ridisegno del
+testo pan non è inclusa nella preview sotto. Su questa nuova revisione i test
+Windows restano NOT RUN: vedere [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md).
+
 ## Preview ritorni A/B e sidechain verificata — 2026-11-11
 
 **SUCCESS** [run 43089785681](https://github.com/wsx79/fasegroovearranger/actions/runs/43089785681), build **`2f7eb7ade201209e698f765f8524171ae7ed7a72`**.

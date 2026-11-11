@@ -1002,7 +1002,7 @@ bool MainComponent::keyPressed(const juce::KeyPress& k){
 
 // Save / Discard / Cancel, as in any DAW. An untitled project opens SAVE AS and keeps the
 // current song open: close again once it is saved.
-void MainComponent::createNewProject(){pendingGlobalFeel=0;instrumentPanel.cancelRender();audio.stop();closePluginEditor();audio.clearEffect(masterEffectTrack);for(int b=0;b<2;++b)audio.clearEffect(returnEffectTrack+b);undoStack.clear();redoStack.clear();lastCheckpointControl=nullptr;for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);};project=newProject(genreBox.getSelectedItemIndex());project.enableReturnChains();restoreInstruments();editCursor=-1;projectFile=juce::File();selectedSection=0;selectedTrack=4;arrangement.selectedClips.clear();noClipSelection=false;changed();showArrangement();}
+void MainComponent::createNewProject(){pendingGlobalFeel=0;instrumentPanel.cancelRender();audio.stop();closePluginEditor();audio.clearEffect(masterEffectTrack);for(int b=0;b<2;++b)audio.clearEffect(returnEffectTrack+b);undoStack.clear();redoStack.clear();lastCheckpointControl=nullptr;for(int i=0;i<maxTracks;++i){audio.useInternal(i);audio.clearEffect(i);};project=newProject(genreBox.getSelectedItemIndex());project.enableReturnChains();project.buses[2].gain=project.buses[3].gain=.25;restoreInstruments();editCursor=-1;projectFile=juce::File();selectedSection=0;selectedTrack=4;arrangement.selectedClips.clear();noClipSelection=false;changed();showArrangement();}
 void MainComponent::requestClose(std::function<void()> accepted){
     if(closePending)return;
     if(loadingPlugin){message(tr("Wait for the instrument to finish loading."),true);return;}

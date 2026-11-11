@@ -171,10 +171,11 @@ public:
 
     void paint(juce::Graphics& g) override
     {
-        auto area = getLocalBounds().toFloat();
+        auto area = getLocalBounds().toFloat().reduced(5.f,4.f);
+        Daw::devicePanel(g,area,accent);area=area.reduced(8.f,6.f);
         auto title = area.removeFromTop(18.0f);
         g.setFont(Daw::caps(10.0f));
-        g.setColour(Daw::textDim);
+        g.setColour(accent);
         g.drawText(name.toUpperCase(), title.toNearestInt(), juce::Justification::centred);
 
         area.removeFromBottom(32.0f);
@@ -212,6 +213,8 @@ public:
                                   juce::Colour(0xff16191e), centre.x + radius * 0.7f, centre.y + radius * 0.8f, true);
         g.setGradientFill(body);
         g.fillEllipse(centre.x - radius + 6.0f, centre.y - radius + 6.0f, (radius - 6.0f) * 2.0f, (radius - 6.0f) * 2.0f);
+        g.setColour(accent.withAlpha(.30f));
+        g.drawEllipse(centre.x - radius + 3.0f, centre.y - radius + 3.0f, (radius - 3.0f)*2, (radius - 3.0f)*2, 3.f);
         g.setColour(Daw::lineStrong);
         g.drawEllipse(centre.x - radius + 6.0f, centre.y - radius + 6.0f, (radius - 6.0f) * 2.0f, (radius - 6.0f) * 2.0f, 1.0f);
 
@@ -294,10 +297,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat();
-        g.setColour(Daw::surface);
-        g.fillRoundedRectangle(bounds, Daw::panelRadius);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(bounds, Daw::panelRadius, 1.0f);
+        Daw::devicePanel(g,bounds,ui::blue);
 
         auto title = bounds.reduced(14.0f, 8.0f).removeFromTop(16.0f);
         g.setFont(Daw::caps(9.5f));
@@ -373,10 +373,7 @@ public:
     void paint(juce::Graphics& g) override
     {
         auto bounds = getLocalBounds().toFloat();
-        g.setColour(Daw::surface);
-        g.fillRoundedRectangle(bounds, Daw::panelRadius);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(bounds, Daw::panelRadius, 1.0f);
+        Daw::devicePanel(g,bounds,ui::blue);
 
         auto area = bounds.reduced(14.0f, 10.0f);
         g.setFont(Daw::caps(9.5f));
@@ -505,7 +502,7 @@ public:
         lastBypassed = processor.bypassed;
         setResizable(true, true);
         setResizeLimits(720, 600, 1600, 1000);
-        setSize(1000, 600);
+        setSize(1040, 650);
         startTimerHz(30);
     }
 
@@ -515,12 +512,8 @@ public:
     {
         g.fillAll(Daw::base);
 
-        g.setColour(Daw::text);
-        g.setFont(Daw::font(24.0f, true));
-        g.drawText(ui::loc("COMPRESSOR", "COMPRESSORE"), 16, 8, 360, 30, juce::Justification::centredLeft);
-        g.setColour(Daw::textDim);
-        g.setFont(Daw::caps(9.5f));
-        g.drawText(ui::loc("FGA NATIVE  /  DYNAMICS", "FGA NATIVE  /  DINAMICA"), 18, 38, 360, 14, juce::Justification::centredLeft);
+        Daw::deviceHeader(g,{18,8,430,50},ui::loc("COMPRESSOR", "COMPRESSORE"),"DYNAMICS",ui::blue);
+        Daw::devicePanel(g,sourcePanel.toFloat(),Daw::returnA);
 
         const auto status = juce::Rectangle<int>(getWidth() - 250, 18, 150, 24);
         g.setColour(lastBypassed ? Daw::textFaint : ui::blue);
@@ -529,15 +522,7 @@ public:
         g.setFont(Daw::caps(9.0f));
         g.drawText(lastBypassed ? ui::loc("BYPASSED", "BYPASSATO") : ui::loc("ACTIVE", "ATTIVO"), status.withTrimmedLeft(13), juce::Justification::centredLeft);
 
-        g.setColour(Daw::surface);
-        g.fillRoundedRectangle(knobPanel.toFloat(), Daw::panelRadius);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(knobPanel.toFloat(), Daw::panelRadius, 1.0f);
-
-        g.setColour(Daw::surface);
-        g.fillRoundedRectangle(infoPanel.toFloat(), Daw::panelRadius);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(infoPanel.toFloat(), Daw::panelRadius, 1.0f);
+        Daw::devicePanel(g,infoPanel.toFloat(),ui::blue);
 
         auto info = infoPanel.reduced(14, 10);
         g.setFont(Daw::caps(9.5f));
@@ -563,17 +548,19 @@ public:
     void resized() override
     {
         auto area = getLocalBounds().reduced(14);
-        auto header = area.removeFromTop(46);
-        auto sourceRow=area.removeFromTop(30);sourceLabel.setBounds(sourceRow.removeFromLeft(175));source.setBounds(sourceRow.removeFromLeft(std::min(400,sourceRow.getWidth())));
+        auto header = area.removeFromTop(48);
+        area.removeFromTop(10);sourcePanel=area.removeFromTop(42);auto sourceRow=sourcePanel.reduced(12,6);sourceLabel.setBounds(sourceRow.removeFromLeft(175));source.setBounds(sourceRow.removeFromLeft(std::min(400,sourceRow.getWidth())));
         area.removeFromTop(8);
         reset.setBounds(header.removeFromRight(86).reduced(0, 8));
 
-        const int bottomHeight = std::clamp((int)(area.getHeight() * 0.46), 210, 300);
-        auto bottom = area.removeFromBottom(bottomHeight);
-        area.removeFromBottom(10);
+        // The transfer curve and live reduction are the primary display;
+        // tactile parameter tiles sit below, consistently at all window sizes.
+        const int columns = area.getWidth() >= 780 ? 6 : 3;
+        const int displayHeight = columns==6?std::clamp((int)(area.getHeight()*.52),220,310):180;
+        auto bottom = area.removeFromTop(displayHeight);
+        area.removeFromTop(12);
         knobPanel = area;
 
-        const int columns = area.getWidth() >= 780 ? 6 : 3;
         const int rows = (6 + columns - 1) / columns;
         const int cellW = area.getWidth() / columns;
         const int cellH = area.getHeight() / rows;
@@ -633,7 +620,7 @@ private:
     ui::ReductionMeter reduction;
     ActionButton reset;
     juce::TooltipWindow tooltips{this, 700};
-    juce::Rectangle<int> knobPanel, infoPanel;
+    juce::Rectangle<int> knobPanel, infoPanel, sourcePanel;
     CompressorDSP::Values lastValues{};
     bool lastBypassed = false;
     float grShown = 0.0f;
