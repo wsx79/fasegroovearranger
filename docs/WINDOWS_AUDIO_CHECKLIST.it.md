@@ -1,11 +1,12 @@
 # Collaudo Windows delle fasi 03–06 — da eseguire
 
-Questa checklist **non è un risultato PASS**. Occorre una build Windows x64
-nativa del commit finale della correzione integrata (indicato nel report finale),
-compilata con MSVC. Il precedente artifact Vocaltest Preview, build `0649e93`,
-precede le fasi 03–06 e **non può validarle**. Non sono stati effettuati push o
-avviati workflow per pubblicare i commit locali. Nessun supporto Windows attuale
-viene dedotto dalla build Linux o dai test con dispositivi/plugin simulati.
+Questa checklist **non è un risultato PASS manuale**. La build Windows x64
+nativa delle fasi 03–06 e i test automatici su Windows Server sono verificati in
+[VOCALTEST_PREVIEW_WINDOWS.it.md](VOCALTEST_PREVIEW_WINDOWS.it.md).
+Scaricare l'artifact verde di quella run e confrontare lo SHA `build_commit`
+con `PREVIEW.json`. Il precedente artifact `0649e93` precede le fasi 03–06 e
+non può validarle. Le prove sintetiche del runner non validano Windows 11,
+ASIO/dispositivi reali o i propri plugin e non sostituiscono l'ascolto.
 
 Annotare: SHA della build, versione Windows 11, CPU/RAM, interfaccia e versione
 driver, frequenza/buffer, plugin e relative versioni, esito e passaggi per

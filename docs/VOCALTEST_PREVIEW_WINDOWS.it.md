@@ -1,5 +1,79 @@
 # Vocaltest Preview Windows x64 — Actions
 
+## Preview fasi 03–06 verificata — 2026-11-11
+
+**SUCCESS** [run 43040178202](https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202), build **`353ae3d04be740b2d861c90f6b7e2a0a2a3a4af1`**.
+Runner Windows Server 2025 / windows-2025-vs2026, Visual Studio 18 2026,
+MSVC 19.51.36260.0 **x64 Release**, senza WSL o cross-compilazione Linux.
+
+- **PASS** build completa; CTest **18/18**, 126,38 s; nessun FAIL finale.
+- **PASS** UI compressore **14/14**, menu Native/Plugin e annullamento asincrono;
+  mixer/sidechain; UI export **17/17**; startup, WAV/MP3 e interfaccia nativa.
+- **PASS** VST3 effetti: **79 asserzioni**, più verifica PCM e stati; strumenti
+  VST3 e regressioni focus, con fixture native del progetto, non plugin commerciali.
+- **PASS** Vocal Studio dati/UI **14** e sample import **11**; non equivalgono
+  a sintesi reale o approvazione funzionale/qualitativa delle fasi vocali congelate.
+- **PASS** pacchetto estratto: avvio dell'EXE Windows e sample UI **11**.
+
+Artifact [**Vocaltest-Preview-Windows-x64**](https://github.com/wsx79/fasegroovearranger/actions/runs/43040178202/artifacts/13865383703):
+**41.795.309 byte**, scadenza **2026-12-11 14:57 UTC**.
+Dentro: **FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip**, **41.795.091 byte**,
+SHA256 `7202efd3267879e0384ce2369e08b88a2cbb70d6e92f89d5af244e9b42ad8f76`.
+EXE: **17.317.376 byte**, SHA256
+`2fc33af410d2fb07a34d82dd8a9f77300ac1595f15665b1573a12e11f40c06fa`.
+Dati completi: [VOCALTEST_PREVIEW_RESULT.json](VOCALTEST_PREVIEW_RESULT.json).
+
+Download indipendente PASS: digest degli artifact, ZIP/PE AMD64, hash EXE e
+sorgenti, risorse/licenze, istruzioni build/relink e adattamenti JUCE effettivi.
+Confrontati i sorgenti critici col commit: sola differenza CRLF/LF della
+conversione Git Windows, non modifiche al codice. Gli hash degli archivi e
+file JUCE modificati sono verificati sui byte esatti. Import table: soltanto
+le 21 DLL di sistema Windows già previste, nessuna DLL da installare/bundlare.
+
+Contenuto: `Standalone/Fase Groove Arranger.exe`, manuali/risorse, licenze,
+`Source/` con sorgenti completi app/JUCE e istruzioni. Il solo adattatore GPL
+è sorgente con COPYING; **nessun runtime eCantorix, Perl, eSpeak, SoX, FFmpeg,
+DLL aggiuntiva, codec esterno, vocoder o voicebank distribuito**.
+
+### Errori incontrati e correzioni
+
+Il push iniziale fast-forward include i sei commit fino a `ffaa0ec6`; nessuna
+divergenza remota. Riutilizzato il workflow esistente e aggiunti i due harness UI
+già presenti. La run 43029786229 è stata cancellata dalla sostituzione del workflow.
+La run 43030410827 ha passato build e 18 CTest, ma fallito 5 asserzioni VST3:
+il vecchio test premeva `+` aspettandosi il browser, invece del nuovo menu.
+Corretto **solo il codice self-test** per selezionare davvero Plugin tramite
+l'azione di accessibilità JUCE; preservate tutte le asserzioni e aggiunti i due
+percorsi del menu al test nativo. La run 43035822163 ha passato build/18 CTest,
+ma rilevato 1 asserzione sul ripristino dopo Escape: sostituita la pausa fissa
+30 ms con attesa limitata sullo stato reale, senza forzare l'apertura o cambiare
+il comportamento produttivo. Verifica locale limitata al menu: 14/14 PASS;
+nessun audit Linux ripetuto. Nessuno ZIP programma dalle run fallite.
+La run finale sopra supera anche i controlli VST3 e il packaging.
+
+### Prove ancora mancanti e avvio
+
+**NOT RUN: 5 ambiti**, distinti dai 18 CTest passati: collaudo manuale Windows 11,
+driver/hardware/ascolto/dropout; plugin di terze parti; sintesi reale esterna;
+regressione opzionale input sintetico su peer (`window-focus.txt` SKIP esplicito);
+sanitizers Windows. Il CTest vocale passa il piano MIDI, non la sintesi assente;
+anche render/import effettivi dell'editor sono NOT RUN. I sanitizers mirati
+precedenti restano risultati Linux. Fasi 01/02 congelate senza approvazione
+qualitativa; Loud resta non esposto per gate IMD.
+
+Aprire la run verde e scaricare l'artifact del programma, non quello diagnostico.
+Estrarre l'archivio Actions e lo ZIP portabile interno; conservare tutte le
+cartelle. Avviare **Standalone\Fase Groove Arranger.exe**, scegliere il dispositivo
+audio e aprire una copia del progetto. Non servono WSL, Bash o compilatori.
+[Checklist Windows 03–06](WINDOWS_AUDIO_CHECKLIST.it.md) e
+[istruzioni voce guida opzionale](../VOCALTEST_QUICKSTART.it.md).
+
+La build appartiene al commit `353ae3d`; l'eventuale successivo commit `[skip ci]`
+aggiorna soltanto questo registro/stato/documentazione. Non è un secondo binario.
+Nessun main, merge/PR, tag o GitHub Release; fase 07 non iniziata.
+
+## Archivio: prima preview precedente alle fasi 03–06
+
 Il workflow esistente `.github/workflows/build.yml` ora include un job dedicato
 **Vocaltest Preview Windows x64**, avviato dai push o dispatch di **Vocaltest**.
 Main non viene modificato. La famiglia di job release è esclusa da questo branch;
