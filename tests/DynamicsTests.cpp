@@ -18,11 +18,19 @@ struct AllocationScope {AllocationScope(){allocations=0;countAllocations=true;}~
 // Test-only regular C++ allocation counter; inactive outside the measured scopes.
 void* operator new(std::size_t size){if(countAllocations)++allocations;if(void* memory=std::malloc(size?size:1))return memory;throw std::bad_alloc();}
 void* operator new[](std::size_t size){return ::operator new(size);}
+// Keep nothrow allocations on the same path as the counter/free replacements.
+// Otherwise sanitizer interceptors can pair their nothrow new with our free.
+void* operator new(std::size_t size,const std::nothrow_t&)noexcept{try{return ::operator new(size);}catch(...){return nullptr;}}
+void* operator new[](std::size_t size,const std::nothrow_t&)noexcept{return ::operator new(size,std::nothrow);}
+void operator delete(void* p,const std::nothrow_t&)noexcept{std::free(p);}void operator delete[](void* p,const std::nothrow_t&)noexcept{std::free(p);}
+
 void operator delete(void* p)noexcept{std::free(p);}void operator delete[](void* p)noexcept{std::free(p);}
 void operator delete(void* p,std::size_t)noexcept{std::free(p);}void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
 size_t countRealtimeCppAllocations(const std::function<void()>& action){AllocationScope scope;action();return allocations;}
 namespace {
 void realtimeEq(){
+    {AllocationScope scope;void* p=::operator new(37,std::nothrow);require(p!=nullptr,"nothrow allocation fixture");::operator delete(p);}
+    require(allocations==1,"test counter must cover nothrow allocations with matched deallocation");
     fga::EqSettings eq;eq.enabled=true;eq.ensureBands();fga::ChannelStrip strip;
     {AllocationScope scope;strip.configure(eq,48000);}
     std::cout<<"EQ callback configuration allocations="<<allocations<<"\n";

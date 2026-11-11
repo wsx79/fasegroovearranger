@@ -1,5 +1,7 @@
 # Phase 06 — existing group sidechain
 
+> Follow-up integration check: [INTEGRATION_PHASES03_06.it.md](INTEGRATION_PHASES03_06.it.md) documents the reproduced live-edit discontinuity and a 10 ms gain splice. Results below describe the original phase-06 baseline; listening/hardware approval remains pending.
+
 Baseline: `e637d84bad34b21a40e7a1ac7119057dac7edfa5`, branch Vocaltest.
 
 ## Targeted inventory and scope

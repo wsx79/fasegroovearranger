@@ -33,7 +33,11 @@ private:
     double rate=44100,bpm=120;
     std::array<std::vector<float>,2> sourceSignal;
     std::array<float,2> duck{},attack{},release{};
-    std::array<juce::SmoothedValue<float>,2> depths;
+    std::array<juce::SmoothedValue<float>,2> depths,editOffsets;
+    struct DetectorControls {int source=4;double attackMs=0,releaseMs=180,curve=1;};
+    std::array<DetectorControls,2> detectorControls{};
+    std::array<float,2> lastReduction{};
+    std::array<bool,2> editPending{};
     std::array<std::atomic<float>,2> reductions{};
     int write=0;
     std::array<float,2> damping{};

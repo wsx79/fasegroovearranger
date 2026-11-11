@@ -195,7 +195,13 @@ struct EngineAuditTests {
         requireAudit(started&&whileMigrating==0&&alive&&destroyed==1,"C1: control-side collection cannot destroy the state while audio references migrate");
     }
     static void handoffStress(){
-        std::atomic<int> destroyed{0},audioDeletes{0};std::atomic<bool> done{false};
+        // Reproduce the last-post interleaving: the producer can publish while
+        // audio migrates, before the old current state is parked in retired.
+        {Handoff<int> handoff;handoff.post(std::make_unique<int>(1));handoff.adopt();handoff.post(std::make_unique<int>(2));
+         handoff.adopt([&](const int&){handoff.post(std::make_unique<int>(3));});
+         requireAudit(handoff.pending.load()!=nullptr&&handoff.retired.load()!=nullptr&&handoff.adopt()==nullptr,"handoff backpressure fixture must retain a final pending state");
+         handoff.collect();auto* final=handoff.adopt();requireAudit(final&&*final==3,"control collection must allow the final pending state to migrate");}
+        std::atomic<int> destroyed{0},audioDeletes{0};std::atomic<bool> done{false},finished{false},abort{false};
         int adopted=0;bool intact=true;
         struct State {
             std::atomic<int>& destroyed;std::atomic<int>& audioDeletes;std::thread::id audio;
@@ -206,16 +212,23 @@ struct EngineAuditTests {
         {
             Handoff<State> handoff;
             std::thread audio([&]{
-                while(!done.load()||handoff.pending.load()!=nullptr){
+                while(!abort.load()&&(!done.load()||handoff.pending.load()!=nullptr)){
                     if(auto* state=handoff.adopt()){
                         ++adopted;for(int value:state->data)intact=intact&&value==state->revision;
                     }
                     std::this_thread::yield();
                 }
+                finished=true;
             });
             for(int revision=0;revision<10000;++revision)
                 handoff.post(std::make_unique<State>(destroyed,audioDeletes,audio.get_id(),revision));
-            done=true;audio.join();handoff.collect();
+            done=true;
+            // post() normally collects, but after its final call the control
+            // side must keep collecting until the consumer has drained pending.
+            const double deadline=juce::Time::getMillisecondCounterHiRes()+10000;
+            while(!finished.load()&&juce::Time::getMillisecondCounterHiRes()<deadline){handoff.collect();std::this_thread::yield();}
+            const bool drained=finished.load();abort=true;audio.join();handoff.collect();
+            requireAudit(drained,"handoff stress must drain with control-side collection before its deadline");
         }
         requireAudit(adopted>0&&intact&&destroyed==10000&&audioDeletes==0,
                      "rapid handoff publication must retain valid states and reclaim every allocation off the audio thread");
@@ -373,12 +386,18 @@ struct EngineAuditTests {
         auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};callback();requireAudit(block.getMagnitude(0,512)>1.1f,"live floating-point output must retain headroom above unity");
         // Holding a control mutex alone cannot block the audio callback anymore.
         const int before=plugin->calls;engine.mutex.enter();juce::WaitableEvent returned;std::thread independent([&]{callback();returned.signal();});const bool nonblocking=returned.wait(10000);engine.mutex.exit();independent.join();requireAudit(nonblocking&&plugin->calls>before,"processBlock must run without acquiring the control mutex (bounded wait)");
+        plugin->setLatencySamples(256);callback();requireAudit(engine.delayStorageNeeded.load(),"latency change must publish a control-side storage request");
+        engine.restorePluginState(0,"AAAAAA==");
+        requireAudit(!engine.delayStorageNeeded.load()&&engine.latencySamples()==256&&std::all_of(engine.instruments.begin(),engine.instruments.end(),[](const auto& i){return i->delay==0||i->delayLine.getNumSamples()>i->delay;}),"plugin restore must service the published delay request under the control gate");
+        plugin->setLatencySamples(0);callback();engine.collectGarbage();
         plugin->slow=true;std::atomic<bool> running{true};std::thread audio([&]{while(running)callback();});
         for(int n=0;n<20;++n){engine.capturePluginStates(project);engine.restorePluginState(0,"AAAAAA==");}running=false;audio.join();plugin->slow=false;requireAudit(!plugin->overlap&&!project.tracks[0].instrumentState.empty(),"plugin state snapshot executes without overlapping processBlock");
-        plugin->stateReads=0;plugin->calls=0;engine.play(true);running=true;std::thread playing([&]{while(running)callback();});
-        const int callsBefore=plugin->calls;const auto started=juce::Time::getMillisecondCounterHiRes();
+        plugin->stateReads=0;plugin->calls=0;engine.play(true);const int callsBefore=plugin->calls;running=true;std::thread playing([&]{while(running)callback();});
+        const auto started=juce::Time::getMillisecondCounterHiRes();
         for(int n=0;n<40;++n){project.tracks[0].gain=.2+.01*(n%4);engine.updateMix(project);engine.reusePluginStates(project);}
-        const double spent=juce::Time::getMillisecondCounterHiRes()-started;juce::Thread::sleep(20);const int callsAfter=plugin->calls;const int states=plugin->stateReads.load();running=false;playing.join();engine.stop();
+        const double spent=juce::Time::getMillisecondCounterHiRes()-started;juce::Thread::sleep(20);const int states=plugin->stateReads.load();running=false;playing.join();
+        // Probe calls is not atomic: only sample it before start/after join.
+        const int callsAfter=plugin->calls;engine.stop();
         std::cout<<"Mix handoff latency: controls_ms="<<spent<<", snapshot_reads="<<states<<", callbacks="<<callsBefore<<"->"<<callsAfter<<"\n";
         requireAudit(states==0&&spent<80&&callsAfter>callsBefore,"volume changes stay lock-free: no plugin snapshot and processBlock keeps running");
         engine.stop();project.tracks[0].parameters.clear();ParameterAutomation lane;lane.index=0;lane.curve.enabled=true;const double point=141.*120/(44100*60);lane.curve.points={{0,0,0},{point,1,0},{1,1,0}};project.tracks[0].parameters.push_back(lane);

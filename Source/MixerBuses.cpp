@@ -2,9 +2,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MixerBuses.h"
 namespace fga {
-void MixerBuses::prepare(double sr,int block){sr=std::isfinite(sr)&&sr>0?sr:44100;rate=sr;for(auto& signal:sourceSignal)signal.resize((size_t)block);for(auto& depth:depths){depth.reset(sr,.01);depth.setCurrentAndTargetValue(0);}settings=&fallback;dry.setSize(2,block);for(auto& b:groups)b.setSize(2,block);for(auto& b:returns)b.setSize(2,block);for(auto& v:groupGain)v.resize((size_t)block);delay.setSize(2,(int)std::ceil(sr*8)+block+4);reverb.setSampleRate(sr);for(auto& pair:gains)for(auto& g:pair){g.reset(sr,.01);g.setCurrentAndTargetValue(1);}masterGain.reset(sr,.01);masterGain.setCurrentAndTargetValue(.8f);delaySamples.reset(sr,.04);delaySamples.setCurrentAndTargetValue((float)(sr*.5));reset();}
-void MixerBuses::reset(){duck.fill(0);for(auto& r:reductions)r.store(0,std::memory_order_relaxed);reverb.reset();delay.clear();write=0;damping.fill(0);for(auto& p:peaks)p=0;}
+void MixerBuses::prepare(double sr,int block){sr=std::isfinite(sr)&&sr>0?sr:44100;rate=sr;for(auto& signal:sourceSignal)signal.resize((size_t)block);for(auto& depth:depths){depth.reset(sr,.01);depth.setCurrentAndTargetValue(0);}for(auto& offset:editOffsets){offset.reset(sr,.01);offset.setCurrentAndTargetValue(0);}settings=&fallback;dry.setSize(2,block);for(auto& b:groups)b.setSize(2,block);for(auto& b:returns)b.setSize(2,block);for(auto& v:groupGain)v.resize((size_t)block);delay.setSize(2,(int)std::ceil(sr*8)+block+4);reverb.setSampleRate(sr);for(auto& pair:gains)for(auto& g:pair){g.reset(sr,.01);g.setCurrentAndTargetValue(1);}masterGain.reset(sr,.01);masterGain.setCurrentAndTargetValue(.8f);delaySamples.reset(sr,.04);delaySamples.setCurrentAndTargetValue((float)(sr*.5));reset();}
+void MixerBuses::reset(){duck.fill(0);lastReduction.fill(0);editPending.fill(false);for(auto& offset:editOffsets)offset.setCurrentAndTargetValue(0);for(auto& r:reductions)r.store(0,std::memory_order_relaxed);reverb.reset();delay.clear();write=0;damping.fill(0);for(auto& p:peaks)p=0;}
 void MixerBuses::configure(const std::array<BusSettings,4>& p,double tempo,double master,bool snap){settings=&p;bpm=tempo;auto set=[snap](juce::SmoothedValue<float>& v,float target){if(snap)v.setCurrentAndTargetValue(target);else v.setTargetValue(target);};for(int b=0;b<4;++b){auto& v=p[(size_t)b];set(gains[(size_t)b][0],(float)(v.gain*std::min(1.,1.-v.pan)));set(gains[(size_t)b][1],(float)(v.gain*std::min(1.,1.+v.pan)));}for(int b=0;b<2;++b){const auto& v=p[(size_t)b];
+        auto& was=detectorControls[(size_t)b];
+        const bool changed=was.source!=v.sidechainSource||was.attackMs!=v.sidechainAttackMs||was.releaseMs!=v.sidechainReleaseMs||was.curve!=v.sidechainCurve;
+        if(snap){editOffsets[(size_t)b].setCurrentAndTargetValue(0);editPending[(size_t)b]=false;}
+        else if(changed)editPending[(size_t)b]=true;
+        was={v.sidechainSource,v.sidechainAttackMs,v.sidechainReleaseMs,v.sidechainCurve};
         attack[(size_t)b]=v.sidechainAttackMs<=0?0.f:(float)std::exp(-1./(rate*v.sidechainAttackMs*.001));
         // Keep the exact historical 180-ms coefficient, including its float rounding.
         release[(size_t)b]=(float)std::exp(-1./(rate*(v.sidechainReleaseMs==180?.18:v.sidechainReleaseMs*.001)));
@@ -27,7 +32,12 @@ void MixerBuses::finish(float* const* output,int channels,int count,const float*
             envelope=detector>envelope?detector+attack[index]*(envelope-detector):envelope*release[index];
             const auto curve=(*settings)[index].sidechainCurve;
             const float shaped=curve==1?envelope:std::pow(envelope,(float)curve);
-            const float reduction=depths[index].getNextValue()*shaped;
+            float reduction=depths[index].getNextValue()*shaped;
+            // Splice only a live control edit; ordinary detector attacks keep their legacy law.
+            // Repeated edits restart from the last applied gain, not a stale target.
+            if(editPending[index]){auto& offset=editOffsets[index];offset.setCurrentAndTargetValue(lastReduction[index]-reduction);offset.setTargetValue(0);editPending[index]=false;}
+            if(editOffsets[index].isSmoothing())reduction=std::clamp(reduction+editOffsets[index].getNextValue(),0.f,1.f);
+            lastReduction[index]=reduction;
             maximumReduction[b]=std::max(maximumReduction[b],reduction);
             for(int ch=0;ch<2;++ch){const float sample=groups[index].getSample(ch,i)*(1.f-reduction);groups[index].setSample(ch,i,sample);groupPeaks[b]=std::max(groupPeaks[b],std::abs(sample));}
         }

@@ -747,7 +747,9 @@ void AudioEngine::reusePluginStates(Project& p){
 void AudioEngine::restoreHosted(int track,const juce::String& state,int effectSlot){
     invalidatePluginStates();const juce::ScopedLock ownerLock(mutex);if(exporting)return;
     auto* p=effectSlot>0?effectPlugin(track,effectSlot):instruments[(size_t)track]->plugin.get();if(!p)return;
-    if(std::any_of(instruments.begin(),instruments.end(),[](const auto& i){return delayStorageMissing(*i);})){const EngineControlLock storageLock(*this);prepareDelayLines();}
+    // The callback owns delay/line bookkeeping. Observe its published request;
+    // inspect and resize storage only after the existing control gate quiesces it.
+    if(delayStorageNeeded.load()){const EngineControlLock storageLock(*this);prepareDelayLines();}
     const juce::ScopedLock processorLock(p->getCallbackLock());
     // Only this processor is bypassed while restoring a potentially large preset.
     // Reconfiguration of host buffers is the short operation that gates the engine.

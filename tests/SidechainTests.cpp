@@ -3,6 +3,8 @@
 #include "../Source/AudioEngine.h"
 #include "../Source/StudioIO.h"
 #include "../Source/ProjectIO.h"
+#include "../Source/NativeCompressor.h"
+#include "../Source/CompressorDSP.h"
 #include <iostream>
 #include <stdexcept>
 size_t countRealtimeCppAllocations(const std::function<void()>&);
@@ -34,6 +36,29 @@ void legacy(){
         }++cases;
     }
     std::cout<<"Legacy detector/180ms decay/stereo/BPM/block reference PASS "<<cases<<" cases (sample exact)\n";
+}
+void liveEdits(){
+    double worst=0;int cases=0;
+    for(double rate:{44100.,48000.,96000.})for(int block:{32,512})for(int edit=0;edit<4;++edit){
+        Fixture f(rate,block);f.settings[0].sidechainAmount=.8;
+        f.settings[0].sidechainAttackMs=edit==1?200:0;f.settings[0].sidechainReleaseMs=2000;f.configure();
+        int position=0;float previous=0;double first=0,maximum=0;
+        auto tick=[&](bool changed){f.begin(block);for(int s=0;s<block;++s){f.bus.source(4,s,changed&&edit==3?0.f:edit==0?.04f:.16f);f.bus.source(1,s,.16f);f.add(s);}f.finish(block);
+            for(int s=0;s<block;++s){const float next=f.output.getSample(0,s);if(changed){const double jump=std::abs(next-previous);if(position==0)first=jump;maximum=std::max(maximum,jump);require(std::abs(f.output.getSample(1,s)-next*.5f)<1.e-7,"edited sidechain remains stereo linked");++position;}previous=next;}};
+        // Start a slow attack only shortly before the edit; others reach steady state.
+        const int warm=(int)(rate*(edit==1?.01:.1));for(int n=0;n<warm;n+=block)tick(false);
+        if(edit==0)f.settings[0].sidechainSource=1;
+        if(edit==1)f.settings[0].sidechainAttackMs=0;
+        if(edit==2)f.settings[0].sidechainCurve=4;
+        if(edit==3)f.settings[0].sidechainReleaseMs=10;
+        f.configure(120,false);for(int n=0;n<(int)(rate*.02);n+=block)tick(true);
+        std::cout<<"Live edit rate="<<rate<<" block="<<block<<" kind="<<edit<<" first_step="<<first<<" max_step="<<maximum<<std::endl;
+        worst=std::max(worst,maximum);++cases;
+    }
+    Fixture rapid(48000,32);rapid.settings[0].sidechainAmount=.8;rapid.configure();float previous=.25f;
+    for(int n=0;n<200;++n){rapid.settings[0].sidechainSource=n%2?1:4;rapid.settings[0].sidechainCurve=n%2?4:.25;rapid.settings[0].sidechainAttackMs=n%2?0:100;rapid.configure(120,false);rapid.begin(32);for(int s=0;s<32;++s){rapid.bus.source(4,s,.04f);rapid.bus.source(1,s,.16f);rapid.add(s);}rapid.finish(32);if(n>0)require(std::abs(rapid.output.getSample(0,0)-previous)<.001,"rapid edits must splice from the last applied reduction");for(int s=0;s<32;++s)require(rapid.output.getSample(0,s)>=0&&rapid.output.getSample(0,s)<=.25f,"edit correction must not amplify or invert gain");previous=rapid.output.getSample(0,31);}
+    require(worst<.001,"sidechain source/timing/curve edit creates an avoidable gain discontinuity");
+    std::cout<<"Live detector edits PASS "<<cases<<" cases; max carrier step="<<worst<<" (DC amplitude .25)\n";
 }
 void controls(){
     Fixture f(48000,480);f.settings[0].sidechainAmount=.8;f.settings[0].sidechainAttackMs=20;f.settings[0].sidechainReleaseMs=100;
@@ -88,6 +113,41 @@ void realtime(){
     const double start=juce::Time::getMillisecondCounterHiRes();for(int n=0;n<2000;++n)run();const double elapsed=juce::Time::getMillisecondCounterHiRes()-start;
     std::cout<<"Local mixer/2 active groups incl curve: 1024000 stereo frames="<<elapsed<<" ms; regular C++ callback allocations="<<allocations<<"; detector buffers="<<2*512*sizeof(float)<<" bytes at block512 (was "<<512*sizeof(float)<<")\n";
 }
+void integratedInserts(AudioEngine& engine,Project project,const juce::File& folder){
+    const auto description=nativeCompressorDescription();bool installed=true;int completed=0;
+    struct Deadline final:juce::Timer{bool expired=false;Deadline(){startTimer(5000);}void timerCallback()override{expired=true;juce::MessageManager::getInstance()->stopDispatchLoop();}} deadline;
+    for(int track:{0,masterEffectTrack})engine.loadEffect(track,description,[&](juce::Result result){installed=installed&&result.wasOk();if(++completed==2)juce::MessageManager::getInstance()->stopDispatchLoop();},1);
+    juce::MessageManager::getInstance()->runDispatchLoop();deadline.stopTimer();require(!deadline.expired&&installed&&completed==2,"integrated native track/master install");
+    EffectSlot effect;effect.slot=1;effect.path=description.fileOrIdentifier.toStdString();effect.pluginName=description.name.toStdString();effect.pluginId=description.createXml()->toString().toStdString();
+    project.tracks[0].effects={effect};project.masterEffects.effects={effect};project.tracks[0].gain=2;
+    auto set=[&](int track,int index,float value){engine.effectPlugin(track,1)->getParameters()[index]->setValue((value-CompressorDSP::minimum[(size_t)index])/(CompressorDSP::maximum[(size_t)index]-CompressorDSP::minimum[(size_t)index]));};
+    set(0,0,-30);set(0,1,2);set(0,5,12);set(masterEffectTrack,1,1);set(masterEffectTrack,5,12);
+    auto& group=project.buses[0];group.sidechainSource=1;group.sidechainAmount=.8;group.sidechainAttackMs=20;group.sidechainReleaseMs=180;group.sidechainCurve=1;
+    ParameterAutomation lane;lane.slot=1;lane.index=0;lane.parameterId="threshold";lane.curve.enabled=true;lane.curve.points={{0,.4,0},{4,.6,0}};project.tracks[0].parameters={lane};
+    engine.capturePluginStates(project);const auto saved=folder.getChildFile("integrated.fga");require(saveProject(project,saved).wasOk(),"save combined mixer/insert project");Project reopened;require(loadProject(saved,reopened).wasOk()&&reopened.buses==project.buses&&reopened.tracks[0].effects[0].state==project.tracks[0].effects[0].state&&reopened.tracks[0].parameters[0].curve.points==project.tracks[0].parameters[0].curve.points,"reopen sidechain/native state and automation together");
+    engine.publish(reopened);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+    auto callback=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+    for(int i=0;i<20;++i)callback();require(nativeCompressorReduction(engine.effectPlugin(0,1))>0,"compression and group ducking active together");
+    auto copy=engine.offlineCopy();require(copy!=nullptr,"combined insert/source graph clones offline");
+    const auto output=folder.getChildFile("integrated.wav");double rawPeak=0;int ticks=0;
+    require(copy->exportAudio(reopened,output,-1,false,[]{return false;},[&](double){if(ticks++<10)callback();},&rawPeak,{48000,24,AudioExportMode::transparent}).wasOk(),"combined Transparent export");
+    require(rawPeak>juce::Decibels::decibelsToGain(-1.)&&engine.isPlaying()&&engine.position()>0,"Transparent handles combined headroom without taking live transport ownership");
+    juce::MemoryBlock before,after;require(output.loadFileAsData(before),"load previous combined export");bool cancel=false;
+    require(copy->exportAudio(reopened,output,-1,false,[&]{return cancel;},[&](double progress){if(progress>=1)cancel=true;},nullptr,{44100,16,AudioExportMode::transparent}).failed()&&cancel&&output.loadFileAsData(after)&&before==after&&!copy->isExporting(),"late cancellation preserves integrated export and releases ownership");
+    require(copy->exportAudio(reopened,output,-1,false,[]{return false;},[](double){},nullptr,{48000,16,AudioExportMode::transparent,-3}).wasOk(),"combined atomic overwrite with different PCM depth/ceiling");
+    juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(output.createInputStream().release(),true));require(reader&&reader->sampleRate==48000&&reader->bitsPerSample==16,"combined export format");
+    // Retain just this new integration fixture for independent 32x QA when requested.
+    const auto audit=juce::SystemStats::getEnvironmentVariable("FGA_MIX_INTEGRATION_DIR",{});if(audit.isNotEmpty()){const juce::File directory(audit);require(directory.createDirectory().wasOk()&&output.copyFileTo(directory.getChildFile("integrated-48000-16.wav")),"retain integrated QA WAV");}
+    const auto blocked=folder.getChildFile("blocked.wav");require(blocked.createDirectory().wasOk()&&copy->exportAudio(reopened,blocked,-1,false,[]{return false;},[](double){}).failed()&&!copy->isExporting(),"combined output error restores export state");
+    std::array<double,100> callbackMs{};size_t activeAllocations=0;
+    for(auto& duration:callbackMs){const double start=juce::Time::getMillisecondCounterHiRes();activeAllocations+=countRealtimeCppAllocations(callback);duration=juce::Time::getMillisecondCounterHiRes()-start;}
+    require(activeAllocations==0&&engine.isPlaying(),"active integrated playback remains finite and allocation-free");std::sort(callbackMs.begin(),callbackMs.end());
+    std::cout<<"Local integrated callback, 512/"<<engine.spectrumSampleRate()<<": median_ms="<<callbackMs[50]<<" p99_ms="<<callbackMs[98]<<" max_ms="<<callbackMs[99]<<" (100 calls; not hardware dropout validation)\n";
+    project=reopened;project.tracks[0].effects[0].bypassed=true;project.masterEffects.effects[0].bypassed=true;project.buses[0].sidechainSource=4;project.buses[0].sidechainCurve=2;engine.updateMix(project);
+    size_t allocations=0;for(int i=0;i<10;++i)allocations+=countRealtimeCppAllocations(callback);
+    require(allocations==0&&std::isfinite(block.getRMSLevel(0,0,512))&&nativeCompressorReduction(engine.effectPlugin(0,1))==0&&engine.latencySamples()==0,"combined bypass/control adoption has zero C++ allocations and no added PDC");engine.stop();
+    std::cout<<"Integrated track/master compression + sidechain + automation + project reopen + private Transparent export/late cancel/overwrite/error + live bypass PASS; raw peak="<<rawPeak<<"; callback allocations="<<allocations<<"\n";
+}
 void exportAndTrackGating(){
     auto project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Sidechain"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;
     for(auto& track:project.tracks){track.gain=0;track.pan=0;track.volume.enabled=false;track.sends={};for(auto& clip:track.clips)clip.notes.clear();}
@@ -105,7 +165,8 @@ void exportAndTrackGating(){
     require(std::abs(live.getRMSLevel(0,0,512)-ducked)<.0001,"live and offline share the same group ducking path");project.buses[0].sidechainAttackMs=10;project.buses[0].sidechainReleaseMs=350;project.buses[0].sidechainCurve=.75;project.buses[0].sidechainSource=0;project.buses[0].sidechainAmount=.7;engine.updateMix(project);
     const auto allocations=countRealtimeCppAllocations([&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,live.getArrayOfWritePointers(),2,512,context);});
     require(allocations==0&&std::isfinite(live.getRMSLevel(0,0,512)),"new sidechain controls adopt on callback without C++ allocations");engine.stop();
+    integratedInserts(engine,project,folder);
     std::cout<<"WAV/live agreement (including pan-automated source), internal source routing, group mute pre-tap, track mute/solo and absent source in stem PASS; ducked/dry="<<ducked/stem<<"\n";
 }
 }
-void runSidechainTests(){legacy();controls();routing();persistence();realtime();exportAndTrackGating();}
+void runSidechainTests(){legacy();liveEdits();controls();routing();persistence();realtime();exportAndTrackGating();}
