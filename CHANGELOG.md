@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Record the phase-07 Mix Assistant preflight and reusable EQ/meter/mixer/Undo infrastructure. Implementation awaits resolution of the requested prerequisite: native Windows/manual Cancel-fix verification remains open under the no-push constraint. No Mix Assistant feature or DSP/project change is included. See docs/MIX_ASSISTANT_PHASE07.md.
+
 - Fix a reproduced export/freeze cancellation UI join: replace JUCE's progress wrapper (whose Cancel timer waits and may forcibly kill the worker) with cooperative UI polling, atomic progress and completion only after cleanup. Retain the engine/task through cancellation and guard normal app close; reuse retired-job cleanup. Add actual-button/message-dispatch regression and gated UI cases for immediate/render/PCM/final/stem/A-B/repeated cancellation, old-file preservation, PDC/plugin identity and retry, including a real VST3 fixture. Keep AudioEngine/Transparent/DSP/project format unchanged. Linux validation recorded in docs/EXPORT_CANCEL_FIX.it.md; native Windows fix tests pending under the no-push instruction.
 
 - Publish the user-authorized Vocaltest test prerelease from **839f6e8**: native Windows MSVC x64 Release, CTest 18/18, common-return UI 33/33, compressor UI 16/16, cached pan repaint regression and extracted EXE pass. Downloaded artifact and public release ZIP hashes match. Stage/verify assets through a temporary Actions job after local upload 401; finish publication with the authorized local API after runner publish 403, then remove the temporary write-permission job. Stable Latest and main unchanged. See docs/VOCALTEST_PREVIEW_WINDOWS.it.md.
