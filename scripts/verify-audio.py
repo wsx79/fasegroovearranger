@@ -7,6 +7,45 @@ import sys
 import wave
 import array
 import subprocess
+import json
+import re
+
+def verify_export_peak(folder):
+    """Independent reconstruction of the existing engine test's guard fixtures."""
+    results = []
+    for rate in (44100, 48000, 96000):
+        for bits in (16, 24):
+            for signal in ('silence', 'short', 'quiet', 'hot', 'impulse', 'dense'):
+                path = folder / f'{signal}-{rate}-{bits}.wav'
+                with wave.open(str(path), 'rb') as audio:
+                    assert (audio.getframerate(), audio.getsampwidth(), audio.getnchannels()) == (rate, bits // 8, 2), path
+                    assert audio.getnframes() == (17 if signal == 'short' else rate * 2), path
+                # Zero extension on BOTH sides matches the meter's empty history;
+                # otherwise the reference resampler reflects the first samples.
+                # It also lets a 17-frame signal pass through the longer filter.
+                reference = subprocess.run([
+                    'ffmpeg', '-hide_banner', '-nostats', '-i', str(path),
+                    '-af', f'adelay=512S:all=1,apad=pad_len=512,aresample={rate * 32}:filter_size=256,astats=reset=0',
+                    '-f', 'null', '-'], capture_output=True, text=True, check=True, timeout=60)
+                values = re.findall(r'Peak level dB:\s+(-?[0-9.]+|-inf)', reference.stderr)
+                assert values, f'No reference peak for {path}'
+                peak = None if values[-1] == '-inf' else float(values[-1])
+                if signal == 'silence':
+                    assert peak is None, f'Silence contains audio: {path}'
+                else:
+                    assert peak is not None and peak > -40, f'Guard erased the signal: {path}'
+                results.append({'file': path.name, 'peak_dbfs_32x': peak})
+    (folder / 'peak-reference.json').write_text(json.dumps(results, indent=2) + '\n')
+    failed = [r for r in results if r['peak_dbfs_32x'] is not None and r['peak_dbfs_32x'] > -1.0]
+    assert not failed, f'Reconstructed PCM exceeds -1 dBTP: {failed}'
+    maximum = max(r['peak_dbfs_32x'] for r in results if r['peak_dbfs_32x'] is not None)
+    print(f'PASS independent FFmpeg 32x true peak: {len(results)} WAV files, maximum {maximum:.6f} dBFS')
+
+if sys.argv[1:2] == ['--export-peak']:
+    if len(sys.argv) != 3:
+        raise SystemExit('Usage: verify-audio.py --export-peak FIXTURE_DIRECTORY')
+    verify_export_peak(Path(sys.argv[2]))
+    raise SystemExit(0)
 
 folder = Path(sys.argv[1])
 assert not (folder / 'error.txt').exists(), (folder / 'error.txt').read_text() if (folder / 'error.txt').exists() else ''

@@ -84,6 +84,9 @@ playback successivo, anche cambiando configurazione audio quando consentito.
 Riaprire il progetto salvato e verificare note, regioni, routing e automazioni.
 Non serve generare nuove voci né intervenire sui Vocal Chops sospesi.
 
-Stato: audit e prima correzione della fase 03; collaudo reale ancora pendente.
+Stato aggiornato: implementazione tecnica verificata su Linux nel commit
+`0bdd4ed6857704e9bf44e875679ae6460d8082c3`. Restano pendenti Windows/macOS,
+hardware audio reale, plugin esterni, ascolto, dropout e sanitizers. L'utente ha
+autorizzato la fase 04; l'audit della fase 03 non viene ripetuto.
 Nessuna modifica architetturale da approvare in questa correzione. Nessuna fase
-successiva avviata; nessun push, tag, workflow dispatch o release autorizzato.
+successiva alla 04 avviata; nessun push, tag, workflow dispatch o release autorizzato.

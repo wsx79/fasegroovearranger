@@ -826,6 +826,8 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
         if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*(mp3?.8:1.));
     }writer.reset();
     if(options.loudnessGuard){auto guarded=ExportPeakGuard::verifyFile(temp.getFile(),mp3?24:options.bitDepth,cancelled);if(guarded.failed())return guarded;}
+    // The final progress notification may deliver cancellation after the last render block.
+    if(cancelled())return juce::Result::fail("Esportazione annullata.");
     if(!mp3)return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare il WAV.");
     auto wavStream=temp.getFile().createInputStream();if(!wavStream)return juce::Result::fail("WAV temporaneo non leggibile.");
     std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(wavStream.release(),true));if(!reader)return juce::Result::fail("WAV temporaneo non valido.");
@@ -843,6 +845,7 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     }auto bytes=encoder.flush();if(!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");
     const auto info=Mp3Encoder::infoFrame(frames,(std::uint32_t)out->getPosition(),total);
     if(!out->setPosition(0)||!out->write(info.data(),info.size()))return juce::Result::fail("Scrittura MP3 fallita.");out->flush();if(out->getStatus().failed())return juce::Result::fail("Scrittura MP3 fallita.");out.reset();
+    if(cancelled())return juce::Result::fail("Esportazione annullata.");
     return encoded.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare MP3.");
 }
 }
