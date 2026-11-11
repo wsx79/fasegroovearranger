@@ -56,6 +56,19 @@ jobs:
         run: cmake --build build --config Release --parallel 2
       - name: Windows CTest (external voice tools intentionally absent)
         run: ctest --test-dir build -C Release --output-on-failure -V
+      - name: Native compressor and sidechain UI regressions
+        shell: python
+        run: |
+          from pathlib import Path
+          import sys
+          sys.path.insert(0, 'scripts')
+          from native_test_support import build_root, output_folder, run_application
+          for name, report in [('dynamics', 'native-compressor-ui.txt'), ('sidechain', 'mixer-routing.txt')]:
+              folder = output_folder(name, 'build/preview-validation/' + name)
+              run_application(build_root(), '--' + name + '-ui-test', folder, timeout=180)
+              result = (folder / report).read_text(encoding='utf-8')
+              if not result.startswith('PASS ') or 'FAIL ' in result:
+                  raise RuntimeError(name + ' native UI report missing or failed')
       - name: Native UI, WAV and MP3 regressions
         run: python scripts/test-native-render.py --output build/preview-validation/native
       - name: Native VST3 effects regressions
