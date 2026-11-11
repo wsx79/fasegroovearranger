@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Branding.h"
 #include "MainComponent.h"
+#include "RenderProgressTask.h"
 #include "StudioIO.h"
 #include "AiComposerWindow.h"
 #include "AiComposer.h"

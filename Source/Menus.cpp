@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "RenderProgressTask.h"
 #include <future>
 #include "GuidePage.h"
 #include "UiText.h"
@@ -23,21 +24,32 @@ AudioExportOptions exportSettings(){
     options.loudnessGuard=historic=="1";return options;
 }
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
-class ExportTask:public juce::ThreadWithProgressWindow {
+class ExportTask:public RenderProgressTask {
 public:
     ExportTask(AudioEngine& e,Project p,juce::File path,std::vector<int> selected,bool mp3,bool batch,AudioExportOptions settings,std::function<void(juce::Result)> done)
-    :ThreadWithProgressWindow(juce::String::fromUTF8("Fase Groove · Audio export"),true,true,15000),engine(e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),stems(batch),options(settings),callback(std::move(done)){}
+    :RenderProgressTask(juce::String::fromUTF8("Fase Groove · Audio export")),engine(e),project(std::move(p)),target(path),tracks(std::move(selected)),isMp3(mp3),stems(batch),options(settings),callback(std::move(done)){}
+#if FGA_SELF_TESTS
+    std::function<void(double)> progressForTest;
+#endif
+    void reportProgress(double p){
+        setProgress(p);
+#if FGA_SELF_TESTS
+        if(progressForTest)progressForTest(p);
+#endif
+    }
     void run()override{
+        reportProgress(0);
+        if(threadShouldExit()){result=juce::Result::fail("Export cancelled");return;}
         // Write the arrangement map first, so it also accompanies any stems completed
         // before cancellation. Audio files themselves use atomic temporary-file writes.
         if(stems&&!writeExportArrangement(target,project)){result=juce::Result::fail("Cannot write the arrangement text file.");return;}
         const bool parallel=stems&&tracks.size()>1&&std::all_of(tracks.begin(),tracks.end(),[this](int ti){return ti>=0&&(project.tracks[(size_t)ti].instrument=="internal"||project.tracks[(size_t)ti].instrument=="sample")&&project.tracks[(size_t)ti].effects.empty();});
-        if(parallel){for(size_t i=0;i<tracks.size();i+=2){if(threadShouldExit()){result=juce::Result::fail("Export cancelled");return;}std::vector<std::future<std::pair<juce::Result,double>>> jobs;for(size_t j=i;j<std::min(i+2,tracks.size());++j){const int track=tracks[j];auto copy=engine.offlineCopy(track);if(!copy){result=juce::Result::fail("Cannot create private stem engine");break;}const auto file=exportStemFile(target,project,track,isMp3?"mp3":"wav");jobs.push_back(std::async(std::launch::async,[this,track,file,copy=std::move(copy)]()mutable{double p=0;auto r=copy->exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[](double){},&p,options);return std::make_pair(r,p);}));}for(auto& job:jobs){auto value=job.get();peak=std::max(peak,value.second);if(value.first.failed())result=value.first;}if(result.failed())return;setProgress((double)std::min(i+2,tracks.size())/tracks.size());}return;}
+        if(parallel){for(size_t i=0;i<tracks.size();i+=2){if(threadShouldExit()){result=juce::Result::fail("Export cancelled");return;}std::vector<std::future<std::pair<juce::Result,double>>> jobs;for(size_t j=i;j<std::min(i+2,tracks.size());++j){const int track=tracks[j];auto copy=engine.offlineCopy(track);if(!copy){result=juce::Result::fail("Cannot create private stem engine");break;}const auto file=exportStemFile(target,project,track,isMp3?"mp3":"wav");jobs.push_back(std::async(std::launch::async,[this,track,file,copy=std::move(copy)]()mutable{double p=0;auto r=copy->exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[](double){},&p,options);return std::make_pair(r,p);}));}for(auto& job:jobs){auto value=job.get();peak=std::max(peak,value.second);if(value.first.failed())result=value.first;}if(result.failed())return;reportProgress((double)std::min(i+2,tracks.size())/tracks.size());}return;}
         for(size_t i=0;i<tracks.size();++i){const int track=tracks[i];const auto file=stems?exportStemFile(target,project,track,isMp3?"mp3":"wav"):target;
-            setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());},&blockPeak,options);peak=std::max(peak,blockPeak);if(result.failed())return;
+            setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){reportProgress(((double)i+p)/(double)tracks.size());},&blockPeak,options);peak=std::max(peak,blockPeak);if(result.failed())return;
         }
     }
-    void threadComplete(bool cancelled)override{if(!cancelled&&result.wasOk()&&options.mode==AudioExportMode::legacy&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
+    void threadComplete(bool cancelled)override{if(failedToStart())result=juce::Result::fail("Cannot start export worker.");if(!cancelled&&result.wasOk()&&options.mode==AudioExportMode::legacy&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
 private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3,stems;AudioExportOptions options;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();double peak=0;
 };
 }
@@ -109,7 +121,7 @@ void MainComponent::freezeTrack(int track){
     if(audio.trackFrozen(track)){audio.unfreezeTrack(track);refreshControls();return;}
     audio.capturePluginStates(project);auto snapshot=project;auto copy=audio.offlineCopy(track);if(!copy){message(tr("Cannot create a private freeze render."),true);return;}
     auto& target=snapshot.tracks[(size_t)track];const auto identity=target.sessionId;target.eq.enabled=false;target.gain=1;target.pan=0;target.volume={};target.panAutomation={};target.group=-1;target.sends={};snapshot.masterGain=1;snapshot.masterAutomation={};snapshot.buses=defaultBuses();snapshot.masterEffects.effects.clear();snapshot.loop=false;
-    class FreezeTask final:public juce::ThreadWithProgressWindow{public:std::unique_ptr<AudioEngine> engine;Project project;juce::File file;int track;juce::Result result=juce::Result::ok();std::function<void(bool,juce::Result)> done;FreezeTask(std::unique_ptr<AudioEngine> e,Project p,int t,juce::File f,std::function<void(bool,juce::Result)> d):ThreadWithProgressWindow("Freeze Track",true,true),engine(std::move(e)),project(std::move(p)),file(f),track(t),done(std::move(d)){}void run()override{result=engine->exportAudio(project,file,track,false,[this]{return threadShouldExit();},[this](double p){setProgress(p);});}void threadComplete(bool cancelled)override{done(cancelled,result);}};
+    class FreezeTask final:public RenderProgressTask{public:std::unique_ptr<AudioEngine> engine;Project project;juce::File file;int track;juce::Result result=juce::Result::ok();std::function<void(bool,juce::Result)> done;FreezeTask(std::unique_ptr<AudioEngine> e,Project p,int t,juce::File f,std::function<void(bool,juce::Result)> d):RenderProgressTask("Freeze Track"),engine(std::move(e)),project(std::move(p)),file(f),track(t),done(std::move(d)){}void run()override{result=engine->exportAudio(project,file,track,false,[this]{return threadShouldExit();},[this](double p){setProgress(p);});}void threadComplete(bool cancelled)override{if(failedToStart())result=juce::Result::fail("Cannot start freeze worker.");done(cancelled,result);}};
     const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-freeze",".wav",false);const double bpm=project.settings.bpm;juce::Component::SafePointer<MainComponent> safe(this);
     exportTask=std::make_unique<FreezeTask>(std::move(copy),std::move(snapshot),track,file,[safe,track,identity,bpm,file](bool cancelled,juce::Result result){if(safe&&!cancelled&&result.wasOk()&&track<(int)safe->project.tracks.size()&&safe->project.tracks[(size_t)track].sessionId==identity){safe->audio.freezeTrack(track,file,bpm,identity);safe->message(tr(safe->audio.trackFrozen(track)?"Track frozen. Unfreeze restores the live instrument.":"Freeze cache exceeds sampler memory limits."),!safe->audio.trackFrozen(track));}else if(safe&&!cancelled&&result.failed())safe->message(result.getErrorMessage(),true);file.deleteFile();if(safe){safe->retiredJobs.retire(std::move(safe->exportTask));safe->refreshControls();safe->updateEditingAvailability();}});exportTask->launchThread();updateEditingAvailability();
 }
@@ -245,7 +257,11 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
         // reloading libraries/licences and frees the device callback during the export.
         audio.devices.removeAudioCallback(&audio);
         std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
-        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->retiredJobs.retire(std::move(safe->exportTask));safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
+        juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->retiredJobs.retire(std::move(safe->exportTask));safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});
+#if FGA_SELF_TESTS
+        static_cast<ExportTask*>(exportTask.get())->progressForTest=exportProgressForTest;
+#endif
+        if(auto* alert=exportTask->getAlertWindow())alert->setAlwaysOnTop(true);exportTask->launchThread();
     };
     if(destination!=juce::File()){render(destination);return;}
     auto folder=juce::File::getSpecialLocation(juce::File::userDocumentsDirectory);const auto remembered=Localisation::setting("lastExportFolder");if(juce::File::isAbsolutePath(remembered)&&juce::File(remembered).isDirectory())folder=juce::File(remembered);
@@ -258,7 +274,25 @@ bool MainComponent::verifyExports(const juce::File& folder){
 #else
     if(!folder.createDirectory())return false;
     const auto saved=project;const auto savedFile=projectFile;const bool wasDirty=dirty;const auto oldRate=Localisation::setting("exportSampleRate","48000"),oldBits=Localisation::setting("exportBitDepth","24"),oldFolder=Localisation::setting("lastExportFolder"),oldSave=Localisation::setting("lastSaveFolder");
-    auto* original=audio.plugin(0);juce::String report;bool ok=true;auto check=[&](bool pass,const char* label){ok=pass&&ok;report+=juce::String(pass?"PASS ":"FAIL ")+label+"\n";};
+    auto* original=audio.plugin(0);juce::String report,cancelDetails;bool ok=true;auto check=[&](bool pass,const char* label){ok=pass&&ok;report+=juce::String(pass?"PASS ":"FAIL ")+label+"\n";};
+    // Press the real Cancel button while cleanup needs the message thread.
+    // A finite worker-side wait makes the old UI-join failure reproducible
+    // without forcibly killing a test thread or hanging the test process.
+    struct CancelProbeState {std::atomic<bool> started{false},serviced{false};juce::WaitableEvent message;};
+    struct CancelProbe final:ExportTask {
+        std::shared_ptr<CancelProbeState> state;
+        CancelProbe(AudioEngine& e,Project p,std::shared_ptr<CancelProbeState> s,std::function<void(juce::Result)> done):ExportTask(e,std::move(p),{}, {-1},false,false,{},std::move(done)),state(std::move(s)){}
+        void run()override{state->started=true;while(!threadShouldExit())wait(1);auto keep=state;juce::MessageManager::callAsync([keep]{keep->message.signal();});state->serviced=state->message.wait(800);}
+    };
+    auto probeState=std::make_shared<CancelProbeState>();bool probeDone=false;
+    CancelProbe probe(audio,project,probeState,[&](juce::Result){probeDone=true;});probe.launchThread();
+    auto probeDeadline=juce::Time::getMillisecondCounterHiRes()+3000;
+    while(!probeState->started&&juce::Time::getMillisecondCounterHiRes()<probeDeadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    const auto cancelProbeStart=juce::Time::getMillisecondCounterHiRes();probe.getAlertWindow()->getButton(0)->triggerClick();
+    while(!probeDone&&juce::Time::getMillisecondCounterHiRes()<probeDeadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    check(probeDone&&probeState->serviced,"real Cancel keeps message dispatch alive for worker cleanup (no synchronous UI join)");
+    cancelDetails+="INFO cancel-to-worker-completion "+juce::String(juce::Time::getMillisecondCounterHiRes()-cancelProbeStart,2)+" ms (local UI probe, not a hardware latency claim)\n";
+
     const auto oldMode=Localisation::setting("exportPeakMode"),oldCeiling=Localisation::setting("exportCeilingDb"),oldGuard=Localisation::setting("exportLoudnessGuard");
     Localisation::setSetting("exportPeakMode",{});Localisation::setSetting("exportLoudnessGuard",{});
     check(exportSettings().mode==AudioExportMode::transparent,"new export settings default to Transparent");
@@ -291,6 +325,49 @@ bool MainComponent::verifyExports(const juce::File& folder){
     exportFile(1,0,folder.getChildFile("Song.mid"));const auto midi=exportNamedFile(folder.getChildFile("Song.mid"),project,"mid");auto stream=midi.createInputStream();juce::MidiFile parsed;check(stream&&parsed.readFrom(*stream),"multitrack MIDI filename includes BPM and key and contains readable MIDI");
     Localisation::setSetting("exportSampleRate","44100");Localisation::setSetting("exportBitDepth","24");exportFile(6,0,folder);check(settle(),"stem export completes and releases restrictions");const auto stems=folder.findChildFiles(juce::File::findDirectories,false,"*-stems-*");bool stemOk=stems.size()==1;if(stemOk){const auto files=stems[0].findChildFiles(juce::File::findFiles,false,"*.wav");stemOk=files.size()==(int)project.tracks.size();for(const auto& file:files){std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));stemOk=reader&&reader->sampleRate==44100&&reader->bitsPerSample==24&&file.getFileName().contains("_120bpm_Db")&&stemOk;}const auto map=stems[0].getChildFile("Arrangiamento_120bpm_Db.txt").loadFileAsString();stemOk=stemOk&&map.contains("00:00.000 - 00:02.000  Intro")&&map.contains("00:02.000 - 00:06.000  Jackin groove");}check(stemOk,"all stems have the selected encoding, musical names and an exact section timeline TXT");
     exportFile(5,0,folder.getChildFile("cancel.wav"));if(exportTask)exportTask->signalThreadShouldExit();check(settle(),"cancelling export restores audio and editing");
+    // Gate actual export progress so cancellation cannot accidentally arrive
+    // after a short job has already completed. Only this self-test owns the gate.
+    struct CancelGate {std::atomic<bool> reached{false},expired{false},pulse{false},closeAccepted{false};juce::WaitableEvent release;};
+    auto filesIn=[&]{juce::StringArray names;for(const auto& f:folder.findChildFiles(juce::File::findFiles,false))names.add(f.getFileName());names.sort(false);return names;};
+    auto cancelAt=[&](const char* name,double threshold,int type,bool repeated){
+        const auto gate=std::make_shared<CancelGate>();
+        exportProgressForTest=[gate,threshold](double value){if(value>=threshold&&!gate->reached.exchange(true)){if(!gate->release.wait(2000))gate->expired=true;}};
+        const auto previous=exportNamedFile(folder.getChildFile(juce::File::createLegalFileName(juce::String(name))+".wav"),project,"wav");
+        const juce::String marker="Existing file survives cancellation: "+juce::String(name);if(!previous.replaceWithText(marker)){check(false,"cannot create existing-file cancellation fixture");exportProgressForTest={};return;}
+        const auto before=filesIn();const auto latency=audio.latencySamples();
+        exportFile(type,0,type==6?folder:previous);
+        const auto until=juce::Time::getMillisecondCounterHiRes()+10000;
+        while(mediaBusy&&!gate->reached&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+        const bool active=mediaBusy&&exportTask&&gate->reached;
+        if(active){
+            auto* button=exportTask->getAlertWindow()->getButton(0);button->triggerClick();if(repeated){button->triggerClick();button->triggerClick();requestClose([gate]{gate->closeAccepted=true;});}
+            // Delayed UI work must still run while worker cleanup is pending.
+            juce::Timer::callAfterDelay(80,[gate]{gate->pulse=true;gate->release.signal();});
+        }else gate->release.signal();
+        const bool complete=settle();exportProgressForTest={};
+        check(active&&complete&&gate->pulse&&!gate->expired&&!gate->closeAccepted&&!closePending,name);
+        check(previous.loadFileAsString()==marker&&filesIn()==before,"cancel preserves existing bytes and leaves no root staging files");
+        check(audio.latencySamples()==latency&&audio.plugin(0)==original,"cancel restores PDC and retains original plugin instance");
+        if(type==6){bool clean=true;for(const auto& dir:folder.findChildFiles(juce::File::findDirectories,false,"*-stems-*")){juce::StringArray allowed;allowed.add("Arrangiamento"+exportSuffix(project)+".txt");for(int ti=0;ti<(int)project.tracks.size();++ti)allowed.add(exportStemFile(dir,project,ti,"wav").getFileName());for(const auto& f:dir.findChildFiles(juce::File::findFiles,true))clean=clean&&allowed.contains(f.getFileName());}check(clean,"cancelled stems retain only completed WAV/map files, not temporary files");}
+    };
+    Localisation::setSetting("exportSampleRate","48000");
+    cancelAt("Cancel immediately after launch",0,5,false);
+    cancelAt("Cancel during float rendering and writing",.20,5,false);
+    cancelAt("Cancel during offline scaling and PCM writing",.85,5,false);
+    cancelAt("Cancel near final verification before atomic publication",.999,5,false);
+    cancelAt("Repeated Cancel and close keep UI responsive and engine alive",.15,5,true);
+    cancelAt("Cancel stem worker without joining futures on the UI",.01,6,false);
+    // Reuse the real native return host; do not replace a loaded VST3 source.
+    const auto oldBuses=project.buses;const auto oldSends=project.tracks[0].sends;const int oldGroup=project.tracks[0].group;
+    project.returnChains=true;project.tracks[0].group=0;project.tracks[0].sends={1,1};project.buses[0].sidechainAmount=.3;
+    auto settlePlugin=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+10000;while(pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy();};
+    addNativeReturn(returnEffectTrack,false);const bool loadedA=settlePlugin()&&audio.effectPlugin(returnEffectTrack,1);closePluginEditor();addNativeReturn(returnEffectTrack+1,true);const bool loadedB=settlePlugin()&&audio.effectPlugin(returnEffectTrack+1,1);closePluginEditor();
+    check(loadedA&&loadedB,"cancellation fixture loads actual editable return effects");
+    if(loadedA&&loadedB)cancelAt("Cancel with group sidechain and shared A/B return effects",.2,4,false);
+    audio.clearEffect(returnEffectTrack);audio.clearEffect(returnEffectTrack+1);project.returnChains=false;for(auto& rack:project.returnEffects)rack.effects.clear();project.buses=oldBuses;project.tracks[0].sends=oldSends;project.tracks[0].group=oldGroup;audio.publish(project);
+    const auto retry=exportNamedFile(folder.getChildFile("after-repeated-cancel.wav"),project,"wav");exportFile(5,0,retry);check(settle(),"new export succeeds after all repeated/button cancellations");
+    {std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(retry.createInputStream().release(),true));check(reader&&reader->sampleRate==48000&&reader->bitsPerSample==24,"retry produces complete WAV at requested rate/depth");}
+    cancelDetails+=original?"PASS cancellation matrix exercised a real loaded VST3 instrument\n":"NOT RUN real VST3 cancellation in this invocation; run native host fixture separately\n";folder.getChildFile("export-cancel-details.txt").replaceWithText(cancelDetails);
     exportFile(5,0,folder.getChildFile("missing-parent/fail.wav"));check(settle()&&!exportNamedFile(folder.getChildFile("missing-parent/fail.wav"),project,"wav").existsAsFile(),"write failure restores audio and editing without a partial WAV");
     check(writeProjectFile(folder.getChildFile("Saved.fga"))&&Localisation::setting("lastSaveFolder")==folder.getFullPathName(),"successful Save remembers its directory");check(Localisation::setting("lastExportFolder")==folder.getFullPathName(),"export remembers its directory and retains it after an invalid destination");
     Localisation::setSetting("exportPeakMode",oldMode);Localisation::setSetting("exportCeilingDb",oldCeiling);Localisation::setSetting("exportLoudnessGuard",oldGuard);

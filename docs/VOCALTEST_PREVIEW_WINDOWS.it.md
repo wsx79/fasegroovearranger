@@ -1,5 +1,10 @@
 # Vocaltest Preview Windows x64 — Actions
 
+**Known blocker reported after publication:** Windows export Cancel can block
+the DAW. A matching UI-join defect is reproduced and corrected locally; the
+fix is not in the prerelease below and new native Windows validation is pending
+under the no-push instruction. See [cancel report](EXPORT_CANCEL_FIX.it.md).
+
 ## Prerelease di test: livelli comuni A/B, pan e nuovo design
 
 **Pubblicata**: [Vocaltest Preview](https://github.com/wsx79/fasegroovearranger/releases/tag/preview-vocaltest-2026-11-11-839f6e8).

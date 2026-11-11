@@ -23,6 +23,7 @@
 #include <deque>
 namespace fga {
 class MainComponent;
+class RenderProgressTask;
 // A light, compact dismiss target in the inspector header, sharing the DAW palette.
 class InspectorDismissButton final : public IconButton {
 public:
@@ -480,6 +481,7 @@ private:
 #if FGA_SELF_TESTS
     // Exercise the real dialog continuation without depending on native file-dialog input.
     std::function<void(const juce::File&,int,std::function<void(juce::File)>,std::function<void()>)> fileChoiceForTest;
+    std::function<void(double)> exportProgressForTest;
 #endif
     class InstrumentWindow;
     std::unique_ptr<InstrumentWindow> instrumentWindow;
@@ -490,7 +492,7 @@ private:
     PluginWindow* pluginWindow=nullptr; // most recently raised editor, owned by pluginWindows
     juce::Component::SafePointer<juce::DialogWindow> musicalToolWindow;
     int musicalToolKind=0;
-    std::unique_ptr<juce::ThreadWithProgressWindow> exportTask;
+    std::unique_ptr<RenderProgressTask> exportTask;
     std::optional<Project> sampleImportNext;
     std::uint64_t sampleImportProjectRevision=0;int sampleImportNextTrack=-1;
     std::unique_ptr<SampleImportJob> sampleImportJob;
