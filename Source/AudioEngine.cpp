@@ -488,7 +488,18 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     loudness.process(output,channels,count);
 }
 void AudioEngine::prepareBuses(double rate,int block){loudness.prepare(rate);busGraph.prepare(rate,block);if(mixes.current)busGraph.configure(mixes.current->buses,mixes.current->tempo,mixes.current->master,true);}
-void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){const EngineControlLock lock(*this);if(recordingAudio&&audioRecorder){audioRecorder->rateChanged=true;audioRecordFault=true;}deviceRate=std::isfinite(d->getCurrentSampleRate())&&d->getCurrentSampleRate()>0?d->getCurrentSampleRate():44100;deviceBlock=std::max(16,d->getCurrentBufferSizeSamples());if(exporting)return;sampleRate=deviceRate;blockSize=deviceBlock;publishTransport();prepareBuses(sampleRate,blockSize);deviceOutputLatency=d->getOutputLatencyInSamples();deviceInputLatency=d->getInputLatencyInSamples();for(auto& i:instruments){i->prepare(sampleRate,blockSize);i->sounding.fill(false);}needsReset=true;needsChase=playing.load();hardReset=true;}
+void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){
+    const EngineControlLock lock(*this);
+    if(recordingAudio&&audioRecorder){audioRecorder->rateChanged=true;audioRecordFault=true;}
+    deviceRate=std::isfinite(d->getCurrentSampleRate())&&d->getCurrentSampleRate()>0?d->getCurrentSampleRate():44100;
+    deviceBlock=std::max(16,d->getCurrentBufferSizeSamples());
+    // An export retains its own preparation, but must restore the latest device settings.
+    deviceOutputLatency=d->getOutputLatencyInSamples();deviceInputLatency=d->getInputLatencyInSamples();
+    if(exporting)return;
+    sampleRate=deviceRate;blockSize=deviceBlock;publishTransport();prepareBuses(sampleRate,blockSize);
+    for(auto& i:instruments){i->prepare(sampleRate,blockSize);i->sounding.fill(false);}
+    needsReset=true;needsChase=playing.load();hardReset=true;
+}
 void AudioEngine::audioDeviceStopped(){stopSampleAudition();const EngineControlLock lock(*this);if(recordingAudio&&audioRecorder){audioRecorder->rateChanged=true;audioRecordFault=true;}if(exporting)return;clearMeters();for(auto& i:instruments){i->reset();i->sounding.fill(false);}}
 void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* input,int inputChannels,float* const* output,int channels,int count,const juce::AudioIODeviceCallbackContext&){
     if(count<=0)return;
@@ -752,13 +763,24 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     // Keep the already loaded instrument and its program. Recreating licensed/sample-based
     // plugins for export can leave the new instance silent. Only change its preparation
     // when the requested sample rate differs from the device; DSP stays in playback mode.
-    struct Guard{AudioEngine& e;bool changedRate=false;~Guard(){const EngineControlLock lock(e);e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;e.publishTransport();if(changedRate){e.prepareBuses(e.sampleRate,e.blockSize);for(auto& i:e.instruments)i->prepare(e.sampleRate,e.blockSize);}e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.publishTransport();e.needsReset=true;e.hardReset=true;e.exporting=false;}} guard{*this};
+    struct Guard{
+        AudioEngine& e;
+        ~Guard(){
+            const EngineControlLock lock(e);
+            // The device can restart during rendering, even when export used its original rate.
+            const bool reprepare=e.sampleRate!=e.deviceRate||e.blockSize!=e.deviceBlock;
+            e.sampleRate=e.deviceRate;e.blockSize=e.deviceBlock;e.publishTransport();
+            if(reprepare){e.prepareBuses(e.sampleRate,e.blockSize);for(auto& i:e.instruments)i->prepare(e.sampleRate,e.blockSize);e.prepareDelayLines();}
+            e.playing=false;e.currentBeat=0;e.loopBypassed=false;e.publishTransport();
+            e.needsReset=true;e.hardReset=true;e.exporting=false;
+        }
+    } guard{*this};
     publish(p);
     int compensation=0;
     {const EngineControlLock lock(*this);for(int ti=0;ti<engineTrackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
         playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();const double requestedRate=mp3?44100:options.sampleRate>0?options.sampleRate:deviceRate;
-        guard.changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
-        if(guard.changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);prepareDelayLines();resetAt(0);
+        const bool changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
+        if(changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);prepareDelayLines();resetAt(0);
         // Delay compensation moves every track later by the largest latency: render that much
         // more and drop it from the start, so the file lines up with the grid.
         for(auto& i:instruments)if(i->kind!=masterEffectTrack)compensation=std::max(compensation,instrumentLatency(*i));

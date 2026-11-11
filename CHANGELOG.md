@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Phase 03 Audio Engine: restore plugins, DSP buffers and PDC for the latest device rate/buffer after export completion or cancellation; retain device latency updates during export. Add device/transport and concurrent state-handoff regressions. Vocal Studio/Chops remain technically implemented but functionally/qualitatively unapproved, with further work deferred. See docs/AUDIO_ENGINE_PHASE03.md for audit evidence and platform limits.
+
 - Vocaltest Preview Windows x64 is available as a tested Actions artifact (run 42920754927, build 0649e93): MSVC Release, 15/15 CTest, native UI/WAV/MP3/VST3, vocal metadata/import controls and extracted EXE pass. The ZIP includes the exact configured JUCE source adaptations and complete app source/notices. External Windows guide synthesis and Windows 11 hardware/listening remain untested. No public release or tag.
 
 - Fix the Windows late-focus regression exposed by the native VST test: restore missing JUCE focus when the DAW peer already owns native thread focus, without raising a background application or replacing an existing child focus. Keep foreground gating for native window activation and preserve the existing regression assertion.

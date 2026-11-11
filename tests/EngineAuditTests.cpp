@@ -76,8 +76,109 @@ struct ParameterObserver final : juce::AudioProcessorParameter::Listener {
     void parameterValueChanged(int,float v)override{++changes;value=v;}
     void parameterGestureChanged(int,bool)override{}
 };
+// Drives the real device lifecycle without depending on the runner's audio hardware.
+class AuditDevice final : public juce::AudioIODevice {
+public:
+    AuditDevice(double rate,int block):AudioIODevice("Audit device","Test"),rate(rate),block(block){}
+    juce::StringArray getOutputChannelNames()override{return {"Left","Right"};}
+    juce::StringArray getInputChannelNames()override{return {"Left","Right"};}
+    juce::Array<double> getAvailableSampleRates()override{return {44100,48000,96000};}
+    juce::Array<int> getAvailableBufferSizes()override{return {32,64,128,512,1024};}
+    int getDefaultBufferSize()override{return block;}
+    juce::String open(const juce::BigInteger&,const juce::BigInteger&,double,int)override{return {};}
+    void close()override{}
+    bool isOpen()override{return true;}
+    void start(juce::AudioIODeviceCallback*)override{}
+    void stop()override{}
+    bool isPlaying()override{return true;}
+    juce::String getLastError()override{return {};}
+    int getCurrentBufferSizeSamples()override{return block;}
+    double getCurrentSampleRate()override{return rate;}
+    int getCurrentBitDepth()override{return 32;}
+    juce::BigInteger getActiveOutputChannels()const override{return juce::BigInteger(3);}
+    juce::BigInteger getActiveInputChannels()const override{return juce::BigInteger(3);}
+    int getOutputLatencyInSamples()override{return block;}
+    int getInputLatencyInSamples()override{return block/2;}
+private:
+    double rate;int block;
+};
 }
 struct EngineAuditTests {
+    static void deviceTransportMatrix(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);
+        project.settings.bpm=120;project.settings.freeTempo=true;
+        project.sections={{Section::main,2,"Device matrix"}};project.normalise();
+        project.loop=true;project.loopStart=1;project.loopEnd=2;
+        for(auto& track:project.tracks){track.gain=0;track.volume.enabled=false;for(auto& clip:track.clips)clip.notes.clear();}
+        project.tracks[0].gain=1;project.tracks[0].clips[0].notes={{0,8,60,100,0}};
+        juce::AudioIODeviceCallbackContext context;
+        for(double rate:{44100.,48000.,96000.})for(int size:{32,64,128,512,1024}){
+            AuditDevice device(rate,size);engine.audioDeviceAboutToStart(&device);
+            auto source=std::make_unique<MidiDeliveryProbe>();auto* plugin=source.get();
+            engine.swapInstrument(0,std::move(source),0,{});engine.publish(project);engine.play(true);
+            juce::AudioBuffer<float> block(2,size);
+            auto tick=[&]{
+                engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,size,context);
+                for(int ch=0;ch<2;++ch)for(int s=0;s<size;++s)requireAudit(std::isfinite(block.getSample(ch,s)),"device matrix: non-finite callback output");
+            };
+            const double advance=size*120./(rate*60.);
+            engine.seek(2-advance*.5);tick();
+            requireAudit(engine.position()>=1&&engine.position()<1+advance&&plugin->ringing[60],"device matrix: loop split/seek must chase the held note");
+            project.tracks[0].mute=true;engine.updateMix(project);engine.collectGarbage();tick();
+            requireAudit(engine.level(0)==0,"device matrix: mute must silence its track");
+            project.tracks[0].mute=false;project.tracks[1].solo=true;engine.updateMix(project);engine.collectGarbage();tick();
+            requireAudit(engine.level(0)==0,"device matrix: another solo must silence the track");
+            project.tracks[1].solo=false;engine.updateMix(project);engine.collectGarbage();tick();
+            requireAudit(engine.level(0)>0,"device matrix: removing mute/solo must restore audio");
+            for(int n=0;n<24;++n){
+                project.tracks[0].clips[0].notes[0].velocity=80+n;
+                engine.publish(project,true,0);engine.collectGarbage();tick();
+            }
+            auto replacement=std::make_unique<MidiDeliveryProbe>();plugin=replacement.get();
+            engine.swapInstrument(0,std::move(replacement),0,{});tick();
+            requireAudit(plugin->ringing[60]&&engine.isPlaying(),"device matrix: swapping a plugin must recover held MIDI without stopping transport");
+            engine.stop();tick();
+            requireAudit(std::none_of(plugin->ringing.begin(),plugin->ringing.end(),[](bool on){return on;})&&block.getMagnitude(0,size)==0,
+                         "device matrix: stop must release hosted notes and silence output");
+            engine.play(true);tick();
+            requireAudit(plugin->ringing[60]&&engine.position()>0,"device matrix: play after stop must restart MIDI");
+            engine.stop();engine.audioDeviceStopped();
+        }
+        std::cout<<"Device transport matrix: 15 configurations (32/64/128/512/1024, 44.1/48/96 kHz) passed\n";
+    }
+    static void exportDeviceChanges(){
+        for(bool cancel:{false,true})for(auto configuration:{std::pair<double,int>{44100,1024},{48000,512},{96000,1024}}){
+            AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);
+            project.sections={{Section::main,1,"Export device change"}};project.normalise();
+            for(auto& track:project.tracks)for(auto& clip:track.clips)clip.notes.clear();
+            auto probe=std::make_unique<AuditPlugin>();auto* plugin=probe.get();
+            engine.swapInstrument(0,std::move(probe),0,{});engine.publish(project);engine.play(true);
+            const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-export-device",".wav",false);
+            AuditDevice device(configuration.first,configuration.second);bool changed=false,exportIntact=true;
+            juce::AudioBuffer<float> block(2,configuration.second);juce::AudioIODeviceCallbackContext context;
+            const auto result=engine.exportAudio(project,file,0,false,[&]{return cancel&&changed;},[&](double){
+                if(changed)return;changed=true;engine.audioDeviceStopped();engine.audioDeviceAboutToStart(&device);
+                const auto calls=plugin->calls;
+                engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,block.getNumSamples(),context);
+                exportIntact=engine.sampleRate==44100&&engine.blockSize==512&&plugin->getSampleRate()==44100&&plugin->calls==calls;
+            });
+            bool wavValid=!file.existsAsFile();
+            if(!cancel){juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));wavValid=reader&&reader->sampleRate==44100;}
+            file.deleteFile();
+            requireAudit(changed&&exportIntact&&wavValid&&result.wasOk()!=cancel&&!engine.isExporting(),"device restart must not alter the active export or leave a cancelled WAV");
+            requireAudit(plugin->getSampleRate()==configuration.first&&plugin->getBlockSize()==configuration.second,
+                         "export completion/cancellation must reprepare plugins for a changed device rate/buffer");
+            for(const auto& instrument:engine.instruments)
+                requireAudit(instrument->scratch.getNumSamples()==configuration.second&&instrument->volumeGains.size()==(size_t)configuration.second,
+                             "export restore must prepare all realtime buffers before playback resumes");
+            requireAudit(engine.deviceOutputLatency==configuration.second&&engine.deviceInputLatency==configuration.second/2,
+                         "device restart during export must refresh recording latency");
+            engine.play(true);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,block.getNumSamples(),context);
+            requireAudit(plugin->prepared&&std::isfinite(block.getMagnitude(0,block.getNumSamples()))&&engine.position()>0,
+                         "playback resumes safely after an export device change");
+        }
+        std::cout<<"Export device restart: rate-only/buffer-only/both, completion/cancellation passed\n";
+    }
     static void densePanic(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);for(auto& t:project.tracks)for(auto& c:t.clips)c.notes.clear();auto probe=std::make_unique<MidiDeliveryProbe>();auto* plugin=probe.get();auto& i=*engine.instruments[0];i.plugin=std::move(probe);i.mode=2;i.prepare(44100,512);engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto tick=[&]{engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};engine.liveMidi(0,juce::MidiMessage::noteOn(2,64,(juce::uint8)100),false);tick();requireAudit(plugin->ringing[128+64],"dense panic fixture note did not start");
         i.midi.clear();for(int n=0;n<16400;++n)i.midi.addEvent(juce::MidiMessage::noteOn(1,60,(juce::uint8)90),0);tick();requireAudit(std::none_of(plugin->ringing.begin(),plugin->ringing.end(),[](bool on){return on;}),"dense schedule recovery dropped its panic");
@@ -92,6 +193,33 @@ struct EngineAuditTests {
         std::thread audio([&]{handoff.adopt([&](const State&){migrating.signal();resume.wait(5000);alive=borrowed->lanes[0]==37&&destroyed==0;});});
         const bool started=migrating.wait(5000);handoff.collect();const int whileMigrating=destroyed;resume.signal();audio.join();handoff.collect();
         requireAudit(started&&whileMigrating==0&&alive&&destroyed==1,"C1: control-side collection cannot destroy the state while audio references migrate");
+    }
+    static void handoffStress(){
+        std::atomic<int> destroyed{0},audioDeletes{0};std::atomic<bool> done{false};
+        int adopted=0;bool intact=true;
+        struct State {
+            std::atomic<int>& destroyed;std::atomic<int>& audioDeletes;std::thread::id audio;
+            int revision;std::array<int,8> data;
+            State(std::atomic<int>& d,std::atomic<int>& a,std::thread::id thread,int r):destroyed(d),audioDeletes(a),audio(thread),revision(r){data.fill(r);}
+            ~State(){++destroyed;if(std::this_thread::get_id()==audio)++audioDeletes;}
+        };
+        {
+            Handoff<State> handoff;
+            std::thread audio([&]{
+                while(!done.load()||handoff.pending.load()!=nullptr){
+                    if(auto* state=handoff.adopt()){
+                        ++adopted;for(int value:state->data)intact=intact&&value==state->revision;
+                    }
+                    std::this_thread::yield();
+                }
+            });
+            for(int revision=0;revision<10000;++revision)
+                handoff.post(std::make_unique<State>(destroyed,audioDeletes,audio.get_id(),revision));
+            done=true;audio.join();handoff.collect();
+        }
+        requireAudit(adopted>0&&intact&&destroyed==10000&&audioDeletes==0,
+                     "rapid handoff publication must retain valid states and reclaim every allocation off the audio thread");
+        std::cout<<"Handoff concurrent stress: 10000 states reclaimed, zero audio-thread deletions\n";
     }
     static void liveMidiRecovery(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(4);project.sections={{Section::main,4,"Recovery"}};project.normalise();for(auto& t:project.tracks)for(auto& c:t.clips)c.notes.clear();
@@ -236,7 +364,7 @@ struct EngineAuditTests {
         auto restored=std::make_unique<ProgramStatePlugin>();auto* probe=restored.get();engine.swapInstrument(0,std::move(restored),0,{});engine.restorePluginState(0,juce::String::fromUTF8(project.tracks[0].instrumentState.c_str()));
         requireAudit(std::abs(probe->privateEdit-.75f)<1e-6,"replacement Undo snapshot retains the latest opaque sound edit");
     }
-    static void run(){densePanic();handoffLifetime();liveMidiRecovery();recordedMidiEffects();stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
+    static void run(){exportDeviceChanges();deviceTransportMatrix();densePanic();handoffLifetime();handoffStress();liveMidiRecovery();recordedMidiEffects();stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

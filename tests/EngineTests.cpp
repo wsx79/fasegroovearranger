@@ -144,9 +144,11 @@ int main(int argc,char** argv){
             engine.publish(p);engine.play(true);run(2);const double before=engine.position();
             auto copy=engine.offlineCopy();check(copy!=nullptr,"offline copy of built-in and sampler tracks");
             auto a=sampleDir.getChildFile("live.wav"),b=sampleDir.getChildFile("copy.wav");
-            check(copy->exportAudio(p,b,4,false,[]{return false;},[](double){}).wasOk(),"export on the private copy");
-            check(engine.isPlaying()&&engine.position()==before,"the live engine keeps playing during a private export");
-            run(1);check(engine.position()>before,"and still advances");
+            bool playbackDuringExport=false;
+            check(copy->exportAudio(p,b,4,false,[]{return false;},[&](double){if(!playbackDuringExport){run(1);playbackDuringExport=engine.position()>before;}}).wasOk(),"export on the private copy");
+            check(playbackDuringExport&&engine.isPlaying()&&engine.position()>before,"the live callback advances while a private export is in progress");
+            const double afterExport=engine.position();
+            run(1);check(engine.position()>afterExport,"and still advances");
             check(engine.exportAudio(p,a,4,false,[]{return false;},[](double){}).wasOk(),"reference export");
             juce::AudioFormatManager fm;fm.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> ra(fm.createReaderFor(a)),rb(fm.createReaderFor(b));
             check(ra&&rb&&ra->lengthInSamples==rb->lengthInSamples,"same export length");
