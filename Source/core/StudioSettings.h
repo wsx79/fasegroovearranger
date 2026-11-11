@@ -82,12 +82,15 @@ struct EqSettings {
     double lowFreq = 120, midFreq = 1000, highFreq = 6000, midQ = 0.707;
     std::vector<EqBand> bands;
 
+    std::array<EqBand,4> legacyBands() const {
+        return {{{true,(int)EqFilterType::LowCut,highPass,0.0,0.707},
+                 {true,(int)EqFilterType::LowShelf,lowFreq,low,0.707},
+                 {true,(int)EqFilterType::Bell,midFreq,mid,midQ},
+                 {true,(int)EqFilterType::HighShelf,highFreq,high,0.707}}};
+    }
     void ensureBands() {
         if (bands.empty()) {
-            bands.push_back({ true, (int)EqFilterType::LowCut, highPass, 0.0, 0.707 });
-            bands.push_back({ true, (int)EqFilterType::LowShelf, lowFreq, low, 0.707 });
-            bands.push_back({ true, (int)EqFilterType::Bell, midFreq, mid, midQ });
-            bands.push_back({ true, (int)EqFilterType::HighShelf, highFreq, high, 0.707 });
+            const auto legacy=legacyBands();bands.assign(legacy.begin(),legacy.end());
         }
     }
 

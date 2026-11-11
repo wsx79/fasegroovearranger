@@ -32,20 +32,19 @@ public:
     void reset() {
         for (auto& f : filters) f.reset();
     }
-    void configure(EqSettings p, double rate) {
-        p.ensureBands();
-        p.normalise();
+    void configure(const EqSettings& p, double rate) {
         active = p.enabled;
         rate = std::max(8000., rate);
         activeCount = 0;
         if (!active) return;
-        for (size_t i = 0; i < p.bands.size() && activeCount < maxFilters; ++i) {
-            const auto& b = p.bands[i];
-            if (!b.enabled) continue;
+        const auto append=[&](EqBand b){
+            b.normalise();if (!b.enabled) return;
             const auto c=eqCoefficients(b,rate);
             auto& f=filters[activeCount++];
             f.b0=c.b0;f.b1=c.b1;f.b2=c.b2;f.a1=c.a1;f.a2=c.a2;
-        }
+        };
+        if(p.bands.empty()){for(const auto& b:p.legacyBands())append(b);}
+        else for(size_t i=0;i<std::min(p.bands.size(),(size_t)maxFilters);++i)append(p.bands[i]);
     }
     void process(juce::AudioBuffer<float>& audio, int count) {
         if (!active || activeCount <= 0) return;

@@ -11,6 +11,7 @@
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 #include "SpectrumChecks.h"
+void runDynamicsTests();
 void runOfflineExportTests();
 void runImprovementEngineTests();
 void runStudioEngineTests();
@@ -27,6 +28,7 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
+        if(argc==2&&juce::String(argv[1])=="--dynamics"){runDynamicsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--offline-export"){runOfflineExportTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}

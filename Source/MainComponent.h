@@ -335,6 +335,7 @@ public:
     bool interfaceFullScreen()const{return appFullScreen;}
     void showEffects(int track,int replaceSlot=0);
     void showEffectChain(int track);
+    void addNativeCompressor(int track);
     void resumeEffectChain();
     void removeEffect(int track,int slot);
     void showEffectMenu(int track,int slot,juce::Component*);

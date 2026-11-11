@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "EffectsUi.h"
+#include "NativeCompressor.h"
 #include "MainComponent.h"
 #include "UiText.h"
 #include <thread>
@@ -38,7 +39,12 @@ private:
     ActionButton editor;
     juce::TextButton menu{juce::String::fromUTF8("\xe2\x8b\xaf")};
 };
-EffectChainView::EffectChainView(MainComponent& m):owner(m){addAndMakeVisible(add);addAndMakeVisible(automation);add.setComponentID("effects-add");automation.setComponentID("effects-automation");automation.setIcon(IconButton::Icon::automation);automation.getProperties().set("fgaIconOnly",true);add.onClick=[this]{if(currentTrack()>=0)owner.showEffects(currentTrack());};automation.onClick=[this]{if(currentTrack()>=0)owner.showAutomationPicker(currentTrack());};tip(add,"Add an effect plugin to this track's serial chain.");tip(automation,"Choose a sound, instrument or effect parameter to automate.");for(int i=0;i<maxTrackEffects;++i){rows.push_back(std::make_unique<Row>(*this,i));addChildComponent(*rows.back());}}
+EffectChainView::EffectChainView(MainComponent& m):owner(m){addAndMakeVisible(add);addAndMakeVisible(automation);add.setComponentID("effects-add");automation.setComponentID("effects-automation");automation.setIcon(IconButton::Icon::automation);automation.getProperties().set("fgaIconOnly",true);add.onClick=[this]{
+    const int track=currentTrack();if(track<0)return;const auto session=owner.effectTrack(track).sessionId;
+    juce::PopupMenu menu;menu.addItem(1,"Native Compressor");menu.addItem(2,tr("Plugin..."));
+    juce::Component::SafePointer<EffectChainView> safe(this);
+    menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&add),[safe,session](int choice){if(!safe)return;const int track=safe->owner.trackForSession(session);if(track<0)return;if(choice==1)safe->owner.addNativeCompressor(track);else if(choice==2)safe->owner.showEffects(track);});
+};automation.onClick=[this]{if(currentTrack()>=0)owner.showAutomationPicker(currentTrack());};tip(add,"Add an effect plugin to this track's serial chain.");tip(automation,"Choose a sound, instrument or effect parameter to automate.");for(int i=0;i<maxTrackEffects;++i){rows.push_back(std::make_unique<Row>(*this,i));addChildComponent(*rows.back());}}
 EffectChainView::~EffectChainView()=default;
 void EffectChainView::finishNameEdit(){for(auto& row:rows)row->finishNameEdit();}
 void EffectChainView::beginRename(int slot){for(auto& row:rows)row->beginRename(slot);}
@@ -57,6 +63,7 @@ void EffectChainWindow::refresh(){const int track=owner.trackForSession(session)
 void EffectChainWindow::closeButtonPressed(){view.finishNameEdit();stopTimer();owner.dismissAuxiliaryWindow(*this);}
 void EffectChainWindow::timerCallback(){if(isVisible()&&(lastUiRevision!=owner.controlRevision()||lastBusy!=owner.pluginsBusy()||lastRestricted!=owner.editingRestricted())){lastUiRevision=owner.controlRevision();lastBusy=owner.pluginsBusy();lastRestricted=owner.editingRestricted();refresh();}}
 void MainComponent::showEffectChain(int track){if(!validEffectTrack(track))return;suspendedEffectsSession=0;if(track!=masterEffectTrack)select(track,selectedSection);if(!effectsWindow)effectsWindow=std::make_unique<EffectChainWindow>(*this);effectsWindow->open(track);}
+void MainComponent::addNativeCompressor(int track){loadEffectDescription(track,nativeCompressorDescription());}
 
 void MainComponent::resumeEffectChain(){
     if(!suspendedEffectsSession||pluginBrowser.isVisible()||pluginSettings.isVisible()||pluginFileDialogOpen||pluginsBusy())return;
@@ -78,6 +85,35 @@ void MainComponent::resolveAutomationParameters(int track,int slot){auto* plugin
 #if FGA_SELF_TESTS
 namespace fga {
 bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::PluginDescription& description){
+    if(isNativeCompressor(description)){
+        folder.createDirectory();juce::String report;bool ok=true;
+        auto check=[&](bool pass,const char* name){ok=ok&&pass;report+=juce::String(pass?"PASS ":"FAIL ")+name+"\n";};
+        auto settle=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+10000.;while((pluginsBusy()||restoringProject)&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy()&&!restoringProject;};
+        project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Native dynamics"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;
+        for(auto& track:project.tracks){track.gain=0;track.volume.enabled=false;track.pan=0;track.engine.reverb=track.engine.chorus=0;for(auto& clip:track.clips)clip.notes.clear();}
+        project.tracks[0].gain=1;project.tracks[0].clips[0].notes={{0,3,69,110,0}};audio.publish(project);select(0,0);changed(false);
+        addNativeCompressor(0);check(settle()&&audio.effectPlugin(0,1)&&project.tracks[0].effects.size()==1,"native compressor loads through the existing insert lifecycle");
+        auto* plugin=audio.effectPlugin(0,1);auto* editor=plugin?plugin->getActiveEditor():nullptr;juce::Slider* threshold=nullptr;int controls=0;
+        if(editor)for(auto* child:editor->getChildren())if(auto* slider=dynamic_cast<juce::Slider*>(child)){++controls;if(slider->getComponentID()=="native-compressor-threshold")threshold=slider;}
+        check(editor&&controls==6&&threshold,"native editor exposes all six compressor controls");
+        audio.capturePluginStates(project);
+        if(threshold){if(threshold->onDragStart)threshold->onDragStart();threshold->setValue(-24,juce::sendNotificationSync);if(threshold->onDragEnd)threshold->onDragEnd();}
+        check(plugin&&std::abs(plugin->getParameters()[0]->getValue()-.6f)<1e-6,"editor changes the actual hosted parameter");
+        audio.capturePluginStates(project);audio.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+        for(int n=0;n<48;++n)audio.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(60);
+        check(nativeCompressorReduction(plugin)>0&&audio.latencySamples()==0,"gain reduction meter works without adding latency");
+        if(editor){auto stream=folder.getChildFile("native-compressor.png").createOutputStream();juce::PNGImageFormat png;check(stream&&png.writeImageToStream(editor->createComponentSnapshot(editor->getLocalBounds()),*stream),"native editor screenshot");}
+        audio.stop();checkpointMix();project.tracks[0].effects[0].bypassed=true;mixChanged();undo(false);
+        check(settle()&&!project.tracks[0].effects[0].bypassed,"native bypass supports Undo");undo(true);
+        check(settle()&&project.tracks[0].effects[0].bypassed,"native bypass supports Redo");undo(false);settle();
+        addNativeCompressor(masterEffectTrack);check(settle()&&audio.effectPlugin(masterEffectTrack,1),"native compressor loads on master inserts");
+        audio.capturePluginStates(project);Project restored;check(projectFromJson(projectJson(project),restored).wasOk(),"native effects save in the unchanged project schema");
+        closePluginEditor();project=restored;restoreInstruments();check(settle()&&audio.effectPlugin(0,1)&&audio.effectPlugin(masterEffectTrack,1),"track/master native effects reopen without plugin discovery or external files");
+        check(audio.effectPlugin(0,1)&&std::abs(audio.effectPlugin(0,1)->getParameters()[0]->getValue()-.6f)<1e-6,"edited native state survives cached snapshots and reopen");
+        auto copy=audio.offlineCopy();check(copy&&copy->exportAudio(project,folder.getChildFile("native-compressor.wav"),-1,false,[]{return false;},[](double){}).wasOk(),"native inserts export through existing Transparent processing");
+        folder.getChildFile("native-compressor-ui.txt").replaceWithText(report);return ok;
+    }
     folder.createDirectory();audio.stop();audio.devices.closeAudioDevice();project=newProject(9021);project.sections={{Section::main,1,"FX test"}};project.masterGain=1;
     for(auto& t:project.tracks){t.gain=0;t.pan=0;t.group=-1;t.sends={};t.effects.clear();t.parameters.clear();for(auto& c:t.clips)c.notes.clear();}project.tracks[0].gain=1;project.normalise();select(0,0);changed();
     bool ok=true;juce::String report;auto check=[&](bool pass,const juce::String& name){report+=(pass?"PASS ":"FAIL ")+name+"\n";ok=pass&&ok;};

@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "AudioEngine.h"
+#include "NativeCompressor.h"
 #include "HostedPluginIdentity.h"
 #include "ExportSupport.h"
 #include "core/Mp3Encoder.h"
@@ -448,7 +449,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
                 if(i.pumpSource==1){next=std::upper_bound(kick.begin(),kick.end(),beat,[](double t,const TimedEvent& e){return t<e.beat;});for(auto it=next;it!=kick.begin();){--it;if(it->controller<0&&it->velocity>0){hasKick=true;lastKick=it->beat;break;}}}
                 for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){for(;next!=kick.end()&&!(time<next->beat);++next)if(next->controller<0&&next->velocity>0){hasKick=true;lastKick=next->beat;}phase=hasKick?time-lastKick:100;}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
         }
-        for(int k=0;!frozenPlaying&&k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx||i.effectBypass[(size_t)(slot-1)])continue;
+        for(int k=0;!frozenPlaying&&k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,i.effectBypass[(size_t)(slot-1)]);if(!native&&i.effectBypass[(size_t)(slot-1)])continue;
             if(i.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
             if(i.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
@@ -478,7 +479,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         for(int ch=0;ch<std::min(channels,2);++ch)if(output[ch])block.copyFrom(ch,0,output[ch],count);
         // A mono device supplies one real side; duplicate it before a stereo or mono insert.
         if(channels==1&&output[0])block.copyFrom(1,0,block,0,0,count);
-        for(int k=0;k<rack.effectCount;++k){const int slot=rack.effectOrder[(size_t)k];auto* fx=rack.effects[(size_t)(slot-1)].plugin.get();if(!fx||rack.effectBypass[(size_t)(slot-1)])continue;
+        for(int k=0;k<rack.effectCount;++k){const int slot=rack.effectOrder[(size_t)k];auto* fx=rack.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,rack.effectBypass[(size_t)(slot-1)]);if(!native&&rack.effectBypass[(size_t)(slot-1)])continue;
             if(rack.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             rack.chainMidi.clear();processHosted(rack,*fx,block,rack.chainMidi,beat,slot);
             if(rack.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
@@ -614,12 +615,16 @@ void AudioEngine::loadHosted(int track,juce::PluginDescription description,int e
             if(selected)break;
         }
     }
-    formats.createPluginInstanceAsync(description,rate,size,[this,track,callback,description,effectSlot,revision,weak=std::weak_ptr<int>(lifetime)](std::unique_ptr<juce::AudioPluginInstance> next,const juce::String& error){
+    auto complete=[this,track,callback,description,effectSlot,revision,weak=std::weak_ptr<int>(lifetime)](std::unique_ptr<juce::AudioPluginInstance> next,const juce::String& error){
         if(weak.expired())return;bool cancelled=false;{const EngineControlLock lock(*this);cancelled=revision!=loadRevision[(size_t)track][(size_t)effectSlot];}if(cancelled){callback(juce::Result::fail("Plugin load cancelled."));return;}
         if(!next){callback(juce::Result::fail(error));return;}
         juce::String problem;if(!configure(*next,effectSlot>0,problem)){callback(juce::Result::fail(problem));return;}
         swapInstrument(track,std::move(next),effectSlot,description);callback(juce::Result::ok());
-    });
+    };
+    if(isNativeCompressor(description)){
+        if(effectSlot==0){callback(juce::Result::fail("Native compressor is an insert effect."));return;}
+        juce::MessageManager::callAsync([complete=std::move(complete)]()mutable{complete(createNativeCompressor(),{});});
+    }else formats.createPluginInstanceAsync(description,rate,size,std::move(complete));
 }
 void AudioEngine::loadPlugin(int track,const juce::PluginDescription& description,std::function<void(juce::Result)> callback){loadHosted(track,description,0,std::move(callback));}
 void AudioEngine::loadEffect(int track,const juce::PluginDescription& description,std::function<void(juce::Result)> callback,int slot){if(slot<1||slot>maxTrackEffects){callback(juce::Result::fail("Invalid effect slot."));return;}loadHosted(track,description,slot,std::move(callback));}
@@ -640,7 +645,7 @@ std::unique_ptr<AudioEngine> AudioEngine::offlineCopy(int onlyTrack){
         }
     }
     auto copy=std::make_unique<AudioEngine>(Offline{});if(needDelay)copy->prepareDelayLines();copy->sampleRate=copy->deviceRate=rate;copy->positionRate=rate;copy->blockSize=copy->deviceBlock=size;copy->prepareBuses(rate,size);
-    auto duplicate=[&](const PluginSnapshot& saved,bool effect)->std::unique_ptr<juce::AudioPluginInstance>{juce::String error;auto next=formats.createPluginInstance(saved.description,rate,size,error);if(!next)return nullptr;if(!next->setBusesLayout(saved.layout)&&!configure(*next,effect,error))return nullptr;restoreHostedState(*next,saved.state);next->setPlayHead(copy.get());return next;};
+    auto duplicate=[&](const PluginSnapshot& saved,bool effect)->std::unique_ptr<juce::AudioPluginInstance>{juce::String error;auto next=isNativeCompressor(saved.description)?(effect?createNativeCompressor():nullptr):formats.createPluginInstance(saved.description,rate,size,error);if(!next)return nullptr;if(!next->setBusesLayout(saved.layout)&&!configure(*next,effect,error))return nullptr;restoreHostedState(*next,saved.state);next->setPlayHead(copy.get());return next;};
     for(size_t ti=0;ti<instruments.size();++ti){const auto& saved=(*snapshots)[ti];auto& to=*copy->instruments[ti];to.mode=saved.mode;
         if(saved.sample)to.sampler=std::make_unique<SampleSynth>(saved.sample,SamplerSettings{},60,isDrumTrack((int)ti));
         if(saved.instrument.present){to.plugin=duplicate(saved.instrument,false);if(!to.plugin)return nullptr;to.pluginDescription=saved.instrument.description;copy->hostedCount.fetch_add(1);}
