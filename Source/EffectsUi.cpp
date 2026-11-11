@@ -85,6 +85,13 @@ void MainComponent::resolveAutomationParameters(int track,int slot){auto* plugin
 #if FGA_SELF_TESTS
 namespace fga {
 namespace {
+// Cancellation deliberately posts restoration asynchronously. Await its state,
+// rather than assuming a 30ms dispatch slice is sufficient on every window stack.
+bool waitForEffectUi(const std::function<bool()>& ready){
+    const double deadline=juce::Time::getMillisecondCounterHiRes()+2000;
+    while(!ready()&&juce::Time::getMillisecondCounterHiRes()<deadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    return ready();
+}
 // Exercise the real popup callback, independently of cursor position or OS focus.
 bool chooseEffectMenuItem(const juce::String& title,const std::function<bool()>& ready){
     std::function<bool(juce::Component&)> choose=[&](juce::Component& component){
@@ -115,8 +122,10 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
         if(!audio.effectPlugin(0,1)){folder.getChildFile("native-compressor-ui.txt").replaceWithText(report);return false;}
         effectsWindow->chain().add.onClick();const bool chosePlugin=chooseEffectMenuItem(tr("Plugin..."),[&]{return pluginBrowser.isVisible();});
         check(chosePlugin&&pluginBrowser.isVisible()&&!effectsWindow->isVisible(),"+ Plugin menu hides the floating chain and opens its browser");
-        pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
-        check(effectsWindow->isVisible()&&effectsWindow->chain().currentTrack()==0,"cancelling the Plugin menu browser restores the original chain");effectsWindow->closeButtonPressed();
+        pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));const bool restoredChain=waitForEffectUi([&]{return effectsWindow->isVisible();});
+        check(restoredChain&&effectsWindow->chain().currentTrack()==0,"cancelling the Plugin menu browser restores the original chain");
+        if(!restoredChain)report+="STATE cancel: browser="+juce::String((int)pluginBrowser.isVisible())+" settings="+juce::String((int)pluginSettings.isVisible())+" file="+juce::String((int)pluginFileDialogOpen)+" busy="+juce::String((int)pluginsBusy())+" suspended="+juce::String((juce::int64)suspendedEffectsSession)+" target="+juce::String(effectsWindow->chain().currentTrack())+"\n";
+        effectsWindow->closeButtonPressed();
         auto* plugin=audio.effectPlugin(0,1);auto* editor=plugin?plugin->getActiveEditor():nullptr;juce::Slider* threshold=nullptr;int controls=0;
         if(editor)for(auto* child:editor->getChildren())if(auto* slider=dynamic_cast<juce::Slider*>(child)){++controls;if(slider->getComponentID()=="native-compressor-threshold")threshold=slider;}
         check(editor&&controls==6&&threshold,"native editor exposes all six compressor controls");
@@ -200,8 +209,8 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
     check(audio.effectPlugin(masterEffectTrack,1)->getActiveEditor()==nullptr,"closing a master insert editor destroys its window before the processor");closePluginEditor();
     showEffectChain(masterEffectTrack);check(effectsWindow->chain().getWidth()>=460&&effectsWindow->chain().getHeight()>=180,"floating master chain has room for longer effect names and controls");
     auto openBrowser=[&]{effectsWindow->chain().add.onClick();const bool chosen=chooseEffectMenuItem(tr("Plugin..."),[&]{return pluginBrowser.isVisible();});check(chosen&&pluginBrowser.isVisible()&&!effectsWindow->isVisible(),"+ Plugin menu hides the floating chain while selecting an effect");};
-    openBrowser();pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
-    check(effectsWindow->isVisible()&&effectsWindow->chain().currentTrack()==masterEffectTrack,"cancelling the browser restores its original master chain");
+    openBrowser();pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));const bool restoredBrowserChain=waitForEffectUi([&]{return effectsWindow->isVisible();});
+    check(restoredBrowserChain&&effectsWindow->chain().currentTrack()==masterEffectTrack,"cancelling the browser restores its original master chain");
     std::function<void()> cancelFile;fileChoiceForTest=[&](const juce::File&,int,std::function<void(juce::File)>,std::function<void()> cancelled){cancelFile=std::move(cancelled);};
     openBrowser();pluginBrowser.setVisible(false);pluginBrowser.onOpenFile();juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
     check(cancelFile&&!effectsWindow->isVisible(),"native plugin file selection keeps the floating chain hidden");if(cancelFile)cancelFile();
