@@ -4,6 +4,7 @@
 #include "CompressorDSP.h"
 #include "DawTheme.h"
 #include "FamilyControls.h"
+#include "Localisation.h"
 #include <functional>
 namespace fga {
 static_assert(std::atomic<float>::is_always_lock_free,"Native compressor parameters/meters require lock-free float atomics");
@@ -59,6 +60,18 @@ private:CompressorDSP dsp;
 namespace ui {
 const juce::Colour blue(0xff4d8dff);
 const juce::Colour blueDim(0xff2f5ea8);
+const juce::Colour knobColours[6] = {
+    juce::Colour(0xff4d8dff), // threshold: blue
+    juce::Colour(0xff38c6c0), // ratio: teal
+    juce::Colour(0xff9b8cff), // knee: violet
+    juce::Colour(0xffffb54a), // attack: amber
+    juce::Colour(0xffff7a6b), // release: coral
+    juce::Colour(0xff5ec8e8)  // makeup: cyan
+};
+static juce::String loc(const char* en, const char* it)
+{
+    return Localisation::current() == Localisation::Language::italian ? juce::String::fromUTF8(it) : juce::String(en);
+}
 constexpr float arcStart = -2.35619449f; // -135 degrees
 constexpr float arcSweep = 4.71238898f;  // 270 degrees
 
@@ -75,8 +88,8 @@ class Knob final : public juce::Component, public juce::SettableTooltipClient
 {
 public:
     Knob(juce::Slider& s, juce::String title, juce::String tip, double resetValue,
-         std::function<juce::String(double)> formatter)
-        : slider(s), name(std::move(title)), defaultValue(resetValue), format(std::move(formatter))
+         std::function<juce::String(double)> formatter, juce::Colour accentColour)
+        : slider(s), name(std::move(title)), defaultValue(resetValue), format(std::move(formatter)), accent(accentColour)
     {
         addAndMakeVisible(value);
         value.setJustificationType(juce::Justification::centred);
@@ -151,7 +164,7 @@ public:
         {
             filled.addCentredArc(centre.x, centre.y, arcRadius, arcRadius, 0.0f,
                                  arcStart, arcStart + arcSweep * (float)norm, true);
-            g.setColour(ui::blue);
+            g.setColour(accent);
             g.strokePath(filled, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         }
 
@@ -163,7 +176,7 @@ public:
         g.drawEllipse(centre.x - radius + 6.0f, centre.y - radius + 6.0f, (radius - 6.0f) * 2.0f, (radius - 6.0f) * 2.0f, 1.0f);
 
         const float pointerAngle = arcStart + arcSweep * (float)norm;
-        g.setColour(dragging ? ui::blue : Daw::text);
+        g.setColour(dragging ? accent : Daw::text);
         g.drawLine(centre.x + std::sin(pointerAngle) * radius * 0.20f,
                    centre.y - std::cos(pointerAngle) * radius * 0.20f,
                    centre.x + std::sin(pointerAngle) * radius * 0.68f,
@@ -230,6 +243,7 @@ private:
     bool dragging = false;
     double dragStart = 0.0;
     double lastShown = -1.0e9;
+    juce::Colour accent;
 };
 
 class Curve final : public juce::Component
@@ -248,7 +262,7 @@ public:
         auto title = bounds.reduced(14.0f, 8.0f).removeFromTop(16.0f);
         g.setFont(Daw::caps(9.5f));
         g.setColour(Daw::textDim);
-        g.drawText("COMPRESSION CURVE", title.toNearestInt(), juce::Justification::centredLeft);
+        g.drawText(ui::loc("COMPRESSION CURVE", "CURVA DI COMPRESSIONE"), title.toNearestInt(), juce::Justification::centredLeft);
 
         auto plot = bounds.reduced(40.0f, 30.0f);
         plot.removeFromRight(16.0f);
@@ -327,7 +341,7 @@ public:
         auto area = bounds.reduced(14.0f, 10.0f);
         g.setFont(Daw::caps(9.5f));
         g.setColour(Daw::textDim);
-        g.drawText("GAIN REDUCTION", area.removeFromTop(16.0f).toNearestInt(), juce::Justification::centred);
+        g.drawText(ui::loc("GAIN REDUCTION", "RIDUZIONE"), area.removeFromTop(16.0f).toNearestInt(), juce::Justification::centred);
 
         g.setFont(Daw::font(Daw::title, true));
         g.setColour(shown > 0.05f ? ui::blue : Daw::textFaint);
@@ -397,26 +411,33 @@ public:
         formatters[4] = [](double v) { return ui::timeText(v); };
         formatters[5] = [](double v) { return ui::dbText(v, true); };
 
-        static const char* tips[] = {
-            "Threshold: level where compression starts. Drag to adjust, double-click to reset, double-click the value to type.",
-            "Ratio: how strongly signals above the threshold are reduced.",
-            "Knee: softens the transition around the threshold.",
-            "Attack: how quickly compression reacts.",
-            "Release: how quickly compression returns to unity.",
-            "Makeup: output gain added after compression."
-        };
+        const std::array<juce::String, 6> tips{
+            ui::loc("Threshold: level where compression starts. Drag to adjust, double-click to reset, double-click the value to type.",
+                    "Soglia: livello in cui inizia la compressione. Trascina per regolare, doppio clic per ripristinare, doppio clic sul valore per digitarlo."),
+            ui::loc("Ratio: how strongly signals above the threshold are reduced.",
+                    "Rapporto: quanto vengono ridotti i segnali sopra la soglia."),
+            ui::loc("Knee: softens the transition around the threshold.",
+                    "Ginocchio: ammorbidisce la transizione attorno alla soglia."),
+            ui::loc("Attack: how quickly compression reacts.",
+                    "Attacco: rapidità con cui la compressione reagisce."),
+            ui::loc("Release: how quickly compression returns to unity.",
+                    "Rilascio: rapidità con cui la compressione torna a unità."),
+            ui::loc("Makeup: output gain added after compression.",
+                    "Guadagno: guadagno di uscita aggiunto dopo la compressione.")};
         for (int i = 0; i < 6; ++i)
         {
-            knobs[(size_t)i] = std::make_unique<ui::Knob>(sliders[(size_t)i], names[i], tips[i],
-                                                          CompressorDSP::defaults[(size_t)i], formatters[(size_t)i]);
+            knobs[(size_t)i] = std::make_unique<ui::Knob>(sliders[(size_t)i], names[i], tips[(size_t)i],
+                                                          CompressorDSP::defaults[(size_t)i], formatters[(size_t)i],
+                                                          ui::knobColours[i]);
             addAndMakeVisible(*knobs[(size_t)i]);
         }
 
         addAndMakeVisible(curve);
         addAndMakeVisible(reduction);
         addAndMakeVisible(reset);
-        reset.setButtonText("RESET");
-        reset.setTooltip("Restore all compressor parameters to their default values.");
+        reset.setButtonText(ui::loc("RESET", "RIPRISTINA"));
+        reset.setTooltip(ui::loc("Restore all compressor parameters to their default values.",
+                                 "Ripristina tutti i parametri del compressore ai valori predefiniti."));
         reset.onClick = [this] {
             for (int i = 0; i < 6; ++i)
             {
@@ -443,17 +464,17 @@ public:
 
         g.setColour(Daw::text);
         g.setFont(Daw::font(24.0f, true));
-        g.drawText("COMPRESSOR", 16, 8, 360, 30, juce::Justification::centredLeft);
+        g.drawText(ui::loc("COMPRESSOR", "COMPRESSORE"), 16, 8, 360, 30, juce::Justification::centredLeft);
         g.setColour(Daw::textDim);
         g.setFont(Daw::caps(9.5f));
-        g.drawText("FGA NATIVE  /  DYNAMICS", 18, 38, 360, 14, juce::Justification::centredLeft);
+        g.drawText(ui::loc("FGA NATIVE  /  DYNAMICS", "FGA NATIVE  /  DINAMICA"), 18, 38, 360, 14, juce::Justification::centredLeft);
 
         const auto status = juce::Rectangle<int>(getWidth() - 250, 18, 150, 24);
         g.setColour(lastBypassed ? Daw::textFaint : ui::blue);
         g.fillEllipse((float)status.getX(), (float)status.getCentreY() - 3.0f, 7.0f, 7.0f);
         g.setColour(Daw::textDim);
         g.setFont(Daw::caps(9.0f));
-        g.drawText(lastBypassed ? "BYPASSED" : "ACTIVE", status.withTrimmedLeft(13), juce::Justification::centredLeft);
+        g.drawText(lastBypassed ? ui::loc("BYPASSED", "BYPASSATO") : ui::loc("ACTIVE", "ATTIVO"), status.withTrimmedLeft(13), juce::Justification::centredLeft);
 
         g.setColour(Daw::surface);
         g.fillRoundedRectangle(knobPanel.toFloat(), Daw::panelRadius);
@@ -468,7 +489,7 @@ public:
         auto info = infoPanel.reduced(14, 10);
         g.setFont(Daw::caps(9.5f));
         g.setColour(Daw::textDim);
-        g.drawText("SIGNAL", info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
+        g.drawText(ui::loc("SIGNAL", "SEGNALE"), info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
         g.setFont(Daw::font(Daw::body));
         auto row = [&](const juce::String& text) {
             g.setColour(ui::blue);
@@ -477,9 +498,9 @@ public:
             g.drawText(text, info.withTrimmedLeft(10), juce::Justification::centredLeft);
             info.removeFromTop(22);
         };
-        row("STEREO LINKED");
-        row("ZERO LATENCY");
-        row("NO LOOKAHEAD");
+        row(ui::loc("STEREO LINKED", "STEREO COLLEGATO"));
+        row(ui::loc("ZERO LATENCY", "ZERO LATENZA"));
+        row(ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
         const double rate = processor.getSampleRate();
         g.setColour(Daw::textFaint);
         g.drawText(rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--", info, juce::Justification::centredLeft);
