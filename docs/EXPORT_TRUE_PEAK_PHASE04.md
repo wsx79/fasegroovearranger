@@ -1,5 +1,10 @@
 # Fase 04 — Export & True Peak
 
+**Aggiornamento:** le nuove modalità offline e i risultati correnti sono in
+[OFFLINE_EXPORT_MODES.md](OFFLINE_EXPORT_MODES.md). La sezione seguente documenta
+il commit storico `079565d`: il vecchio guard non è più il default per nuove
+preferenze. Rimane disponibile soltanto per compatibilità esplicita.
+
 Branch `Vocaltest`, base `0bdd4ed6857704e9bf44e875679ae6460d8082c3`.
 La fase 03 è verificata tecnicamente su Linux; il suo audit non è stato ripetuto.
 Restano pendenti Windows/macOS, hardware, plugin esterni, ascolto, dropout e

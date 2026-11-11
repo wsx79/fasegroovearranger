@@ -9,7 +9,19 @@
 namespace fga {
 namespace {
 juce::String u(const std::string& s){return juce::String::fromUTF8(s.c_str());}
-AudioExportOptions exportSettings(){const auto requested=Localisation::setting("exportSampleRate","48000").getIntValue();const int rates[]{44100,48000,88200,96000,192000};const bool known=std::find(std::begin(rates),std::end(rates),requested)!=std::end(rates);return {known?(double)requested:48000.,Localisation::setting("exportBitDepth","24")=="16"?16:24,Localisation::setting("exportLoudnessGuard","0")=="1"};}
+AudioExportOptions exportSettings(){
+    const auto requested=Localisation::setting("exportSampleRate","48000").getIntValue();
+    const int rates[]{44100,48000,88200,96000,192000};
+    const bool known=std::find(std::begin(rates),std::end(rates),requested)!=std::end(rates);
+    const auto saved=Localisation::setting("exportPeakMode");
+    const auto historic=Localisation::setting("exportLoudnessGuard");
+    const auto mode=saved=="legacy"||(saved.isEmpty()&&historic.isNotEmpty())?AudioExportMode::legacy:
+        saved=="loud"&&offlineLoudReady?AudioExportMode::loud:AudioExportMode::transparent;
+    double ceiling=Localisation::setting("exportCeilingDb","-1").getDoubleValue();
+    if(!std::isfinite(ceiling))ceiling=-1;
+    AudioExportOptions options{known?(double)requested:48000.,Localisation::setting("exportBitDepth","24")=="16"?16:24,mode,std::clamp(ceiling,minExportCeilingDb,maxExportCeilingDb)};
+    options.loudnessGuard=historic=="1";return options;
+}
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
 class ExportTask:public juce::ThreadWithProgressWindow {
 public:
@@ -25,7 +37,7 @@ public:
             setStatusMessage(file.getFileName());double blockPeak=0;result=engine.exportAudio(project,file,track,isMp3,[this]{return threadShouldExit();},[this,i](double p){setProgress(((double)i+p)/(double)tracks.size());},&blockPeak,options);peak=std::max(peak,blockPeak);if(result.failed())return;
         }
     }
-    void threadComplete(bool cancelled)override{if(!cancelled&&result.wasOk()&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
+    void threadComplete(bool cancelled)override{if(!cancelled&&result.wasOk()&&options.mode==AudioExportMode::legacy&&peak>1.)result=juce::Result::fail("Exported, but the mix peaked at "+juce::String(juce::Decibels::gainToDecibels((float)peak),1)+" dB and was limited to -0.01 dBFS.");callback(cancelled?juce::Result::fail("Esportazione annullata. I file gia completati restano nella cartella."):result);}
 private:AudioEngine& engine;Project project;juce::File target;std::vector<int> tracks;bool isMp3,stems;AudioExportOptions options;std::function<void(juce::Result)> callback;juce::Result result=juce::Result::ok();double peak=0;
 };
 }
@@ -167,7 +179,30 @@ void MainComponent::showAudioSettings(){
     });
 }
 void MainComponent::exportMenu(){
-    if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}juce::PopupMenu m;m.addItem(21,tr("Club / Streaming Loudness Guard (-1.0 dBTP)"),true,Localisation::setting("exportLoudnessGuard","0")=="1");m.addItem(20,"STUDIO - SAMPLER / MIDI / MEDIA");m.addSeparator();m.addSectionHeader(juce::String::fromUTF8("MIDI · note modificabili"));m.addItem(1,tr("Canzone multitraccia (.mid)"));m.addItem(2,tr("Traccia selezionata (.mid)"));m.addItem(3,tr("Tutte le tracce MIDI separate"));m.addSectionHeader(juce::String::fromUTF8("WAV · ")+tr("Sample rate / bit depth"));m.addItem(4,tr("Mix completo WAV"));m.addItem(5,tr("Traccia selezionata WAV"));m.addItem(6,tr("Tutti gli stem WAV"));m.addSectionHeader(juce::String::fromUTF8("MP3 · 320 kbps / 44.1 kHz / stereo"));m.addItem(7,tr("Mix completo MP3"));m.addItem(8,tr("Traccia selezionata MP3"));m.addItem(9,tr("Tutti gli stem MP3"));juce::Component::SafePointer<MainComponent> safe(this);m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&exportButton),[safe](int id){if(safe&&id==21)Localisation::setSetting("exportLoudnessGuard",Localisation::setting("exportLoudnessGuard","0")=="1"?"0":"1");else if(safe!=nullptr&&id==20)safe->showStudio();else if(safe!=nullptr&&id>0)safe->exportFile(id,safe->selectedTrack);});
+    if(loadingPlugin){message("Attendi il caricamento dei plugin.");return;}
+    const auto settings=exportSettings();juce::PopupMenu m,processing,ceilings;
+    processing.addItem(21,"Transparent",true,settings.mode==AudioExportMode::transparent);
+    if(offlineLoudReady)processing.addItem(22,"Loud",true,settings.mode==AudioExportMode::loud);
+    if(settings.mode==AudioExportMode::legacy||Localisation::setting("exportLoudnessGuard").isNotEmpty()){
+        processing.addItem(23,"Legacy",true,settings.mode==AudioExportMode::legacy);
+        processing.addItem(24,"Legacy guard",settings.mode==AudioExportMode::legacy,settings.loudnessGuard);
+    }
+    const int values[]{-1,-2,-3,-6,-12};
+    for(int i=0;i<5;++i)ceilings.addItem(30+i,juce::String(values[i])+" dBTP",true,std::abs(settings.ceilingDb-values[i])<.01);
+    m.addSubMenu("True Peak: "+juce::String(settings.mode==AudioExportMode::transparent?"Transparent":settings.mode==AudioExportMode::loud?"Loud":"Legacy"),processing);
+    m.addSubMenu("Ceiling: "+juce::String(settings.ceilingDb,1)+" dBTP",ceilings,settings.mode!=AudioExportMode::legacy||settings.loudnessGuard);
+    m.addItem(20,"STUDIO - SAMPLER / MIDI / MEDIA");m.addSeparator();
+    m.addSectionHeader(juce::String::fromUTF8("MIDI · note modificabili"));m.addItem(1,tr("Canzone multitraccia (.mid)"));m.addItem(2,tr("Traccia selezionata (.mid)"));m.addItem(3,tr("Tutte le tracce MIDI separate"));
+    m.addSectionHeader(juce::String::fromUTF8("WAV · ")+tr("Sample rate / bit depth"));m.addItem(4,tr("Mix completo WAV"));m.addItem(5,tr("Traccia selezionata WAV"));m.addItem(6,tr("Tutti gli stem WAV"));
+    m.addSectionHeader(juce::String::fromUTF8("MP3 · 320 kbps / 44.1 kHz / stereo"));m.addItem(7,tr("Mix completo MP3"));m.addItem(8,tr("Traccia selezionata MP3"));m.addItem(9,tr("Tutti gli stem MP3"));
+    juce::Component::SafePointer<MainComponent> safe(this);
+    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&exportButton),[safe](int id){
+        if(!safe)return;
+        if(id==21||id==23||(id==22&&offlineLoudReady))Localisation::setSetting("exportPeakMode",id==21?"transparent":id==22?"loud":"legacy");
+        else if(id==24)Localisation::setSetting("exportLoudnessGuard",Localisation::setting("exportLoudnessGuard","0")=="1"?"0":"1");
+        else if(id>=30&&id<35){const int values[]{-1,-2,-3,-6,-12};Localisation::setSetting("exportCeilingDb",juce::String(values[id-30]));}
+        else if(id==20)safe->showStudio();else if(id>0)safe->exportFile(id,safe->selectedTrack);
+    });
 }
 void MainComponent::exportFile(int type,int track,const juce::File& destination,bool configured){
     if(type<1||type>9||loadingPlugin||editingRestricted())return;
@@ -224,6 +259,13 @@ bool MainComponent::verifyExports(const juce::File& folder){
     if(!folder.createDirectory())return false;
     const auto saved=project;const auto savedFile=projectFile;const bool wasDirty=dirty;const auto oldRate=Localisation::setting("exportSampleRate","48000"),oldBits=Localisation::setting("exportBitDepth","24"),oldFolder=Localisation::setting("lastExportFolder"),oldSave=Localisation::setting("lastSaveFolder");
     auto* original=audio.plugin(0);juce::String report;bool ok=true;auto check=[&](bool pass,const char* label){ok=pass&&ok;report+=juce::String(pass?"PASS ":"FAIL ")+label+"\n";};
+    const auto oldMode=Localisation::setting("exportPeakMode"),oldCeiling=Localisation::setting("exportCeilingDb"),oldGuard=Localisation::setting("exportLoudnessGuard");
+    Localisation::setSetting("exportPeakMode",{});Localisation::setSetting("exportLoudnessGuard",{});
+    check(exportSettings().mode==AudioExportMode::transparent,"new export settings default to Transparent");
+    Localisation::setSetting("exportLoudnessGuard","1");check(exportSettings().mode==AudioExportMode::legacy&&exportSettings().loudnessGuard,"historic guard preference is preserved");
+    Localisation::setSetting("exportPeakMode","transparent");Localisation::setSetting("exportCeilingDb","-3");
+    check(exportSettings().mode==AudioExportMode::transparent&&exportSettings().ceilingDb==-3,"Transparent selection and ceiling are retained");
+    Localisation::setSetting("exportCeilingDb","-1");
     project=newProject(7);project.settings.bpm=120;project.settings.key=1;project.settings.scale=0;project.sections={{Section::intro,1,"Intro"},{Section::main,2,"Jackin groove"}};project.normalise();project.masterGain=.5;project.masterAutomation.enabled=false;
     for(auto& track:project.tracks){track.mute=true;track.volume.enabled=false;track.panAutomation.enabled=false;track.parameters.clear();for(auto& clip:track.clips)clip.notes.clear();}auto& pianoTrack=project.tracks[0];pianoTrack.mute=false;pianoTrack.gain=.5;pianoTrack.pan=0;pianoTrack.instrument=original?"plugin":"internal";pianoTrack.clips[0].notes={{0,2,69,100,0}};audio.publish(project);
     // Debug synthesis of all 18 stems is deliberately slower; keep the same completion/audio assertions.
@@ -251,6 +293,7 @@ bool MainComponent::verifyExports(const juce::File& folder){
     exportFile(5,0,folder.getChildFile("cancel.wav"));if(exportTask)exportTask->signalThreadShouldExit();check(settle(),"cancelling export restores audio and editing");
     exportFile(5,0,folder.getChildFile("missing-parent/fail.wav"));check(settle()&&!exportNamedFile(folder.getChildFile("missing-parent/fail.wav"),project,"wav").existsAsFile(),"write failure restores audio and editing without a partial WAV");
     check(writeProjectFile(folder.getChildFile("Saved.fga"))&&Localisation::setting("lastSaveFolder")==folder.getFullPathName(),"successful Save remembers its directory");check(Localisation::setting("lastExportFolder")==folder.getFullPathName(),"export remembers its directory and retains it after an invalid destination");
+    Localisation::setSetting("exportPeakMode",oldMode);Localisation::setSetting("exportCeilingDb",oldCeiling);Localisation::setSetting("exportLoudnessGuard",oldGuard);
     project=saved;projectFile=savedFile;dirty=wasDirty;audio.publish(project);Localisation::setSetting("exportSampleRate",oldRate);Localisation::setSetting("exportBitDepth",oldBits);Localisation::setSetting("lastExportFolder",oldFolder);Localisation::setSetting("lastSaveFolder",oldSave);refreshControls();folder.getChildFile("export-ui.txt").replaceWithText(report);return ok;
 #endif
 }

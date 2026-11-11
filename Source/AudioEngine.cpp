@@ -753,8 +753,13 @@ void AudioEngine::restorePluginState(int track,const juce::String& state){restor
 void AudioEngine::restoreEffectState(int track,const juce::String& state,int slot){restoreHosted(track,state,slot);}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}
 juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak,AudioExportOptions options){
+    if(file.isDirectory())return juce::Result::fail("Export target is a directory.");
     if(isAudioRecording()||isRecording())return juce::Result::fail("Finish recording before exporting.");
     if(!std::isfinite(options.sampleRate)||options.sampleRate<0||(options.sampleRate>0&&(options.sampleRate<8000||options.sampleRate>192000))||(options.bitDepth!=16&&options.bitDepth!=24))return juce::Result::fail("Invalid WAV encoding.");
+    if(!std::isfinite(options.ceilingDb)||options.ceilingDb<minExportCeilingDb||options.ceilingDb>maxExportCeilingDb)return juce::Result::fail("True Peak ceiling must be between -12 and -1 dBTP.");
+    if(options.mode!=AudioExportMode::transparent&&options.mode!=AudioExportMode::loud&&options.mode!=AudioExportMode::legacy)return juce::Result::fail("Invalid export mode.");
+    if(options.mode==AudioExportMode::loud&&!offlineLoudReady)return juce::Result::fail("Loud export is not validated; use Transparent.");
+    const bool modern=options.mode!=AudioExportMode::legacy;
     if(rawPeak)*rawPeak=0;
     if(onlyTrack < -1 || onlyTrack>=engineTrackCount)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
@@ -785,13 +790,13 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
         // more and drop it from the start, so the file lines up with the grid.
         for(auto& i:instruments)if(i->kind!=masterEffectTrack)compensation=std::max(compensation,instrumentLatency(*i));
         compensation=std::clamp(compensation,0,Instrument::maxDelay-1);if(onlyTrack<0)compensation+=std::min(instrumentLatency(*instruments[(size_t)masterEffectTrack]),Instrument::maxDelay-1);}
-    juce::TemporaryFile temp(file);auto stream=temp.getFile().createOutputStream();if(!stream)return juce::Result::fail("Cannot write the audio file.");
+    juce::TemporaryFile temp(file),floatStage(file);auto stream=(modern?floatStage.getFile():temp.getFile()).createOutputStream();if(!stream)return juce::Result::fail("Cannot write the audio file.");
     juce::StringPairArray metadata;metadata.set(juce::WavAudioFormat::acidTempo,exportTempo(p));
     // Full arrangement files include effect tails, so mark them as one-shots rather than
     // inventing a loop beat count that would stretch the tail in another host.
     metadata.set(juce::WavAudioFormat::acidOneShot,"1");metadata.set(juce::WavAudioFormat::acidNumerator,juce::String(timeNumerator.load()));metadata.set(juce::WavAudioFormat::acidDenominator,juce::String(timeDenominator.load()));
     metadata.set("ISFT","Fase Groove Arranger");metadata.set("ICMT","BPM: "+exportTempo(p)+"; Key: "+exportKey(p));
-    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");stream.release();
+    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");stream.release();
     // Keep identical stem lengths and retain natural sample/effect tails beyond the song.
     double endSeconds=p.length()*60./p.settings.bpm;
     for(size_t ti=0;ti<p.tracks.size();++ti){const auto& track=p.tracks[ti];auto asset=sampleAsset((int)ti);if(track.instrument!="sample"||!asset)continue;
@@ -811,21 +816,26 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     for(const auto& instrument:instruments){if(instrument->kind==masterEffectTrack)continue;double tail=3.;if(instrument->mode==2&&instrument->plugin){const double seconds=instrument->plugin->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail=std::max(tail,std::min(seconds,120.));}for(int k=0;k<instrument->effectCount;++k){const int id=instrument->effectOrder[(size_t)k]-1;if(auto* fx=instrument->effects[(size_t)id].plugin.get())if(!instrument->effectBypass[(size_t)id]){const double seconds=fx->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail+=std::min(seconds,120.);}}effectTail=std::max(effectTail,std::min(tail,120.));}
     if(onlyTrack<0){const auto& rack=*instruments[(size_t)masterEffectTrack];for(int k=0;k<rack.effectCount;++k){const int index=rack.effectOrder[(size_t)k]-1;if(auto* effect=rack.effects[(size_t)index].plugin.get())if(!rack.effectBypass[(size_t)index]){const double tail=effect->getTailLengthSeconds();if(std::isfinite(tail)&&tail>0)effectTail=std::min(120.,effectTail+tail);}}}
     juce::AudioBuffer<float> buffer(2,blockSize);const auto total=(juce::int64)std::ceil((endSeconds+effectTail)*sampleRate);
-    ExportPeakGuard guardLimiter;if(options.loudnessGuard){guardLimiter.prepare(blockSize);compensation+=guardLimiter.latency();}
+    ExportPeakGuard guardLimiter;if(!modern&&options.loudnessGuard){guardLimiter.prepare(blockSize);compensation+=guardLimiter.latency();}
+    const double encodedShare=mp3?.8:1.,renderShare=modern?(mp3?.4:.5):encodedShare;
     const juce::int64 renderTotal=total+compensation;
     for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(blockSize,renderTotal-at);buffer.clear();
         const int skip=(int)std::clamp<juce::int64>(compensation-at,0,n);
         {const EngineControlLock lock(*this);currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack);}
-        if(options.loudnessGuard)guardLimiter.process(buffer,n);
+        if(!modern&&options.loudnessGuard)guardLimiter.process(buffer,n);
         for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample){
             const float value=buffer.getSample(ch,sample);
             if(!std::isfinite(value))return juce::Result::fail("Audio non finito: controlla lo strumento e i livelli.");
             if(rawPeak)*rawPeak=std::max(*rawPeak,(double)std::abs(value));
-            buffer.setSample(ch,sample,std::clamp(value,-.999f,.999f));
+            if(!modern)buffer.setSample(ch,sample,std::clamp(value,-.999f,.999f));
         }
-        if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*(mp3?.8:1.));
-    }writer.reset();
-    if(options.loudnessGuard){auto guarded=ExportPeakGuard::verifyFile(temp.getFile(),mp3?24:options.bitDepth,cancelled);if(guarded.failed())return guarded;}
+        if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*renderShare);
+    }
+    if(!writer->flush())return juce::Result::fail("Cannot finish export staging WAV.");writer.reset();
+    if(modern){
+        auto result=finishOfflineExport(floatStage.getFile(),temp.getFile(),mp3?24:options.bitDepth,options.mode,options.ceilingDb,cancelled,[&](double value){progress(renderShare+(encodedShare-renderShare)*value);});
+        if(result.failed())return result;
+    }else if(options.loudnessGuard){auto guarded=ExportPeakGuard::verifyFile(temp.getFile(),mp3?24:options.bitDepth,cancelled,options.ceilingDb);if(guarded.failed())return guarded;}
     // The final progress notification may deliver cancellation after the last render block.
     if(cancelled())return juce::Result::fail("Esportazione annullata.");
     if(!mp3)return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare il WAV.");

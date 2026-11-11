@@ -11,6 +11,7 @@
 #include <stdexcept>
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 #include "SpectrumChecks.h"
+void runOfflineExportTests();
 void runImprovementEngineTests();
 void runStudioEngineTests();
 void runGuideVocalTests();
@@ -26,6 +27,7 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
+        if(argc==2&&juce::String(argv[1])=="--offline-export"){runOfflineExportTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--deep-audit"){runDeepAuditEngineTests();runRecordedRegionTests();return 0;}
         if(argc==3&&juce::String(argv[1])=="--harmony-recheck-audio")return fga::writeHarmonyRecheckAudio(juce::File(argv[2]))?0:1;

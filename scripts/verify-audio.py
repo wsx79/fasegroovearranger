@@ -9,6 +9,53 @@ import array
 import subprocess
 import json
 import re
+import csv
+
+def reconstructed_peak(path, rate):
+    reference = subprocess.run([
+        'ffmpeg', '-hide_banner', '-nostats', '-i', str(path),
+        '-af', f'adelay=512S:all=1,apad=pad_len=512,aresample={rate * 32}:filter_size=256,astats=reset=0',
+        '-f', 'null', '-'], capture_output=True, text=True, check=True, timeout=60)
+    values = re.findall(r'Peak level dB:\s+(-?[0-9.]+|-inf)', reference.stderr)
+    assert values, f'No reference peak for {path}'
+    return None if values[-1] == '-inf' else float(values[-1])
+
+def verify_offline_modes(folder):
+    results = []
+    with (folder / 'metrics.csv').open() as stream:
+        rows = list(csv.DictReader(stream))
+    assert len(rows) == 99, len(rows)
+    for row in rows:
+        rate, bits = int(row['rate']), int(row['bits'])
+        path = folder / f"{row['signal']}-{rate}-{row['mode']}-{bits}.wav"
+        with wave.open(str(path), 'rb') as audio:
+            assert (audio.getframerate(), audio.getsampwidth(), audio.getnchannels()) == (rate, bits // 8, 2), path
+            assert audio.getnframes() == (17 if row['signal'] == 'short' else rate * 2), path
+        peak = reconstructed_peak(path, rate)
+        assert (peak is None) == (row['signal'] == 'silence'), path
+        row['peak32_dbfs'] = peak
+        results.append(row)
+    for rate in (44100, 48000, 96000):
+        path = folder / f'tone7-{rate}-transparent-16.wav'
+        with wave.open(str(path), 'rb') as audio:
+            assert (audio.getframerate(), audio.getsampwidth(), audio.getnchannels(), audio.getnframes()) == (rate, 2, 2, 2 * rate), path
+        peak = reconstructed_peak(path, rate)
+        assert peak is not None and peak <= -3, (path, peak)
+    integration = folder / 'engine-transparent.wav'
+    assert integration.is_file(), integration
+    peak = reconstructed_peak(integration, 48000)
+    assert peak is not None and peak <= -3, (integration, peak)
+    (folder / 'modes-reference.json').write_text(json.dumps(results, indent=2) + '\n')
+    # Legacy is measured as a comparator, not held to the new mode's admission criteria.
+    failed = [r for r in results if r['mode'] != 'legacy' and r['peak32_dbfs'] is not None and r['peak32_dbfs'] > -1]
+    assert not failed, failed
+    for mode in ('transparent', 'loud', 'legacy'):
+        group = [r for r in results if r['mode'] == mode]
+        maximum = max(r['peak32_dbfs'] for r in group if r['peak32_dbfs'] is not None)
+        tone = max(float(r['distortion_pct']) for r in group if r['signal'].startswith('tone'))
+        imd = max(float(r['distortion_pct']) for r in group if r['signal'] == 'imd')
+        print(f'{mode}: peak32={maximum:.6f} dBFS, THD+N max={tone:.8f}%, IMD max={imd:.8f}%')
+    print('PASS independent 32x offline PCM verification (99 mode cases + 3 PCM16 ceilings + engine overwrite)')
 
 def verify_export_peak(folder):
     """Independent reconstruction of the existing engine test's guard fixtures."""
@@ -23,13 +70,7 @@ def verify_export_peak(folder):
                 # Zero extension on BOTH sides matches the meter's empty history;
                 # otherwise the reference resampler reflects the first samples.
                 # It also lets a 17-frame signal pass through the longer filter.
-                reference = subprocess.run([
-                    'ffmpeg', '-hide_banner', '-nostats', '-i', str(path),
-                    '-af', f'adelay=512S:all=1,apad=pad_len=512,aresample={rate * 32}:filter_size=256,astats=reset=0',
-                    '-f', 'null', '-'], capture_output=True, text=True, check=True, timeout=60)
-                values = re.findall(r'Peak level dB:\s+(-?[0-9.]+|-inf)', reference.stderr)
-                assert values, f'No reference peak for {path}'
-                peak = None if values[-1] == '-inf' else float(values[-1])
+                peak = reconstructed_peak(path, rate)
                 if signal == 'silence':
                     assert peak is None, f'Silence contains audio: {path}'
                 else:
@@ -41,6 +82,11 @@ def verify_export_peak(folder):
     maximum = max(r['peak_dbfs_32x'] for r in results if r['peak_dbfs_32x'] is not None)
     print(f'PASS independent FFmpeg 32x true peak: {len(results)} WAV files, maximum {maximum:.6f} dBFS')
 
+if sys.argv[1:2] == ['--offline-modes']:
+    if len(sys.argv) != 3:
+        raise SystemExit('Usage: verify-audio.py --offline-modes FIXTURE_DIRECTORY')
+    verify_offline_modes(Path(sys.argv[2]))
+    raise SystemExit(0)
 if sys.argv[1:2] == ['--export-peak']:
     if len(sys.argv) != 3:
         raise SystemExit('Usage: verify-audio.py --export-peak FIXTURE_DIRECTORY')

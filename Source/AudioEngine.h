@@ -5,6 +5,7 @@
 #include "Sampler.h"
 #include "ChannelStrip.h"
 #include "LoudnessMeter.h"
+#include "OfflineExport.h"
 #include "SamplePitchMonitor.h"
 #include "MixerBuses.h"
 #include "MidiRecording.h"
@@ -19,7 +20,6 @@
 #include <optional>
 #include <juce_dsp/juce_dsp.h>
 namespace fga {
-struct AudioExportOptions {double sampleRate=0;int bitDepth=24;bool loudnessGuard=false;};
 static_assert(std::atomic<bool>::is_always_lock_free&&std::atomic<double>::is_always_lock_free,"Audio callback atomics require a lock-free 64-bit target");
 // Everything the audio thread plays, built on the message thread and handed over without a
 // lock (see Handoff). Schedules and automation are read in place: the audio thread never

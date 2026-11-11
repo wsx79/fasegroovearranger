@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Offline export now defaults to Transparent for new settings: stage the unclipped float render, measure True Peak, apply only the necessary uniform attenuation and quantize once. Configurable ceilings retain the historical -1 dBTP upper limit (-1/-2/-3/-6/-12 in the export menu); metadata, tails and timeline remain intact. Explicit historic guard preferences/positional API retain Legacy behavior. The optional Loud candidate is not exposed: its 0.199% two-tone residual fails the 0.1% admission gate. No realtime limiter, PDC, generator, vocal or project-format changes. See docs/OFFLINE_EXPORT_MODES.md for measurements and validation.
+
 - Phase 04 Export & True Peak: correct BS.1770 K-weighting coefficients without changing rendered audio; improve final guarded-PCM verification with a wider-passband 16x estimator and 0.05 dB reserve; honour cancellation before publishing WAV/MP3 so existing files survive a last-progress cancellation. Preserve the existing optional guard DSP and default export sound. Add official-coefficient loudness tests, 36 guarded PCM cases and independent FFmpeg 32x verification. See docs/EXPORT_TRUE_PEAK_PHASE04.md for measured distortion, limits and remaining platform checks.
 
 - Phase 03 Audio Engine: restore plugins, DSP buffers and PDC for the latest device rate/buffer after export completion or cancellation; retain device latency updates during export. Add device/transport and concurrent state-handoff regressions. Vocal Studio/Chops remain technically implemented but functionally/qualitatively unapproved, with further work deferred. See docs/AUDIO_ENGINE_PHASE03.md for audit evidence and platform limits.
