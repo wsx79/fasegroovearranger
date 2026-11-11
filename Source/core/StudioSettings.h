@@ -148,9 +148,12 @@ struct EqSettings {
 struct BusSettings {
     std::string name;
     double gain=1,pan=0,amount=.5,damping=.5,feedback=.35,division=1,sidechainAmount=0;
+    // Only the 18 stable generated track slots can be detector sources.
+    int sidechainSource=4;
+    double sidechainAttackMs=0,sidechainReleaseMs=180,sidechainCurve=1;
     bool mute=false,solo=false;
-    void normalise(){if(name.size()>40)name.resize(40);sidechainAmount=bounded(sidechainAmount,0,0,1);gain=bounded(gain,1,0,2);pan=bounded(pan,0,-1,1);amount=bounded(amount,.5,0,1);damping=bounded(damping,.5,0,1);feedback=bounded(feedback,.35,0,.9);division=bounded(division,1,.125,4);}
-    bool operator==(const BusSettings& s)const{return sidechainAmount==s.sidechainAmount&&name==s.name&&gain==s.gain&&pan==s.pan&&amount==s.amount&&damping==s.damping&&feedback==s.feedback&&division==s.division&&mute==s.mute&&solo==s.solo;}
+    void normalise(){sidechainSource=std::clamp(sidechainSource,0,17);sidechainAttackMs=bounded(sidechainAttackMs,0,0,200);sidechainReleaseMs=bounded(sidechainReleaseMs,180,10,2000);sidechainCurve=bounded(sidechainCurve,1,.25,4);if(name.size()>40)name.resize(40);sidechainAmount=bounded(sidechainAmount,0,0,1);gain=bounded(gain,1,0,2);pan=bounded(pan,0,-1,1);amount=bounded(amount,.5,0,1);damping=bounded(damping,.5,0,1);feedback=bounded(feedback,.35,0,.9);division=bounded(division,1,.125,4);}
+    bool operator==(const BusSettings& s)const{return sidechainSource==s.sidechainSource&&sidechainAttackMs==s.sidechainAttackMs&&sidechainReleaseMs==s.sidechainReleaseMs&&sidechainCurve==s.sidechainCurve&&sidechainAmount==s.sidechainAmount&&name==s.name&&gain==s.gain&&pan==s.pan&&amount==s.amount&&damping==s.damping&&feedback==s.feedback&&division==s.division&&mute==s.mute&&solo==s.solo;}
 };
 inline std::array<BusSettings,4> defaultBuses(){std::array<BusSettings,4> b;b[0].name="GROUP A";b[1].name="GROUP B";b[2].name="REVERB";b[3].name="DELAY";return b;}
 }

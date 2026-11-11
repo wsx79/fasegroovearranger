@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Phase 06: extend existing group ducking with independent attack/release/curve and stable internal track sources; retain depth and historical kick defaults. Add reduction readouts to Bus & Send, 10 ms live depth ramps, bounded optional bus JSON fields and focused compatibility/routing/realtime/export/UI tests. No new latency, dependency, plugin routing, project schema, generator or vocal changes. See docs/SIDECHAIN_PHASE06.md for results and limits.
+
 - Phase 05: add a stereo-linked native compressor to existing track/master inserts, with threshold/ratio/knee, attack/release, makeup, gain-reduction display, parameter smoothing and ramped bypass. Reuse insert automation, state, reorder and offline cloning without a project migration or new dependency. Fix a reproduced audio-side EQ vector allocation using fixed legacy-band storage. Transparent export, generators and vocal modules unchanged. See docs/DYNAMICS_PHASE05.md for validation and limits.
 
 - Offline export now defaults to Transparent for new settings: stage the unclipped float render, measure True Peak, apply only the necessary uniform attenuation and quantize once. Configurable ceilings retain the historical -1 dBTP upper limit (-1/-2/-3/-6/-12 in the export menu); metadata, tails and timeline remain intact. Explicit historic guard preferences/positional API retain Legacy behavior. The optional Loud candidate is not exposed: its 0.199% two-tone residual fails the 0.1% admission gate. No realtime limiter, PDC, generator, vocal or project-format changes. See docs/OFFLINE_EXPORT_MODES.md for measurements and validation.

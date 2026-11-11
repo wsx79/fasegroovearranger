@@ -1,2 +1,2 @@
-# PHASE 05 — Extend existing sidechain
+# PHASE 06 — Extend existing sidechain
 Existing MixerBuses kick-driven group ducking must be reused, not replaced. Test current detector, 180ms decay, group routing, kick absence, solo/mute, BPM changes and export. Add configurable attack/release/depth/curve and existing internal source selection only where architecture supports it safely. Preserve exact legacy defaults and project compatibility. Add reduction meter if affordable and tested. Avoid altering musical generators. Update status; commit after tests.

@@ -461,15 +461,15 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0,side[2]{};
-        if(audible){if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
+        if(audible){const bool detectorSource=busGraph.detects((int)ti);if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
 
             // Pan automation: its own pan law per sample (as the static pan), on gain * master.
             const bool panActive=i.panAutomation&&i.panAutomation->active();
             if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
             else i.baseGain.skip(count);
             for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
-                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];if(ti==4)busGraph.kick(s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
-                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];if(ti==4)busGraph.kick(s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
+                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
+                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
         }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
         meters[(size_t)ti]=meter;sideMeters[(size_t)ti][0]=side[0];sideMeters[(size_t)ti][1]=side[1];if(meter>=1.f)trackClip[(size_t)ti].store(true);
     }

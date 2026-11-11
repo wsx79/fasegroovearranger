@@ -68,10 +68,11 @@ juce::Result readSampler(const juce::var& o,SamplerSettings& p){
     if(o.hasProperty("slices")){auto* a=o["slices"].getArray();if(!a||a->size()>128)return juce::Result::fail("Invalid sampler slices.");p.sliceCount=a->size();for(int i=0;i<a->size();++i){auto v=(*a)[i];if(!(v.isInt()||v.isInt64()||v.isDouble())||!std::isfinite((double)v))return juce::Result::fail("Invalid slice position.");p.slices[(size_t)i]=(double)v;}}
     p.normalise();return juce::Result::ok();
 }
-juce::var busesJson(const std::array<BusSettings,4>& buses){juce::Array<juce::var> a;for(const auto& p:buses){auto o=object();set(o,"name",p.name.c_str());set(o,"gain",p.gain);set(o,"pan",p.pan);set(o,"mute",p.mute);set(o,"solo",p.solo);set(o,"amount",p.amount);set(o,"damping",p.damping);set(o,"feedback",p.feedback);set(o,"division",p.division);set(o,"sidechainAmount",p.sidechainAmount);a.add(o);}return a;}
+juce::var busesJson(const std::array<BusSettings,4>& buses){juce::Array<juce::var> a;for(const auto& p:buses){auto o=object();set(o,"name",p.name.c_str());set(o,"gain",p.gain);set(o,"pan",p.pan);set(o,"mute",p.mute);set(o,"solo",p.solo);set(o,"amount",p.amount);set(o,"damping",p.damping);set(o,"feedback",p.feedback);set(o,"division",p.division);set(o,"sidechainAmount",p.sidechainAmount);set(o,"sidechainSource",p.sidechainSource);set(o,"sidechainAttackMs",p.sidechainAttackMs);set(o,"sidechainReleaseMs",p.sidechainReleaseMs);set(o,"sidechainCurve",p.sidechainCurve);a.add(o);}return a;}
 juce::Result readBuses(const juce::var& v,std::array<BusSettings,4>& buses){if(v.isVoid())return juce::Result::ok();auto* a=v.getArray();if(!a||a->size()!=4)return juce::Result::fail("Invalid bus routing.");for(int i=0;i<4;++i){const auto& o=(*a)[i];if(!o.isObject())return juce::Result::fail("Invalid bus settings.");auto& p=buses[(size_t)i];p.name=o.getProperty("name",p.name.c_str()).toString().substring(0,40).toStdString();
     #define N(k) p.k=number(o,#k,p.k)
-    N(gain);N(pan);N(amount);N(damping);N(feedback);N(division);N(sidechainAmount);
+    N(gain);N(pan);N(amount);N(damping);N(feedback);N(division);N(sidechainAmount);N(sidechainAttackMs);N(sidechainReleaseMs);N(sidechainCurve);
+    p.sidechainSource=(int)std::clamp(number(o,"sidechainSource",4.),0.,17.);
     #undef N
     p.mute=(bool)o["mute"];p.solo=(bool)o["solo"];p.normalise();}return juce::Result::ok();}
 bool extendedProject(const Project& p){if(p.buses!=defaultBuses())return true;return std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return !t.sampler.isDefault()||t.group>=0||t.sends[0]!=0||t.sends[1]!=0;});}

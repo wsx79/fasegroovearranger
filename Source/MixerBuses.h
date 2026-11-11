@@ -12,7 +12,13 @@ public:
     void configure(const std::array<BusSettings,4>&,double bpm,double master,bool snap);
     void begin(int count,bool stem=false);
     void add(int channel,int sample,float value,int group,const std::array<double,2>& sends);
-    void kick(int sample,float value){if(sample>=0&&sample<(int)kickSignal.size())kickSignal[(size_t)sample]=std::max(kickSignal[(size_t)sample],std::abs(value));}
+    bool detects(int track)const{return track==(*settings)[0].sidechainSource||track==(*settings)[1].sidechainSource;}
+    void source(int track,int sample,float value){
+        if(sample<0||sample>=(int)sourceSignal[0].size()||!std::isfinite(value))return;
+        for(int b=0;b<2;++b)if(track==(*settings)[(size_t)b].sidechainSource){auto& v=sourceSignal[(size_t)b][(size_t)sample];v=std::max(v,std::abs(value));}
+    }
+    void kick(int sample,float value){source(4,sample,value);}
+    float reduction(int bus)const{return reductions[(size_t)std::clamp(bus,0,1)].load(std::memory_order_relaxed);}
     void finish(float* const* output,int channels,int count,const float* automation);
     float level(int bus)const{return peaks[(size_t)std::clamp(bus,0,3)].load();}
 private:
@@ -25,7 +31,10 @@ private:
     juce::SmoothedValue<float> masterGain,delaySamples;
     juce::Reverb reverb;
     double rate=44100,bpm=120;
-    std::vector<float> kickSignal;float duck=0;
+    std::array<std::vector<float>,2> sourceSignal;
+    std::array<float,2> duck{},attack{},release{};
+    std::array<juce::SmoothedValue<float>,2> depths;
+    std::array<std::atomic<float>,2> reductions{};
     int write=0;
     std::array<float,2> damping{};
     bool groupSolo=false,returnSolo=false,stem=false;

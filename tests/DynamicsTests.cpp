@@ -20,6 +20,7 @@ void* operator new(std::size_t size){if(countAllocations)++allocations;if(void* 
 void* operator new[](std::size_t size){return ::operator new(size);}
 void operator delete(void* p)noexcept{std::free(p);}void operator delete[](void* p)noexcept{std::free(p);}
 void operator delete(void* p,std::size_t)noexcept{std::free(p);}void operator delete[](void* p,std::size_t)noexcept{std::free(p);}
+size_t countRealtimeCppAllocations(const std::function<void()>& action){AllocationScope scope;action();return allocations;}
 namespace {
 void realtimeEq(){
     fga::EqSettings eq;eq.enabled=true;eq.ensureBands();fga::ChannelStrip strip;

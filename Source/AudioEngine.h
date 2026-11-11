@@ -222,6 +222,7 @@ public:
     float cpuLoad() const {return cpuLoadPct.load(std::memory_order_relaxed);}
     // Per side (0 left, 1 right) peaks of the last block, for the stereo meters.
     float level(int track,int side) const {return sideMeters[(size_t)track][(size_t)(side&1)].load();}
+    float busReduction(int bus)const{return busGraph.reduction(bus);}
     float busLevel(int bus)const{return busGraph.level(bus);}
     float masterLevel(int side) const {return masterSides[(size_t)(side&1)].load();}
     bool hasClipped() const {return masterClip.load();}
