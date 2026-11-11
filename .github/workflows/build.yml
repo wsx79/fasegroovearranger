@@ -12,6 +12,11 @@ on:
         description: "Existing tag to publish, for example v0.12.1. Empty does not publish."
         required: false
         type: string
+      preview_publish_run:
+        description: "Publish the verified Vocaltest test ZIP from this successful build run (no rebuild)."
+        required: false
+        type: string
+        default: ''
       full_suite:
         description: "Run the slow audits (VST3 host, plugin catalogue, club audio) too."
         required: false
@@ -32,7 +37,7 @@ concurrency:
 jobs:
   vocaltest-preview:
     name: Vocaltest Preview Windows x64
-    if: github.ref == 'refs/heads/Vocaltest' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    if: github.ref == 'refs/heads/Vocaltest' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.preview_publish_run == ''))
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -107,6 +112,91 @@ jobs:
             build/Testing/Temporary/
           if-no-files-found: ignore
           retention-days: 14
+
+  vocaltest-test-release:
+    name: Publish verified Vocaltest prerelease
+    if: github.ref == 'refs/heads/Vocaltest' && github.event_name == 'workflow_dispatch' && inputs.preview_publish_run != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      BUILD_RUN_ID: ${{ inputs.preview_publish_run }}
+      EXPECTED_BUILD_SHA: 839f6e8398ea16d04c6759846226ff32c36f3698
+      EXPECTED_ZIP_SHA256: 08d713953fb472c25d8a98189badea5003faff6e997b2b38be5a03210f8d51c8
+      PREVIEW_TAG: preview-vocaltest-2026-11-11-839f6e8
+      DRAFT_RELEASE_ID: 442223393
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require successful Windows build and matching unpublished draft
+        shell: python
+        run: |
+          import json, os, re, subprocess
+          repo = os.environ['GITHUB_REPOSITORY']
+          run_id = os.environ['BUILD_RUN_ID']
+          assert re.fullmatch(r'[0-9]+', run_id), 'Invalid run ID'
+          def api(path):
+              return json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + '/' + path]))
+          run = api('actions/runs/' + run_id)
+          assert run['head_repository']['full_name'] == repo
+          assert run['head_branch'] == 'Vocaltest' and run['path'] == '.github/workflows/build.yml'
+          assert run['status'] == 'completed' and run['conclusion'] == 'success'
+          assert run['head_sha'] == os.environ['EXPECTED_BUILD_SHA']
+          release = api('releases/' + os.environ['DRAFT_RELEASE_ID'])
+          assert release['tag_name'] == os.environ['PREVIEW_TAG']
+          assert release['draft'] and release['prerelease'], 'Expected an unpublished test draft'
+          assert release['target_commitish'] == run['head_sha'] and not release['assets']
+          artifacts = api('actions/runs/' + run_id + '/artifacts')['artifacts']
+          packages = [a for a in artifacts if a['name'] == 'Vocaltest-Preview-Windows-x64' and not a['expired']]
+          assert len(packages) == 1, 'Tested program artifact missing or ambiguous'
+          print('PASS: successful native Windows build, exact source SHA, program artifact and empty test draft')
+      - name: Download the tested Windows ZIP without rebuilding
+        run: gh run download "$BUILD_RUN_ID" --repo "$GITHUB_REPOSITORY" --name Vocaltest-Preview-Windows-x64 --dir release-staging
+      - name: Verify exact ZIP, executable, resources and corresponding source
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, sys, zipfile
+          sys.path.insert(0, 'scripts')
+          from preview_package import verify_preview
+          archive = pathlib.Path('release-staging/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip')
+          digest = hashlib.sha256(archive.read_bytes()).hexdigest()
+          assert digest == os.environ['EXPECTED_ZIP_SHA256'], 'ZIP differs from the reviewed Windows artifact'
+          verify_preview(archive)
+          with zipfile.ZipFile(archive) as z:
+              manifest = json.loads(z.read('PREVIEW.json'))
+          assert manifest['source']['FaseGrooveArranger']['commit'] == os.environ['EXPECTED_BUILD_SHA']
+          archive.with_name('SHA256SUMS.txt').write_text(digest + '  ' + archive.name + '\n')
+          print('PASS: exact reviewed PE x64 ZIP, resources, licences and complete app/JUCE sources')
+      - name: Upload only the verified ZIP and checksum to the draft
+        run: gh release upload "$PREVIEW_TAG" release-staging/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip release-staging/SHA256SUMS.txt --repo "$GITHUB_REPOSITORY"
+      - name: Download draft asset and verify uploaded bytes before publication
+        run: |
+          gh release download "$PREVIEW_TAG" --repo "$GITHUB_REPOSITORY" --pattern FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip --dir release-verify
+          cd release-verify
+          sha256sum --check ../release-staging/SHA256SUMS.txt
+      - name: Publish as prerelease without replacing Latest
+        run: gh release edit "$PREVIEW_TAG" --repo "$GITHUB_REPOSITORY" --target "$EXPECTED_BUILD_SHA" --draft=false --prerelease --latest=false
+      - name: Record published target and download link
+        shell: python
+        run: |
+          import json, os, subprocess
+          repo = os.environ['GITHUB_REPOSITORY']
+          tag = os.environ['PREVIEW_TAG']
+          release = json.loads(subprocess.check_output(['gh', 'api', 'repos/' + repo + '/releases/tags/' + tag]))
+          assert not release['draft'] and release['prerelease']
+          assert release['target_commitish'] == os.environ['EXPECTED_BUILD_SHA']
+          asset = next(a for a in release['assets'] if a['name'] == 'FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip')
+          assert asset['size'] == 42201127
+          if asset.get('digest'):
+              assert asset['digest'] == 'sha256:' + os.environ['EXPECTED_ZIP_SHA256']
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('Test prerelease: ' + release['html_url'] + '\n\nWindows ZIP: ' + asset['browser_download_url'] + '\n')
+          print('PASS published test prerelease, target and ZIP metadata')
 
   family:
     if: github.ref != 'refs/heads/Vocaltest'
