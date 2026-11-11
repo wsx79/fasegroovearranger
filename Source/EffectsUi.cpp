@@ -84,6 +84,24 @@ void MainComponent::resolveAutomationParameters(int track,int slot){auto* plugin
 }
 #if FGA_SELF_TESTS
 namespace fga {
+namespace {
+// Exercise the real popup callback, independently of cursor position or OS focus.
+bool chooseEffectMenuItem(const juce::String& title,const std::function<bool()>& ready){
+    std::function<bool(juce::Component&)> choose=[&](juce::Component& component){
+        if(auto* handler=component.getAccessibilityHandler())if(handler->getRole()==juce::AccessibilityRole::menuItem&&handler->getTitle()==title)return handler->getActions().invoke(juce::AccessibilityActionType::press);
+        for(auto* child:component.getChildren())if(choose(*child))return true;
+        return false;
+    };
+    const double deadline=juce::Time::getMillisecondCounterHiRes()+2000;
+    bool selected=false;
+    while(juce::Time::getMillisecondCounterHiRes()<deadline){
+        if(!selected)if(auto* menu=juce::Component::getCurrentlyModalComponent())selected=choose(*menu);
+        if(selected&&ready())return true;
+        juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    }
+    return false;
+}
+}
 bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::PluginDescription& description){
     if(isNativeCompressor(description)){
         folder.createDirectory();juce::String report;bool ok=true;
@@ -92,7 +110,13 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
         project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Native dynamics"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;
         for(auto& track:project.tracks){track.gain=0;track.volume.enabled=false;track.pan=0;track.engine.reverb=track.engine.chorus=0;for(auto& clip:track.clips)clip.notes.clear();}
         project.tracks[0].gain=1;project.tracks[0].clips[0].notes={{0,3,69,110,0}};audio.publish(project);select(0,0);changed(false);
-        addNativeCompressor(0);check(settle()&&audio.effectPlugin(0,1)&&project.tracks[0].effects.size()==1,"native compressor loads through the existing insert lifecycle");
+        showEffectChain(0);effectsWindow->chain().add.onClick();const bool choseNative=chooseEffectMenuItem("Native Compressor",[&]{return pluginsBusy()||audio.effectPlugin(0,1)!=nullptr;});
+        check(choseNative&&settle()&&audio.effectPlugin(0,1)&&project.tracks[0].effects.size()==1,"+ menu loads the native compressor through the existing insert lifecycle");
+        if(!audio.effectPlugin(0,1)){folder.getChildFile("native-compressor-ui.txt").replaceWithText(report);return false;}
+        effectsWindow->chain().add.onClick();const bool chosePlugin=chooseEffectMenuItem(tr("Plugin..."),[&]{return pluginBrowser.isVisible();});
+        check(chosePlugin&&pluginBrowser.isVisible()&&!effectsWindow->isVisible(),"+ Plugin menu hides the floating chain and opens its browser");
+        pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
+        check(effectsWindow->isVisible()&&effectsWindow->chain().currentTrack()==0,"cancelling the Plugin menu browser restores the original chain");effectsWindow->closeButtonPressed();
         auto* plugin=audio.effectPlugin(0,1);auto* editor=plugin?plugin->getActiveEditor():nullptr;juce::Slider* threshold=nullptr;int controls=0;
         if(editor)for(auto* child:editor->getChildren())if(auto* slider=dynamic_cast<juce::Slider*>(child)){++controls;if(slider->getComponentID()=="native-compressor-threshold")threshold=slider;}
         check(editor&&controls==6&&threshold,"native editor exposes all six compressor controls");
@@ -175,7 +199,7 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
     openHostedEditor(masterEffectTrack,1);closePluginEditor(masterEffectTrack,1);
     check(audio.effectPlugin(masterEffectTrack,1)->getActiveEditor()==nullptr,"closing a master insert editor destroys its window before the processor");closePluginEditor();
     showEffectChain(masterEffectTrack);check(effectsWindow->chain().getWidth()>=460&&effectsWindow->chain().getHeight()>=180,"floating master chain has room for longer effect names and controls");
-    auto openBrowser=[&]{effectsWindow->chain().add.onClick();check(pluginBrowser.isVisible()&&!effectsWindow->isVisible(),"+ hides the floating chain while selecting an effect");};
+    auto openBrowser=[&]{effectsWindow->chain().add.onClick();const bool chosen=chooseEffectMenuItem(tr("Plugin..."),[&]{return pluginBrowser.isVisible();});check(chosen&&pluginBrowser.isVisible()&&!effectsWindow->isVisible(),"+ Plugin menu hides the floating chain while selecting an effect");};
     openBrowser();pluginBrowser.keyPressed(juce::KeyPress(juce::KeyPress::escapeKey));juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
     check(effectsWindow->isVisible()&&effectsWindow->chain().currentTrack()==masterEffectTrack,"cancelling the browser restores its original master chain");
     std::function<void()> cancelFile;fileChoiceForTest=[&](const juce::File&,int,std::function<void(juce::File)>,std::function<void()> cancelled){cancelFile=std::move(cancelled);};
