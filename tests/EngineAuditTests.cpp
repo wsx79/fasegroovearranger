@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "../Source/AudioEngine.h"
 #include "../Source/RetiredJobs.h"
+#include "../Source/NativeReturnEffects.h"
 #include <thread>
 #include <stdexcept>
 namespace fga {
@@ -104,6 +105,29 @@ private:
 };
 }
 struct EngineAuditTests {
+    static void serialReturnTails(){
+        struct TailSource final : AuditPlugin{double getTailLengthSeconds()const override{return 5;}};
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.settings.freeTempo=true;project.settings.bpm=120;project.sections={{Section::main,1,"Serial return tails"}};project.normalise();project.enableReturnChains();
+        for(auto& track:project.tracks){track.gain=0;track.volume.enabled=false;track.sends={};for(auto& clip:track.clips)clip.notes.clear();}project.tracks[0].gain=1;project.tracks[0].sends[0]=.25;
+        auto& source=*engine.instruments[0];source.plugin=std::make_unique<TailSource>();source.mode=2;source.prepare(44100,512);auto& rack=*engine.instruments[(size_t)returnEffectTrack];rack.effects[0].plugin=createNativeReturn(nativeReturnDescription(false));rack.prepare(44100,512);
+        const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-serial-return-tail",".wav",false);struct Remove{juce::File file;~Remove(){file.deleteFile();}}remove{file};AudioExportOptions options;options.mode=AudioExportMode::transparent;
+        requireAudit(engine.exportAudio(project,file,-1,false,[]{return false;},[](double){},nullptr,options).wasOk(),"source and return tail export");juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));
+        requireAudit(reader&&reader->lengthInSamples==(juce::int64)std::ceil((project.length()*60/project.settings.bpm+5+10)*reader->sampleRate),"source and used return tails must be added in series");std::cout<<"Source 5 s + return 10 s declared serial tails PASS\n";
+    }
+    static void returnPdc(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.enableReturnChains();project.masterGain=1;
+        auto source=std::make_unique<AuditPlugin>();source->setLatencySamples(53);engine.instruments[0]->plugin=std::move(source);engine.instruments[0]->mode=2;
+        for(int b=0;b<2;++b){auto fx=std::make_unique<AuditPlugin>(true);fx->setLatencySamples(b==0?137:43);engine.instruments[(size_t)(returnEffectTrack+b)]->effects[0].plugin=std::move(fx);}
+        engine.publish(project);engine.prepareDelayLines();requireAudit(engine.latencySamples()==190,"return latency is serial to source PDC");requireAudit(engine.instruments[0]->delay==0&&engine.instruments[1]->delay==53&&engine.instruments[(size_t)returnEffectTrack]->delay==0&&engine.instruments[(size_t)(returnEffectTrack+1)]->delay==94,"source and return PDC use separate parallel maxima");
+        engine.busGraph.begin(512);for(int ch=0;ch<2;++ch)engine.busGraph.add(ch,0,1,-1,{{1,1}});
+        for(int b=0;b<2;++b){auto& wet=engine.busGraph.returnBuffer(b);wet.clear();for(int ch=0;ch<2;++ch)wet.setSample(ch,b==0?137:43,1);engine.instruments[(size_t)(returnEffectTrack+b)]->applyDelay(wet,512);}
+        juce::AudioBuffer<float> result(2,512);result.clear();engine.busGraph.finish(result.getArrayOfWritePointers(),2,512,nullptr);
+        for(int ch=0;ch<2;++ch)for(int n=0;n<512;++n)requireAudit(result.getSample(ch,n)==(n==137?3.f:0.f),"dry and both returns must align sample-exactly");
+        engine.play(true);engine.hardReset=false;for(int n=0;n<64;++n){engine.resetAt(1);for(int rack=masterEffectTrack;rack<engineTrackCount;++rack)requireAudit(engine.instruments[(size_t)rack]->midi.isEmpty(),"FX-only racks must not accumulate unconsumed MIDI across loop resets");}engine.stop();
+        std::cout<<"Return PDC metadata and dry/A/B impulse alignment PASS: source 53 + return 137 = 190 samples\n";
+    }
+    static void installEffect(AudioEngine& engine,int track,std::unique_ptr<juce::AudioPluginInstance> plugin,int slot,const juce::PluginDescription& description){engine.swapInstrument(track,std::move(plugin),slot,description);}
+
     static void deviceTransportMatrix(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);
         project.settings.bpm=120;project.settings.freeTempo=true;
@@ -454,3 +478,7 @@ void runEngineAuditTests(){
     fga::EngineAuditTests::run();}
 
 void runDeepAuditEngineTests(){fga::EngineAuditTests::handoffLifetime();fga::EngineAuditTests::liveMidiRecovery();fga::EngineAuditTests::recordedMidiEffects();fga::EngineAuditTests::stoppedStateCapture();std::cout<<"Deep audit handoff and hosted MIDI regressions passed\n";}
+
+void installEffectForReturnTests(fga::AudioEngine& engine,int track,std::unique_ptr<juce::AudioPluginInstance> plugin,int slot,const juce::PluginDescription& description){fga::EngineAuditTests::installEffect(engine,track,std::move(plugin),slot,description);}
+
+void runReturnPdcTests(){fga::EngineAuditTests::returnPdc();fga::EngineAuditTests::serialReturnTails();}

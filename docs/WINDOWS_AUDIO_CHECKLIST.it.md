@@ -8,6 +8,28 @@ con `PREVIEW.json`. Il precedente artifact `0649e93` precede le fasi 03–06 e
 non può validarle. Le prove sintetiche del runner non validano Windows 11,
 ASIO/dispositivi reali o i propri plugin e non sostituiscono l'ascolto.
 
+## Revisione locale dei ritorni A/B: collaudo aggiuntivo
+
+La revisione locale descritta in [BUS_SEND_REVIEW.it.md](BUS_SEND_REVIEW.it.md)
+non è contenuta nell'artifact storico linkato sopra. Prima di provarla occorre una
+nuova build verificata, con SHA corrispondente; nessun nuovo PASS Windows è implicito.
+
+- Creare un nuovo progetto: in **Bus e mandate → Ritorni A/B** verificare A con
+  riverbero, B con delay. Dosare le mandate della traccia selezionata e i ritorni.
+- Aggiungere un compressore dopo il riverbero in A, scegliere Kick come sorgente,
+  abbassare la soglia e controllare riduzione/ascolto. Provare anche un compressore
+  sugli insert del basso. Verificare mute/solo, source change, bypass e Undo/Redo.
+- Rimuovere riverbero/delay mantenendo gli altri effetti; provare catena vuota
+  (passaggio asciutto), riordino e salvataggio/riapertura. I nuovi dati usano formato 7:
+  conservare una copia apribile con la preview precedente.
+- Aprire un vecchio progetto e confrontare il suono prima di convertire i ritorni.
+  La conversione arresta la riproduzione e riparte dai default; provare Undo.
+- Fermare il trasporto, annotare i pan e premere A/B su più canali; ripetere in play
+  distinguendo pan base e automazione. Se cambiano, registrare traccia, valore prima/
+  dopo e stato dell'automazione. Ripetere con il mixer compatto e al DPI usato.
+- Con plugin che dichiarano latenza, verificare allineamento di dry/ritorni,
+  detector e transienti, export WAV, code, annullamento e sovrascrittura.
+
 Annotare: SHA della build, versione Windows 11, CPU/RAM, interfaccia e versione
 driver, frequenza/buffer, plugin e relative versioni, esito e passaggi per
 riprodurre problemi. Usare una copia di un progetto esistente. Vocal Studio e
@@ -26,16 +48,16 @@ Vocal Chops rimangono congelati e senza approvazione funzionale/qualitativa.
    controllare GR e bypass. Verificare Undo/Redo, automazione dei parametri sulla
    traccia, ordine insert e riapertura del progetto. L'automazione degli insert
    master resta una limitazione della UI preesistente.
-4. **Sidechain.** In Bus & Send mandare un suono sostenuto a GROUP A; scegliere
+4. **Sidechain.** In Bus & Send mandare un suono sostenuto a GRUPPO 1; scegliere
    Kick come sorgente, depth circa 0,5, attack 20 ms, release 180 ms, curve 1.
    In loop cambiare ripetutamente sorgente, attack 0/200 ms, release 10/2000 ms e
    curve 0,25/4, anche prima che finisca la transizione precedente. Ascoltare
    separatamente eventuali click al momento dell'edit e il pumping normale.
    L'attacco istantaneo storico sui colpi non è stato eliminato. Ripetere con
-   GROUP B, con compressori attivi e bypassati, poi Undo/Redo e save/reopen.
+   GRUPPO 2, con compressori attivi e bypassati, poi Undo/Redo e save/reopen.
 5. **Routing della sorgente.** Il mute/solo della traccia può escluderla dal
    detector. Il mute del suo gruppo avviene dopo il prelievo e **non** elimina
-   il trigger. Le sorgenti sono soltanto le 18 tracce generate con ID stabili.
+   il trigger. Per il ducking storico dei gruppi, le sorgenti sono le 18 tracce generate con ID stabili; il nuovo compressore può selezionare le tracce presenti fino ai 32 ID.
    Lo stem della sola traccia target non include una sorgente su un'altra traccia.
 6. **Export.** Selezionare Transparent e ceiling -1 o -3 dBTP; provare WAV
    16/24 bit a 44,1/48/96 kHz. Controllare durata, pause, code, canali e formato

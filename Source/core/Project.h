@@ -24,7 +24,8 @@ constexpr int maxTracks = 32;
 constexpr double maxClipBeats = 131072.;
 constexpr double maxAudioRegionSeconds = maxClipBeats*2.; // timeline extent at the minimum 30 BPM; source files remain sample-memory limited
 // Dedicated engine slot: never a MIDI track and never exported as a stem.
-constexpr int masterEffectTrack = maxTracks, engineTrackCount = maxTracks + 1;
+constexpr int masterEffectTrack = maxTracks, returnEffectTrack = maxTracks + 1, engineTrackCount = maxTracks + 3;
+inline bool isReturnTrack(int track){return track>=returnEffectTrack&&track<engineTrackCount;}
 inline bool isManualTrack(int track) { return track >= trackCount && track < maxTracks; }
 inline bool isDrumTrack(int track) { return track >= 4 && track < legacyTrackCount; }
 inline bool isHarmonicTrack(int track) { return track >= 0 && (track < 4 || track == leadTrack); }
@@ -168,6 +169,15 @@ struct Project {
     std::vector<Track> tracks;
     std::array<BusSettings,4> buses=defaultBuses();
     Track masterEffects;
+    void enableReturnChains(){
+        if(returnChains)return;
+        for(int b=0;b<2;++b){auto& rack=returnEffects[(size_t)b];rack.effects.clear();EffectSlot fx;fx.pluginName=b==0?"Reverb":"Tempo Delay";fx.pluginId=fx.path=b==0?"fga:native-reverb":"fga:native-delay";rack.effects.push_back(fx);}
+        returnChains=true;
+    }
+    bool returnChains=false; // absent in historic projects: preserve the fixed return DSP
+    std::array<Track,2> returnEffects;
+    Track& effectTarget(int track){return track==masterEffectTrack?masterEffects:isReturnTrack(track)?returnEffects.at((size_t)(track-returnEffectTrack)):tracks.at((size_t)track);}
+    const Track& effectTarget(int track)const{return track==masterEffectTrack?masterEffects:isReturnTrack(track)?returnEffects.at((size_t)(track-returnEffectTrack)):tracks.at((size_t)track);}
     double masterGain = .8;
     VolumeAutomation masterAutomation; // gain multiplier on the master, as a track's volume
     // Every automation envelope with its value ceiling (for edits that move or cut time).

@@ -173,6 +173,23 @@ static juce::Result readVocal(const juce::var& o,Clip& clip){
     }
     clip.vocal=std::move(v);return juce::Result::ok();
 }
+namespace {
+bool currentEffectHost(const Project& project){
+    auto needs=[](const Track& rack){for(const auto& fx:rack.effects){if(fx.path=="fga:native-reverb"||fx.path=="fga:native-delay")return true;if(fx.path=="fga:native-compressor")if(auto xml=juce::XmlDocument::parse(juce::String(fx.pluginId)))if(xml->getStringAttribute("version").getDoubleValue()>=2)return true;}return false;};
+    if(needs(project.masterEffects))return true;for(const auto& track:project.tracks)if(needs(track))return true;return false;
+}
+juce::var returnChainJson(const Track& rack){
+    juce::Array<juce::var> chain;
+    for(const auto& e:rack.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);chain.add(fx);}
+    return chain;
+}
+juce::Result readReturnChain(const juce::var& value,Track& rack){
+    auto* chain=value.getArray();if(!chain||chain->size()>maxTrackEffects)return juce::Result::fail("Invalid return effect chain.");
+    rack.effects.clear();
+    for(const auto& fx:*chain){const double slot=num(fx,"slot",0);if(!fx.isObject()||!std::isfinite(slot)||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||rack.effect((int)slot))return juce::Result::fail("Invalid return effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing return effect identifier.");rack.effects.push_back(std::move(e));}
+    return juce::Result::ok();
+}
+}
 juce::var projectJson(const Project& p){
     auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return !t.effects.empty()||t.instrumentState.rfind(hostedStatePrefix,0)==0||t.parameters.size()>8||std::any_of(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot<0;});})?4:extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);if(p.settings.grooveEnabled){auto g=object();juce::Array<juce::var> offsets,accents;for(int i=0;i<16;++i){offsets.add(p.settings.grooveOffsets[(size_t)i]);accents.add(p.settings.grooveAccents[(size_t)i]);}set(g,"offsets",offsets);set(g,"accents",accents);set(o,"groove",g);}
     auto s=object();const auto& c=p.settings;
@@ -220,10 +237,12 @@ juce::var projectJson(const Project& p){
     const bool takeMetadata=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.audioOffset>=0||c.loopPhase!=0||c.span>512||c.loopLength>512||std::any_of(c.feel.begin(),c.feel.end(),[](double f){return f>=0;});});});
     if(takeMetadata)set(o,"version",5);
     const bool extended=std::any_of(p.sections.begin(),p.sections.end(),[](const auto& s){return s.harmony.enabled||s.preDropSilence||s.snareRoll||s.reverseCrash;})||std::any_of(p.buses.begin(),p.buses.end(),[](const auto& b){return b.sidechainAmount>0;})||std::any_of(p.tracks.begin(),p.tracks.end(),[](const auto& t){return !(t.eq==EqSettings{})||std::any_of(t.clips.begin(),t.clips.end(),[](const auto& c){return std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.reverse;})||c.clipFadeIn>0||c.clipFadeOut>0||std::any_of(c.expression.begin(),c.expression.end(),[](const auto& l){return !l.isDefault();});});});if(extended||p.settings.grooveEnabled)set(o,"version",6);
+    if(p.returnChains){juce::Array<juce::var> chains;for(const auto& rack:p.returnEffects)chains.add(returnChainJson(rack));set(o,"returnChains",chains);set(o,"version",7);}
+    if(currentEffectHost(p)){set(o,"effectRouting",true);set(o,"version",7);}
     return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
-    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||(boundedInteger(o["version"])!=1&&boundedInteger(o["version"])!=2&&boundedInteger(o["version"])!=3&&boundedInteger(o["version"])!=4&&boundedInteger(o["version"])!=5&&boundedInteger(o["version"])!=6))return juce::Result::fail("Formato progetto non supportato.");
+    if(!o.isObject()||o["format"].toString()!="fase-groove-arranger"||(boundedInteger(o["version"])!=1&&boundedInteger(o["version"])!=2&&boundedInteger(o["version"])!=3&&boundedInteger(o["version"])!=4&&boundedInteger(o["version"])!=5&&boundedInteger(o["version"])!=6&&boundedInteger(o["version"])!=7))return juce::Result::fail("Formato progetto non supportato.");
     auto* sections=o["sections"].getArray();auto* tracks=o["tracks"].getArray();
     if(!sections||sections->isEmpty()||sections->size()>64||!tracks||(tracks->size()<1||tracks->size()>maxTracks))return juce::Result::fail(juce::String::fromUTF8("Struttura del progetto non valida (1–32 tracce, 1–64 sezioni)."));
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
@@ -240,6 +259,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     }else for(size_t i=0;i<s.manualChords.size();++i)s.manualChords[i]=s.freeChords[i]>=0; // unknown legacy provenance: retain user overrides
     if(o.hasProperty("groove")){const auto g=o["groove"];if(!g["offsets"].isArray()||g["offsets"].size()!=16||!g["accents"].isArray()||g["accents"].size()!=16)return juce::Result::fail("Invalid groove template");s.grooveEnabled=true;for(int i=0;i<16;++i){const double a=(double)g["offsets"][i],b=(double)g["accents"][i];if(!std::isfinite(a)||!std::isfinite(b)||std::abs(a)>.125||b<.1||b>1.5)return juce::Result::fail("Invalid groove timing/accent");s.grooveOffsets[(size_t)i]=a;s.grooveAccents[(size_t)i]=b;}}
     if(auto r=readBuses(o["buses"],p.buses);r.failed())return r;
+    p.returnChains=o.hasProperty("returnChains");
+    if(p.returnChains){auto* chains=o["returnChains"].getArray();if(boundedInteger(o["version"])!=7||!chains||chains->size()!=2)return juce::Result::fail("Invalid return chains.");for(int b=0;b<2;++b)if(auto r=readReturnChain((*chains)[b],p.returnEffects[(size_t)b]);r.failed())return r;}
+    else if(boundedInteger(o["version"])==7&&(!o["effectRouting"].isBool()||!(bool)o["effectRouting"]))return juce::Result::fail("Missing effect routing feature marker.");
     p.masterEffects.effects.clear();
     if(o.hasProperty("masterEffects")){auto* effects=o["masterEffects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid master effect chain.");
         for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||p.masterEffects.effect((int)slot))return juce::Result::fail("Invalid master effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing master effect identifier.");p.masterEffects.effects.push_back(std::move(e));}}

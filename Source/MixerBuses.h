@@ -9,8 +9,13 @@ class MixerBuses {
 public:
     void prepare(double rate,int block);
     void reset();
-    void configure(const std::array<BusSettings,4>&,double bpm,double master,bool snap);
+    void configure(const std::array<BusSettings,4>&,double bpm,double master,bool snap,bool editableReturns=false);
     void begin(int count,bool stem=false);
+    juce::AudioBuffer<float>& returnBuffer(int bus){return returns[(size_t)bus];}
+    bool needsReturnDelay(int samples)const{return samples>0&&returnDelay.getNumSamples()<=samples;}
+    void prepareReturnDelay(int samples){if(needsReturnDelay(samples)){int size=2;while(size<=samples)size*=2;returnDelay.setSize(2,size);returnDelay.clear();returnWrite=0;returnValid=0;}}
+    void setReturnLatency(int samples){const int next=needsReturnDelay(samples)?0:samples;if(next!=returnLatency){returnWrite=0;returnValid=0;returnLatency=next;}}
+
     void add(int channel,int sample,float value,int group,const std::array<double,2>& sends);
     bool detects(int track)const{return track==(*settings)[0].sidechainSource||track==(*settings)[1].sidechainSource;}
     void source(int track,int sample,float value){
@@ -25,7 +30,8 @@ private:
     const std::array<BusSettings,4>* settings=nullptr;
     std::array<BusSettings,4> fallback=defaultBuses();
     std::array<juce::AudioBuffer<float>,2> groups,returns;
-    juce::AudioBuffer<float> dry,delay;
+    juce::AudioBuffer<float> dry,delay,returnDelay;
+    int returnLatency=0,returnWrite=0,returnValid=0;bool editableReturns=false;
     std::array<std::vector<float>,4> groupGain;
     std::array<std::array<juce::SmoothedValue<float>,2>,4> gains;
     juce::SmoothedValue<float> masterGain,delaySamples;

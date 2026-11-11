@@ -4,9 +4,12 @@
 #include "../Source/StudioIO.h"
 #include "../Source/ProjectIO.h"
 #include "../Source/NativeCompressor.h"
+#include "../Source/NativeReturnEffects.h"
 #include "../Source/CompressorDSP.h"
 #include <iostream>
 #include <stdexcept>
+void runReturnPdcTests();
+void installEffectForReturnTests(fga::AudioEngine&,int,std::unique_ptr<juce::AudioPluginInstance>,int,const juce::PluginDescription&);
 size_t countRealtimeCppAllocations(const std::function<void()>&);
 namespace {
 using namespace fga;
@@ -168,5 +171,86 @@ void exportAndTrackGating(){
     integratedInserts(engine,project,folder);
     std::cout<<"WAV/live agreement (including pan-automated source), internal source routing, group mute pre-tap, track mute/solo and absent source in stem PASS; ducked/dry="<<ducked/stem<<"\n";
 }
+void detectorAlignment(){
+    double maximum=0;size_t allocations=0;
+    for(double rate:{44100.,48000.,96000.})for(auto delays:{std::pair<int,int>{0,137},{137,0},{53,137},{137,137}}){
+        const int target=delays.first,source=delays.second,aligned=std::max(target,source);auto processor=createNativeCompressor();auto values=CompressorDSP::Values{-24,3,0,.1f,150,0};
+        for(int i=0;i<6;++i)processor->getParameters()[i]->setValue((values[(size_t)i]-CompressorDSP::minimum[(size_t)i])/(CompressorDSP::maximum[(size_t)i]-CompressorDSP::minimum[(size_t)i]));
+        processor->getParameters()[6]->setValue(2.f/maxTracks);require(!processor->getParameters()[6]->isAutomatable(),"source routing remains a control-thread edit");processor->setRateAndBufferSizeDetails(rate,512);processor->prepareToPlay(rate,512);prepareNativeCompressorRouting(processor.get(),target,source);
+        require(processor->getLatencySamples()==std::max(0,source-target)&&nativeCompressorDetectorSource(processor.get())==1,"detector routing reports actual added input delay");
+        CompressorDSP reference;reference.prepare(rate,values);reference.setBypassed(false);juce::AudioBuffer<float> block(2,512),expected(2,512);std::array<float,512> detector{},alignedDetector{};juce::MidiBuffer midi;
+        for(int n=0;n<12;++n){if(n==4){processor->getParameters()[6]->setValue(3.f/maxTracks);prepareNativeCompressorRouting(processor.get(),target,source);require(nativeCompressorDetectorSource(processor.get())==2,"control routing adopts the new source identity");}if(n==6){setNativeCompressorBypass(processor.get(),true);reference.setBypassed(true);}for(int j=0;j<512;++j){const int time=n*512+j;
+            auto signal=[&](int delay){const int at=time-delay;return at>=400?(float)(.25*std::sin(juce::MathConstants<double>::twoPi*997*at/rate)):0.f;};
+            for(int c=0;c<2;++c){block.setSample(c,j,signal(target)*(c==0?1.f:.37f));expected.setSample(c,j,signal(aligned)*(c==0?1.f:.37f));}
+            detector[(size_t)j]=time-source>=400?.7f:0;alignedDetector[(size_t)j]=time-aligned>=400?.7f:0;}
+            setNativeCompressorDetector(processor.get(),detector.data());allocations+=countRealtimeCppAllocations([&]{processor->processBlock(block,midi);});reference.process(expected.getWritePointer(0),expected.getWritePointer(1),512,alignedDetector.data());
+            for(int c=0;c<2;++c)for(int j=0;j<512;++j)maximum=std::max(maximum,std::abs((double)block.getSample(c,j)-expected.getSample(c,j)));
+        }
+    }
+    require(maximum<1e-6&&allocations==0,"detector/input delay compensation must match aligned reference without callback allocation, including bypass");
+    std::cout<<"External detector alignment 12 rate/latency cases + same-latency source switch + bypass PASS; maximum residual="<<maximum<<"; C++ allocations="<<allocations<<"\n";
 }
-void runSidechainTests(){legacy();liveEdits();controls();routing();persistence();realtime();exportAndTrackGating();}
+void returnModeReset(){
+    Fixture f(44100,512);f.settings[3].division=.125;f.settings[3].feedback=0;f.configure();f.begin(512);for(int c=0;c<2;++c)f.bus.add(c,0,.25f,-1,{{0,1}});f.finish(512);
+    const auto allocations=countRealtimeCppAllocations([&]{f.bus.configure(f.settings,120,1,true,true);f.bus.configure(f.settings,120,1,true,false);});
+    for(int n=0;n<8;++n){f.begin(512);f.finish(512);require(f.output.getMagnitude(0,512)==0,"return mode changes must not replay stale fixed-delay audio");}
+    require(allocations==0,"return mode reset allocates on callback");std::cout<<"Legacy/editable return mode reset: no stale delayed audio, C++ allocations=0 PASS\n";
+}
+void tempoReturns(){
+    struct Head final : juce::AudioPlayHead{double bpm=120;juce::Optional<PositionInfo> getPosition()const override{PositionInfo p;p.setBpm(bpm);return p;}};
+    int cases=0;size_t allocations=0;
+    for(double rate:{44100.,48000.,96000.})for(double bpm:{90.,120.,150.,300.})for(double division:{.125,.25,.5,1.,2.,4.}){
+        Head head;head.bpm=bpm;auto effect=createNativeReturn(nativeReturnDescription(true));effect->setPlayHead(&head);effect->getParameters()[1]->setValue(0);effect->getParameters()[0]->setValue(effect->getParameters()[0]->getValueForText(juce::String(division,3)));effect->setRateAndBufferSizeDetails(rate,512);effect->prepareToPlay(rate,512);
+        const float delay=(float)(rate*60/bpm*division),fraction=delay-std::floor(delay);const int expected=(int)std::floor(delay);require(std::abs(effect->getTailLengthSeconds()-division*60/bpm)<1e-7,"delay tail reads project tempo before first processing");
+        juce::AudioBuffer<float> block(2,512);juce::MidiBuffer midi;int first=-1;
+        for(int base=0;base<expected+1024;base+=512){block.clear();if(base==0){block.setSample(0,0,.25f);block.setSample(1,0,.125f);}allocations+=countRealtimeCppAllocations([&]{effect->processBlock(block,midi);});for(int n=0;n<512;++n)if(std::abs(block.getSample(0,n))>1e-7f&&first<0){first=base+n;require(std::abs(block.getSample(0,n)-.25f*(1-fraction))<1e-7f&&std::abs(block.getSample(1,n)-.125f*(1-fraction))<1e-7f,"delay preserves fractional impulse interpolation and stereo ratio");}}
+        require(first==expected,"return delay must land on the correct project sample, including short startup divisions");++cases;
+    }
+    require(allocations==0,"tempo return processing allocates");std::cout<<"Tempo delay 72 rate/BPM/division cases PASS; exact first echo, fractional interpolation and tempo-aware tails; C++ allocations="<<allocations<<"\n";
+}
+void editableReturns(){
+    auto project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Editable returns"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;
+    for(auto& track:project.tracks){track.gain=0;track.pan=0;track.panAutomation.enabled=false;track.volume.enabled=false;track.sends={};track.engine.reverb=track.engine.chorus=0;for(auto& clip:track.clips)clip.notes.clear();}
+    require(!project.returnChains,"historic core fixture remains in the fixed return path");
+    project.enableReturnChains();project.normalise();Project reopened;
+    require((int)projectJson(project)["version"]==7&&projectFromJson(projectJson(project),reopened).wasOk()&&reopened.returnChains&&reopened.returnEffects[0].effects.size()==1&&reopened.returnEffects[1].effects.size()==1,"editable return defaults persist without migrating historic projects");
+    auto invalid=projectJson(project);invalid.getDynamicObject()->setProperty("returnChains",juce::Array<juce::var>{});require(projectFromJson(invalid,reopened).failed(),"malformed return chains rejected");
+    auto legacy=project;legacy.returnChains=false;for(auto& rack:legacy.returnEffects)rack.effects.clear();require(projectFromJson(projectJson(legacy),reopened).wasOk()&&!reopened.returnChains,"historic projects retain fixed returns");
+    auto oldCompressor=nativeCompressorDescription();oldCompressor.version="1";EffectSlot legacyEffect;legacyEffect.path=oldCompressor.fileOrIdentifier.toStdString();legacyEffect.pluginId=oldCompressor.createXml()->toString().toStdString();legacy.tracks[0].effects={legacyEffect};
+    require((int)projectJson(legacy)["version"]<7,"unmodified historic compressor metadata retains historic format");legacy.tracks[0].effects[0].pluginId=nativeCompressorDescription().createXml()->toString().toStdString();const auto modern=projectJson(legacy);
+    require((int)modern["version"]==7&&(bool)modern["effectRouting"]&&projectFromJson(modern,reopened).wasOk()&&!reopened.returnChains,"current compressor format gate does not convert historic return DSP");
+    const auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-editable-returns","",false);require(folder.createDirectory().wasOk(),"return fixture folder");struct Cleanup{juce::File file;~Cleanup(){file.deleteRecursively();}}cleanup{folder};
+    AudioEngine engine(AudioEngine::Offline{});juce::WavAudioFormat wav;
+    for(int t=0;t<2;++t){const auto file=folder.getChildFile("source"+juce::String(t)+".wav");{std::unique_ptr<juce::AudioFormatWriter> writer(wav.createWriterFor(file.createOutputStream().release(),44100,2,24,{},0));juce::AudioBuffer<float> dc(2,88200);for(int ch=0;ch<2;++ch)juce::FloatVectorOperations::fill(dc.getWritePointer(ch),t==0?.1f:.5f,88200);require(writer&&writer->writeFromAudioSampleBuffer(dc,0,88200),"write detector fixture");}
+        auto& track=project.tracks[(size_t)t];track.gain=1;track.instrument="sample";track.instrumentPath=file.getFullPathName().toStdString();track.sampleRoot=60;track.sampler.mode=1;track.sampler.attack=track.sampler.decay=0;track.sampler.sustain=1;track.sampler.velocity=0;track.clips[0].notes={{0,4,60,127,0}};require(engine.loadSample(t,file,60,track.sampler).wasOk(),"load return fixture");}
+    project.tracks[1].group=1;project.buses[1].mute=true;
+    auto install=[&](int track,const juce::PluginDescription& description,int slot){installEffectForReturnTests(engine,track,isNativeCompressor(description)?createNativeCompressor():createNativeReturn(description),slot,description);require(engine.effectPlugin(track,slot)!=nullptr,"install native return chain effect");auto& rack=project.effectTarget(track);if(!rack.effect(slot)){EffectSlot added;added.slot=slot;rack.effects.push_back(added);}auto& fx=*rack.effect(slot);fx.pluginName=description.name.toStdString();fx.path=description.fileOrIdentifier.toStdString();fx.pluginId=description.createXml()->toString().toStdString();};
+    install(returnEffectTrack,nativeReturnDescription(false),1);install(returnEffectTrack+1,nativeReturnDescription(true),1);install(0,nativeCompressorDescription(),1);
+    auto* compressor=engine.effectPlugin(0,1);require(compressor&&compressor->getParameters().size()==7,"compressor keeps six historic controls and adds source");
+    compressor->getParameters()[0]->setValueNotifyingHost(.5f); // -30 dB
+    compressor->getParameters()[6]->setValueNotifyingHost(2.f/maxTracks); // source track 1, rendered after target 0
+    project.tracks[0].sends={.5,.5};engine.publish(project);engine.play(true);
+    juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;auto callback=[&]{block.clear();engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);};
+    for(int n=0;n<100;++n)callback();
+    const float reduction=nativeCompressorReduction(compressor);const double expected=CompressorDSP::reduction(20*std::log10(.5),-30,3,6);
+    require(std::abs(reduction-expected)<.03,"selected later track drives compressor without track-order dependence");
+    require(engine.busLevel(2)>.0001f&&engine.busLevel(3)>.0001f,"both native return chains produce wet audio");
+    size_t allocations=0;const double start=juce::Time::getMillisecondCounterHiRes();for(int n=0;n<100;++n)allocations+=countRealtimeCppAllocations(callback);const double elapsed=juce::Time::getMillisecondCounterHiRes()-start;
+    require(allocations==0&&engine.latencySamples()==0,"native return chains and detector introduce no callback allocations or latency");
+    engine.stop();engine.capturePluginStates(project);require(!project.returnEffects[0].effects[0].state.empty()&&!project.returnEffects[1].effects[0].state.empty(),"return states captured");
+    require(projectFromJson(projectJson(project),reopened).wasOk()&&reopened.returnEffects[0].effects[0].state==project.returnEffects[0].effects[0].state,"return states round trip");
+    auto copy=engine.offlineCopy();require(copy&&copy->effectPlugin(returnEffectTrack,1)&&copy->effectPlugin(returnEffectTrack+1,1)&&nativeCompressorSource(copy->effectPlugin(0,1))==1,"private export clones return chains and source");
+    AudioExportOptions options;options.mode=AudioExportMode::transparent;const auto output=folder.getChildFile("returns.wav");require(copy->exportAudio(reopened,output,-1,false,[]{return false;},[](double){},nullptr,options).wasOk()&&output.getSize()>1000,"editable returns export actual WAV");
+    juce::MemoryBlock preserved;require(output.loadFileAsData(preserved),"capture existing return WAV");bool lateCancel=false;require(copy->exportAudio(reopened,output,-1,false,[&]{return lateCancel;},[&](double progress){if(progress>.99)lateCancel=true;},nullptr,options).failed(),"late cancellation applies to return render");require(lateCancel,"return cancellation actually reaches the late progress gate");juce::MemoryBlock afterCancel;require(output.loadFileAsData(afterCancel)&&afterCancel==preserved&&!copy->isExporting(),"cancelled return render preserves previous WAV and restores state");
+    options.sampleRate=48000;options.bitDepth=24;require(copy->exportAudio(reopened,output,-1,false,[]{return false;},[](double){},nullptr,options).wasOk(),"return WAV can be overwritten after cancellation");{std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(output.createInputStream().release(),true));require(reader&&reader->sampleRate==48000&&reader->bitsPerSample==24,"return overwrite respects sample rate and bit depth");}
+    engine.clearEffect(returnEffectTrack,1);project.returnEffects[0].removeEffect(1);engine.publish(project);engine.play(true);for(int n=0;n<100;++n)callback();
+    require(std::abs(engine.busLevel(2)-.05f*(float)std::pow(10.,-expected/20))<.0001f,"removed reverb leaves an exact dry parallel return");
+    engine.stop();require(project.returnEffects[0].effects.empty()&&engine.effectPlugin(returnEffectTrack,1)==nullptr,"removing reverb really removes its processor");
+    project.tracks[1].mute=true;engine.publish(project);engine.play(true);for(int n=0;n<100;++n)callback();require(nativeCompressorReduction(compressor)<.03,"muted selected source does not trigger compressor");engine.stop();
+    engine.clearEffect(returnEffectTrack+1,1);project.returnEffects[1].effects.clear();project.buses[2].amount=1;project.buses[3].feedback=.9;const auto empty=folder.getChildFile("empty-returns.wav");AudioExportOptions emptyOptions;emptyOptions.mode=AudioExportMode::transparent;
+    require(engine.exportAudio(project,empty,-1,false,[]{return false;},[](double){},nullptr,emptyOptions).wasOk(),"empty editable returns export");{std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(empty.createInputStream().release(),true));require(reader&&reader->lengthInSamples==(juce::int64)std::ceil((project.length()*60/project.settings.bpm+3)*reader->sampleRate),"removed devices must not leave legacy reverb/delay tail estimates");}
+    std::cout<<"Editable A/B returns, version-7 state/legacy separation, native wet audio/removal, independent source order/mute, private Transparent WAV PASS; external_GR="<<reduction<<" dB expected="<<expected<<"; 51200 stereo frames="<<elapsed<<" ms; C++ allocations="<<allocations<<"; native latency=0\n";
+}
+
+}
+void runSidechainTests(){legacy();liveEdits();controls();routing();persistence();realtime();exportAndTrackGating();runReturnPdcTests();detectorAlignment();returnModeReset();tempoReturns();editableReturns();}

@@ -33,13 +33,14 @@ public:
     }
     void setBypassed(bool bypassed){wet.setTargetValue(bypassed?0.:1.);}
     double reductionDb()const{return gainReduction*wet.getCurrentValue();}
-    void process(float* left,float* right,int count){
+    void process(float* left,float* right,int count,const float* detector=nullptr){
         constexpr double limit=std::numeric_limits<float>::max();
         for(int s=0;s<count;++s){
             const double l=std::isfinite(left[s])?left[s]:0,r=right&&std::isfinite(right[s])?right[s]:0;
             const double threshold=smoothed[0].getNextValue(),ratio=smoothed[1].getNextValue(),knee=smoothed[2].getNextValue();
             const double attack=smoothed[3].getNextValue(),release=smoothed[4].getNextValue(),makeup=smoothed[5].getNextValue();
-            const double level=20*std::log10(std::max(1e-12,std::max(std::abs(l),std::abs(r))));
+            const double detection=detector?(std::isfinite(detector[s])?std::abs((double)detector[s]):0.):std::max(std::abs(l),std::abs(r));
+            const double level=20*std::log10(std::max(1e-12,detection));
             const double target=reduction(level,threshold,ratio,knee);
             gainReduction=target+(target>gainReduction?attack:release)*(gainReduction-target);
             if(gainReduction<1e-12)gainReduction=0;

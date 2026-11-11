@@ -376,6 +376,7 @@ bool Project::resizeSectionLoop(int index,int bars){
     resizeSection(index,bars);for(size_t ti=0;ti<tracks.size();++ti)tracks[ti].clips[(size_t)index]=std::move(clips[ti]);normalise();return true;
 }
 void Project::normalise() {
+    for(int b=0;b<2;++b){auto& rack=returnEffects[(size_t)b];rack.name=b==0?"Return A":"Return B";if(rack.effects.size()>maxTrackEffects)rack.effects.resize(maxTrackEffects);}
     masterEffects.name="Master";if(masterEffects.effects.size()>maxTrackEffects)masterEffects.effects.resize(maxTrackEffects);
     auto& s=settings;
     s.genre=normaliseGenre(s.genre); s.key=std::clamp(s.key,0,11); s.scale=std::clamp(s.scale,0,12);

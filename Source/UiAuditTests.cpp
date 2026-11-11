@@ -466,6 +466,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);acceptTargetEdit=true;message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));
     if(!juce::JUCEApplication::getCommandLineParameters().contains("test")){recoveryArmed=true;juce::Component::SafePointer<MainComponent> safe(this);juce::MessageManager::callAsync([safe]{if(safe)safe->offerRecovery();});}
+    if(!juce::JUCEApplication::getCommandLineParameters().contains("test")){project.enableReturnChains();restoreInstruments();}
     startTimerHz(20);
 }
 MainComponent::~MainComponent(){

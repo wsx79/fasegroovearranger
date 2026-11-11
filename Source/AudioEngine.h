@@ -38,7 +38,7 @@ struct TrackMix {
     std::array<bool,fgg::numLanes> laneMute{};
 };
 struct FrozenAudio {juce::AudioBuffer<float> audio;double rate=44100,bpm=120;std::uint64_t session=0;};
-struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; };
+struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; bool returnChains=false; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
 inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):(track<2||isManualTrack(track))?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
@@ -385,6 +385,7 @@ private:
     std::atomic<bool> looping{false},loopBypassed{false},needsReset{true},needsChase{false},needsResync{false},hardReset{true};
     std::array<std::array<std::uint64_t,maxTrackEffects+1>,engineTrackCount> loadRevision{};
     std::shared_ptr<int> lifetime=std::make_shared<int>(0);
+    std::array<std::vector<float>,maxTracks> detectorSignals;
     void prepareBuses(double rate,int block);
     void detachSource(int track,int mode,std::unique_ptr<juce::Synthesiser> sampler,std::unique_ptr<juce::AudioPluginInstance>& oldPlugin,std::unique_ptr<juce::Synthesiser>& oldSampler);
     void loadHosted(int track,juce::PluginDescription,int effectSlot,std::function<void(juce::Result)>);

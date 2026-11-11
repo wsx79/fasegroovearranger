@@ -327,15 +327,16 @@ public:
     void showAiComposer();
     bool pluginsBusy()const{return loadingPlugin>0;}
     int trackForSession(std::uint64_t id)const;
-    bool validEffectTrack(int track)const{return track==masterEffectTrack||juce::isPositiveAndBelow(track,(int)project.tracks.size());}
-    Track& effectTrack(int track){return track==masterEffectTrack?project.masterEffects:project.tracks.at((size_t)track);}
-    const Track& effectTrack(int track)const{return track==masterEffectTrack?project.masterEffects:project.tracks.at((size_t)track);}
+    bool validEffectTrack(int track)const{return track==masterEffectTrack||isReturnTrack(track)||juce::isPositiveAndBelow(track,(int)project.tracks.size());}
+    Track& effectTrack(int track){return project.effectTarget(track);}
+    const Track& effectTrack(int track)const{return project.effectTarget(track);}
     void openCredits(){showAbout();}
     void restoreInterfaceFullScreen(){applyFullScreen(true);}
     bool interfaceFullScreen()const{return appFullScreen;}
     void showEffects(int track,int replaceSlot=0);
     void showEffectChain(int track);
     void addNativeCompressor(int track);
+    void addNativeReturn(int track,bool delay);
     void resumeEffectChain();
     void removeEffect(int track,int slot);
     void showEffectMenu(int track,int slot,juce::Component*);

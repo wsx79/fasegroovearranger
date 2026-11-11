@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "NativeCompressor.h"
 #include "CompressorDSP.h"
+#include "core/Project.h"
 #include "DawTheme.h"
 #include "FamilyControls.h"
 #include "Localisation.h"
@@ -28,32 +29,70 @@ public:
     juce::NormalisableRange<float> range;
 private:int index;std::atomic<float> value{0};
 };
+class SourceParameter final : public juce::HostedAudioProcessorParameter {
+public:
+    int source()const{return (int)std::round(value.load(std::memory_order_relaxed)*maxTracks)-1;}
+    float getValue()const override{return value.load(std::memory_order_relaxed);}
+    void setValue(float v)override{value.store(std::isfinite(v)?std::round(std::clamp(v,0.f,1.f)*maxTracks)/maxTracks:0,std::memory_order_relaxed);}
+    float getDefaultValue()const override{return 0;}
+    juce::String getName(int)const override{return "Sidechain source";}
+    juce::String getLabel()const override{return {};}
+    juce::String getParameterID()const override{return "sidechainSource";}
+    bool isDiscrete()const override{return true;}
+    bool isAutomatable()const override{return false;}
+    int getNumSteps()const override{return maxTracks+1;}
+    juce::String getText(float v,int)const override{const int source=(int)std::round(v*maxTracks)-1;return source<0?"Self":"Track "+juce::String(source+1);}
+    float getValueForText(const juce::String& text)const override{return text.equalsIgnoreCase("Self")?0:std::clamp(text.getTrailingIntValue(),0,maxTracks)/(float)maxTracks;}
+private:std::atomic<float> value{0};
+};
 class Compressor final : public juce::AudioPluginInstance {
 public:
     Compressor():AudioPluginInstance(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true).withOutput("Output",juce::AudioChannelSet::stereo(),true)){
+        auto source=std::make_unique<SourceParameter>();sourceParameter=source.get();
         for(int i=0;i<6;++i){auto parameter=std::make_unique<CompressorParameter>(i);parameters[(size_t)i]=parameter.get();addHostedParameter(std::move(parameter));}
+        addHostedParameter(std::move(source));
     }
     CompressorDSP::Values values()const{CompressorDSP::Values values;for(int i=0;i<6;++i)values[(size_t)i]=parameters[(size_t)i]->plain();return values;}
     const juce::String getName()const override{return "Native Compressor";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description=nativeCompressorDescription();}
     bool isBusesLayoutSupported(const BusesLayout& layout)const override{return layout.getMainInputChannelSet()==layout.getMainOutputChannelSet()&&(layout.getMainOutputChannelSet()==juce::AudioChannelSet::stereo()||layout.getMainOutputChannelSet()==juce::AudioChannelSet::mono());}
-    void prepareToPlay(double rate,int)override{dsp.prepare(rate,values());reduction=0;}
+    void prepareToPlay(double rate,int)override{dsp.prepare(rate,values());inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
     void releaseResources()override{}
-    void reset()override{dsp.reset();reduction=0;}
+    void reset()override{dsp.reset();inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer&)override{
         if(block.getNumChannels()<1)return;
+        const int count=block.getNumSamples();
+        if(inputDelay>0)for(int n=0;n<count;++n){for(int c=0;c<std::min(2,block.getNumChannels());++c){inputLine.setSample(c,inputWrite,block.getSample(c,n));block.setSample(c,n,inputValid>=inputDelay?inputLine.getSample(c,(inputWrite-inputDelay+inputLine.getNumSamples())%inputLine.getNumSamples()):0);}inputWrite=(inputWrite+1)%inputLine.getNumSamples();inputValid=std::min(inputValid+1,inputLine.getNumSamples());}
         dsp.configure(values());dsp.setBypassed(bypassed);
-        dsp.process(block.getWritePointer(0),block.getNumChannels()>1?block.getWritePointer(1):nullptr,block.getNumSamples());
+        if(detector&&detectorDelay>0){for(int n=0;n<count;++n){detectorLine[(size_t)detectorWrite]=detector[n];const float delayed=detectorValid>=detectorDelay?detectorLine[(size_t)((detectorWrite-detectorDelay+(int)detectorLine.size())%(int)detectorLine.size())]:0;detectorWrite=(detectorWrite+1)%(int)detectorLine.size();detectorValid=std::min(detectorValid+1,(int)detectorLine.size());dsp.process(block.getWritePointer(0)+n,block.getNumChannels()>1?block.getWritePointer(1)+n:nullptr,1,&delayed);}}
+        else dsp.process(block.getWritePointer(0),block.getNumChannels()>1?block.getWritePointer(1):nullptr,count,detector);
         reduction.store((float)dsp.reductionDb(),std::memory_order_relaxed);
     }
     bool acceptsMidi()const override{return false;}bool producesMidi()const override{return false;}bool isMidiEffect()const override{return false;}
     double getTailLengthSeconds()const override{return 0;}
     int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Default";}void changeProgramName(int,const juce::String&)override{}
-    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());copyXmlToBinary(state,data);}
-    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));}
+    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());state.setAttribute("sidechainSource",sourceParameter->source());copyXmlToBinary(state,data);}
+    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));sourceParameter->setValue((std::clamp(state->getIntAttribute("sidechainSource",-1),-1,maxTracks-1)+1)/(float)maxTracks);}
     bool hasEditor()const override{return true;}juce::AudioProcessorEditor* createEditor()override;
-    bool bypassed=false;std::atomic<float> reduction{0};
+    const float* detector=nullptr; // audio-side borrowed buffer, reset by host before each process call
+    SourceParameter* sourceParameter=nullptr;
+    int routedSource=-1,inputDelay=0,detectorDelay=0,inputWrite=0,detectorWrite=0,inputValid=0,detectorValid=0;
+    juce::AudioBuffer<float> inputLine;std::vector<float> detectorLine;
+    static int boundedDelay(int value){return std::clamp(value,0,3*(1<<18));}
+    bool routingChanged(int target,int source)const{return routedSource!=sourceParameter->source()||inputDelay!=(sourceParameter->source()<0?0:boundedDelay(source-target))||detectorDelay!=(sourceParameter->source()<0?0:boundedDelay(target-source));}
+    void prepareRouting(int target,int source){
+        if(!routingChanged(target,source))return;routedSource=sourceParameter->source();
+        const int input=routedSource<0?0:boundedDelay(source-target),detection=routedSource<0?0:boundedDelay(target-source);
+        // Keep the audio/detector history when only the source identity changes.
+        // The new source enters the existing aligned timeline without a silence gap.
+        if(input!=inputDelay){inputDelay=input;inputLine.setSize(input>0?2:0,input>0?input+1:0);inputWrite=inputValid=0;}
+        if(detection!=detectorDelay){detectorDelay=detection;detectorLine.resize(detection>0?(size_t)detection+1:0);detectorWrite=detectorValid=0;}
+        setLatencySamples(inputDelay);
+    }
+
+    juce::StringArray sourceNames;std::function<void()> beforeSourceEdit; // editor/message thread only
+    std::atomic<bool> bypassed{false};std::atomic<float> reduction{0};
     std::array<CompressorParameter*,6> parameters{};
 private:CompressorDSP dsp;
 };
@@ -139,7 +178,8 @@ public:
         g.drawText(name.toUpperCase(), title.toNearestInt(), juce::Justification::centred);
 
         area.removeFromBottom(32.0f);
-        const float diameter = std::max(30.0f, std::min(area.getWidth(), area.getHeight()) - 42.0f);
+        const float margin = area.getHeight() < 120.0f ? 18.0f : 42.0f;
+        const float diameter = std::max(30.0f, std::min(area.getWidth(), area.getHeight()) - margin);
         const auto centre = area.getCentre();
         const float radius = diameter * 0.5f;
         const float arcRadius = radius - 3.0f;
@@ -399,9 +439,9 @@ public:
             slider.setRange(parameter.range.start, parameter.range.end, 0.1);
             slider.setValue(parameter.plain(), juce::dontSendNotification);
             slider.setComponentID("native-compressor-" + juce::String(ids[i]));
-            slider.onDragStart = [&parameter] { parameter.beginChangeGesture(); };
-            slider.onDragEnd = [&parameter] { parameter.endChangeGesture(); };
-            slider.onValueChange = [&parameter, &slider] { parameter.setValueNotifyingHost(parameter.normalized((float)slider.getValue())); };
+            slider.onDragStart = [this,&parameter] { if(!resetting&&processor.beforeSourceEdit)processor.beforeSourceEdit();parameterGesture=true;parameter.beginChangeGesture(); };
+            slider.onDragEnd = [this,&parameter] { parameter.endChangeGesture();parameterGesture=false; };
+            slider.onValueChange = [this,&parameter, &slider] { if(!parameterGesture&&!resetting&&processor.beforeSourceEdit)processor.beforeSourceEdit();parameter.setValueNotifyingHost(parameter.normalized((float)slider.getValue())); };
         }
 
         formatters[0] = [](double v) { return ui::dbText(v); };
@@ -439,6 +479,8 @@ public:
         reset.setTooltip(ui::loc("Restore all compressor parameters to their default values.",
                                  "Ripristina tutti i parametri del compressore ai valori predefiniti."));
         reset.onClick = [this] {
+            if(processor.beforeSourceEdit)processor.beforeSourceEdit();
+            resetting=true;
             for (int i = 0; i < 6; ++i)
             {
                 auto& slider = sliders[(size_t)i];
@@ -446,12 +488,23 @@ public:
                 slider.setValue(CompressorDSP::defaults[(size_t)i], juce::sendNotificationSync);
                 if (slider.onDragEnd) slider.onDragEnd();
             }
+            processor.sourceParameter->beginChangeGesture();processor.sourceParameter->setValueNotifyingHost(0);processor.sourceParameter->endChangeGesture();resetting=false;
         };
 
+        addAndMakeVisible(source);addAndMakeVisible(sourceLabel);
+        sourceLabel.setText(ui::loc("SIDECHAIN SOURCE", "SORGENTE SIDECHAIN"),juce::dontSendNotification);
+        sourceLabel.setFont(Daw::caps(9.5f));
+        source.addItem(ui::loc("Self (internal)", "Segnale interno"),1);
+        for(int i=0;i<processor.sourceNames.size();++i)source.addItem(processor.sourceNames[i],i+2);
+        if(processor.sourceParameter->source()>=processor.sourceNames.size())source.addItem(ui::loc("Missing track", "Traccia assente"),processor.sourceParameter->source()+2);
+        source.setSelectedId(processor.sourceParameter->source()+2,juce::dontSendNotification);
+        source.setComponentID("native-compressor-source");source.setScrollWheelEnabled(false);
+        source.setTooltip(ui::loc("Source before track inserts and fader, with latency alignment. Track mute disables the detector; group mute does not.", "Sorgente prima degli effetti e del volume, allineata per latenza. Il mute della traccia disattiva il detector; quello del gruppo no."));
+        source.onChange=[this]{if(source.getSelectedId()<1)return;if(processor.beforeSourceEdit)processor.beforeSourceEdit();auto& p=*processor.sourceParameter;p.beginChangeGesture();p.setValueNotifyingHost((source.getSelectedId()-1)/(float)maxTracks);p.endChangeGesture();};
         lastValues = processor.values();
         lastBypassed = processor.bypassed;
         setResizable(true, true);
-        setResizeLimits(720, 480, 1600, 1000);
+        setResizeLimits(720, 600, 1600, 1000);
         setSize(1000, 600);
         startTimerHz(30);
     }
@@ -492,24 +545,26 @@ public:
         g.drawText(ui::loc("SIGNAL", "SEGNALE"), info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
         g.setFont(Daw::font(Daw::body));
         auto row = [&](const juce::String& text) {
+            const auto line = info.removeFromTop(22);
             g.setColour(ui::blue);
-            g.fillEllipse((float)info.getX(), (float)info.getCentreY() - 2.0f, 4.0f, 4.0f);
+            g.fillEllipse((float)line.getX(), (float)line.getCentreY() - 2.0f, 4.0f, 4.0f);
             g.setColour(Daw::textDim);
-            g.drawText(text, info.withTrimmedLeft(10), juce::Justification::centredLeft);
-            info.removeFromTop(22);
+            g.drawText(text, line.withTrimmedLeft(10), juce::Justification::centredLeft);
         };
         row(ui::loc("STEREO LINKED", "STEREO COLLEGATO"));
-        row(ui::loc("ZERO LATENCY", "ZERO LATENZA"));
+        row(processor.getLatencySamples()==0?ui::loc("ZERO LATENCY", "ZERO LATENZA"):ui::loc("ROUTING", "COMPENSAZIONE")+" "+juce::String(processor.getLatencySamples())+" smp");
         row(ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
         const double rate = processor.getSampleRate();
+        info.removeFromTop(12);
         g.setColour(Daw::textFaint);
-        g.drawText(rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--", info, juce::Justification::centredLeft);
+        g.drawText(ui::loc("Sample rate", "Frequenza") + ": " + (rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--"), info.removeFromTop(22), juce::Justification::centredLeft);
     }
 
     void resized() override
     {
         auto area = getLocalBounds().reduced(14);
         auto header = area.removeFromTop(46);
+        auto sourceRow=area.removeFromTop(30);sourceLabel.setBounds(sourceRow.removeFromLeft(175));source.setBounds(sourceRow.removeFromLeft(std::min(400,sourceRow.getWidth())));
         area.removeFromTop(8);
         reset.setBounds(header.removeFromRight(86).reduced(0, 8));
 
@@ -549,6 +604,8 @@ private:
             knob.refresh();
         }
 
+        if(processor.getLatencySamples()!=lastLatency){lastLatency=processor.getLatencySamples();repaint(infoPanel);}
+        if(!source.isPopupActive())source.setSelectedId(processor.sourceParameter->source()+2,juce::dontSendNotification);
         const auto values = processor.values();
         if (values != lastValues)
         {
@@ -568,6 +625,7 @@ private:
     }
 
     Compressor& processor;
+    int lastLatency=0;juce::ComboBox source;juce::Label sourceLabel;bool parameterGesture=false,resetting=false;
     std::array<juce::Slider, 6> sliders;
     std::array<std::unique_ptr<ui::Knob>, 6> knobs;
     std::array<std::function<juce::String(double)>, 6> formatters;
@@ -583,9 +641,15 @@ private:
 
 juce::AudioProcessorEditor* Compressor::createEditor(){return new Editor(*this);}
 }
-juce::PluginDescription nativeCompressorDescription(){juce::PluginDescription d;d.name=d.descriptiveName="Native Compressor";d.pluginFormatName="FGA Native";d.category="Dynamics";d.manufacturerName="FaseGroove";d.version="1";d.fileOrIdentifier="fga:native-compressor";d.uniqueId=0x46474331;d.numInputChannels=d.numOutputChannels=2;return d;}
+juce::PluginDescription nativeCompressorDescription(){juce::PluginDescription d;d.name=d.descriptiveName="Native Compressor";d.pluginFormatName="FGA Native";d.category="Dynamics";d.manufacturerName="FaseGroove";d.version="2";d.fileOrIdentifier="fga:native-compressor";d.uniqueId=0x46474331;d.numInputChannels=d.numOutputChannels=2;return d;}
 bool isNativeCompressor(const juce::PluginDescription& d){return d.pluginFormatName=="FGA Native"&&d.fileOrIdentifier=="fga:native-compressor"&&d.uniqueId==0x46474331&&!d.isInstrument;}
 std::unique_ptr<juce::AudioPluginInstance> createNativeCompressor(){return std::make_unique<Compressor>();}
 bool setNativeCompressorBypass(juce::AudioPluginInstance* plugin,bool bypassed)noexcept{if(auto* native=dynamic_cast<Compressor*>(plugin)){native->bypassed=bypassed;return true;}return false;}
+int nativeCompressorDetectorSource(const juce::AudioPluginInstance* plugin)noexcept{if(auto* p=dynamic_cast<const Compressor*>(plugin))return p->routedSource;return -1;}
+bool nativeCompressorRoutingChanged(const juce::AudioPluginInstance* plugin,int target,int source)noexcept{if(auto* p=dynamic_cast<const Compressor*>(plugin))return p->routingChanged(target,source);return false;}
+void prepareNativeCompressorRouting(juce::AudioPluginInstance* plugin,int target,int source){if(auto* p=dynamic_cast<Compressor*>(plugin))p->prepareRouting(target,source);}
+int nativeCompressorSource(const juce::AudioPluginInstance* plugin)noexcept{if(auto* p=dynamic_cast<const Compressor*>(plugin))return p->sourceParameter->source();return -1;}
+void setNativeCompressorDetector(juce::AudioPluginInstance* plugin,const float* signal)noexcept{if(auto* p=dynamic_cast<Compressor*>(plugin))p->detector=signal;}
+void configureNativeCompressorEditor(juce::AudioPluginInstance* plugin,const juce::StringArray& names,std::function<void()> beforeEdit){if(auto* p=dynamic_cast<Compressor*>(plugin)){p->sourceNames=names;p->beforeSourceEdit=std::move(beforeEdit);}}
 float nativeCompressorReduction(const juce::AudioPluginInstance* plugin)noexcept{if(auto* native=dynamic_cast<const Compressor*>(plugin))return native->reduction.load(std::memory_order_relaxed);return 0;}
 }
