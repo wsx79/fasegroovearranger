@@ -1,0 +1,66 @@
+{
+  "source_sha": "f98b7063c197dc432b969699240d6eda1c5584da",
+  "platform": "native Windows x64",
+  "fixtures": {
+    "native": {
+      "PASS": 44,
+      "FAIL": 0,
+      "details": "INFO cancel-to-worker-completion 39.33 ms (local UI probe, not a hardware latency claim)\nNOT RUN real VST3 cancellation in this invocation; run native host fixture separately\n"
+    },
+    "host": {
+      "PASS": 44,
+      "FAIL": 0,
+      "details": "INFO cancel-to-worker-completion 16.38 ms (local UI probe, not a hardware latency claim)\nPASS cancellation matrix exercised a real loaded VST3 instrument\n"
+    },
+    "effects": {
+      "PASS": 52,
+      "FAIL": 0,
+      "details": "INFO cancel-to-worker-completion 58.21 ms (local UI probe, not a hardware latency claim)\nPASS cancellation matrix exercised a real loaded VST3 effect\nNOT RUN real VST3 cancellation in this invocation; run native host fixture separately\n"
+    }
+  },
+  "manual_user_plugin_hardware": "NOT RUN",
+  "public_release": "NO-GO",
+  "workflow_url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43184992493",
+  "workflow_run_id": 43184992493,
+  "workflow_conclusion": "success",
+  "compiler": "MSVC 19.51.36260.0",
+  "artifact_id": 13928718840,
+  "artifact_name": "Vocaltest-Preview-Windows-x64",
+  "artifact_url": "https://github.com/wsx79/fasegroovearranger/actions/runs/43184992493/artifacts/13928718840",
+  "zip_name": "FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip",
+  "ctest": {
+    "PASS": 22,
+    "FAIL": 0,
+    "skipped_suites": 0,
+    "seconds": 197.44
+  },
+  "additional_native_ui": {
+    "compressor_PASS": 16,
+    "effects_PASS": 79,
+    "host_editor_focus_freeze_PASS": 15,
+    "mastering_PASS": 17,
+    "extracted_import_PASS": 11
+  },
+  "package_download_verification": {
+    "inner_zip_bytes": 42345621,
+    "inner_zip_sha256": "4c0bc9d49576f9171b1d666111f29ab3d6abd2d0f09a70ac2d4d535c5a08d2c2",
+    "artifact_bytes": 42345839,
+    "artifact_sha256": "ae7ed98a1c6a1766e3032baeaefe34e650d90129a8f710a06f60823f41773f2f",
+    "exe_sha256": "61aa7ac23ad7f102a3b0d001c5ac13049824e9181a0216ee458e0e720242b679"
+  },
+  "runtime_extracted_exe": "PASS on native Windows runner",
+  "original_user_PC_and_vendor_plugin": "NOT RUN; manual confirmation remains OPEN",
+  "other_open_gates": [
+    "macOS/AU",
+    "listening/audio hardware/dropouts",
+    "commercial plugins",
+    "vocal functional/quality approval",
+    "full sanitizer instrumentation"
+  ],
+  "local_windows_runner_mixer_benchmark": {
+    "stereo_frames": 1024000,
+    "milliseconds": 138.488,
+    "ordinary_cpp_callback_allocations": 0,
+    "scope": "isolated existing test on runner; not user hardware, not a before-after comparison"
+  }
+}

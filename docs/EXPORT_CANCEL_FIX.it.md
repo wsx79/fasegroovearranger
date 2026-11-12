@@ -1,5 +1,12 @@
 # Annullamento export: blocco del message thread
 
+Aggiornamento 12 novembre 2026: la correzione è ora verificata automaticamente
+su **Windows nativo MSVC x64**, run 43184992493, codice `f98b706`. Vecchio
+handshake bloccante riprodotto con timeout finito; nuovo wrapper PASS nelle
+matrici interno 44/44, VST3 strumento 44/44 ed effetto 52/52. Il caso sul PC/plugin
+dell'utente resta OPEN. Risultati e download in [verifica Windows](WINDOWS_CANCEL_VALIDATION.it.md).
+Le sezioni seguenti conservano le evidenze e autorizzazioni storiche del fix.
+
 ## Evidenze e causa riprodotta
 
 Base: `Vocaltest`, `26e2422e7519f5ef51c0a023ecc79072957ab529`.
