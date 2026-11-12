@@ -97,6 +97,7 @@ private:
     juce::Label loudnessLabel;
     std::array<float,2> compactPeaks{},compactHolds{};
     std::array<int,2> compactHoldTicks{};
+    ActionButton mixAssistantButton{"MIX ASSIST"};
     ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"},masterEffectsButton{"EFFECTS"};
 };
 }

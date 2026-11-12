@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Branding.h"
 #include "MainComponent.h"
+#include "MixAssistantWindow.h"
 #include "RenderProgressTask.h"
 #include "StudioIO.h"
 #include "AiComposerWindow.h"
@@ -472,6 +473,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
 }
 MainComponent::~MainComponent(){
     cancelSampleImport();
+    mixAssistantWindow.reset();
     vocalStudioWindow.reset();
     acceptTargetEdit=false;
     if(recoveryArmed)closeRecoverySession(recoveryDirectory());
@@ -609,6 +611,7 @@ return false;
     }
     if(auto* busButton=dynamic_cast<juce::Button*>(mixer.findChildWithID("mixer-routing"))){busButton->onClick();if(!mixerRoutingWindow||!mixerRoutingWindow->verify(folder))return false;mixerRoutingWindow->closeButtonPressed();}else return false;
     if(!mixer.verifySends(folder)||!mixer.verifyAutomation(folder))return false;
+    showMixAssistant();if(!mixAssistantWindow||!mixAssistantWindow->verify(folder))return false;mixAssistantWindow->closeButtonPressed();
     juce::String fail;
     auto mark=[&](const char* step,bool value){if(!value&&fail.isEmpty())fail=step;return value;};
     bool ok=mark("language",writeLanguageEvidence(folder)&&writeHelpEvidence(folder));

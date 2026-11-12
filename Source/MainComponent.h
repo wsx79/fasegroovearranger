@@ -23,6 +23,7 @@
 #include <deque>
 namespace fga {
 class MainComponent;
+class MixAssistantWindow;
 class RenderProgressTask;
 // A light, compact dismiss target in the inspector header, sharing the DAW palette.
 class InspectorDismissButton final : public IconButton {
@@ -325,6 +326,7 @@ public:
     bool verifyAuditRepairs(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
+    void showMixAssistant();
     void showAiComposer();
     bool pluginsBusy()const{return loadingPlugin>0;}
     int trackForSession(std::uint64_t id)const;
@@ -363,7 +365,9 @@ private:
     friend class StudioWindow;
     friend class VocalStudioEditor;
     std::unique_ptr<juce::DialogWindow> vocalStudioWindow;
+    friend class MixAssistantWindow;
     friend class MixerRoutingWindow;
+    std::unique_ptr<MixAssistantWindow> mixAssistantWindow;
     friend class GraphicEqWindow;
     std::unique_ptr<GraphicEqWindow> graphicEqWindow;
     std::unique_ptr<EffectChainWindow> effectsWindow;

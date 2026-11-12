@@ -12,6 +12,7 @@
 static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 #include "SpectrumChecks.h"
 void runDynamicsTests();
+void runMixAnalysisTests();
 void runSidechainTests();
 void runOfflineExportTests();
 void runImprovementEngineTests();
@@ -30,6 +31,7 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--sidechain"){runSidechainTests();return 0;}
+        if(argc==2&&juce::String(argv[1])=="--mix-assistant"){runMixAnalysisTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--dynamics"){runDynamicsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--offline-export"){runOfflineExportTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--improvements"){runImprovementEngineTests();return 0;}
