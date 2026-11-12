@@ -95,6 +95,11 @@ juce::Result renderLoud(juce::AudioFormatReader& reader,const juce::File& target
     return writer->flush()?juce::Result::ok():juce::Result::fail("Cannot finish Loud staging WAV");
 }
 }
+juce::Result measureOfflineTruePeak(juce::AudioFormatReader& reader,double& peak,const Cancel& cancelled,const Progress& progress){
+    if(reader.numChannels!=2||reader.lengthInSamples<1||!std::isfinite(reader.sampleRate)||reader.sampleRate<8000||reader.sampleRate>192000)
+        return juce::Result::fail("Expected nonempty stereo WAV at 8-192 kHz for True Peak QA");
+    return scanPeak(reader,peak,cancelled,progress);
+}
 juce::Result ExportPeakGuard::verifyFile(const juce::File& file,int bits,const Cancel& cancelled,double ceilingDb){
     auto reader=openWav(file);if(!reader)return juce::Result::fail("Cannot verify loudness guard");
     double peak=0;auto result=scanPeak(*reader,peak,cancelled,[](double){});if(result.failed())return result;

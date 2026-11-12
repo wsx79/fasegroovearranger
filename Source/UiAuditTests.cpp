@@ -3,6 +3,7 @@
 #include "Branding.h"
 #include "MainComponent.h"
 #include "MixAssistantWindow.h"
+#include "MasteringAssistantWindow.h"
 #include "RenderProgressTask.h"
 #include "StudioIO.h"
 #include "AiComposerWindow.h"
@@ -473,6 +474,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
 }
 MainComponent::~MainComponent(){
     cancelSampleImport();
+    masteringAssistantWindow.reset();
     mixAssistantWindow.reset();
     vocalStudioWindow.reset();
     acceptTargetEdit=false;

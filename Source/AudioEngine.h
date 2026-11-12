@@ -177,6 +177,8 @@ public:
     bool trackFrozen(int track)const{return track>=0&&track<maxTracks&&frozenFlags[(size_t)track].load();}
     std::array<Handoff<FrozenAudio>,maxTracks> frozenAudio;std::array<std::atomic<bool>,maxTracks> frozenFlags{};
     bool isPreviewing() const {return previewing.load();}
+    std::uint64_t previewSerial()const{return previewGeneration.load();} // audition ownership, control thread
+    bool isMonitoring()const{return capture.monitor.load();}
     void monitorSamplePitch(int track,bool restart=false){pitchMonitor.select(track,restart);}
     SamplePitchReading samplePitch(){return pitchMonitor.poll();}
     bool startSampleAudition(int track,bool repeat);
@@ -366,6 +368,7 @@ private:
     void mixSampleAudition(float* const*,int channels,int count);
     Handoff<PreviewClip> previews;
     std::atomic<bool> previewing{false};
+    std::atomic<std::uint64_t> previewGeneration{0};
     void mixPreview(float* const* output,int channels,int count);
     void swapInstrument(int track,std::unique_ptr<juce::AudioPluginInstance> next,int effectSlot,const juce::PluginDescription&);
     double sampleRate=44100,master=.8;

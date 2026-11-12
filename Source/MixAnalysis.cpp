@@ -74,6 +74,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
                 for(int k=0;k<6;++k)if(hz>=edges[k]&&hz<edges[k+1])bands[f][(size_t)k]+=power[(size_t)bin];
             }
         }
+        for(size_t k=0;k<6;++k)result.mix.bandPower[k]+=bands[0][k]*n;
         auto& audio=buffers[0];
         meter.process(audio.getArrayOfWritePointers(),(int)readers[0]->numChannels,n);
         for(int i=0;i<n;++i){const double l=audio.getSample(0,i),r=audio.getSample(1,i);ll+=l*l;rr+=r*r;lr+=l*r;}
@@ -88,6 +89,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
             if(aa>1e-14&&bb>1e-14){p.score+=dot/std::sqrt(aa*bb);++p.active;}
         }
     }
+    for(auto& energy:result.mix.bandPower)energy/=std::max<juce::int64>(1,frames);
     result.mix.rms=std::sqrt(sum/std::max(1.,2.*frames));
     result.mix.correlationValid=readers[0]->numChannels==2&&ll>1e-15&&rr>1e-15;
     if(result.mix.correlationValid)result.mix.correlation=std::clamp(lr/std::sqrt(ll*rr),-1.,1.);

@@ -17,6 +17,9 @@ struct AudioExportOptions {
     AudioExportOptions(double rate,int bits,AudioExportMode selected,double ceiling=-1.):sampleRate(rate),bitDepth(bits),mode(selected),ceilingDb(ceiling){}
 };
 struct OfflineExportStats {double inputPeak=0,outputPeak=0,gain=1;juce::int64 frames=0;};
+// Read-only worker QA; shares the exact existing 16x export estimator. No encoding/state changes.
+juce::Result measureOfflineTruePeak(juce::AudioFormatReader&,double& linearPeak,
+    const std::function<bool()>& cancelled,const std::function<void(double)>& progress);
 // Worker only. Source is stereo float WAV; output remains a private staging file until success.
 juce::Result finishOfflineExport(const juce::File& source,const juce::File& output,int bits,
     AudioExportMode mode,double ceilingDb,const std::function<bool()>& cancelled,
