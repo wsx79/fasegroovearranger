@@ -129,7 +129,8 @@ struct Instrument {
     // Plugin delay compensation: every track is delayed to line up with the slowest one.
     // Storage is reserved on source installation, never on the audio thread.
     static constexpr int maxDelay=1<<18;
-    juce::AudioBuffer<float> delayLine;
+    DelayPublication delayLine;
+    PublishedAudio* boundDelay=nullptr; // audio thread only
     int delayWrite=0,delayValid=0,latency=0,delay=0;
     void flushDelay(){delayWrite=delayValid=0;delayUsed=false;}
     bool delayUsed=false;
@@ -193,7 +194,7 @@ public:
     // onlyTrack: only that track's notes changed since the last normalised publish.
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
     void updateMix(const Project&);
-    void collectGarbage(){if(delayStorageNeeded.exchange(false)){const EngineControlLock lock(*this);prepareDelayLines();}for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
+    void collectGarbage(){if(delayStorageNeeded.exchange(false)){const EngineControlLock lock(*this);prepareDelayLines();}for(auto& instrument:instruments)instrument->delayLine.collect();busGraph.collectRetired();for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
     // Message thread: notify plugin editors of parameter automation queued by the audio thread.
     void flushParameterNotifications();
     // Meter uses MIDI quarter-note units, including non-quarter-note denominators.

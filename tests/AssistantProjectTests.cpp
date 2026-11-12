@@ -58,6 +58,16 @@ void runAssistantProjectTests(){
     const auto existing=files.directory.getChildFile("existing");existing.createDirectory();existing.getChildFile("keep.wav").replaceWithText("untouched");require(engine.renderAnalysis(p,existing,{0},[]{return false;},[](double){}).failed()&&existing.getChildFile("keep.wav").loadFileAsString()=="untouched","refuses nonempty user directory without touching files");
     p.tracks[1].mute=false;MixReport report;report.suggestions={{"gain",p.tracks[1].sessionId,-1.5}};auto changes=assistantGainChanges(p,report);assistantEqChanges(p,report,changes);require(changes.size()==2,"structured gain and alternative EQ");for(auto& c:changes)c.selected=true;
     Project candidate;require(assistantCandidate(p,engine,changes,candidate).wasOk()&&candidate.tracks[1].gain<p.tracks[1].gain&&candidate.tracks[1].eq.enabled,"selected concrete gain and EQ values");require(candidate.tracks[1].volume==p.tracks[1].volume&&candidate.tracks[1].clips==p.tracks[1].clips,"patch preserves automation/MIDI");
+    {
+        auto saved=p;saved.tracks[1].eq.enabled=false;saved.tracks[1].eq.bands={{true,(int)EqFilterType::Bell,250,4,1}};
+        MixReport local;local.suggestions={{"gain",saved.tracks[1].sessionId,-1.5}};auto localChanges=assistantGainChanges(saved,local);assistantEqChanges(saved,local,localChanges);for(auto& c:localChanges)c.selected=true;
+        Project kept;require(assistantCandidate(saved,engine,localChanges,kept).wasOk()&&kept.tracks[1].eq.enabled&&kept.tracks[1].eq.bands.size()==2,"disabled EQ gains the new cut");
+        require(kept.tracks[1].eq.bands[0].enabled&&kept.tracks[1].eq.bands[0].gain==4&&kept.tracks[1].eq.bands[1].enabled&&kept.tracks[1].eq.bands[1].gain==-1.5,"saved EQ bands stay as stored");
+        auto empty=p;empty.tracks[1].eq.enabled=false;empty.tracks[1].eq.bands.clear();
+        local.suggestions={{"gain",empty.tracks[1].sessionId,-1.5}};localChanges=assistantGainChanges(empty,local);assistantEqChanges(empty,local,localChanges);for(auto& c:localChanges)c.selected=true;
+        require(assistantCandidate(empty,engine,localChanges,kept).wasOk()&&kept.tracks[1].eq.bands.size()==5&&kept.tracks[1].eq.bands.back().enabled&&kept.tracks[1].eq.bands.back().gain==-1.5,"empty bypassed EQ receives only the new cut");
+        for(size_t i=0;i+1<kept.tracks[1].eq.bands.size();++i)require(!kept.tracks[1].eq.bands[i].enabled,"legacy bands created for a bypassed EQ stay off");
+    }
     auto stale=p;stale.tracks[1].gain*=.5;require(assistantCandidate(stale,engine,changes,candidate).failed(),"stale changes rejected atomically");
     // Compressor detector taps are intentionally pre-insert: provide a real
     // instrument source, not an effect that creates DC after that tap.

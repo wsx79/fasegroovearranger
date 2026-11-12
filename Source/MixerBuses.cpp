@@ -19,6 +19,11 @@ void MixerBuses::begin(int count,bool single){count=std::clamp(count,0,dry.getNu
 void MixerBuses::add(int ch,int sample,float value,int group,const std::array<double,2>& sends){if(ch<0||ch>1||sample<0||sample>=dry.getNumSamples()||group>1)return;if(group>=0){const auto& p=(*settings)[(size_t)group];if(p.mute||(groupSolo&&!p.solo))return;value*=groupGain[(size_t)(group*2+ch)][(size_t)sample];groups[(size_t)group].addSample(ch,sample,value);}else{if(groupSolo)return;dry.addSample(ch,sample,value);}for(int b=0;b<2;++b)if(sends[(size_t)b]>0)returns[(size_t)b].addSample(ch,sample,value*(float)sends[(size_t)b]);}
 void MixerBuses::finish(float* const* output,int channels,int count,const float* automation){
     count=std::clamp(count,0,dry.getNumSamples());float groupPeaks[2]{};
+    auto* published=returnDelay.load();
+    if(published!=boundReturn){boundReturn=published;returnWrite=0;returnValid=0;}
+    const int requested=requestedReturn.load(std::memory_order_acquire);
+    if(requested!=returnLatency){returnLatency=requested;returnWrite=0;returnValid=0;}
+    const int delayFrames=boundReturn?boundReturn->frames:0;
     if(!editableReturns){
     auto& verb=returns[0];reverb.processStereo(verb.getWritePointer(0),verb.getWritePointer(1),count);
     const auto& d=(*settings)[3];auto& echo=returns[1];const int size=delay.getNumSamples();const float coefficient=(float)(.03+(1-d.damping)*.97);
@@ -44,11 +49,11 @@ void MixerBuses::finish(float* const* output,int channels,int count,const float*
             for(int ch=0;ch<2;++ch){const float sample=groups[index].getSample(ch,i)*(1.f-reduction);groups[index].setSample(ch,i,sample);groupPeaks[b]=std::max(groupPeaks[b],std::abs(sample));}
         }
         const float master=masterGain.getNextValue()*(automation?automation[i]:1.f);
-        for(int c=0;c<2;++c){float value=returnSolo?0:dry.getSample(c,i)+groups[0].getSample(c,i)+groups[1].getSample(c,i);if(returnLatency>0){const int size=returnDelay.getNumSamples();returnDelay.setSample(c,returnWrite,value);value=returnValid>=returnLatency?returnDelay.getSample(c,(returnWrite-returnLatency+size)%size):0;}
+        for(int c=0;c<2;++c){float value=returnSolo?0:dry.getSample(c,i)+groups[0].getSample(c,i)+groups[1].getSample(c,i);if(returnLatency>0){if(boundReturn&&delayFrames>returnLatency){boundReturn->audio.setSample(c,returnWrite,value);value=returnValid>=returnLatency?boundReturn->audio.getSample(c,(returnWrite-returnLatency+delayFrames)%delayFrames):0.f;}else value=0;}
             for(int b=0;b<2;++b){float wet=returns[(size_t)b].getSample(c,i)*gains[(size_t)(b+2)][(size_t)c].getNextValue();const auto& p=(*settings)[(size_t)(b+2)];if(p.mute||(returnSolo&&!p.solo))wet=0;returnPeaks[b]=std::max(returnPeaks[b],std::abs(wet));value+=wet;}
             if(c<channels&&output[c])output[c][i]+=value*master;
         }
-        if(returnLatency>0){returnWrite=(returnWrite+1)%returnDelay.getNumSamples();returnValid=std::min(returnValid+1,returnDelay.getNumSamples());}
+        if(returnLatency>0&&delayFrames>0){returnWrite=(returnWrite+1)%delayFrames;returnValid=std::min(returnValid+1,delayFrames);}
     }for(int b=0;b<2;++b)reductions[(size_t)b].store(maximumReduction[b],std::memory_order_relaxed);peaks[0]=groupPeaks[0];peaks[1]=groupPeaks[1];peaks[2]=returnPeaks[0];peaks[3]=returnPeaks[1];
 }
 }

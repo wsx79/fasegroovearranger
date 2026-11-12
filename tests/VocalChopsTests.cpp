@@ -54,6 +54,16 @@ void runVocalChopsTests(){
         for(int i=from+1;i<=to;++i)crowdedJump=std::max(crowdedJump,std::abs(crowded.getSample(0,i)-crowded.getSample(0,i-1)));
         std::cout<<"polyphony 32 steal jump="<<crowdedJump<<" lag="<<lag<<std::endl;
         check(crowdedJump<.025f,"default 32-voice polyphony crossfades a stolen slice");
+        constexpr int pairFrames=5000,pairN=34,pairLen=pairFrames*pairN;
+        auto pairAsset=fixture(pairLen);
+        for(int i=0;i<pairLen;++i){const float v=i>=pairFrames*32?-.6f:.6f;for(int c=0;c<2;++c)pairAsset->audio.setSample(c,i,v);}
+        auto pair=wide;pair.sliceCount=pairN;for(int i=0;i<pairN;++i)pair.slices[(size_t)i]=i*(double)pairFrames/pairLen;
+        juce::MidiBuffer two;for(int i=0;i<32;++i)two.addEvent(juce::MidiMessage::noteOn(1,36+i,1.f),0);
+        two.addEvent(juce::MidiMessage::noteOn(1,36+32,1.f),4096);two.addEvent(juce::MidiMessage::noteOn(1,36+33,1.f),4096);
+        auto both=render(pairAsset,pair,two,8192+lag);float pairJump=0;
+        for(int i=from+1;i<=to&&i<both.getNumSamples();++i)pairJump=std::max(pairJump,std::abs(both.getSample(0,i)-both.getSample(0,i-1)));
+        std::cout<<"polyphony 32 two-note jump="<<pairJump<<std::endl;
+        check(pairJump<.05f,"two new notes in one block at 32 voices do not hard-cut");
     }
     s.reverse=true;auto reversed=render(asset,s,midi,8192);float reverseJump=0;for(int i=4000;i<4400;++i)reverseJump=std::max(reverseJump,std::abs(reversed.getSample(0,i)-reversed.getSample(0,i-1)));
     check(reverseJump<.025f,"reverse monophonic slices also release interrupted audio");s.reverse=false;

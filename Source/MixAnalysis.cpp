@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MixAnalysis.h"
+#include "OfflineExport.h"
 #include "Localisation.h"
 namespace fga {
+namespace {
+class MonoPeakReader:public juce::AudioFormatReader{
+    juce::AudioFormatReader& source;juce::AudioBuffer<float> scratch{1,4096};
+public:
+    explicit MonoPeakReader(juce::AudioFormatReader& s):AudioFormatReader(nullptr,"mono true peak"),source(s){sampleRate=s.sampleRate;numChannels=2;bitsPerSample=32;usesFloatingPointData=true;lengthInSamples=s.lengthInSamples;}
+    bool readSamples(int* const* dest,int channels,int offset,juce::int64 start,int n)override{
+        for(int at=0;at<n;at+=4096){const int used=std::min(4096,n-at);scratch.clear();if(!source.read(&scratch,0,used,start+at,true,false))return false;
+            for(int c=0;c<channels;++c)if(dest[c])std::copy_n(scratch.getReadPointer(0),used,reinterpret_cast<float*>(dest[c])+offset+at);}
+        return true;
+    }
+};
+}
+
 juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& result,
                             const std::function<bool()>& cancelled,const std::function<void(double)>& progress){
     result={};
@@ -101,8 +115,14 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
     result.mix.correlationValid=readers[0]->numChannels==2&&ll>1e-15&&rr>1e-15;
     if(result.mix.correlationValid)result.mix.correlation=std::clamp(lr/std::sqrt(ll*rr),-1.,1.);
     result.mix.lufs=meter.integrated.load();
-    if(result.mix.peak>juce::Decibels::decibelsToGain(-3.))
-        result.suggestions.push_back({tr("Suggested master trim for 3 dB sample headroom (verify by listening)."),0,-3.-juce::Decibels::gainToDecibels(result.mix.peak)});
+    double truePeak=0;juce::Result peakResult=juce::Result::ok();
+    if(readers[0]->numChannels==2)peakResult=measureOfflineTruePeak(*readers[0],truePeak,cancelled,[](double){});
+    else{MonoPeakReader mono(*readers[0]);peakResult=measureOfflineTruePeak(mono,truePeak,cancelled,[](double){});}
+    if(peakResult.failed())return peakResult;
+    if(cancelled())return juce::Result::fail(tr("Analysis cancelled."));
+    result.mix.truePeak=truePeak;
+    if(result.mix.truePeak>juce::Decibels::decibelsToGain(-3.))
+        result.suggestions.push_back({tr("Suggested master trim for 3 dB true-peak headroom (verify by listening)."),0,-3.-juce::Decibels::gainToDecibels(result.mix.truePeak)});
     if(result.mix.fullScale)
         result.suggestions.push_back({tr("Near-full-scale samples detected. A PCM file cannot prove whether clipping occurred upstream."),0,0});
     if(result.mix.correlationValid&&result.mix.correlation<-.2)

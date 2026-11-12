@@ -52,6 +52,7 @@ public:
     double regionOffset=-1,regionDuration=0,regionFadeIn=0,regionFadeOut=0;bool regionReverse=false; // only set while dispatching a region trigger
     int latency=0;
 protected:
+    juce::SynthesiserVoice* findFreeVoice(juce::SynthesiserSound*,int midiChannel,int midiNoteNumber,bool stealIfNoneAvailable)const override;
     void handleMidiEvent(const juce::MidiMessage&)override;
 private:
     bool handleRegion(const unsigned char*,int size);

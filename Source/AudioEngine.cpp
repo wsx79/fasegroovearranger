@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "AudioEngine.h"
+namespace fga {std::atomic<int> PublishedAudio::live{0};}
 #include "NativeCompressor.h"
 #include "NativeReturnEffects.h"
 #include "HostedPluginIdentity.h"
@@ -117,7 +118,7 @@ void noteOff(Instrument& i,int n,int lane){i.midi.addEvent(juce::MidiMessage::no
 
 Instrument::Instrument(int track):kind(track){synth.setCurrentPlaybackSampleRate(44100);
     for(int i=0;i<fgd::numLanes;++i)drumNotes[(size_t)i]=fgd::defaultNote(i);
-    delayLine.clear();drumLevels.fill(1);guitarLevels.fill(1);if(kind==3)guitarEvents.prepare();if(kind==leadTrack)leadEvents.prepare();// 16,384 region triggers need up to 35 bytes each; all three swap partners share the reserve.
+    drumLevels.fill(1);guitarLevels.fill(1);if(kind==3)guitarEvents.prepare();if(kind==leadTrack)leadEvents.prepare();// 16,384 region triggers need up to 35 bytes each; all three swap partners share the reserve.
     midi.ensureSize(655360);recoveryMidi.ensureSize(655360);chainMidi.ensureSize(655360);effectMidi.ensureSize(262144);automationMidi.ensureSize(262144);
     if(kind<3||isManualTrack(kind)){for(int i=0;i<48;++i)synth.addVoice(new GuideVoice(tone,sound,kind==1));if(kind==2)synth.addSound(new GuideStringsTag(1));else synth.addSound(new GuideSoundTag);}
 }
@@ -133,12 +134,14 @@ void Instrument::adoptChannels(int block){
     outputs=mode==2&&plugin?std::max(1,plugin->getTotalNumOutputChannels()):2;scratch.setSize(channels,block);automationBlock.setSize(channels,block);
 }
 void Instrument::applyDelay(juce::AudioBuffer<float>& block,int count){
+    auto* published=delayLine.load();
+    if(published!=boundDelay){boundDelay=published;flushDelay();}
     if(delay<=0)return;
-    const int capacity=delayLine.getNumSamples();
-    // Silence until the message thread sizes the line. Passing the block through
+    const int capacity=published?published->frames:0;
+    // Silence until the message thread publishes a line. Passing the block through
     // would play this track early against the others.
-    if(delayLine.getNumChannels()<2||capacity<=delay){auto* left=block.getWritePointer(0);auto* right=block.getNumChannels()>1?block.getWritePointer(1):nullptr;for(int s=0;s<count;++s){left[s]=0;if(right)right[s]=0;}return;}
-    delayUsed=true;auto* left=delayLine.getWritePointer(0);auto* right=delayLine.getWritePointer(1);auto* inL=block.getWritePointer(0);auto* inR=block.getWritePointer(1);int w=delayWrite;
+    if(!published||published->channels<2||capacity<=delay){auto* left=block.getWritePointer(0);auto* right=block.getNumChannels()>1?block.getWritePointer(1):nullptr;for(int s=0;s<count;++s){left[s]=0;if(right)right[s]=0;}return;}
+    delayUsed=true;auto* left=published->audio.getWritePointer(0);auto* right=published->audio.getWritePointer(1);auto* inL=block.getWritePointer(0);auto* inR=block.getWritePointer(1);int w=delayWrite;
     for(int s=0;s<count;++s){const int r=(w-delay+capacity)%capacity;const bool valid=delayValid>=delay;const float l=valid?left[r]:0.f,rhs=valid?right[r]:0.f;left[w]=inL[s];right[w]=inR[s];inL[s]=l;inR[s]=rhs;w=(w+1)%capacity;delayValid=std::min(delay,delayValid+1);}
     delayWrite=w;
 }
@@ -374,7 +377,7 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
 static bool delayStorageMissing(const Instrument& i){return i.delay>0&&(i.delayLine.getNumChannels()<2||i.delayLine.getNumSamples()<=i.delay);}
 void AudioEngine::prepareDelayLines(){
     refreshLatencies();sidechainRouting(instruments,true);refreshLatencies();
-    for(auto& ptr:instruments){auto& i=*ptr;if(delayStorageMissing(i)){int capacity=2;while(capacity<=i.delay)capacity*=2;i.delayLine.setSize(2,capacity);i.flushDelay();}else if(i.delay==0&&i.delayLine.getNumSamples()>0){i.delayLine.setSize(0,0);i.flushDelay();}}
+    for(auto& ptr:instruments){auto& i=*ptr;if(delayStorageMissing(i)){int capacity=2;while(capacity<=i.delay)capacity*=2;i.delayLine.setSize(2,capacity);}else if(i.delay==0&&i.delayLine.getNumSamples()>0)i.delayLine.setSize(0,0);}
     int returns=0;if(mixes.current&&mixes.current->returnChains)for(int b=0;b<2;++b)returns=std::max(returns,instrumentLatency(*instruments[(size_t)(returnEffectTrack+b)]));
     returns=std::min(returns,Instrument::maxDelay-1);busGraph.prepareReturnDelay(returns);busGraph.setReturnLatency(returns);
     delayStorageNeeded=false;

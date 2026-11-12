@@ -218,7 +218,7 @@ private:
     };
 };
 }
-SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();setCurrentPlaybackSampleRate(44100);for(int i=0;i<33;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
+SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();setCurrentPlaybackSampleRate(44100);for(int i=0;i<36;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
 SampleSynth::~SampleSynth()=default;
 void SampleSynth::addRegionEvent(juce::MidiBuffer& midi,int sample,int note,int velocity,double offset,double duration,double fadeIn,double fadeOut,bool reverse){
     // Non-commercial manufacturer ID, signature/version, pitch/velocity, two
@@ -254,10 +254,18 @@ void SampleSynth::renderNextBlock(juce::AudioBuffer<float>& output,const juce::M
 }
 bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){const auto& old=*parameters;const bool restart=old.mode!=p.mode||old.sync!=p.sync||old.reverse!=p.reverse||old.start!=p.start||old.end!=p.end||old.sliceCount!=p.sliceCount||old.slices!=p.slices;if(restart)allNotesOff(0,false);fallback=p;parameters=&fallback;rootNote=root;bpm=tempo;return restart;}
 void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(std::isfinite(rate)&&rate>=8000?rate:44100);}
+juce::SynthesiserVoice* SampleSynth::findFreeVoice(juce::SynthesiserSound* sound,int,int,bool steal)const{
+    const juce::ScopedLock sl(lock);
+    for(auto* voice:voices)if(!voice->isVoiceActive()&&voice->canPlaySound(sound))return voice;
+    if(!steal)return nullptr;
+    SampleVoice* oldest=nullptr;
+    for(auto* voice:voices){auto* sample=dynamic_cast<SampleVoice*>(voice);if(!sample||!sample->isVoiceActive()||sample->retiring()||!sample->canPlaySound(sound))continue;if(!oldest||sample->wasStartedBefore(*oldest))oldest=sample;}
+    return oldest;
+}
 void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;
-    // One spare voice keeps a full 32-voice slice polyphony able to crossfade.
-    // Retiring voices stay out of that count and are not hard-cut.
+    // Four spare voices sit outside the polyphony count, so two new notes in one
+    // block can each crossfade. A voice that is already fading is never stolen.
     bool crossfade=false;
     for(int tries=0;tries<32;++tries){
         int active=0;SampleVoice* oldest=nullptr;

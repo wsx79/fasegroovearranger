@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #pragma once
 #include "core/StudioSettings.h"
+#include "PublishedAudio.h"
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <atomic>
 namespace fga {
@@ -13,8 +14,9 @@ public:
     void begin(int count,bool stem=false);
     juce::AudioBuffer<float>& returnBuffer(int bus){return returns[(size_t)bus];}
     bool needsReturnDelay(int samples)const{return samples>0&&returnDelay.getNumSamples()<=samples;}
-    void prepareReturnDelay(int samples){if(needsReturnDelay(samples)){int size=2;while(size<=samples)size*=2;returnDelay.setSize(2,size);returnDelay.clear();returnWrite=0;returnValid=0;}}
-    void setReturnLatency(int samples){const int next=needsReturnDelay(samples)?0:samples;if(next!=returnLatency){returnWrite=0;returnValid=0;returnLatency=next;}}
+    void prepareReturnDelay(int samples){if(!needsReturnDelay(samples))return;int size=2;while(size<=samples)size*=2;returnDelay.setSize(2,size);}
+    void setReturnLatency(int samples){requestedReturn.store(needsReturnDelay(samples)?0:samples,std::memory_order_release);}
+    void collectRetired(){returnDelay.collect();}
 
     void add(int channel,int sample,float value,int group,const std::array<double,2>& sends);
     bool detects(int track)const{return track==(*settings)[0].sidechainSource||track==(*settings)[1].sidechainSource;}
@@ -30,7 +32,10 @@ private:
     const std::array<BusSettings,4>* settings=nullptr;
     std::array<BusSettings,4> fallback=defaultBuses();
     std::array<juce::AudioBuffer<float>,2> groups,returns;
-    juce::AudioBuffer<float> dry,delay,returnDelay;
+    juce::AudioBuffer<float> dry,delay;
+    DelayPublication returnDelay;
+    PublishedAudio* boundReturn=nullptr;
+    std::atomic<int> requestedReturn{0};
     int returnLatency=0,returnWrite=0,returnValid=0;bool editableReturns=false;
     std::array<std::vector<float>,4> groupGain;
     std::array<std::array<juce::SmoothedValue<float>,2>,4> gains;
