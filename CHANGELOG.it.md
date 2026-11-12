@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## Non pubblicato
+## 0.44.0
 
 
 ## 0.43.2

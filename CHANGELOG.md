@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.44.0
 
 
 - Windows: ASIO® support through the Steinberg ASIO SDK 2.3.4 interface headers (GPLv3 option), with licence, provenance and trademark attribution; ASIO Compatible Logo in the audio device dialog. ASIO is a registered trademark of Steinberg Media Technologies GmbH.

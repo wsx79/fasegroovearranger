@@ -30,7 +30,9 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.43.2**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.44.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
+La **0.44.0** aggiunge il supporto ASIO® su Windows (scegli **ASIO** in **Dispositivo audio / buffer**), nuove finestre di EQ, compressore, riverbero, delay e Bus & Send, e pattern Vocal Chops per la jacking house. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
 
 La **0.43.2** aggiorna il piano roll: entrando è attiva **Selezione**, mentre scala evidenziata, griglia e altre opzioni restano memorizzate. Usa **NOTE TRACCIA** per nascondere temporaneamente le note attive e leggere quelle della traccia di riferimento, anche se si sovrappongono. La riproduzione continua; riattiva il pulsante per modificare le note. La scala segue le armonie delle sezioni e le celle degli accordi seguono la griglia della timeline. Vedi la [revisione del piano roll](PIANO_ROLL_REVIEW.md).
 

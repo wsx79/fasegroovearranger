@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.43.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.44.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+**0.44.0** adds ASIO® support on Windows (choose **ASIO** in **Audio device / buffer**), redesigned EQ, compressor, reverb, delay and Bus & Send windows, and Vocal Chops patterns for jacking house. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
 
 **0.43.2** updates the piano roll: entering it selects **Select**, while scale highlighting, grid and other view options persist. Use **CURRENT NOTES** to hide active notes and read the reference track, even at overlapping positions. Playback continues; turn the button back on to edit notes. Scale highlighting follows section harmony and chord cells follow the timeline grid. See the [piano roll review](PIANO_ROLL_REVIEW.md).
 
