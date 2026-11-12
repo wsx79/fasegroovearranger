@@ -24,7 +24,7 @@ public:
         for(auto& value:smoothed)value.reset(rate,.01);wet.reset(rate,.01);
         configure(values,true);reset();
     }
-    void reset(){gainReduction=0;wet.setCurrentAndTargetValue(0);}
+    void reset(){gainReduction=0;wet.setCurrentAndTargetValue(wet.getTargetValue());}
     void configure(const Values& values,bool snap=false){
         for(int i=0;i<6;++i){double value=bounded(values[(size_t)i],i);
             if(i==3||i==4)value=std::exp(-1./(rate*value*.001));
