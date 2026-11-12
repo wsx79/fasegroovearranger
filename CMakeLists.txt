@@ -85,13 +85,18 @@ if(FGA_BUILD_APP)
         target_sources(FaseGrooveArranger PRIVATE Resources/arranger-project.icns)
     endif()
     juce_add_binary_data(ArrangerResources SOURCES Resources/Inter-Regular.otf Resources/Inter-SemiBold.otf
-        Resources/fs_pitch_logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png docs/images/guide_sampler.png docs/images/guide_recording.png docs/images/guide_buses.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
+        Resources/fs_pitch_logo.png Resources/asio-compatible-logo.png Resources/arranger.svg Resources/arranger.png docs/GUIDA.md docs/GUIDE.md docs/options.png docs/images/guide_arrangement.png docs/images/guide_piano.png docs/images/guide_guitar.png docs/images/guide_lead.png docs/images/guide_mixer.png docs/images/guide_ai.png docs/images/guide_ai_it.png docs/images/guide_sampler.png docs/images/guide_recording.png docs/images/guide_buses.png PRIVACY.it.md PRIVACY.md THIRD_PARTY_NOTICES.md)
     target_sources(FaseGrooveArranger PRIVATE Source/Main.cpp Source/AssistantProject.cpp Source/AssistantChanges.cpp Source/MixAnalysis.cpp Source/MasteringAnalysis.cpp Source/MasteringAssistantWindow.cpp Source/MixAssistantWindow.cpp Source/StudioWindow.cpp Source/MixerRoutingWindow.cpp Source/GraphicEqWindow.cpp Source/AiComposer.cpp Source/AiComposerWindow.cpp Source/PluginCatalog.cpp Source/PluginBrowser.cpp Source/PluginSettings.cpp Source/EffectsUi.cpp Source/AutomationPicker.cpp Source/Product.cpp Source/FamilyControls.cpp Source/FamilyOptions.cpp ThirdParty/fasegroove-common/Updater.cpp Source/MainComponent.cpp Source/SampleImportController.cpp Source/ArrangementView.cpp Source/UiAuditTests.cpp Source/PianoRollChecks.cpp Source/DawWorkspace.cpp Source/TimelineEditing.cpp Source/DawNavigation.cpp Source/InstrumentPanel.cpp Source/UiText.cpp ThirdParty/fasegroove-common/Localisation.cpp Source/PianoTools.cpp Source/GuidePage.cpp Source/Menus.cpp Source/AudioEngine.cpp Source/NativeCompressor.cpp Source/NativeReturnEffects.cpp Source/OfflineExport.cpp Source/Sampler.cpp Source/SampleImport.cpp Source/MixerBuses.cpp Source/MidiRecording.cpp Source/AudioInput.cpp Source/ProjectIO.cpp Source/StudioIO.cpp Source/SampleLibrary.cpp Source/SampleBrowser.cpp
         # The family's shared module, vendored by fasegroove/scripts/sync.sh (do not edit here).
         ThirdParty/fasegroove-common/Branding.cpp ThirdParty/fasegroove-common/CircleOfFifths.cpp)
     target_include_directories(FaseGrooveArranger PRIVATE ThirdParty/fasegroove-common ThirdParty/signalsmith-stretch ThirdParty/signalsmith-linear/include)
     if(FGA_SELF_TESTS)
         target_compile_definitions(FaseGrooveArranger PRIVATE FGA_SELF_TESTS=1)
+    endif()
+    # ASIO on Windows: Steinberg ASIO SDK 2.3.4 interface headers, GPLv3 option (ThirdParty/asiosdk).
+    if(WIN32)
+        target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_ASIO=1)
+        target_include_directories(FaseGrooveArranger PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/ThirdParty/asiosdk/common")
     endif()
     target_compile_definitions(FaseGrooveArranger PRIVATE JUCE_WEB_BROWSER=0 JUCE_USE_CURL=1 JUCE_LOAD_CURL_SYMBOLS_LAZILY=1 JUCE_DISPLAY_SPLASH_SCREEN=0
         JUCE_PLUGINHOST_VST3=1 JUCE_PLUGINHOST_AU=$<BOOL:${APPLE}> JUCE_VST3_CAN_REPLACE_VST2=0 JUCE_MODAL_LOOPS_PERMITTED=1

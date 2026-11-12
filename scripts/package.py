@@ -38,7 +38,8 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
-         'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
+         'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE',
+         'ThirdParty/asiosdk/LICENSE.txt', 'ThirdParty/asiosdk/GPL-3.0.txt', 'ThirdParty/asiosdk/README.md'}
 files.update({'docs/VOCAL_CHOPS_PHASE02.md',
               'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
               'docs/VOCALTEST_PREVIEW_WINDOWS.it.md'})

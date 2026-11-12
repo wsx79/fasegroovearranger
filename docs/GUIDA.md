@@ -72,6 +72,8 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 
 **Al primo avvio:** clicca l’**icona altoparlante** in alto a destra, poi **Dispositivo audio / buffer**. Scegli uscita e buffer per ascoltare. L’ingresso audio si abilita da queste impostazioni oppure quando scegli di registrarlo in Studio; non viene aperto automaticamente all’avvio. Su macOS autorizza il microfono se vuoi registrare un ingresso.
 
+**Windows, ASIO®:** in **Dispositivo audio / buffer** scegli **ASIO** come tipo di dispositivo per usare il driver ASIO della tua scheda audio a bassa latenza. Windows Audio (WASAPI) e DirectSound restano disponibili. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
+
 > Parti dal suono guida. Puoi ascoltare e costruire tutto il brano prima di scegliere i tuoi strumenti.
 
 ---

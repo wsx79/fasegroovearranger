@@ -5,6 +5,8 @@
 
 ## 0.43.2
 
+- Windows: supporto ASIO® tramite gli header dello Steinberg ASIO SDK 2.3.4 (opzione GPLv3), con licenza, provenienza e attribuzione del marchio; logo ASIO Compatible nel dialogo del dispositivo audio. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
+
 - Rimosso completamente Vocal Studio (codice, dati di progetto, test, CI, pacchetto e documentazione). I progetti che contengono ancora quei dati si aprono normalmente; i dati vengono scartati al salvataggio. Nuova grafica per EQ, compressore, riverbero, delay e Bus & Send nativi. Generatore Vocal Chops riscritto per la jacking house: hook sincopato di una battuta, battuta d'eco, risposta, stutter in ottavi e roll in sedicesimi alla fine dei build-up.
 
 - Piano roll: Selezione è lo strumento iniziale e viene ripristinato quando si rientra nell’editor; restano memorizzati scala evidenziata, griglia, traccia di riferimento, corsia MIDI e vista note della chitarra.

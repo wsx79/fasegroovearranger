@@ -183,8 +183,34 @@ void MainComponent::showAbout(){
     options.checkUpdatesButton.setEnabled(!updater.isBusy());options.checkUpdatesButton.setButtonText(tr(updater.isBusy()?"CHECKING...":"CHECK NOW"));
     options.show(true,scale);
 }
+namespace {
+// Audio device dialog. On Windows it can enable ASIO, so the Steinberg ASIO Usage
+// Guidelines (SDK 2.3.4, section 1f) require the unmodified ASIO Compatible Logo and the
+// trademark attribution in this dialog.
+class AudioSettingsPanel final:public juce::Component{
+public:
+    explicit AudioSettingsPanel(juce::AudioDeviceManager& devices):selector(devices,0,2,0,2,false,false,true,false){
+        addAndMakeVisible(selector);
+#if JUCE_ASIO
+        logo=juce::ImageCache::getFromMemory(BinaryData::asiocompatiblelogo_png,BinaryData::asiocompatiblelogo_pngSize);
+#endif
+    }
+    void paint(juce::Graphics& g)override{
+        if(!logo.isValid())return;
+        auto strip=getLocalBounds().removeFromBottom(footer).reduced(16,10);
+        g.setColour(juce::Colours::white.withAlpha(.08f));g.drawHorizontalLine(getHeight()-footer,16.f,(float)getWidth()-16.f);
+        const float h=(float)strip.getHeight(),w=h*(float)logo.getWidth()/(float)logo.getHeight();
+        g.drawImage(logo,juce::Rectangle<float>((float)strip.getX(),(float)strip.getY(),w,h),juce::RectanglePlacement::centred);
+        g.setColour(juce::Colours::white.withAlpha(.7f));g.setFont(FamilyTheme::font(12.f));
+        g.drawFittedText("ASIO is a registered trademark of Steinberg Media Technologies GmbH.",strip.withTrimmedLeft((int)w+14),juce::Justification::centredLeft,2);
+    }
+    void resized()override{selector.setBounds(getLocalBounds().withTrimmedBottom(logo.isValid()?footer:0));}
+private:
+    juce::AudioDeviceSelectorComponent selector;juce::Image logo;static constexpr int footer=64;
+};
+}
 void MainComponent::showAudioSettings(){
-    juce::PopupMenu menu;menu.addSectionHeader(tr("AUDIO / MIDI"));menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));menu.addItem(6,tr("Collect portable project"));menu.addSeparator();menu.addItem(5,tr("Metronome (C)"),true,audio.metronomeOn());juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton).withMinimumWidth(240).withStandardItemHeight(30),[safe](int id){if(safe==nullptr)return;if(id==5){safe->toggleMetronome();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new juce::AudioDeviceSelectorComponent(safe->audio.devices,0,2,0,2,false,false,true,false);selector->setSize(920,640);o.content.setOwned(selector);o.componentToCentreAround=safe.getComponent();o.launchAsync();}
+    juce::PopupMenu menu;menu.addSectionHeader(tr("AUDIO / MIDI"));menu.addItem(1,tr("Dispositivo audio / buffer"));menu.addItem(3,tr("Apri cartella autosave"));menu.addItem(4,tr("Recupera autosave"));menu.addItem(6,tr("Collect portable project"));menu.addSeparator();menu.addItem(5,tr("Metronome (C)"),true,audio.metronomeOn());juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&settingsButton).withMinimumWidth(240).withStandardItemHeight(30),[safe](int id){if(safe==nullptr)return;if(id==5){safe->toggleMetronome();return;}if(id==1){juce::DialogWindow::LaunchOptions o;o.dialogTitle=juce::String::fromUTF8("Fase Groove · Audio");o.dialogBackgroundColour=Palette::panel;o.useNativeTitleBar=true;o.resizable=false;auto* selector=new AudioSettingsPanel(safe->audio.devices);selector->setSize(920,704);o.content.setOwned(selector);o.componentToCentreAround=safe.getComponent();o.launchAsync();}
         if(id==6){safe->collectPortable();return;}
         if(id==3||id==4){auto folder=juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FS Pitch/Fase Groove Arranger");folder.createDirectory();if(id==3)folder.revealToUser();else{RecoveryOffer offer;auto snap=folder.getChildFile("autosave.fga");if(pendingRecovery(recoveryDirectory(),offer)){snap=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-recovery",".fga",false);if(!offer.snapshot.copyFileTo(snap)){safe->message(tr("The recovery file is damaged and was not applied. The original project was not changed."),true);return;}}safe->open(snap,true);}}
     });

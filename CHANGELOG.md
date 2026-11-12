@@ -3,6 +3,8 @@
 ## Unreleased
 
 
+- Windows: ASIO® support through the Steinberg ASIO SDK 2.3.4 interface headers (GPLv3 option), with licence, provenance and trademark attribution; ASIO Compatible Logo in the audio device dialog. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
+
 - Remove Vocal Studio completely (code, project data, tests, CI, packaging and documentation). Projects that still contain its data open normally; the data is dropped on save. Restyle the native EQ, compressor, reverb, delay and Bus & Send windows. Rewrite the Vocal Chops generator for jacking house: one-bar syncopated hook, echo bar, answer and 8th-note stutter, 16th roll at the end of build-ups.
 
 - User-approved Assistant extension: default Project tab analyses the open arrangement without requiring an external WAV. Capture raw float mix before Transparent/quantisation and same-pass post-insert/fader track taps in full routing/detector context, using bounded private disk staging and the existing exclusive/cooperative export worker. Retain the File WAV flow and optional reference. Select concrete gain, existing track EQ and existing non-automated native compressor proposals; render/measure a temporary candidate, audition normalized original/proposal or project/reference pairs and apply a single Undo/Redo batch. Validate revision, target identity/current values, automation and replaced plugins; restore temporary native parameters after preview/error/Cancel. Report raw proposal TP/LUFS without promising optimal settings or fixed loudness. Normal export/Transparent, legacy/schema 7, routing DSP, generators and frozen vocals unchanged; no new dependency. See docs/ASSISTANT_PROJECT.it.md; updated Windows build and listening remain unverified.

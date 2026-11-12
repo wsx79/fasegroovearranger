@@ -289,6 +289,8 @@ void OptionsOverlay::paint (juce::Graphics& g)
     g.drawText (tr ("AI coding assistant"), r.removeFromTop (16.0f), juce::Justification::centred);
 
     g.setFont (FamilyTheme::font (11.0f));
+    g.drawText ("ASIO is a registered trademark of Steinberg Media Technologies GmbH",
+                r.removeFromBottom (16.0f), juce::Justification::centred);
     g.drawText (tr ("Built with JUCE") + dot + "VST is a registered trademark of Steinberg Media Technologies GmbH",
                 r.removeFromBottom (16.0f), juce::Justification::centred);
 

@@ -24,7 +24,8 @@ for system, suffix in systems:
                      'Resources/arranger.svg', 'Resources/arranger-project.ico', 'ThirdParty/shine/COPYING',
                      'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-linear/LICENSE.txt',
                      'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
-                     'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
+                     'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md',
+                     'ThirdParty/asiosdk/LICENSE.txt', 'ThirdParty/asiosdk/GPL-3.0.txt', 'ThirdParty/asiosdk/README.md']:
             dest = root / path
             dest.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(repo / path, dest)
@@ -56,6 +57,7 @@ for system, suffix in systems:
                 assert archive.read(entry) == (repo / entry).read_bytes()
             assert not any(name.lower().endswith(('.dll', '/perl.exe', '/sox.exe', '/espeak.exe')) for name in names)
             assert 'ThirdParty/fasegroovelead/LICENSE' in names and 'docs/images/inspector.png' in names
+            assert all('ThirdParty/asiosdk/' + n in names for n in ('LICENSE.txt', 'GPL-3.0.txt', 'README.md'))
             for dependency in ['signalsmith-stretch', 'signalsmith-linear']:
                 assert f'ThirdParty/{dependency}/LICENSE.txt' in names
             for image in ['logo.svg', 'options.png', 'screenshot.png', 'images/guide_piano.png', 'images/guide_lead.png', 'images/guide_sampler.png', 'images/guide_recording.png', 'images/guide_buses.png']:

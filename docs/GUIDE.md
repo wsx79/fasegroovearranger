@@ -72,6 +72,8 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 
 **First launch:** click the **speaker icon** at the top right, then **Audio device / buffer**. Choose your output and buffer. Audio input is enabled from these settings or when you choose to record it in Studio; it is not opened automatically at startup. On macOS, allow microphone access if you want to record an input.
 
+**Windows, ASIO®:** in **Audio device / buffer** choose **ASIO** as the device type to use your audio interface's ASIO driver for low latency. Windows Audio (WASAPI) and DirectSound remain available. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
+
 > Start with the guide sound. You can hear and build the whole song before choosing your instruments.
 
 ---
