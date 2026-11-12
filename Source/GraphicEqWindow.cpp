@@ -44,31 +44,31 @@ static const char* filterTypeNames[] = {
     "NOTCH"
 };
 
-// The filter glyphs are miniature DSP responses, not decorative approximations.
-static void drawEqShape(juce::Graphics& g,juce::Rectangle<float> area,int type,juce::Colour colour){
-    const EqBand band{true,type,1000,6,type==(int)EqFilterType::Notch?2.5:.707};
-    const auto filter=eqCoefficients(band,48000);
-    const float zero=area.getY()+area.getHeight()*.32f;
-    g.setColour(colour.withAlpha(.17f));g.drawHorizontalLine((int)zero,area.getX(),area.getRight());
-    juce::Path curve,fill;
-    for(int i=0;i<72;++i){const float x=area.getX()+area.getWidth()*i/71.f;const double hz=80*std::pow(150.,i/71.);
-        const float y=zero-(float)std::clamp(filter.magnitudeDb(hz,48000),-18.,8.)*area.getHeight()/26.f;
-        if(i==0){curve.startNewSubPath(x,y);fill.startNewSubPath(x,zero);}else curve.lineTo(x,y);fill.lineTo(x,y);
+// Filter-type glyphs: simple line icons, the same vocabulary used by studio EQs.
+static void drawEqShape(juce::Graphics& g,juce::Rectangle<float> r,int type,juce::Colour colour){
+    const float x0=r.getX(),x1=r.getRight(),w=r.getWidth(),mid=r.getCentreY(),top=r.getY(),bot=r.getBottom();
+    juce::Path p;
+    switch(type){
+        case 0: p.startNewSubPath(x0,mid+2);p.cubicTo(x0+w*.32f,mid+2,x0+w*.38f,top,x0+w*.5f,top);p.cubicTo(x0+w*.62f,top,x0+w*.68f,mid+2,x1,mid+2);break; // bell
+        case 1: p.startNewSubPath(x0+w*.08f,bot);p.cubicTo(x0+w*.3f,bot-2,x0+w*.3f,mid,x0+w*.5f,mid);p.lineTo(x1,mid);break; // low cut
+        case 2: p.startNewSubPath(x0,top+2);p.lineTo(x0+w*.28f,top+2);p.cubicTo(x0+w*.5f,top+2,x0+w*.5f,mid+3,x0+w*.72f,mid+3);p.lineTo(x1,mid+3);break; // low shelf
+        case 3: p.startNewSubPath(x0,mid+3);p.lineTo(x0+w*.28f,mid+3);p.cubicTo(x0+w*.5f,mid+3,x0+w*.5f,top+2,x0+w*.72f,top+2);p.lineTo(x1,top+2);break; // high shelf
+        case 4: p.startNewSubPath(x0,mid);p.lineTo(x0+w*.5f,mid);p.cubicTo(x0+w*.7f,mid,x0+w*.7f,bot-2,x0+w*.92f,bot);break; // high cut
+        default: p.startNewSubPath(x0,mid-2);p.lineTo(x0+w*.4f,mid-2);p.cubicTo(x0+w*.47f,mid-2,x0+w*.48f,bot,x0+w*.5f,bot);p.cubicTo(x0+w*.52f,bot,x0+w*.53f,mid-2,x0+w*.6f,mid-2);p.lineTo(x1,mid-2);break; // notch
     }
-    fill.lineTo(area.getRight(),zero);fill.closeSubPath();g.setColour(colour.withAlpha(.07f));g.fillPath(fill);
-    g.setColour(colour);g.strokePath(curve,juce::PathStrokeType(1.7f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+    g.setColour(colour);g.strokePath(p,juce::PathStrokeType(1.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
 }
 class EqShapeButton final:public juce::Button{
 public:
     EqShapeButton():Button("Filter shape"){setClickingTogglesState(false);}
-    int type=0;juce::Colour accent=Daw::accent;
-    void paintButton(juce::Graphics& g,bool hover,bool down)override{
-        const bool active=getToggleState();auto r=getLocalBounds().toFloat().reduced(.5f);
-        const auto ink=!isEnabled()?Daw::textFaint:active?accent: hover?Daw::text:Daw::textDim;
-        g.setColour(active?accent.withAlpha(.09f):juce::Colour(hover?0xff272c34:0xff20242b));g.fillRoundedRectangle(r,4);
-        g.setColour(active?accent.withAlpha(.72f):juce::Colour(down?0xff626b79:0xff333a44));g.drawRoundedRectangle(r,4,active?1.2f:.8f);
-        auto icon=r.reduced(11,6);icon.removeFromBottom(15);drawEqShape(g,icon,type,ink);
-        g.setFont(Daw::font(9.2f,true));g.setColour(ink);g.drawFittedText(getButtonText(),getLocalBounds().removeFromBottom(18).reduced(3,0),juce::Justification::centred,1);
+    int type=0;juce::Colour accent=Daw::accent;bool first=false,last=false;
+    void paintButton(juce::Graphics& g,bool hover,bool)override{
+        const bool active=getToggleState();auto r=getLocalBounds().toFloat();
+        const auto ink=!isEnabled()?Daw::textFaint.withAlpha(.5f):active?accent:hover?Daw::text:Daw::textDim;
+        juce::Path bg;bg.addRoundedRectangle(r.getX(),r.getY(),r.getWidth(),r.getHeight(),5.f,5.f,first,last,first,last);
+        g.setColour(active?accent.withAlpha(.16f):hover?juce::Colour(0xff24272c):juce::Colour(0xff1c1e22));g.fillPath(bg);
+        if(!last){g.setColour(juce::Colour(0xff2a2d33));g.drawVerticalLine((int)r.getRight()-1,r.getY()+6,r.getBottom()-6);}
+        drawEqShape(g,r.withSizeKeepingCentre(std::min(26.f,r.getWidth()-12),12.f),type,ink);
     }
 };
 class EqLookAndFeel final:public juce::LookAndFeel_V4{
@@ -76,8 +76,8 @@ public:
     EqLookAndFeel(){
         setColour(juce::ComboBox::textColourId,Daw::text);setColour(juce::ComboBox::backgroundColourId,juce::Colour(0xff1d2229));
         setColour(juce::TextButton::textColourOffId,Daw::textDim);setColour(juce::TextButton::textColourOnId,Daw::text);
-        setColour(juce::Slider::textBoxTextColourId,Daw::text);setColour(juce::Slider::textBoxBackgroundColourId,juce::Colour(0xff12161b));
-        setColour(juce::Slider::textBoxOutlineColourId,juce::Colour(0xff343b45));
+        setColour(juce::Slider::textBoxTextColourId,Daw::text);setColour(juce::Slider::textBoxBackgroundColourId,juce::Colours::transparentBlack);
+        setColour(juce::Slider::textBoxOutlineColourId,juce::Colours::transparentBlack);
         setColour(juce::TextEditor::backgroundColourId,juce::Colour(0xff12161b));setColour(juce::TextEditor::textColourId,Daw::text);
         setColour(juce::PopupMenu::backgroundColourId,juce::Colour(0xff1d2229));setColour(juce::PopupMenu::textColourId,Daw::text);
     }
@@ -86,8 +86,8 @@ public:
     juce::Font getLabelFont(juce::Label&)override{return Daw::font(13.f,true);}
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour&,bool hover,bool down)override{
         auto r=b.getLocalBounds().toFloat().reduced(.5f);const bool on=b.getToggleState();
-        g.setColour(on?Daw::accent.withAlpha(.11f):juce::Colour(down?0xff303640:hover?0xff292f38:0xff20252d));g.fillRoundedRectangle(r,4);
-        g.setColour(on?Daw::accent.withAlpha(.6f):juce::Colour(hover?0xff515b69:0xff363e49));g.drawRoundedRectangle(r,4,.8f);
+        g.setColour(on?Daw::accent.withAlpha(.14f):juce::Colour(down?0xff2a2d33:hover?0xff24272c:0xff1c1e22));g.fillRoundedRectangle(r,5);
+        g.setColour(on?Daw::accent.withAlpha(.5f):juce::Colour(0xff2a2d33));g.drawRoundedRectangle(r,5,1.f);
     }
     void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool hover,bool down)override{
         drawButtonBackground(g,b,{},hover,down);auto r=b.getLocalBounds().toFloat();const auto ink=b.getToggleState()?Daw::accent:Daw::textDim;
@@ -96,17 +96,17 @@ public:
         g.setFont(Daw::font(10.5f,true));g.drawFittedText(b.getButtonText(),b.getLocalBounds().withTrimmedLeft(30).reduced(3,0),juce::Justification::centredLeft,1);
     }
     void drawComboBox(juce::Graphics& g,int w,int h,bool down,int,int,int,int,juce::ComboBox&)override{
-        auto r=juce::Rectangle<float>(.5f,.5f,(float)w-1,(float)h-1);g.setColour(juce::Colour(down?0xff292f38:0xff1b2027));g.fillRoundedRectangle(r,4);
-        g.setColour(juce::Colour(0xff343c47));g.drawRoundedRectangle(r,4,.8f);
+        auto r=juce::Rectangle<float>(.5f,.5f,(float)w-1,(float)h-1);g.setColour(juce::Colour(down?0xff24272c:0xff1c1e22));g.fillRoundedRectangle(r,5);
+        g.setColour(juce::Colour(0xff2a2d33));g.drawRoundedRectangle(r,5,1.f);
         const float x=w-14.f,y=h*.5f;juce::Path arrow;arrow.startNewSubPath(x-3,y-2);arrow.lineTo(x,y+1);arrow.lineTo(x+3,y-2);g.setColour(Daw::textDim);g.strokePath(arrow,juce::PathStrokeType(1.2f));
     }
     void positionComboBoxText(juce::ComboBox& b,juce::Label& l)override{l.setBounds(10,0,b.getWidth()-32,b.getHeight());l.setFont(getComboBoxFont(b));}
     juce::Slider::SliderLayout getSliderLayout(juce::Slider& slider)override{
-        juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(27);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(104,value.getWidth()),25);r.removeFromBottom(7);layout.sliderBounds=r;return layout;
+        juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(22);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(90,value.getWidth()),20);r.removeFromBottom(2);layout.sliderBounds=r;return layout;
     }
     void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& slider)override{
         juce::ignoreUnused(start,end);
-        const float d=std::max(8.f,(float)std::min(w,h)-6.f);
+        const float d=std::clamp((float)std::min(w,h)-4.f,8.f,62.f);
         Daw::drawKnob(g,juce::Rectangle<float>(d,d).withCentre({x+w*.5f,y+h*.5f}),pos,slider.findColour(juce::Slider::rotarySliderFillColourId),(bool)slider.getProperties()["eqBipolar"],slider.isEnabled(),slider.isMouseOverOrDragging());
     }
 };
@@ -321,14 +321,15 @@ public:
         if(editor.isVisible())cancelEdit();
         const auto rack=getHudBounds(getPlotArea()).reduced(12,8);auto area=rack;
         const int order[]{0,2,3,1,4,5};
+        for(int cell=0;cell<6;++cell){shapes[(size_t)order[cell]].first=cell==0;shapes[(size_t)order[cell]].last=cell==5;}
         if(getWidth()>=800){
-            auto actions=area.removeFromRight(84);area.removeFromRight(8);
-            auto knobsArea=area.removeFromRight(std::min(460.f,area.getWidth()*.48f));area.removeFromRight(8);
-            const float cell=area.getWidth()/6.f;
-            for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,area.getY()+22,cell-4,area.getHeight()-22).toNearestInt());
+            auto actions=area.removeFromRight(84);area.removeFromRight(16);
+            auto knobsArea=area.removeFromRight(std::min(360.f,area.getWidth()*.46f));area.removeFromRight(16);
+            const float cell=std::min(50.f,area.getWidth()/6.f);const float rowY=area.getY()+32;
+            for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,rowY,cell,32).toNearestInt());
             const float columnW=knobsArea.getWidth()/3.f;
-            for(int i=0;i<3;++i){auto cell=juce::Rectangle<float>(knobsArea.getX()+i*columnW+2,knobsArea.getY(),columnW-4,knobsArea.getHeight()).toNearestInt();auto cap=cell.removeFromTop(28);knobTitle[(size_t)i].setBounds(cap.reduced(1,1));knobs[(size_t)i].setBounds(cell.reduced(2,0));}
-            const int button=28,gap=6,stack=button*3+gap*2;const int y0=(int)(actions.getY()+(actions.getHeight()-stack)*.5f);
+            for(int i=0;i<3;++i){auto cell=juce::Rectangle<float>(knobsArea.getX()+i*columnW+2,knobsArea.getY(),columnW-4,knobsArea.getHeight()).toNearestInt();auto cap=cell.removeFromTop(16);knobTitle[(size_t)i].setBounds(cap);knobs[(size_t)i].setBounds(cell);}
+            const int button=26,gap=6,stack=button*3+gap*2;const int y0=(int)(actions.getY()+(actions.getHeight()-stack)*.5f);
             bandPower.setBounds((int)actions.getX(),y0,(int)actions.getWidth(),button);
             invertButton.setBounds((int)actions.getX(),y0+button+gap,(int)actions.getWidth(),button);
             removeButton.setBounds((int)actions.getX(),y0+(button+gap)*2,(int)actions.getWidth(),button);
@@ -339,7 +340,7 @@ public:
         auto actions=area.removeFromRight(82);area.removeFromRight(14);
         auto grid=types.withTrimmedTop(38);
         const float cellWidth=grid.getWidth()/3;
-        for(int cell=0;cell<6;++cell)shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*61,cellWidth-5,54).toNearestInt());
+        for(int cell=0;cell<6;++cell){shapes[(size_t)order[cell]].first=cell%3==0;shapes[(size_t)order[cell]].last=cell%3==2;shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*38,cellWidth,32).toNearestInt());}
         const float columnW=area.getWidth()/3;
         for(int i=0;i<3;++i){auto cell=juce::Rectangle<float>(area.getX()+i*columnW+4,area.getY()+28,columnW-8,std::max(48.f,area.getHeight()-32)).toNearestInt();auto cap=cell.removeFromTop(28);knobTitle[(size_t)i].setBounds(cap.reduced(1,1));knobs[(size_t)i].setBounds(cell.reduced(2,0));}
         bandPower.setBounds(actions.withY(actions.getY()+49).withHeight(29).toNearestInt());
@@ -540,10 +541,7 @@ public:
             const auto r=knobTitle[(size_t)i].getBounds();
             if(r.getWidth()<8||r.getHeight()<12)continue;
             const bool enabled=knobs[(size_t)i].isEnabled();
-            g.setColour(juce::Colour(0xff243044));
-            g.fillRect(r);
-            g.setColour(enabled?juce::Colour(0xfff7f8fa):juce::Colour(0xff8b93a0));
-            g.drawText(tr(names[i]),r.reduced(2,0),juce::Justification::centred,false);
+            Daw::drawCaps(g,tr(names[i]),r,enabled?Daw::textDim:Daw::textFaint.withAlpha(.6f),juce::Justification::centred);
         }
     }
 
@@ -718,7 +716,7 @@ private:
     juce::TextEditor editor;
     int editParam = -1;
 
-    float hudHeight() const { return getWidth()>=800?196.f:220.f; }
+    float hudHeight() const { return getWidth()>=800?132.f:200.f; }
     juce::Rectangle<float> getPlotArea() const {
         const float padL=48, padR=getWidth()>=800?228.f:52.f, padT=22, padB=hudHeight()+20;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
@@ -791,14 +789,14 @@ private:
     }
     juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{const float h=hudHeight();return {12.f,(float)getHeight()-h-8.f,(float)getWidth()-24.f,h};}
     void drawBandHud(juce::Graphics& g,const juce::Rectangle<float>& plot){
-        const auto rack=getHudBounds(plot);g.setColour(juce::Colour(0xff1a1f26));g.fillRoundedRectangle(rack,6);g.setColour(juce::Colour(0xff333b46));g.drawRoundedRectangle(rack,6,.8f);
+        const auto rack=getHudBounds(plot);Daw::devicePanel(g,rack,{});
         auto left=rack.reduced(14,10);const bool selected=validBand();
         const bool wide=getWidth()>=800;const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
-        g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,20,4);
-        g.setColour(colour);g.setFont(Daw::font(12,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,20),juce::Justification::centred);
-        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+34,left.getY()+1,160,20),juce::Justification::centredLeft);
+        g.setColour(colour);g.fillEllipse(left.getX(),left.getY()+7,8,8);
+        g.setColour(Daw::text);g.setFont(Daw::font(13,true));g.drawText(selected?tr("Band")+" "+juce::String(selectedBand+1):tr("No band"),juce::Rectangle<float>(left.getX()+16,left.getY()+1,90,20),juce::Justification::centredLeft);
+        if(selected){g.setColour(Daw::textFaint);g.setFont(Daw::font(11.5f));g.drawText(tr(filterTypeNames[currentEq.bands[(size_t)selectedBand].type]),juce::Rectangle<float>(left.getX()+100,left.getY()+1,140,20),juce::Justification::centredLeft);}
         (void)wide;
-        const float line=knobs[0].getX()-8.f;g.setColour(juce::Colour(0xff303740));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
+        const float line=knobs[0].getX()-10.f;g.setColour(juce::Colour(0xff25282d));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
         if(!selected){g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawFittedText(tr("SELECT BAND"),removeButton.getBounds().withY((int)left.getY()).withHeight(27),juce::Justification::centred,2);}
     }
 

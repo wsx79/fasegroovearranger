@@ -71,18 +71,17 @@ public:
         if((tips!=nullptr)!=Localisation::tipsEnabled()){if(Localisation::tipsEnabled())tips=std::make_unique<juce::TooltipWindow>(this,500);else tips.reset();}repaint();
     }
     void paint(juce::Graphics& g)override{
-        g.fillAll(StudioStyle::base);Daw::deviceHeader(g,{16,4,getWidth()-32,34},tr("BUS & SEND"),groupView?tr("GROUPS / SIDECHAIN"):tr("RETURNS A / B"),groupView?StudioStyle::accent:Daw::returnA);
-        g.setColour(StudioStyle::line);g.drawHorizontalLine(40,16.f,(float)getWidth()-16);
+        g.fillAll(StudioStyle::base);Daw::deviceHeader(g,{16,4,getWidth()-32,34},tr("Bus & Send"),groupView?tr("Groups and sidechain"):tr("Shared returns A / B"),{});
         Daw::devicePanel(g,sourceFrame.toFloat(),StudioStyle::lineStrong);
-        {const auto& on=tabs[groupView?1:0];g.setColour(groupView?StudioStyle::accent:Daw::returnA);g.fillRect(on.getX()+2,on.getBottom()-2,on.getWidth()-4,2);}
+        
         for(int slot=0;slot<2;++slot){const int i=groupView?slot:slot+2;const auto card=cards[(size_t)i];const auto tone=i>=2?Daw::returnColour(i-2):StudioStyle::accent;Daw::devicePanel(g,card.toFloat(),tone);
-            {auto strip=card.withHeight(38).reduced(1,1).toFloat();g.setColour(juce::Colours::black.withAlpha(.18f));g.fillRect(strip.withTrimmedTop(2));g.setColour(StudioStyle::line);g.drawHorizontalLine(card.getY()+38,(float)card.getX()+1,(float)card.getRight()-1);
-             const auto led=juce::Rectangle<float>(7.f,7.f).withCentre({(float)card.getRight()-18,(float)card.getY()+19});g.setColour(tone.withAlpha(.25f));g.fillEllipse(led.expanded(3));g.setColour(tone);g.fillEllipse(led);}
-            if(groupView){auto* gain=levels[(size_t)i];const auto well=juce::Rectangle<float>((float)gain->getX()-36,(float)gain->getY()-6,(float)gain->getWidth()+58,(float)gain->getHeight()+12);g.setColour(juce::Colours::black.withAlpha(.2f));g.fillRoundedRectangle(well,3);}
+            g.setColour(tone);g.fillRoundedRectangle((float)card.getX()+12,(float)card.getY()+14,3.f,14.f,1.5f);
+            g.setColour(juce::Colour(0xff222529));g.drawHorizontalLine(card.getY()+40,(float)card.getX()+12,(float)card.getRight()-12);
+            if(groupView){auto* gain=levels[(size_t)i];juce::ignoreUnused(gain);}
             auto* gain=levels[(size_t)i];g.setFont(StudioStyle::font(9));const float x=gain->getX()+gain->getWidth()*.5f-18;
             if(groupView)for(double db:{6.,0.,-6.,-12.,-24.,-48.}){const float y=gain->getY()+gain->getPositionOfValue(db);g.setColour(StudioStyle::textFaint);g.fillRect(x-3,y,3.f,1.f);if(gain->getHeight()>130||db==0||db==-24)g.drawText(juce::String((int)db),juce::Rectangle<float>(x-30,y-5,23,10),juce::Justification::centredRight);}
             StudioStyle::drawCaps(g,tr("PAN"),{pans[(size_t)i]->getX(),pans[(size_t)i]->getBottom(),pans[(size_t)i]->getWidth(),14},StudioStyle::textFaint,juce::Justification::centred);
-            if(i<2){const float reduction=owner.audio.busReduction(i);const float db=std::max(0.f,-juce::Decibels::gainToDecibels(std::max(1.e-6f,1.f-reduction),-120.f));{auto gr=juce::Rectangle<int>(card.getX()+12,card.getBottom()-32,std::min(220,card.getWidth()-138),22);Daw::deviceScreen(g,gr.toFloat());StudioStyle::drawCaps(g,tr("GAIN REDUCTION"),gr.reduced(8,0),StudioStyle::textFaint);g.setFont(Daw::font(11.f,true));g.setColour(db>.05f?StudioStyle::accent:StudioStyle::textFaint);g.drawText("-"+juce::String(db,1)+" dB",gr.reduced(8,0),juce::Justification::centredRight);}}
+            if(i<2){const float reduction=owner.audio.busReduction(i);const float db=std::max(0.f,-juce::Decibels::gainToDecibels(std::max(1.e-6f,1.f-reduction),-120.f));{auto gr=juce::Rectangle<int>(card.getX()+12,card.getBottom()-32,std::min(220,card.getWidth()-138),22);StudioStyle::drawCaps(g,tr("GAIN REDUCTION"),gr.reduced(8,0),StudioStyle::textFaint);g.setFont(Daw::font(11.f,true));g.setColour(db>.05f?StudioStyle::accent:StudioStyle::textFaint);g.drawText("-"+juce::String(db,1)+" dB",gr.reduced(8,0),juce::Justification::centredRight);}}
             g.setFont(StudioStyle::font(Daw::small));g.setColour(StudioStyle::textDim);g.drawText(meters[(size_t)i].valueText(),signalReadouts[(size_t)i],juce::Justification::centred);
         }
     }
@@ -98,7 +97,7 @@ public:
             for(auto& field:effects[(size_t)i]){field.slider->setVisible(visible&&(i<2||!owner.project.returnChains));field.caption->setVisible(field.slider->isVisible());}
             if(i<2){memberLabels[(size_t)i]->setVisible(groupView);sources[(size_t)i]->setVisible(groupView);sourceLabels[(size_t)i].setVisible(groupView);sends[(size_t)i].setVisible(!groupView);sendCaptions[(size_t)i].setVisible(!groupView);chainPorts[(size_t)i].setVisible(!groupView&&owner.project.returnChains);}
             if(!visible)continue;
-            const int column=i%2;auto card=juce::Rectangle<int>(area.getX()+column*(width+12),area.getY(),width,area.getHeight());cards[(size_t)i]=card;names[(size_t)i]->setBounds(card.reduced(12,0).withTrimmedTop(6).withHeight(26).withTrimmedRight(24));
+            const int column=i%2;auto card=juce::Rectangle<int>(area.getX()+column*(width+12),area.getY(),width,area.getHeight());cards[(size_t)i]=card;names[(size_t)i]->setBounds(card.reduced(12,0).withTrimmedTop(8).withHeight(26).withTrimmedLeft(8));
             if(i<2)memberLabels[(size_t)i]->setBounds(card.reduced(12,0).withTrimmedTop(40).withHeight(20));
             auto body=card.reduced(12,0).withTrimmedTop(i<2?66:50).withTrimmedBottom(10);const int faderX=groupView?body.getRight()-100:body.getX();
             const int panTop=groupView?body.getY():body.getY()+86;pans[(size_t)i]->setBounds(faderX+13,panTop,74,50);

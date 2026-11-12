@@ -62,67 +62,46 @@ inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int
 
 // Shared material for native devices; graphs and controls retain their own
 // semantics. No simulated meters or DSP-dependent resources on the UI thread.
-inline void devicePanel(juce::Graphics& g,juce::Rectangle<float> r,juce::Colour colour){
-    // Studio-hardware module: dark anodised face, crisp bevel, a single thin accent rule.
-    r=r.reduced(.5f);const float rr=4.f;
-    g.setColour(juce::Colours::black.withAlpha(.35f));g.fillRoundedRectangle(r.translated(0,1.f),rr);
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1f2227),r.getX(),r.getY(),juce::Colour(0xff17191d),r.getX(),r.getBottom(),false));g.fillRoundedRectangle(r,rr);
-    g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine((int)r.getY()+1,r.getX()+rr,r.getRight()-rr);
-    g.setColour(juce::Colour(0xff2e3239));g.drawRoundedRectangle(r,rr,1.f);
-    g.setColour(colour.withAlpha(.55f));g.fillRect(r.getX()+rr,r.getY(),std::min(28.f,std::max(0.f,r.getWidth()-2*rr)),1.5f);
+inline void devicePanel(juce::Graphics& g,juce::Rectangle<float> r,juce::Colour){
+    // Flat module surface: one fill, one hairline. Colour belongs to data, not to chrome.
+    r=r.reduced(.5f);g.setColour(juce::Colour(0xff16181b));g.fillRoundedRectangle(r,6.f);
+    g.setColour(juce::Colour(0xff25282d));g.drawRoundedRectangle(r,6.f,1.f);
 }
-// Recessed display window (graphs, curves, meters).
+// Display window for graphs and meters.
 inline void deviceScreen(juce::Graphics& g,juce::Rectangle<float> r){
-    g.setColour(juce::Colour(0xff0c0d10));g.fillRoundedRectangle(r,3.f);
-    g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(.45f),r.getX(),r.getY(),juce::Colours::transparentBlack,r.getX(),r.getY()+10,false));g.fillRoundedRectangle(r,3.f);
-    g.setColour(juce::Colours::black.withAlpha(.8f));g.drawRoundedRectangle(r,3.f,1.f);
-    g.setColour(juce::Colours::white.withAlpha(.05f));g.drawHorizontalLine((int)r.getBottom(),r.getX()+3,r.getRight()-3);
+    g.setColour(juce::Colour(0xff0d0e10));g.fillRoundedRectangle(r,4.f);
+    g.setColour(juce::Colour(0xff222429));g.drawRoundedRectangle(r.reduced(.5f),4.f,1.f);
 }
-inline void deviceHeader(juce::Graphics& g,juce::Rectangle<int> r,const juce::String& titleText,const juce::String& category,juce::Colour colour){
-    // Brand plate: power LED, product line, device name. No toy icons.
-    auto led=juce::Rectangle<float>(8.f,8.f).withCentre({(float)r.getX()+6.f,(float)r.getCentreY()});
-    g.setColour(colour.withAlpha(.25f));g.fillEllipse(led.expanded(3.f));g.setColour(colour);g.fillEllipse(led);g.setColour(juce::Colours::white.withAlpha(.5f));g.fillEllipse(led.reduced(2.5f).translated(-.8f,-.8f));
-    r.removeFromLeft(22);
-    auto f=font(19,true);f.setExtraKerningFactor(.08f);g.setFont(f);g.setColour(text);
-    const int w=juce::GlyphArrangement::getStringWidthInt(f,titleText.toUpperCase());g.drawText(titleText.toUpperCase(),r.withWidth(w+4),juce::Justification::centredLeft);
-    r.removeFromLeft(w+14);g.setColour(lineStrong);g.fillRect(r.getX(),r.getCentreY()-8,1,16);r.removeFromLeft(12);
-    auto cap=caps(9.5f);g.setFont(cap);g.setColour(textFaint);g.drawText("FASEGROOVE",r.removeFromTop(r.getHeight()/2).withTrimmedTop(2),juce::Justification::bottomLeft);
-    g.setColour(colour.withAlpha(.9f));g.drawText(category,r.withTrimmedBottom(2),juce::Justification::topLeft);
+inline void deviceHeader(juce::Graphics& g,juce::Rectangle<int> r,const juce::String& titleText,const juce::String& category,juce::Colour){
+    auto f=font(16,true);g.setFont(f);g.setColour(text);
+    const int w=juce::GlyphArrangement::getStringWidthInt(f,titleText);g.drawText(titleText,r.withWidth(w+2),juce::Justification::centredLeft);
+    r.removeFromLeft(w+12);g.setFont(font(11.5f));g.setColour(textFaint);g.drawText(category,r,juce::Justification::centredLeft);
 }
-// One knob for every native device: scale ticks, value arc, machined cap and pointer.
+// One knob for every native device: flat cap, thin value ring, white indicator.
 inline void drawKnob(juce::Graphics& g,juce::Rectangle<float> bounds,float norm,juce::Colour ink,bool bipolar,bool enabled,bool active){
     const float size=std::min(bounds.getWidth(),bounds.getHeight());if(size<8.f)return;
     const auto c=bounds.getCentre();const float outer=size*.5f;
     constexpr float start=juce::MathConstants<float>::pi*1.25f,end=juce::MathConstants<float>::pi*2.75f;
     const float angle=start+std::clamp(norm,0.f,1.f)*(end-start),from=bipolar?(start+end)*.5f:start;
-    const float alpha=enabled?1.f:.4f;const float ring=outer-1.5f,arcW=juce::jlimit(2.f,3.5f,outer*.08f),arcR=ring-arcW*.5f;
-    // Scale ticks outside the arc on large knobs only.
-    const bool ticks=outer>=26.f;const float body=(ticks?arcR-arcW-5.f:arcR-arcW-3.f);
-    if(ticks){g.setColour(juce::Colour(0xff4a505a).withMultipliedAlpha(alpha));for(int i=0;i<=10;++i){const float a=start+(end-start)*i/10.f;g.drawLine({c.getPointOnCircumference(body+1.5f,a),c.getPointOnCircumference(body+(i%5==0?4.5f:3.f),a)},i%5==0?1.2f:.8f);}}
+    const float alpha=enabled?1.f:.35f,arcW=outer>30.f?2.5f:2.f,arcR=outer-arcW*.5f-.5f,body=arcR-arcW-3.5f;
     juce::Path track;track.addCentredArc(c.x,c.y,arcR,arcR,0,start,end,true);
-    g.setColour(juce::Colour(0xff0b0c0f).withMultipliedAlpha(alpha));g.strokePath(track,juce::PathStrokeType(arcW+1.5f,juce::PathStrokeType::curved,juce::PathStrokeType::butt));
+    g.setColour(juce::Colour(0xff2a2d33).withMultipliedAlpha(alpha));g.strokePath(track,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     if(std::abs(angle-from)>.01f){juce::Path v;v.addCentredArc(c.x,c.y,arcR,arcR,0,std::min(from,angle),std::max(from,angle),true);
-        if(active&&enabled){g.setColour(ink.withAlpha(.25f));g.strokePath(v,juce::PathStrokeType(arcW+4.f,juce::PathStrokeType::curved,juce::PathStrokeType::butt));}
-        g.setColour(ink.withMultipliedAlpha(alpha));g.strokePath(v,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::butt));}
-    if(bipolar){g.setColour(juce::Colour(0xff5a606b).withMultipliedAlpha(alpha));const auto p0=c.getPointOnCircumference(arcR+arcW*.5f+1.f,from),p1=c.getPointOnCircumference(arcR+arcW*.5f+4.f,from);g.drawLine({p0,p1},1.f);}
-    // Cap: drop shadow, skirt, knurled edge and a brushed top.
-    const auto skirt=juce::Rectangle<float>(body*2,body*2).withCentre(c);
-    g.setColour(juce::Colours::black.withAlpha(.55f));g.fillEllipse(skirt.translated(0,size*.035f+1.f).expanded(1.f));
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff4a4f58),c.x,skirt.getY(),juce::Colour(0xff15171a),c.x,skirt.getBottom(),false));g.fillEllipse(skirt);
-    if(body>12.f){g.setColour(juce::Colours::black.withAlpha(.28f));for(int i=0;i<48;++i){const float a=juce::MathConstants<float>::twoPi*i/48.f;g.drawLine({c.getPointOnCircumference(body*.86f,a),c.getPointOnCircumference(body-.6f,a)},.8f);}}
-    const auto top=skirt.reduced(body*.16f);
-    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff3a3e46),top.getX(),top.getY(),juce::Colour(0xff1d2024),top.getRight(),top.getBottom(),false));g.fillEllipse(top);
-    g.setColour(juce::Colours::white.withAlpha(.09f));g.drawEllipse(top.reduced(.5f),1.f);
-    g.setColour(juce::Colours::black.withAlpha(.6f));g.drawEllipse(skirt,1.f);
-    const auto tip=c.getPointOnCircumference(body*.78f,angle),base=c.getPointOnCircumference(body*.28f,angle);
-    g.setColour(juce::Colours::black.withAlpha(.5f));g.drawLine({base.translated(0,1),tip.translated(0,1)},std::max(2.f,body*.11f));
-    g.setColour((active&&enabled?ink.brighter(.4f):juce::Colour(0xffeef0f3)).withMultipliedAlpha(alpha));g.drawLine({base,tip},std::max(1.6f,body*.09f));
+        g.setColour(ink.withMultipliedAlpha(alpha));g.strokePath(v,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
+    const auto cap=juce::Rectangle<float>(body*2,body*2).withCentre(c);
+    g.setColour(juce::Colours::black.withAlpha(.4f));g.fillEllipse(cap.translated(0,1.5f));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(active?0xff34383f:0xff2e3137),c.x,cap.getY(),juce::Colour(0xff23262b),c.x,cap.getBottom(),false));g.fillEllipse(cap);
+    g.setColour(juce::Colours::white.withAlpha(.06f));g.drawEllipse(cap.reduced(.5f),1.f);
+    g.setColour(juce::Colour(0xfff2f3f5).withMultipliedAlpha(alpha));
+    g.drawLine({c.getPointOnCircumference(body*.45f,angle),c.getPointOnCircumference(body*.88f,angle)},outer>30.f?2.2f:1.8f);
 }
 // Vertical LED-style level meter (peak hold optional), scale -60..+6 dB.
 inline void drawLedMeter(juce::Graphics& g,juce::Rectangle<float> r,float levelNorm){
-    deviceScreen(g,r);auto in=r.reduced(2.f);const int segments=std::max(4,(int)(in.getHeight()/4.f));const float h=in.getHeight()/segments;
-    for(int i=0;i<segments;++i){const float pos=(i+.5f)/segments;const auto seg=juce::Rectangle<float>(in.getX(),in.getBottom()-(i+1)*h+.6f,in.getWidth(),h-1.2f);
-        const auto col=pos>.92f?meterHigh:pos>.75f?meterMid:meterLow;g.setColour(pos<=levelNorm?col:col.withAlpha(.08f));g.fillRect(seg);}
+    g.setColour(juce::Colour(0xff0d0e10));g.fillRoundedRectangle(r,2.f);
+    levelNorm=std::clamp(levelNorm,0.f,1.f);if(levelNorm<=0.f)return;
+    const auto lit=r.reduced(1.f).withTrimmedTop(r.reduced(1.f).getHeight()*(1.f-levelNorm));
+    g.setGradientFill(juce::ColourGradient(meterHigh,r.getX(),r.getY(),meterLow,r.getX(),r.getBottom(),false));
+    {juce::Graphics::ScopedSaveState s(g);g.reduceClipRegion(lit.toNearestInt());g.fillRoundedRectangle(r.reduced(1.f),1.5f);}
 }
 
 // Each track keeps the colour of its instrument family, with a different shade per drum lane

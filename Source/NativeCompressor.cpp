@@ -155,10 +155,10 @@ public:
     {
         addAndMakeVisible(value);
         value.setJustificationType(juce::Justification::centred);
-        value.setFont(Daw::font(13.f, true));
-        value.setColour(juce::Label::backgroundColourId, Daw::lcd);
-        value.setColour(juce::Label::textColourId, accent.interpolatedWith(Daw::text, .55f));
-        value.setColour(juce::Label::outlineColourId, Daw::line);
+        value.setFont(Daw::font(12.5f));
+        value.setColour(juce::Label::backgroundColourId, juce::Colours::transparentBlack);
+        value.setColour(juce::Label::textColourId, Daw::text);
+        value.setColour(juce::Label::outlineColourId, juce::Colours::transparentBlack);
         value.setColour(juce::Label::textWhenEditingColourId, Daw::text);
         value.setEditable(false, true, false);
         value.onTextChange = [this] {
@@ -195,19 +195,19 @@ public:
     void paint(juce::Graphics& g) override
     {
         auto area = getLocalBounds().toFloat().reduced(5.f,4.f);
-        Daw::devicePanel(g,area,accent);area=area.reduced(8.f,6.f);
+        area=area.reduced(4.f,2.f);
         auto title = area.removeFromTop(18.0f);
         Daw::drawCaps(g, name, title.toNearestInt(), Daw::textDim, juce::Justification::centred);
         area.removeFromBottom(36.0f);
         const float margin = area.getHeight() < 120.0f ? 4.0f : 16.0f;
-        const float diameter = std::max(30.0f, std::min(area.getWidth(), area.getHeight()) - margin);
+        const float diameter = std::clamp(std::min(area.getWidth(), area.getHeight()) - margin, 30.0f, 66.0f);
         const double norm = std::clamp((slider.getValue() - slider.getMinimum()) /
                                            std::max(1.0e-9, slider.getMaximum() - slider.getMinimum()), 0.0, 1.0);
         Daw::drawKnob(g, juce::Rectangle<float>(diameter, diameter).withCentre(area.getCentre()), (float)norm, accent,
                       false, isEnabled(), dragging || isMouseOver(true));
     }
 
-    void resized() override { value.setBounds(getLocalBounds().removeFromBottom(34).reduced(10, 4)); }
+    void resized() override { value.setBounds(getLocalBounds().removeFromBottom(34).reduced(10, 6)); }
 
     void mouseDown(const juce::MouseEvent& e) override
     {
@@ -342,10 +342,8 @@ public:
         g.strokePath(dashed, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         g.setGradientFill(juce::ColourGradient(ui::blue.withAlpha(0.22f), plot.getX(), plot.getY(), ui::blue.withAlpha(0.02f), plot.getX(), plot.getBottom(), false));
         g.fillPath(fill);
-        g.setColour(ui::blue.withAlpha(0.25f));
-        g.strokePath(curve, juce::PathStrokeType(5.0f, juce::PathStrokeType::curved));
-        g.setColour(ui::blue.brighter(0.25f));
-        g.strokePath(curve, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved));
+        g.setColour(ui::blue.brighter(0.2f));
+        g.strokePath(curve, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved));
 
         if (threshold >= -60.0 && threshold <= 0.0)
         {
@@ -396,31 +394,20 @@ public:
         g.setColour(Daw::textDim);
         g.drawText(ui::loc("GAIN REDUCTION", "RIDUZIONE"), area.removeFromTop(16.0f).toNearestInt(), juce::Justification::centred);
 
-        g.setFont(Daw::font(26.f, true));
-        g.setColour(shown > 0.05f ? juce::Colour(0xffffb347) : Daw::textFaint);
+        g.setFont(Daw::font(22.f, true));
+        g.setColour(shown > 0.05f ? juce::Colour(0xffffa64d) : Daw::textFaint);
         g.drawText("-" + juce::String(shown, 1) + " dB", area.removeFromTop(34.0f).toNearestInt(), juce::Justification::centred);
 
         auto meter = area.reduced(18.0f, 4.0f);
         const int labelWidth = 34;
         auto scale = meter.removeFromRight((float)labelWidth);
-        const float barWidth = std::min(34.0f, meter.getWidth());
+        const float barWidth = std::min(18.0f, meter.getWidth());
         auto bar = meter.withSizeKeepingCentre(barWidth, meter.getHeight());
 
-        // Segmented GR meter falling from the top, as on hardware dynamics units.
         Daw::deviceScreen(g, bar);
         {
-            const double span = 30.0;
-            auto in = bar.reduced(3.0f);
-            const int segments = std::max(6, (int)(in.getHeight() / 5.0f));
-            const float h = in.getHeight() / (float)segments;
-            for (int i = 0; i < segments; ++i)
-            {
-                const float depth = (float)(i + 1) / (float)segments * (float)span;
-                const auto seg = juce::Rectangle<float>(in.getX(), in.getY() + i * h + 0.7f, in.getWidth(), h - 1.4f);
-                const auto col = juce::Colour(0xffffb347).interpolatedWith(juce::Colour(0xffff5a4a), (float)i / (float)segments);
-                g.setColour(depth <= shown + (float)span / (float)segments * 0.5f && shown > 0.05f ? col : col.withAlpha(0.07f));
-                g.fillRect(seg);
-            }
+            const float filled = (float)std::clamp((double)shown / 30.0, 0.0, 1.0);
+            if (filled > 0.001f) { g.setColour(juce::Colour(0xffffa64d)); g.fillRoundedRectangle(bar.reduced(2.0f).withHeight((bar.getHeight() - 4.0f) * filled), 2.0f); }
         }
         const double span = 30.0;
         g.setFont(Daw::smallFont(8.5f));
@@ -548,7 +535,9 @@ public:
         g.fillAll(Daw::base);
 
         Daw::deviceHeader(g,{18,8,430,50},ui::loc("COMPRESSOR", "COMPRESSORE"),"DYNAMICS",ui::blue);
-        Daw::devicePanel(g,sourcePanel.toFloat(),Daw::returnA);
+        Daw::devicePanel(g,sourcePanel.toFloat(),{});
+        Daw::devicePanel(g,knobPanel.toFloat(),{});
+        for (int i = 1; i < 7; ++i) if (knobs[(size_t)i]->getY() == knobs[0]->getY()) { g.setColour(juce::Colour(0xff222529)); g.drawVerticalLine(knobs[(size_t)i]->getX(), (float)knobPanel.getY() + 18, (float)knobPanel.getBottom() - 18); }
 
         const auto status = juce::Rectangle<int>(getWidth() - 250, 18, 150, 24);
         g.setColour(lastBypassed ? Daw::textFaint : ui::blue);
@@ -611,7 +600,7 @@ public:
         // tactile parameter tiles sit below, consistently at all window sizes.
         const int columns = area.getWidth() >= 980 ? 7 : 3;
         const int rows = (7 + columns - 1) / columns;
-        const int cellMin = columns == 7 ? std::clamp(area.getHeight() / 3, 140, 200) : 104;
+        const int cellMin = columns == 7 ? std::clamp(area.getHeight() / 4, 128, 150) : 112;
         const int knobTotal = rows * cellMin;
         const int displayHeight = std::max(110, area.getHeight() - 12 - knobTotal);
         auto bottom = area.removeFromTop(displayHeight);
