@@ -226,7 +226,7 @@ void editableReturns(){
     project.tracks[1].group=1;project.buses[1].mute=true;
     auto install=[&](int track,const juce::PluginDescription& description,int slot){installEffectForReturnTests(engine,track,isNativeCompressor(description)?createNativeCompressor():createNativeReturn(description),slot,description);require(engine.effectPlugin(track,slot)!=nullptr,"install native return chain effect");auto& rack=project.effectTarget(track);if(!rack.effect(slot)){EffectSlot added;added.slot=slot;rack.effects.push_back(added);}auto& fx=*rack.effect(slot);fx.pluginName=description.name.toStdString();fx.path=description.fileOrIdentifier.toStdString();fx.pluginId=description.createXml()->toString().toStdString();};
     install(returnEffectTrack,nativeReturnDescription(false),1);install(returnEffectTrack+1,nativeReturnDescription(true),1);install(0,nativeCompressorDescription(),1);
-    auto* compressor=engine.effectPlugin(0,1);require(compressor&&compressor->getParameters().size()==7,"compressor keeps six historic controls and adds source");
+    auto* compressor=engine.effectPlugin(0,1);require(compressor&&compressor->getParameters().size()==8,"compressor keeps six historic controls, source and mix");
     compressor->getParameters()[0]->setValueNotifyingHost(.5f); // -30 dB
     compressor->getParameters()[6]->setValueNotifyingHost(2.f/maxTracks); // source track 1, rendered after target 0
     project.tracks[0].sends={.5,.5};engine.publish(project);engine.play(true);

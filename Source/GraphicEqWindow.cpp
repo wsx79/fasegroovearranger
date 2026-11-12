@@ -272,7 +272,9 @@ public:
         if(!isShowing())return;
         if(getSampleRate){const double rate=getSampleRate();if(std::isfinite(rate)&&rate>=8000)sampleRate=rate;}
         std::vector<float> pre,post;
-        if(analyzerMode!=0&&getSpectrum)getSpectrum(pre,post);
+        const bool heard=analyzerMode!=0&&getSpectrum&&getSpectrum(pre,post);
+        if(heard){auto peak=[](const std::vector<float>& v){float p=0;for(float s:v)p=std::max(p,std::abs(s));return p;};inPeak=peak(pre);outPeak=peak(post);}
+        inShown=inPeak>inShown?inPeak:inShown*.9f;outShown=outPeak>outShown?outPeak:outShown*.9f;
         analyzer.analyse(pre,sampleRate,preBands,spectrumSpeed);
         analyzer.analyse(post,sampleRate,postBands,spectrumSpeed);
         repaint();
@@ -321,11 +323,25 @@ public:
 
     void resized() override {
         if(editor.isVisible())cancelEdit();
-        const auto rack=getHudBounds(getPlotArea()).reduced(14,10);auto area=rack;
+        const auto rack=getHudBounds(getPlotArea()).reduced(12,8);auto area=rack;
+        const int order[]{0,2,3,1,4,5};
+        if(getWidth()>=800){
+            auto actions=area.removeFromRight(84);area.removeFromRight(8);
+            auto knobsArea=area.removeFromRight(std::min(460.f,area.getWidth()*.48f));area.removeFromRight(8);
+            const float cell=area.getWidth()/6.f;
+            for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,area.getY(),cell-4,area.getHeight()).toNearestInt());
+            const float column=knobsArea.getWidth()/3.f;
+            for(int i=0;i<3;++i)knobs[(size_t)i].setBounds(juce::Rectangle<float>(knobsArea.getX()+i*column+2,knobsArea.getY()+20,column-4,knobsArea.getHeight()-20).toNearestInt());
+            const int button=28,gap=6,stack=button*3+gap*2;const int y0=(int)(actions.getY()+(actions.getHeight()-stack)*.5f);
+            bandPower.setBounds((int)actions.getX(),y0,(int)actions.getWidth(),button);
+            invertButton.setBounds((int)actions.getX(),y0+button+gap,(int)actions.getWidth(),button);
+            removeButton.setBounds((int)actions.getX(),y0+(button+gap)*2,(int)actions.getWidth(),button);
+            return;
+        }
         const float leftWidth=std::clamp(area.getWidth()*.27f,216.f,250.f);
         auto types=area.removeFromLeft(leftWidth);area.removeFromLeft(14);
         auto actions=area.removeFromRight(82);area.removeFromRight(14);
-        const int order[]{0,2,3,1,4,5};auto grid=types.withTrimmedTop(38);
+        auto grid=types.withTrimmedTop(38);
         const float cellWidth=grid.getWidth()/3;
         for(int cell=0;cell<6;++cell)shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*61,cellWidth-5,54).toNearestInt());
         const float column=area.getWidth()/3;
@@ -446,8 +462,10 @@ public:
                         if (i == 0) bandPath.startNewSubPath(x, y);
                         else bandPath.lineTo(x, y);
                     }
-                    g.setColour(getBandColour((size_t)which).withAlpha(0.55f));
-                    g.strokePath(bandPath, juce::PathStrokeType(1.0f, juce::PathStrokeType::curved));
+                    juce::Path bandFill=bandPath;bandFill.lineTo(plotArea.getRight(),yZero);bandFill.lineTo(plotArea.getX(),yZero);bandFill.closeSubPath();
+                    g.setColour(getBandColour((size_t)which).withAlpha(0.14f));g.fillPath(bandFill);
+                    g.setColour(getBandColour((size_t)which).withAlpha(0.9f));
+                    g.strokePath(bandPath, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved));
                 }
             }
 
@@ -491,22 +509,26 @@ public:
                 g.drawHorizontalLine(juce::roundToInt(pt.y), plotArea.getX(), plotArea.getRight());
             }
 
-            const float radius = isSelected ? 9.0f : 8.0f;
-            g.setColour(Daw::base);
-            g.fillEllipse(pt.x - radius, pt.y - radius, radius * 2.0f, radius * 2.0f);
             g.setColour(b.enabled ? col : col.withAlpha(0.35f));
-            g.drawEllipse(pt.x - radius, pt.y - radius, radius * 2.0f, radius * 2.0f, isSelected ? 2.0f : 1.5f);
-            g.setFont(Daw::font(9.0f, true));
-            g.setColour(b.enabled ? (isSelected ? Daw::text : col) : Daw::textFaint);
-            g.drawText(juce::String((int)i + 1), juce::roundToInt(pt.x - radius), juce::roundToInt(pt.y - radius),
-                       juce::roundToInt(radius * 2.0f), juce::roundToInt(radius * 2.0f), juce::Justification::centred);
+            g.fillEllipse(pt.x - 6.0f, pt.y - 6.0f, 12.0f, 12.0f);
+            g.setColour(Daw::base);
+            g.fillEllipse(pt.x - 2.5f, pt.y - 2.5f, 5.0f, 5.0f);
+            const juce::String tagText = isSelected ? (b.freq>=1000?juce::String(b.freq/1000.0,2)+" kHz":juce::String(b.freq,b.freq<100?1:0)+" Hz") + (eqHasGain(b.type)?"   "+juce::String(b.gain,1):juce::String()) : juce::String((int)i+1);
+            auto tag = juce::Rectangle<float>(pt.x + 10.0f, pt.y - 20.0f, isSelected ? 108.0f : 22.0f, 18.0f);
+            if (tag.getRight() > plotArea.getRight() - 4.0f) tag.setX(pt.x - tag.getWidth() - 10.0f);
+            if (tag.getY() < plotArea.getY() + 2.0f) tag.setY(pt.y + 8.0f);
+            g.setColour(Daw::base.withAlpha(0.9f));
+            g.fillRoundedRectangle(tag, 4.0f);
+            g.setColour(col.withAlpha(0.85f));
+            g.drawRoundedRectangle(tag, 4.0f, Daw::hairline());
+            g.setColour(b.enabled ? Daw::text : Daw::textFaint);
+            g.setFont(Daw::font(10.5f, true));
+            g.drawText(tagText, tag.toNearestInt(), juce::Justification::centred);
         }
-
-        g.setFont(Daw::smallFont(9));g.setColour(Daw::textFaint);
-        g.drawText("dB",2,3,34,16,juce::Justification::centredRight);
-        g.drawText("dBFS",(int)plotArea.getRight()+6,3,38,16,juce::Justification::centredLeft);
-        for(int db:{0,-24,-48,-72,-96}){const float y=plotArea.getY()+plotArea.getHeight()*(-db/96.f);g.drawText(juce::String(db),(int)plotArea.getRight()+7,(int)y-7,34,14,juce::Justification::centredLeft);}
-        if(analyzerMode==1||analyzerMode==2){g.setColour(Daw::textDim);g.drawText(tr("INPUT"),getWidth()-174,2,72,16,juce::Justification::centred);}if(analyzerMode==1||analyzerMode==3){g.setColour(juce::Colour(0xff4cc3f0));g.drawText(tr("OUTPUT"),getWidth()-100,2,72,16,juce::Justification::centred);}
+        g.setFont(Daw::font(11.f, true));
+        if (analyzerMode==1||analyzerMode==2) { g.setColour(Daw::textDim); g.fillRoundedRectangle(plotArea.getX()+10, plotArea.getY()+10, 10, 10, 2); g.drawText(tr("IN"), (int)plotArea.getX()+24, (int)plotArea.getY()+6, 36, 16, juce::Justification::centredLeft); }
+        if (analyzerMode==1||analyzerMode==3) { g.setColour(juce::Colour(0xff4cc3f0)); g.fillRoundedRectangle(plotArea.getX()+68, plotArea.getY()+10, 10, 10, 2); g.drawText(tr("OUT"), (int)plotArea.getX()+82, (int)plotArea.getY()+6, 40, 16, juce::Justification::centredLeft); }
+        drawRail(g, plotArea);
         drawBandHud(g,plotArea);
 
     }
@@ -675,15 +697,33 @@ private:
     }
     EqAnalyzer analyzer;
     EqAnalyzer::Trace preBands{},postBands{};
+    float inPeak=0,outPeak=0,inShown=0,outShown=0;
     double sampleRate=44100,displayRange=12,nodeStartFreq=1000,nodeStartGain=0;
     int analyzerMode=1,spectrumSpeed=1;
     std::uint64_t revision=0,trackIdentity=0;
     juce::TextEditor editor;
     int editParam = -1;
 
+    float hudHeight() const { return getWidth()>=800?152.f:206.f; }
     juce::Rectangle<float> getPlotArea() const {
-        const float padL=44, padR=48, padT=24, padB=246;
+        const float padL=48, padR=getWidth()>=800?188.f:48.f, padT=22, padB=hudHeight()+20;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
+    }
+    void drawRail(juce::Graphics& g,const juce::Rectangle<float>& plot) const {
+        if(getWidth()<800)return;
+        auto rail=juce::Rectangle<float>(plot.getRight()+10,plot.getY(),(float)getWidth()-plot.getRight()-18,plot.getHeight());
+        const auto colour=validBand()?getBandColour((size_t)selectedBand):Daw::textFaint;
+        Daw::devicePanel(g,rail,colour);
+        auto card=rail.reduced(12,12);
+        g.setColour(colour);g.setFont(Daw::caps(10.5f));
+        g.drawText(validBand()?tr("BAND")+" "+juce::String(selectedBand+1).paddedLeft('0',2)+"   "+tr(filterTypeNames[currentEq.bands[(size_t)selectedBand].type]):tr("SELECT BAND"),card.removeFromTop(16).toNearestInt(),juce::Justification::centredLeft);
+        card.removeFromTop(6);
+        auto readout=[&](const juce::String& k,const juce::String& v){auto row=card.removeFromTop(46);g.setColour(Daw::textFaint);g.setFont(Daw::caps(10));g.drawText(k,row.removeFromTop(14).toNearestInt(),juce::Justification::centredLeft);g.setColour(Daw::text);g.setFont(Daw::font(22.f,true));g.drawText(v,row.toNearestInt(),juce::Justification::centredLeft);};
+        if(validBand()){const auto& b=currentEq.bands[(size_t)selectedBand];readout(tr("FREQUENCY"),b.freq>=1000?juce::String(b.freq/1000,2)+" kHz":juce::String(b.freq,b.freq<100?1:0)+" Hz");readout(tr("GAIN"),eqHasGain(b.type)?juce::String(b.gain,1)+" dB":"--");readout("Q",juce::String(b.q,2));}
+        else{readout(tr("FREQUENCY"),"--");readout(tr("GAIN"),"--");readout("Q","--");}
+        auto meters=card.removeFromTop(std::min(150.f,card.getHeight()));
+        auto meter=[&](juce::Rectangle<float> r,const juce::String& name,float linear){const float db=linear>1.e-8f?20.f*std::log10(linear):-48.f;g.setColour(Daw::textDim);g.setFont(Daw::caps(10));g.drawText(name,r.removeFromTop(14).toNearestInt(),juce::Justification::centred);g.setColour(Daw::text);g.setFont(Daw::font(12.f,true));g.drawText(linear>1.e-8f?juce::String(db,1):"--",r.removeFromBottom(16).toNearestInt(),juce::Justification::centred);auto bar=r.withSizeKeepingCentre(std::min(16.f,r.getWidth()),std::max(8.f,r.getHeight()-4));g.setColour(Daw::lcd);g.fillRoundedRectangle(bar,3);g.setColour(Daw::lineStrong);g.drawRoundedRectangle(bar,3,Daw::hairline());const float shown=std::clamp((db+48.f)/48.f,0.f,1.f);auto lit=bar.withTrimmedTop(bar.getHeight()*(1.f-shown));g.setGradientFill(juce::ColourGradient(Daw::meterHigh,bar.getX(),bar.getY(),Daw::meterLow,bar.getX(),bar.getBottom(),false));{juce::Graphics::ScopedSaveState clip(g);g.reduceClipRegion(lit.toNearestInt());g.fillRoundedRectangle(bar,3);}};
+        meter(meters.removeFromLeft(meters.getWidth()*.5f),"IN",inShown);meter(meters,"OUT",outShown);
     }
 
     double maxFrequency()const{return std::min(20000.,sampleRate*.499);}
@@ -735,14 +775,16 @@ private:
         l.freq=readout(knobs[0]);l.gain=readout(knobs[1]);l.q=readout(knobs[2]);
         l.bypass=bandPower.getBounds().toFloat();l.invert=invertButton.getBounds().toFloat();l.del=removeButton.getBounds().toFloat();return l;
     }
-    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{return {14.f,(float)getHeight()-214.f,(float)getWidth()-28.f,206.f};}
+    juce::Rectangle<float> getHudBounds(const juce::Rectangle<float>&)const{const float h=hudHeight();return {12.f,(float)getHeight()-h-8.f,(float)getWidth()-24.f,h};}
     void drawBandHud(juce::Graphics& g,const juce::Rectangle<float>& plot){
         const auto rack=getHudBounds(plot);g.setColour(juce::Colour(0xff1a1f26));g.fillRoundedRectangle(rack,6);g.setColour(juce::Colour(0xff333b46));g.drawRoundedRectangle(rack,6,.8f);
-        auto left=rack.reduced(14,10);const bool selected=validBand();const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
-        g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,25,4);
+        auto left=rack.reduced(14,10);const bool selected=validBand();
+        const bool wide=getWidth()>=800;
+        if(!wide){const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,25,4);
         g.setColour(colour);g.setFont(Daw::font(13,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,25),juce::Justification::centred);
-        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+39,left.getY()+1,172,25),juce::Justification::centredLeft);
-        for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(left.getY()+2).withHeight(20),juce::Justification::centred);}
+        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+39,left.getY()+1,172,25),juce::Justification::centredLeft);}
+        if(wide)for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(r.getY()-18).withHeight(16),juce::Justification::centred);}
+        else for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(left.getY()+2).withHeight(20),juce::Justification::centred);}
         const float line=knobs[0].getX()-8.f;g.setColour(juce::Colour(0xff303740));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
         if(!selected){g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawFittedText(tr("SELECT BAND"),removeButton.getBounds().withY((int)left.getY()).withHeight(27),juce::Justification::centred,2);}
     }
@@ -804,6 +846,8 @@ public:
         analyzerMode.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerMode","1").getIntValue(),0,3)+1,juce::dontSendNotification);
         speed.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1,juce::dontSendNotification);
         range.setSelectedId(std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1,juce::dontSendNotification);
+        bandSelector.setVisible(false);
+        for(int i=0;i<16;++i){auto& chip=chips[(size_t)i];addAndMakeVisible(chip);chip.index=i;chip.onClick=[this,i]{if(!updating)eqDisplay.selectBand(i);};}
     }
     ~Panel()override{setLookAndFeel(nullptr);}
     void setTrack(int track){meterTrack=-2;currentTrack=std::clamp(track>=0?track:owner.selectedTrack,0,(int)owner.project.tracks.size()-1);refresh();}
@@ -818,6 +862,7 @@ public:
         const auto& bands=eqDisplay.getEq().bands;
         for(size_t i=0;i<bands.size();++i){const auto& b=bands[i];bandSelector.addItem(juce::String((int)i+1)+juce::String::fromUTF8(" · ")+tr(filterTypeNames[b.type])+juce::String::fromUTF8(" · ")+(b.freq>=1000?juce::String(b.freq/1000,2)+"k":juce::String((int)b.freq))+(!b.enabled?" ["+tr("OFF")+"]":""),(int)i+2);}
         bandSelector.setSelectedId(eqDisplay.getSelectedBand()+2,juce::dontSendNotification);
+        for(int i=0;i<16;++i){auto& chip=chips[(size_t)i];const bool on=i<(int)bands.size();chip.setVisible(on);if(on){chip.ink=getBandColour((size_t)i);chip.setToggleState(i==eqDisplay.getSelectedBand(),juce::dontSendNotification);chip.repaint();}}
         addBandButton.setButtonText(tr("+ ADD BAND"));addBandButton.setEnabled(bands.size()<16);
         enableButton.setButtonText(tr(track.eq.enabled?"EQ ACTIVE":"EQ BYPASSED"));enableButton.setToggleState(track.eq.enabled,juce::dontSendNotification);
         resetButton.setButtonText(tr("RESET EQ"));
@@ -825,7 +870,7 @@ public:
         populate(analyzerMode,{tr("ANALYZER OFF"),tr("INPUT / OUTPUT"),tr("INPUT ONLY"),tr("OUTPUT ONLY")},std::clamp(Localisation::setting("eqAnalyzerMode","1").getIntValue(),0,3)+1);
         populate(speed,{tr("RESPONSE: FAST"),tr("RESPONSE: MEDIUM"),tr("RESPONSE: SLOW")},std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1);
         populate(range,{juce::String::fromUTF8("±6 dB"),juce::String::fromUTF8("±12 dB"),juce::String::fromUTF8("±24 dB")},std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1);
-        updating=false;updateView();repaint();
+        updating=false;updateView();resized();repaint();
     }
     void updateView(){
         const int mode=std::max(0,analyzerMode.getSelectedId()-1),selectedRange=std::max(0,range.getSelectedId()-1);
@@ -834,33 +879,48 @@ public:
         if(wanted!=meterTrack){owner.audio.setSpectrumTrack(wanted);meterTrack=wanted;spectrumGate=lastSpectrumRevision=owner.audio.spectrumRevision();}
     }
     void paint(juce::Graphics& g)override{
-        g.fillAll(Daw::base);g.setColour(Daw::text);g.setFont(Daw::font(25.f,true));g.drawText("EQ",16,7,45,34,juce::Justification::centredLeft);
-        g.setColour(Daw::textDim);g.setFont(Daw::font(9.5f,true));g.drawText(tr("PARAMETRIC"),62,12,106,24,juce::Justification::centredLeft);
+        g.fillAll(Daw::base);
+        Daw::deviceHeader(g,{16,6,440,50},tr("EQUALISER"),tr("PARAMETRIC"),juce::Colour(0xffe7dfc8));
         g.setColour(Daw::line);g.drawHorizontalLine(eqDisplay.getY()-8,14.f,(float)getWidth()-14);
         g.setColour(Daw::textFaint);g.setFont(Daw::smallFont(9));
         g.drawFittedText(tr(juce::String::fromUTF8("Double-click: add band · Wheel: Q · Shift: fine adjustment")),getLocalBounds().removeFromBottom(22).reduced(18,1).withTrimmedRight(118),juce::Justification::centredLeft,1);
         g.drawText(juce::String(owner.audio.spectrumSampleRate()/1000.,1)+juce::String::fromUTF8(" kHz · ")+juce::String((int)eqDisplay.getEq().bands.size())+"/16",getWidth()-140,getHeight()-22,122,20,juce::Justification::centredRight);
     }
     void resized()override{
-        auto r=getLocalBounds().reduced(14);auto top=r.removeFromTop(34);
+        auto r=getLocalBounds().reduced(14);auto top=r.removeFromTop(50);
         if(getWidth()>=740){
-            resetButton.setBounds(top.removeFromRight(72));top.removeFromRight(8);enableButton.setBounds(top.removeFromRight(132));top.removeFromRight(8);addBandButton.setBounds(top.removeFromRight(114));top.removeFromRight(12);top.removeFromLeft(150);trackSelector.setBounds(top.removeFromLeft(std::min(280,top.getWidth())));
+            resetButton.setBounds(top.removeFromRight(72).reduced(0,10));top.removeFromRight(8);enableButton.setBounds(top.removeFromRight(132).reduced(0,10));top.removeFromRight(8);addBandButton.setBounds(top.removeFromRight(114).reduced(0,10));
         }else{
-            top.removeFromLeft(150);trackSelector.setBounds(top.removeFromLeft(std::min(280,top.getWidth())));r.removeFromTop(8);auto actions=r.removeFromTop(30);
+            r.removeFromTop(4);auto actions=r.removeFromTop(30);
             addBandButton.setBounds(actions.removeFromLeft(114));actions.removeFromLeft(8);enableButton.setBounds(actions.removeFromLeft(132));actions.removeFromLeft(8);resetButton.setBounds(actions.removeFromLeft(96));
         }
-        r.removeFromTop(10);auto settings=r.removeFromTop(30);
-        if(getWidth()<680){bandSelector.setBounds(settings);r.removeFromTop(6);settings=r.removeFromTop(30);}
-        range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(144));settings.removeFromRight(8);
-        if(getWidth()<680)analyzerMode.setBounds(settings);else{analyzerMode.setBounds(settings.removeFromRight(174));settings.removeFromRight(10);bandSelector.setBounds(settings.removeFromLeft(std::min(260,settings.getWidth())));}
-        r.removeFromTop(13);r.removeFromBottom(12);eqDisplay.setBounds(r);
+        r.removeFromTop(6);auto chipsRow=r.removeFromTop(30);
+        trackSelector.setBounds(chipsRow.removeFromRight(std::min(220,chipsRow.getWidth()/3)).reduced(0,2));chipsRow.removeFromRight(8);
+        int shown=0;for(const auto& chip:chips)if(chip.isVisible())++shown;
+        const int chipW=shown>0?std::min(78,chipsRow.getWidth()/shown):0;int x=chipsRow.getX();
+        for(auto& chip:chips)if(chip.isVisible()){chip.setBounds(x,chipsRow.getY(),std::max(0,chipW-4),chipsRow.getHeight());x+=chipW;}
+        r.removeFromTop(6);auto settings=r.removeFromTop(30);
+        range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(144));settings.removeFromRight(8);analyzerMode.setBounds(settings.removeFromRight(std::min(174,settings.getWidth())));
+        r.removeFromTop(8);r.removeFromBottom(12);eqDisplay.setBounds(r);
     }
 
 #if FGA_SELF_TESTS
     bool writeEvidence(const juce::File& folder);
 #endif
 private:
-    MainComponent& owner;EqLookAndFeel consoleLook;EqDisplayComponent eqDisplay;
+    class Chip : public juce::Button {
+    public:
+        Chip():juce::Button("band"){}
+        int index=0;juce::Colour ink{Daw::textDim};
+        void paintButton(juce::Graphics& g,bool hover,bool) override {
+            auto r=getLocalBounds().toFloat().reduced(2.f,2.f);const bool on=getToggleState();
+            g.setColour(on?ink.withAlpha(.22f):hover?Daw::surfaceHi:Daw::surface);g.fillRoundedRectangle(r,6);
+            g.setColour(on?ink:Daw::lineStrong);g.drawRoundedRectangle(r,6,on?1.4f:Daw::hairline());
+            g.setColour(ink);g.fillEllipse(r.getX()+8,r.getCentreY()-4,8,8);
+            g.setColour(Daw::text);g.setFont(Daw::font(11.f,true));g.drawText(juce::String(index+1).paddedLeft('0',2),r.withTrimmedLeft(18).toNearestInt(),juce::Justification::centredLeft);
+        }
+    };
+    MainComponent& owner;EqLookAndFeel consoleLook;EqDisplayComponent eqDisplay;std::array<Chip,16> chips;
     juce::ComboBox trackSelector,bandSelector,analyzerMode,speed,range;
     juce::TooltipWindow tooltip{this,650};
     juce::TextButton addBandButton,resetButton;juce::ToggleButton enableButton;

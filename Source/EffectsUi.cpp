@@ -130,7 +130,7 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
         effectsWindow->closeButtonPressed();
         auto* plugin=audio.effectPlugin(0,1);auto* editor=plugin?plugin->getActiveEditor():nullptr;juce::Slider* threshold=nullptr;int controls=0;
         if(editor)for(auto* child:editor->getChildren())if(auto* slider=dynamic_cast<juce::Slider*>(child)){++controls;if(slider->getComponentID()=="native-compressor-threshold")threshold=slider;}
-        check(editor&&controls==6&&threshold,"native editor exposes all six compressor controls");
+        check(editor&&controls==7&&threshold,"native editor exposes the six compressor controls and dry/wet");
         audio.capturePluginStates(project);
         if(threshold){if(threshold->onDragStart)threshold->onDragStart();threshold->setValue(-24,juce::sendNotificationSync);if(threshold->onDragEnd)threshold->onDragEnd();}
         check(plugin&&std::abs(plugin->getParameters()[0]->getValue()-.6f)<1e-6,"editor changes the actual hosted parameter");

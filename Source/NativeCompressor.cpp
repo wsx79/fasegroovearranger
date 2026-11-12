@@ -45,38 +45,64 @@ public:
     float getValueForText(const juce::String& text)const override{return text.equalsIgnoreCase("Self")?0:std::clamp(text.getTrailingIntValue(),0,maxTracks)/(float)maxTracks;}
 private:std::atomic<float> value{0};
 };
+class MixParameter final : public juce::HostedAudioProcessorParameter {
+public:
+    float plain()const{return value.load(std::memory_order_relaxed);}
+    float getValue()const override{return plain();}
+    void setValue(float v)override{value.store(std::isfinite(v)?std::clamp(v,0.f,1.f):1.f,std::memory_order_relaxed);}
+    float getDefaultValue()const override{return 1.f;}
+    juce::String getName(int)const override{return "Mix";}
+    juce::String getLabel()const override{return "%";}
+    juce::String getParameterID()const override{return "mix";}
+    juce::String getText(float v,int)const override{return juce::String(std::clamp(v,0.f,1.f)*100.f,1);}
+    float getValueForText(const juce::String& text)const override{return std::clamp(text.replaceCharacter(',','.').getFloatValue()/100.f,0.f,1.f);}
+private:std::atomic<float> value{1.f};
+};
 class Compressor final : public juce::AudioPluginInstance {
 public:
     Compressor():AudioPluginInstance(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true).withOutput("Output",juce::AudioChannelSet::stereo(),true)){
         auto source=std::make_unique<SourceParameter>();sourceParameter=source.get();
+        auto mix=std::make_unique<MixParameter>();mixParameter=mix.get();
         for(int i=0;i<6;++i){auto parameter=std::make_unique<CompressorParameter>(i);parameters[(size_t)i]=parameter.get();addHostedParameter(std::move(parameter));}
-        addHostedParameter(std::move(source));
+        addHostedParameter(std::move(source));addHostedParameter(std::move(mix));
     }
     CompressorDSP::Values values()const{CompressorDSP::Values values;for(int i=0;i<6;++i)values[(size_t)i]=parameters[(size_t)i]->plain();return values;}
     const juce::String getName()const override{return "Native Compressor";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description=nativeCompressorDescription();}
     bool isBusesLayoutSupported(const BusesLayout& layout)const override{return layout.getMainInputChannelSet()==layout.getMainOutputChannelSet()&&(layout.getMainOutputChannelSet()==juce::AudioChannelSet::stereo()||layout.getMainOutputChannelSet()==juce::AudioChannelSet::mono());}
-    void prepareToPlay(double rate,int)override{dsp.prepare(rate,values());inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
+    void prepareToPlay(double rate,int)override{dsp.prepare(rate,values());dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;for(auto& level:inLevel)level.store(0);for(auto& level:outLevel)level.store(0);keyLevel.store(0);inputDb.store(-100);}
     void releaseResources()override{}
-    void reset()override{dsp.reset();inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
+    void reset()override{dsp.reset();dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer&)override{
         if(block.getNumChannels()<1)return;
         const int count=block.getNumSamples();
         if(inputDelay>0)for(int n=0;n<count;++n){for(int c=0;c<std::min(2,block.getNumChannels());++c){inputLine.setSample(c,inputWrite,block.getSample(c,n));block.setSample(c,n,inputValid>=inputDelay?inputLine.getSample(c,(inputWrite-inputDelay+inputLine.getNumSamples())%inputLine.getNumSamples()):0);}inputWrite=(inputWrite+1)%inputLine.getNumSamples();inputValid=std::min(inputValid+1,inputLine.getNumSamples());}
-        dsp.configure(values());dsp.setBypassed(bypassed);
+        dsp.configure(values());dsp.setMix(mixParameter->plain());dsp.setBypassed(bypassed);
+        const int channels=std::min(2,block.getNumChannels());float inPeak[2]{},key=0;
+        for(int n=0;n<count;++n)for(int c=0;c<channels;++c){const float sample=block.getSample(c,n);if(std::isfinite(sample))inPeak[c]=std::max(inPeak[c],std::abs(sample));}
+        if(detector)for(int n=0;n<count;++n){const float sample=detector[n];if(std::isfinite(sample))key=std::max(key,std::abs(sample));}
+        else key=std::max(inPeak[0],inPeak[1]);
         if(detector&&detectorDelay>0){for(int n=0;n<count;++n){detectorLine[(size_t)detectorWrite]=detector[n];const float delayed=detectorValid>=detectorDelay?detectorLine[(size_t)((detectorWrite-detectorDelay+(int)detectorLine.size())%(int)detectorLine.size())]:0;detectorWrite=(detectorWrite+1)%(int)detectorLine.size();detectorValid=std::min(detectorValid+1,(int)detectorLine.size());dsp.process(block.getWritePointer(0)+n,block.getNumChannels()>1?block.getWritePointer(1)+n:nullptr,1,&delayed);}}
         else dsp.process(block.getWritePointer(0),block.getNumChannels()>1?block.getWritePointer(1):nullptr,count,detector);
+        float outPeak[2]{};
+        for(int n=0;n<count;++n)for(int c=0;c<channels;++c){const float sample=block.getSample(c,n);if(std::isfinite(sample))outPeak[c]=std::max(outPeak[c],std::abs(sample));}
+        if(channels<2){inPeak[1]=inPeak[0];outPeak[1]=outPeak[0];}
+        for(int c=0;c<2;++c){inLevel[(size_t)c].store(inPeak[c],std::memory_order_relaxed);outLevel[(size_t)c].store(outPeak[c],std::memory_order_relaxed);}
+        keyLevel.store(key,std::memory_order_relaxed);
+        const float peak=std::max(inPeak[0],inPeak[1]);
+        inputDb.store(peak>1.e-8f?(float)(20*std::log10((double)peak)):-100.f,std::memory_order_relaxed);
         reduction.store((float)dsp.reductionDb(),std::memory_order_relaxed);
     }
     bool acceptsMidi()const override{return false;}bool producesMidi()const override{return false;}bool isMidiEffect()const override{return false;}
     double getTailLengthSeconds()const override{return 0;}
     int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Default";}void changeProgramName(int,const juce::String&)override{}
-    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());state.setAttribute("sidechainSource",sourceParameter->source());copyXmlToBinary(state,data);}
-    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));sourceParameter->setValue((std::clamp(state->getIntAttribute("sidechainSource",-1),-1,maxTracks-1)+1)/(float)maxTracks);}
+    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());state.setAttribute("sidechainSource",sourceParameter->source());state.setAttribute("mix",(double)mixParameter->plain());copyXmlToBinary(state,data);}
+    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));sourceParameter->setValue((std::clamp(state->getIntAttribute("sidechainSource",-1),-1,maxTracks-1)+1)/(float)maxTracks);mixParameter->setValue(state->hasAttribute("mix")?(float)std::clamp(state->getDoubleAttribute("mix"),0.,1.):1.f);}
     bool hasEditor()const override{return true;}juce::AudioProcessorEditor* createEditor()override;
     const float* detector=nullptr; // audio-side borrowed buffer, reset by host before each process call
-    SourceParameter* sourceParameter=nullptr;
+    SourceParameter* sourceParameter=nullptr;MixParameter* mixParameter=nullptr;
+    std::atomic<float> inLevel[2]{},outLevel[2]{},keyLevel{0},inputDb{-100};
     int routedSource=-1,inputDelay=0,detectorDelay=0,inputWrite=0,detectorWrite=0,inputValid=0,detectorValid=0;
     juce::AudioBuffer<float> inputLine;std::vector<float> detectorLine;
     static int boundedDelay(int value){return std::clamp(value,0,3*(1<<18));}
@@ -132,7 +158,7 @@ public:
     {
         addAndMakeVisible(value);
         value.setJustificationType(juce::Justification::centred);
-        value.setFont(Daw::font(Daw::body, true));
+        value.setFont(Daw::font(15.f, true));
         value.setColour(juce::Label::backgroundColourId, Daw::lcd);
         value.setColour(juce::Label::textColourId, Daw::text);
         value.setColour(juce::Label::outlineColourId, Daw::line);
@@ -178,7 +204,7 @@ public:
         g.setColour(accent);
         g.drawText(name.toUpperCase(), title.toNearestInt(), juce::Justification::centred);
 
-        area.removeFromBottom(32.0f);
+        area.removeFromBottom(36.0f);
         const float margin = area.getHeight() < 120.0f ? 18.0f : 42.0f;
         const float diameter = std::max(30.0f, std::min(area.getWidth(), area.getHeight()) - margin);
         const auto centre = area.getCentre();
@@ -226,7 +252,7 @@ public:
                    centre.y - std::cos(pointerAngle) * radius * 0.68f, 2.0f);
     }
 
-    void resized() override { value.setBounds(getLocalBounds().removeFromBottom(28).reduced(12, 3)); }
+    void resized() override { value.setBounds(getLocalBounds().removeFromBottom(34).reduced(10, 4)); }
 
     void mouseDown(const juce::MouseEvent& e) override
     {
@@ -341,10 +367,27 @@ public:
         }
         fill.lineTo(plot.getRight(), plot.getBottom());
         fill.closeSubPath();
+        g.setColour(ui::blue.withAlpha(0.08f));
+        if (knee > 0.0)
+            g.fillRect(juce::Rectangle<float>(xFrom(threshold - knee * 0.5), plot.getY(), xFrom(threshold + knee * 0.5) - xFrom(threshold - knee * 0.5), plot.getHeight()));
+        const double makeup = v[5];
+        juce::Path makeupCurve;
+        for (int i = 0; i <= 240; ++i)
+        {
+            const double input = -60.0 + 60.0 * (double)i / 240.0;
+            const double output = std::clamp(input - CompressorDSP::reduction(input, threshold, ratio, knee) + makeup, -60.0, 0.0);
+            const float x = xFrom(input), y = yFrom(output);
+            if (i == 0) makeupCurve.startNewSubPath(x, y); else makeupCurve.lineTo(x, y);
+        }
+        const float dashes[] = { 3.0f, 4.0f };
+        juce::Path dashed;
+        juce::PathStrokeType(1.5f).createDashedStroke(dashed, makeupCurve, dashes, 2);
+        g.setColour(juce::Colour(0xff5ec8e8));
+        g.strokePath(dashed, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
         g.setColour(ui::blue.withAlpha(0.10f));
         g.fillPath(fill);
         g.setColour(ui::blue);
-        g.strokePath(curve, juce::PathStrokeType(2.0f, juce::PathStrokeType::curved));
+        g.strokePath(curve, juce::PathStrokeType(2.2f, juce::PathStrokeType::curved));
 
         if (threshold >= -60.0 && threshold <= 0.0)
         {
@@ -353,7 +396,22 @@ public:
             g.drawVerticalLine(juce::roundToInt(xFrom(threshold)), plot.getY(), plot.getBottom());
             g.setColour(Daw::text);
             g.fillEllipse(xFrom(threshold) - 3.0f, yFrom(atThreshold) - 3.0f, 6.0f, 6.0f);
+            g.setFont(Daw::font(11.f, true));
+            g.setColour(Daw::textDim);
+            g.drawText(ui::dbText(threshold), juce::roundToInt(xFrom(threshold) + 6.0f), juce::roundToInt(plot.getY() + 2.0f), 64, 14, juce::Justification::centredLeft);
         }
+        const float heard = processor.inputDb.load(std::memory_order_relaxed);
+        if (heard > -60.0f && heard <= 0.0f)
+        {
+            const double reduced = (double)heard - CompressorDSP::reduction(heard, threshold, ratio, knee);
+            g.setColour(Daw::text);
+            g.fillEllipse(xFrom(heard) - 5.0f, yFrom(std::clamp(reduced, -60.0, 0.0)) - 5.0f, 10.0f, 10.0f);
+            g.setFont(Daw::font(12.f, true));
+            g.drawText("IN " + ui::dbText(heard), juce::roundToInt(xFrom(heard) + 8.0f), juce::roundToInt(yFrom(reduced) - 18.0f), 78, 16, juce::Justification::centredLeft);
+        }
+        g.setColour(juce::Colour(0xff5ec8e8));
+        g.setFont(Daw::caps(9.5f));
+        g.drawText(ui::loc("MAKEUP", "MAKEUP"), juce::roundToInt(plot.getRight() - 72.0f), juce::roundToInt(plot.getY() + 2.0f), 70, 14, juce::Justification::centredRight);
     }
 
 private:
@@ -380,9 +438,9 @@ public:
         g.setColour(Daw::textDim);
         g.drawText(ui::loc("GAIN REDUCTION", "RIDUZIONE"), area.removeFromTop(16.0f).toNearestInt(), juce::Justification::centred);
 
-        g.setFont(Daw::font(Daw::title, true));
-        g.setColour(shown > 0.05f ? ui::blue : Daw::textFaint);
-        g.drawText("-" + juce::String(shown, 1) + " dB", area.removeFromTop(30.0f).toNearestInt(), juce::Justification::centred);
+        g.setFont(Daw::font(26.f, true));
+        g.setColour(shown > 0.05f ? juce::Colour(0xffffb347) : Daw::textFaint);
+        g.drawText("-" + juce::String(shown, 1), area.removeFromTop(34.0f).toNearestInt(), juce::Justification::centred);
 
         auto meter = area.reduced(18.0f, 4.0f);
         const int labelWidth = 34;
@@ -468,6 +526,21 @@ public:
                                                           ui::knobColours[i]);
             addAndMakeVisible(*knobs[(size_t)i]);
         }
+        {
+            auto& slider = sliders[6];
+            auto& parameter = *processor.mixParameter;
+            addChildComponent(slider);
+            slider.setRange(0, 1, 0);
+            slider.setValue(parameter.plain(), juce::dontSendNotification);
+            slider.setComponentID("native-compressor-mix");
+            slider.onDragStart = [this,&parameter] { if(!resetting&&processor.beforeSourceEdit)processor.beforeSourceEdit();parameterGesture=true;parameter.beginChangeGesture(); };
+            slider.onDragEnd = [this,&parameter] { parameter.endChangeGesture();parameterGesture=false; };
+            slider.onValueChange = [this,&parameter,&slider] { if(!parameterGesture&&!resetting&&processor.beforeSourceEdit)processor.beforeSourceEdit();parameter.setValueNotifyingHost((float)slider.getValue()); };
+            knobs[6] = std::make_unique<ui::Knob>(slider, ui::loc("Dry / Wet", "Dry / Wet"),
+                ui::loc("Mix: 100% keeps the current compressor sound. 0% is dry.", "Mix: 100% mantiene il suono attuale. 0% è il segnale pulito."),
+                1.0, [](double v){ return juce::String(v * 100.0, 0) + "%"; }, juce::Colour(0xffe7dfc8));
+            addAndMakeVisible(*knobs[6]);
+        }
 
         addAndMakeVisible(curve);
         addAndMakeVisible(reduction);
@@ -485,6 +558,9 @@ public:
                 slider.setValue(CompressorDSP::defaults[(size_t)i], juce::sendNotificationSync);
                 if (slider.onDragEnd) slider.onDragEnd();
             }
+            if (sliders[6].onDragStart) sliders[6].onDragStart();
+            sliders[6].setValue(1.0, juce::sendNotificationSync);
+            if (sliders[6].onDragEnd) sliders[6].onDragEnd();
             processor.sourceParameter->beginChangeGesture();processor.sourceParameter->setValueNotifyingHost(0);processor.sourceParameter->endChangeGesture();resetting=false;
         };
 
@@ -523,26 +599,39 @@ public:
         g.drawText(lastBypassed ? ui::loc("BYPASSED", "BYPASSATO") : ui::loc("ACTIVE", "ATTIVO"), status.withTrimmedLeft(13), juce::Justification::centredLeft);
 
         Daw::devicePanel(g,infoPanel.toFloat(),ui::blue);
-
-        auto info = infoPanel.reduced(14, 10);
-        g.setFont(Daw::caps(9.5f));
+        auto info = infoPanel.reduced(12, 10).toFloat();
+        g.setFont(Daw::caps(10));
         g.setColour(Daw::textDim);
-        g.drawText(ui::loc("SIGNAL", "SEGNALE"), info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
-        g.setFont(Daw::font(Daw::body));
-        auto row = [&](const juce::String& text) {
-            const auto line = info.removeFromTop(22);
-            g.setColour(ui::blue);
-            g.fillEllipse((float)line.getX(), (float)line.getCentreY() - 2.0f, 4.0f, 4.0f);
+        g.drawText(ui::loc("LEVEL", "LIVELLO"), info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
+        auto drawMeter = [&](juce::Rectangle<float> r, const juce::String& name, float linear) {
+            const float db = linear > 1.0e-8f ? 20.0f * std::log10(linear) : -48.0f;
             g.setColour(Daw::textDim);
-            g.drawText(text, line.withTrimmedLeft(10), juce::Justification::centredLeft);
+            g.setFont(Daw::caps(10));
+            g.drawText(name, r.removeFromTop(14).toNearestInt(), juce::Justification::centred);
+            g.setColour(Daw::text);
+            g.setFont(Daw::font(12.f, true));
+            g.drawText(linear > 1.0e-8f ? juce::String(db, 1) : "--", r.removeFromBottom(16).toNearestInt(), juce::Justification::centred);
+            auto bar = r.withSizeKeepingCentre(std::min(16.f, r.getWidth()), std::max(8.f, r.getHeight() - 4));
+            g.setColour(Daw::lcd);
+            g.fillRoundedRectangle(bar, 3);
+            g.setColour(Daw::lineStrong);
+            g.drawRoundedRectangle(bar, 3, Daw::hairline());
+            const float shown = std::clamp((db + 48.f) / 48.f, 0.f, 1.f);
+            auto lit = bar.withTrimmedTop(bar.getHeight() * (1.f - shown));
+            g.setGradientFill(juce::ColourGradient(Daw::meterHigh, bar.getX(), bar.getY(), Daw::meterLow, bar.getX(), bar.getBottom(), false));
+            { juce::Graphics::ScopedSaveState clip(g); g.reduceClipRegion(lit.toNearestInt()); g.fillRoundedRectangle(bar, 3); }
         };
-        row(ui::loc("STEREO LINKED", "STEREO COLLEGATO"));
-        row(processor.getLatencySamples()==0?ui::loc("ZERO LATENCY", "ZERO LATENZA"):ui::loc("ROUTING", "COMPENSAZIONE")+" "+juce::String(processor.getLatencySamples())+" smp");
-        row(ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
-        const double rate = processor.getSampleRate();
-        info.removeFromTop(12);
-        g.setColour(Daw::textFaint);
-        g.drawText(ui::loc("Sample rate", "Frequenza") + ": " + (rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--"), info.removeFromTop(22), juce::Justification::centredLeft);
+        auto upper = info.removeFromTop(info.getHeight() * 0.5f);
+        auto lower = info;
+        drawMeter(upper.removeFromLeft(upper.getWidth() * 0.5f), "IN L", inShown[0]);
+        drawMeter(upper, "IN R", inShown[1]);
+        drawMeter(lower.removeFromLeft(lower.getWidth() * 0.5f), "OUT L", outShown[0]);
+        drawMeter(lower, "OUT R", outShown[1]);
+        const float key = keyShown;
+        g.setColour(Daw::textDim);
+        g.setFont(Daw::font(12.f));
+        const auto keyText = key > 1.0e-8f ? ui::loc("key ", "key ") + juce::String(20.0 * std::log10((double)key), 1) + " dB" : ui::loc("key  --", "key  --");
+        g.drawText(keyText, source.getRight() + 12, sourcePanel.getY(), std::max(0, sourcePanel.getRight() - source.getRight() - 24), sourcePanel.getHeight(), juce::Justification::centredLeft);
     }
 
     void resized() override
@@ -555,16 +644,17 @@ public:
 
         // The transfer curve and live reduction are the primary display;
         // tactile parameter tiles sit below, consistently at all window sizes.
-        const int columns = area.getWidth() >= 780 ? 6 : 3;
-        const int displayHeight = columns==6?std::clamp((int)(area.getHeight()*.52),220,310):180;
+        const int columns = area.getWidth() >= 980 ? 7 : 3;
+        const int rows = (7 + columns - 1) / columns;
+        const int knobH = columns == 7 ? std::clamp(area.getHeight() / 3, 150, 210) : std::max(80, (area.getHeight() - 168) / rows);
+        const int displayHeight = std::max(150, area.getHeight() - 12 - knobH);
         auto bottom = area.removeFromTop(displayHeight);
         area.removeFromTop(12);
         knobPanel = area;
 
-        const int rows = (6 + columns - 1) / columns;
-        const int cellW = area.getWidth() / columns;
-        const int cellH = area.getHeight() / rows;
-        for (int i = 0; i < 6; ++i)
+        const int cellW = std::max(1, area.getWidth() / columns);
+        const int cellH = std::max(1, area.getHeight() / rows);
+        for (int i = 0; i < 7; ++i)
             knobs[(size_t)i]->setBounds(area.getX() + (i % columns) * cellW,
                                         area.getY() + (i / columns) * cellH, cellW, cellH);
 
@@ -590,6 +680,13 @@ private:
                 slider.setValue(processor.parameters[(size_t)i]->plain(), juce::dontSendNotification);
             knob.refresh();
         }
+        if (!sliders[6].isMouseButtonDown() && !knobs[6]->isDragging() && !knobs[6]->isEditing())
+            sliders[6].setValue(processor.mixParameter->plain(), juce::dontSendNotification);
+        knobs[6]->refresh();
+        auto follow = [](float& shown, float target) { shown = target > shown ? target : shown * 0.86f; };
+        for (int c = 0; c < 2; ++c) { follow(inShown[c], processor.inLevel[c].load(std::memory_order_relaxed)); follow(outShown[c], processor.outLevel[c].load(std::memory_order_relaxed)); }
+        follow(keyShown, processor.keyLevel.load(std::memory_order_relaxed));
+        repaint(infoPanel);repaint(sourcePanel);curve.repaint();
 
         if(processor.getLatencySamples()!=lastLatency){lastLatency=processor.getLatencySamples();repaint(infoPanel);}
         if(!source.isPopupActive())source.setSelectedId(processor.sourceParameter->source()+2,juce::dontSendNotification);
@@ -613,8 +710,8 @@ private:
 
     Compressor& processor;
     int lastLatency=0;juce::ComboBox source;juce::Label sourceLabel;bool parameterGesture=false,resetting=false;
-    std::array<juce::Slider, 6> sliders;
-    std::array<std::unique_ptr<ui::Knob>, 6> knobs;
+    std::array<juce::Slider, 7> sliders;
+    std::array<std::unique_ptr<ui::Knob>, 7> knobs;
     std::array<std::function<juce::String(double)>, 6> formatters;
     ui::Curve curve{processor};
     ui::ReductionMeter reduction;
@@ -623,7 +720,7 @@ private:
     juce::Rectangle<int> knobPanel, infoPanel, sourcePanel;
     CompressorDSP::Values lastValues{};
     bool lastBypassed = false;
-    float grShown = 0.0f;
+    float grShown = 0.0f, inShown[2]{}, outShown[2]{}, keyShown = 0.0f;
 };
 
 juce::AudioProcessorEditor* Compressor::createEditor(){return new Editor(*this);}

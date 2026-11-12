@@ -21,10 +21,12 @@ public:
     }
     void prepare(double sampleRate,const Values& values){
         rate=std::isfinite(sampleRate)?std::clamp(sampleRate,8000.,192000.):44100.;
-        for(auto& value:smoothed)value.reset(rate,.01);wet.reset(rate,.01);
+        for(auto& value:smoothed)value.reset(rate,.01);wet.reset(rate,.01);userMix.reset(rate,.02);
+        userMix.setCurrentAndTargetValue(1);
         configure(values,true);reset();
     }
-    void reset(){gainReduction=0;wet.setCurrentAndTargetValue(wet.getTargetValue());}
+    void reset(){gainReduction=0;wet.setCurrentAndTargetValue(wet.getTargetValue());userMix.setCurrentAndTargetValue(userMix.getTargetValue());}
+    void setMix(double mix,bool snap=false){const double value=std::isfinite(mix)?std::clamp(mix,0.,1.):1.;if(snap)userMix.setCurrentAndTargetValue(value);else userMix.setTargetValue(value);}
     void configure(const Values& values,bool snap=false){
         for(int i=0;i<6;++i){double value=bounded(values[(size_t)i],i);
             if(i==3||i==4)value=std::exp(-1./(rate*value*.001));
@@ -44,13 +46,13 @@ public:
             const double target=reduction(level,threshold,ratio,knee);
             gainReduction=target+(target>gainReduction?attack:release)*(gainReduction-target);
             if(gainReduction<1e-12)gainReduction=0;
-            const double mix=wet.getNextValue(),gain=1+mix*(std::pow(10.,(makeup-gainReduction)/20)-1);
+            const double mix=wet.getNextValue()*userMix.getNextValue(),gain=1+mix*(std::pow(10.,(makeup-gainReduction)/20)-1);
             left[s]=(float)std::clamp(l*gain,-limit,limit);if(right)right[s]=(float)std::clamp(r*gain,-limit,limit);
         }
     }
 private:
     double rate=44100,gainReduction=0;
     std::array<juce::SmoothedValue<double>,6> smoothed;
-    juce::SmoothedValue<double> wet;
+    juce::SmoothedValue<double> wet,userMix{1};
 };
 }

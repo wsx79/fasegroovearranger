@@ -26,15 +26,15 @@ class ReturnEffect final : public juce::AudioPluginInstance {
 public:
     explicit ReturnEffect(bool delay):AudioPluginInstance(BusesProperties().withInput("Input",juce::AudioChannelSet::stereo(),true).withOutput("Output",juce::AudioChannelSet::stereo(),true)),isDelay(delay){
         auto add=[&](const char* name,float initial,float low=0,float high=1){auto p=std::make_unique<ReturnParameter>(name,initial,low,high);parameters.push_back(p.get());addHostedParameter(std::move(p));};
-        if(isDelay){add("Delay (beats)",1,.125f,4);add("Feedback",.35f,0,.9f);add("Crossfeed",.5f);add("Damping",.5f);}
+        if(isDelay){add("Delay (beats)",1,.125f,4);add("Feedback",.35f,0,.9f);add("Crossfeed",.5f);add("Damping",.5f);add("Dry / Wet",1.f);}
         else{add("Room",.5f);add("Damping",.5f);}
     }
     const juce::String getName()const override{return isDelay?"Tempo Delay":"Reverb";}
     void fillInPluginDescription(juce::PluginDescription& d)const override{d=nativeReturnDescription(isDelay);}
     bool isBusesLayoutSupported(const BusesLayout& b)const override{return b.getMainInputChannelSet()==b.getMainOutputChannelSet()&&(b.getMainOutputChannelSet()==juce::AudioChannelSet::mono()||b.getMainOutputChannelSet()==juce::AudioChannelSet::stereo());}
-    void prepareToPlay(double sampleRate,int block)override{rate=sampleRate;reverb.setSampleRate(rate);if(isDelay){line.setSize(2,(int)std::ceil(rate*8)+block+4);time.reset(rate,.04);time.setCurrentAndTargetValue((float)(rate*.5));}reset();}
+    void prepareToPlay(double sampleRate,int block)override{rate=sampleRate;reverb.setSampleRate(rate);if(isDelay){line.setSize(2,(int)std::ceil(rate*8)+block+4);time.reset(rate,.04);time.setCurrentAndTargetValue((float)(rate*.5));mix.reset(rate,.02);mix.setCurrentAndTargetValue(parameters.back()->plain());}reset();}
     void releaseResources()override{}
-    void reset()override{reverb.reset();line.clear();write=0;damping.fill(0);delayPrimed=false;}
+    void reset()override{reverb.reset();line.clear();write=0;damping.fill(0);delayPrimed=false;if(isDelay)mix.setCurrentAndTargetValue(parameters.back()->plain());}
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer&)override{
         const int count=block.getNumSamples();if(block.getNumChannels()<1)return;for(int c=0;c<std::min(2,block.getNumChannels());++c)for(int n=0;n<count;++n)if(!std::isfinite(block.getSample(c,n)))block.setSample(c,n,0);
         if(!isDelay){juce::Reverb::Parameters p;p.roomSize=parameters[0]->plain();p.damping=parameters[1]->plain();p.wetLevel=1;p.dryLevel=0;p.width=1;reverb.setParameters(p);if(block.getNumChannels()>1)reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);else reverb.processMono(block.getWritePointer(0),count);return;}
@@ -42,10 +42,13 @@ public:
         const int size=line.getNumSamples();if(size<2){block.clear();return;}
         const float target=(float)std::clamp(rate*60/bpm*parameters[0]->plain(),1.,(double)size-2);if(!delayPrimed){time.setCurrentAndTargetValue(target);delayPrimed=true;}else time.setTargetValue(target);
         const float feedback=parameters[1]->plain(),cross=parameters[2]->plain(),coefficient=.03f+(1-parameters[3]->plain())*.97f;
+        mix.setTargetValue(parameters.back()->plain());
         for(int i=0;i<count;++i){double read=std::fmod(write-(double)time.getNextValue(),(double)size);if(read<0)read+=size;const int a=(int)read,b=(a+1)%size;const float fraction=(float)(read-a);float wet[2];
             for(int c=0;c<2;++c){const auto* data=line.getReadPointer(c);wet[c]=data[a]+fraction*(data[b]-data[a]);damping[(size_t)c]+=(wet[c]-damping[(size_t)c])*coefficient;}
-            for(int c=0;c<2;++c){const float input=block.getSample(std::min(c,block.getNumChannels()-1),i);line.setSample(c,write,(std::isfinite(input)?input:0)+feedback*((1-cross)*damping[(size_t)c]+cross*damping[(size_t)(1-c)]));}
-            block.setSample(0,i,wet[0]);if(block.getNumChannels()>1)block.setSample(1,i,wet[1]);write=(write+1)%size;
+            const float amount=mix.getNextValue();const float dry0=block.getSample(0,i);const float dry1=block.getNumChannels()>1?block.getSample(1,i):dry0;
+            for(int c=0;c<2;++c){const float input=c==0?dry0:dry1;line.setSample(c,write,(std::isfinite(input)?input:0)+feedback*((1-cross)*damping[(size_t)c]+cross*damping[(size_t)(1-c)]));}
+            const float out0=amount>=1.f?wet[0]:dry0*(1.f-amount)+wet[0]*amount;const float out1=amount>=1.f?wet[1]:dry1*(1.f-amount)+wet[1]*amount;
+            block.setSample(0,i,out0);if(block.getNumChannels()>1)block.setSample(1,i,out1);write=(write+1)%size;
         }
     }
     bool acceptsMidi()const override{return false;}bool producesMidi()const override{return false;}bool isMidiEffect()const override{return false;}
@@ -60,7 +63,7 @@ public:
     void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaReturn")||state->getIntAttribute("version")!=1||state->getBoolAttribute("delay")!=isDelay)return;for(size_t i=0;i<parameters.size();++i)if(state->hasAttribute("p"+juce::String((int)i)))parameters[i]->setValue((float)state->getDoubleAttribute("p"+juce::String((int)i)));}
 private:
     double tempo()const{if(auto* head=getPlayHead())if(auto position=head->getPosition())if(auto value=position->getBpm())if(std::isfinite(*value)&&*value>0)return *value;return 120;}
-    bool isDelay,delayPrimed=false;double rate=44100;std::vector<ReturnParameter*> parameters;juce::Reverb reverb;juce::AudioBuffer<float> line;juce::SmoothedValue<float> time;int write=0;std::array<float,2> damping{};
+    bool isDelay,delayPrimed=false;double rate=44100;std::vector<ReturnParameter*> parameters;juce::Reverb reverb;juce::AudioBuffer<float> line;juce::SmoothedValue<float> time,mix{1.f};int write=0;std::array<float,2> damping{};
 };
 class ReturnEditor final : public juce::AudioProcessorEditor,private juce::Timer {
 public:
@@ -82,34 +85,27 @@ public:
     void paint(juce::Graphics& g)override{
         g.fillAll(Daw::base);
         Daw::deviceHeader(g,{20,12,440,50},delay?"TEMPO DELAY":"REVERB",delay?"ECHO / TIME":"SPACE / STEREO",colour);
-        auto badge=juce::Rectangle<int>(getWidth()-157,26,135,28);g.setColour(colour.withAlpha(.13f));g.fillRoundedRectangle(badge.toFloat(),14.f);Daw::drawCaps(g,"100% WET",badge,colour,juce::Justification::centred);
+        auto badge=juce::Rectangle<int>(getWidth()-157,26,135,28);g.setColour(colour.withAlpha(.13f));g.fillRoundedRectangle(badge.toFloat(),14.f);
+        const juce::String badgeText=delay&&sliders.size()>4?juce::String(sliders[4]->getValue()*100.0,0)+"% WET":"100% WET";
+        Daw::drawCaps(g,badgeText,badge,colour,juce::Justification::centred);
         Daw::devicePanel(g,diagram.toFloat(),colour);
         for(const auto& tile:tiles)Daw::devicePanel(g,tile.toFloat(),colour);
         drawDiagram(g);
-        for(size_t i=0;i<tiles.size();++i){const char* description=delay?(i==0?"Project tempo sync":i==1?"Repeats / decay":i==2?"Stereo exchange":"Repeat tone"):(i==0?"Size of the space":"High-frequency absorption");g.setFont(Daw::font(10));g.setColour(Daw::textDim);g.drawFittedText(tr(description),tiles[i].withTrimmedTop(tiles[i].getHeight()-26).reduced(6,0),juce::Justification::centred,1);}
-        g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Shared effect. Balance it with the common A / B return level."),getLocalBounds().removeFromBottom(30).reduced(20,0),juce::Justification::centredLeft,1);
+        for(size_t i=0;i<tiles.size();++i){const char* description=!delay?(i==0?"Size of the space":"High-frequency absorption"):i==0?"Project tempo sync":i==1?"Repeats / decay":i==2?"Stereo exchange":i==3?"Repeat tone":"Dry / wet blend";g.setFont(Daw::font(10));g.setColour(Daw::textDim);g.drawFittedText(tr(description),tiles[i].withTrimmedTop(tiles[i].getHeight()-(delay?16:26)).reduced(6,0),juce::Justification::centred,1);}
+        if(!delay){g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Shared effect. Balance it with the common A / B return level."),getLocalBounds().removeFromBottom(30).reduced(20,0),juce::Justification::centredLeft,1);}
     }
     void resized()override{
+        if(delay){auto body=getLocalBounds().reduced(16).withTrimmedTop(64);diagram=body.removeFromTop(std::max(210,body.getHeight()*62/100));body.removeFromTop(8);tiles.clear();auto row=body;const int n=(int)sliders.size();for(int i=0;i<n;++i){auto tile=row.removeFromLeft(row.getWidth()/std::max(1,n-i)).reduced(4,0);tiles.push_back(tile);auto controls=tile.reduced(6,6);labels[(size_t)i]->setBounds(controls.removeFromTop(18));controls.removeFromBottom(16);sliders[(size_t)i]->setBounds(controls);}return;}
         auto body=getLocalBounds().reduced(20).withTrimmedTop(64).withTrimmedBottom(22);diagram=body.removeFromLeft((int)(body.getWidth()*.43f));body.removeFromLeft(14);
-        tiles.clear();const int rows=delay?2:1;
+        tiles.clear();const int rows=1;
         for(size_t i=0;i<sliders.size();++i){auto tile=juce::Rectangle<int>(body.getX()+((int)i%2)*body.getWidth()/2,body.getY()+((int)i/2)*body.getHeight()/rows,body.getWidth()/2,body.getHeight()/rows).reduced(4);tiles.push_back(tile);auto controls=tile.reduced(8,12);labels[i]->setBounds(controls.removeFromTop(24));controls.removeFromBottom(22);sliders[i]->setBounds(controls);}
     }
 private:
     void drawDiagram(juce::Graphics& g){
-        auto box=diagram.reduced(18);auto title=box.removeFromTop(20);Daw::drawCaps(g,delay?"TEMPO / STEREO":"ROOM / ABSORPTION",title,colour);
+        if(delay){drawDelay(g);return;}
+        auto box=diagram.reduced(18);auto title=box.removeFromTop(20);Daw::drawCaps(g,"ROOM / ABSORPTION",title,colour);
         box.removeFromTop(16);auto footer=box.removeFromBottom(58);const float x=(float)box.getX(),y=(float)box.getY(),w=(float)box.getWidth(),h=(float)box.getHeight();
-        if(delay){
-            const double beats=.125+sliders[0]->getValue()*3.875,bpm=processor.currentBpm();
-            const float feedback=(float)sliders[1]->getValue()*.9f,cross=(float)sliders[2]->getValue();
-            g.setFont(Daw::font(32,true));g.setColour(Daw::text);g.drawText(juce::String(beats*60000/bpm,1)+" ms",box.removeFromTop(44),juce::Justification::centredLeft);
-            g.setFont(Daw::font(12));g.setColour(colour);g.drawText(juce::String(bpm,1)+" BPM  /  "+juce::String(beats,3)+" beats",box.removeFromTop(24),juce::Justification::centredLeft);
-            const float left=y+h*.57f,right=y+h*.80f;g.setColour(Daw::lineStrong);g.drawLine(x,left,x+w,left);g.drawLine(x,right,x+w,right);
-            for(int n=0;n<5;++n){const float at=x+12+n*(w-28)/5,amplitude=std::pow(feedback,(float)n);const float alternate=n%2?cross:1.f-cross;
-                g.setColour(colour.withAlpha(.25f+.75f*amplitude));g.fillRoundedRectangle(at,left-8.f-30.f*amplitude,7.f,8.f+30.f*amplitude,2.f);
-                g.setColour(Daw::returnA.withAlpha(.3f+.7f*amplitude));g.fillRoundedRectangle(at,right-8.f-30.f*amplitude*alternate,7.f,8.f+30.f*amplitude*alternate,2.f);
-            }
-            Daw::drawCaps(g,"L",{box.getRight()-18,(int)left-18,18,16},colour);Daw::drawCaps(g,"R",{box.getRight()-18,(int)right-18,18,16},Daw::returnA);
-        }else{
+        {
             const float room=(float)sliders[0]->getValue(),damp=(float)sliders[1]->getValue();
             const auto outer=juce::Rectangle<float>(x+8,y+12,w-16,h-48);const auto inner=outer.reduced(26.f+room*28.f,24.f+room*22.f);
             g.setColour(colour.withAlpha(.12f));g.fillRoundedRectangle(outer,6);g.setColour(colour.withAlpha(.5f));g.drawRoundedRectangle(outer,6,1.5f);g.drawRoundedRectangle(inner,4,1.f);
@@ -117,8 +113,29 @@ private:
             const auto centre=outer.getCentre();g.setColour(Daw::text);g.fillEllipse(centre.x-4,centre.y-4,8,8);
             for(int i=0;i<4;++i){const float radius=18.f+i*17.f;g.setColour(colour.withAlpha((1.f-i*.18f)*(1.f-damp*.7f)));g.drawEllipse(centre.x-radius,centre.y-radius,radius*2,radius*2,1.5f);}
         }
-        g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr(delay?"Tap diagram follows time, feedback and stereo exchange.":"Room size and damping visualization."),footer.removeFromTop(34),juce::Justification::centredLeft,2);
+        g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Room size and damping visualization."),footer.removeFromTop(34),juce::Justification::centredLeft,2);
         g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawText(tr("Parameter schematic, not a measured response"),footer,juce::Justification::centredLeft);
+    }
+    void drawDelay(juce::Graphics& g){
+        auto box=diagram.reduced(16).toFloat();
+        const double beats=.125+sliders[0]->getValue()*3.875,bpm=processor.currentBpm();
+        const float feedback=(float)sliders[1]->getValue()*.9f,cross=(float)sliders[2]->getValue(),damp=(float)sliders[3]->getValue();
+        const float ms=(float)(beats*60000/bpm);
+        g.setColour(Daw::text);g.setFont(Daw::font(28,true));g.drawText(juce::String(ms,0)+" ms",box.removeFromTop(34).toNearestInt(),juce::Justification::centredLeft);
+        g.setColour(colour);g.setFont(Daw::font(13,true));
+        g.drawText(juce::String(beats,3)+" beats    "+juce::String(bpm,1)+" BPM    feedback "+juce::String(feedback*100.f,0)+"%",box.removeFromTop(20).toNearestInt(),juce::Justification::centredLeft);
+        box.removeFromTop(6);const float span=4.f;
+        auto lane=[&](juce::Rectangle<float> row,bool right){
+            g.setColour(Daw::line.withAlpha(.9f));g.drawLine(row.getX(),row.getBottom()-8,row.getRight(),row.getBottom()-8,Daw::hairline());
+            g.setColour(right?Daw::returnA:colour);g.setFont(Daw::font(12,true));g.drawText(right?"R":"L",(int)row.getX(),(int)row.getY(),16,16,juce::Justification::centredLeft);
+            for(int n=0;n<=4;++n){const float at=row.getX()+24+(row.getWidth()-36)*(n/span);g.setColour(Daw::line.withAlpha(.65f));g.drawVerticalLine((int)at,row.getY(),row.getBottom()-8);
+                if(!right){g.setColour(Daw::textFaint);g.setFont(Daw::font(10.5f));g.drawText(juce::String(n),(int)at-8,(int)row.getBottom()-6,16,12,juce::Justification::centred);}}
+            for(int n=0;n<8;++n){const float amp=std::pow(feedback,(float)n);if(amp<.04f)break;const float atBeat=(float)(n*beats);if(atBeat>span)break;const float mixAmt=n%2?cross:1.f-cross;const float height=(right?amp*mixAmt:amp)*(row.getHeight()-28);const float tone=std::pow(1.f-damp*.85f,(float)n);
+                const float at=row.getX()+24+(row.getWidth()-36)*(atBeat/span);auto bar=juce::Rectangle<float>(at-4,row.getBottom()-8-height,8,std::max(0.f,height));
+                g.setColour((right?Daw::returnA:colour).withAlpha(.25f+.75f*amp));g.fillRoundedRectangle(bar,2);
+                g.setColour(juce::Colour(0xffffb54a).withAlpha(tone));g.fillRoundedRectangle(bar.withTrimmedTop(bar.getHeight()*(1.f-tone)).reduced(1.5f,0),1.5f);}
+        };
+        auto top=box.removeFromTop(box.getHeight()*.5f);lane(top.reduced(0,4),false);lane(box.reduced(0,4),true);
     }
     void timerCallback()override{
         bool changed=false;
@@ -127,7 +144,7 @@ private:
     }
     ReturnEffect& processor;bool delay;juce::Colour colour;DawLookAndFeel theme;double lastBpm=0;
     juce::Rectangle<int> diagram;std::vector<juce::Rectangle<int>> tiles;
-    std::vector<std::unique_ptr<juce::Slider>> sliders;std::vector<std::unique_ptr<juce::Label>> labels;std::array<bool,4> gestures{};
+    std::vector<std::unique_ptr<juce::Slider>> sliders;std::vector<std::unique_ptr<juce::Label>> labels;std::array<bool,5> gestures{};
 };
 juce::AudioProcessorEditor* ReturnEffect::createEditor(){return new ReturnEditor(*this);}
 }
