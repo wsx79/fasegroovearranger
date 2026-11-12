@@ -124,7 +124,7 @@
     {
       "id": "vocal_functional_quality",
       "status": "NOT RUN",
-      "reason": "Vocal Studio/Chops frozen and unapproved; actual external synthesis not revalidated"
+      "reason": "Vocal Chops frozen and unapproved"
     },
     {
       "id": "full_instrumentation",

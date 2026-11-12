@@ -2,9 +2,10 @@
 
 ## Non pubblicato
 
-- Vocal Studio 01B: dati opzionali per testo/sillabe inglesi con associazioni persistenti alle note, editor che riutilizza piano roll/timeline, regioni vocali e test Undo/salvataggio. Qixuan resta candidata non attivata; rendering cantato non implementato. Dettagli in docs/VOCAL_STUDIO.md.
 
 ## 0.43.2
+
+- Rimosso completamente Vocal Studio (codice, dati di progetto, test, CI, pacchetto e documentazione). I progetti che contengono ancora quei dati si aprono normalmente; i dati vengono scartati al salvataggio. Nuova grafica per EQ, compressore, riverbero, delay e Bus & Send nativi. Generatore Vocal Chops riscritto per la jacking house: hook sincopato di una battuta, battuta d'eco, risposta, stutter in ottavi e roll in sedicesimi alla fine dei build-up.
 
 - Piano roll: Selezione è lo strumento iniziale e viene ripristinato quando si rientra nell’editor; restano memorizzati scala evidenziata, griglia, traccia di riferimento, corsia MIDI e vista note della chitarra.
 - Nuovo pulsante NOTE TRACCIA: nasconde le note attive senza mutare il MIDI o silenziare la riproduzione, per leggere quelle degli altri strumenti anche quando coincidono. Le note nascoste non sono modificabili dal piano roll; l’inquadratura include la traccia di riferimento.

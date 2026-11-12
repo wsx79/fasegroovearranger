@@ -4,7 +4,6 @@ Base `371d51059be730ee81cadbe711b29b266a4e56c4`, branch **Vocaltest**.
 Cronologia verificata: `0bdd4ed` (03), `079565d` e `a46237b` (04), `e637d84`
 (05), `371d510` (06) sono tutti antenati di HEAD. Directory inizialmente pulita;
 nessun main, push, tag, merge, workflow dispatch o release. Fase 07 non avviata.
-Vocal Studio/Chops rimangono congelati e non approvati funzionalmente.
 
 ## Ambito e riferimenti
 

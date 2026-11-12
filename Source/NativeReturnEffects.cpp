@@ -88,39 +88,54 @@ public:
         Daw::deviceHeader(g,{20,12,440,50},delay?"Tempo Delay":"Reverb",delay?"Echo / Time":"Space / Stereo",colour);
         auto badge=juce::Rectangle<int>(getWidth()-150,24,128,26);
         const int mixIndex=delay?4:2;const juce::String badgeText=sliders.size()>(size_t)mixIndex?juce::String(sliders[(size_t)mixIndex]->getValue()*100.0,0)+"% WET":"100% WET";
-        Daw::drawCaps(g,badgeText,badge,Daw::textDim,juce::Justification::centredRight);
+        if(delay)Daw::drawCaps(g,badgeText,badge,Daw::textDim,juce::Justification::centredRight);
         Daw::devicePanel(g,diagram.toFloat(),colour);
         if(!tiles.empty()){auto strip=tiles.front().getUnion(tiles.back()).expanded(4,0);Daw::devicePanel(g,strip.toFloat(),{});for(size_t i=1;i<tiles.size();++i){g.setColour(juce::Colour(0xff222529));g.drawVerticalLine(tiles[i].getX()-4,(float)strip.getY()+16,(float)strip.getBottom()-16);}}
         drawDiagram(g);
-        if(!delay)drawReverbReadout(g);
         g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Shared effect. Balance it with the common A / B return level."),getLocalBounds().removeFromBottom(28).reduced(16,0),juce::Justification::centredLeft,1);
     }
     void resized()override{
         if(delay){auto body=getLocalBounds().reduced(16).withTrimmedTop(64).withTrimmedBottom(28);diagram=body.removeFromTop(std::max(200,body.getHeight()*64/100));body.removeFromTop(8);tiles.clear();auto row=body;const int n=(int)sliders.size();for(int i=0;i<n;++i){auto tile=row.removeFromLeft(row.getWidth()/std::max(1,n-i)).reduced(4,0);tiles.push_back(tile);auto controls=tile.reduced(4,10);labels[(size_t)i]->setBounds(controls.removeFromTop(18));sliders[(size_t)i]->setBounds(controls.withSizeKeepingCentre(std::min(controls.getWidth(),110),controls.getHeight()));}return;}
-        auto body=getLocalBounds().reduced(16).withTrimmedTop(64).withTrimmedBottom(28);auto knobs=body.removeFromBottom(std::clamp(body.getHeight()*32/100,128,160));body.removeFromBottom(8);diagram=body.removeFromLeft(body.getWidth()*58/100);body.removeFromLeft(10);readout=body;tiles.clear();auto row=knobs;const int n=(int)sliders.size();for(int i=0;i<n;++i){auto tile=row.removeFromLeft(row.getWidth()/std::max(1,n-i)).reduced(4,0);tiles.push_back(tile);auto controls=tile.reduced(6,10);labels[(size_t)i]->setBounds(controls.removeFromTop(18));sliders[(size_t)i]->setBounds(controls.withSizeKeepingCentre(std::min(controls.getWidth(),110),controls.getHeight()));}
+        auto body=getLocalBounds().reduced(16).withTrimmedTop(64).withTrimmedBottom(28);auto knobs=body.removeFromBottom(std::clamp(body.getHeight()*32/100,128,160));body.removeFromBottom(10);diagram=body;readout={};tiles.clear();auto row=knobs;const int n=(int)sliders.size();for(int i=0;i<n;++i){auto tile=row.removeFromLeft(row.getWidth()/std::max(1,n-i)).reduced(4,0);tiles.push_back(tile);auto controls=tile.reduced(6,10);labels[(size_t)i]->setBounds(controls.removeFromTop(18));sliders[(size_t)i]->setBounds(controls.withSizeKeepingCentre(std::min(controls.getWidth(),110),controls.getHeight()));}
     }
 private:
     void drawDiagram(juce::Graphics& g){
         if(delay){drawDelay(g);return;}
-        auto box=diagram.reduced(16);auto title=box.removeFromTop(18);Daw::drawCaps(g,tr("DECAY ENVELOPE"),title,Daw::textDim);
-        box.removeFromTop(6);auto footer=box.removeFromBottom(18);
-        auto plot=box.toFloat();Daw::deviceScreen(g,plot);plot=plot.reduced(10.f,8.f);plot.removeFromBottom(14.f);
-        const float room=(float)sliders[0]->getValue(),damp=(float)sliders[1]->getValue();
-        const float seconds=.4f+room*3.6f,shown=4.f;
-        // Grid: time in seconds, level in dB.
-        g.setFont(Daw::font(9.5f));
-        for(int t=0;t<=4;++t){const float x=plot.getX()+plot.getWidth()*t/shown;g.setColour(juce::Colours::white.withAlpha(t==0?.12f:.05f));g.drawVerticalLine((int)x,plot.getY(),plot.getBottom());g.setColour(Daw::textFaint);g.drawText(juce::String(t)+" s",(int)x-14,(int)plot.getBottom()+2,28,12,juce::Justification::centred);}
-        for(int d=0;d<=3;++d){const float y=plot.getY()+plot.getHeight()*d/3.f;g.setColour(juce::Colours::white.withAlpha(.05f));g.drawHorizontalLine((int)y,plot.getX(),plot.getRight());}
-        auto envelope=[&](float hfLoss){juce::Path p;p.startNewSubPath(plot.getX(),plot.getBottom());const float pre=plot.getX()+plot.getWidth()*.02f;p.lineTo(pre,plot.getBottom());
-            for(int i=0;i<=160;++i){const float t=shown*i/160.f;const float level=std::exp(-6.9f*t/(seconds*(1.f-hfLoss)));const float x=pre+(plot.getRight()-pre)*i/160.f;p.lineTo(x,plot.getBottom()-plot.getHeight()*.92f*level);}
-            p.lineTo(plot.getRight(),plot.getBottom());p.closeSubPath();return p;};
-        const auto full=envelope(0.f),high=envelope(.75f*damp);
-        g.setGradientFill(juce::ColourGradient(colour.withAlpha(.32f),plot.getX(),plot.getY(),colour.withAlpha(.03f),plot.getX(),plot.getBottom(),false));g.fillPath(full);
-        g.setColour(colour);g.strokePath(full,juce::PathStrokeType(1.6f));
-        g.setColour(Daw::text.withAlpha(.55f));const float dash[]{3.f,3.f};juce::Path dashed;juce::PathStrokeType(1.2f).createDashedStroke(dashed,high,dash,2);g.fillPath(dashed);
-        auto legend=plot.toNearestInt().removeFromTop(14).withTrimmedRight(4);g.setFont(Daw::caps(9));g.setColour(Daw::textDim);g.drawText(tr("HF TAIL")+"  - -",legend,juce::Justification::centredRight);
-        g.setColour(colour);g.drawText("RT60 ~ "+juce::String(seconds,1)+" s",legend.withTrimmedLeft(4),juce::Justification::centredLeft);
-        g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawText(tr("Parameter schematic, not a measured response"),footer,juce::Justification::centredLeft);
+        // Impulse view: pre-delay, early reflections, then the diffuse tail. Damping darkens
+        // and shortens the high-frequency part of the tail (lighter inner layer).
+        auto screen=diagram.toFloat();Daw::deviceScreen(g,screen);
+        const float room=(float)sliders[0]->getValue(),damp=(float)sliders[1]->getValue(),mix=(float)sliders[2]->getValue();
+        const float seconds=.4f+room*3.6f,shown=std::max(2.f,std::ceil(seconds*1.25f));
+        auto meters=screen.removeFromRight(64.f);auto plot=screen.reduced(18.f,16.f);plot.removeFromTop(46.f);auto axis=plot.removeFromBottom(16.f);
+        g.setFont(Daw::font(10.f));
+        for(int t=0;t<=(int)shown;++t){const float x=plot.getX()+plot.getWidth()*t/shown;g.setColour(juce::Colours::white.withAlpha(.05f));g.drawVerticalLine((int)x,plot.getY(),plot.getBottom());g.setColour(Daw::textFaint);g.drawText(juce::String(t)+" s",juce::Rectangle<float>(x-16,axis.getY()+2,32,12),juce::Justification::centred);}
+        g.setColour(juce::Colours::white.withAlpha(.12f));g.drawHorizontalLine((int)plot.getBottom(),plot.getX(),plot.getRight());
+        const auto xAt=[&](float sec){return plot.getX()+plot.getWidth()*std::clamp(sec/shown,0.f,1.f);};
+        const float pre=.008f+room*.022f;
+        // Diffuse tail as fine vertical strokes: deterministic texture, no animation.
+        juce::Path tailFull,tailHigh;tailFull.startNewSubPath(xAt(pre*2),plot.getBottom());tailHigh.startNewSubPath(xAt(pre*2),plot.getBottom());
+        const int steps=std::max(60,(int)plot.getWidth()/2);std::uint32_t noise=0x9e3779b9u;
+        for(int i=0;i<=steps;++i){const float sec=pre*2+(shown-pre*2)*i/(float)steps;noise=noise*1664525u+1013904223u;const float grain=.78f+.22f*(float)((noise>>8)&1023)/1023.f;
+            const float lv=std::exp(-6.9f*sec/seconds)*grain,hv=std::exp(-6.9f*sec/(seconds*(1.f-.8f*damp)))*grain;
+            tailFull.lineTo(xAt(sec),plot.getBottom()-plot.getHeight()*.8f*lv);tailHigh.lineTo(xAt(sec),plot.getBottom()-plot.getHeight()*.8f*hv);}
+        tailFull.lineTo(plot.getRight(),plot.getBottom());tailFull.closeSubPath();tailHigh.lineTo(plot.getRight(),plot.getBottom());tailHigh.closeSubPath();
+        g.setGradientFill(juce::ColourGradient(colour.withAlpha(.55f),plot.getX(),plot.getY(),colour.withAlpha(.08f),plot.getX(),plot.getBottom(),false));g.fillPath(tailFull);
+        g.setColour(colour.withAlpha(.9f));g.strokePath(tailFull,juce::PathStrokeType(1.f));
+        g.setColour(juce::Colours::white.withAlpha(.16f));g.fillPath(tailHigh);
+        // Direct sound and early reflections.
+        g.setColour(Daw::text);g.fillRect(xAt(0)-1.f,plot.getY()+plot.getHeight()*.04f,2.f,plot.getHeight()*.96f);
+        static constexpr float er[]{1.f,1.7f,2.3f,2.9f,3.8f,4.6f,5.5f,6.9f};
+        for(size_t i=0;i<std::size(er);++i){const float sec=pre*er[i];const float h=(.78f-.07f*(float)i)*(1.f-.3f*damp);g.setColour(colour.brighter(.3f).withAlpha(.9f));g.fillRect(xAt(sec)-.75f,plot.getBottom()-plot.getHeight()*h,1.5f,plot.getHeight()*h);}
+        // Readouts.
+        auto head=diagram.toFloat().reduced(18.f,14.f).withHeight(40.f);
+        auto value=[&](const juce::String& label,const juce::String& v,float width,juce::Colour ink){auto r=head.removeFromLeft(width);g.setColour(Daw::textFaint);g.setFont(Daw::caps(9.5f));g.drawText(label,r.removeFromTop(14).toNearestInt(),juce::Justification::topLeft);g.setColour(ink);g.setFont(Daw::font(20.f,true));g.drawText(v,r.toNearestInt(),juce::Justification::centredLeft);};
+        value(tr("DECAY"),"~ "+juce::String(seconds,1)+" s",120,Daw::text);value(tr("SIZE"),juce::String(room*100.f,0)+" %",110,Daw::text);value(tr("DAMPING"),juce::String(damp*100.f,0)+" %",110,Daw::text);value(tr("MIX"),juce::String(mix*100.f,0)+" %",100,colour);
+        g.setColour(Daw::textFaint);g.setFont(Daw::font(10.f));g.drawText(tr("Parameter schematic, not a measured response"),diagram.toFloat().reduced(18.f,14.f).removeFromTop(14.f).withTrimmedRight(70.f).toNearestInt(),juce::Justification::topRight);
+        // In / out meters along the right edge of the screen.
+        auto m=meters.reduced(8.f,18.f);m.removeFromBottom(18.f);
+        auto bar=[&](juce::Rectangle<float> r,const juce::String& name,float linear){const float db=linear>1.e-8f?20.f*std::log10(linear):-60.f;g.setColour(Daw::textFaint);g.setFont(Daw::caps(8.5f));g.drawText(name,r.withY(r.getBottom()+4).withHeight(12).toNearestInt(),juce::Justification::centred);Daw::drawLedMeter(g,r.withSizeKeepingCentre(6.f,r.getHeight()),std::clamp((db+60.f)/60.f,0.f,1.f));};
+        bar(m.removeFromLeft(m.getWidth()*.5f),"IN",std::max(inShown[0],inShown[1]));bar(m,"OUT",std::max(outShown[0],outShown[1]));
+        g.setColour(juce::Colour(0xff222429));g.drawVerticalLine((int)meters.getX(),diagram.getY()+12.f,diagram.getBottom()-12.f);
     }
     void drawDelay(juce::Graphics& g){
         auto box=diagram.reduced(16).toFloat();
@@ -148,19 +163,11 @@ private:
         g.setColour(Daw::textDim);g.setFont(Daw::font(11));g.drawFittedText(tr("Tap diagram follows time, feedback and stereo exchange."),caption.removeFromTop(16).toNearestInt(),juce::Justification::centredLeft,1);
         g.setColour(Daw::textFaint);g.setFont(Daw::font(10));g.drawText(tr("Parameter schematic, not a measured response"),caption.toNearestInt(),juce::Justification::centredLeft);
     }
-    void drawReverbReadout(juce::Graphics& g){
-        if(readout.isEmpty())return;Daw::devicePanel(g,readout.toFloat(),colour);auto card=readout.reduced(12,10).toFloat();
-        g.setColour(Daw::textDim);g.setFont(Daw::caps(10.5f));g.drawText("SPACE",card.removeFromTop(16).toNearestInt(),juce::Justification::centredLeft);
-        auto line=[&](const juce::String& k,const juce::String& v){auto row=card.removeFromTop(34);g.setColour(Daw::textFaint);g.setFont(Daw::caps(10));g.drawText(k,row.removeFromTop(14).toNearestInt(),juce::Justification::centredLeft);g.setColour(colour.interpolatedWith(Daw::text,.5f));g.setFont(Daw::font(17.f,true));g.drawText(v,row.toNearestInt(),juce::Justification::centredLeft);};
-        line("ROOM",juce::String(sliders[0]->getValue()*100.0,0)+"%");line("DAMPING",juce::String(sliders[1]->getValue()*100.0,0)+"%");
-        auto meter=[&](juce::Rectangle<float> r,const juce::String& name,float linear){const float db=linear>1.e-8f?20.f*std::log10(linear):-48.f;g.setColour(Daw::textDim);g.setFont(Daw::caps(10));g.drawText(name,r.removeFromTop(14).toNearestInt(),juce::Justification::centred);g.setColour(Daw::text);g.setFont(Daw::font(12.f,true));g.drawText(linear>1.e-8f?juce::String(db,1):"--",r.removeFromBottom(16).toNearestInt(),juce::Justification::centred);auto bar=r.withSizeKeepingCentre(12.f,std::max(8.f,r.getHeight()-4));Daw::drawLedMeter(g,bar,std::clamp((db+48.f)/48.f,0.f,1.f));};
-        auto meters=card.removeFromTop(std::min(130.f,card.getHeight()));meter(meters.removeFromLeft(meters.getWidth()*.5f),"IN",std::max(inShown[0],inShown[1]));meter(meters,"OUT",std::max(outShown[0],outShown[1]));
-    }
     void timerCallback()override{
         bool changed=false;
         for(size_t i=0;i<sliders.size();++i){bool editing=gestures[i];for(auto* child:sliders[i]->getChildren())if(auto* label=dynamic_cast<juce::Label*>(child))editing=editing||label->isBeingEdited();const auto next=processor.getParameters()[(int)i]->getValue();if(!editing&&std::abs(sliders[i]->getValue()-next)>1.e-7){sliders[i]->setValue(next,juce::dontSendNotification);changed=true;}}
         const auto bpm=processor.currentBpm();if(delay&&std::abs(bpm-lastBpm)>.001){lastBpm=bpm;changed=true;}
-        if(!delay){auto follow=[](float& shown,float target){shown=target>shown?target:shown*.86f;};for(int c=0;c<2;++c){follow(inShown[c],processor.inLevel[c].load(std::memory_order_relaxed));follow(outShown[c],processor.outLevel[c].load(std::memory_order_relaxed));}repaint(readout);}
+        if(!delay){auto follow=[](float& shown,float target){shown=target>shown?target:shown*.86f;};for(int c=0;c<2;++c){follow(inShown[c],processor.inLevel[c].load(std::memory_order_relaxed));follow(outShown[c],processor.outLevel[c].load(std::memory_order_relaxed));}repaint(diagram);}
         if(changed)repaint(diagram);
     }
     ReturnEffect& processor;bool delay;juce::Colour colour;DawLookAndFeel theme;double lastBpm=0;

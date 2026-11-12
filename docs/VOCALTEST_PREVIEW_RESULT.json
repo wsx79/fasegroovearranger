@@ -21,7 +21,6 @@
     "not_run_categories": [
       "Windows 11 manual GUI, real audio hardware, listening and sustained dropout checks",
       "Third-party vendor plugins (native VST3 fixtures only were exercised)",
-      "Actual external eCantorix synthesis/editor render/import/cache/cancellation (stack absent)",
       "Opt-in synthetic peer-input regression (window-focus.txt explicitly SKIP)",
       "Windows ASan/TSan (Release build; earlier scoped sanitizer results are Linux only)"
     ],
@@ -147,7 +146,7 @@
     "Real Windows 11 mouse/DPI confirmation of the reported pan issue and listening/hardware/dropouts remain pending; automated stale-caption regression now passes on Windows.",
     "Vendor plugins, macOS and new sanitizers remain unvalidated.",
     "Old individual sends are preserved on load; explicit common-level edits normalize active sends with Undo. New effects use schema 7; keep project copies.",
-    "Vocal Studio/Vocal Chops remain frozen and functionally/qualitatively unapproved; actual external guide synthesis not tested."
+    "Vocal Chops remain frozen and functionally/qualitatively unapproved."
   ],
   "test_release": {
     "id": 442223393,

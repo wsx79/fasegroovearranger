@@ -32,10 +32,7 @@ non avvia la fase 03. Le cinque correzioni DSP precedenti restano invariate.
 - LOAD SAMPLE della DAW diventa CANCEL LOAD durante l'import; Studio aggiunge
   progressione, CANCEL LOAD e LIMITS. La griglia usa la waveform esistente;
   l'altezza minima è preservata usando lo scorrimento del pannello.
-- Nessuna modifica al comportamento di Vocal Studio, helper voce guida o generatori musicali,
-  piano roll o formato MIDI. Il solo autotest di VocalStudioEditor attende il
   nuovo restore asincrono dopo Redo, prima di esportare. L'API sincrona AudioEngine::loadSample resta
-  disponibile ai chiamanti separati preesistenti, incluso Vocal Studio.
 
 ## Limiti e persistenza
 
@@ -97,7 +94,6 @@ Ambiente: Linux x86_64, kernel 6.18.57, 3 CPU virtuali Intel Xeon Platinum 8573C
 limite container 8 GiB; GCC 14, JUCE 8.0.9, build Release. Nessuna dipendenza nuova.
 
 - **PASS** build completa e `git diff --check`.
-- **PASS CTest 15/15**, 106,33 s, con helper eCantorix di test configurato:
   include anche il render reale/cache della guida precedente.
 - **PASS** `sample_import`: cancellazione decode/hash, restituzione delle
   prenotazioni, limiti file/PCM/durata/totale, due richieste concorrenti entro

@@ -5,6 +5,8 @@
 #include "../../ThirdParty/fasegroovepiano/Source/engine/Theory.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include <cmath>
+#include <algorithm>
+#include <vector>
 #include <stdexcept>
 namespace fga {
 namespace {
@@ -39,25 +41,51 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
             const auto role=p.sections[(size_t)guide].type;if(t.freeTimeline)c.role=(int)role;
             c.notes.clear();c.loopSource.clear();
             if(density<=0)continue;
-            // Two to three short calls per four bars at the default density.
-            static constexpr double figures[][6]{{1.5,6.75,10.5,14.75,4.5,12.75},{2.75,7.5,9.5,14.5,5.75,12.5},{.75,5.5,11.5,15.25,7.75,13.5},{3.5,6.5,10.75,14.75,1.5,8.5}};
-            for(int phrase=0;phrase*16.<beats;++phrase){const auto draw=hash(c.seed+phrase*313U);const bool mixing=role==Section::intro||role==Section::outro;
-                if((mixing||role==Section::breakdown)&&(phrase%2==0))continue;
-                int count=1+(int)std::lround(density*5);if(mixing||role==Section::breakdown)count=1;
-                for(int n=0;n<count;++n){auto r=hash(draw+n*197U);double at=phrase*16.+figures[draw%4][n];
-                    const double swing=takeFeel(t.engine.swing,c.feel[1],p.settings.swing);if(((int)std::lround(at*4)&1)!=0)at+=swing*.25;
-                    const double human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);at+=((int)(r%201)-100)*human*.0002;
-                    if(at>=beats)continue;
-                    const double length=std::min(beats-at,std::clamp(t.engine.gate*.5,.0625,.75));
-                    const auto harmony=resolveSectionHarmony(p,guide);const double cycle=harmony.chordCount*harmony.chordSteps*.25;
-                    const double absolute=p.clipStart(ti,ci)-(period>0?c.loopPhase:0.)+std::max(0.,at);
-                    const auto chord=chordAtBeat(harmony,std::fmod(std::fmod(absolute,cycle)+cycle,cycle));
-                    int pitch=t.sampleRoot;
-                    if(t.instrument=="internal"){const int intervals[]{0,chord.third,chord.fifth,12};pitch=60+chord.rootPc+intervals[(r>>8)%4];}
-                    else if(t.sampler.mode==2&&t.sampler.sliceCount>0)pitch=t.sampler.sliceBase+(int)((r>>8)%(unsigned)t.sampler.sliceCount);
-                    c.notes.push_back({at,length,pitch,std::clamp((88+(int)((r>>16)%25))*t.engine.velocity/100,1,127),0});
+            // Jacking-house chops: a one-bar syncopated hook played call / echo / call / answer
+            // over four bars, with a same-slice stutter ("ja-ja-jack") closing the phrase and a
+            // 16th roll at the end of build-ups. Repetition is the point; variation lives in bar 4.
+            static constexpr double cells[][4]{{.75,1.5,2.75,-1},{.5,1.75,2.5,3.25},{.25,1.,2.75,3.5},{1.5,2.25,3.75,-1},{.75,2.,2.75,3.5},{.5,1.25,3.,3.75}};
+            struct Hit{double at;int slot;int velocity;};std::vector<Hit> hits;
+            const bool sparse=role==Section::intro||role==Section::outro||role==Section::breakdown;
+            const int phrases=(int)std::ceil(beats/16.);
+            for(int phrase=0;phrase<phrases;++phrase){const auto draw=hash(c.seed+phrase*313U);const double base=phrase*16.;
+                const auto& cell=cells[draw%6];const int hook=(int)(draw>>8),second=(int)(draw>>12)+1,answer=(int)(draw>>16)+3;
+                if(sparse){if(phrase%2==0)continue;hits.push_back({base+15.5,answer,96});if(density>.5)hits.push_back({base+15.75,answer,84});continue;}
+                const int perBar=std::clamp(1+(int)std::lround(density*4),1,4);
+                for(int bar=0;bar<3;++bar){
+                    // Bar 2 is the echo: only the tail of the hook, softer.
+                    const bool echo=bar==1;int placed=0;
+                    for(int k=0;k<4&&placed<perBar;++k){if(cell[k]<0)continue;if(echo&&placed>=std::max(1,perBar-2))break;
+                        const bool accent=std::fmod(cell[k],1.)==.75||std::fmod(cell[k],1.)==.25;
+                        hits.push_back({base+bar*4+cell[k],placed%2?second:hook,(echo?82:accent?112:98)});++placed;}
                 }
+                const bool roll=role==Section::buildup&&(phrase==phrases-1);
+                if(roll){const double from=density>.2?2.:3.;const int steps=(int)std::lround((4.-from)*4);for(int k=0;k<steps;++k)hits.push_back({base+12+from+k*.25,hook,70+50*k/std::max(1,steps-1)});continue;}
+                // Bar 4: answer slice, then a straight 8th same-slice stutter into the next phrase.
+                hits.push_back({base+12.75,answer,108});
+                const int stutter=std::clamp(2+(int)std::lround(density*2),2,4);
+                for(int k=0;k<stutter;++k)hits.push_back({base+16-(stutter-k)*.5,hook,88+20*k/std::max(1,stutter-1)});
             }
+            std::vector<double> onsets;std::vector<Hit> kept;
+            const double swing=takeFeel(t.engine.swing,c.feel[1],p.settings.swing),human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);
+            for(const auto& h:hits){auto r=hash(c.seed+(std::uint32_t)std::lround(h.at*16)*197U);double at=h.at;
+                if(((int)std::lround(at*4)&1)!=0)at+=swing*.25;at+=((int)(r%201)-100)*human*.0002;
+                if(at<0||at>=beats)continue;onsets.push_back(at);kept.push_back({at,h.slot,h.velocity});}
+            for(size_t n=0;n<kept.size();++n){
+                const double at=kept[n].at;double length=std::min(beats-at,std::clamp(t.engine.gate*.5,.0625,.75));
+                for(size_t m=0;m<kept.size();++m)if(kept[m].at>at)length=std::min(length,kept[m].at-at);
+                const double wrapped=period>0&&c.loopPhase>0?std::fmod(at-c.loopPhase+period*2,period):at;
+                if(period>0)length=std::min(length,period-wrapped);
+                if(length<=0)continue;
+                const auto harmony=resolveSectionHarmony(p,guide);const double cycle=harmony.chordCount*harmony.chordSteps*.25;
+                const double absolute=p.clipStart(ti,ci)+wrapped;
+                const auto chord=chordAtBeat(harmony,std::fmod(std::fmod(absolute,cycle)+cycle,cycle));
+                const unsigned slot=(unsigned)std::max(0,kept[n].slot);int pitch=t.sampleRoot;
+                if(t.instrument=="internal"){const int intervals[]{0,chord.third,chord.fifth,12};pitch=60+chord.rootPc+intervals[slot%4];}
+                else if(t.sampler.mode==2&&t.sampler.sliceCount>0)pitch=t.sampler.sliceBase+(int)(slot%(unsigned)t.sampler.sliceCount);
+                c.notes.push_back({at,length,pitch,std::clamp(kept[n].velocity*t.engine.velocity/100,1,127),0});
+            }
+            std::sort(c.notes.begin(),c.notes.end(),[](const Note& x,const Note& y){return x.start<y.start;});
             tidyNotes(c,beats);if(period>0){c.loopSource=c.notes;if(!rebuildClipLoop(c,duration))throw std::length_error("Generated vocal loop exceeds the note limit");}
         }
     }

@@ -8,7 +8,6 @@ preferenze. Rimane disponibile soltanto per compatibilità esplicita.
 Branch `Vocaltest`, base `0bdd4ed6857704e9bf44e875679ae6460d8082c3`.
 La fase 03 è verificata tecnicamente su Linux; il suo audit non è stato ripetuto.
 Restano pendenti Windows/macOS, hardware, plugin esterni, ascolto, dropout e
-sanitizers. Vocal Studio/Chops rimangono sospesi e non approvati qualitativamente.
 
 ## Esistente e correzioni riprodotte
 

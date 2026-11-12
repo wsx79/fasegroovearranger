@@ -1,4 +1,3 @@
-> **Aggiornamento corrente:** Vocal Studio e il backend eCantorix sono stati rimossi
 > completamente da codice, test e pacchetto. Le note storiche qui sotto descrivono build precedenti.
 > è rimosso. I risultati vocali e le dipendenze citati sotto appartengono alle
 > vecchie build; non sono istruzioni di installazione per la versione corrente.
@@ -44,7 +43,6 @@ operativo temporaneo, ripristinato il workflow preview originale con permessi
 read-only. I successivi commit documentali non cambiano il binario del tag.
 
 **NOT RUN:** clic/DPI reali Windows 11, ascolto/hardware/dropout, vendor plugin,
-sintesi eCantorix reale, input sintetico opzionale, nuovi sanitizers e macOS.
 Il fix pan è tecnicamente verificato anche su Windows, non ancora confermato
 con mouse/hardware dell'utente. Salvare copie: formato 7 e adozione esplicita dei
 livelli comuni sui file storici con Undo. Vocali congelati; fase 07 non avviata.
@@ -82,7 +80,6 @@ sorgenti app/JUCE completi e licenze/adattamenti esatti. Confrontati anche i
 sorgenti critici dei nuovi ritorni e del formato progetto (CRLF normalizzati
 solo per il confronto testuale). Import normali e ritardati verificati:
 **21 DLL di sistema, nessuna DLL aggiuntiva necessaria**. Inclusi manuali, risorse,
-licenze, sorgenti e istruzioni build/relink; nessun runtime eCantorix, Perl,
 eSpeak, SoX, FFmpeg, codec/modello/voicebank o altro binario esterno.
 
 Per provare: estrarre l'archivio Actions e lo ZIP portabile interno, poi avviare
@@ -96,7 +93,6 @@ i nuovi dati richiedono formato 7; quelli vecchi mantengono il routing storico
 fino a conversione esplicita a trasporto fermo.
 
 **NOT RUN: 5 ambiti Windows**: Windows 11/ascolto/hardware/dropout/clic reali;
-plugin vendor; sintesi eCantorix reale; input sintetico opzionale (SKIP esplicito);
 sanitizers Windows. macOS e qualità restano pendenti. Il candidato Loud continua
 a fallire intenzionalmente il gate IMD e non è esposto: non è un FAIL della suite.
 Nessun audit Linux ripetuto. Un successivo commit documentale `[skip ci]` registra
@@ -113,7 +109,6 @@ MSVC 19.51.36260.0 **x64 Release**, senza WSL o cross-compilazione Linux.
   mixer/sidechain; UI export **17/17**; startup, WAV/MP3 e interfaccia nativa.
 - **PASS** VST3 effetti: **79 asserzioni**, più verifica PCM e stati; strumenti
   VST3 e regressioni focus, con fixture native del progetto, non plugin commerciali.
-- **PASS** Vocal Studio dati/UI **14** e sample import **11**; non equivalgono
   a sintesi reale o approvazione funzionale/qualitativa delle fasi vocali congelate.
 - **PASS** pacchetto estratto: avvio dell'EXE Windows e sample UI **11**.
 
@@ -134,7 +129,6 @@ le 21 DLL di sistema Windows già previste, nessuna DLL da installare/bundlare.
 
 Contenuto: `Standalone/Fase Groove Arranger.exe`, manuali/risorse, licenze,
 `Source/` con sorgenti completi app/JUCE e istruzioni. Il solo adattatore GPL
-è sorgente con COPYING; **nessun runtime eCantorix, Perl, eSpeak, SoX, FFmpeg,
 DLL aggiuntiva, codec esterno, vocoder o voicebank distribuito**.
 
 ### Errori incontrati e correzioni
@@ -200,7 +194,6 @@ JUCE: il packaging è stato corretto per includerli effettivamente e viene ripet
 commit di build `0649e93d915f762f29e85adf427bfe08ded164d5`.
 Windows Server 2025 / windows-2025-vs2026, MSVC 19.51.36260.0, Release x64.
 CTest **15/15** (80,76 s), UI/avvio/WAV/MP3, VST3 effetti/strumenti, regressione
-focus, import asincrono **11** e Vocal Studio senza helper **14**: tutti PASS.
 Anche eseguibile estratto, packaging e upload sono PASS. Scaricato e ricontrollato
 l'archivio: digest Actions, PE64, risorse, sorgenti/licenze e checksum confermati;
 import table dell'EXE con sole DLL di sistema Windows, senza runtime aggiuntivi.
@@ -218,7 +211,6 @@ nessuna asserzione nativa è stata saltata per ottenere il risultato.
 - Runner `windows-latest`, MSVC x64, Release; C++17, CRT statico e JUCE 8.0.9 come
   previsto dal CMake del progetto. Host/effect probe VST3 originali solo per test.
 - Risorse/guide e fixture packaging, CTest verbose, UI/avvio, WAV/MP3, VST3
-  effetti/strumenti con gli harness esistenti; test specifici Vocal Studio e import.
 - Nessun motore musicale o formato progetto modificato per preparare la preview.
 - ZIP solo dopo tutti i gate; verifica PE32+ AMD64, risorse, checksum, presenza dei
   sorgenti e assenza dei runtime esterni non approvati. Esecuzione del test import/UI
@@ -247,7 +239,6 @@ controlla checksum e integrità degli archivi prima dell'upload.
 
 ## Sintesi vocale e limiti
 
-**Rendering eCantorix Windows NOT RUN.** Il workflow non installa né distribuisce
 Perl/XS, eSpeak, SoX, dati vocali, DLL aggiuntive, codec, modelli o voicebank.
 Il test dell'editor senza helper prevede 14 controlli e una voce esplicita
 NOT RUN per la sintesi esterna: non equivale ai 22 controlli Linux con helper reale.

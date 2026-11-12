@@ -2,7 +2,6 @@
 Baseline checked: v0.43.2, repository `wsx79/fasegroovearranger` (always verify current HEAD before work).
 
 ## Product decisions (non-negotiable)
-- **Current user decision:** Vocal Studio (and the retired eCantorix backend) has been removed entirely from source, tests, CI and packaging on Vocaltest. Vocal Chops remains separate and unchanged.
 - Harmony, musicality, arrangement and 15 genre engines are already satisfactory with appropriate VST instruments and user samples: do not alter without a reproduced defect.
 - Built-in guide sounds are lightweight previews, **not** targets for production-grade sound design.
 - Vocal Chops (sample slicing/triggering) is the only vocal workflow. Reuse existing piano roll, audio tracks/takes, mixer, EQ, export, plugin host, automation and project persistence. Inspect actual current implementation first.

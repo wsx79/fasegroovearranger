@@ -1,7 +1,6 @@
 # Fase 02 — audit e correzioni mirate
 
 Branch `Vocaltest`, base `358adb342f4dcb2097580065fdfa94e8e28d71f8`, versione
-0.43.2 invariata. Vocal Studio rimane separato. Nessun campione vocale esterno è
 stato scaricato: i fixture sono sintetizzati nei test e non vengono distribuiti.
 Le verifiche storiche del report del 30 ottobre non sono test eseguiti in questa fase.
 
@@ -29,7 +28,6 @@ Le funzionalità mancanti che richiedono interventi maggiori sono elencate sotto
 | Caso | Prima | Correzione e regressione |
 |---|---|---|
 | Detector con budget MIDI di una slice | Restituiva due marker al primo attacco. | Ritorno immediato dopo il marker iniziale quando il limite è uno. |
-| Lettura fra slice a velocità frazionaria | Una slice completamente silenziosa leggeva la successiva: picco 0,5. | Bordi slice arrotondati al campione sorgente più vicino; interpolazione limitata al bordo del crop/slice e dell'asset. Picco del fixture ora zero. La correzione del reader è condivisa ma non cambia dati/editor di Vocal Studio. |
 | Interruzione monofonica | Il voice stealing azzerava subito l'audio precedente: salto 0,6 anche con i fade predefiniti. | Breve rilascio di 2,5 ms usando una voce già allocata; le voci in rilascio non consumano il budget di polifonia suonabile. Totale sempre limitato a 32. Fixture con salto massimo 0,01125, anche in reverse e fra blocchi di dimensioni differenti. |
 | Durata in sync e slice brevi | Il warmup consumava 1024 campioni della durata: ultimo frame 23999 anziché 25023; una slice di 240 campioni restava muta. | In Slices la durata parte dal clock di uscita dopo il warmup. Test: ultimo frame 25023, picco della slice breve 0,356506. Audio region e modalità legacy conservano il loro comportamento. |
 | Panic MIDI CC120 | JUCE delegava a note-off con tail; le slice/one-shot lo ignoravano. | All Sound Off arresta subito le voci del canale, incluse quelle in rilascio. |
@@ -51,7 +49,6 @@ sovrapposizione può alzare i picchi: lasciare margine di livello.
 
 Risultati finali Linux: build completa PASS; CTest **14/14 PASS** in 117,96 s;
 UI completa predefinita PASS, incluso Studio (import/trim/Undo/routing/export);
-regressione GUI Vocal Studio **22/22 PASS**. Nessun FAIL finale. Sono esclusi
 l'input nativo opzionale, hosting VST esterno, dispositivi reali e ascolto.
 
 CTest `vocal_chops`, tramite il test runner esistente
@@ -88,7 +85,6 @@ quello delle cinque correzioni iniziali, non quello dell'import asincrono.
 Limiti ancora aperti: loop interno di ogni singola slice e render offline di
 qualità superiore non sono aggiunti da questo gate. Windows/macOS, ASan/TSan,
 dispositivo reale, stress estremo e ascolto non sono validati. Lo zero crossing
-resta sul canale sinistro. Vocal Studio è separato; nessun generatore modificato,
 nessuna dipendenza o campione esterno aggiunti. Fase 03 non iniziata.
 
 ## Prova manuale ancora da eseguire

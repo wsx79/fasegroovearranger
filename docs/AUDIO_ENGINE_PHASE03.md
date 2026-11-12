@@ -1,7 +1,6 @@
 # Fase 03 — audit Audio Engine, 2026-11-11
 
 Branch `Vocaltest`, base `c1388eefc63ac10e43de701e55ff63e46e1174f4`.
-La fase 03 è autorizzata dalla decisione attuale dell'utente. Vocal Studio e
 Vocal Chops conservano implementazione e test tecnici storici, ma non hanno
 approvazione funzionale/qualitativa: ulteriori interventi e revisione finale
 sono rinviati al termine delle altre fasi. Nessun loro codice modificato.

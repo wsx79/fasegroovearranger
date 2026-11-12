@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Retire the eCantorix/eSpeak backend and its exclusive process launcher, helper source/licence, installation and packaging dependencies. Hide Vocal Studio from add-track/clip menus and legacy arrangement/piano labels, and block its activation/rendering while preserving the reusable editor, MIDI planning, async/import scaffolding and project metadata. Keep legacy engine identifiers and existing WAV/cache assets intact; no project-format migration or change to Vocal Chops, preexisting audio generators, AI Composer, Lead MIDI, mixer/routing or AudioTake. Preview packaging excludes the retired helper; tests now verify the dormant UI/render boundary. See docs/VOCAL_STUDIO.md.
+
+- Remove Vocal Studio completely (code, project data, tests, CI, packaging and documentation). Projects that still contain its data open normally; the data is dropped on save. Restyle the native EQ, compressor, reverb, delay and Bus & Send windows. Rewrite the Vocal Chops generator for jacking house: one-bar syncopated hook, echo bar, answer and 8th-note stutter, 16th roll at the end of build-ups.
 
 - User-approved Assistant extension: default Project tab analyses the open arrangement without requiring an external WAV. Capture raw float mix before Transparent/quantisation and same-pass post-insert/fader track taps in full routing/detector context, using bounded private disk staging and the existing exclusive/cooperative export worker. Retain the File WAV flow and optional reference. Select concrete gain, existing track EQ and existing non-automated native compressor proposals; render/measure a temporary candidate, audition normalized original/proposal or project/reference pairs and apply a single Undo/Redo batch. Validate revision, target identity/current values, automation and replaced plugins; restore temporary native parameters after preview/error/Cancel. Report raw proposal TP/LUFS without promising optimal settings or fixed loudness. Normal export/Transparent, legacy/schema 7, routing DSP, generators and frozen vocals unchanged; no new dependency. See docs/ASSISTANT_PROJECT.it.md; updated Windows build and listening remain unverified.
 
@@ -38,7 +39,6 @@
 
 - Phase 04 Export & True Peak: correct BS.1770 K-weighting coefficients without changing rendered audio; improve final guarded-PCM verification with a wider-passband 16x estimator and 0.05 dB reserve; honour cancellation before publishing WAV/MP3 so existing files survive a last-progress cancellation. Preserve the existing optional guard DSP and default export sound. Add official-coefficient loudness tests, 36 guarded PCM cases and independent FFmpeg 32x verification. See docs/EXPORT_TRUE_PEAK_PHASE04.md for measured distortion, limits and remaining platform checks.
 
-- Phase 03 Audio Engine: restore plugins, DSP buffers and PDC for the latest device rate/buffer after export completion or cancellation; retain device latency updates during export. Add device/transport and concurrent state-handoff regressions. Vocal Studio/Chops remain technically implemented but functionally/qualitatively unapproved, with further work deferred. See docs/AUDIO_ENGINE_PHASE03.md for audit evidence and platform limits.
 
 - Vocaltest Preview Windows x64 is available as a tested Actions artifact (run 42920754927, build 0649e93): MSVC Release, 15/15 CTest, native UI/WAV/MP3/VST3, vocal metadata/import controls and extracted EXE pass. The ZIP includes the exact configured JUCE source adaptations and complete app source/notices. External Windows guide synthesis and Windows 11 hardware/listening remain untested. No public release or tag.
 
@@ -52,9 +52,7 @@
 
 - Vocal Chops phase 02: enforce the one-slice detector limit, isolate interpolation at sample-aligned cuts, and release monophonic retriggers on the stretcher output clock. Sync slices retain their full audible duration, including very short chops; MIDI All Sound Off now silences one-shot/slice voices on its channel. Existing editor, project schema and musical generators retained. See docs/VOCAL_CHOPS_PHASE02.md for audit, regressions, performance and remaining limits.
 
-- Vocal Studio 01C: external offline English eCantorix/eSpeak guide rendering, cancellation, validated WAV cache, existing AudioTake import/Undo and single-track WAV export. Final review bounds process diagnostics, retains WAV stream ownership on writer failure and rejects pending lyric edits before take import. Source-only native process adaptation; Windows/macOS execution remains unverified. See docs/VOCAL_GUIDE_LICENSES.md.
 
-- Vocal Studio 01B: optional English lyric/syllable metadata with persistent note links, a modeless editor reusing the piano roll/timeline, vocal-region policy and Undo/save/reopen coverage. Legacy candidate metadata is retained without activating a model. See docs/VOCAL_STUDIO.md.
 
 ## 0.43.2
 
@@ -68,7 +66,6 @@
 
 - Fixed generated one/two-bar loops becoming silent when full-section entry masks removed their entire source.
 - Explicit Strings takes survive Apply and harmony edits while the new-song default is Off; changing the actual style to Off and generating a new song still respect the chosen default. Take provenance survives save/load.
-- Fix regenerated free MIDI clips that cross independent section harmony: partition the selected take at harmonic changes while retaining loop period/phase, locks, excluded material and the full automation range. Include pitched guide vocal chops.
 - Correct nonzero-phase loop regeneration, including source preroll before beat zero, and align ruler chord cells with the harmonic phase actually played.
 - Remove millisecond Lead fragments from competing humanized lanes and early downbeats before phrase rests.
 - Techno/Electro guitar and Lead now respect their actual lane mute, level and octave controls.

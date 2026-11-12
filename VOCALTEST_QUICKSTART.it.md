@@ -2,7 +2,6 @@
 
 Preview di prova, versione applicativa 0.43.2. Lo ZIP viene caricato soltanto dopo
 build e test automatici Windows riusciti. Ascolto, dispositivo reale e prove
-manuali su Windows 11 sono ancora da eseguire. Vocal Studio è stato rimosso
 dall'applicazione.
 
 ## Scaricare e avviare

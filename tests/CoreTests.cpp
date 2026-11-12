@@ -266,7 +266,7 @@ int main(int argc,char** argv){try{
         const auto lead=vocal.tracks[fga::leadTrack].clips;const int manual=vocal.addMidiTrack();vocal.tracks[(size_t)manual].clips[0].notes={{1,.5,72,100,0}};
         const int index=vocal.addVocalChopsTrack();check(index==fga::trackCount+1&&vocal.tracks[fga::leadTrack].clips==lead,"vocal part preserves lead and manual routing");
         auto& t=vocal.tracks[(size_t)index];check(t.vocalChops&&fga::hasGenerator(t)&&!t.freeTimeline,"optional vocal generator follows sections");
-        check(t.clips[0].notes.size()>=4&&t.clips[0].notes.size()<=12,"default vocal leaves space: sparse four-bar calls");
+        check(t.clips[0].notes.size()>=16&&t.clips[0].notes.size()<=48,"default jacking chops: hook, echo and stutter without flooding sixteen bars");
         for(const auto& c:t.clips)for(size_t n=0;n<c.notes.size();++n){check(c.notes[n].length<=.75&&c.notes[n].length>0,"short vocal gates");if(n)check(c.notes[n-1].start+c.notes[n-1].length<=c.notes[n].start,"vocal remains monophonic");}
         const auto original=t.clips;fga::generate(vocal,fga::Scope::track,index,0,0);check(t.clips==original,"vocal APPLY is deterministic");
         fga::generate(vocal,fga::Scope::clip,index,1,4321);check(t.clips[0]==original[0]&&t.clips[2]==original[2],"clip regeneration preserves other vocal sections");

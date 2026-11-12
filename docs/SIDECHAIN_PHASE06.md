@@ -22,7 +22,6 @@ Optional scalar fields on existing bus JSON objects: `sidechainSource`, `sidecha
 
 Two detector buffers are prepared with the existing block buffers off the callback. Compared to one historical buffer the added PCM storage is `4 * blockSize` bytes (2,048 bytes at 512 samples); other additions are fixed-size envelope, smoothing and atomic-meter state. No new dependency. Envelope coefficients are computed on mix adoption, not per sample. Non-unit curves add up to two scalar powers per stereo frame. Reduction is stereo-linked and its block maximum is published as an atomic linear reduction; the existing 15 Hz UI timer converts it to dB (display floor 120 dB).
 
-Processing/configuration are bounded and introduce no filesystem access, blocking locks or buffer allocation. The test-only regular C++ allocation counter covers active groups, curve and live engine mix adoption; it does not instrument every aligned/system allocation. Existing mixer delay/reverb and engine handoff are reused. No change to NativeCompressor, Transparent export, Vocal Studio/Chops or musical generators.
 
 ## Verification
 

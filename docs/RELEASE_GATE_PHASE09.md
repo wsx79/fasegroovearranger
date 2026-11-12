@@ -1,7 +1,6 @@
 # Fase 09 — Gate di qualità e rilascio
 
 **Verdetto: NO-GO per distribuzione/release.** La verifica Windows reale del fix
-Cancel resta aperta. Vocal Studio e Vocal Chops sono congelati e non approvati
 funzionalmente/qualitativamente. Ascolto, hardware e piattaforme non disponibili
 non sono sostituibili con test sintetici Linux.
 
@@ -126,7 +125,6 @@ congelati e non approvano la qualità del canto.
 
 Riutilizzati `THIRD_PARTY_NOTICES.md`, `PRIVACY.md`, le licenze vendorizzate e
 `docs/VOCAL_GUIDE_LICENSES.md`: helper GPL solo sorgente, COPYING/README;
-nessun eCantorix/Perl/eSpeak/SoX/FFmpeg runtime, modello, voicebank, codec o DLL
 aggiunto/distribuito. Separazione in processi non equivale a esenzione GPL.
 I test packaging rifiutano runtime esterni non autorizzati e sorgenti/checksum
 incompleti. Le verifiche sintetiche PE64 non sono prove di runtime Windows.
@@ -147,7 +145,6 @@ Windows viene trasferito a questo codice.
 | macOS corrente, AU reali, firma/notarizzazione | NOT RUN |
 | Hardware audio, dropout, ascolto, mouse/DPI e plugin commerciali | NOT RUN |
 | App/GUI/driver/plugin interamente sotto sanitizers | NOT RUN; distinguere dalle prove scoped |
-| Approvazione funzionale/sonora Vocal Studio e Chops | Pendente, lavoro congelato |
 | Distribuzione di eventuali stack vocali/modelli esterni | Non autorizzata; nessun binario nuovo incluso |
 
 Per chiudere i gate servono test nativi dello snapshot corrente e collaudo umano,

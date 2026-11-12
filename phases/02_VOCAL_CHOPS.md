@@ -1,7 +1,6 @@
 # PHASE 02 — Vocal Chops (sample-based vocal instrument)
 
 ## Goal
-Audit and improve the **existing** vocal-chops engine: import an authorized vocal sample or recorded audio, slice it, rhythmically rearrange it, pitch-shift/time-stretch it, and trigger chops from MIDI/pads/timeline. This is NOT singing synthesis and must remain separate from Vocal Studio.
 
 ## 02A — Audit first, no rewrite
 - Locate existing chop editor, slicing, transient detection, sample handling, pitch/time processing, MIDI mapping, project persistence, preview, mixer routing and export.
@@ -24,7 +23,6 @@ Audit and improve the **existing** vocal-chops engine: import an authorized voca
 - 8-bar 125 BPM chopped pattern stays on grid, including seek/loop and tempo change.
 - No clicks at cut points in tested fixtures; no crashes for invalid/empty files.
 - Compare CPU, memory, output quality with baseline; document test coverage and listening checks.
-- No changes to harmony, arranger or Vocal Studio unless a confirmed shared-infrastructure bug requires it.
 
 ## Delivery
 Small focused commits with tests, updated `02_STATUS.md`, concise report. No push/tag/release without approval. Proceed to audio engine only after user approval.

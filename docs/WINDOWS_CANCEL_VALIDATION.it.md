@@ -114,7 +114,6 @@ il remoto e l'artifact restano sul codice esatto della build verificata.
 Il packaging esistente verifica EXE AMD64 PE32+, risorse e checksum, sorgenti
 corrispondenti dell'applicazione e JUCE effettivamente compilato, licenze/notice
 e assenza runtime esterni non approvati. Dopo estrazione il runner avvia l'EXE
-per il test di import/UI. Non vengono inclusi eCantorix, Perl, eSpeak, SoX,
 voicebank, codec esterni o DLL di terzi. QA ffmpeg resta soltanto sul runner.
 
 ## Gate umani e residui

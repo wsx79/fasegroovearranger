@@ -34,4 +34,3 @@
 Current phase/substep; confirmed findings; files changed; tests PASS/FAIL/NOT RUN; known risks; commit SHA (or none); next decision needed.
 
 ## Vocal scope
-Do not confuse sample-based Vocal Chops with lyrics-to-singing Vocal Studio. Both must coexist; do not merge or rewrite existing chops when implementing singing.

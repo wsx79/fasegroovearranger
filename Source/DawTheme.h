@@ -97,7 +97,7 @@ inline void drawKnob(juce::Graphics& g,juce::Rectangle<float> bounds,float norm,
 }
 // Vertical LED-style level meter (peak hold optional), scale -60..+6 dB.
 inline void drawLedMeter(juce::Graphics& g,juce::Rectangle<float> r,float levelNorm){
-    g.setColour(juce::Colour(0xff0d0e10));g.fillRoundedRectangle(r,2.f);
+    g.setColour(juce::Colour(0xff1d1f23));g.fillRoundedRectangle(r,2.f);
     levelNorm=std::clamp(levelNorm,0.f,1.f);if(levelNorm<=0.f)return;
     const auto lit=r.reduced(1.f).withTrimmedTop(r.reduced(1.f).getHeight()*(1.f-levelNorm));
     g.setGradientFill(juce::ColourGradient(meterHigh,r.getX(),r.getY(),meterLow,r.getX(),r.getBottom(),false));

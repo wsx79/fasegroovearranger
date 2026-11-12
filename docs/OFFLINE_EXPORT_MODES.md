@@ -2,7 +2,6 @@
 
 Base: `079565d544e8a5cdc3bb08d6e974e9d81ffede55`, branch `Vocaltest`.
 Implementazione autorizzata soltanto offline; nessun cambiamento a callback,
-limiter real-time, PDC, motori musicali, Vocal Studio/Chops o schema `.fga`.
 
 ## Transparent e ceiling
 

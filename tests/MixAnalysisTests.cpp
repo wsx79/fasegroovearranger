@@ -92,6 +92,6 @@ void runMixAnalysisTests(){
   requireMix(loaded.tracks[(size_t)actualTrack].instrumentPath==external.toStdString()&&juce::JSON::toString(actualState)==juce::JSON::toString(projectJson(project)),"actual guide analysis preserves reopened project");
   std::cout<<"PASS external rendered guide project: "<<external<<"\n";
  }
- else std::cout<<"NOT RUN optional external human/guide vocal reference (synthetic project fixture tested)\n";
+ else std::cout<<"NOT RUN optional external human vocal reference (synthetic project fixture tested)\n";
  std::cout<<"PASS local WAV analysis: peak/RMS/LUFS/correlation/full-scale, temporal and spectral overlap, project/vocal persistence, deterministic/no file writes, validation, cancel/retry; fixture suite "<<juce::Time::getMillisecondCounterHiRes()-started<<" ms\n";
 }

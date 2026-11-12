@@ -50,7 +50,6 @@ da eseguire. Gli artifact precedenti non contengono questo redesign.
 
 Annotare: SHA della build, versione Windows 11, CPU/RAM, interfaccia e versione
 driver, frequenza/buffer, plugin e relative versioni, esito e passaggi per
-riprodurre problemi. Usare una copia di un progetto esistente. Vocal Studio e
 Vocal Chops rimangono congelati e senza approvazione funzionale/qualitativa.
 
 1. **Avvio e progetto.** Estrarre tutto lo ZIP, avviare l'EXE, scegliere il proprio

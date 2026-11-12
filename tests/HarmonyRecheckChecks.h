@@ -85,7 +85,7 @@ inline void verify(){
         }
     }
     {auto p=fixture(4);const int track=p.addVocalChopsTrack();auto& t=p.tracks[(size_t)track];t.engine.humanize=t.engine.swing=0;t.engine.density=.8;t.freeTimeline=true;t.clips.assign(1,{});t.clips[0].span=8;t.clips[0].loopLength=4;t.clips[0].loopPhase=1.25;
-        generate(p,Scope::clip,track,0,37);check(p.tracks[(size_t)track].clips.size()==2,"pitched vocal guide follows independent section harmony");
+        generate(p,Scope::clip,track,0,37);check(p.tracks[(size_t)track].clips.size()==2,"pitched vocal chops follow independent section harmony");
         for(const auto& c:p.tracks[(size_t)track].clips)for(const auto& n:c.notes){const double at=c.position+n.start;const auto chord=chordAtBeat(resolveSectionHarmony(p,p.sectionAtBeat(at)),at);const int iv=(n.pitch-chord.rootPc+120)%12;check(iv==0||iv==chord.third||iv==chord.fifth,"pitched vocal notes follow their current harmonic cell");}}
     {auto p=fixture(0);p.settings.randomAutomation=true;p.tracks[0].freeTimeline=true;p.tracks[0].clips.assign(1,{});p.tracks[0].clips[0].span=8;p.tracks[0].volume.enabled=true;p.tracks[0].volume.points={{0,.7,0},{3,.8,0},{5,.4,0},{8,.7,0}};p.normalise();
         auto expected=p;randomiseAutomation(expected,Scope::clip,0,0,37);generate(p,Scope::clip,0,0,37);

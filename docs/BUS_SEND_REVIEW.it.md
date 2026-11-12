@@ -10,7 +10,6 @@ correzione del testo pan e redesign dei tre editor; DSP conservato.
 Implementazione tecnica verificata su Linux e runner Windows; validazione
 funzionale/sonora manuale ancora pendente. Prerelease di test autorizzata
 pubblicata dal branch Vocaltest; fase 07 non avviata.
-Vocal Studio/Chops e generatori non modificati. Nessuna dipendenza nuova:
 wrapper nativi per JUCE e codice del progetto, con le licenze già applicabili.
 
 ## Utilizzo
