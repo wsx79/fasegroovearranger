@@ -111,7 +111,7 @@ private:
             g.setColour(colour.withAlpha(.12f));g.fillRoundedRectangle(outer,6);g.setColour(colour.withAlpha(.5f));g.drawRoundedRectangle(outer,6,1.5f);g.drawRoundedRectangle(inner,4,1.f);
             for(const auto& corners:std::array<std::pair<juce::Point<float>,juce::Point<float>>,4>{{{outer.getTopLeft(),inner.getTopLeft()},{outer.getTopRight(),inner.getTopRight()},{outer.getBottomLeft(),inner.getBottomLeft()},{outer.getBottomRight(),inner.getBottomRight()}}})g.drawLine({corners.first,corners.second},1.f);
             const auto centre=outer.getCentre();g.setColour(Daw::text);g.fillEllipse(centre.x-4,centre.y-4,8,8);
-            for(int i=0;i<4;++i){const float radius=18.f+i*17.f;g.setColour(colour.withAlpha((1.f-i*.18f)*(1.f-damp*.7f)));g.drawEllipse(centre.x-radius,centre.y-radius,radius*2,radius*2,1.5f);}
+            {juce::Graphics::ScopedSaveState clipped(g);g.reduceClipRegion(outer.reduced(2.f).toNearestInt());const float limit=std::min(outer.getWidth(),outer.getHeight())*.5f-4.f;const float reach=.62f+.38f*room;for(int i=0;i<4;++i){const float radius=std::min(18.f+i*17.f,limit)*reach;g.setColour(colour.withAlpha(std::clamp((1.f-i*.18f)*(1.f-damp*.7f),0.f,1.f)));g.drawEllipse(centre.x-radius,centre.y-radius,radius*2,radius*2,1.5f);}}
         }
         g.setFont(Daw::font(11));g.setColour(Daw::textDim);g.drawFittedText(tr("Room size and damping visualization."),footer.removeFromTop(34),juce::Justification::centredLeft,2);
         g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawText(tr("Parameter schematic, not a measured response"),footer,juce::Justification::centredLeft);

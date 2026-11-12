@@ -105,6 +105,7 @@ public:
         juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(27);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(104,value.getWidth()),25);r.removeFromBottom(7);layout.sliderBounds=r;return layout;
     }
     void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& slider)override{
+        juce::Graphics::ScopedSaveState clip(g);g.reduceClipRegion(x,y,std::max(0,w),std::max(0,h));
         const float radius=std::max(4.f,std::min(w,h)*.5f-13),cx=x+w*.5f,cy=y+h*.5f;
         const bool enabled=slider.isEnabled();const auto accent=slider.findColour(juce::Slider::rotarySliderFillColourId).withMultipliedAlpha(enabled?1.f:.2f);
         for(int i=0;i<=10;++i){const float a=start+(end-start)*i/10.f;const float inner=radius+7,outer=radius+(i%5==0?11:9);
@@ -120,6 +121,10 @@ public:
     }
 };
 
+class KnobName final : public juce::Component {
+public:
+    void paint(juce::Graphics&) override {}
+};
 class EqDisplayComponent : public juce::Component, private juce::Timer {
 public:
     std::function<void()> onSettingsChanged;
@@ -154,7 +159,7 @@ public:
             dial.onDragStart=[this]{knobDragging=true;knobCaptured=false;};
             dial.onValueChange=[this,i]{changeKnob(i);};
             dial.onDragEnd=[this]{knobDragging=false;if(knobCaptured&&onDragEnd)onDragEnd();knobCaptured=false;};
-            auto& title=knobTitle[(size_t)i];addAndMakeVisible(title);title.setInterceptsMouseClicks(false,false);title.setJustificationType(juce::Justification::centred);title.setFont(Daw::font(13.f,true));title.setColour(juce::Label::textColourId,Daw::text);title.setColour(juce::Label::backgroundColourId,juce::Colours::transparentBlack);title.setOpaque(false);
+            auto& title=knobTitle[(size_t)i];addAndMakeVisible(title);title.setInterceptsMouseClicks(false,false);
         }
         for(int i=0;i<6;++i){auto& button=shapes[(size_t)i];button.type=i;addAndMakeVisible(button);button.onClick=[this,i]{if(validBand())editOnce([&]{currentEq.bands[(size_t)selectedBand].type=i;});updateControls();};}
         for(auto* button:{&bandPower,&invertButton,&removeButton})addAndMakeVisible(button);
@@ -331,8 +336,8 @@ public:
             auto knobsArea=area.removeFromRight(std::min(460.f,area.getWidth()*.48f));area.removeFromRight(8);
             const float cell=area.getWidth()/6.f;
             for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,area.getY()+22,cell-4,area.getHeight()-22).toNearestInt());
-            const float column=knobsArea.getWidth()/3.f;
-            for(int i=0;i<3;++i){auto bounds=juce::Rectangle<float>(knobsArea.getX()+i*column+2,knobsArea.getY()+56,column-4,std::max(48.f,knobsArea.getHeight()-56)).toNearestInt();knobs[(size_t)i].setBounds(bounds);knobTitle[(size_t)i].setBounds(bounds.getX(),bounds.getY()-52,bounds.getWidth(),18);knobTitle[(size_t)i].toFront(false);}
+            const float columnW=knobsArea.getWidth()/3.f;
+            for(int i=0;i<3;++i){auto cell=juce::Rectangle<float>(knobsArea.getX()+i*columnW+2,knobsArea.getY(),columnW-4,knobsArea.getHeight()).toNearestInt();auto cap=cell.removeFromTop(28);knobTitle[(size_t)i].setBounds(cap.reduced(1,1));knobs[(size_t)i].setBounds(cell.reduced(2,0));}
             const int button=28,gap=6,stack=button*3+gap*2;const int y0=(int)(actions.getY()+(actions.getHeight()-stack)*.5f);
             bandPower.setBounds((int)actions.getX(),y0,(int)actions.getWidth(),button);
             invertButton.setBounds((int)actions.getX(),y0+button+gap,(int)actions.getWidth(),button);
@@ -345,8 +350,8 @@ public:
         auto grid=types.withTrimmedTop(38);
         const float cellWidth=grid.getWidth()/3;
         for(int cell=0;cell<6;++cell)shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*61,cellWidth-5,54).toNearestInt());
-        const float column=area.getWidth()/3;
-        for(int i=0;i<3;++i){auto bounds=juce::Rectangle<float>(area.getX()+i*column+4,area.getY()+56,column-8,std::max(48.f,area.getHeight()-60)).toNearestInt();knobs[(size_t)i].setBounds(bounds);knobTitle[(size_t)i].setBounds(bounds.getX(),bounds.getY()-52,bounds.getWidth(),18);knobTitle[(size_t)i].toFront(false);}
+        const float columnW=area.getWidth()/3;
+        for(int i=0;i<3;++i){auto cell=juce::Rectangle<float>(area.getX()+i*columnW+4,area.getY()+28,columnW-8,std::max(48.f,area.getHeight()-32)).toNearestInt();auto cap=cell.removeFromTop(28);knobTitle[(size_t)i].setBounds(cap.reduced(1,1));knobs[(size_t)i].setBounds(cell.reduced(2,0));}
         bandPower.setBounds(actions.withY(actions.getY()+49).withHeight(29).toNearestInt());
         invertButton.setBounds(actions.withY(actions.getY()+89).withHeight(29).toNearestInt());
         removeButton.setBounds(actions.withY(actions.getY()+129).withHeight(29).toNearestInt());
@@ -539,6 +544,20 @@ public:
 
     }
 
+    void paintOverChildren(juce::Graphics& g) override {
+        const char* names[]={"FREQUENCY","GAIN","Q"};
+        g.setFont(Daw::font(13.f,true));
+        for(int i=0;i<3;++i){
+            const auto r=knobTitle[(size_t)i].getBounds();
+            if(r.getWidth()<8||r.getHeight()<12)continue;
+            const bool enabled=knobs[(size_t)i].isEnabled();
+            g.setColour(juce::Colour(0xff243044));
+            g.fillRect(r);
+            g.setColour(enabled?juce::Colour(0xfff7f8fa):juce::Colour(0xff8b93a0));
+            g.drawText(tr(names[i]),r.reduced(2,0),juce::Justification::centred,false);
+        }
+    }
+
     void mouseMove(const juce::MouseEvent& e) override {
         const auto plotArea = getPlotArea();
         const int found = findBandAt(e.position, plotArea);
@@ -679,7 +698,7 @@ private:
 
     // HUD parameter dragging
     bool gesture=false;
-    std::array<juce::Slider,3> knobs;std::array<juce::Label,3> knobTitle;
+    std::array<juce::Slider,3> knobs;std::array<KnobName,3> knobTitle;
     std::array<EqShapeButton,6> shapes;
     juce::TextButton bandPower,invertButton,removeButton;
     bool controlsUpdating=false,knobDragging=false,knobCaptured=false;
@@ -687,7 +706,7 @@ private:
     void updateControls(){
         controlsUpdating=true;const bool selected=validBand();
         const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
-        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];const bool enabled=selected&&(i!=1||eqHasGain(currentEq.bands[(size_t)selectedBand].type));dial.setEnabled(enabled);dial.setName(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"));knobTitle[(size_t)i].setText(dial.getName(),juce::dontSendNotification);knobTitle[(size_t)i].setColour(juce::Label::textColourId,enabled?Daw::text:Daw::textFaint);dial.setColour(juce::Slider::rotarySliderFillColourId,colour);
+        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];const bool enabled=selected&&(i!=1||eqHasGain(currentEq.bands[(size_t)selectedBand].type));dial.setEnabled(enabled);dial.setName(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"));dial.setColour(juce::Slider::rotarySliderFillColourId,colour);
             if(selected){const auto& b=currentEq.bands[(size_t)selectedBand];dial.setValue(i==0?b.freq:i==1?b.gain:b.q,juce::dontSendNotification);}}
         for(int i=0;i<6;++i){auto& shape=shapes[(size_t)i];shape.setEnabled(selected);shape.accent=colour;shape.setButtonText(tr(filterTypeNames[i]));shape.setTooltip(tr(filterTypeNames[i]));shape.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].type==i,juce::dontSendNotification);shape.repaint();}
         bandPower.setButtonText(tr(selected&&currentEq.bands[(size_t)selectedBand].enabled?"ON":"OFF"));bandPower.setEnabled(selected);bandPower.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].enabled,juce::dontSendNotification);
@@ -790,7 +809,6 @@ private:
         g.setColour(colour);g.setFont(Daw::font(12,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,20),juce::Justification::centred);
         g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+34,left.getY()+1,160,20),juce::Justification::centredLeft);
         (void)wide;
-        for(int i=0;i<3;++i){auto b=knobs[(size_t)i].getBounds();auto t=juce::Rectangle<int>(b.getX(),(int)rack.getY()+2,b.getWidth(),18);g.setColour(Daw::text);g.setFont(Daw::font(13.f,true));g.drawFittedText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),t,juce::Justification::centred,1);knobTitle[(size_t)i].setBounds(t);}
         const float line=knobs[0].getX()-8.f;g.setColour(juce::Colour(0xff303740));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
         if(!selected){g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawFittedText(tr("SELECT BAND"),removeButton.getBounds().withY((int)left.getY()).withHeight(27),juce::Justification::centred,2);}
     }
