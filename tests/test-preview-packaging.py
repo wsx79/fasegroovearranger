@@ -49,7 +49,7 @@ with TemporaryDirectory() as temp:
             for p in stage.rglob('*'):
                 if p.is_file():z.write(p,p.relative_to(stage))
     pack();verify_preview(archive)
-    manifest=json.loads((stage/'PREVIEW.json').read_text());assert manifest['guide_render'].startswith('DISABLED')
+    manifest=json.loads((stage/'PREVIEW.json').read_text());assert 'guide_render' not in manifest
     scanner.write_text('actual configured scanner fixture')
     patched = base / 'patched-stage';patched.mkdir()
     add_preview(patched,root,juce,app,sha)
