@@ -200,8 +200,8 @@ public:
         auto area = getLocalBounds().toFloat().reduced(5.f,4.f);
         Daw::devicePanel(g,area,accent);area=area.reduced(8.f,6.f);
         auto title = area.removeFromTop(18.0f);
-        g.setFont(Daw::caps(10.0f));
-        g.setColour(accent);
+        g.setFont(Daw::font(12.f, true));
+        g.setColour(Daw::text);
         g.drawText(name.toUpperCase(), title.toNearestInt(), juce::Justification::centred);
 
         area.removeFromBottom(36.0f);
@@ -440,7 +440,7 @@ public:
 
         g.setFont(Daw::font(26.f, true));
         g.setColour(shown > 0.05f ? juce::Colour(0xffffb347) : Daw::textFaint);
-        g.drawText("-" + juce::String(shown, 1), area.removeFromTop(34.0f).toNearestInt(), juce::Justification::centred);
+        g.drawText("-" + juce::String(shown, 1) + " dB", area.removeFromTop(34.0f).toNearestInt(), juce::Justification::centred);
 
         auto meter = area.reduced(18.0f, 4.0f);
         const int labelWidth = 34;
@@ -603,6 +603,19 @@ public:
         g.setFont(Daw::caps(10));
         g.setColour(Daw::textDim);
         g.drawText(ui::loc("LEVEL", "LIVELLO"), info.removeFromTop(16).toNearestInt(), juce::Justification::centredLeft);
+        auto signal = info.removeFromBottom(62);
+        g.setFont(Daw::font(10.f));
+        auto row = [&](const juce::String& text) {
+            const auto line = signal.removeFromTop(14);
+            g.setColour(ui::blue); g.fillEllipse(line.getX(), line.getCentreY() - 2.f, 4.f, 4.f);
+            g.setColour(Daw::textDim); g.drawText(text, line.withTrimmedLeft(8).toNearestInt(), juce::Justification::centredLeft);
+        };
+        row(ui::loc("STEREO LINKED", "STEREO COLLEGATO"));
+        row(processor.getLatencySamples()==0?ui::loc("ZERO LATENCY", "ZERO LATENZA"):ui::loc("ROUTING", "COMPENSAZIONE")+" "+juce::String(processor.getLatencySamples())+" smp");
+        row(ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
+        const double rate = processor.getSampleRate();
+        g.setColour(Daw::textFaint);
+        g.drawText(ui::loc("Sample rate", "Frequenza") + ": " + (rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--"), signal.removeFromTop(14).toNearestInt(), juce::Justification::centredLeft);
         auto drawMeter = [&](juce::Rectangle<float> r, const juce::String& name, float linear) {
             const float db = linear > 1.0e-8f ? 20.0f * std::log10(linear) : -48.0f;
             g.setColour(Daw::textDim);
@@ -646,8 +659,9 @@ public:
         // tactile parameter tiles sit below, consistently at all window sizes.
         const int columns = area.getWidth() >= 980 ? 7 : 3;
         const int rows = (7 + columns - 1) / columns;
-        const int knobH = columns == 7 ? std::clamp(area.getHeight() / 3, 150, 210) : std::max(80, (area.getHeight() - 168) / rows);
-        const int displayHeight = std::max(150, area.getHeight() - 12 - knobH);
+        const int cellMin = columns == 7 ? std::clamp(area.getHeight() / 3, 140, 200) : 104;
+        const int knobTotal = rows * cellMin;
+        const int displayHeight = std::max(110, area.getHeight() - 12 - knobTotal);
         auto bottom = area.removeFromTop(displayHeight);
         area.removeFromTop(12);
         knobPanel = area;

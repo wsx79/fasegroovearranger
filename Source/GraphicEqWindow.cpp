@@ -154,6 +154,7 @@ public:
             dial.onDragStart=[this]{knobDragging=true;knobCaptured=false;};
             dial.onValueChange=[this,i]{changeKnob(i);};
             dial.onDragEnd=[this]{knobDragging=false;if(knobCaptured&&onDragEnd)onDragEnd();knobCaptured=false;};
+            auto& title=knobTitle[(size_t)i];addAndMakeVisible(title);title.setInterceptsMouseClicks(false,false);title.setJustificationType(juce::Justification::centred);title.setFont(Daw::font(13.f,true));title.setColour(juce::Label::textColourId,Daw::text);title.setColour(juce::Label::backgroundColourId,juce::Colours::transparentBlack);title.setOpaque(false);
         }
         for(int i=0;i<6;++i){auto& button=shapes[(size_t)i];button.type=i;addAndMakeVisible(button);button.onClick=[this,i]{if(validBand())editOnce([&]{currentEq.bands[(size_t)selectedBand].type=i;});updateControls();};}
         for(auto* button:{&bandPower,&invertButton,&removeButton})addAndMakeVisible(button);
@@ -329,9 +330,9 @@ public:
             auto actions=area.removeFromRight(84);area.removeFromRight(8);
             auto knobsArea=area.removeFromRight(std::min(460.f,area.getWidth()*.48f));area.removeFromRight(8);
             const float cell=area.getWidth()/6.f;
-            for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,area.getY(),cell-4,area.getHeight()).toNearestInt());
+            for(int cellIndex=0;cellIndex<6;++cellIndex)shapes[(size_t)order[cellIndex]].setBounds(juce::Rectangle<float>(area.getX()+cellIndex*cell,area.getY()+22,cell-4,area.getHeight()-22).toNearestInt());
             const float column=knobsArea.getWidth()/3.f;
-            for(int i=0;i<3;++i)knobs[(size_t)i].setBounds(juce::Rectangle<float>(knobsArea.getX()+i*column+2,knobsArea.getY()+20,column-4,knobsArea.getHeight()-20).toNearestInt());
+            for(int i=0;i<3;++i){auto bounds=juce::Rectangle<float>(knobsArea.getX()+i*column+2,knobsArea.getY()+56,column-4,std::max(48.f,knobsArea.getHeight()-56)).toNearestInt();knobs[(size_t)i].setBounds(bounds);knobTitle[(size_t)i].setBounds(bounds.getX(),bounds.getY()-52,bounds.getWidth(),18);knobTitle[(size_t)i].toFront(false);}
             const int button=28,gap=6,stack=button*3+gap*2;const int y0=(int)(actions.getY()+(actions.getHeight()-stack)*.5f);
             bandPower.setBounds((int)actions.getX(),y0,(int)actions.getWidth(),button);
             invertButton.setBounds((int)actions.getX(),y0+button+gap,(int)actions.getWidth(),button);
@@ -345,7 +346,7 @@ public:
         const float cellWidth=grid.getWidth()/3;
         for(int cell=0;cell<6;++cell)shapes[(size_t)order[cell]].setBounds(juce::Rectangle<float>(grid.getX()+cell%3*cellWidth,grid.getY()+cell/3*61,cellWidth-5,54).toNearestInt());
         const float column=area.getWidth()/3;
-        for(int i=0;i<3;++i)knobs[(size_t)i].setBounds(juce::Rectangle<float>(area.getX()+i*column+4,area.getY()+28,column-8,area.getHeight()-31).toNearestInt());
+        for(int i=0;i<3;++i){auto bounds=juce::Rectangle<float>(area.getX()+i*column+4,area.getY()+56,column-8,std::max(48.f,area.getHeight()-60)).toNearestInt();knobs[(size_t)i].setBounds(bounds);knobTitle[(size_t)i].setBounds(bounds.getX(),bounds.getY()-52,bounds.getWidth(),18);knobTitle[(size_t)i].toFront(false);}
         bandPower.setBounds(actions.withY(actions.getY()+49).withHeight(29).toNearestInt());
         invertButton.setBounds(actions.withY(actions.getY()+89).withHeight(29).toNearestInt());
         removeButton.setBounds(actions.withY(actions.getY()+129).withHeight(29).toNearestInt());
@@ -526,8 +527,13 @@ public:
             g.drawText(tagText, tag.toNearestInt(), juce::Justification::centred);
         }
         g.setFont(Daw::font(11.f, true));
-        if (analyzerMode==1||analyzerMode==2) { g.setColour(Daw::textDim); g.fillRoundedRectangle(plotArea.getX()+10, plotArea.getY()+10, 10, 10, 2); g.drawText(tr("IN"), (int)plotArea.getX()+24, (int)plotArea.getY()+6, 36, 16, juce::Justification::centredLeft); }
-        if (analyzerMode==1||analyzerMode==3) { g.setColour(juce::Colour(0xff4cc3f0)); g.fillRoundedRectangle(plotArea.getX()+68, plotArea.getY()+10, 10, 10, 2); g.drawText(tr("OUT"), (int)plotArea.getX()+82, (int)plotArea.getY()+6, 40, 16, juce::Justification::centredLeft); }
+        g.setFont(Daw::smallFont(9)); g.setColour(Daw::textFaint);
+        g.drawText("dB", 2, (int)plotArea.getY()-16, 40, 14, juce::Justification::centredRight);
+        const float scaleX=plotArea.getRight()+4;
+        g.drawText("dBFS", (int)scaleX, (int)plotArea.getY()-16, 40, 14, juce::Justification::centredLeft);
+        for(int db:{0,-24,-48,-72,-96}){const float y=plotArea.getY()+plotArea.getHeight()*(-db/96.f);g.drawText(juce::String(db),(int)scaleX,(int)y-7,36,14,juce::Justification::centredLeft);}
+        if (analyzerMode==1||analyzerMode==2) { g.setColour(Daw::textDim); g.fillRoundedRectangle(plotArea.getRight()-150, plotArea.getY()+8, 10, 10, 2); g.drawText(tr("INPUT"), (int)plotArea.getRight()-136, (int)plotArea.getY()+5, 56, 16, juce::Justification::centredLeft); }
+        if (analyzerMode==1||analyzerMode==3) { g.setColour(juce::Colour(0xff4cc3f0)); g.fillRoundedRectangle(plotArea.getRight()-78, plotArea.getY()+8, 10, 10, 2); g.drawText(tr("OUTPUT"), (int)plotArea.getRight()-64, (int)plotArea.getY()+5, 60, 16, juce::Justification::centredLeft); }
         drawRail(g, plotArea);
         drawBandHud(g,plotArea);
 
@@ -673,7 +679,7 @@ private:
 
     // HUD parameter dragging
     bool gesture=false;
-    std::array<juce::Slider,3> knobs;
+    std::array<juce::Slider,3> knobs;std::array<juce::Label,3> knobTitle;
     std::array<EqShapeButton,6> shapes;
     juce::TextButton bandPower,invertButton,removeButton;
     bool controlsUpdating=false,knobDragging=false,knobCaptured=false;
@@ -681,7 +687,7 @@ private:
     void updateControls(){
         controlsUpdating=true;const bool selected=validBand();
         const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
-        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];dial.setEnabled(selected&&(i!=1||eqHasGain(currentEq.bands[(size_t)selectedBand].type)));dial.setName(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"));dial.setColour(juce::Slider::rotarySliderFillColourId,colour);
+        for(int i=0;i<3;++i){auto& dial=knobs[(size_t)i];const bool enabled=selected&&(i!=1||eqHasGain(currentEq.bands[(size_t)selectedBand].type));dial.setEnabled(enabled);dial.setName(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"));knobTitle[(size_t)i].setText(dial.getName(),juce::dontSendNotification);knobTitle[(size_t)i].setColour(juce::Label::textColourId,enabled?Daw::text:Daw::textFaint);dial.setColour(juce::Slider::rotarySliderFillColourId,colour);
             if(selected){const auto& b=currentEq.bands[(size_t)selectedBand];dial.setValue(i==0?b.freq:i==1?b.gain:b.q,juce::dontSendNotification);}}
         for(int i=0;i<6;++i){auto& shape=shapes[(size_t)i];shape.setEnabled(selected);shape.accent=colour;shape.setButtonText(tr(filterTypeNames[i]));shape.setTooltip(tr(filterTypeNames[i]));shape.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].type==i,juce::dontSendNotification);shape.repaint();}
         bandPower.setButtonText(tr(selected&&currentEq.bands[(size_t)selectedBand].enabled?"ON":"OFF"));bandPower.setEnabled(selected);bandPower.setToggleState(selected&&currentEq.bands[(size_t)selectedBand].enabled,juce::dontSendNotification);
@@ -704,14 +710,14 @@ private:
     juce::TextEditor editor;
     int editParam = -1;
 
-    float hudHeight() const { return getWidth()>=800?152.f:206.f; }
+    float hudHeight() const { return getWidth()>=800?196.f:220.f; }
     juce::Rectangle<float> getPlotArea() const {
-        const float padL=48, padR=getWidth()>=800?188.f:48.f, padT=22, padB=hudHeight()+20;
+        const float padL=48, padR=getWidth()>=800?228.f:52.f, padT=22, padB=hudHeight()+20;
         return juce::Rectangle<float>(padL, padT, (float)getWidth() - padL - padR, (float)getHeight() - padT - padB);
     }
     void drawRail(juce::Graphics& g,const juce::Rectangle<float>& plot) const {
         if(getWidth()<800)return;
-        auto rail=juce::Rectangle<float>(plot.getRight()+10,plot.getY(),(float)getWidth()-plot.getRight()-18,plot.getHeight());
+        auto rail=juce::Rectangle<float>(plot.getRight()+46,plot.getY(),(float)getWidth()-plot.getRight()-58,plot.getHeight());
         const auto colour=validBand()?getBandColour((size_t)selectedBand):Daw::textFaint;
         Daw::devicePanel(g,rail,colour);
         auto card=rail.reduced(12,12);
@@ -779,12 +785,12 @@ private:
     void drawBandHud(juce::Graphics& g,const juce::Rectangle<float>& plot){
         const auto rack=getHudBounds(plot);g.setColour(juce::Colour(0xff1a1f26));g.fillRoundedRectangle(rack,6);g.setColour(juce::Colour(0xff333b46));g.drawRoundedRectangle(rack,6,.8f);
         auto left=rack.reduced(14,10);const bool selected=validBand();
-        const bool wide=getWidth()>=800;
-        if(!wide){const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,25,4);
-        g.setColour(colour);g.setFont(Daw::font(13,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,25),juce::Justification::centred);
-        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+39,left.getY()+1,172,25),juce::Justification::centredLeft);}
-        if(wide)for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(r.getY()-18).withHeight(16),juce::Justification::centred);}
-        else for(int i=0;i<3;++i){auto r=knobs[(size_t)i].getBounds().toFloat();g.setFont(Daw::font(10.5f,true));g.setColour(knobs[(size_t)i].isEnabled()?Daw::textDim:Daw::textFaint);g.drawText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),r.withY(left.getY()+2).withHeight(20),juce::Justification::centred);}
+        const bool wide=getWidth()>=800;const auto colour=selected?getBandColour((size_t)selectedBand):Daw::textFaint;
+        g.setColour(colour.withAlpha(.14f));g.fillRoundedRectangle(left.getX(),left.getY()+1,29,20,4);
+        g.setColour(colour);g.setFont(Daw::font(12,true));g.drawText(selected?juce::String(selectedBand+1).paddedLeft('0',2):"--",juce::Rectangle<float>(left.getX(),left.getY()+1,29,20),juce::Justification::centred);
+        g.setColour(Daw::text);g.setFont(Daw::font(11,true));g.drawText(tr("FILTER SHAPE"),juce::Rectangle<float>(left.getX()+34,left.getY()+1,160,20),juce::Justification::centredLeft);
+        (void)wide;
+        for(int i=0;i<3;++i){auto b=knobs[(size_t)i].getBounds();auto t=juce::Rectangle<int>(b.getX(),(int)rack.getY()+2,b.getWidth(),18);g.setColour(Daw::text);g.setFont(Daw::font(13.f,true));g.drawFittedText(tr(i==0?"FREQUENCY":i==1?"GAIN":"Q"),t,juce::Justification::centred,1);knobTitle[(size_t)i].setBounds(t);}
         const float line=knobs[0].getX()-8.f;g.setColour(juce::Colour(0xff303740));g.drawVerticalLine((int)line,rack.getY()+16,rack.getBottom()-16);
         if(!selected){g.setFont(Daw::font(10));g.setColour(Daw::textFaint);g.drawFittedText(tr("SELECT BAND"),removeButton.getBounds().withY((int)left.getY()).withHeight(27),juce::Justification::centred,2);}
     }
@@ -846,7 +852,6 @@ public:
         analyzerMode.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerMode","1").getIntValue(),0,3)+1,juce::dontSendNotification);
         speed.setSelectedId(std::clamp(Localisation::setting("eqAnalyzerSpeed","1").getIntValue(),0,2)+1,juce::dontSendNotification);
         range.setSelectedId(std::clamp(Localisation::setting("eqDisplayRange","1").getIntValue(),0,2)+1,juce::dontSendNotification);
-        bandSelector.setVisible(false);
         for(int i=0;i<16;++i){auto& chip=chips[(size_t)i];addAndMakeVisible(chip);chip.index=i;chip.onClick=[this,i]{if(!updating)eqDisplay.selectBand(i);};}
     }
     ~Panel()override{setLookAndFeel(nullptr);}
@@ -899,8 +904,11 @@ public:
         int shown=0;for(const auto& chip:chips)if(chip.isVisible())++shown;
         const int chipW=shown>0?std::min(78,chipsRow.getWidth()/shown):0;int x=chipsRow.getX();
         for(auto& chip:chips)if(chip.isVisible()){chip.setBounds(x,chipsRow.getY(),std::max(0,chipW-4),chipsRow.getHeight());x+=chipW;}
-        r.removeFromTop(6);auto settings=r.removeFromTop(30);
-        range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(144));settings.removeFromRight(8);analyzerMode.setBounds(settings.removeFromRight(std::min(174,settings.getWidth())));
+        r.removeFromTop(6);
+        if(getWidth()<680){auto bandRow=r.removeFromTop(30);bandSelector.setBounds(bandRow);r.removeFromTop(6);}
+        auto settings=r.removeFromTop(30);
+        range.setBounds(settings.removeFromRight(92));settings.removeFromRight(8);speed.setBounds(settings.removeFromRight(std::min(144,std::max(0,settings.getWidth()-90))));settings.removeFromRight(8);
+        if(getWidth()<680)analyzerMode.setBounds(settings);else{analyzerMode.setBounds(settings.removeFromRight(std::min(174,std::max(0,settings.getWidth()/2))));settings.removeFromRight(8);bandSelector.setBounds(settings);}
         r.removeFromTop(8);r.removeFromBottom(12);eqDisplay.setBounds(r);
     }
 
