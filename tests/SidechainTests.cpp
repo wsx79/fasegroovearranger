@@ -207,6 +207,16 @@ void tempoReturns(){
         require(first==expected,"return delay must land on the correct project sample, including short startup divisions");++cases;
     }
     require(allocations==0,"tempo return processing allocates");std::cout<<"Tempo delay 72 rate/BPM/division cases PASS; exact first echo, fractional interpolation and tempo-aware tails; C++ allocations="<<allocations<<"\n";
+    Head head;head.bpm=120;auto effect=createNativeReturn(nativeReturnDescription(true));effect->setPlayHead(&head);
+    effect->getParameters()[0]->setValue(effect->getParameters()[0]->getValueForText("0.125"));
+    effect->getParameters()[1]->setValue(0.f);effect->getParameters()[4]->setValue(1.f);
+    effect->prepareToPlay(48000,128);juce::AudioBuffer<float> block(2,128);juce::MidiBuffer midi;
+    for(int n=0;n<40;++n){for(int i=0;i<128;++i){block.setSample(0,i,.2f);block.setSample(1,i,.2f);}effect->processBlock(block,midi);}
+    effect->getParameters()[1]->setValue(effect->getParameters()[1]->getValueForText("80"));
+    float previous=block.getSample(0,127),step=0;
+    for(int n=0;n<80;++n){for(int i=0;i<128;++i){block.setSample(0,i,.2f);block.setSample(1,i,.2f);}effect->processBlock(block,midi);for(int i=0;i<128;++i){step=std::max(step,std::abs(block.getSample(0,i)-previous));previous=block.getSample(0,i);}}
+    std::cout<<"delay feedback 0->0.8 maximum sample step="<<step<<"\n";
+    require(step<0.02f,"delay feedback changes must be smoothed");
 }
 void editableReturns(){
     auto project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Editable returns"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;

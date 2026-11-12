@@ -218,7 +218,7 @@ private:
     };
 };
 }
-SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();setCurrentPlaybackSampleRate(44100);for(int i=0;i<32;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
+SampleSynth::SampleSynth(std::shared_ptr<const SampleAsset> a,const SamplerSettings& p,int root,bool drum):data(std::move(a)),fallback(p),rootNote(root),drumTrack(drum){fallback.normalise();setCurrentPlaybackSampleRate(44100);for(int i=0;i<33;++i)addVoice(new SampleVoice(*this));addSound(new SampleSound(data));setNoteStealingEnabled(true);setMinimumRenderingSubdivisionSize(1,true);}
 SampleSynth::~SampleSynth()=default;
 void SampleSynth::addRegionEvent(juce::MidiBuffer& midi,int sample,int note,int velocity,double offset,double duration,double fadeIn,double fadeOut,bool reverse){
     // Non-commercial manufacturer ID, signature/version, pitch/velocity, two
@@ -256,14 +256,14 @@ bool SampleSynth::configure(const SamplerSettings& p,int root,double tempo){cons
 void SampleSynth::setCurrentPlaybackSampleRate(double rate){juce::Synthesiser::setCurrentPlaybackSampleRate(std::isfinite(rate)&&rate>=8000?rate:44100);}
 void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;
-    // Slices can use a spare preallocated voice for a short release. Retiring
-    // voices do not consume the playable polyphony budget; total voices stay 32.
+    // One spare voice keeps a full 32-voice slice polyphony able to crossfade.
+    // Retiring voices stay out of that count and are not hard-cut.
     bool crossfade=false;
     for(int tries=0;tries<32;++tries){
         int active=0;SampleVoice* oldest=nullptr;
         for(int i=0;i<getNumVoices();++i){auto* voice=dynamic_cast<SampleVoice*>(getVoice(i));if(!voice||!voice->isVoiceActive()||voice->retiring())continue;++active;if(!oldest||voice->wasStartedBefore(*oldest))oldest=voice;}
         if(active<settings().polyphony||!oldest)break;
-        if(mode()==2&&settings().polyphony<getNumVoices()){oldest->fadeForRetrigger();crossfade=true;}else oldest->stopNote(0,false);
+        if(mode()==2){oldest->fadeForRetrigger();crossfade=true;}else oldest->stopNote(0,false);
     }
     juce::Synthesiser::noteOn(channel,note,velocity);
     if(!crossfade)return;

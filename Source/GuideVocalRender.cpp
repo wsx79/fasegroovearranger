@@ -54,7 +54,7 @@ juce::Result renderGuideVocal(const Project& p,int track,int clip,const juce::Fi
     // MIDI rounds to 960 PPQ. Include exact masking/duration too: sub-tick edits
     // must not collide and repeatedly overwrite one shared cache entry.
     juce::MemoryOutputStream identity;
-    identity.write(plan.midi.getData(),plan.midi.getSize());identity.writeString("FGA-guide-3");
+    identity.write(plan.midi.getData(),plan.midi.getSize());identity.writeString("FGA-guide-4");
     identity.writeDouble(plan.duration);
     for(const auto& interval:plan.audible){identity.writeDouble(interval.first);identity.writeDouble(interval.second);}
     identity.writeString(juce::SHA256(script).toHexString());
@@ -93,8 +93,10 @@ juce::Result renderGuideVocal(const Project& p,int track,int clip,const juce::Fi
         progress(.8);
         reader=open(raw);if(!reader||reader->numChannels>2||reader->sampleRate!=22050||reader->lengthInSamples>22050*62)return juce::Result::fail("Invalid guide WAV.");
         const int frames=(int)std::ceil(plan.duration*22050);juce::AudioBuffer<float> audio(1,frames);audio.clear();if(!reader->read(&audio,0,std::min(frames,(int)reader->lengthInSamples),0,true,false))return juce::Result::fail("Cannot read guide WAV.");
-        // Force rests and intro/outro boundaries to exact silence, including synthesis tails.
-        size_t segment=0;for(int i=0;i<frames;++i){const double at=i/22050.;while(segment<plan.audible.size()&&at>=plan.audible[segment].second)++segment;auto& value=audio.getWritePointer(0)[i];if(segment==plan.audible.size()||at<plan.audible[segment].first||!std::isfinite(value))value=0;}
+        // Rests stay silent. Each sung region fades in and out over 4 ms so the
+        // forced edge is not a full-scale step.
+        constexpr double edgeSeconds=0.004;
+        size_t segment=0;for(int i=0;i<frames;++i){const double at=i/22050.;while(segment<plan.audible.size()&&at>=plan.audible[segment].second)++segment;auto& value=audio.getWritePointer(0)[i];if(segment==plan.audible.size()||at<plan.audible[segment].first||!std::isfinite(value)){value=0;continue;}const double start=plan.audible[segment].first,end=plan.audible[segment].second,edge=std::min(edgeSeconds,(end-start)*.5);double gain=1;if(edge>0){if(at-start<edge)gain=(at-start)/edge;else if(end-at<edge)gain=(end-at)/edge;}value*=(float)std::clamp(gain,0.,1.);}
         if(cancelled())return juce::Result::fail("Guide cancelled.");
         juce::TemporaryFile temporary(file);
         std::unique_ptr<juce::OutputStream> stream=temporary.getFile().createOutputStream();

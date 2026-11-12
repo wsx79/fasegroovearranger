@@ -40,6 +40,21 @@ void runVocalChopsTests(){
     check(blockError<1e-6f,"retrigger fades are independent of host block boundaries");
     std::cout<<"mono retrigger maximum jump="<<jump<<std::endl;
     check(jump<.025f,"monophonic chop retrigger must fade the interrupted voice");
+    {
+        constexpr int sliceFrames=5000,slicesN=33,frames=sliceFrames*slicesN;
+        auto crowdedAsset=fixture(frames);
+        for(int i=0;i<frames;++i){const float v=i>=sliceFrames*(slicesN-1)?-.6f:.6f;for(int c=0;c<2;++c)crowdedAsset->audio.setSample(c,i,v);}
+        auto wide=s;wide.polyphony=32;wide.sliceBase=36;wide.sliceCount=slicesN;wide.fadeIn=wide.fadeOut=0;wide.sync=false;wide.reverse=false;wide.transpose=0;
+        for(int i=0;i<slicesN;++i)wide.slices[(size_t)i]=i*(double)sliceFrames/frames;
+        juce::MidiBuffer chord;for(int i=0;i<32;++i)chord.addEvent(juce::MidiMessage::noteOn(1,36+i,1.f),0);
+        chord.addEvent(juce::MidiMessage::noteOn(1,36+32,1.f),4096);
+        SampleSynth timing(crowdedAsset,wide,60,false);timing.setCurrentPlaybackSampleRate(48000);const int lag=timing.latencySamples();
+        auto crowded=render(crowdedAsset,wide,chord,8192+lag);
+        float crowdedJump=0;const int from=4096+lag,to=std::min(crowded.getNumSamples()-1,from+400);
+        for(int i=from+1;i<=to;++i)crowdedJump=std::max(crowdedJump,std::abs(crowded.getSample(0,i)-crowded.getSample(0,i-1)));
+        std::cout<<"polyphony 32 steal jump="<<crowdedJump<<" lag="<<lag<<std::endl;
+        check(crowdedJump<.025f,"default 32-voice polyphony crossfades a stolen slice");
+    }
     s.reverse=true;auto reversed=render(asset,s,midi,8192);float reverseJump=0;for(int i=4000;i<4400;++i)reverseJump=std::max(reverseJump,std::abs(reversed.getSample(0,i)-reversed.getSample(0,i-1)));
     check(reverseJump<.025f,"reverse monophonic slices also release interrupted audio");s.reverse=false;
     s.sync=true;s.sourceBpm=125;int lag=0;

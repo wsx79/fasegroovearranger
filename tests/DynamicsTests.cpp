@@ -36,6 +36,16 @@ void realtimeEq(){
     std::cout<<"EQ callback configuration allocations="<<allocations<<"\n";
     require(allocations==0,"native channel EQ configuration allocates on the audio side");
     eq.bands.clear();{AllocationScope scope;strip.configure(eq,48000);}require(allocations==0,"legacy EQ fallback allocates");
+    fga::EqSettings sweep;sweep.enabled=true;fga::EqBand bell;bell.type=(int)fga::EqFilterType::Bell;bell.freq=1000;bell.q=1;bell.gain=0;bell.enabled=true;sweep.bands={bell};
+    fga::ChannelStrip held,changed;held.configure(sweep,48000);changed.configure(sweep,48000);
+    // Switch at a waveform peak: 1 kHz at 48 kHz peaks 12 samples after a zero crossing.
+    constexpr int settle=9612;juce::AudioBuffer<float> dry(1,1),other(1,1);
+    for(int n=0;n<settle;++n){const float x=0.25f*std::sin(juce::MathConstants<float>::twoPi*1000.f*n/48000.f);dry.setSample(0,0,x);other.setSample(0,0,x);held.process(dry,1);changed.process(other,1);}
+    bell.gain=12;sweep.bands={bell};changed.configure(sweep,48000);
+    const float x=0.25f*std::sin(juce::MathConstants<float>::twoPi*1000.f*settle/48000.f);dry.setSample(0,0,x);other.setSample(0,0,x);held.process(dry,1);changed.process(other,1);
+    const float step=std::abs(other.getSample(0,0)-dry.getSample(0,0));
+    std::cout<<"EQ 1 kHz Q=1 +12 dB injected step="<<step<<"\n";
+    require(step<0.002f,"EQ coefficient changes must be smoothed over a few milliseconds");
 }
 void dspChecks(){using namespace fga;
     for(double rate:{44100.,48000.,96000.})for(int block:{32,64,128,512,1024}){
