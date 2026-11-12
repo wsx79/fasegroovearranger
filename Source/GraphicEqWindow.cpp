@@ -105,19 +105,9 @@ public:
         juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(27);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(104,value.getWidth()),25);r.removeFromBottom(7);layout.sliderBounds=r;return layout;
     }
     void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& slider)override{
-        juce::Graphics::ScopedSaveState clip(g);g.reduceClipRegion(x,y,std::max(0,w),std::max(0,h));
-        const float radius=std::max(4.f,std::min(w,h)*.5f-13),cx=x+w*.5f,cy=y+h*.5f;
-        const bool enabled=slider.isEnabled();const auto accent=slider.findColour(juce::Slider::rotarySliderFillColourId).withMultipliedAlpha(enabled?1.f:.2f);
-        for(int i=0;i<=10;++i){const float a=start+(end-start)*i/10.f;const float inner=radius+7,outer=radius+(i%5==0?11:9);
-            g.setColour(juce::Colour(enabled?0xff5a626e:0xff343a43));g.drawLine(cx+std::sin(a)*inner,cy-std::cos(a)*inner,cx+std::sin(a)*outer,cy-std::cos(a)*outer,i%5==0?1.2f:.8f);}
-        juce::Path track;track.addCentredArc(cx,cy,radius+3,radius+3,0,start,end,true);g.setColour(juce::Colour(0xff343b45));g.strokePath(track,juce::PathStrokeType(2));
-        const float angle=start+(end-start)*pos,origin=(bool)slider.getProperties()["eqBipolar"]?(start+end)*.5f:start;
-        if(std::abs(angle-origin)>.001f){juce::Path arc;arc.addCentredArc(cx,cy,radius+3,radius+3,0,std::min(origin,angle),std::max(origin,angle),true);g.setColour(accent);g.strokePath(arc,juce::PathStrokeType(2.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
-        g.setColour(juce::Colours::black.withAlpha(.22f));g.fillEllipse(cx-radius,cy-radius+2,radius*2,radius*2);
-        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff373e48),cx,cy-radius,juce::Colour(0xff1e242d),cx,cy+radius,false));g.fillEllipse(cx-radius,cy-radius,radius*2,radius*2);
-        g.setColour(juce::Colour(enabled?0xff515a67:0xff343c46));g.drawEllipse(cx-radius,cy-radius,radius*2,radius*2,.8f);
-        g.setColour(juce::Colour(0xff161b22));g.drawEllipse(cx-radius+3,cy-radius+3,radius*2-6,radius*2-6,.7f);
-        g.setColour(enabled?juce::Colour(0xffedf0f4):Daw::textFaint);g.drawLine(cx+std::sin(angle)*radius*.45f,cy-std::cos(angle)*radius*.45f,cx+std::sin(angle)*radius*.82f,cy-std::cos(angle)*radius*.82f,2.2f);
+        juce::ignoreUnused(start,end);
+        const float d=std::max(8.f,(float)std::min(w,h)-6.f);
+        Daw::drawKnob(g,juce::Rectangle<float>(d,d).withCentre({x+w*.5f,y+h*.5f}),pos,slider.findColour(juce::Slider::rotarySliderFillColourId),(bool)slider.getProperties()["eqBipolar"],slider.isEnabled(),slider.isMouseOverOrDragging());
     }
 };
 
@@ -368,10 +358,9 @@ public:
         g.fillAll(Daw::base);
         const auto plotArea = getPlotArea();
 
-        g.setColour(Daw::lcd);
-        g.fillRoundedRectangle(plotArea, 4.0f);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(plotArea, 4.0f, 1.0f);
+        Daw::deviceScreen(g, plotArea);
+        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff15181d), plotArea.getX(), plotArea.getY(), juce::Colour(0xff0c0d10), plotArea.getX(), plotArea.getBottom(), false));
+        g.fillRoundedRectangle(plotArea.reduced(1.0f), 3.0f);
 
         {
             const juce::Graphics::ScopedSaveState saved(g);
@@ -381,16 +370,16 @@ public:
             for (double db : dbTicks) {
                 const float y = yFromDb(db, plotArea);
                 const bool zero = std::abs(db) < 1e-4;
-                g.setColour(zero ? Daw::lineStrong : Daw::line.withMultipliedAlpha(0.7f));
+                g.setColour(juce::Colours::white.withAlpha(zero ? 0.16f : 0.045f));
                 g.drawHorizontalLine(juce::roundToInt(y), plotArea.getX(), plotArea.getRight());
             }
 
             static constexpr double majorFreqs[] = { 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000 };
             static constexpr double minorFreqs[] = { 30, 40, 60, 70, 80, 90, 300, 400, 600, 700, 800, 900, 3000, 4000, 6000, 7000, 8000, 9000, 15000 };
-            g.setColour(Daw::line.withMultipliedAlpha(0.45f));
+            g.setColour(juce::Colours::white.withAlpha(0.025f));
             for (double hz : minorFreqs)
                 g.drawVerticalLine(juce::roundToInt(xFromFreq(hz, plotArea)), plotArea.getY(), plotArea.getBottom());
-            g.setColour(Daw::line.withMultipliedAlpha(0.9f));
+            g.setColour(juce::Colours::white.withAlpha(0.06f));
             for (double hz : majorFreqs)
                 g.drawVerticalLine(juce::roundToInt(xFromFreq(hz, plotArea)), plotArea.getY(), plotArea.getBottom());
         }
@@ -940,9 +929,10 @@ private:
         int index=0;juce::Colour ink{Daw::textDim};
         void paintButton(juce::Graphics& g,bool hover,bool) override {
             auto r=getLocalBounds().toFloat().reduced(2.f,2.f);const bool on=getToggleState();
-            g.setColour(on?ink.withAlpha(.22f):hover?Daw::surfaceHi:Daw::surface);g.fillRoundedRectangle(r,6);
-            g.setColour(on?ink:Daw::lineStrong);g.drawRoundedRectangle(r,6,on?1.4f:Daw::hairline());
-            g.setColour(ink);g.fillEllipse(r.getX()+8,r.getCentreY()-4,8,8);
+            g.setGradientFill(juce::ColourGradient(juce::Colour(hover?0xff2a2e35:0xff23262c),r.getX(),r.getY(),juce::Colour(0xff191b1f),r.getX(),r.getBottom(),false));g.fillRoundedRectangle(r,3);
+            g.setColour(on?ink.withAlpha(.8f):juce::Colour(0xff34383f));g.drawRoundedRectangle(r,3,on?1.2f:1.f);
+            const auto led=juce::Rectangle<float>(6.f,6.f).withCentre({r.getX()+12,r.getCentreY()});if(on){g.setColour(ink.withAlpha(.3f));g.fillEllipse(led.expanded(2.5f));}
+            g.setColour(on?ink:ink.withAlpha(.35f));g.fillEllipse(led);
             g.setColour(Daw::text);g.setFont(Daw::font(11.f,true));g.drawText(juce::String(index+1).paddedLeft('0',2),r.withTrimmedLeft(18).toNearestInt(),juce::Justification::centredLeft);
         }
     };

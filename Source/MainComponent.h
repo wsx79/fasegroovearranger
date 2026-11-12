@@ -244,8 +244,6 @@ public:
     void showTrackMenu(int);
     void showAddTrackMenu();
     void addMidiTrack(bool vocal=false);
-    void showVocalStudio();
-    bool verifyVocalStudio(const juce::File&);
     bool verifySampleImport(const juce::File&);
     void deleteMidiTrack(int);
     void showAddSectionMenu();
@@ -370,8 +368,6 @@ public:
 private:
     friend bool verifyPianoTools(MainComponent&,const juce::File&);
     friend class StudioWindow;
-    friend class VocalStudioEditor;
-    std::unique_ptr<juce::DialogWindow> vocalStudioWindow;
     friend class MasteringAssistantWindow;
     std::unique_ptr<MasteringAssistantWindow> masteringAssistantWindow;
     friend class MixAssistantWindow;

@@ -63,15 +63,66 @@ inline void drawCaps(juce::Graphics& g,const juce::String& s,juce::Rectangle<int
 // Shared material for native devices; graphs and controls retain their own
 // semantics. No simulated meters or DSP-dependent resources on the UI thread.
 inline void devicePanel(juce::Graphics& g,juce::Rectangle<float> r,juce::Colour colour){
-    r=r.reduced(.5f);g.setGradientFill(juce::ColourGradient(surfaceHi,r.getX(),r.getY(),well,r.getRight(),r.getBottom(),false));g.fillRoundedRectangle(r,8.f);
-    g.setColour(lineStrong.withAlpha(.7f));g.drawRoundedRectangle(r,8.f,1.f);
-    g.setColour(colour.withAlpha(.5f));g.fillRoundedRectangle(r.getX()+14,r.getY(),std::max(1.f,r.getWidth()-28),2.f,1.f);
+    // Studio-hardware module: dark anodised face, crisp bevel, a single thin accent rule.
+    r=r.reduced(.5f);const float rr=4.f;
+    g.setColour(juce::Colours::black.withAlpha(.35f));g.fillRoundedRectangle(r.translated(0,1.f),rr);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff1f2227),r.getX(),r.getY(),juce::Colour(0xff17191d),r.getX(),r.getBottom(),false));g.fillRoundedRectangle(r,rr);
+    g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine((int)r.getY()+1,r.getX()+rr,r.getRight()-rr);
+    g.setColour(juce::Colour(0xff2e3239));g.drawRoundedRectangle(r,rr,1.f);
+    g.setColour(colour.withAlpha(.55f));g.fillRect(r.getX()+rr,r.getY(),std::min(28.f,std::max(0.f,r.getWidth()-2*rr)),1.5f);
+}
+// Recessed display window (graphs, curves, meters).
+inline void deviceScreen(juce::Graphics& g,juce::Rectangle<float> r){
+    g.setColour(juce::Colour(0xff0c0d10));g.fillRoundedRectangle(r,3.f);
+    g.setGradientFill(juce::ColourGradient(juce::Colours::black.withAlpha(.45f),r.getX(),r.getY(),juce::Colours::transparentBlack,r.getX(),r.getY()+10,false));g.fillRoundedRectangle(r,3.f);
+    g.setColour(juce::Colours::black.withAlpha(.8f));g.drawRoundedRectangle(r,3.f,1.f);
+    g.setColour(juce::Colours::white.withAlpha(.05f));g.drawHorizontalLine((int)r.getBottom(),r.getX()+3,r.getRight()-3);
 }
 inline void deviceHeader(juce::Graphics& g,juce::Rectangle<int> r,const juce::String& titleText,const juce::String& category,juce::Colour colour){
-    auto icon=r.removeFromLeft(42).toFloat().reduced(0,8);g.setColour(colour.withAlpha(.13f));g.fillRoundedRectangle(icon,8.f);
-    g.setColour(colour);for(int i=0;i<4;++i){const float h=i%2?20.f:12.f;g.fillRoundedRectangle(icon.getX()+9+i*6,icon.getCentreY()-h*.5f,3.f,h,1.5f);}
-    r.removeFromLeft(14);g.setFont(caps(9));g.setColour(colour);g.drawText("FASEGROOVE  /  "+category,r.removeFromTop(16),juce::Justification::centredLeft);
-    g.setFont(font(26,true));g.setColour(text);g.drawText(titleText,r,juce::Justification::centredLeft);
+    // Brand plate: power LED, product line, device name. No toy icons.
+    auto led=juce::Rectangle<float>(8.f,8.f).withCentre({(float)r.getX()+6.f,(float)r.getCentreY()});
+    g.setColour(colour.withAlpha(.25f));g.fillEllipse(led.expanded(3.f));g.setColour(colour);g.fillEllipse(led);g.setColour(juce::Colours::white.withAlpha(.5f));g.fillEllipse(led.reduced(2.5f).translated(-.8f,-.8f));
+    r.removeFromLeft(22);
+    auto f=font(19,true);f.setExtraKerningFactor(.08f);g.setFont(f);g.setColour(text);
+    const int w=juce::GlyphArrangement::getStringWidthInt(f,titleText.toUpperCase());g.drawText(titleText.toUpperCase(),r.withWidth(w+4),juce::Justification::centredLeft);
+    r.removeFromLeft(w+14);g.setColour(lineStrong);g.fillRect(r.getX(),r.getCentreY()-8,1,16);r.removeFromLeft(12);
+    auto cap=caps(9.5f);g.setFont(cap);g.setColour(textFaint);g.drawText("FASEGROOVE",r.removeFromTop(r.getHeight()/2).withTrimmedTop(2),juce::Justification::bottomLeft);
+    g.setColour(colour.withAlpha(.9f));g.drawText(category,r.withTrimmedBottom(2),juce::Justification::topLeft);
+}
+// One knob for every native device: scale ticks, value arc, machined cap and pointer.
+inline void drawKnob(juce::Graphics& g,juce::Rectangle<float> bounds,float norm,juce::Colour ink,bool bipolar,bool enabled,bool active){
+    const float size=std::min(bounds.getWidth(),bounds.getHeight());if(size<8.f)return;
+    const auto c=bounds.getCentre();const float outer=size*.5f;
+    constexpr float start=juce::MathConstants<float>::pi*1.25f,end=juce::MathConstants<float>::pi*2.75f;
+    const float angle=start+std::clamp(norm,0.f,1.f)*(end-start),from=bipolar?(start+end)*.5f:start;
+    const float alpha=enabled?1.f:.4f;const float ring=outer-1.5f,arcW=juce::jlimit(2.f,3.5f,outer*.08f),arcR=ring-arcW*.5f;
+    // Scale ticks outside the arc on large knobs only.
+    const bool ticks=outer>=26.f;const float body=(ticks?arcR-arcW-5.f:arcR-arcW-3.f);
+    if(ticks){g.setColour(juce::Colour(0xff4a505a).withMultipliedAlpha(alpha));for(int i=0;i<=10;++i){const float a=start+(end-start)*i/10.f;g.drawLine({c.getPointOnCircumference(body+1.5f,a),c.getPointOnCircumference(body+(i%5==0?4.5f:3.f),a)},i%5==0?1.2f:.8f);}}
+    juce::Path track;track.addCentredArc(c.x,c.y,arcR,arcR,0,start,end,true);
+    g.setColour(juce::Colour(0xff0b0c0f).withMultipliedAlpha(alpha));g.strokePath(track,juce::PathStrokeType(arcW+1.5f,juce::PathStrokeType::curved,juce::PathStrokeType::butt));
+    if(std::abs(angle-from)>.01f){juce::Path v;v.addCentredArc(c.x,c.y,arcR,arcR,0,std::min(from,angle),std::max(from,angle),true);
+        if(active&&enabled){g.setColour(ink.withAlpha(.25f));g.strokePath(v,juce::PathStrokeType(arcW+4.f,juce::PathStrokeType::curved,juce::PathStrokeType::butt));}
+        g.setColour(ink.withMultipliedAlpha(alpha));g.strokePath(v,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::butt));}
+    if(bipolar){g.setColour(juce::Colour(0xff5a606b).withMultipliedAlpha(alpha));const auto p0=c.getPointOnCircumference(arcR+arcW*.5f+1.f,from),p1=c.getPointOnCircumference(arcR+arcW*.5f+4.f,from);g.drawLine({p0,p1},1.f);}
+    // Cap: drop shadow, skirt, knurled edge and a brushed top.
+    const auto skirt=juce::Rectangle<float>(body*2,body*2).withCentre(c);
+    g.setColour(juce::Colours::black.withAlpha(.55f));g.fillEllipse(skirt.translated(0,size*.035f+1.f).expanded(1.f));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff4a4f58),c.x,skirt.getY(),juce::Colour(0xff15171a),c.x,skirt.getBottom(),false));g.fillEllipse(skirt);
+    if(body>12.f){g.setColour(juce::Colours::black.withAlpha(.28f));for(int i=0;i<48;++i){const float a=juce::MathConstants<float>::twoPi*i/48.f;g.drawLine({c.getPointOnCircumference(body*.86f,a),c.getPointOnCircumference(body-.6f,a)},.8f);}}
+    const auto top=skirt.reduced(body*.16f);
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff3a3e46),top.getX(),top.getY(),juce::Colour(0xff1d2024),top.getRight(),top.getBottom(),false));g.fillEllipse(top);
+    g.setColour(juce::Colours::white.withAlpha(.09f));g.drawEllipse(top.reduced(.5f),1.f);
+    g.setColour(juce::Colours::black.withAlpha(.6f));g.drawEllipse(skirt,1.f);
+    const auto tip=c.getPointOnCircumference(body*.78f,angle),base=c.getPointOnCircumference(body*.28f,angle);
+    g.setColour(juce::Colours::black.withAlpha(.5f));g.drawLine({base.translated(0,1),tip.translated(0,1)},std::max(2.f,body*.11f));
+    g.setColour((active&&enabled?ink.brighter(.4f):juce::Colour(0xffeef0f3)).withMultipliedAlpha(alpha));g.drawLine({base,tip},std::max(1.6f,body*.09f));
+}
+// Vertical LED-style level meter (peak hold optional), scale -60..+6 dB.
+inline void drawLedMeter(juce::Graphics& g,juce::Rectangle<float> r,float levelNorm){
+    deviceScreen(g,r);auto in=r.reduced(2.f);const int segments=std::max(4,(int)(in.getHeight()/4.f));const float h=in.getHeight()/segments;
+    for(int i=0;i<segments;++i){const float pos=(i+.5f)/segments;const auto seg=juce::Rectangle<float>(in.getX(),in.getBottom()-(i+1)*h+.6f,in.getWidth(),h-1.2f);
+        const auto col=pos>.92f?meterHigh:pos>.75f?meterMid:meterLow;g.setColour(pos<=levelNorm?col:col.withAlpha(.08f));g.fillRect(seg);}
 }
 
 // Each track keeps the colour of its instrument family, with a different shade per drum lane
@@ -223,22 +274,10 @@ public:
         l->setColour(juce::Label::outlineWhenEditingColourId,Daw::accent);l->setColour(juce::TextEditor::highlightColourId,Daw::accent.withAlpha(.4f));return l;}
     // Knobs: a thin track, the value arc from the left (or from the centre for a bipolar
     // range such as pan) and a flat cap with a pointer.
-    void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float startAngle,float endAngle,juce::Slider& s) override{
-        const auto bounds=juce::Rectangle<int>(x,y,width,height).toFloat().reduced(2.f);
-        const float radius=std::min(bounds.getWidth(),bounds.getHeight())*.5f;const auto centre=bounds.getCentre();
-        const float angle=startAngle+pos*(endAngle-startAngle);const float lineW=juce::jlimit(1.8f,3.f,radius*.11f),arcR=radius-lineW*.5f;
-        const bool bipolar=s.getMinimum()<0&&std::abs(s.getMinimum()+s.getMaximum())<1e-9;const float from=bipolar?(startAngle+endAngle)*.5f:startAngle;
+    void drawRotarySlider(juce::Graphics& g,int x,int y,int width,int height,float pos,float,float,juce::Slider& s) override{
+        const bool bipolar=s.getMinimum()<0&&std::abs(s.getMinimum()+s.getMaximum())<1e-9;
         const auto fill=s.findColour(juce::Slider::rotarySliderFillColourId);const auto ink=s.isColourSpecified(juce::Slider::rotarySliderFillColourId)?fill:Daw::accent;
-        juce::Path track;track.addCentredArc(centre.x,centre.y,arcR,arcR,0,startAngle,endAngle,true);
-        g.setColour(juce::Colours::black.withAlpha(.55f));g.strokePath(track,juce::PathStrokeType(lineW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-        juce::Path value;value.addCentredArc(centre.x,centre.y,arcR,arcR,0,std::min(from,angle),std::max(from,angle),true);
-        if(s.isEnabled()&&(s.isMouseOverOrDragging()||std::abs(angle-from)>.05f)){g.setGradientFill(juce::ColourGradient(ink.withAlpha(s.isMouseOverOrDragging()?.22f:.11f),centre.x,centre.y,ink.withAlpha(0.f),centre.x-radius,centre.y-radius,true));g.fillEllipse(bounds.expanded(2.f));}
-        g.setColour(ink.withMultipliedAlpha(s.isEnabled()?1.f:.4f));g.strokePath(value,juce::PathStrokeType(lineW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
-        const float capR=arcR-lineW-2.f;const auto cap=juce::Rectangle<float>(capR*2,capR*2).withCentre(centre);
-        g.setColour(juce::Colours::black.withAlpha(.35f));g.fillEllipse(cap.translated(0,1.f));
-        g.setGradientFill(juce::ColourGradient(juce::Colour(0xff3a3f48),centre.x,cap.getY(),juce::Colour(0xff25292f),centre.x,cap.getBottom(),false));g.fillEllipse(cap);
-        g.setColour(juce::Colours::black.withAlpha(.5f));g.drawEllipse(cap.reduced(.5f),1.f);
-        g.setColour(Daw::text.withMultipliedAlpha(s.isEnabled()?1.f:.4f));g.drawLine({centre.getPointOnCircumference(capR*.3f,angle),centre.getPointOnCircumference(capR*.9f,angle)},std::max(1.5f,lineW*.8f));
+        Daw::drawKnob(g,juce::Rectangle<int>(x,y,width,height).toFloat().reduced(2.f),pos,ink,bipolar,s.isEnabled(),s.isMouseOverOrDragging());
     }
     void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool highlighted,bool) override{
         g.beginTransparencyLayer(b.isEnabled()?1.f:.45f);auto r=b.getLocalBounds().toFloat();const bool on=b.getToggleState();

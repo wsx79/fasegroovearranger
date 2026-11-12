@@ -11,7 +11,6 @@ constexpr double tick=1./960.;
 Clip slice(const Clip& source,double offset,double duration,double position){
     Clip part=source;part.notes.clear();part.position=position;part.span=duration;
     for(auto n:source.notes){const double from=std::max(offset,n.start),to=std::min(offset+duration,n.start+n.length);if(to-from<tick)continue;n.start=from-offset;n.length=to-from;part.notes.push_back(n);}
-    if(part.vocal){auto& v=*part.vocal;if(offset>0)v.id=newVocalClipId();v.regionStart=std::clamp(v.regionStart-offset,0.,duration);v.regionEnd=std::clamp(v.regionEnd-offset,v.regionStart,duration);}
     tidyNotes(part,duration);
     for(size_t lane=0;lane<part.expression.size();++lane){const auto& original=source.expression[lane];auto& sliced=part.expression[lane];sliced.points.clear();if(original.active()){sliced.points.push_back({0,original.valueAt(offset),0});for(auto p:original.points)if(p.beat>offset&&p.beat<offset+duration){p.beat-=offset;sliced.points.push_back(p);}sliced.points.push_back({duration,original.valueAt(offset+duration),0});}}
     if(offset>0)part.clipFadeIn=0;if(offset+duration<source.span-1e-9)part.clipFadeOut=0;
@@ -66,7 +65,6 @@ int Project::splitClip(int track,int index,double beat){
 int Project::placeClip(int track,Clip clip,double beat){
     if(track<0||track>=(int)tracks.size()||!std::isfinite(beat)||!std::isfinite(clip.span)||clip.span<tick||clip.span>maxClipBeats)return -1;
     beat=std::clamp(std::round(beat*960)/960.,0.,131072.);
-    if(clip.vocal)for(const auto& source:tracks)for(const auto& old:source.clips)if(old.vocal&&old.vocal->id==clip.vocal->id){clip.vocal->id=newVocalClipId();break;}
     Project edited=*this;edited.detachTrack(track);auto& t=edited.tracks[(size_t)track];const double end=beat+clip.span;
     std::vector<Clip> keep;size_t notes=clip.notes.size()+clip.loopSource.size();
     for(const auto& old:t.clips){const double tail=old.position+old.span;if(tail<=beat||old.position>=end)keep.push_back(old);else{
@@ -153,7 +151,7 @@ bool Project::foldFreeTracks(){
         // and expression set. Keep such tracks independent instead of dropping
         // the metadata of every overlapping clip.
         const bool keepFree=std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){
-            if(c.vocal||c.audioOffset>=0||c.loopLength>0||!c.loopSource.empty()||c.clipFadeIn>0||c.clipFadeOut>0)return true;
+            if(c.audioOffset>=0||c.loopLength>0||!c.loopSource.empty()||c.clipFadeIn>0||c.clipFadeOut>0)return true;
             for(const auto& lane:c.expression)if(!lane.points.empty())return true;
             return false;
         });

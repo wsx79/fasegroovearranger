@@ -9,7 +9,6 @@
 #include <string>
 #include <vector>
 #include <optional>
-#include "VocalStudio.h"
 #include "VolumeAutomation.h"
 #include "StudioSettings.h"
 
@@ -35,11 +34,9 @@ enum class Scope { song, track, section, clip };
 struct Note {
     double start = 0, length = .25;
     int pitch = 60, velocity = 96, lane = 0;bool reverse=false;
-    int vocalId=0; // zero for ordinary MIDI; persistent only inside Vocal Studio clips
-    bool operator==(const Note& o) const { return vocalId == o.vocalId && start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane && reverse == o.reverse; }
+    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane && reverse == o.reverse; }
 };
 struct Clip {
-    std::optional<VocalClip> vocal;
     std::vector<Note> notes;
     std::uint32_t seed = 1;
     bool locked = false;
@@ -61,7 +58,7 @@ struct Clip {
     // Saved default when this take was rendered; preserves an explicit Strings take
     // while distinguishing a later user change to Off. -1 migrates legacy clips.
     int stringsStyleAtGeneration = -1;
-    bool operator==(const Clip& o) const { return vocal == o.vocal && stringsStyleAtGeneration == o.stringsStyleAtGeneration && notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
+    bool operator==(const Clip& o) const { return stringsStyleAtGeneration == o.stringsStyleAtGeneration && notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
 };
 struct ClipId {
     int track = -1, index = -1;

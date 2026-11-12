@@ -333,7 +333,7 @@ bool repeatLoop(const std::vector<Note>& source,double period,double duration,st
 bool resizedLoop(Clip& clip,double previous,double duration){
     if(clip.audioOffset>=0){clip.audioDuration*=duration/previous;clip.loopLength=clip.loopPhase=0;clip.loopSource.clear();if(!clip.notes.empty()){clip.notes.resize(1);clip.notes[0].start=0;clip.notes[0].length=duration;}return true;}
     std::vector<Note> expected;
-    const bool unchanged=clip.loopLength>0&&repeatLoop(clip.loopSource,clip.loopLength,previous,expected,clip.loopPhase)&&expected.size()==clip.notes.size()&&std::equal(expected.begin(),expected.end(),clip.notes.begin(),[](Note a,Note b){a.vocalId=b.vocalId=0;return a==b;});
+    const bool unchanged=clip.loopLength>0&&repeatLoop(clip.loopSource,clip.loopLength,previous,expected,clip.loopPhase)&&expected.size()==clip.notes.size()&&std::equal(expected.begin(),expected.end(),clip.notes.begin(),[](const Note& a,const Note& b){return a==b;});
     if(!unchanged){
         if(clip.loopLength>previous){
             // Edits in a shortened view must retain the hidden part of the source.
@@ -344,17 +344,11 @@ bool resizedLoop(Clip& clip,double previous,double duration){
             Clip clean;clean.notes=std::move(source);tidyNotes(clean,clip.loopLength);clip.loopSource=std::move(clean.notes);
         }else{clip.loopSource=clip.notes;clip.loopLength=previous;clip.loopPhase=0;}
     }
-    const auto previousNotes=clip.vocal?clip.notes:std::vector<Note>{};
-    const bool ok=repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
-    if(ok&&clip.vocal)retainVocalNoteIds(clip,previousNotes);
-    return ok;
+    return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
 }
 }
 bool rebuildClipLoop(Clip& clip,double duration){
-    const auto previousNotes=clip.vocal?clip.notes:std::vector<Note>{};
-    const bool ok=repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
-    if(ok&&clip.vocal)retainVocalNoteIds(clip,previousNotes);
-    return ok;
+    return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
 }
 bool Project::resizeClipLoop(int track,int section,double beats){
     if(track<0||track>=(int)tracks.size()||section<0||section>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beats))return false;
@@ -430,7 +424,6 @@ void Project::normalise() {
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
-    normaliseVocalClips(*this);
     for(auto& section:sections){auto& h=section.harmony;h.key=std::clamp(h.key,-1,11);h.scale=std::clamp(h.scale,-1,12);h.chordCount=std::clamp(h.chordCount,1,8);h.chordSteps=std::clamp(h.chordSteps,8,64);if(h.chordSteps!=8&&h.chordSteps!=16&&h.chordSteps!=32&&h.chordSteps!=64)h.chordSteps=16;for(auto& d:h.degrees)d=std::clamp(d,0,6);for(auto& f:h.freeChords)f=std::clamp(f,-1,35);}for(auto& t:tracks)t.eq.normalise();
     for(auto& bus:buses)bus.normalise();
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
@@ -1614,7 +1607,6 @@ void tidyNotes(Clip& c,double beats) {
     for(auto n:c.notes){int index=last[(size_t)n.pitch];if(index>=0){auto& prev=clean[(size_t)index];if(n.start-prev.start<tick){prev.length=std::max(prev.length,n.start+n.length-prev.start);prev.velocity=std::max(prev.velocity,n.velocity);continue;}if(prev.start+prev.length>n.start)prev.length=n.start-prev.start;}
         last[(size_t)n.pitch]=(int)clean.size();clean.push_back(n);}
     c.notes=std::move(clean);
-    if(c.vocal)reconcileVocalNotes(c);
 }
 void transpose(Clip& c,int semitones) {if(semitones==0)return;for(const auto& n:c.notes){const int pitch=n.pitch+semitones;if(pitch<0||pitch>127)return;}for(auto& n:c.notes)n.pitch+=semitones;}
 void quantise(Clip& c,double grid,double strength,double limit) {

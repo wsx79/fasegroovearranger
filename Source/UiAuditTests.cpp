@@ -490,7 +490,6 @@ MainComponent::~MainComponent(){
     cancelSampleImport();
     masteringAssistantWindow.reset();
     mixAssistantWindow.reset();
-    vocalStudioWindow.reset();
     acceptTargetEdit=false;
     if(recoveryArmed)closeRecoverySession(recoveryDirectory());
     if(dismissChordPopover)dismissChordPopover();dismissChordPopover={};

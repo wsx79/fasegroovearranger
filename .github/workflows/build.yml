@@ -106,7 +106,7 @@ jobs:
               'fixtures': results, 'manual_user_plugin_hardware': 'NOT RUN', 'public_release': 'NO-GO'}
           (root / 'windows-cancel.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
           print(json.dumps(summary, indent=2))
-      - name: Dormant Vocal Studio and asynchronous sample UI
+      - name: Asynchronous sample UI
         run: python scripts/test-vocal-preview.py --output build/preview-validation/vocal
       - name: Build portable preview with corresponding source
         env:

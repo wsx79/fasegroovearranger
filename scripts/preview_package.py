@@ -73,7 +73,6 @@ def add_preview(stage, root, juce, app, sha):
         f'Application revision: {sha}\nSee Source/BUILD.txt and original licence notices.\n', encoding='utf-8')
     (stage / 'PREVIEW.json').write_text(json.dumps({'name': 'Vocaltest Preview', 'source': revisions,
         'exe_sha256': hashlib.sha256(app.read_bytes()).hexdigest(),
-        'guide_render': 'DISABLED: Vocal Studio hidden; no synthesis backend',
         'manual_windows_11_audio': 'PENDING'}, indent=2), encoding='utf-8')
     shutil.copy2(root / 'VOCALTEST_QUICKSTART.it.md', stage / 'LEGGIMI-PRIMA.it.md')
 
@@ -90,7 +89,7 @@ def verify_preview(archive):
             raise ValueError('Preview binary checksum mismatch')
         for name in z.namelist():
             part = PurePosixPath(name.lower())
-            if name.lower().startswith('helpers/ecantorix/') or part.suffix == '.dll' or (part.suffix == '.exe' and name != 'Standalone/Fase Groove Arranger.exe') or part.name in {'ecantorix.pl', 'util.pm'} or 'espeak-data/' in name.lower():
+            if part.suffix == '.dll' or (part.suffix == '.exe' and name != 'Standalone/Fase Groove Arranger.exe'):
                 raise ValueError('Unreviewed external runtime in preview: ' + name)
         for name, licence in [('FaseGrooveArranger', 'LICENSE'), ('JUCE', 'LICENSE.md')]:
             data = z.read('Source/' + name + '-source.zip')

@@ -39,8 +39,7 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
          'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
-# Retained Vocal Studio status only; the retired external guide stack is not shipped.
-files.update({'docs/VOCAL_STUDIO.md', 'docs/VOCAL_CHOPS_PHASE02.md',
+files.update({'docs/VOCAL_CHOPS_PHASE02.md',
               'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
               'docs/VOCALTEST_PREVIEW_WINDOWS.it.md'})
 if system == 'Windows':

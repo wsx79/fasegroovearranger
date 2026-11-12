@@ -62,7 +62,7 @@ public:
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if FGA_SELF_TESTS
-        for(const auto* flag:{"--smoke-test","--ui-test","--mastering-ui-test","--dynamics-ui-test","--sidechain-ui-test","--export-ui-test","--target-layout-test","--piano-tools-test","--piano-roll-test","--vocal-studio-test","--sample-import-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
+        for(const auto* flag:{"--smoke-test","--ui-test","--mastering-ui-test","--dynamics-ui-test","--sidechain-ui-test","--export-ui-test","--target-layout-test","--piano-tools-test","--piano-roll-test","--sample-import-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
             if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
        #endif
        #if JUCE_MAC
@@ -175,9 +175,6 @@ public:
         }
         if(args.size()==2&&args[0]=="--sample-import-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.verifySampleImport(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
-        }
-        if(args.size()==2&&args[0]=="--vocal-studio-test"){
-            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.verifyVocalStudio(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
         }
         if(args.size()==2&&args[0]=="--piano-roll-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.verifyPianoRoll(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;

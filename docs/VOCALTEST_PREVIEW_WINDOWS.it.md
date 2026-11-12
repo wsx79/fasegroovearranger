@@ -1,4 +1,5 @@
-> **Aggiornamento corrente:** Vocal Studio è nascosto e il backend eCantorix/eSpeak
+> **Aggiornamento corrente:** Vocal Studio e il backend eCantorix sono stati rimossi
+> completamente da codice, test e pacchetto. Le note storiche qui sotto descrivono build precedenti.
 > è rimosso. I risultati vocali e le dipendenze citati sotto appartengono alle
 > vecchie build; non sono istruzioni di installazione per la versione corrente.
 > Usare [lo stato attuale](VOCAL_STUDIO.md).

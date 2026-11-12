@@ -34,9 +34,6 @@ try {
     Invoke-Checked cmake @('--build', $build, '--config', 'Release', '--parallel', '2')
     Invoke-Checked ctest @('--test-dir', $build, '-C', 'Release', '--output-on-failure', '-V')
     $engineLog = Get-Content -LiteralPath (Join-Path $build 'Testing\Temporary\LastTest.log') -Raw
-    if (-not $engineLog.Contains('PASS dormant Vocal Studio planning and fail-closed render boundary')) {
-        throw 'Dormant Vocal Studio boundary was not exercised by CTest.'
-    }
     $app = Join-Path $build 'FaseGrooveArranger_artefacts\Release\Fase Groove Arranger.exe'
     # Check actual PE machine/format, rather than trusting the directory name.
     $bytes = [System.IO.File]::ReadAllBytes($app)
@@ -47,7 +44,7 @@ try {
         [BitConverter]::ToUInt16($bytes, $pe + 4) -ne 0x8664 -or
         [BitConverter]::ToUInt16($bytes, $pe + 24) -ne 0x20b) { throw 'Expected native x64 PE32+.' }
     Invoke-Checked dumpbin @('/dependents', $app)
-    foreach ($test in @('sample-import', 'vocal-studio', 'ui')) {
+    foreach ($test in @('sample-import', 'ui')) {
         $folder = Join-Path $evidence $test
         $process = Start-Process -FilePath $app -ArgumentList @("--${test}-test", ('"' + $folder + '"')) -Wait -PassThru
         if ($process.ExitCode -ne 0) { throw "$test test failed: $($process.ExitCode)" }

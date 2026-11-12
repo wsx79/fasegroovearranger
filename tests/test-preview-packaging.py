@@ -61,8 +61,6 @@ with TemporaryDirectory() as temp:
     (juce/'code.cpp').write_text('unexpected source change')
     rejects(lambda: add_preview(base/'unknown-juce-stage',root,juce,app,sha))
     (juce/'code.cpp').write_text('source fixture')
-    removed=stage/'helpers/ecantorix/prepare.pl';removed.parent.mkdir(parents=True);removed.write_text('retired helper must stay excluded')
-    pack();rejects(lambda: verify_preview(archive));removed.unlink()
     (stage/'sox.exe').write_text('unapproved runtime');pack();rejects(lambda: verify_preview(archive));(stage/'sox.exe').unlink()
     (stage/'Source/JUCE-source.zip').unlink();pack();rejects(lambda: verify_preview(archive))
     (root/'code.cpp').write_text('uncommitted changed source');rejects(lambda: add_preview(base/'other',root,juce,app,sha))

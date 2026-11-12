@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Branding.h"
 #include "MainComponent.h"
-#include "VocalStudioAvailability.h"
 #include "StudioIO.h"
 #include "AiComposerWindow.h"
 #include "AiComposer.h"
@@ -86,7 +85,7 @@ void ArrangementView::paint(juce::Graphics& g){
             const float titleHeight=h>=34&&cell.getWidth()>18?13.f:0.f;
             if(titleHeight>0){juce::Path bar;bar.addRoundedRectangle(cell.getX(),cell.getY(),cell.getWidth(),titleHeight,6.f,6.f,true,true,false,false);g.setGradientFill(juce::ColourGradient(ink.brighter(.1f),cell.getX(),cell.getY(),ink.darker(.08f),cell.getX(),cell.getY()+titleHeight,false));g.fillPath(bar);g.setColour(juce::Colours::white.withAlpha(.18f));g.fillRect(cell.getX()+6.f,cell.getY(),std::max(0.f,cell.getWidth()-12.f),1.f);
                 if(cell.getWidth()>28){const int guide=std::clamp(p.sectionAtBeat(begin),0,(int)p.sections.size()-1);auto title=cell.withHeight(titleHeight).reduced(5.f,0);if(std::any_of(c.feel.begin(),c.feel.end(),[](double f){return f>=0;})){const auto badge=title.removeFromRight(9.f);g.setColour(Daw::automation);g.fillEllipse(badge.getCentreX()-2.5f,badge.getCentreY()-2.5f,5.f,5.f);}if(c.locked||cell.getWidth()>42){IconButton::drawIcon(g,IconButton::Icon::lock,title.removeFromRight(10.f).withSizeKeepingCentre(9.f,9.f),c.locked?Daw::onAccent:Daw::onAccent.withAlpha(.38f));title.removeFromRight(3.f);}
-                    g.setColour(Daw::onAccent);g.setFont(Daw::font(Daw::small,true));const auto titleText=(vocalStudioEnabled&&c.vocal?juce::String("Vocal / "):juce::String())+(c.name.empty()?utf(p.sections[(size_t)guide].name):utf(c.name));g.drawFittedText(titleText,title.toNearestInt(),juce::Justification::centredLeft,1,.6f);}}
+                    g.setColour(Daw::onAccent);g.setFont(Daw::font(Daw::small,true));const auto titleText=(c.name.empty()?utf(p.sections[(size_t)guide].name):utf(c.name));g.drawFittedText(titleText,title.toNearestInt(),juce::Justification::centredLeft,1,.6f);}}
             else if(c.locked){IconButton::drawIcon(g,IconButton::Icon::lock,{cell.getRight()-13.f,cell.getY()+3.f,10.f,10.f},ink);}
             const auto notesArea=cell.withTrimmedTop(titleHeight).reduced(1.f,3.f);
             if(cell.getWidth()>6&&notesArea.getHeight()>3){g.saveState();g.reduceClipRegion(notesArea.withLeft(cell.getX()-1.f).toNearestInt());g.setColour(ink.brighter(.35f).withAlpha(muted?.5f:.92f));

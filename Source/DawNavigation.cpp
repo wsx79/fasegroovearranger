@@ -109,7 +109,7 @@ void PianoRoll::pasteNotes(){
     if(owner.clipIndex()<0||owner.clipLength()<=0||owner.clipboard.empty())return;
     auto copied=owner.clipboard;double origin=copied.front().start;for(const auto& n:copied)origin=std::min(origin,n.start);
     const double cursor=owner.timelinePosition()-owner.clipStart();const double at=cursor>=0&&cursor<owner.clipLength()?std::floor(cursor/grid)*grid:0;
-    double end=0;for(auto& n:copied){n.vocalId=0;n.start+=at-origin;end=std::max(end,n.start+n.length);}
+    double end=0;for(auto& n:copied){n.start+=at-origin;end=std::max(end,n.start+n.length);}
     // Preserve the complete phrase rather than silently truncating notes at the clip end.
     if(end>owner.clipLength()+1./960.){owner.message("The notes do not fit inside this clip. Extend the clip first.",true);return;}
     size_t count=copied.size();for(const auto& t:owner.project.tracks)for(const auto& c:t.clips)count+=c.notes.size()+c.loopSource.size();
@@ -143,7 +143,7 @@ bool PianoRoll::editKeys(const juce::KeyPress& key){
     else semitones=std::clamp(semitones,-low,127-high);
     if(!duplicate&&delta==0&&semitones==0&&lanes==0)return true;
     if(duplicate){size_t count=wanted.size();for(const auto& t:owner.project.tracks)for(const auto& c:t.clips)count+=c.notes.size()+c.loopSource.size();if(count>2000000)return true;}
-    for(auto& n:wanted){if(duplicate)n.vocalId=0;n.start+=delta;n.pitch+=semitones;n.lane+=lanes;}
+    for(auto& n:wanted){n.start+=delta;n.pitch+=semitones;n.lane+=lanes;}
     if(duplicate)edited.insert(edited.end(),wanted.begin(),wanted.end());else{size_t k=0;for(int i:selected)if(i>=0&&i<(int)edited.size())edited[(size_t)i]=wanted[k++];}
     owner.checkpoint();owner.clip().notes=std::move(edited);owner.changed();retainSelection(wanted);return true;
 }

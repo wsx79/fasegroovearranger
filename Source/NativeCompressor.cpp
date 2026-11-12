@@ -126,12 +126,9 @@ namespace ui {
 const juce::Colour blue(0xff4d8dff);
 const juce::Colour blueDim(0xff2f5ea8);
 const juce::Colour knobColours[6] = {
-    juce::Colour(0xff4d8dff), // threshold: blue
-    juce::Colour(0xff38c6c0), // ratio: teal
-    juce::Colour(0xff9b8cff), // knee: violet
-    juce::Colour(0xffffb54a), // attack: amber
-    juce::Colour(0xffff7a6b), // release: coral
-    juce::Colour(0xff5ec8e8)  // makeup: cyan
+    // One device accent: detector controls in blue, output gain in neutral steel.
+    juce::Colour(0xff4d8dff), juce::Colour(0xff4d8dff), juce::Colour(0xff4d8dff),
+    juce::Colour(0xff4d8dff), juce::Colour(0xff4d8dff), juce::Colour(0xffc9d1dc)
 };
 static juce::String loc(const char* en, const char* it)
 {
@@ -158,9 +155,9 @@ public:
     {
         addAndMakeVisible(value);
         value.setJustificationType(juce::Justification::centred);
-        value.setFont(Daw::font(15.f, true));
+        value.setFont(Daw::font(13.f, true));
         value.setColour(juce::Label::backgroundColourId, Daw::lcd);
-        value.setColour(juce::Label::textColourId, Daw::text);
+        value.setColour(juce::Label::textColourId, accent.interpolatedWith(Daw::text, .55f));
         value.setColour(juce::Label::outlineColourId, Daw::line);
         value.setColour(juce::Label::textWhenEditingColourId, Daw::text);
         value.setEditable(false, true, false);
@@ -200,56 +197,14 @@ public:
         auto area = getLocalBounds().toFloat().reduced(5.f,4.f);
         Daw::devicePanel(g,area,accent);area=area.reduced(8.f,6.f);
         auto title = area.removeFromTop(18.0f);
-        g.setFont(Daw::font(12.f, true));
-        g.setColour(Daw::text);
-        g.drawText(name.toUpperCase(), title.toNearestInt(), juce::Justification::centred);
-
+        Daw::drawCaps(g, name, title.toNearestInt(), Daw::textDim, juce::Justification::centred);
         area.removeFromBottom(36.0f);
-        const float margin = area.getHeight() < 120.0f ? 18.0f : 42.0f;
+        const float margin = area.getHeight() < 120.0f ? 4.0f : 16.0f;
         const float diameter = std::max(30.0f, std::min(area.getWidth(), area.getHeight()) - margin);
-        const auto centre = area.getCentre();
-        const float radius = diameter * 0.5f;
-        const float arcRadius = radius - 3.0f;
         const double norm = std::clamp((slider.getValue() - slider.getMinimum()) /
                                            std::max(1.0e-9, slider.getMaximum() - slider.getMinimum()), 0.0, 1.0);
-
-        g.setColour(Daw::lineStrong);
-        for (int i = 0; i <= 10; ++i)
-        {
-            const float angle = arcStart + arcSweep * (float)i / 10.0f;
-            const float from = arcRadius + 4.0f, to = arcRadius + (i % 5 == 0 ? 11.0f : 8.0f);
-            g.drawLine(centre.x + std::sin(angle) * from, centre.y - std::cos(angle) * from,
-                       centre.x + std::sin(angle) * to, centre.y - std::cos(angle) * to, 1.0f);
-        }
-
-        juce::Path track, filled;
-        track.addCentredArc(centre.x, centre.y, arcRadius, arcRadius, 0.0f, arcStart, arcStart + arcSweep, true);
-        g.setColour(Daw::line);
-        g.strokePath(track, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-
-        if (norm > 0.001)
-        {
-            filled.addCentredArc(centre.x, centre.y, arcRadius, arcRadius, 0.0f,
-                                 arcStart, arcStart + arcSweep * (float)norm, true);
-            g.setColour(accent);
-            g.strokePath(filled, juce::PathStrokeType(4.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        }
-
-        juce::ColourGradient body(juce::Colour(0xff3b4049), centre.x - radius * 0.6f, centre.y - radius * 0.7f,
-                                  juce::Colour(0xff16191e), centre.x + radius * 0.7f, centre.y + radius * 0.8f, true);
-        g.setGradientFill(body);
-        g.fillEllipse(centre.x - radius + 6.0f, centre.y - radius + 6.0f, (radius - 6.0f) * 2.0f, (radius - 6.0f) * 2.0f);
-        g.setColour(accent.withAlpha(.30f));
-        g.drawEllipse(centre.x - radius + 3.0f, centre.y - radius + 3.0f, (radius - 3.0f)*2, (radius - 3.0f)*2, 3.f);
-        g.setColour(Daw::lineStrong);
-        g.drawEllipse(centre.x - radius + 6.0f, centre.y - radius + 6.0f, (radius - 6.0f) * 2.0f, (radius - 6.0f) * 2.0f, 1.0f);
-
-        const float pointerAngle = arcStart + arcSweep * (float)norm;
-        g.setColour(dragging ? accent : Daw::text);
-        g.drawLine(centre.x + std::sin(pointerAngle) * radius * 0.20f,
-                   centre.y - std::cos(pointerAngle) * radius * 0.20f,
-                   centre.x + std::sin(pointerAngle) * radius * 0.68f,
-                   centre.y - std::cos(pointerAngle) * radius * 0.68f, 2.0f);
+        Daw::drawKnob(g, juce::Rectangle<float>(diameter, diameter).withCentre(area.getCentre()), (float)norm, accent,
+                      false, isEnabled(), dragging || isMouseOver(true));
     }
 
     void resized() override { value.setBounds(getLocalBounds().removeFromBottom(34).reduced(10, 4)); }
@@ -333,6 +288,7 @@ public:
         auto plot = bounds.reduced(40.0f, 30.0f);
         plot.removeFromRight(16.0f);
         plot.removeFromBottom(28.0f);
+        Daw::deviceScreen(g, plot.expanded(1.0f));
         auto xFrom = [&](double db) { return plot.getX() + (float)((db + 60.0) / 60.0) * plot.getWidth(); };
         auto yFrom = [&](double db) { return plot.getY() + (float)((0.0 - db) / 60.0) * plot.getHeight(); };
 
@@ -340,7 +296,7 @@ public:
         for (int db = -60; db <= 0; db += 12)
         {
             const float x = xFrom(db), y = yFrom(db);
-            g.setColour(Daw::line.withAlpha(0.7f));
+            g.setColour(juce::Colours::white.withAlpha(db == 0 || db == -60 ? 0.0f : 0.06f));
             g.drawVerticalLine(juce::roundToInt(x), plot.getY(), plot.getBottom());
             g.drawHorizontalLine(juce::roundToInt(y), plot.getX(), plot.getRight());
             g.setColour(Daw::textFaint);
@@ -349,7 +305,7 @@ public:
         }
 
         const float dash[] = { 4.0f, 4.0f };
-        g.setColour(Daw::textFaint.withAlpha(0.55f));
+        g.setColour(Daw::textFaint.withAlpha(0.35f));
         g.drawDashedLine(juce::Line<float>(plot.getX(), plot.getBottom(), plot.getRight(), plot.getY()), dash, 2, 1.0f);
 
         const auto v = processor.values();
@@ -382,12 +338,14 @@ public:
         const float dashes[] = { 3.0f, 4.0f };
         juce::Path dashed;
         juce::PathStrokeType(1.5f).createDashedStroke(dashed, makeupCurve, dashes, 2);
-        g.setColour(juce::Colour(0xff5ec8e8));
+        g.setColour(Daw::textDim.withAlpha(0.8f));
         g.strokePath(dashed, juce::PathStrokeType(1.5f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-        g.setColour(ui::blue.withAlpha(0.10f));
+        g.setGradientFill(juce::ColourGradient(ui::blue.withAlpha(0.22f), plot.getX(), plot.getY(), ui::blue.withAlpha(0.02f), plot.getX(), plot.getBottom(), false));
         g.fillPath(fill);
-        g.setColour(ui::blue);
-        g.strokePath(curve, juce::PathStrokeType(2.2f, juce::PathStrokeType::curved));
+        g.setColour(ui::blue.withAlpha(0.25f));
+        g.strokePath(curve, juce::PathStrokeType(5.0f, juce::PathStrokeType::curved));
+        g.setColour(ui::blue.brighter(0.25f));
+        g.strokePath(curve, juce::PathStrokeType(1.8f, juce::PathStrokeType::curved));
 
         if (threshold >= -60.0 && threshold <= 0.0)
         {
@@ -409,7 +367,7 @@ public:
             g.setFont(Daw::font(12.f, true));
             g.drawText("IN " + ui::dbText(heard), juce::roundToInt(xFrom(heard) + 8.0f), juce::roundToInt(yFrom(reduced) - 18.0f), 78, 16, juce::Justification::centredLeft);
         }
-        g.setColour(juce::Colour(0xff5ec8e8));
+        g.setColour(Daw::textDim);
         g.setFont(Daw::caps(9.5f));
         g.drawText(ui::loc("MAKEUP", "MAKEUP"), juce::roundToInt(plot.getRight() - 72.0f), juce::roundToInt(plot.getY() + 2.0f), 70, 14, juce::Justification::centredRight);
     }
@@ -448,22 +406,23 @@ public:
         const float barWidth = std::min(34.0f, meter.getWidth());
         auto bar = meter.withSizeKeepingCentre(barWidth, meter.getHeight());
 
-        g.setColour(Daw::lcd);
-        g.fillRoundedRectangle(bar, 3.0f);
-        g.setColour(Daw::line);
-        g.drawRoundedRectangle(bar, 3.0f, 1.0f);
-
-        const double span = 30.0;
-        const float filled = (float)std::clamp((double)shown / span, 0.0, 1.0);
-        if (filled > 0.001f)
+        // Segmented GR meter falling from the top, as on hardware dynamics units.
+        Daw::deviceScreen(g, bar);
         {
-            auto lit = bar.withHeight(bar.getHeight() * filled);
-            juce::ColourGradient grad(juce::Colour(0xffffb347), bar.getX(), bar.getY(),
-                                      juce::Colour(0xffff5a4a), bar.getX(), bar.getBottom(), false);
-            g.setGradientFill(grad);
-            g.fillRoundedRectangle(lit, 3.0f);
+            const double span = 30.0;
+            auto in = bar.reduced(3.0f);
+            const int segments = std::max(6, (int)(in.getHeight() / 5.0f));
+            const float h = in.getHeight() / (float)segments;
+            for (int i = 0; i < segments; ++i)
+            {
+                const float depth = (float)(i + 1) / (float)segments * (float)span;
+                const auto seg = juce::Rectangle<float>(in.getX(), in.getY() + i * h + 0.7f, in.getWidth(), h - 1.4f);
+                const auto col = juce::Colour(0xffffb347).interpolatedWith(juce::Colour(0xffff5a4a), (float)i / (float)segments);
+                g.setColour(depth <= shown + (float)span / (float)segments * 0.5f && shown > 0.05f ? col : col.withAlpha(0.07f));
+                g.fillRect(seg);
+            }
         }
-
+        const double span = 30.0;
         g.setFont(Daw::smallFont(8.5f));
         for (int db = 0; db <= 30; db += 6)
         {
@@ -625,14 +584,7 @@ public:
             g.setFont(Daw::font(12.f, true));
             g.drawText(linear > 1.0e-8f ? juce::String(db, 1) : "--", r.removeFromBottom(16).toNearestInt(), juce::Justification::centred);
             auto bar = r.withSizeKeepingCentre(std::min(16.f, r.getWidth()), std::max(8.f, r.getHeight() - 4));
-            g.setColour(Daw::lcd);
-            g.fillRoundedRectangle(bar, 3);
-            g.setColour(Daw::lineStrong);
-            g.drawRoundedRectangle(bar, 3, Daw::hairline());
-            const float shown = std::clamp((db + 48.f) / 48.f, 0.f, 1.f);
-            auto lit = bar.withTrimmedTop(bar.getHeight() * (1.f - shown));
-            g.setGradientFill(juce::ColourGradient(Daw::meterHigh, bar.getX(), bar.getY(), Daw::meterLow, bar.getX(), bar.getBottom(), false));
-            { juce::Graphics::ScopedSaveState clip(g); g.reduceClipRegion(lit.toNearestInt()); g.fillRoundedRectangle(bar, 3); }
+            Daw::drawLedMeter(g, bar, std::clamp((db + 48.f) / 48.f, 0.f, 1.f));
         };
         auto upper = info.removeFromTop(info.getHeight() * 0.5f);
         auto lower = info;

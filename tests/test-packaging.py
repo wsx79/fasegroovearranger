@@ -49,15 +49,12 @@ for system, suffix in systems:
             assert 'docs/ARCHITECTURE.md' not in names and 'docs/VALIDATION.md' not in names
             assert 'Resources/Inter-Regular.otf' not in names and 'Resources/Inter-SemiBold.otf' not in names
             assert 'Resources/Inter-OFL.txt' in names and 'ThirdParty/shine/COPYING' in names
-            assert not any(name.lower().startswith('helpers/ecantorix/') for name in names)
-            for guide in ['VOCAL_STUDIO.md', 'VOCAL_CHOPS_PHASE02.md',
+            for guide in ['VOCAL_CHOPS_PHASE02.md',
                           'VOCAL_CHOPS_IMPORT.md', 'VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
                           'VOCALTEST_PREVIEW_WINDOWS.it.md']:
                 entry = 'docs/' + guide
                 assert archive.read(entry) == (repo / entry).read_bytes()
-            assert not any(name.lower().endswith(('.dll', '/perl.exe', '/sox.exe', '/espeak.exe',
-                                                  '/ecantorix.pl', '/util.pm')) for name in names)
-            assert not any('espeak-data/' in name.lower() for name in names)
+            assert not any(name.lower().endswith(('.dll', '/perl.exe', '/sox.exe', '/espeak.exe')) for name in names)
             assert 'ThirdParty/fasegroovelead/LICENSE' in names and 'docs/images/inspector.png' in names
             for dependency in ['signalsmith-stretch', 'signalsmith-linear']:
                 assert f'ThirdParty/{dependency}/LICENSE.txt' in names

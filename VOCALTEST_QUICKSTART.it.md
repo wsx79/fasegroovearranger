@@ -2,8 +2,8 @@
 
 Preview di prova, versione applicativa 0.43.2. Lo ZIP viene caricato soltanto dopo
 build e test automatici Windows riusciti. Ascolto, dispositivo reale e prove
-manuali su Windows 11 sono ancora da eseguire. Vocal Studio è nascosto e
-disattivato: il precedente backend di sintesi è stato rimosso.
+manuali su Windows 11 sono ancora da eseguire. Vocal Studio è stato rimosso
+dall'applicazione.
 
 ## Scaricare e avviare
 
@@ -40,14 +40,6 @@ Gli esiti del runner non sostituiscono la prova con il proprio dispositivo/plugi
 
 Vocal Chops resta separato e senza approvazione qualitativa definitiva.
 
-## Vocal Studio disattivato
-
-Vocal Studio non è disponibile in questa versione. Il codice e i dati dei progetti
-sono conservati per sviluppi futuri, ma non esistono accessi UI né un motore di
-sintesi attivo. Non installare helper o dipendenze vocali. I WAV già generati
-restano riproducibili come normali campioni/take; non cancellare cache o file
-ancora referenziati. [Dettagli](docs/VOCAL_STUDIO.md).
-
 ## Checklist manuale Windows 11
 
 Annotare versione Windows, SHA da PREVIEW.json, dispositivo audio, versioni dei
@@ -57,8 +49,7 @@ passi per riprodurlo e diagnostica senza credenziali o registrazioni private.
 - [ ] Avvio senza crash, scelta dispositivo, riproduzione audio e meter/mixer.
 - [ ] Apertura di una copia di un progetto esistente, salvataggio, chiusura e riapertura;
       MIDI, campioni, livelli, mute/solo e riferimenti restano corretti.
-- [ ] Vocal Studio assente dai menu; un progetto che ne contiene metadati si apre
-      senza avviare editor/helper. I WAV già presenti rimangono riproducibili.
+- [ ] Grafica rinnovata di EQ, compressore, riverbero, delay, bus e mandate.
 - [ ] Aggiungere una traccia separata **VOCAL CHOPS**, caricare un proprio WAV anche
       con drag/drop, provare Cancel Load e LIMITS senza perdere sorgente e Undo.
 - [ ] Auto slice, snap Beat/Bar/1/16 e Snap off con taglio manuale, a 125 e 150 BPM;

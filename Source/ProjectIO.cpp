@@ -137,42 +137,6 @@ static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
     }
     return juce::Result::ok();
 }
-// Optional Vocal Studio extension: legacy MIDI arrays and project versions stay intact.
-static juce::var vocalJson(const Clip& clip){
-    const auto& v=*clip.vocal;auto o=object();
-    set(o,"schema",1);set(o,"language","en");set(o,"engine",v.voice=="ecantorix-en"?"ecantorix-local":"diffsinger-openutau-local");
-    set(o,"id",v.id);set(o,"lyrics",v.lyrics);set(o,"voice",v.voice);set(o,"modelPath",v.modelPath);
-    set(o,"nextNoteId",v.nextNoteId);set(o,"nextSyllableId",v.nextSyllableId);
-    set(o,"regionStart",v.regionStart);set(o,"regionEnd",v.regionEnd);set(o,"allowIntroOutro",v.allowIntroOutro);
-    juce::Array<juce::var> ids,syllables;
-    for(const auto& n:clip.notes)ids.add(n.vocalId);set(o,"noteIds",ids);
-    for(const auto& syllable:v.syllables){auto entry=object();set(entry,"id",syllable.id);set(entry,"text",syllable.text);set(entry,"phonemes",syllable.phonemes);juce::Array<juce::var> notes;for(int id:syllable.noteIds)notes.add(id);set(entry,"notes",notes);syllables.add(entry);}
-    set(o,"syllables",syllables);return o;
-}
-static juce::Result readVocal(const juce::var& o,Clip& clip){
-    const auto fail=[] {return juce::Result::fail("Invalid Vocal Studio data.");};
-    if(!o.isObject()||!o["schema"].isInt()||(int)o["schema"]!=1||o["language"].toString()!="en"||(o["engine"].toString()!="diffsinger-openutau-local"&&o["engine"].toString()!="ecantorix-local"))return fail();
-    const auto text=[&](const char* key,size_t limit,std::string& target){if(!o[key].isString())return false;target=str(o,key);return target.size()<=limit;};
-    const auto id=[](const juce::var& value){return value.isInt()&&(int)value>0&&(int)value<1000000000;};
-    VocalClip v;
-    if(!text("id",32,v.id)||v.id.size()!=32||v.id.find_first_not_of("0123456789abcdef")!=std::string::npos||!text("lyrics",65536,v.lyrics)||!text("voice",64,v.voice)||(!v.voice.empty()&&v.voice!="qixuan-candidate"&&v.voice!="ecantorix-en")||!text("modelPath",4096,v.modelPath))return fail();
-    if(!id(o["nextNoteId"])||!id(o["nextSyllableId"])||!o["allowIntroOutro"].isBool())return fail();
-    v.nextNoteId=(int)o["nextNoteId"];v.nextSyllableId=(int)o["nextSyllableId"];v.allowIntroOutro=(bool)o["allowIntroOutro"];
-    if(!clipNumber(o,"regionStart",0,v.regionStart)||!clipNumber(o,"regionEnd",0,v.regionEnd)||v.regionStart<0||v.regionEnd<v.regionStart||v.regionEnd>maxClipBeats)return fail();
-    const auto* ids=o["noteIds"].getArray();const auto* syllables=o["syllables"].getArray();
-    if(!ids||ids->size()!=(int)clip.notes.size()||!syllables||syllables->size()>4096)return fail();
-    std::set<int> noteIds,syllableIds,assigned;
-    for(int i=0;i<ids->size();++i){const auto& value=(*ids)[i];if(!id(value)||(int)value>=v.nextNoteId||!noteIds.insert((int)value).second)return fail();clip.notes[(size_t)i].vocalId=(int)value;}
-    for(const auto& entry:*syllables){
-        if(!entry.isObject()||!id(entry["id"])||(int)entry["id"]>=v.nextSyllableId||!syllableIds.insert((int)entry["id"]).second||!entry["text"].isString()||!entry["phonemes"].isString())return fail();
-        VocalSyllable syllable;syllable.id=(int)entry["id"];syllable.text=str(entry,"text");syllable.phonemes=str(entry,"phonemes");
-        if(syllable.text.size()>256||syllable.phonemes.size()>512)return fail();
-        const auto* links=entry["notes"].getArray();if(!links||links->size()>(int)clip.notes.size())return fail();
-        for(const auto& link:*links){if(!id(link)||!noteIds.count((int)link)||!assigned.insert((int)link).second)return fail();syllable.noteIds.push_back((int)link);}
-        v.syllables.push_back(std::move(syllable));
-    }
-    clip.vocal=std::move(v);return juce::Result::ok();
-}
 namespace {
 bool currentEffectHost(const Project& project){
     auto needs=[](const Track& rack){for(const auto& fx:rack.effects){if(fx.path=="fga:native-reverb"||fx.path=="fga:native-delay")return true;if(fx.path=="fga:native-compressor")if(auto xml=juce::XmlDocument::parse(juce::String(fx.pluginId)))if(xml->getStringAttribute("version").getDoubleValue()>=2)return true;}return false;};
@@ -230,7 +194,6 @@ juce::var projectJson(const Project& p){
             if(clip.loopPhase!=0)set(b,"loopPhase",clip.loopPhase);
             if(std::any_of(clip.feel.begin(),clip.feel.end(),[](double f){return f>=0;})){juce::Array<juce::var> feel;for(auto f:clip.feel)feel.add(f);set(b,"takeFeel",feel);}
             if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);}juce::Array<juce::var> notes;
-            if(clip.vocal)set(b,"vocalStudio",vocalJson(clip));
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
     }set(o,"tracks",tracks);
     if(!p.masterEffects.effects.empty()){juce::Array<juce::var> effects;for(const auto& e:p.masterEffects.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);effects.add(fx);}set(o,"masterEffects",effects);set(o,"version",4);}
@@ -323,17 +286,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
             if(b.hasProperty("loopSource")){auto* source=b["loopSource"].getArray();if(!source)return juce::Result::fail("Invalid loop source.");noteCount+=(size_t)source->size();if(noteCount>maxProjectNotes)return juce::Result::fail("Project loop source is too large.");
                 for(const auto& n:*source){if(!n.isArray()||n.size()<4)return juce::Result::fail("Invalid loop MIDI event.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Invalid loop MIDI time.");c.loopSource.push_back({start,length,noteValue(n[2],0,127),noteValue(n[3],0,127),n.size()>4?noteValue(n[4],0,12):0});}}
             if(b.hasProperty("reverseNotes")){const auto* reversed=b["reverseNotes"].getArray();if(!reversed||reversed->size()>(int)c.notes.size())return juce::Result::fail("Invalid reversed notes");for(const auto& value:*reversed){if(!value.isInt()||(int)value<0||(int)value>=(int)c.notes.size())return juce::Result::fail("Invalid reversed-note index");c.notes[(size_t)(int)value].reverse=true;}}
-            if(b.hasProperty("vocalStudio")){
-                if(!isManualTrack(t.kind)||t.vocalChops||c.audioOffset>=0)return juce::Result::fail("Vocal Studio requires a separate manual MIDI clip.");
-                if(auto read=readVocal(b["vocalStudio"],c);read.failed())return read;
-                const double duration=t.freeTimeline?c.span:c.span>0?c.span:p.sections[t.clips.size()].bars*4.;
-                if(c.vocal->regionEnd>duration)return juce::Result::fail("Vocal region exceeds clip duration.");
-            }
             t.clips.push_back(std::move(c));
         }p.tracks.push_back(std::move(t));
     }
-    std::set<std::string> vocalClipIds;
-    for(const auto& track:p.tracks)for(const auto& clip:track.clips)if(clip.vocal&&!vocalClipIds.insert(clip.vocal->id).second)return juce::Result::fail("Duplicate Vocal Studio clip identity.");
     // Sparse legacy arrays retain explicit stable IDs, including hosted instruments.
     // Missing slots are silent placeholders, never newly generated music.
     if(migrateSlots){auto saved=std::move(p.tracks);Project defaults;defaults.sections=p.sections;defaults.settings=p.settings;defaults.normalise();size_t count=trackCount;for(const auto& track:saved)count=std::max(count,(size_t)track.kind+1);p.tracks=std::move(defaults.tracks);p.tracks.resize(count);

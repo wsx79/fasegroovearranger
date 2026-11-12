@@ -19,7 +19,6 @@ void runSidechainTests();
 void runOfflineExportTests();
 void runImprovementEngineTests();
 void runStudioEngineTests();
-void runGuideVocalTests();
 void runVocalChopsTests();
 void runSampleImportTests();
 void runEngineAuditTests();
@@ -30,7 +29,6 @@ int main(int argc,char** argv){
     try{
         if(argc==2&&juce::String(argv[1])=="--sample-import-test"){runSampleImportTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
-        if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--sidechain"){runSidechainTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--assistant-project"){runAssistantProjectTests();return 0;}
