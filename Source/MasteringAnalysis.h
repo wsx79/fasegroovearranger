@@ -4,7 +4,7 @@
 #include "OfflineExport.h"
 namespace fga {
 struct MasteringTargets {
-    bool useLufs=false,expectVocal=false;double lufs=-14,ceilingDb=-1,startA=0,startB=0;
+    bool useLufs=false,expectVocal=false,refineComparison=false;double lufs=-14,ceilingDb=-1,startA=0,startB=0;
     int expectedRate=0,expectedBits=0;
 };
 struct MasteringInput {juce::File file;bool vocal=false;};

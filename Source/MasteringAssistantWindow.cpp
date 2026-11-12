@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MasteringAssistantWindow.h"
+#include "AssistantProject.h"
 #include "MainComponent.h"
 #include "MasteringAnalysis.h"
 #include "RenderProgressTask.h"
@@ -160,11 +161,11 @@ bool MasteringAssistantWindow::Panel::verify(const juce::File& folder){
     folder.getChildFile("mastering-ui.txt").replaceWithText(checks);return ok;
 #endif
 }
-MasteringAssistantWindow::MasteringAssistantWindow(MainComponent& m):DocumentWindow(tr("Mastering Assistant"),Daw::base,juce::DocumentWindow::closeButton){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);setContentOwned(panel,true);Localisation::bind(*this,[this]{setName(tr("Mastering Assistant"));});setResizable(true,false);setResizeLimits(1050,660,1800,1200);}
+MasteringAssistantWindow::MasteringAssistantWindow(MainComponent& m):DocumentWindow(tr("Mastering Assistant"),Daw::base,juce::DocumentWindow::closeButton){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);projectPanel=new ProjectAssistantPanel(m,true);tabs=new juce::TabbedComponent(juce::TabbedButtonBar::TabsAtTop);tabs->addTab(tr("Project"),Daw::base,projectPanel,true);tabs->addTab(tr("WAV files"),Daw::base,panel,true);Localisation::bind(*tabs,[this]{tabs->setTabName(0,tr("Project"));tabs->setTabName(1,tr("WAV files"));});setContentOwned(tabs,true);Localisation::bind(*this,[this]{setName(tr("Mastering Assistant"));});setResizable(true,false);setResizeLimits(1050,700,1800,1200);}
 MasteringAssistantWindow::~MasteringAssistantWindow(){clearContentComponent();setLookAndFeel(nullptr);}
-void MasteringAssistantWindow::open(){panel->open();centreWithSize(1100,740);setVisible(true);toFront(true);}
-void MasteringAssistantWindow::closeButtonPressed(){panel->close();setVisible(false);}
-bool MasteringAssistantWindow::verify(const juce::File& f){return panel->verify(f);}
+void MasteringAssistantWindow::open(){tabs->setCurrentTabIndex(0);projectPanel->open();panel->open();centreWithSize(1100,780);setVisible(true);toFront(true);}
+void MasteringAssistantWindow::closeButtonPressed(){projectPanel->close();panel->close();setVisible(false);}
+bool MasteringAssistantWindow::verify(const juce::File& f){tabs->setCurrentTabIndex(1);const bool old=panel->verify(f);tabs->setCurrentTabIndex(0);return projectPanel->verify(f.getChildFile("project"))&&old;}
 void MainComponent::showMasteringAssistant(){if(editingRestricted()||loadingPlugin)return;if(!masteringAssistantWindow)masteringAssistantWindow=std::make_unique<MasteringAssistantWindow>(*this);masteringAssistantWindow->open();}
 bool MainComponent::verifyMasteringAssistant(const juce::File& f){f.createDirectory();showMasteringAssistant();return masteringAssistantWindow&&masteringAssistantWindow->verify(f);}
 }

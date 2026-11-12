@@ -157,3 +157,10 @@ Windows x64 nativo/macOS, mouse/DPI reali, ascolto/qualità dei suggerimenti,
 hardware/dropout e plugin commerciali restano NOT RUN per questa fase. Il workflow
 MSVC esiste ma non può consumare questi commit locali senza push autorizzato.
 Nessun nuovo sanitizer dichiarato eseguito. Vocals congelati e non approvati.
+
+## Estensione successiva approvata: progetto aperto e Applica
+
+Il flusso File WAV sopra documentato rimane disponibile. Il nuovo flusso Progetto,
+la cattura float e l'applicazione selettiva con A/B e un solo Undo sono descritti in
+[ASSISTANT_PROJECT.it.md](ASSISTANT_PROJECT.it.md). Sono un'estensione autorizzata
+dei due assistenti, senza nuova fase della roadmap né GO alla distribuzione.

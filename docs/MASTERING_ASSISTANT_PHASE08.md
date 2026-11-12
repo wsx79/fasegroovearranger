@@ -179,3 +179,10 @@ commit locali non pubblicati; nessun push/dispatch di codice vecchio spacciato
 per verifica. Il gate Windows del fix Cancel `9c4e812` resta esplicitamente aperto.
 Nessuna dipendenza/binario aggiunta al prodotto; FFmpeg già disponibile è usato
 solo come verifica indipendente opzionale nei test, mai distribuito qui.
+
+## Estensione successiva approvata: progetto aperto e Applica
+
+Il flusso File WAV sopra documentato rimane disponibile. Il nuovo flusso Progetto,
+la cattura float e l'applicazione selettiva con A/B e un solo Undo sono descritti in
+[ASSISTANT_PROJECT.it.md](ASSISTANT_PROJECT.it.md). Sono un'estensione autorizzata
+dei due assistenti, senza nuova fase della roadmap né GO alla distribuzione.

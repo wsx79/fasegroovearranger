@@ -26,6 +26,8 @@ class MainComponent;
 class MixAssistantWindow;
 class MasteringAssistantWindow;
 class RenderProgressTask;
+class ProjectAssistantPanel;
+struct AssistantAudio;struct AssistantChange;
 // A light, compact dismiss target in the inspector header, sharing the DAW palette.
 class InspectorDismissButton final : public IconButton {
 public:
@@ -280,6 +282,8 @@ public:
     double songLength();
     // The track gear opens its VST editor, sample in Studio or guide controls.
     void openInstrumentFor(int track);
+    RenderProgressTask* renderAssistantProject(std::shared_ptr<AssistantAudio>,std::function<juce::Result(AssistantAudio&,const std::function<bool()>&,const std::function<void(double)>&)>,std::function<void(juce::Result)>,std::vector<AssistantChange> changes);
+    void cancelAssistantProject(RenderProgressTask*);
     void freezeTrack(int track);
     void requestClose(std::function<void()> accepted);
     bool writeLanguageEvidence(const juce::File&);
@@ -371,6 +375,7 @@ private:
     friend class MasteringAssistantWindow;
     std::unique_ptr<MasteringAssistantWindow> masteringAssistantWindow;
     friend class MixAssistantWindow;
+    friend class ProjectAssistantPanel;
     friend class MixerRoutingWindow;
     std::unique_ptr<MixAssistantWindow> mixAssistantWindow;
     friend class GraphicEqWindow;

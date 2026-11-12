@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MixAssistantWindow.h"
+#include "AssistantProject.h"
 #include "MainComponent.h"
 #include "MixAnalysis.h"
 #include "RenderProgressTask.h"
@@ -112,10 +113,10 @@ public:
  }
 
 };
-MixAssistantWindow::MixAssistantWindow(MainComponent& m):DocumentWindow(tr("Mix Assistant"),Daw::base,juce::DocumentWindow::closeButton),owner(m){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);setContentOwned(panel,true);Localisation::bind(*this,[this]{setName(tr("Mix Assistant"));});setResizable(true,false);setResizeLimits(900,600,1800,1200);}
+MixAssistantWindow::MixAssistantWindow(MainComponent& m):DocumentWindow(tr("Mix Assistant"),Daw::base,juce::DocumentWindow::closeButton),owner(m){setLookAndFeel(&m.theme);setUsingNativeTitleBar(true);panel=new Panel(m);projectPanel=new ProjectAssistantPanel(m,false);tabs=new juce::TabbedComponent(juce::TabbedButtonBar::TabsAtTop);tabs->addTab(tr("Project"),Daw::base,projectPanel,true);tabs->addTab(tr("WAV files"),Daw::base,panel,true);Localisation::bind(*tabs,[this]{tabs->setTabName(0,tr("Project"));tabs->setTabName(1,tr("WAV files"));});setContentOwned(tabs,true);Localisation::bind(*this,[this]{setName(tr("Mix Assistant"));});setResizable(true,false);setResizeLimits(1050,700,1800,1200);}
 MixAssistantWindow::~MixAssistantWindow(){clearContentComponent();setLookAndFeel(nullptr);}
-void MixAssistantWindow::open(){panel->open();centreWithSize(1000,660);setVisible(true);toFront(true);}
-void MixAssistantWindow::closeButtonPressed(){panel->close();setVisible(false);}
-bool MixAssistantWindow::verify(const juce::File& folder){const bool ok=panel->verify(folder);folder.getChildFile("mix-assistant-ui.txt").replaceWithText(ok?"PASS preview A/B leaves project/Undo unchanged; explicit Apply and Undo/Redo; project-edit invalidation, real worker Cancel/retry/close":"FAIL Mix Assistant UI");return ok;}
+void MixAssistantWindow::open(){tabs->setCurrentTabIndex(0);projectPanel->open();panel->open();centreWithSize(1100,780);setVisible(true);toFront(true);}
+void MixAssistantWindow::closeButtonPressed(){projectPanel->close();panel->close();setVisible(false);}
+bool MixAssistantWindow::verify(const juce::File& folder){tabs->setCurrentTabIndex(1);const bool old=panel->verify(folder);tabs->setCurrentTabIndex(0);const bool ok=projectPanel->verify(folder.getChildFile("project"))&&old;folder.getChildFile("mix-assistant-ui.txt").replaceWithText(ok?"PASS preview A/B leaves project/Undo unchanged; explicit Apply and Undo/Redo; project-edit invalidation, real worker Cancel/retry/close":"FAIL Mix Assistant UI");return ok;}
 void MainComponent::showMixAssistant(){if(editingRestricted()||loadingPlugin)return;if(!mixAssistantWindow)mixAssistantWindow=std::make_unique<MixAssistantWindow>(*this);mixAssistantWindow->open();}
 }

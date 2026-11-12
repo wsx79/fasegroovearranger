@@ -14,6 +14,7 @@ static void check(bool b,const char* m){if(!b)throw std::runtime_error(m);}
 void runDynamicsTests();
 void runMixAnalysisTests();
 void runMasteringTests();
+void runAssistantProjectTests();
 void runSidechainTests();
 void runOfflineExportTests();
 void runImprovementEngineTests();
@@ -32,6 +33,7 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--guide-vocal"){runGuideVocalTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--sidechain"){runSidechainTests();return 0;}
+        if(argc==2&&juce::String(argv[1])=="--assistant-project"){runAssistantProjectTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mastering-assistant"){runMasteringTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mix-assistant"){runMixAnalysisTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--dynamics"){runDynamicsTests();return 0;}

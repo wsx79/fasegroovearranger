@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "AssistantProject.h"
 #include "RenderProgressTask.h"
 #include <future>
 #include "GuidePage.h"
@@ -392,6 +393,16 @@ bool MainComponent::verifyExports(const juce::File& folder,const juce::PluginDes
     addNativeReturn(returnEffectTrack,false);const bool loadedA=settlePlugin()&&audio.effectPlugin(returnEffectTrack,1);closePluginEditor();addNativeReturn(returnEffectTrack+1,true);const bool loadedB=settlePlugin()&&audio.effectPlugin(returnEffectTrack+1,1);closePluginEditor();
     check(loadedA&&loadedB,"cancellation fixture loads actual editable return effects");
     if(loadedA&&loadedB)cancelAt("Cancel with group sidechain and shared A/B return effects",.2,4,false);
+    if(loadedA&&loadedB){
+        auto captured=std::make_shared<AssistantAudio>();captured->snapshot=project;captured->tracks={0};bool done=false,valid=false;
+        auto* active=renderAssistantProject(captured,[](AssistantAudio& data,const auto&,const auto&){juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatReader> mix(format.createReaderFor(data.mix().createInputStream().release(),true)),stem(format.createReaderFor(data.stem(0).createInputStream().release(),true));return mix&&stem&&mix->usesFloatingPointData&&stem->lengthInSamples==mix->lengthInSamples?juce::Result::ok():juce::Result::fail("Invalid captured project audio");},[&](juce::Result result){done=true;valid=result.wasOk();},{});
+        check(active&&settle()&&done&&valid&&audio.plugin(0)==original&&(!effect||audio.effectPlugin(0,1)==originalEffect),"project float analysis retains real hosted processors, group/returns and restores editing");
+        auto cancelled=std::make_shared<AssistantAudio>();cancelled->snapshot=project;cancelled->tracks={0};done=false;valid=true;
+        active=renderAssistantProject(cancelled,[](AssistantAudio&,const auto&,const auto&){return juce::Result::ok();},[&](juce::Result result){done=true;valid=result.wasOk();},{});
+        if(active)active->getAlertWindow()->getButton(0)->onClick();
+        check(active&&settle()&&done&&!valid&&audio.plugin(0)==original&&cancelled->directory.findChildFiles(juce::File::findFilesAndDirectories,false).isEmpty(),"project analysis Cancel returns worker ownership and removes partial audio with hosted processors");
+    }
+
     audio.clearEffect(returnEffectTrack);audio.clearEffect(returnEffectTrack+1);project.returnChains=false;for(auto& rack:project.returnEffects)rack.effects.clear();project.buses=oldBuses;project.tracks[0].sends=oldSends;project.tracks[0].group=oldGroup;audio.publish(project);
     const auto retry=exportNamedFile(folder.getChildFile("after-repeated-cancel.wav"),project,"wav");exportFile(5,0,retry);check(settle(),"new export succeeds after all repeated/button cancellations");
     {std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(retry.createInputStream().release(),true));check(reader&&reader->sampleRate==48000&&reader->bitsPerSample==24,"retry produces complete WAV at requested rate/depth");}

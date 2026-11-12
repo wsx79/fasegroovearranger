@@ -274,6 +274,11 @@ public:
     void restoreEffectState(int,const juce::String&,int slot=1);
     // Same processing graph for playback and export. Export temporarily owns the engine.
     juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr,AudioExportOptions options={});
+    // Worker only, exclusive offline ownership as exportAudio. Raw float mix plus
+    // context-preserving post-insert/fader track taps; never an export UI mode.
+    juce::Result renderAnalysis(const Project&,const juce::File& emptyDirectory,const std::vector<int>& tracks,
+        std::function<bool()> cancelled,std::function<void(double)> progress);
+
     void markMissing(int);
     juce::Optional<PositionInfo> getPosition() const override;
     void audioDeviceAboutToStart(juce::AudioIODevice*) override;
@@ -400,7 +405,9 @@ private:
     void resyncAt(double beat);
     void flushIdle(int count);
     void click(float* const* output,int channels,int count,double beat,bool force=false);
-    void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1,bool schedule=true);
+    struct AnalysisCapture;
+    juce::Result renderExport(const Project&,const juce::File&,int,bool,std::function<bool()>,std::function<void(double)>,double*,AudioExportOptions,AnalysisCapture*);
+    void render(float* const* output,int channels,int count,double beat,int onlyTrack=-1,bool schedule=true,AnalysisCapture* analysisCapture=nullptr);
     void applySoundAutomation(Instrument&,double beat);
     void applyParameterAutomation(Instrument&,double beat,int slot);
     void processHosted(Instrument&,juce::AudioPluginInstance&,juce::AudioBuffer<float>&,juce::MidiBuffer&,double beat,int slot);

@@ -138,10 +138,19 @@ juce::Result analyseMastering(const std::vector<MasteringInput>& inputs,const ju
                 BufferReader a(result.a,mix.rate),b(result.b,ref.rate);
                 r=measureOfflineTruePeak(a,pa,cancel,[](double){});if(r.wasOk())r=measureOfflineTruePeak(b,pb,cancel,[](double){});if(r.failed())return r;
                 if(std::max(pa,pb)>juce::Decibels::decibelsToGain(targets.ceilingDb))return juce::Result::fail(tr("Normalized excerpt exceeds True Peak ceiling."));
-                const double finalA=excerptLufs(result.a,mix.rate),finalB=excerptLufs(result.b,ref.rate);
+                double finalA=excerptLufs(result.a,mix.rate),finalB=excerptLufs(result.b,ref.rate);
+                // Proposal dynamics can move the BS.1770 relative gate. For the
+                // project workflow, refine with measured attenuation only; retain
+                // the existing strict 0.1-LU and -60-LUFS admission checks.
+                for(int attempt=0;targets.refineComparison&&attempt<8&&finalA>= -60&&finalB>= -60&&std::abs(finalA-finalB)>.1;++attempt){
+                    if(cancel())return juce::Result::fail(tr("Analysis cancelled."));
+                    const float trim=(float)juce::Decibels::decibelsToGain(-std::abs(finalA-finalB));
+                    if(finalA>finalB){result.a.applyGain(trim);result.gainA*=trim;}else{result.b.applyGain(trim);result.gainB*=trim;}
+                    finalA=excerptLufs(result.a,mix.rate);finalB=excerptLufs(result.b,ref.rate);
+                }
                 if(finalA< -60||finalB< -60||std::abs(finalA-finalB)>.1){result.a.setSize(0,0);result.b.setSize(0,0);result.comparisonNote=tr("A/B unavailable: gated excerpt loudness cannot be matched reliably. Choose different offsets/reference.");}
                 else {result.matchedLufs=(finalA+finalB)*.5;result.comparisonRate=mix.rate;result.comparisonReady=true;
-                result.comparisonNote=tr("A/B: at most 10-second excerpts, independent offsets, matched excerpt LUFS ")+juce::String(common,2)+tr(" before the common browser audition level; restarts, no seamless crossfade.");}
+                result.comparisonNote=tr("A/B: at most 10-second excerpts, independent offsets, matched excerpt LUFS ")+juce::String(targets.refineComparison?result.matchedLufs:common,2)+tr(" before the common browser audition level; restarts, no seamless crossfade.");}
             }
         }
         if(!result.comparisonReady){result.a.setSize(0,0);result.b.setSize(0,0);}

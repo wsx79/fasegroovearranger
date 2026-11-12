@@ -418,12 +418,21 @@ void AudioEngine::readSpectrum(int track,std::vector<float>& pre,std::vector<flo
     }
 }
 
-void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled){
+struct AudioEngine::AnalysisCapture {
+    juce::File directory;
+    std::vector<int> selected;
+    std::array<juce::AudioBuffer<float>,maxTracks> audio;
+    std::vector<std::unique_ptr<juce::AudioFormatWriter>> writers;
+    int latency=0;juce::int64 written=0;bool complete=false;
+    ~AnalysisCapture(){writers.clear();if(!complete){directory.getChildFile("mix.wav").deleteFile();for(int track:selected)directory.getChildFile("track-"+juce::String(track)+".wav").deleteFile();}}
+};
+void AudioEngine::render(float* const* output,int channels,int count,double beat,int onlyTrack,bool scheduled,AnalysisCapture* analysisCapture){
     const juce::ScopedNoDenormals noDenormals;
     RenderingScope renderingScope(rendering);
     const int clipSource=exporting.load()?-1:clipPlaybackTrack.load();
     const double samplesPerBeat=sampleRate*60./tempo.load(),end=beat+count/samplesPerBeat;
     busGraph.begin(count,onlyTrack>=0);
+    if(analysisCapture)for(int track:analysisCapture->selected)analysisCapture->audio[(size_t)track].clear(0,count);
     for(auto& signal:detectorSignals)std::fill(signal.begin(),signal.begin()+count,0.f);
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
     refreshLatencies();
@@ -500,8 +509,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
             else i.baseGain.skip(count);
             for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
-                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
-                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
+                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
+                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
         }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
         meters[(size_t)ti]=meter;sideMeters[(size_t)ti][0]=side[0];sideMeters[(size_t)ti][1]=side[1];if(meter>=1.f)trackClip[(size_t)ti].store(true);
     }
@@ -798,6 +807,17 @@ void AudioEngine::restorePluginState(int track,const juce::String& state){restor
 void AudioEngine::restoreEffectState(int track,const juce::String& state,int slot){restoreHosted(track,state,slot);}
 void AudioEngine::markMissing(int track){const EngineControlLock lock(*this);instruments[(size_t)track]->mode=3;}
 juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak,AudioExportOptions options){
+    return renderExport(source,file,onlyTrack,mp3,std::move(cancelled),std::move(progress),rawPeak,options,nullptr);
+}
+juce::Result AudioEngine::renderAnalysis(const Project& source,const juce::File& folder,const std::vector<int>& tracks,std::function<bool()> cancel,std::function<void(double)> progress){
+    if(!folder.isDirectory()||!folder.findChildFiles(juce::File::findFilesAndDirectories,false).isEmpty())return juce::Result::fail("Analysis requires an empty private temporary directory.");
+    if(tracks.size()>maxTracks)return juce::Result::fail("Too many analysis tracks.");
+    std::vector<int> seen;for(int track:tracks){if(track<0||track>=maxTracks||track>=(int)source.tracks.size()||std::find(seen.begin(),seen.end(),track)!=seen.end())return juce::Result::fail("Invalid analysis track.");seen.push_back(track);}
+    AnalysisCapture capture;capture.directory=folder;capture.selected=tracks;
+    auto result=renderExport(source,folder.getChildFile("mix.wav"),-1,false,std::move(cancel),std::move(progress),nullptr,AudioExportOptions{},&capture);
+    capture.complete=result.wasOk();return result;
+}
+juce::Result AudioEngine::renderExport(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak,AudioExportOptions options,AnalysisCapture* analysis){
     if(file.isDirectory())return juce::Result::fail("Export target is a directory.");
     if(isAudioRecording()||isRecording())return juce::Result::fail("Finish recording before exporting.");
     if(!std::isfinite(options.sampleRate)||options.sampleRate<0||(options.sampleRate>0&&(options.sampleRate<8000||options.sampleRate>192000))||(options.bitDepth!=16&&options.bitDepth!=24))return juce::Result::fail("Invalid WAV encoding.");
@@ -861,12 +881,24 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
     if(p.returnChains){double returnTail=0;for(int b=0;b<2;++b){const bool used=std::any_of(p.tracks.begin(),p.tracks.end(),[b](const Track& track){return track.sends[(size_t)b]>0;});if(!used)continue;const auto& rack=*instruments[(size_t)(returnEffectTrack+b)];double tail=0;for(int k=0;k<rack.effectCount;++k){const int id=rack.effectOrder[(size_t)k]-1;if(auto* fx=rack.effects[(size_t)id].plugin.get())if(!rack.effectBypass[(size_t)id]){const double seconds=fx->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail=std::min(120.,tail+seconds);}}returnTail=std::max(returnTail,tail);}effectTail=std::min(120.,effectTail+returnTail);}
     if(onlyTrack<0){const auto& rack=*instruments[(size_t)masterEffectTrack];for(int k=0;k<rack.effectCount;++k){const int index=rack.effectOrder[(size_t)k]-1;if(auto* effect=rack.effects[(size_t)index].plugin.get())if(!rack.effectBypass[(size_t)index]){const double tail=effect->getTailLengthSeconds();if(std::isfinite(tail)&&tail>0)effectTail=std::min(120.,effectTail+tail);}}}
     juce::AudioBuffer<float> buffer(2,blockSize);const auto total=(juce::int64)std::ceil((endSeconds+effectTail)*sampleRate);
+    if(analysis){
+        for(int ti=0;ti<maxTracks;++ti)analysis->latency=std::max(analysis->latency,std::min(instruments[(size_t)ti]->latency,Instrument::maxDelay-1));
+        const double bytes=(double)total*8*(analysis->selected.size()+1);
+        if(total>sampleRate*900||bytes>8.*1024*1024*1024||file.getBytesFreeOnVolume()<bytes+64.*1024*1024)return juce::Result::fail("Project analysis exceeds the 15-minute/8-GiB limit or free temporary disk space.");
+        for(int track:analysis->selected){
+            analysis->audio[(size_t)track].setSize(2,blockSize);
+            auto output=analysis->directory.getChildFile("track-"+juce::String(track)+".wav").createOutputStream();
+            if(!output)return juce::Result::fail("Cannot write analysis track.");
+            std::unique_ptr<juce::AudioFormatWriter> encoded(format.createWriterFor(output.get(),sampleRate,2,32,{},0));
+            if(!encoded)return juce::Result::fail("Cannot encode float analysis track.");output.release();analysis->writers.push_back(std::move(encoded));
+        }
+    }
     ExportPeakGuard guardLimiter;if(!modern&&options.loudnessGuard){guardLimiter.prepare(blockSize);compensation+=guardLimiter.latency();}
-    const double encodedShare=mp3?.8:1.,renderShare=modern?(mp3?.4:.5):encodedShare;
+    const double encodedShare=mp3?.8:1.,renderShare=analysis?1.:modern?(mp3?.4:.5):encodedShare;
     const juce::int64 renderTotal=total+compensation;
     for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(blockSize,renderTotal-at);buffer.clear();
         const int skip=(int)std::clamp<juce::int64>(compensation-at,0,n);
-        {const EngineControlLock lock(*this);currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack);}
+        {const EngineControlLock lock(*this);currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack,true,analysis);}
         if(!modern&&options.loudnessGuard)guardLimiter.process(buffer,n);
         for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample){
             const float value=buffer.getSample(ch,sample);
@@ -874,9 +906,21 @@ juce::Result AudioEngine::exportAudio(const Project& source,const juce::File& fi
             if(rawPeak)*rawPeak=std::max(*rawPeak,(double)std::abs(value));
             if(!modern)buffer.setSample(ch,sample,std::clamp(value,-.999f,.999f));
         }
+        if(analysis){
+            const int from=(int)std::clamp<juce::int64>(analysis->latency-at,0,n);
+            const int frames=(int)std::min<juce::int64>(n-from,total-analysis->written);
+            for(size_t k=0;frames>0&&k<analysis->selected.size();++k)if(!analysis->writers[k]->writeFromAudioSampleBuffer(analysis->audio[(size_t)analysis->selected[k]],from,frames))return juce::Result::fail("Cannot write analysis track.");
+            analysis->written+=frames;
+        }
         if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*renderShare);
     }
     if(!writer->flush())return juce::Result::fail("Cannot finish export staging WAV.");writer.reset();
+    if(analysis){
+        for(auto& encoded:analysis->writers)if(!encoded->flush())return juce::Result::fail("Cannot finish analysis track.");
+        analysis->writers.clear();
+        if(cancelled())return juce::Result::fail("Analysis cancelled.");
+        return floatStage.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Cannot finish analysis mix.");
+    }
     if(modern){
         auto result=finishOfflineExport(floatStage.getFile(),temp.getFile(),mp3?24:options.bitDepth,options.mode,options.ceilingDb,cancelled,[&](double value){progress(renderShare+(encodedShare-renderShare)*value);});
         if(result.failed())return result;

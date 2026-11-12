@@ -35,6 +35,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
             return juce::Result::fail(tr("Stem exceeds mix duration; align files before analysis."));
         readers.push_back(std::move(reader));
     }
+    result.inputLevels.resize(inputs.size());
     constexpr int block=EqAnalyzer::size;
     std::vector<juce::AudioBuffer<float>> buffers;
     for(size_t i=0;i<inputs.size();++i)buffers.emplace_back(2,block);
@@ -46,6 +47,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
     for(size_t a=1;a<inputs.size();++a)for(size_t b=a+1;b<inputs.size();++b)
         pairs.push_back({a,b,0,0,(inputs[a].role==1&&inputs[b].role==2)||(inputs[a].role==2&&inputs[b].role==1)});
     LoudnessMeter meter;meter.prepare(readers[0]->sampleRate);
+    bool previewFound=false;
     double ll=0,rr=0,lr=0,sum=0;juce::int64 frames=0;
     for(juce::int64 at=0;at<readers[0]->lengthInSamples;at+=block){
         if(cancelled())return juce::Result::fail(tr("Analysis cancelled."));
@@ -61,11 +63,13 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
                 const double v=audio.getSample(c,i);
                 if(!std::isfinite(v))return juce::Result::fail(tr("Non-finite audio: ")+inputs[f].file.getFileName());
                 energies[f]+=v*v;
+                result.inputLevels[f].peak=std::max(result.inputLevels[f].peak,std::abs(v));
                 if(f==0){
                     result.mix.peak=std::max(result.mix.peak,std::abs(v));
                     if(c<(int)readers[f]->numChannels&&std::abs(v)>=.9999)++result.mix.fullScale;
                 }
             }
+            result.inputLevels[f].rms+=energies[f];
             bands[f].fill(0);
             const auto power=analyzers[f].framePower(audio.getReadPointer(0),audio.getReadPointer(1),n);
             for(float v:power)if(!std::isfinite(v))return juce::Result::fail(tr("Audio amplitude exceeds analyzer range."));
@@ -75,6 +79,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
                 for(int k=0;k<6;++k)if(hz>=edges[k]&&hz<edges[k+1])bands[f][(size_t)k]+=power[(size_t)bin];
             }
         }
+        if(!previewFound&&energies[0]/(2*n)>1e-6){result.previewStart=std::clamp(at/readers[0]->sampleRate-.05,0.,899.);previewFound=true;}
         for(size_t k=0;k<6;++k)result.mix.bandPower[k]+=bands[0][k]*n;
         auto& audio=buffers[0];
         meter.process(audio.getArrayOfWritePointers(),(int)readers[0]->numChannels,n);
@@ -92,6 +97,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
     }
     for(auto& energy:result.mix.bandPower)energy/=std::max<juce::int64>(1,frames);
     result.mix.rms=std::sqrt(sum/std::max(1.,2.*frames));
+    for(auto& level:result.inputLevels)level.rms=std::sqrt(level.rms/std::max(1.,2.*frames));
     result.mix.correlationValid=readers[0]->numChannels==2&&ll>1e-15&&rr>1e-15;
     if(result.mix.correlationValid)result.mix.correlation=std::clamp(lr/std::sqrt(ll*rr),-1.,1.);
     result.mix.lufs=meter.integrated.load();
