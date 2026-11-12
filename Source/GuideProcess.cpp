@@ -104,18 +104,19 @@ juce::Result runGuideProcess(const juce::StringArray& args, const juce::File& lo
     if (!error) error = posix_spawnp(&pid, argv[0], &actions, &attributes, argv.data(), environment);
     posix_spawn_file_actions_destroy(&actions); posix_spawnattr_destroy(&attributes);
     if (error) return juce::Result::fail("Cannot start guide tool. Check Perl/PATH (" + juce::String(error) + ").");
-    int status = 0; juce::String reason;
+    int status = 0; juce::String reason; bool running = true;
     for (;;) {
         const auto result = waitpid(pid, &status, WNOHANG);
-        if (result == pid) break;
-        if (result < 0 && errno != EINTR) { reason = "Cannot wait for guide process."; break; }
+        if (result == pid) { running = false; break; }
+        if (result < 0 && errno != EINTR) { reason = "Cannot wait for guide process."; running = false; break; }
         reason = stopReason(); if (reason.isNotEmpty()) break;
         juce::Thread::sleep(20);
     }
-    // Kill surviving descendants even when the parent has already exited.
-    ::kill(-pid, SIGKILL);
+    // Signal the group only while this child is still alive. After a successful
+    // reap, -pid can already belong to an unrelated process group.
+    if (running) { ::kill(-pid, SIGKILL); while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {} }
     if (reason.isEmpty()) reason = stopReason();
-    if (reason.isNotEmpty()) { while (waitpid(pid, &status, 0) < 0 && errno == EINTR) {} return juce::Result::fail(reason); }
+    if (reason.isNotEmpty()) return juce::Result::fail(reason);
     const int code = WIFEXITED(status) ? WEXITSTATUS(status) : -1;
 #endif
     if (code == 0) return juce::Result::ok();

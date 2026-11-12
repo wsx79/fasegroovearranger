@@ -103,11 +103,13 @@ public:
         const int size=juce::nextPowerOfTwo(std::max(256,(int)(2048*rate/48000.)));warp.configure(2,size,size/4,false);owner.latency=warp.outputLatency();
         filter.prepare({rate,512,2});filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);filter.reset();
     }
-    bool retiring()const{return retriggerLeft>0;}
-    // Release on the output clock, when the replacement voice becomes audible.
-    void fadeForRetrigger(){retriggerDelay=owner.latencySamples();retriggerTotal=retriggerLeft=std::max(1,(int)std::lround(getSampleRate()*.0025));}
+    bool retiring()const{return retriggerLeft>0&&!retriggerFadeIn;}
+    // Release and replacement share the output clock, so the new slice fades in
+    // as the interrupted one fades out instead of entering at full level.
+    void fadeForRetrigger(){retriggerFadeIn=false;retriggerDelay=owner.latencySamples();retriggerTotal=retriggerLeft=std::max(1,(int)std::lround(getSampleRate()*.0025));}
+    void fadeInForRetrigger(){retriggerFadeIn=true;retriggerDelay=owner.latencySamples();retriggerTotal=retriggerLeft=std::max(1,(int)std::lround(getSampleRate()*.0025));}
     void startNote(int note,float velocity,juce::SynthesiserSound*,int wheel)override{
-        const auto& p=owner.settings();retriggerDelay=retriggerLeft=0;data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
+        const auto& p=owner.settings();retriggerFadeIn=false;retriggerDelay=retriggerLeft=0;data=&owner.asset();pitch=note;level=1-p.velocity+p.velocity*velocity;pitchWheel=wheel;sourcePos=0;inputFraction=0;playedSource=0;elapsed=0;releaseAt=-1;released=false;filter.reset();
         begin=p.start*data->frames;finish=p.end*data->frames;
         reverseRegion=owner.regionReverse||owner.settings().reverse;region=owner.regionOffset>=0;fadeIn=owner.regionFadeIn;fadeOut=owner.regionFadeOut;
         if(region){begin=std::clamp(owner.regionOffset*data->rate,0.,(double)data->frames);finish=std::min((double)data->frames,begin+owner.regionDuration*data->rate);}
@@ -140,7 +142,7 @@ public:
                 if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
                 const float linear=envelope.getNextSample(),bent=shaped.next();
                 float gain=(shaped.curved()?bent:linear)*level;
-                if(retriggerLeft>0&&retriggerDelay==0)gain*=(float)retriggerLeft/retriggerTotal;
+                if(retriggerLeft>0&&retriggerDelay==0){const float wet=(float)retriggerLeft/retriggerTotal;gain*=retriggerFadeIn?1.f-wet:wet;}
                 if(region){const double remaining=std::max(0.,finish-begin-playedSource)/(data->rate*std::max(.001,speed()));const double elapsedSeconds=at/getSampleRate();gain*=(float)(std::clamp(elapsedSeconds/std::max(.0025,fadeIn),0.,1.)*std::clamp(remaining/std::max(.0025,fadeOut),0.,1.));}
                 if(p.fadeIn>0){const float lin=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);gain*=std::abs(p.fadeInCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeInCurve);}
                 if(!looping&&p.fadeOut>0){const float lin=(float)std::clamp((finish-begin-playedSource)/(p.fadeOut*data->rate*speed()),0.,1.);gain*=std::abs(p.fadeOutCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeOutCurve);}
@@ -148,7 +150,7 @@ public:
                 output.addSample(0,start+done+i,l);if(output.getNumChannels()>1)output.addSample(1,start+done+i,r);
                 playedSource+=sourceStep;
                 if(retriggerDelay>0)--retriggerDelay;
-                else if(retriggerLeft>0&&--retriggerLeft==0){clearCurrentNote();data=nullptr;}
+                else if(retriggerLeft>0&&--retriggerLeft==0){if(!retriggerFadeIn){clearCurrentNote();data=nullptr;}retriggerFadeIn=false;}
                 if(!envelope.isActive()){clearCurrentNote();data=nullptr;}
             }done+=n;
         }
@@ -179,7 +181,7 @@ private:
     signalsmith::stretch::SignalsmithStretch<float> warp{0};
     juce::ADSR envelope;ShapedEnvelope shaped;juce::dsp::StateVariableTPTFilter<float> filter;
     double sourcePos=0,begin=0,finish=0,inputFraction=0,playedSource=0,fadeIn=0,fadeOut=0;int pitch=60,pitchWheel=8192;
-    int retriggerDelay=0,retriggerLeft=0,retriggerTotal=1;
+    int retriggerDelay=0,retriggerLeft=0,retriggerTotal=1;bool retriggerFadeIn=false;
     int64_t elapsed=0,releaseAt=-1;float level=1;bool released=false,region=false,reverseRegion=false;
     double semitones()const{return (owner.mode()==2?0:pitch-owner.root())+owner.settings().transpose+owner.settings().fine*.01+(pitchWheel-8192)/8192.*2.;}
     double speed()const{return owner.settings().sync?owner.tempo()/owner.settings().sourceBpm:std::pow(2.,semitones()/12.);}
@@ -256,12 +258,17 @@ void SampleSynth::noteOn(int channel,int note,float velocity){
     if(mode()==2&&(note<settings().sliceBase||note>=settings().sliceBase+settings().sliceCount))return;
     // Slices can use a spare preallocated voice for a short release. Retiring
     // voices do not consume the playable polyphony budget; total voices stay 32.
+    bool crossfade=false;
     for(int tries=0;tries<32;++tries){
         int active=0;SampleVoice* oldest=nullptr;
         for(int i=0;i<getNumVoices();++i){auto* voice=dynamic_cast<SampleVoice*>(getVoice(i));if(!voice||!voice->isVoiceActive()||voice->retiring())continue;++active;if(!oldest||voice->wasStartedBefore(*oldest))oldest=voice;}
         if(active<settings().polyphony||!oldest)break;
-        if(mode()==2&&settings().polyphony<getNumVoices())oldest->fadeForRetrigger();else oldest->stopNote(0,false);
+        if(mode()==2&&settings().polyphony<getNumVoices()){oldest->fadeForRetrigger();crossfade=true;}else oldest->stopNote(0,false);
     }
     juce::Synthesiser::noteOn(channel,note,velocity);
+    if(!crossfade)return;
+    SampleVoice* newest=nullptr;
+    for(int i=0;i<getNumVoices();++i){auto* voice=dynamic_cast<SampleVoice*>(getVoice(i));if(!voice||!voice->isVoiceActive()||voice->retiring()||voice->getCurrentlyPlayingNote()!=note||!voice->isPlayingChannel(channel))continue;if(!newest||newest->wasStartedBefore(*voice))newest=voice;}
+    if(newest)newest->fadeInForRetrigger();
 }
 }
