@@ -354,16 +354,21 @@ bool MainComponent::hasOpenPluginEditors()const{for(const auto& window:pluginWin
 
 namespace {
 void restoreFocusAfterHide(juce::Component::SafePointer<juce::Component> target,juce::Component::SafePointer<juce::Component> closed,juce::Time mouseDown,int remaining){
-    if(!target||!target->isShowing()||!target->isEnabled()||target->hasKeyboardFocus(false)||(closed&&closed->isShowing())||target->isCurrentlyBlockedByAnotherModalComponent()||remaining<=0)return;
-    // A subsequent click or reopened tool cancels the request. Wait for native
-    // activation without bringing an application back from the background.
+    if(!target||!target->isShowing()||!target->isEnabled()||(closed&&closed->isShowing())||target->isCurrentlyBlockedByAnotherModalComponent()||remaining<=0)return;
     if(juce::Desktop::getInstance().getMainMouseSource().getLastMouseDownTime()!=mouseDown)return;
-    // Windows can retain native thread focus while another process is foreground.
-    // Reconcile JUCE focus on that already-focused peer without raising a window.
-    const bool foreground=juce::Process::isForegroundProcess();
-    if(auto* peer=target->getPeer();peer&&peer->isFocused()){
-        if(foreground||juce::Component::getCurrentlyFocusedComponent()==nullptr){target->grabKeyboardFocus();if(target->hasKeyboardFocus(false))return;}
-    }else if(foreground)target->getTopLevelComponent()->toFront(true);
+    // Respect another control chosen with the keyboard, as well as mouse clicks.
+    // Only absent focus or the target's own native/container frame is recoverable.
+    auto* focused=juce::Component::getCurrentlyFocusedComponent();
+    if(focused&&focused!=target.getComponent()&&!focused->isParentOf(target.getComponent())&&
+       !(closed&&(focused==closed.getComponent()||closed->isParentOf(focused))))return;
+    if(!target->hasKeyboardFocus(false)){
+        const bool foreground=juce::Process::isForegroundProcess();
+        if(auto* peer=target->getPeer();peer&&peer->isFocused()){
+            if(foreground||focused==nullptr)target->grabKeyboardFocus();
+        }else if(foreground)target->getTopLevelComponent()->toFront(true);
+    }
+    // A later native focus-loss notification can follow a successful restoration.
+    // Observe the existing bounded interval; don't end it on the first success.
     juce::Timer::callAfterDelay(50,[target,closed,mouseDown,remaining]{restoreFocusAfterHide(target,closed,mouseDown,remaining-1);});
 }
 }

@@ -32,5 +32,10 @@ piano_folder = folder / 'piano-roll'
 run_application(build, '--piano-roll-test', piano_folder, timeout=90)
 if 'FAIL ' in (piano_folder / 'piano-roll.txt').read_text():
     raise RuntimeError('Piano roll chords, preferences or reference-note view regression')
+mastering_folder = folder / 'mastering'
+run_application(build, '--mastering-ui-test', mastering_folder, timeout=180)
+mastering = (mastering_folder / 'mastering-ui.txt').read_text(encoding='utf-8').splitlines()
+if not mastering or any(not line.startswith('PASS ') for line in mastering):
+    raise RuntimeError('Mastering Assistant native UI report missing, failed or incomplete')
 run_application(build, '--smoke-test', folder, timeout=600)
 verify('verify-audio.py', folder)

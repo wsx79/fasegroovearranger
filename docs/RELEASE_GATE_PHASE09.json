@@ -1,0 +1,173 @@
+{
+  "phase": 9,
+  "repository": "wsx79/fasegroovearranger",
+  "branch": "Vocaltest",
+  "evaluated_base": "23be496ed1b5618d3a235da5995293b078d89a8e",
+  "evaluated_utc": "2026-11-12T08:18:02.075729+00:00",
+  "verdict": "NO-GO",
+  "go": false,
+  "checks": [
+    {
+      "id": "release_build_linux",
+      "status": "PASS",
+      "scope": "GCC 14 Release, app/tests/VST3 fixtures"
+    },
+    {
+      "id": "ctest",
+      "status": "PASS",
+      "passed": 22,
+      "failed": 0,
+      "scope": "21 existing tests + 1 newly registered runner gate; engine/DSP executable unchanged by UI-only fix"
+    },
+    {
+      "id": "native_render",
+      "status": "PASS",
+      "scope": "startup/EQ/piano/general UI, six-language main UI, MIDI, WAV/MP3, 12 aligned active stems, MIX ASSIST, MASTER ASSIST (17)"
+    },
+    {
+      "id": "native_vst3_effects",
+      "status": "PASS",
+      "passed": 79,
+      "failed": 0
+    },
+    {
+      "id": "native_vst3_host",
+      "status": "PASS",
+      "scope": "15 editor/focus/freeze checks; legacy 1/2/3/4 multi-output projects/presets/automation, independent PCM"
+    },
+    {
+      "id": "export_ui_internal_and_vst3",
+      "status": "PASS",
+      "passed_per_scope": 43,
+      "scope": "two runs, actual cooperative Cancel button, repeated cancel/error/retry/overwrite/PDC; Linux only"
+    },
+    {
+      "id": "vocal_missing_helper",
+      "status": "PASS",
+      "scope": "14 metadata/missing-helper UI + 11 sample import; not synthesis or sound approval"
+    },
+    {
+      "id": "packaging_resources",
+      "status": "PASS",
+      "scope": "existing packaging/source/licence/checksum/PE fixtures and resources; synthetic PE is not Windows runtime"
+    },
+    {
+      "id": "local_linux_stage",
+      "status": "PASS",
+      "scope": "same executable hash, Master UI 17 and import 11; source/DLL portability not a distribution approval",
+      "exe_sha256": "a43f3edefefe339e6296860a0ce49e092765f36c47838a680e91941904403abc"
+    },
+    {
+      "id": "scoped_sanitizers",
+      "status": "PASS",
+      "runs": [
+        {
+          "mode": "asan",
+          "scope": "mix",
+          "exit": 0
+        },
+        {
+          "mode": "asan",
+          "scope": "mastering",
+          "exit": 0
+        },
+        {
+          "mode": "asan",
+          "scope": "engine",
+          "exit": 0
+        },
+        {
+          "mode": "tsan",
+          "scope": "mix",
+          "exit": 0
+        },
+        {
+          "mode": "tsan",
+          "scope": "mastering",
+          "exit": 0
+        },
+        {
+          "mode": "tsan",
+          "scope": "engine",
+          "exit": 0
+        },
+        {
+          "mode": "asan-ubsan",
+          "scope": "MainComponent + UiAuditTests native host/focus",
+          "exit": 0
+        }
+      ],
+      "scope": "ASan/UBSan 15 project TUs; TSan 15 plus JUCE core/events; ASan/UBSan app 2 UI TUs; other code uninstrumented"
+    }
+  ],
+  "blocking_or_pending": [
+    {
+      "id": "windows_cancel",
+      "status": "NOT RUN",
+      "reason": "No current native Windows run of the render Cancel fix; old previews predate the fix"
+    },
+    {
+      "id": "current_windows_build_package",
+      "status": "NOT RUN",
+      "reason": "No push permitted, Actions cannot consume local changes; no current native EXE/ZIP/source/DLL validation"
+    },
+    {
+      "id": "macos_AU",
+      "status": "NOT RUN",
+      "reason": "Linux environment; no current native macOS/AU/signing run"
+    },
+    {
+      "id": "human_hardware_vendor_plugins",
+      "status": "NOT RUN",
+      "reason": "Listening/dropout/drivers/native clicks/DPI/commercial VST3/AU require human/native setup"
+    },
+    {
+      "id": "vocal_functional_quality",
+      "status": "NOT RUN",
+      "reason": "Vocal Studio/Chops frozen and unapproved; actual external synthesis not revalidated"
+    },
+    {
+      "id": "full_instrumentation",
+      "status": "NOT RUN",
+      "reason": "Scoped sanitizers do not instrument every app/JUCE/driver/plugin TU"
+    },
+    {
+      "id": "distribution_corresponding_source",
+      "status": "NOT RUN",
+      "reason": "Only private Linux staging exercised; no current complete cross-platform distribution/package approved"
+    }
+  ],
+  "local_baseline": {
+    "startup": {
+      "exit": 0,
+      "wall_seconds": 0.8462265319976723,
+      "cpu_seconds": 0.29005000000000003,
+      "max_RSS_KiB": 56464
+    },
+    "sidechain": {
+      "exit": 0,
+      "wall_seconds": 32.077865361992735,
+      "cpu_seconds": 31.996840000000002,
+      "max_RSS_KiB": 178340
+    }
+  },
+  "resolved_regressions": [
+    "late native focus recovery and respect for keyboard-focused child; deterministic FAIL before/PASS after",
+    "unbounded 380.7049375 s export/freeze fixture replaced by one-bar fixture with unchanged timeouts",
+    "MASTER ASSIST omitted from native recipe; missing/FAIL/NOT RUN reports now rejected"
+  ],
+  "production_changes": [
+    "Source/MainComponent.cpp: bounded UI focus recovery only"
+  ],
+  "source_hashes": {
+    "Source/MainComponent.cpp": "fdadbb80901ae9bc326526e904c58b541cbbc350dfc56f0d3703208b847f8248",
+    "Source/UiAuditTests.cpp": "fd7af38e032ee50372bd357dcaf5815f9cf003677cc0ab46a6a9ee8d8f8d3a55",
+    "scripts/test-native-render.py": "2440b08783d9fcc2fd8a83b28e0f73c8925f4e5c3e520c5566a00c57e932d6f6",
+    "tests/test-native-render.py": "ce1ece260fa5211660b9ace3dc0e851f8e9679b47e27946a94cf2da12ac07a04",
+    "CMakeLists.txt": "1ee7156d6f4b6773e828b64ad6665eb42f9c26074dbd897377f6fedc0f6ac872"
+  },
+  "historical_windows_pass_not_applicable": "839f6e8 predates Cancel fix and assistants/focus correction",
+  "evidence_root": "/workspace/scratch/release-phase09",
+  "no_push_tag_merge_release": true,
+  "phase10_started": false
+}

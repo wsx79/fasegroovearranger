@@ -172,22 +172,36 @@ return false;
     if(!pluginWindow)return false;
     juce::String evidence;bool ok=true;
     auto check=[&](const char* name,bool passed){evidence+=juce::String(passed?"PASS ":"FAIL ")+name+"\n";ok=passed&&ok;};
-    auto checkFocus=[&](const char* label){check(label,hasKeyboardFocus(false));if(!hasKeyboardFocus(false)){auto* focused=juce::Component::getCurrentlyFocusedComponent();evidence+="Focus diagnostics: foreground="+juce::String((int)juce::Process::isForegroundProcess())+", DAW descendants="+juce::String((int)hasKeyboardFocus(true))+", peer="+juce::String((int)(getPeer()&&getPeer()->isFocused()))+", focused="+(focused?focused->getName()+" / "+focused->getComponentID():juce::String("none"))+"\n";}};
+    auto checkFocus=[&](const char* label){check(label,hasKeyboardFocus(false));if(!hasKeyboardFocus(false)){auto* focused=juce::Component::getCurrentlyFocusedComponent();evidence+="Focus diagnostics: enabled="+juce::String((int)isEnabled())+", wants="+juce::String((int)getWantsKeyboardFocus())+", modal="+juce::String((int)isCurrentlyBlockedByAnotherModalComponent())+", foreground="+juce::String((int)juce::Process::isForegroundProcess())+", DAW descendants="+juce::String((int)hasKeyboardFocus(true))+", peer="+juce::String((int)(getPeer()&&getPeer()->isFocused()))+", focused="+(focused?focused->getName()+" / "+focused->getComponentID():juce::String("none"))+"\n";}};
     auto centred=[this]{auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay();return display&&pluginWindow->getBounds().getCentre().getDistanceFrom(display->userArea.getCentre())<3;};
     auto settleCentre=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+1500.;while(pluginWindow&&!centred()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);};
     settleCentre();
     check("VST editor visible",pluginWindow->isVisible());check("VST editor always on top",pluginWindow->isAlwaysOnTop());check("VST editor centred",centred());if(!centred()){evidence+="Window bounds: "+pluginWindow->getBounds().toString()+"\n";if(auto* display=juce::Desktop::getInstance().getDisplays().getPrimaryDisplay())evidence+="Display user area: "+display->userArea.toString()+"\n";}
     pluginWindow->setTopLeftPosition(41,52);pluginWindow->closeButtonPressed();settleNativeFocus(*this);check("VST editor hidden after close",!pluginWindow->isVisible());checkFocus("DAW keyboard focus restored");
     pluginEditorButton.onClick();settleCentre();check("VST editor reopened",hasOpenPluginEditors());check("Reopened VST editor always on top",pluginWindow&&pluginWindow->isAlwaysOnTop());check("Reopened VST editor centred",pluginWindow&&centred());
-    pluginWindow->closeButtonPressed();giveAwayKeyboardFocus();settleNativeFocus(*this);checkFocus("DAW focus recovered after a late native focus-loss notification");showArrangement();select(1,0);
+    pluginWindow->closeButtonPressed();giveAwayKeyboardFocus();
+    juce::Component::SafePointer<MainComponent> focusTarget(this);
+    juce::Timer::callAfterDelay(250,[focusTarget]{if(focusTarget)focusTarget->giveAwayKeyboardFocus();});
+    const auto afterLateLoss=juce::Time::getMillisecondCounterHiRes()+350.;while(juce::Time::getMillisecondCounterHiRes()<afterLateLoss)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    settleNativeFocus(*this);checkFocus("DAW focus recovered after a late native focus-loss notification");
+    {juce::TextEditor deliberateTarget;addAndMakeVisible(deliberateTarget);deliberateTarget.setBounds(20,20,160,24);pluginEditorButton.onClick();settleCentre();pluginWindow->closeButtonPressed();deliberateTarget.grabKeyboardFocus();
+     const auto until=juce::Time::getMillisecondCounterHiRes()+200.;while(juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+     check("Deferred recovery preserves explicit keyboard focus on a child",deliberateTarget.hasKeyboardFocus(false));}
+    grabKeyboardFocus();showArrangement();select(1,0);
     const int row=rowForTrack(0);arrangementPort.setViewPosition(0,std::max(0,arrangement.rowY(row)-rulerHeight));
     const auto view=arrangementPort.getViewArea();const auto point=headerChrome(view.getX(),arrangement.rowY(row),arrangement.rowHeight(row)).gear.getCentre().toFloat();
     const juce::MouseEvent gear(juce::Desktop::getInstance().getMainMouseSource(),point,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,&arrangement,&arrangement,juce::Time::getCurrentTime(),point,juce::Time::getCurrentTime(),1,false);
     arrangement.mouseMove(gear);check("VST gear tooltip follows hovered source",audio.plugin(0)&&arrangement.getTooltip()==tr("Open %plugin%").replace("%plugin%",audio.plugin(0)->getName()));
     const auto midi=midiFile(project);const auto history=undoStack.size();arrangement.mouseDown(gear);arrangement.mouseUp(gear);settleCentre();
     check("VST header gear opens native editor without MIDI or Undo changes",selectedTrack==0&&hasOpenPluginEditors()&&pluginWindow->isVisible()&&midiFile(project)==midi&&undoStack.size()==history);
+    // Keep the export/freeze lifecycle probe independent of the default song length.
+    const auto fullProject=project;
+    project.sections={{Section::main,1,"VST freeze QA"}};project.settings.bpm=120;project.settings.freeTempo=true;
+    for(auto& t:project.tracks)t.clips.assign(1,{});
+    project.tracks[0].clips[0].notes={{0,1,69,100,0}};project.normalise();audio.publish(project);refreshControls();
     {exportFile(5,0,folder.getChildFile("before-freeze.wav"));const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);check("Audio export retires its task before Freeze/Unfreeze",!mediaBusy&&!exportTask);}
     {auto* original=audio.plugin(0);const auto notes=midiFile(project);const auto history=undoStack.size();freezeTrack(0);const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while(exportTask&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);check("Freeze retains and suspends real VST without MIDI/Undo edits",!exportTask&&audio.trackFrozen(0)&&audio.plugin(0)==original&&original&&original->isSuspended()&&midiFile(project)==notes&&undoStack.size()==history);if(audio.trackFrozen(0))freezeTrack(0);check("Unfreeze instantly resumes same real VST instance",!audio.trackFrozen(0)&&audio.plugin(0)==original&&original&&!original->isSuspended());}
+    project=fullProject;audio.publish(project);refreshControls();
     if(auto out=folder.getChildFile("plugin-inspector.png").createOutputStream()){juce::PNGImageFormat png;png.writeImageToStream(trackInspector.createComponentSnapshot(trackInspector.getLocalBounds()),*out);}
     folder.getChildFile("plugin-window.txt").replaceWithText(evidence);if(juce::SystemStats::getEnvironmentVariable("FGA_SKIP_EXPORT_UI_TEST","0")=="1")folder.getChildFile("export-ui-skipped.txt").replaceWithText("SKIP previously verified export UI; default CI runs the complete flow.");else ok=verifyExports(folder.getChildFile("export-ui"))&&ok;closePluginEditor();return ok;
 #endif
