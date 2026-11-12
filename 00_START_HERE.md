@@ -2,7 +2,7 @@
 Baseline checked: v0.43.2, repository `wsx79/fasegroovearranger` (always verify current HEAD before work).
 
 ## Product decisions (non-negotiable)
-- **Sung Vocal Studio FIRST, then existing Vocal Chops**. Voice generation/editing must precede new mixing/mastering features.
+- **Current user decision:** eCantorix/eSpeak is removed; Vocal Studio is hidden and inactive, with reusable source and project metadata retained for future work. Do not reactivate it without approval. The historical Phase 01 requirements below do not authorize an active backend. Vocal Chops remains separate and unchanged.
 - Harmony, musicality, arrangement and 15 genre engines are already satisfactory with appropriate VST instruments and user samples: do not alter without a reproduced defect.
 - Built-in guide sounds are lightweight previews, **not** targets for production-grade sound design.
 - Keep two separate workflows: Vocal Studio (lyrics+MIDI singing) and Vocal Chops (sample slicing/triggering). Reuse existing piano roll, vocal chops, audio tracks/takes, mixer, EQ, export, plugin host, automation and project persistence. Inspect actual current implementation first.

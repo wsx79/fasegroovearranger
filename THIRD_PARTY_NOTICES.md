@@ -90,13 +90,3 @@ The AIREITER article https://aireiter.com/it/blog/best-free-ai-api is credited a
 the user's introductory reference; provider documentation was checked directly
 on 2026-10-31. The guide text and integration are original; no article text or
 third-party model weights were copied.
-
-## Optional external English guide tools
-
-Vocal Studio can invoke a separately user-installed GPL eCantorix/eSpeak/SoX
-stack. No executable, voice data or Perl module from it is bundled or linked.
-The source-only preparation script in `helpers/ecantorix` is GPL-3.0-or-later;
-its COPYING and modification notices must accompany redistributed helper source.
-See `docs/VOCAL_GUIDE_LICENSES.md` for pinned sources, dependency terms, output use
-and the outstanding platform-package review. Process separation does not waive
-GPL/AGPL distribution obligations.

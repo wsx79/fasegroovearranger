@@ -22,7 +22,6 @@ for system, suffix in systems:
                      'CHANGELOG.md', 'CHANGELOG.it.md', 'PRIVACY.it.md', 'PRIVACY.md', 'THIRD_PARTY_NOTICES.md',
                      'Resources/Inter-OFL.txt', 'Resources/Inter-Regular.otf', 'Resources/Inter-SemiBold.otf',
                      'Resources/arranger.svg', 'Resources/arranger-project.ico', 'ThirdParty/shine/COPYING',
-                     'helpers/ecantorix/prepare.pl', 'helpers/ecantorix/COPYING', 'helpers/ecantorix/README.md',
                      'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-linear/LICENSE.txt',
                      'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
                      'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE', 'docs/GUIDE.md', 'docs/GUIDA.md']:
@@ -50,11 +49,8 @@ for system, suffix in systems:
             assert 'docs/ARCHITECTURE.md' not in names and 'docs/VALIDATION.md' not in names
             assert 'Resources/Inter-Regular.otf' not in names and 'Resources/Inter-SemiBold.otf' not in names
             assert 'Resources/Inter-OFL.txt' in names and 'ThirdParty/shine/COPYING' in names
-            for helper in ['prepare.pl', 'COPYING', 'README.md']:
-                entry = 'helpers/ecantorix/' + helper
-                assert archive.read(entry) == (repo / entry).read_bytes()
-            for guide in ['VOCAL_STUDIO.md', 'VOCAL_GUIDE_LICENSES.md', 'VOCAL_GUIDE_VALIDATION.md',
-                          'VOCAL_GUIDE_MANUAL_TEST.it.md', 'VOCAL_CHOPS_PHASE02.md',
+            assert not any(name.lower().startswith('helpers/ecantorix/') for name in names)
+            for guide in ['VOCAL_STUDIO.md', 'VOCAL_CHOPS_PHASE02.md',
                           'VOCAL_CHOPS_IMPORT.md', 'VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
                           'VOCALTEST_PREVIEW_WINDOWS.it.md']:
                 entry = 'docs/' + guide
@@ -91,4 +87,4 @@ for system, suffix in systems:
         assert not list((root / 'dist').glob('*.zip'))
         assert (root / 'dist/package/Standalone' / binary.name).read_bytes() == alternate.read_bytes()
         assert b'b' * 40 in (root / 'dist/package/SOURCE.txt').read_bytes()
-print('PASS platform packaging fixtures, GPL source/licence files, source pointer, clean staging, alternate build and stage-only; NOT native executable validation')
+print('PASS platform packaging fixtures, licences, removed-helper exclusion, source pointer, clean staging, alternate build and stage-only; NOT native executable validation')

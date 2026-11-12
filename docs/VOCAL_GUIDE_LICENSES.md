@@ -1,3 +1,7 @@
+> **Documento storico del backend rimosso.** Non descrive dipendenze o funzioni
+> attive di Vocaltest. eCantorix/eSpeak e i relativi helper non sono più eseguiti
+> né distribuiti. [Stato corrente di Vocal Studio](VOCAL_STUDIO.md).
+
 # English guide: licences and platform gate (2026-11-10)
 
 Approved: classic eCantorix/eSpeak formant synthesis for a subsequent real singer's
@@ -62,7 +66,7 @@ confirms list-form pipes on native Windows from that version; binary mode is exp
 **not built or run on macOS**, including Apple Silicon and XS/toolchain setup.
 No mandatory WSL/Bash; no unverified installers downloaded or bundled.
 
-Preparation/setup: [helper instructions](../helpers/ecantorix/README.md).
+Preparation/setup: [helper instructions](https://github.com/wsx79/fasegroovearranger/blob/914822728be562047d0790607f63323d4aaa12ca/helpers/ecantorix/README.md).
 
 ## Vocaltest Preview Windows audit (2026-11-10)
 

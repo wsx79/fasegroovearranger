@@ -152,11 +152,9 @@ void MainComponent::showClipMenu(int track,int index){
     const auto* candidate=hasClip?&source.clips[(size_t)index]:nullptr;
     const bool convertible=candidate&&candidate->audioOffset<0&&source.instrument=="sample"&&(source.sampler.mode==1||(source.sampler.mode<0&&isDrumTrack(track)))&&candidate->notes.size()==1&&candidate->notes[0].pitch==source.sampleRoot&&std::abs(candidate->notes[0].start)<1e-9&&audio.sampleAsset(track);
     menu.addItem(30,tr("Convert to Audio Region"),convertible);
-    menu.addItem(33,"Vocal Studio (English)...",candidate&&isManualTrack(source.kind)&&!source.vocalChops&&candidate->audioOffset<0);
     menu.addItem(32,tr("Clear Extracted Groove"),project.settings.grooveEnabled);menu.addItem(31,tr("Reset Clip Feel to Global"),candidate&&std::any_of(candidate->feel.begin(),candidate->feel.end(),[](double v){return v>=0;}));
     menu.addItem(1,tr("Rigenera solo questo clip"),hasClip);menu.addItem(2,tr("Blocca generazione"),hasClip,hasClip&&project.tracks[(size_t)track].clips[(size_t)index].locked);menu.addItem(6,tr("LOOP CLIP"),hasClip,hasClip&&project.loop&&project.loopMatches(project.clipStart(track,index),project.clipStart(track,index)+project.clipLength(track,index)));menu.addItem(7,tr("Clear loop"),project.loop||project.hasLoopRegion());
     juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,track,index](int id){if(!safe||!id)return;safe->selectClip(track,index,true);
-        if(id==33){safe->showVocalStudio();return;}
         if(id==30){const auto asset=safe->audio.sampleAsset(track);if(!asset)return;safe->checkpoint();auto& t=safe->project.tracks[(size_t)track];auto& c=safe->clip();c.span=safe->clipLength();c.audioOffset=t.sampler.start*asset->seconds();c.audioDuration=std::min(c.span*60./safe->project.settings.bpm,std::max(0.,t.sampler.end*asset->seconds()-c.audioOffset));if(c.audioDuration<=0){safe->undo(false);return;}c.loopLength=c.loopPhase=0;c.loopSource.clear();c.notes[0].length=c.span;safe->changed();return;}
         if(id==32){safe->checkpoint();safe->project.settings.grooveEnabled=false;generate(safe->project);safe->changed();return;}
         if(id==31){safe->checkpoint();safe->clip().feel={-1,-1,-1};generate(safe->project,Scope::clip,track,safe->clipIndex(),0);safe->changed();return;}

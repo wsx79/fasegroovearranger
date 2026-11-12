@@ -9,6 +9,7 @@ struct GuideVocalPlan {
     std::vector<std::pair<double,double>> audible; // seconds relative to the rendered take
 };
 juce::Result guideVocalPlan(const Project&,int track,int clip,GuideVocalPlan&);
-juce::Result renderGuideVocal(const Project&,int track,int clip,const juce::File& script,const juce::File& cache,
-    AudioTake&,const std::function<bool()>& cancelled,const std::function<void(double)>& progress, bool* cacheHit = nullptr);
+// Dormant render boundary. No files, processes or audio are produced without a future backend.
+juce::Result renderGuideVocal(const Project&,int track,int clip,AudioTake&,
+    const std::function<bool()>& cancelled,const std::function<void(double)>& progress);
 }

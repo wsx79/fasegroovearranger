@@ -1,3 +1,7 @@
+> **Documento storico del backend rimosso.** Non descrive dipendenze o funzioni
+> attive di Vocaltest. eCantorix/eSpeak e i relativi helper non sono più eseguiti
+> né distribuiti. [Stato corrente di Vocal Studio](VOCAL_STUDIO.md).
+
 # 01C validation notes
 
 Linux, 2026-11-10; branch Vocaltest; baseline ac8744a, v0.43.2.

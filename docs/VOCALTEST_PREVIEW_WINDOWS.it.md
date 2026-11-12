@@ -1,3 +1,8 @@
+> **Aggiornamento corrente:** Vocal Studio è nascosto e il backend eCantorix/eSpeak
+> è rimosso. I risultati vocali e le dipendenze citati sotto appartengono alle
+> vecchie build; non sono istruzioni di installazione per la versione corrente.
+> Usare [lo stato attuale](VOCAL_STUDIO.md).
+
 # Vocaltest Preview Windows x64 — Actions
 
 **Known blocker reported after publication:** Windows export Cancel can block
@@ -247,7 +252,7 @@ Il test dell'editor senza helper prevede 14 controlli e una voce esplicita
 NOT RUN per la sintesi esterna: non equivale ai 22 controlli Linux con helper reale.
 Versioni, hash, licenze e funzionamento degli archivi Windows effettivi restano
 una verifica separata prima di qualsiasi futura redistribuzione. La separazione
-in processi non è un'esenzione GPL. [Termini e fonti](VOCAL_GUIDE_LICENSES.md).
+in processi non è un'esenzione GPL. [Termini e fonti](https://github.com/wsx79/fasegroovearranger/blob/914822728be562047d0790607f63323d4aaa12ca/docs/VOCAL_GUIDE_LICENSES.md).
 
 I test numerici/sintetici della CI non certificano ascolto, dispositivi reali,
 prestazioni realtime, tutti i VST di terzi o avvio su Windows 11 dell'utente.

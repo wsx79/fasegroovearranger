@@ -13,7 +13,12 @@ void runVocalStudioIOTests(){
     p.normalise();const auto json=projectJson(p);Project restored;
     require(projectFromJson(juce::JSON::parse(juce::JSON::toString(json,false,17)),restored).wasOk()&&restored.tracks[(size_t)t].clips==p.tracks[(size_t)t].clips,"Vocal Studio JSON round trip including missing model and melisma");
     const auto temp=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-vocal-io","",false);temp.createDirectory();const auto file=temp.getChildFile("vocal.fga");
-    require(saveProject(p,file).wasOk()&&loadProject(file,restored).wasOk()&&restored.tracks[(size_t)t].clips==p.tracks[(size_t)t].clips,"Vocal Studio actual file save/reopen");temp.deleteRecursively();
+    require(saveProject(p,file).wasOk()&&loadProject(file,restored).wasOk()&&restored.tracks[(size_t)t].clips==p.tracks[(size_t)t].clips,"Vocal Studio actual file save/reopen");
+    // Old engine identifiers are data, not executable backend selection.
+    auto guide=p;auto& stored=*guide.tracks[(size_t)t].clips[0].vocal;stored.voice="ecantorix-en";stored.modelPath="/removed/helper.pl";
+    const auto guideJson=juce::JSON::toString(projectJson(guide),false,17);
+    require(saveProject(guide,file).wasOk()&&loadProject(file,restored).wasOk()&&juce::JSON::toString(projectJson(restored),false,17)==guideJson,"removed engine metadata round trips without migration, loading a helper or losing lyrics");
+    temp.deleteRecursively();
     auto invalid=[&](const std::function<void(juce::var&)>& edit){auto bad=juce::JSON::parse(juce::JSON::toString(json));auto data=bad["tracks"][t]["clips"][0]["vocalStudio"];edit(data);const auto before=projectJson(restored);require(projectFromJson(bad,restored).failed(),"malformed vocal metadata rejected");require(juce::JSON::toString(before)==juce::JSON::toString(projectJson(restored)),"failed vocal load preserves open project");};
     invalid([](juce::var& v){v.getDynamicObject()->setProperty("language","it");});
     invalid([](juce::var& v){v.getDynamicObject()->setProperty("schema",2);});

@@ -3,14 +3,14 @@
 #include "MainComponent.h"
 #include "ProjectIO.h"
 #include "GuideVocalRender.h"
-#include "ExportSupport.h"
+#include "VocalStudioAvailability.h"
 #include <cstdlib>
 namespace fga {
 class GuideJob final:public juce::Thread {
 public:
-    GuideJob(Project p,int t,int c,juce::File f):Thread("English guide render"),snapshot(std::move(p)),track(t),clip(c),script(f){}
-    void run()override{result=renderGuideVocal(snapshot,track,clip,script,juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory).getChildFile("FaseGrooveArranger/VocalGuideCache"),take,[this]{return threadShouldExit();},[this](double value){progress=value;});}
-    Project snapshot;int track,clip;juce::File script;AudioTake take;juce::Result result=juce::Result::fail("Guide not rendered.");std::atomic<double> progress{0};
+    GuideJob(Project p,int t,int c):Thread("English guide render"),snapshot(std::move(p)),track(t),clip(c){}
+    void run()override{result=renderGuideVocal(snapshot,track,clip,take,[this]{return threadShouldExit();},[this](double value){progress=value;});}
+    Project snapshot;int track,clip;AudioTake take;juce::Result result=juce::Result::fail("Guide not rendered.");std::atomic<double> progress{0};
 };
 // Modeless: notes remain editable in the existing piano roll while this panel is open.
 class VocalStudioEditor final:public juce::Component,private juce::Timer {
@@ -26,7 +26,7 @@ public:
         lyrics.setMultiLine(true);lyrics.setReturnKeyStartsNewLine(true);lyrics.setInputRestrictions(65536);
         text.setInputRestrictions(256);phonemes.setInputRestrictions(512);modelPath.setInputRestrictions(4096);
         for(auto* box:{&syllables,&voices})addAndMakeVisible(box);
-        voices.addItem("No voice selected",1);voices.addItem("Legacy voice unavailable",2);voices.setItemEnabled(2,false);voices.addItem("eCantorix / eSpeak English guide",3);
+        voices.addItem("No voice selected",1);voices.addItem("Legacy voice unavailable",2);voices.setItemEnabled(2,false);
         addAndMakeVisible(allowIntroOutro);allowIntroOutro.setButtonText("Allow singing in DJ intro / outro (explicit override)");
         for(auto* button:{&apply,&add,&remove,&assign,&rest,&focus,&render,&cancel,&use,&exportGuide})addAndMakeVisible(button);
         apply.setButtonText("Apply text / settings");add.setButtonText("Add syllable");remove.setButtonText("Delete syllable");
@@ -85,25 +85,18 @@ private:
         setEnabled(true);const auto& clip=owner->project.tracks[(size_t)t].clips[(size_t)c];const auto& v=*clip.vocal;
         heading.setText("Vocal Studio / "+juce::String::fromUTF8(owner->project.tracks[(size_t)t].name.c_str())+" / beat "+juce::String(owner->project.clipStart(t,c),2),juce::dontSendNotification);
         lyrics.setText(juce::String::fromUTF8(v.lyrics.c_str()),false);regionStart.setText(juce::String(v.regionStart,4),false);regionEnd.setText(juce::String(v.regionEnd,4),false);
-        modelPath.setText(juce::String::fromUTF8(v.modelPath.c_str()),false);voices.setSelectedId(v.voice=="ecantorix-en"?3:v.voice.empty()?1:2,juce::dontSendNotification);allowIntroOutro.setToggleState(v.allowIntroOutro,juce::dontSendNotification);
+        modelPath.setText(juce::String::fromUTF8(v.modelPath.c_str()),false);voices.setSelectedId(v.voice.empty()?1:2,juce::dontSendNotification);allowIntroOutro.setToggleState(v.allowIntroOutro,juce::dontSendNotification);
         const int selected=syllables.getSelectedId();syllables.clear(juce::dontSendNotification);
         for(const auto& syllable:v.syllables)syllables.addItem(juce::String::fromUTF8(syllable.text.c_str()).isEmpty()?"(empty syllable)":juce::String::fromUTF8(syllable.text.c_str()),syllable.id);
         if(std::any_of(v.syllables.begin(),v.syllables.end(),[&](const auto& s){return s.id==selected;}))syllables.setSelectedId(selected,juce::dontSendNotification);
         else if(!v.syllables.empty())syllables.setSelectedId(v.syllables.front().id,juce::dontSendNotification);
         displayed=v;loadSyllable();
-        juce::String info="English only. Select eCantorix to render a synthetic guide.";
-        if(v.voice=="qixuan-candidate")info="Legacy voice unavailable. Select eCantorix English guide.";
-        if(v.voice=="ecantorix-en"){
-            info="Offline English synthetic guide. Requires prepared eCantorix, native Perl, eSpeak and SoX. Phoneme drafts are ignored.";
-            if(v.modelPath.empty()||!juce::File::isAbsolutePath(juce::String::fromUTF8(v.modelPath.c_str()))||!juce::File(juce::String::fromUTF8(v.modelPath.c_str())).existsAsFile())info+=" Helper missing.";
-        }
-        modelLabel.setText("Path to prepared ecantorix.pl (trusted local GPL installation)",juce::dontSendNotification);
-        status.setText(info,juce::dontSendNotification);
+        status.setText("Vocal Studio is disabled; no synthesis backend is installed. Legacy metadata is preserved.",juce::dontSendNotification);
     }
     void timerCallback()override{
         if(job&&!job->isThreadRunning()){finished=std::move(job);status.setText(finished->result.wasOk()?"Guide ready. Add the audio take, then play/export it using the existing mixer.":finished->result.getErrorMessage(),juce::dontSendNotification);}
         exportGuide.setEnabled(importedTrack()>=0&&editable());
-        render.setEnabled(!job&&editable());cancel.setEnabled(job!=nullptr);use.setEnabled(finished&&finished->result.wasOk()&&editable());
+        render.setEnabled(vocalStudioEnabled&&!job&&editable());cancel.setEnabled(job!=nullptr);use.setEnabled(finished&&finished->result.wasOk()&&editable());
         if(job)status.setText("Rendering English guide locally... "+juce::String((int)(job->progress.load()*100))+"% (estimated)",juce::dontSendNotification);
         auto* clip=current();if(!clip){if(job)job->signalThreadShouldExit();refresh();return;}
         if(!isEnabled()||!displayed||!(*displayed==*clip->vocal))refresh();
@@ -124,7 +117,7 @@ private:
         if(!number(regionStart.getText(),start)||!number(regionEnd.getText(),end)||start<0||end<start||end>owner->project.clipLength(t,c)){status.setText("Invalid region: use 0 <= start <= end <= clip length.",juce::dontSendNotification);return false;}
         auto raw=lyrics.getText().toStdString(),word=text.getText().toStdString(),pronunciation=phonemes.getText().toStdString(),path=modelPath.getText().trim().toStdString();
         if(raw.size()>65536||word.size()>256||pronunciation.size()>512||path.size()>4096){status.setText("Text exceeds the supported size.",juce::dontSendNotification);return false;}
-        v.lyrics=std::move(raw);v.regionStart=start;v.regionEnd=end;v.allowIntroOutro=allowIntroOutro.getToggleState();v.voice=voices.getSelectedId()==3?"ecantorix-en":voices.getSelectedId()==2?"qixuan-candidate":"";v.modelPath=std::move(path);
+        v.lyrics=std::move(raw);v.regionStart=start;v.regionEnd=end;v.allowIntroOutro=allowIntroOutro.getToggleState();if(voices.getSelectedId()==1)v.voice.clear();v.modelPath=std::move(path);
         for(auto& entry:v.syllables)if(entry.id==syllables.getSelectedId()){entry.text=std::move(word);entry.phonemes=std::move(pronunciation);}
         commit(std::move(next));return true;
     }
@@ -144,10 +137,11 @@ private:
         if(assignVocalSyllable(next,syllables.getSelectedId(),ids))commit(std::move(next));
     }
     void beginRender(){
+        if(!vocalStudioEnabled){status.setText("Vocal Studio rendering is unavailable; no backend is installed.",juce::dontSendNotification);return;}
         if(job||!applyDraft())return;
         int t,c;if(!locate(t,c))return;
         GuideVocalPlan plan;if(auto r=guideVocalPlan(owner->project,t,c,plan);r.failed()){status.setText(r.getErrorMessage(),juce::dontSendNotification);return;}
-        finished.reset();job=std::make_unique<GuideJob>(owner->project,t,c,juce::File::isAbsolutePath(modelPath.getText())?juce::File(modelPath.getText()):juce::File());job->startThread();
+        finished.reset();job=std::make_unique<GuideJob>(owner->project,t,c);job->startThread();
     }
     void useTake(){
         if(!finished||finished->result.failed()||!editable()||!applyDraft())return;
@@ -169,7 +163,7 @@ public:
 };
 }
 void MainComponent::showVocalStudio(){
-    if(loadingPlugin||editingRestricted())return;
+    if(!vocalStudioEnabled||loadingPlugin||editingRestricted())return;
     auto& track=project.tracks[(size_t)selectedTrack];
     if(!isManualTrack(track.kind)||track.vocalChops||clip().audioOffset>=0){message("Vocal Studio needs a separate manual MIDI clip. Vocal Chops and audio regions use their existing editors.",true);return;}
     if(!clip().vocal){checkpoint();enableVocalClip(clip(),clipLength());changed(false);}
@@ -183,15 +177,23 @@ bool MainComponent::verifyVocalStudio(const juce::File& folder){
     auto check=[&](bool passed,const char* name){ok=ok&&passed;report+=(passed?"PASS ":"FAIL ")+juce::String(name)+"\n";};
     audio.stop();setSize(1440,980);project=Project{};project.sections={{Section::intro,16,"DJ intro"},{Section::main,8,"Verse"},{Section::outro,16,"DJ outro"}};project.normalise();
     const int track=project.addMidiTrack();auto& source=project.tracks[(size_t)track].clips[0];source.position=0;source.span=project.length();source.notes={{64,1,60,100,0},{66,1,62,100,0}};
-    selectClip(track,0,true);showEditor();const auto notes=clip().notes;showVocalStudio();
-    auto* panel=dynamic_cast<VocalStudioEditor*>(vocalStudioWindow->getContentComponent());if(!panel)return false;
+    selectClip(track,0,true);showEditor();const auto notes=clip().notes;
+    const auto unchanged=juce::JSON::toString(projectJson(project));showVocalStudio();
+    check(!vocalStudioWindow&&!clip().vocal&&juce::JSON::toString(projectJson(project))==unchanged,"disabled entry cannot open UI or create vocal metadata");
+    // Exercise the retained editor offscreen, never through a user-visible window.
+    enableVocalClip(clip(),clipLength());clip().vocal->voice="ecantorix-en";clip().vocal->modelPath="/legacy/helper.pl";
+    const auto legacy=juce::JSON::toString(projectJson(project));showVocalStudio();
+    check(!vocalStudioWindow&&juce::JSON::toString(projectJson(project))==legacy,"legacy vocal project cannot auto-open or rewrite metadata");
+    auto retained=std::make_unique<VocalStudioEditor>(*this,clip().vocal->id);auto* panel=retained.get();panel->timerCallback();
+    check(!panel->isShowing()&&!panel->render.isEnabled(),"retained editor stays offscreen with rendering disabled");
+    panel->beginRender();check(!panel->job&&!panel->finished&&panel->status.getText().contains("unavailable"),"direct render action cannot launch a worker or backend");
     check(clip().notes.size()==notes.size()&&clip().notes[0].start==64&&clip().notes[0].pitch==60,"opening Vocal Studio preserves authored notes");
     check(!vocalBeatAllowed(project,track,0,0)&&!vocalBeatAllowed(project,track,0,96),"intro and outro silent by default in vocal region policy");
     panel->lyrics.setText("Hello",false);panel->add.onClick();panel->text.setText("hel",false);panel->phonemes.setText("hh eh l",false);
-    panel->voices.setSelectedId(3,juce::dontSendNotification);panel->modelPath.setText("/missing/ecantorix.pl",false);panel->apply.onClick();
+    panel->apply.onClick();
     piano.selected={0,1};panel->assign.onClick();
     check(clip().vocal->lyrics=="Hello"&&clip().vocal->syllables[0].noteIds.size()==2&&clip().vocal->syllables[0].phonemes=="hh eh l","real editor controls save English lyrics, pronunciation draft and melisma");
-    check(panel->status.getText().contains("missing"),"missing guide helper is explicit");
+    check(clip().vocal->voice=="ecantorix-en"&&clip().vocal->modelPath=="/legacy/helper.pl","editing retained draft preserves opaque legacy voice/path");
     const auto originalLinks=clip().vocal->syllables[0].noteIds;
     piano.selected={0};copyButton.onClick();editCursor=0;pasteButton.onClick();
     check(clip().vocal->syllables[0].noteIds==originalLinks&&clip().notes[0].start==0&&clip().notes[0].vocalId!=originalLinks[0],"pasting before the original cannot steal lyric IDs");undo(false);panel->timerCallback();
@@ -202,31 +204,7 @@ bool MainComponent::verifyVocalStudio(const juce::File& folder){
     check(clip().vocal->syllables[0]==syllable,"existing note edits preserve lyric association after sorting");
     panel->rest.onClick();check(clip().vocal->syllables[0].noteIds.empty(),"explicit rest/unassign");undo(false);panel->timerCallback();
     const auto before=clip();panel->regionStart.setText("invalid",false);panel->apply.onClick();check(clip()==before,"invalid region cannot mutate project");panel->refresh();
-    const auto file=folder.getChildFile("vocal.fga");Project reopened;check(saveProject(project,file).wasOk()&&loadProject(file,reopened).wasOk()&&reopened.tracks[(size_t)track].clips==project.tracks[(size_t)track].clips,"actual save/reopen with missing guide helper");
-    const auto helper=juce::SystemStats::getEnvironmentVariable("FGA_ECANTORIX","");
-    if(helper.isNotEmpty()){
-        panel->modelPath.setText(helper,false);panel->text.setText("hello",false);panel->apply.onClick();
-        const auto start=juce::Time::getMillisecondCounterHiRes();panel->render.onClick();
-        check(panel->job&&juce::Time::getMillisecondCounterHiRes()-start<250,"render starts asynchronously on editor action");
-        const auto deadline=start+180000;
-        while(panel->job&&juce::Time::getMillisecondCounterHiRes()<deadline){juce::MessageManager::getInstance()->runDispatchLoopUntil(10);panel->timerCallback();}
-        check(panel->finished&&panel->finished->result.wasOk(),"real editor offline guide completes");
-        const auto count=project.tracks.size();
-        panel->text.setText("world",false);panel->use.onClick();
-        check(project.tracks.size()==count&&clip().vocal->syllables[0].text=="world"&&panel->status.getText().contains("Render again"),"unapplied lyric draft cannot import stale rendered take");
-        undo(false);panel->timerCallback();
-        checkpoint();clip().notes[0].pitch++;changed(false);panel->use.onClick();
-        check(project.tracks.size()==count&&panel->status.getText().contains("Render again"),"edited notes reject stale rendered take");
-        undo(false);panel->timerCallback();panel->use.onClick();
-        check(project.tracks.size()==count+1&&project.tracks[(size_t)track].mute&&panel->importedTrack()>=0,"editor adds existing audio take and mutes source MIDI");
-        undo(false);panel->timerCallback();check(project.tracks.size()==count&&!project.tracks[(size_t)track].mute,"Undo guide import restores tracks and source mute");
-        undo(true);waitForSampleImportForTests();panel->timerCallback();check(project.tracks.size()==count+1&&panel->importedTrack()>=0,"Redo guide import");
-        const auto exported=exportNamedFile(folder.getChildFile("english-guide-"+juce::Uuid().toString()+".wav"),project,"wav");
-        exportFile(5,panel->importedTrack(),exported,true);
-        const auto exportDeadline=juce::Time::getMillisecondCounterHiRes()+60000;
-        while(mediaBusy&&juce::Time::getMillisecondCounterHiRes()<exportDeadline)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);
-        check(!mediaBusy&&exported.existsAsFile()&&exported.getSize()>44,"existing async single-track WAV export from guide take");
-    }else report+="NOT RUN actual editor render/import (FGA_ECANTORIX unset)\n";
+    const auto file=folder.getChildFile("vocal.fga");Project reopened;check(saveProject(project,file).wasOk()&&loadProject(file,reopened).wasOk()&&reopened.tracks[(size_t)track].clips==project.tracks[(size_t)track].clips,"actual save/reopen without any synthesis backend");
     if(auto out=folder.getChildFile("vocal-editor.png").createOutputStream())check(juce::PNGImageFormat().writeImageToStream(panel->createComponentSnapshot(panel->getLocalBounds()),*out),"editor screenshot");
     project=Project{};project.normalise();select(0,0);panel->timerCallback();check(!panel->isEnabled(),"stale editor safely disables after project replacement");vocalStudioWindow.reset();
     folder.getChildFile("vocal-studio.txt").replaceWithText(report);return ok;

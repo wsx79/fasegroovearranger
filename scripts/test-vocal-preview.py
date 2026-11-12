@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Reuse vocal UI regressions without installing unreviewed external voice tools."""
+"""Verify hidden Vocal Studio and existing asynchronous sample import."""
 import argparse
 import json
 import os
@@ -12,17 +12,17 @@ parser.add_argument('--output')
 args = parser.parse_args()
 build = build_root(args.build_dir)
 folder = output_folder('vocal-preview', args.output)
-# Deliberately exercise the missing-helper UI; do not claim synthesis PASS.
-os.environ.pop('FGA_ECANTORIX', None)
+# Vocal Studio self-test exercises the retained editor offscreen and the closed UI gate.
 results = {}
 for name in ('sample-import', 'vocal-studio'):
     target = folder / name
     run_application(build, '--' + name + '-test', target)
     lines = (target / (name + '.txt')).read_text(encoding='utf-8').splitlines()
-    if not lines or any(line.startswith('FAIL') for line in lines):
+    allowed = ('PASS ', 'Local synchronous preparation ms=') if name == 'sample-import' else ('PASS ',)
+    if not lines or any(not line.startswith(allowed) for line in lines):
         raise RuntimeError('Vocal preview regression: ' + name)
     results[name] = sum(line.startswith('PASS ') for line in lines)
-results['external_guide_render'] = 'NOT RUN: eCantorix/Perl/eSpeak/SoX not installed by this workflow'
+results['vocal_studio_backend'] = 'REMOVED; user-facing UI disabled'
 (folder / 'preview-tests.json').write_text(json.dumps(results, indent=2), encoding='utf-8')
 print(json.dumps(results, indent=2))
 if os.environ.get('GITHUB_STEP_SUMMARY'):

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Branding.h"
 #include "MainComponent.h"
+#include "VocalStudioAvailability.h"
 #include "RenderProgressTask.h"
 #include "NativeCompressor.h"
 #include "NativeReturnEffects.h"
@@ -111,7 +112,7 @@ void PianoRoll::paint(juce::Graphics& g){
         g.setColour(chosen?Daw::text:juce::Colours::black.withAlpha(.55f));g.drawRoundedRectangle(r,2.5f,chosen?1.6f:.8f);
         if(laneView()&&n.velocity>=115){g.setColour(Daw::text.withAlpha(.35f));g.fillRoundedRectangle(r.withHeight(3).reduced(2,0).translated(0,2),1.5f);}
         if(!laneView()&&r.getWidth()>34&&r.getHeight()>=9){g.setColour(Daw::onAccent);g.setFont(Daw::font(std::min(10.f,r.getHeight()-1),true));juce::String label=juce::MidiMessage::getMidiNoteName(n.pitch,true,true,4);
-            if(owner.clip().vocal)for(const auto& syllable:owner.clip().vocal->syllables)if(std::find(syllable.noteIds.begin(),syllable.noteIds.end(),n.vocalId)!=syllable.noteIds.end()){label=juce::String::fromUTF8(syllable.text.c_str());break;}
+            if(vocalStudioEnabled&&owner.clip().vocal)for(const auto& syllable:owner.clip().vocal->syllables)if(std::find(syllable.noteIds.begin(),syllable.noteIds.end(),n.vocalId)!=syllable.noteIds.end()){label=juce::String::fromUTF8(syllable.text.c_str());break;}
             g.drawText(label,r.reduced(4,0),juce::Justification::centredLeft);}
     }
     if(!marquee.isEmpty()){g.setColour(Daw::accent.withAlpha(.08f));g.fillRect(marquee);g.setColour(Daw::accent.withAlpha(.8f));g.drawRect(marquee,1);}
@@ -326,8 +327,8 @@ void MainComponent::deleteMidiTrack(int track){
 }
 void MainComponent::showAddTrackMenu(){
     if(editingRestricted()||loadingPlugin||project.tracks.size()>=maxTracks)return;
-    juce::PopupMenu menu;menu.addItem(1,tr("Add MIDI track"));menu.addItem(2,tr("VOCAL CHOPS"));menu.addItem(3,"Vocal Studio (English)");
-    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addTrackButton),[safe](int id){if(!safe||id<=0)return;safe->addMidiTrack(id==2);if(id==3)safe->showVocalStudio();});
+    juce::PopupMenu menu;menu.addItem(1,tr("Add MIDI track"));menu.addItem(2,tr("VOCAL CHOPS"));
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addTrackButton),[safe](int id){if(!safe||(id!=1&&id!=2))return;safe->addMidiTrack(id==2);});
 }
 void MainComponent::addMidiTrack(bool vocal){
     if(editingRestricted()||loadingPlugin||project.tracks.size()>=maxTracks)return;

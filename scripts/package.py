@@ -39,18 +39,13 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'Resources/Inter-OFL.txt', 'ThirdParty/shine/COPYING', 'docs/images/inspector.png',
          'ThirdParty/fasegroovepiano/LICENSE', 'ThirdParty/fasegroovedrums/LICENSE',
          'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE'}
-# Verified source-only guide adapter and its licence; external runtimes/voices
-# remain user-installed. Keep the setup/manual links usable in portable copies.
-files.update({'helpers/ecantorix/prepare.pl', 'helpers/ecantorix/COPYING',
-              'helpers/ecantorix/README.md', 'docs/VOCAL_STUDIO.md',
-              'docs/VOCAL_GUIDE_LICENSES.md', 'docs/VOCAL_GUIDE_VALIDATION.md',
-              'docs/VOCAL_GUIDE_MANUAL_TEST.it.md', 'docs/VOCAL_CHOPS_PHASE02.md',
+# Retained Vocal Studio status only; the retired external guide stack is not shipped.
+files.update({'docs/VOCAL_STUDIO.md', 'docs/VOCAL_CHOPS_PHASE02.md',
               'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
               'docs/VOCALTEST_PREVIEW_WINDOWS.it.md'})
 if system == 'Windows':
     files.add('Resources/arranger-project.ico')
-# Follow the general manuals' local links/images. Vocal setup/audit documents
-# are explicitly allowlisted above; unrelated development assets stay out.
+# Follow the general manuals' local links/images; unrelated development assets stay out.
 pending = [root / 'docs/GUIDE.md', root / 'docs/GUIDA.md']
 while pending:
     path = pending.pop().resolve()
