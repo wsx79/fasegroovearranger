@@ -55,7 +55,7 @@ jobs:
       - name: Build Release
         run: cmake --build build --config Release --parallel 2
       - name: Windows CTest (external voice tools intentionally absent)
-        run: ctest --test-dir build -C Release --output-on-failure -V
+        run: ctest --test-dir build -C Release --output-on-failure -V --output-junit windows-ctest.xml
       - name: Native compressor and sidechain UI regressions
         shell: python
         run: |
@@ -75,6 +75,37 @@ jobs:
         run: python scripts/test-native-effects.py --output build/preview-validation/effects
       - name: Native VST3 instrument regressions
         run: python scripts/test-native-host.py --output build/preview-validation/host
+      - name: Verify native Cancel evidence before packaging
+        shell: python
+        run: |
+          from pathlib import Path
+          import json, os
+          root = Path('build/preview-validation')
+          results = {}
+          required = ['legacy Cancel reproduces blocked UI cleanup handshake (finite test probe)',
+              'real Cancel keeps message dispatch alive for worker cleanup (no synchronous UI join)',
+              'Cancel immediately after launch', 'Cancel during float rendering and writing',
+              'Cancel during offline scaling and PCM writing',
+              'Cancel near final verification before atomic publication',
+              'Repeated Cancel and close keep UI responsive and engine alive',
+              'Cancel stem worker without joining futures on the UI',
+              'Cancel with group sidechain and shared A/B return effects',
+              'new export succeeds after all repeated/button cancellations']
+          for fixture in ('native', 'host', 'effects'):
+              reports = list((root / fixture).rglob('export-ui.txt'))
+              if len(reports) != 1:
+                  raise RuntimeError(f'{fixture}: expected one actual export UI report')
+              lines = reports[0].read_text(encoding='utf-8').splitlines()
+              if not lines or any(not line.startswith('PASS ') for line in lines):
+                  raise RuntimeError(f'{fixture}: incomplete or failed export UI report')
+              if any('PASS ' + label not in lines for label in required):
+                  raise RuntimeError(f'{fixture}: a required Cancel scenario was not exercised')
+              results[fixture] = {'PASS': len(lines), 'FAIL': 0,
+                  'details': reports[0].with_name('export-cancel-details.txt').read_text(encoding='utf-8')}
+          summary = {'source_sha': os.environ['GITHUB_SHA'], 'platform': 'native Windows x64',
+              'fixtures': results, 'manual_user_plugin_hardware': 'NOT RUN', 'public_release': 'NO-GO'}
+          (root / 'windows-cancel.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
+          print(json.dumps(summary, indent=2))
       - name: Vocal Studio and asynchronous sample UI
         run: python scripts/test-vocal-preview.py --output build/preview-validation/vocal
       - name: Build portable preview with corresponding source
@@ -105,6 +136,7 @@ jobs:
           path: |
             build/preview-validation/
             build/Testing/Temporary/
+            build/windows-ctest.xml
           if-no-files-found: ignore
           retention-days: 14
 

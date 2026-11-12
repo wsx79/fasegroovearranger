@@ -319,7 +319,7 @@ public:
     juce::StringArray iconButtonsWithoutTips();
     bool verifyDawWorkspace(const juce::File&);
     bool verifyPluginWindow(const juce::File&);
-    bool verifyExports(const juce::File&);
+    bool verifyExports(const juce::File&,const juce::PluginDescription* effect=nullptr);
     bool verifyLegacyHostedProjects(const juce::File&,const juce::PluginDescription&);
     bool verifyEffectChain(const juce::File&,const juce::PluginDescription&);
     void dismissAuxiliaryWindow(juce::Component&);

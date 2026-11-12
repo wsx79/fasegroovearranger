@@ -20,6 +20,27 @@ manuali su Windows 11 sono ancora da eseguire. Il rendering eCantorix Windows
 4. Provare su una copia dei propri progetti; non cancellare campioni/cache ancora
    referenziati. Per spostare il progetto usare Collect portable project.
 
+## Priorità di collaudo: Cancella durante export
+
+Questa preview è un artifact per test personali: **NO-GO al rilascio pubblico**.
+Gli esiti del runner non sostituiscono la prova con il proprio dispositivo/plugin.
+
+1. Aprire una copia del progetto e scegliere export WAV **Transparent**. Provare
+   prima senza plugin, poi con il VST3 del caso segnalato e con ritorni A/B,
+   mandate e gruppi attivi. Annotare SHA da PREVIEW.json e versione del plugin.
+2. Premere **Cancella** subito, a metà e verso la fine di un export lungo;
+   ripetere l'annullamento e provare anche gli stem. La finestra deve continuare
+   a ridisegnarsi; attendere il completamento del cleanup senza chiudere il processo.
+3. Verificare riproduzione ed editing dopo l'annullamento, poi un nuovo export
+   completo. Provare la sovrascrittura di un WAV di prova: annullando devono
+   restare intatti i bytes del file precedente e non devono restare WAV temporanei.
+4. Registrare PASS/FAIL/NOT RUN, durata dell'attesa, rate/buffer, plugin/versione
+   e passi per riprodurre eventuali blocchi. Un plugin che non restituisce il
+   controllo può ritardare il worker: non viene terminato forzatamente.
+
+Vocal Studio e Vocal Chops restano congelati e senza approvazione funzionale o
+qualitativa; le prove opzionali sotto non ne dichiarano l'approvazione.
+
 ## Voce guida inglese: strumenti esterni opzionali
 
 Vocal Chops funziona con i propri WAV e non richiede questi strumenti. Vocal Studio

@@ -45,3 +45,14 @@ assert [effect["slot"] for effect in master] == [2, 1]
 assert all(effect["state"] for effect in master)
 assert master[1]["name"] == "Master colour"
 print("PASS master effects: ordered native states and names persist")
+
+# The effects fixture also exercises the actual export Cancel button with a
+# loaded VST3 effect, not just the instrument fixture or native return effects.
+export_folder = folder / 'export-ui'
+export_report = (export_folder / 'export-ui.txt').read_text(encoding='utf-8').splitlines()
+assert export_report and all(line.startswith('PASS ') for line in export_report), export_report
+assert 'PASS cancellation fixture loads a real VST3 effect' in export_report
+assert 'PASS cancel retains the real VST3 effect instance' in export_report
+assert 'PASS cancellation matrix exercised a real loaded VST3 effect' in (
+    export_folder / 'export-cancel-details.txt').read_text(encoding='utf-8').splitlines()
+print('PASS actual-button cancellation matrix with a real VST3 effect, worker cleanup, file/PDC preservation and retry')

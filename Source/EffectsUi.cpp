@@ -234,6 +234,7 @@ bool MainComponent::verifyEffectChain(const juce::File& folder,const juce::Plugi
     check(audio.effectPlugin(masterEffectTrack,2)!=nullptr,"new-project cleanup starts with a native master effect loaded");
     createNewProject();bool cleared=project.masterEffects.effects.empty();for(int slot=1;slot<=maxTrackEffects;++slot)cleared=cleared&&!audio.effectPlugin(masterEffectTrack,slot);
     check(cleared,"new project releases every native master insert as well as its model");
+    ok=verifyExports(folder.getChildFile("export-ui"),&description)&&ok;
     folder.getChildFile("effects.txt").replaceWithText(report);return ok;
 }
 }
