@@ -3,10 +3,13 @@
 #include "../Source/AudioTake.h"
 #include "../Source/ProjectIO.h"
 #include <juce_cryptography/juce_cryptography.h>
+#include "Localisation.h"
+#include "../Source/ProductSettings.h"
 #include <stdexcept>
 #include <iostream>
 static void requireMix(bool b,const char* s){if(!b)throw std::runtime_error(s);}
 void runMixAnalysisTests(){
+ FaseGroove::useSelfTestPreferences();
  using namespace fga;
  const auto started=juce::Time::getMillisecondCounterHiRes();
  const auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-mix-analysis","",false);
@@ -37,6 +40,15 @@ void runMixAnalysisTests(){
  requireMix(std::abs(r.mix.rms-.8/std::sqrt(2.))<.001&&r.mix.lufs>-40&&r.mix.lufs<0,"RMS/loudness measured, not fixed target");
  requireMix(std::abs(r.suggestions[0].trimDb-(-3.-juce::Decibels::gainToDecibels(r.mix.peak)))<1e-9,"headroom trim correct");
  const auto reference=r;requireMix(run({{tone}}).wasOk()&&r.mix.peak==reference.mix.peak&&r.mix.lufs==reference.mix.lufs&&r.suggestions[0].trimDb==reference.suggestions[0].trimDb,"deterministic repeated analysis");
+ {
+  const auto language=Localisation::current();Localisation::setCurrent(Localisation::Language::italian);
+  requireMix(run({{tone}}).wasOk()&&r.suggestions[0].text.contains("Riduzione del master"),"Italian analysis advice");
+  requireMix(r.mix.peak==reference.mix.peak&&r.mix.rms==reference.mix.rms&&r.mix.lufs==reference.mix.lufs&&r.suggestions[0].trimDb==reference.suggestions[0].trimDb,"language preserves numerical analysis exactly");
+  const auto missing=folder.getChildFile("Choose mix WAV first..wav");const auto error=run({{missing}});
+  requireMix(error.failed()&&error.getErrorMessage().startsWith("Impossibile aprire il WAV: ")&&error.getErrorMessage().endsWith(missing.getFileName()),"Italian errors preserve unmodified user filenames");
+  requireMix(run({{write("invalid-rate.wav",1,4000)}}).getErrorMessage().startsWith("La frequenza del WAV"),"Unicode English key uses UTF-8 for Italian error lookup");
+  Localisation::setCurrent(Localisation::Language::english);requireMix(run({{tone}}).wasOk()&&r.suggestions[0].text.startsWith("Suggested master trim"),"English advice restored");Localisation::setCurrent(language);
+ }
  requireMix(run({{anti}}).wasOk()&&std::abs(r.mix.correlation+1)<1e-9,"antiphase");
  requireMix(run({{full}}).wasOk()&&r.mix.fullScale>0,"full-scale PCM risk detected without inferring prior clipping");
  Project project;project.normalise();AudioTake take;take.file=voice;take.rate=48000;take.frames=32*4096;

@@ -2,6 +2,8 @@
 #include "../Source/MasteringAnalysis.h"
 #include "../Source/AudioEngine.h"
 #include <juce_cryptography/juce_cryptography.h>
+#include "Localisation.h"
+#include "../Source/ProductSettings.h"
 #include <stdexcept>
 #include <iostream>
 namespace {
@@ -9,6 +11,7 @@ void requireMaster(bool value,const char* text){if(!value)throw std::runtime_err
 double lufs(juce::AudioBuffer<float>& audio,double rate){fga::LoudnessMeter meter;meter.prepare(rate);meter.process(audio.getArrayOfWritePointers(),2,audio.getNumSamples());return meter.integrated.load();}
 }
 void runMasteringTests(){
+ FaseGroove::useSelfTestPreferences();
     using namespace fga;const auto folder=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("mastering-phase08","",false);folder.createDirectory();struct Cleanup {juce::File file;~Cleanup(){file.deleteRecursively();}}cleanup{folder};
     auto write=[&](const char* name,double amplitude,double rate=48000,int channels=2,double hz=997,int blocks=24,double phase=0){
         const auto file=folder.getChildFile(name);file.deleteFile();auto stream=file.createOutputStream();juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),rate,(unsigned)channels,24,{},0));requireMaster(writer!=nullptr,"mastering fixture writer");stream.release();
@@ -23,6 +26,15 @@ void runMasteringTests(){
     double residual=0;for(int i=0;i<report.a.getNumSamples();++i)residual=std::max(residual,std::abs((double)report.a.getSample(0,i)-report.b.getSample(0,i)));requireMaster(residual<2e-6&&report.gainA<.251&&report.gainB<=1,"equal material matches after normalization without boosts");
     requireMaster(report.a.getSample(0,0)==0&&report.a.getSample(0,report.a.getNumSamples()-1)==0,"excerpt fade endpoints");
     requireMaster(juce::SHA256(mix).toHexString()==hash,"reference analysis never writes original");
+    {
+        const auto original=report;const auto language=Localisation::current();Localisation::setCurrent(Localisation::Language::italian);
+        requireMaster(run({{mix}},ref).wasOk()&&report.qa.joinIntoString(" ").contains("SUPERATO: il mix")&&report.comparisonNote.startsWith("A/B: estratti"),"Italian QA and comparison guidance");
+        bool identical=report.files[0].truePeak==original.files[0].truePeak&&report.matchedLufs==original.matchedLufs&&report.a.getNumSamples()==original.a.getNumSamples();
+        for(int c=0;identical&&c<report.a.getNumChannels();++c)for(int i=0;i<report.a.getNumSamples();++i)identical=identical&&report.a.getSample(c,i)==original.a.getSample(c,i)&&report.b.getSample(c,i)==original.b.getSample(c,i);
+        requireMaster(identical,"language preserves true peak, LUFS and normalized samples exactly");
+        const auto missing=folder.getChildFile("Reference optional.wav");const auto error=run({{missing}});requireMaster(error.failed()&&error.getErrorMessage().contains("Impossibile")&&error.getErrorMessage().endsWith(missing.getFileName()),"Italian mastering errors preserve filename");
+        Localisation::setCurrent(Localisation::Language::english);requireMaster(run({{mix}},ref).wasOk()&&report.qa.joinIntoString(" ").contains("PASS: mix within"),"English QA restored");Localisation::setCurrent(language);
+    }
     targets.useLufs=true;targets.lufs=-5;targets.ceilingDb=-12;requireMaster(run({{mix}},ref).wasOk()&&!report.qaPassed&&report.comparisonReady&&report.suggestions.joinIntoString(" ").contains("cannot be reached"),"unreachable target explained, no duplicate limiter");
     requireMaster(std::max(report.a.getMagnitude(0,report.a.getNumSamples()),report.b.getMagnitude(0,report.b.getNumSamples()))<juce::Decibels::decibelsToGain(-12.f),"preview respects selected ceiling");
     targets={};targets.expectVocal=true;requireMaster(run({{mix}}).wasOk()&&!report.qaPassed,"expected missing vocal");requireMaster(run({{mix},{silent,true}}).wasOk()&&!report.qaPassed,"silent tagged vocal");
