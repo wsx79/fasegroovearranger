@@ -27,6 +27,7 @@
  #include <CoreGraphics/CoreGraphics.h>
 #endif
 namespace fga {
+namespace {std::unique_ptr<juce::AudioFormatReader> readWavFile(const juce::File& file){auto stream=file.createInputStream();if(!stream)return {};juce::WavAudioFormat wav;return std::unique_ptr<juce::AudioFormatReader>(wav.createReaderFor(stream.release(),true));}}
 #include "WorkspaceViewHelpers.h"
 #include "NativeWindows.h"
 namespace {
@@ -617,7 +618,7 @@ return false;
         if(auto output=folder.getChildFile("vocal-chops.png").createOutputStream()){juce::PNGImageFormat png;vocalOk=png.writeImageToStream(instrumentPort.createComponentSnapshot(instrumentPort.getLocalBounds()),*output)&&vocalOk;}
         auto sound=project;sound.sections={{Section::main,4,"Vocal test"}};for(auto& t:sound.tracks){t.freeTimeline=false;t.clips.resize(1);}auto& voice=sound.tracks[(size_t)vocal];voice.clips[0].notes={{.5,.25,voice.sampler.sliceBase,100,0},{2.5,.25,voice.sampler.sliceBase+voice.sampler.sliceCount-1,100,0}};
         const auto audioFile=folder.getChildFile("vocal-chops.wav");vocalOk=audio.exportAudio(sound,audioFile,vocal,false,[]{return false;},[](double){}).wasOk()&&vocalOk;
-        juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(audioFile.createInputStream().release(),true));
+        juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(readWavFile(audioFile).release());
         if(reader&&reader->lengthInSamples>0&&reader->lengthInSamples<44100*30){juce::AudioBuffer<float> data((int)reader->numChannels,(int)reader->lengthInSamples);reader->read(&data,0,data.getNumSamples(),0,true,true);vocalOk=data.getMagnitude(0,data.getNumSamples())>.001f&&vocalOk;}else vocalOk=false;
         deleteMidiTrack(vocal);undo(false);vocalOk=vocalOk&&project.tracks[(size_t)vocal].vocalChops&&project.tracks[(size_t)vocal].instrument=="sample";
         folder.getChildFile("vocal-chops.txt").replaceWithText(vocalOk?"PASS optional vocal generator, live controls, regeneration and Undo, sampled slice mapping, panel layout and deletion recovery":"FAIL vocal chops workflow");

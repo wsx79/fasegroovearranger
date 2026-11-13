@@ -10,8 +10,10 @@ using Cancel=std::function<bool()>;
 using Progress=std::function<void(double)>;
 juce::Result stopped(){return juce::Result::fail("Export cancelled");}
 std::unique_ptr<juce::AudioFormatReader> openWav(const juce::File& file){
+    // JUCE dereferences the stream: a missing or locked staging file must fail, not crash.
+    auto stream=file.createInputStream();if(!stream)return {};
     juce::WavAudioFormat format;
-    return std::unique_ptr<juce::AudioFormatReader>(format.createReaderFor(file.createInputStream().release(),true));
+    return std::unique_ptr<juce::AudioFormatReader>(format.createReaderFor(stream.release(),true));
 }
 std::unique_ptr<juce::AudioFormatWriter> createWav(const juce::File& file,double rate,int bits,const juce::StringPairArray& metadata){
     auto stream=file.createOutputStream();
