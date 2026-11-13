@@ -27,7 +27,7 @@ void assistantEqChanges(const Project& p,const MixReport& report,std::vector<Ass
     // Alternative, explicitly selectable 1.5-dB bell cut for measured kick/bass overlap.
     for(const auto& advice:report.suggestions){const int ti=target(p,advice.session);if(ti<0||ti>=maxTracks||advice.trimDb>=0||p.tracks[(size_t)ti].kind!=1||!audible(p,ti))continue;
         const auto& eq=p.tracks[(size_t)ti].eq;if(eq.bands.size()>=16)continue;
-        AssistantChange c;c.kind=AssistantChange::eq;c.session=advice.session;c.originalEq=eq;c.frequency=100;c.after=-1.5;c.reason=tr("Alternative gentle bass EQ cut; audition before accepting.");c.selected=false;out.push_back(std::move(c));break;
+        AssistantChange c;c.kind=AssistantChange::eq;c.session=advice.session;c.originalEq=eq;c.frequency=advice.frequency>0?advice.frequency:100;c.after=-1.5;c.reason=tr("Alternative gentle bass EQ cut; audition before accepting.");c.selected=false;out.push_back(std::move(c));break;
     }
 }
 void assistantCompressorChanges(AudioEngine& audio,const Project& p,int track,const MixMeasure& measure,std::vector<AssistantChange>& out){

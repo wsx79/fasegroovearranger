@@ -5,6 +5,7 @@
 #include "NativeCompressor.h"
 #include "CompressorDSP.h"
 #include "ProjectIO.h"
+#include "AssistantUi.h"
 namespace fga {
 namespace {
 class FileCleanup final:public juce::Thread {
@@ -58,7 +59,7 @@ RenderProgressTask* MainComponent::renderAssistantProject(std::shared_ptr<Assist
 }
 void MainComponent::cancelAssistantProject(RenderProgressTask* expected){if(expected&&exportTask.get()==expected)expected->requestCancel();}
 ProjectAssistantPanel::ProjectAssistantPanel(MainComponent& m,bool mastering):owner(m),master(mastering){
-    for(auto* component:std::initializer_list<juce::Component*>{&analyse,&reference,&apply,&a,&b,&r,&stop,&useLufs,&lufs,&ceiling,&note,&text,&list})addAndMakeVisible(component);
+    for(auto* component:std::initializer_list<juce::Component*>{&analyse,&reference,&apply,&a,&b,&r,&stop,&useLufs,&lufs,&ceiling,&note,&text,&list})addAndMakeVisible(component);assistantui::styleReport(text);assistantui::stylePrimary(analyse);
     for(auto* button:std::initializer_list<juce::Button*>{&analyse,&reference,&apply,&a,&b,&r,&stop,&useLufs})Localisation::bindText(*button,button->getButtonText());
     Localisation::bindLabel(note,"Analyse the open project. Track taps are post-insert/fader, before groups/returns/master; the full mix includes all routing. Select changes, compare, then Apply with one Undo. External reference is optional.",false);note.setFont(Daw::font(12));note.setMinimumHorizontalScale(1.f);note.setJustificationType(juce::Justification::topLeft);
     text.setMultiLine(true);text.setReadOnly(true);text.setScrollbarsShown(true);list.setModel(this);list.setRowHeight(46);list.setColour(juce::ListBox::backgroundColourId,Daw::base);list.setOutlineThickness(1);list.setColour(juce::ListBox::outlineColourId,Daw::line);
@@ -150,18 +151,33 @@ void ProjectAssistantPanel::present(){
     if(comparison&&comparison->hasReference&&comparison->reference.truePeak>juce::Decibels::decibelsToGain(targets.ceilingDb))value+=tr("Proposal remains above the selected ceiling; remeasure after Apply or retain Transparent export protection.")+"\n";
 
     value+="\n"+tr("Select numeric changes below. EQ/compression are listening proposals; automatic compressor edits require an existing non-automated native compressor.");
-    if(applied)value+="\n\n"+tr("Suggestions applied. One Undo restores the previous settings.");text.setText(value,false);list.repaint();
+    if(applied)value+="\n\n"+tr("Suggestions applied. One Undo restores the previous settings.");assistantui::showReport(text,value);repaint();list.repaint();
 }
-void ProjectAssistantPanel::timerCallback(){
+void ProjectAssistantPanel::timerCallback(){if(const int now=step();now!=shownStep){shownStep=now;repaint();}
     if(!task&&audio&&revision!=owner.controlRevision()&&!stale){invalidate();}
     if(preview&&owner.audio.previewSerial()!=preview)preview=0;
     const bool busy=task||owner.editingRestricted()||owner.pluginsBusy();analyse.setEnabled(!busy);reference.setEnabled(!busy);useLufs.setEnabled(!busy);lufs.setEnabled(!busy&&useLufs.getToggleState());ceiling.setEnabled(!busy);list.setEnabled(!busy&&!stale&&!applied);
     const bool ready=!busy&&!stale&&audio&&masterReport;const bool selected=std::any_of(changes.begin(),changes.end(),[](const auto& c){return c.selected;});apply.setEnabled(ready&&!applied&&selected);a.setEnabled(ready&&(referenceMode?masterReport->comparisonReady:!comparison||comparison->comparisonReady));b.setEnabled(ready&&(referenceMode?masterReport->comparisonReady:(!comparison||comparison->comparisonReady)&&(selected||comparison)));r.setEnabled(ready&&masterReport->comparisonReady);stop.setEnabled(preview!=0);
 }
-void ProjectAssistantPanel::paintListBoxItem(int row,juce::Graphics& g,int width,int height,bool){if(!juce::isPositiveAndBelow(row,(int)changes.size()))return;const auto& c=changes[(size_t)row];g.setColour(c.selected?Daw::returnA.withAlpha(.16f):Daw::surface);g.fillRect(0,0,width,height);g.setColour(Daw::text);g.drawRect(8,height/2-7,14,14);if(c.selected)g.fillRect(11,height/2-4,8,8);g.setFont(Daw::font(12));g.drawFittedText(description(owner.project,c),{30,2,width-36,height-4},juce::Justification::centredLeft,2,1.f);}
+void ProjectAssistantPanel::paintListBoxItem(int row,juce::Graphics& g,int width,int height,bool){if(!juce::isPositiveAndBelow(row,(int)changes.size()))return;const auto& c=changes[(size_t)row];
+    const auto tone=master?Daw::returnB:Daw::returnA;g.setColour(c.selected?tone.withAlpha(.10f):row%2?juce::Colour(0xff17191c):juce::Colour(0xff141619));g.fillRect(0,0,width,height);
+    g.setColour(juce::Colour(0xff222529));g.drawHorizontalLine(height-1,0.f,(float)width);
+    // Checkbox, kind badge, the change itself; applied rows say so.
+    auto box=juce::Rectangle<float>(12.f,(float)height/2-8,16,16);g.setColour(c.selected?tone:juce::Colour(0xff1d1f23));g.fillRoundedRectangle(box,3.f);g.setColour(c.selected?tone:juce::Colour(0xff3a3e45));g.drawRoundedRectangle(box.reduced(.5f),3.f,1.f);
+    if(c.selected){juce::Path tick;tick.startNewSubPath(box.getX()+4,box.getCentreY());tick.lineTo(box.getX()+7,box.getBottom()-4.5f);tick.lineTo(box.getRight()-3.5f,box.getY()+4.5f);g.setColour(Daw::onAccent);g.strokePath(tick,juce::PathStrokeType(1.8f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
+    const juce::String kind=tr(c.kind==AssistantChange::gain?"GAIN":c.kind==AssistantChange::eq?"EQ":"COMP");auto badge=juce::Rectangle<int>(40,height/2-9,54,18);
+    g.setColour(juce::Colour(0xff1d1f23));g.fillRoundedRectangle(badge.toFloat(),3.f);Daw::drawCaps(g,kind,badge,c.selected?tone:Daw::textDim,juce::Justification::centred);
+    auto textArea=juce::Rectangle<int>(104,2,width-110,height-4);if(applied){auto state=textArea.removeFromRight(90);Daw::drawCaps(g,tr(c.selected?"applied":""),state,Daw::meterLow,juce::Justification::centredRight);}
+    g.setColour(c.selected?Daw::text:Daw::textDim);g.setFont(Daw::font(12.5f));g.drawFittedText(description(owner.project,c),textArea,juce::Justification::centredLeft,2,1.f);}
 void ProjectAssistantPanel::listBoxItemClicked(int row,const juce::MouseEvent&){if(task||stale||applied||!juce::isPositiveAndBelow(row,(int)changes.size()))return;stopPreview();changes[(size_t)row].selected=!changes[(size_t)row].selected;comparison.reset();release(beforeAfter);list.repaint();timerCallback();}
-void ProjectAssistantPanel::paint(juce::Graphics& g){g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,950,54},tr(master?"MASTERING ASSISTANT":"MIX ASSISTANT"),tr("CURRENT PROJECT / MEASURE / SELECT / APPLY"),master?Daw::returnB:Daw::returnA);}
-void ProjectAssistantPanel::resized(){auto area=getLocalBounds().reduced(18);area.removeFromTop(60);auto row=area.removeFromTop(32);analyse.setBounds(row.removeFromLeft(180));row.removeFromLeft(8);reference.setBounds(row.removeFromLeft(165));row.removeFromLeft(12);if(master){useLufs.setBounds(row.removeFromLeft(140));lufs.setBounds(row.removeFromLeft(110));row.removeFromLeft(10);}ceiling.setBounds(row.removeFromLeft(170));area.removeFromTop(8);note.setBounds(area.removeFromTop(48));area.removeFromTop(8);auto bottom=area.removeFromBottom(34);for(auto* button:{&a,&b,&r,&stop,&apply}){button->setBounds(bottom.removeFromLeft(button==&apply?200:165));bottom.removeFromLeft(8);}area.removeFromBottom(8);list.setBounds(area.removeFromBottom(std::min(190,area.getHeight()/2)));area.removeFromBottom(8);text.setBounds(area);}
+int ProjectAssistantPanel::step()const{const bool analysed=masterReport&&!masterReport->files.empty();return task?0:!analysed||stale?-1:comparison||beforeAfter?3:applied?2:1;}
+void ProjectAssistantPanel::paint(juce::Graphics& g){g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,520,54},tr(master?"MASTERING ASSISTANT":"MIX ASSISTANT"),tr("CURRENT PROJECT / MEASURE / SELECT / APPLY"),master?Daw::returnB:Daw::returnA);
+    assistantui::drawSteps(g,{getWidth()-460,24,442,22},step(),task!=nullptr);
+    std::vector<assistantui::Metric> m;
+    if(masterReport&&!masterReport->files.empty()&&!stale){const auto& f=masterReport->files[0];m=assistantui::mixMetrics(f.mix.lufs,f.truePeak,f.mix.peak,f.mix.rms,f.mix.correlationValid,f.mix.correlation,ceiling.getValue());
+        int chosen=0;for(const auto& c:changes)chosen+=c.selected;m.push_back({tr("SUGGESTIONS"),juce::String(chosen)+" / "+juce::String((int)changes.size()),tr(applied?"applied":"selected"),applied?assistantui::Level::good:assistantui::Level::neutral});}
+    assistantui::drawMetrics(g,metrics,m,tr(stale?"Project changed: analyse again to measure the current mix.":"Analyse the project: loudness, true peak and stereo of the full mix appear here."));}
+void ProjectAssistantPanel::resized(){auto area=getLocalBounds().reduced(18);area.removeFromTop(60);auto row=area.removeFromTop(32);analyse.setBounds(row.removeFromLeft(180));row.removeFromLeft(8);reference.setBounds(row.removeFromLeft(165));row.removeFromLeft(12);if(master){useLufs.setBounds(row.removeFromLeft(140));lufs.setBounds(row.removeFromLeft(110));row.removeFromLeft(10);}ceiling.setBounds(row.removeFromLeft(170));area.removeFromTop(8);note.setBounds(area.removeFromTop(40));metrics=area.removeFromTop(78);area.removeFromTop(10);auto bottom=area.removeFromBottom(34);for(auto* button:{&a,&b,&r,&stop,&apply}){button->setBounds(bottom.removeFromLeft(button==&apply?200:165));bottom.removeFromLeft(8);}area.removeFromBottom(8);list.setBounds(area.removeFromBottom(std::min(190,area.getHeight()/2)));area.removeFromBottom(8);text.setBounds(area);}
 bool ProjectAssistantPanel::verify(const juce::File& folder){
 #if !FGA_SELF_TESTS
     juce::ignoreUnused(folder);return false;

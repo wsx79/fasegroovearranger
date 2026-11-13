@@ -62,6 +62,7 @@ void runMixAnalysisTests(){
  requireMix(run({{tone},{tone,kickSession,1},{tone,bassSession,2},{voice,vocalSession,3}}).wasOk(),"project fixture with rendered synthetic vocal stem");
  bool conflict=false;for(auto& s:r.suggestions)if(s.text.contains("kick/bass"))conflict=s.session==bassSession;
  requireMix(conflict,"kick bass overlap targets bass");
+ {double freq=0;for(auto& s:r.suggestions)if(s.text.contains("kick/bass"))freq=s.frequency;requireMix(freq==60,"a 60 Hz kick/bass overlap proposes the EQ alternative at the measured low band, not a fixed 100 Hz");}
  requireMix(voiceHash==juce::SHA256(voice).toHexString()&&juce::JSON::toString(state)==juce::JSON::toString(projectJson(project)),"audio file and project preserved");
  requireMix(reopened.tracks[(size_t)vocal].instrumentPath==voice.getFullPathName().toStdString(),"rendered audio reference persists");
  requireMix(run({{tone},{first,11,1},{second,22,2}}).wasOk(),"disjoint stems");

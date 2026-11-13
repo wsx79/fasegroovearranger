@@ -56,10 +56,10 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
     std::vector<EqAnalyzer> analyzers(inputs.size());
     std::vector<std::array<double,6>> bands(inputs.size());
     std::vector<double> energies(inputs.size());
-    struct Pair {size_t a,b;double score=0;int active=0;bool low=false;};
+    struct Pair {size_t a,b;double score=0;int active=0;bool low=false;std::array<double,2> shared{};};
     std::vector<Pair> pairs;
     for(size_t a=1;a<inputs.size();++a)for(size_t b=a+1;b<inputs.size();++b)
-        pairs.push_back({a,b,0,0,(inputs[a].role==1&&inputs[b].role==2)||(inputs[a].role==2&&inputs[b].role==1)});
+        pairs.push_back({a,b,0,0,(inputs[a].role==1&&inputs[b].role==2)||(inputs[a].role==2&&inputs[b].role==1),{}});
     LoudnessMeter meter;meter.prepare(readers[0]->sampleRate);
     bool previewFound=false;
     double ll=0,rr=0,lr=0,sum=0;juce::int64 frames=0;
@@ -104,7 +104,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
             if(energies[p.a]/(2*n)<1e-6||energies[p.b]/(2*n)<1e-6)continue;
             double dot=0,aa=0,bb=0;
             for(int k=0;k<(p.low?2:6);++k){
-                const double a=bands[p.a][(size_t)k],b=bands[p.b][(size_t)k];dot+=a*b;aa+=a*a;bb+=b*b;
+                const double a=bands[p.a][(size_t)k],b=bands[p.b][(size_t)k];dot+=a*b;aa+=a*a;bb+=b*b;if(p.low)p.shared[(size_t)k]+=std::sqrt(a*b);
             }
             if(aa>1e-14&&bb>1e-14){p.score+=dot/std::sqrt(aa*bb);++p.active;}
         }
@@ -132,7 +132,9 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
         const auto target=p.low?(inputs[p.a].role==2?p.a:p.b):p.b;
         result.suggestions.push_back({(p.low?tr("Possible kick/bass low-band overlap: "):tr("Possible spectral masking: "))+
             inputs[p.a].file.getFileName()+" / "+inputs[p.b].file.getFileName()+
-            tr(". Try a conservative -1.5 dB trim; spectral similarity is not proof of a bad mix."),inputs[target].session,-1.5});
+            tr(". Try a conservative -1.5 dB trim; spectral similarity is not proof of a bad mix."),inputs[target].session,-1.5,
+            // The EQ alternative goes where the two parts actually share energy: kick fundamentals (20-80 Hz) or the bass body (80-160 Hz).
+            p.low?(p.shared[0]>p.shared[1]?60.:115.):0.});
     }
     for(size_t i=0;i<inputs.size();++i)
         if(inputs[i].file.getSize()!=stamps[i].first||inputs[i].file.getLastModificationTime()!=stamps[i].second)

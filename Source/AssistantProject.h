@@ -46,7 +46,7 @@ private:
     RenderProgressTask* task=nullptr;
     std::uint64_t revision=0,preview=0,generation=0;
     Localisation::Language language=Localisation::current();
-    bool stale=false,applied=false,referenceMode=false;
+    bool stale=false,applied=false,referenceMode=false;juce::Rectangle<int> metrics;int shownStep=-99;int step()const;
     void prepareComparison(int side,bool applyAfter);
     void renderProject();void previewSide(int);void applySelected();void present();void invalidate();void stopPreview();
     void release(std::shared_ptr<AssistantAudio>&);void timerCallback()override;

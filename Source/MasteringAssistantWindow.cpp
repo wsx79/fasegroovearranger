@@ -3,6 +3,7 @@
 #include "AssistantProject.h"
 #include "MainComponent.h"
 #include "MasteringAnalysis.h"
+#include "AssistantUi.h"
 #include "RenderProgressTask.h"
 #include "EffectsUi.h"
 #include "GraphicEqWindow.h"
@@ -29,9 +30,10 @@ class MasteringAssistantWindow::Panel:public juce::Component,private juce::Timer
     juce::TextButton mix{"Mix / exported WAV"},ref{"Optional reference"},stems{"Add stems"},vocal{"Add vocal stem"},clear{"Clear"},analyse{"Analyse / export QA"};
     juce::TextButton a{"A: mix excerpt"},b{"B: reference excerpt"},stop{"Stop preview"},eq{"Track EQ"},fx{"Master inserts"},exportWav{"Export..."};
     juce::ToggleButton useLufs{"Optional LUFS target"},expectVocal{"Expect vocal stem"};
-    juce::Slider lufs,ceiling,startA,startB;juce::ComboBox rate,bits;juce::TextEditor text;juce::Label note;
+    juce::Slider lufs,ceiling,startA,startB;juce::ComboBox rate,bits;juce::TextEditor text;juce::Label note;juce::Rectangle<int> metrics;int shownStep=-99;
     std::uint64_t revision=0,ownedPreview=0;bool audition=false;Localisation::Language language=Localisation::current();
-    void show(const juce::String& value){text.setText(value,false);}
+    void show(const juce::String& value){assistantui::showReport(text,value);repaint();}
+    int step()const{return !report||report->files.empty()?-1:audition?3:1;}
     bool ours()const{return audition&&owner.audio.previewSerial()==ownedPreview;}
     void stopOurs(){if(ours())owner.audio.stopPreview();audition=false;a.setToggleState(false,juce::dontSendNotification);b.setToggleState(false,juce::dontSendNotification);}
     void invalidate(){stopOurs();report.reset();showFiles();}
@@ -81,6 +83,7 @@ class MasteringAssistantWindow::Panel:public juce::Component,private juce::Timer
         s+=report->suggestions.isEmpty()?tr("No threshold-based suggestion.\n"):report->suggestions.joinIntoString("\n")+"\n";s+="\n"+report->comparisonNote;show(s);
     }
     void timerCallback()override{
+        if(const int now=step()*2+(job!=nullptr);now!=shownStep){shownStep=now;repaint();}
         if(audition&&(!ours()||!owner.audio.isPreviewing())){audition=false;a.setToggleState(false,juce::dontSendNotification);b.setToggleState(false,juce::dontSendNotification);}
         if(ours()&&(revision!=owner.controlRevision()||owner.editingRestricted()||owner.audio.isPlaying()||owner.audio.isMonitoring()))stopOurs();
         const bool busy=job!=nullptr||owner.editingRestricted()||owner.loadingPlugin;for(auto* c:std::initializer_list<juce::Component*>{&mix,&ref,&stems,&vocal,&clear,&analyse,&useLufs,&expectVocal,&lufs,&ceiling,&startA,&startB,&rate,&bits,&eq,&fx,&exportWav})c->setEnabled(!busy);
@@ -88,7 +91,7 @@ class MasteringAssistantWindow::Panel:public juce::Component,private juce::Timer
     }
 public:
     explicit Panel(MainComponent& m):owner(m){
-        for(auto* c:std::initializer_list<juce::Component*>{&mix,&ref,&stems,&vocal,&clear,&analyse,&a,&b,&stop,&eq,&fx,&useLufs,&expectVocal,&lufs,&ceiling,&startA,&startB,&rate,&bits,&text,&note,&exportWav})addAndMakeVisible(c);
+        for(auto* c:std::initializer_list<juce::Component*>{&mix,&ref,&stems,&vocal,&clear,&analyse,&a,&b,&stop,&eq,&fx,&useLufs,&expectVocal,&lufs,&ceiling,&startA,&startB,&rate,&bits,&text,&note,&exportWav})addAndMakeVisible(c);assistantui::styleReport(text);assistantui::stylePrimary(analyse);
         text.setMultiLine(true);text.setReadOnly(true);text.setScrollbarsShown(true);note.setText("Original/rendered WAVs only. Tag a vocal stem to check audio presence. Targets are optional/user chosen. A/B: 10-second excerpts, transport stopped, monitoring off, matching device rate. Edits use existing track EQ/master inserts and Undo.",juce::dontSendNotification);note.setFont(Daw::font(12));note.setMinimumHorizontalScale(1.f);note.setJustificationType(juce::Justification::topLeft);
         auto slider=[&](juce::Slider& s,double lo,double hi,double value,const juce::String& name){s.setSliderStyle(juce::Slider::LinearBar);s.setRange(lo,hi,.1);s.setValue(value,juce::dontSendNotification);Localisation::bind(s,[&s,name]{s.setTextValueSuffix(" "+tr(name));s.setTooltip(tr(name));});s.onValueChange=[this]{if(!job)invalidate();};};
         slider(lufs,-30,-5,-14,"LUFS");slider(ceiling,minExportCeilingDb,maxExportCeilingDb,-1,"dBTP ceiling");slider(startA,0,899,0,"s / A offset");slider(startB,0,899,0,"s / B offset");
@@ -105,12 +108,18 @@ public:
     ~Panel()override{close();}
     void open(){startTimer(100);}
     void close(){stopTimer();stopOurs();if(job){job->done=nullptr;job->requestCancel();owner.retiredJobs.retire(std::move(job));}}
-    void paint(juce::Graphics& g)override{g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,800,54},tr("MASTERING ASSISTANT"),tr("LOCAL / MEASURE / COMPARE / VERIFY"),Daw::returnB);}
+    void paint(juce::Graphics& g)override{g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,460,54},tr("MASTERING ASSISTANT"),tr("LOCAL / MEASURE / COMPARE / VERIFY"),Daw::returnB);
+        assistantui::drawSteps(g,{getWidth()-460,24,442,22},step(),job!=nullptr);
+        std::vector<assistantui::Metric> m;
+        if(step()>=0){const auto& f=report->files[0];m=assistantui::mixMetrics(f.mix.lufs,f.truePeak,f.mix.peak,f.mix.rms,f.mix.correlationValid,f.mix.correlation,ceiling.getValue());
+            if(report->hasReference&&report->reference.mix.lufs> -99&&f.mix.lufs> -99){const double d=f.mix.lufs-report->reference.mix.lufs;m.push_back({tr("VS REFERENCE"),(d>=0?"+":"")+juce::String(d,1),"LU",std::abs(d)>3?assistantui::Level::warn:assistantui::Level::neutral,d,-12,12,0.});}
+            m.push_back({tr("EXPORT QA"),report->qaPassed?tr("PASS"):tr("CHECK"),"",report->qaPassed?assistantui::Level::good:assistantui::Level::warn});}
+        assistantui::drawMetrics(g,metrics,m,tr("Choose a mix or exported WAV and analyse: measured loudness, true peak and QA appear here."));}
     void resized()override{
         auto r=getLocalBounds().reduced(18);r.removeFromTop(60);auto row=r.removeFromTop(30);
-        for(auto* button:{&mix,&ref,&stems,&vocal,&clear,&analyse}){button->setBounds(row.removeFromLeft(button==&analyse?160:button==&clear?65:150));row.removeFromLeft(6);}r.removeFromTop(8);note.setBounds(r.removeFromTop(44));
+        for(auto* button:{&mix,&ref,&stems,&vocal,&clear,&analyse}){button->setBounds(row.removeFromLeft(button==&analyse?160:button==&clear?65:150));row.removeFromLeft(6);}r.removeFromTop(8);note.setBounds(r.removeFromTop(40));
         row=r.removeFromTop(30);useLufs.setBounds(row.removeFromLeft(155));lufs.setBounds(row.removeFromLeft(110));row.removeFromLeft(10);ceiling.setBounds(row.removeFromLeft(170));row.removeFromLeft(10);rate.setBounds(row.removeFromLeft(125));row.removeFromLeft(8);bits.setBounds(row.removeFromLeft(110));expectVocal.setBounds(row.reduced(6,0));r.removeFromTop(8);
-        row=r.removeFromTop(28);startA.setBounds(row.removeFromLeft(200));row.removeFromLeft(10);startB.setBounds(row.removeFromLeft(200));r.removeFromTop(8);
+        row=r.removeFromTop(28);startA.setBounds(row.removeFromLeft(200));row.removeFromLeft(10);startB.setBounds(row.removeFromLeft(200));r.removeFromTop(10);metrics=r.removeFromTop(78);r.removeFromTop(10);
         auto bottom=r.removeFromBottom(34);for(auto* button:{&a,&b,&stop,&eq,&fx,&exportWav}){button->setBounds(bottom.removeFromLeft(button==&b?180:button==&exportWav?130:150));bottom.removeFromLeft(8);}r.removeFromBottom(8);text.setBounds(r);
     }
     bool verify(const juce::File&);

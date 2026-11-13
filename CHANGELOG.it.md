@@ -5,6 +5,8 @@
 
 ## 0.43.2
 
+- Assistenti Mix e Mastering: i valori misurati (LUFS integrato, true peak rispetto al limite scelto, picco dei campioni, fattore di cresta, correlazione, differenza dal riferimento, QA export, suggerimenti selezionati) compaiono come card con la loro scala; uno stepper Analizza → Verifica → Applica → Confronta mostra il punto del flusso; i report sono colorati per tipo (PASS, da verificare, misura, non verificato, suggerimenti) senza cambiare il testo; le righe dei suggerimenti mostrano tipo e stato di applicazione. L'alternativa EQ cassa/basso ora cade nella banda bassa in cui è stata misurata la sovrapposizione (60 o 115 Hz) invece di un 100 Hz fisso.
+
 - I build-up ora crescono: in base al seed di brano e sezione, il basso di solito esce nelle ultime una o due battute, la cassa a volte nell'ultima, e le percussioni crescono da un inizio più morbido fino al drop.
 
 - Verifica di arrangiamento e armonia (nuovo test `arrangement_audit`, tutti i generi): circa metà delle sezioni che portano a un drop finiscono con uno stop di tutta la band di uno o due battiti (crash e reverse crash continuano), salvato nel progetto. Le note lunghe o sul battere dell'accompagnamento fuori sia dalla tonalità sia dall'accordo (estensioni fisse della chitarra su accordi frigi/misolidi, poche note del piano) passano alla nota d'accordo o di scala più vicina; restano le note brevi di passaggio e le blue note. NEW FEEL ora cambia solo tempi e dinamiche, mai le note, e funziona anche in Techno ed Electro House. Export Loud: un hold di 20 ms nel limiter elimina la modulazione del guadagno sulle basse frequenze (IMD a due toni da 0,199% a 0,003%); la modalità resta nascosta fino a una prova d'ascolto.
