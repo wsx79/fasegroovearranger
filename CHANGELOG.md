@@ -1,6 +1,8 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.50.0
+
+- Target duration now drives generation: with a target, GENERATE SONG and NEW ARRANGEMENT build the form to that length within the tolerance (whole phrases first, then 4-bar steps; the tempo moves slightly inside the genre range only when needed). An empty field (shown as "auto") lets the generator choose, exactly as before. The target and tolerance fields are aligned with the rest of the bar.
 
 - Timeline: dragged clips follow the mouse continuously, with a landing line and a bar.beat.tick tag at the snapped position; SNAP on/off button; grid Bar, 1/2, 1/4, 1/8, 1/16, 1/32 and Auto (by zoom); Shift inverts snapping while dragging; left/right arrows nudge the selected clips by one grid step (Shift: one bar); lighter clip-edge resizing.
 

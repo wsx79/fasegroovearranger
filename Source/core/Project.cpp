@@ -1015,6 +1015,31 @@ static int formPhraseBars(const Project& p){
     for(int g:{harmonic,motif}){int a=phrase,b=g;while(b){const int r=a%b;a=b;b=r;}phrase=phrase/std::max(1,a)*g;}
     return phrase<=32&&phrase%8==0?phrase:8;
 }
+// A clock target (Target duration, with its tolerance) builds the form to that length: whole
+// phrases first, then 4-bar steps, growing the shortest main/drop or trimming the longest
+// section; the tempo moves only for the last few seconds, inside the genre's range.
+// An empty target leaves the generated form exactly as before.
+void fitFormToTarget(Project& p){
+    const auto& s=p.settings;if(!s.targetEnabled||!(s.targetSeconds>0)||p.sections.empty()||!(s.bpm>0))return;
+    if(std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline||t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
+    const int phrase=std::clamp(formPhraseBars(p),4,32);
+    auto totalBars=[&]{int n=0;for(const auto& x:p.sections)n+=x.bars;return n;};
+    const auto body=[](Section t){return t==Section::main||t==Section::drop;};
+    for(int guard=0;guard<512;++guard){
+        const double target=s.targetSeconds*s.bpm/240.,tolerance=s.targetToleranceSeconds*s.bpm/240.,diff=target-totalBars();
+        if(std::abs(diff)<=tolerance+1e-9)break;
+        const int step=std::abs(diff)>=phrase*.75?phrase:4;if(step==4&&std::abs(diff)<2)break;
+        int pick=-1;
+        if(diff>0){for(int pass=0;pass<2&&pick<0;++pass)for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];if((pass==0)!=body(x.type)||x.bars+step>128)continue;if(pick<0||x.bars<p.sections[(size_t)pick].bars)pick=(int)i;}
+            if(pick<0)break;p.sections[(size_t)pick].bars+=step;}
+        else{for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}
+            if(pick<0)break;p.sections[(size_t)pick].bars-=step;}
+    }
+    const double seconds=totalBars()*240./s.bpm;
+    if(std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
+        p.settings.bpm=std::clamp(std::round(totalBars()*240./s.targetSeconds*10)/10,low,high);}
+    p.normalise();
+}
 void varyForm(Project& p,std::uint32_t seed) {
     const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
     const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;});
@@ -1129,7 +1154,7 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
     for(const auto& t:project.tracks){if(t.locked)return false;for(const auto& c:t.clips)if(c.locked)return false;}
     auto plan=project;plan.tracks.resize(trackCount);
     for(auto& t:plan.tracks){t.freeTimeline=false;t.clips.clear();}
-    arrangeSongVariant(plan,freshFormVariant(project,seed));varyForm(plan,seed);chooseDropGaps(plan,seed);
+    arrangeSongVariant(plan,freshFormVariant(project,seed));varyForm(plan,seed);
     // Reusing MIDI must not shorten an already clean DJ outro into its harmonic
     // portion. Preserve factory mix passages at their original lengths.
     if(factoryForm(project,project.settings.genre)&&project.sections.front().type==Section::intro&&project.sections.back().type==Section::outro){plan.sections.front().bars=project.sections.front().bars;plan.sections.back().bars=project.sections.back().bars;}
@@ -1138,6 +1163,7 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
     bool identical=plan.sections.size()==project.sections.size();
     for(size_t s=0;identical&&s<plan.sections.size();++s)identical=plan.sections[s].type==project.sections[s].type&&plan.sections[s].bars==project.sections[s].bars;
     if(identical)plan.sections.back().bars=plan.sections.back().bars<=112?plan.sections.back().bars+16:plan.sections.back().bars-16;
+    fitFormToTarget(plan);chooseDropGaps(plan,seed);
     std::vector<size_t> source;
     for(size_t s=0;s<plan.sections.size();++s){std::vector<size_t> matches;
         for(size_t old=0;old<project.sections.size();++old)if(project.sections[old].type==plan.sections[s].type)matches.push_back(old);
@@ -1433,7 +1459,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
-        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);
+        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);
     }
     if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);
     const auto& s=p.settings;

@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.45.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.50.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+**0.50.0** brings fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
 **0.45.0** adds a short full-band stop before some drops, build-ups that rise into the drop, NEW FEEL that changes only timing and dynamics, and a clearer Mix/Mastering Assistant with measured-value cards.
 
@@ -370,7 +372,7 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 
 Click the **position number or the small bar-count legend** next to the metronome. The transport alternates **bars.beats.ticks** and **minutes:seconds.milliseconds**. Time mode shows **remaining time** below in grey; durations above an hour also include hours.
 
-**Target duration** sits in the arrangement bar after the song length and before **NEW ARRANGEMENT**. Type a clock length such as 3:30, or leave that field empty to turn the target off. **Tolerance** is the allowed gap in seconds, five by default; type 0 for an exact length. The song length turns green inside that range, amber when the song is too short and red when it is too long. The transport’s remaining time is only the playhead, not this comparison. A marker on the arrangement shows the target. Tempo or form moves it; notes and tempo are not rewritten. Older projects open with a five-second tolerance and no target.
+**Target duration** sits in the arrangement bar after the song length and before **NEW ARRANGEMENT**. Type a clock length such as 3:30, or leave that field empty to turn the target off. **Tolerance** is the allowed gap in seconds, five by default; type 0 for an exact length. The song length turns green inside that range, amber when the song is too short and red when it is too long. The transport’s remaining time is only the playhead, not this comparison. A marker on the arrangement shows the target. With a target, **GENERATE SONG** and **NEW ARRANGEMENT** build the form to that length: sections grow or shrink by whole phrases, and the tempo moves slightly, inside the genre range, only when phrases alone cannot reach it. Leave the field empty to let the generator choose the length. Editing the target does not rewrite an existing song. Older projects open with a five-second tolerance and no target.
 
 The **arrangement** ruler switches from bar numbers to song times calculated from the current BPM. Lines still follow bars and beats: **metre, snap, notes, loops and automation stay unchanged**. The piano roll retains its musical references. Time follows song position, so it moves back when a loop restarts. Click again to restore bars; the choice is remembered locally.
 

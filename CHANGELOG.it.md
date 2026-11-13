@@ -1,6 +1,8 @@
 # Novità — Fase Groove Arranger
 
-## Unreleased
+## 0.50.0
+
+- La durata obiettivo ora guida la generazione: con un obiettivo, GENERA BRANO e NUOVO ARRANGIAMENTO costruiscono la forma su quella durata entro la tolleranza (prima frasi intere, poi passi di 4 battute; il tempo si sposta di poco nel range del genere solo se serve). Con il campo vuoto (indicato come "auto") la lunghezza la sceglie il generatore, come prima. I campi obiettivo e tolleranza sono allineati al resto della barra.
 
 - Timeline: le clip trascinate seguono il mouse in modo continuo, con una linea e un'etichetta battuta.beat.tick sulla posizione agganciata; pulsante SNAP on/off; griglia Battuta, 1/2, 1/4, 1/8, 1/16, 1/32 e Auto (in base allo zoom); Shift inverte l'aggancio durante il trascinamento; le frecce sinistra/destra spostano le clip selezionate di un passo di griglia (Shift: una battuta); ridimensionamento più leggero.
 

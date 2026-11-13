@@ -752,8 +752,8 @@ void MainComponent::resized(){
         const int afterTarget=insertMax-(labelW+4+editorW+4);
         const int tolLabelW=std::clamp(afterTarget-(tolEditorW+4+8),28,72);
         const int fitW=std::max(0,afterTarget-(tolLabelW+4+tolEditorW+8));
-        place(targetDurationLabel,x,rowA,labelW);x+=labelW+4;place(targetDurationEditor,x,rowA+2,editorW,24);x+=editorW+4;
-        place(targetToleranceLabel,x,rowA,tolLabelW);x+=tolLabelW+4;place(targetToleranceEditor,x,rowA+2,tolEditorW,24);x+=tolEditorW+4;
+        place(targetDurationLabel,x,rowA,labelW);x+=labelW+4;place(targetDurationEditor,x,rowA,editorW);x+=editorW+4;
+        place(targetToleranceLabel,x,rowA,tolLabelW);x+=tolLabelW+4;place(targetToleranceEditor,x,rowA,tolEditorW);x+=tolEditorW+4;
         place(targetFitLabel,x,rowA,fitW);targetFitLabel.setVisible(song&&fitW>=36);x+=std::max(fitW,0)+4;divider(x,rowA+4,20);x+=9;
         place(arrangeButton,x,rowA,170);x+=176;place(songButton,x,rowA,150);place(generateMenuButton,x+150,rowA,26);x+=180;divider(x+4,rowA+4,20);x+=13;
         place(addSectionButton,x,rowA,120);place(spotlightButton,x+132,rowA,100);

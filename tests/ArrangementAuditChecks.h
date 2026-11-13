@@ -50,6 +50,18 @@ inline void verify(){
             auto again=p;generate(again,Scope::section,0,1,0);size_t same=0,before=0;for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].clips.size()>1){before+=p.tracks[ti].clips[1].notes.size();same+=again.tracks[ti].clips[1].notes.size();}
             check(same==before,"genre "+std::to_string(genre)+": Auto energy leaves the section as generated");}
     }
+    {   // Target duration: new songs and new arrangements are built to it within the tolerance;
+        // an empty target generates exactly what it did before.
+        int fitted=0,total=0;
+        for(int genre=0;genre<numGenres;++genre)for(double minutes:{3.,4.5,6.,8.})for(unsigned seed=1;seed<=3;++seed){
+            auto p=newProject(genre);p.settings.targetEnabled=true;p.settings.targetSeconds=minutes*60;p.settings.targetToleranceSeconds=5;
+            generate(p,Scope::song,0,0,seed*7919U);const double got=projectSeconds(p);++total;fitted+=std::abs(got-minutes*60)<=5+1e-6;
+            if(std::abs(got-minutes*60)>5+1e-6)std::cout<<"AUDIT target miss genre="<<genre<<" target="<<minutes*60<<" got="<<got<<" bpm="<<p.settings.bpm<<"\n";
+            auto q=p;if(rearrangeSong(q,seed*104729U+1)){++total;fitted+=std::abs(projectSeconds(q)-minutes*60)<=5+1e-6;}}
+        std::cout<<"AUDIT target_duration fitted="<<fitted<<"/"<<total<<"\n";check(fitted==total,"songs and arrangements meet the target duration within the tolerance");
+        auto a=newProject(4),b=newProject(4);b.settings.targetEnabled=false;b.settings.targetSeconds=0;generate(a,Scope::song,0,0,99);generate(b,Scope::song,0,0,99);
+        bool same=a.sections.size()==b.sections.size()&&a.settings.bpm==b.settings.bpm;for(size_t i=0;same&&i<a.sections.size();++i)same=a.sections[i].bars==b.sections[i].bars;check(same,"an empty target leaves the form as generated");
+    }
     ::check(weak==0,"arrangement audit found problems");
 }
 }
