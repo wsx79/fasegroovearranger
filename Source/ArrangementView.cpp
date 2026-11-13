@@ -248,7 +248,10 @@ bool ArrangementView::verifyLoopEditing(){
     // Grid: fixed steps, Auto by zoom (the finest step at least 14 px wide), and snap off.
     owner.timelineSnap=.125;ok=ok&&std::abs(snapBeat(1.06)-1.)<1e-12&&std::abs(snapBeat(1.07)-1.125)<1e-12&&std::abs(snapBeat(1.06,true)-1.06)<=.5/960.;
     owner.timelineSnap=-1;{const double g=gridBeats();ok=ok&&(g==4.||g/4*pixelsPerBar>=14)&&(g==.125||g/8*pixelsPerBar<14)&&std::abs(snapBeat(2.9)-std::round(2.9/g)*g)<1e-12;}
-    const bool on=owner.timelineSnapOn;owner.timelineSnapOn=false;ok=ok&&gridBeats()==0.&&std::abs(snapBeat(2.9)-2.9)<=.5/960.;owner.timelineSnapOn=on;
+    const bool on=owner.timelineSnapOn;owner.timelineSnapOn=false;ok=ok&&gridBeats()==0.&&std::abs(snapBeat(2.9)-2.9)<=.5/960.;
+    // SNAP off + Shift snaps for that drag (the opposite of SNAP); SNAP on + Shift is free.
+    {const double g=gridStep(true);ok=ok&&g>0&&std::abs(snapBeat(2.9,true)-std::round(2.9/g)*g)<1e-12;}owner.timelineSnapOn=true;ok=ok&&gridStep(true)==0.;owner.timelineSnapOn=on;
+    translateControls(owner);ok=ok&&owner.snapButton.getTooltip().contains(tr("SNAP on: moving clips").substring(0,10))&&!owner.snapButton.getTooltip().contains(tr("Changes re-render this part right away; locked tracks and clips are kept."));
     owner.project=saved;pixelsPerBar=zoom;owner.timelineSnap=snap;owner.changed(false);owner.updateSizes();return ok;
 }
 void ArrangementView::setHover(int track,int clip){
@@ -351,11 +354,13 @@ float ArrangementView::volumeY(int track,double value) const {return (float)(row
 int ArrangementView::pointAt(int track,juce::Point<float> pos) const {const auto& points=envelope(track).points;for(size_t i=0;i<points.size();++i)if(pos.getDistanceFrom({headerWidth+(float)(points[i].beat/4*pixelsPerBar),volumeY(track,points[i].value)})<8)return (int)i;return -1;}
 void ArrangementView::editPoint(juce::Point<float> pos,bool snap){if(dragTrack<0||dragPoint<0)return;auto& points=envelope(dragTrack).points;auto& point=points[(size_t)dragPoint];double beat=(pos.x-headerWidth)*4./pixelsPerBar;if(snap)beat=std::round(beat);const double low=dragPoint>0?points[(size_t)dragPoint-1].beat+1./960.:0,high=dragPoint+1<(int)points.size()?points[(size_t)dragPoint+1].beat-1./960.:owner.project.length();point.beat=std::clamp(beat,low,high);const double ceiling=envelopeMax(dragTrack);point.value=std::clamp((volumeY(dragTrack,0)-pos.y)*ceiling/64.,0.,ceiling);}
 int ArrangementView::sectionAt(float x) const {int result=0;const double beat=(x-headerWidth)*4./pixelsPerBar;for(size_t i=0;i<owner.project.sections.size();++i)if(beat>=owner.project.sectionStart((int)i))result=(int)i;return result;}
-double ArrangementView::gridBeats()const{
-    if(!owner.timelineSnapOn)return 0.;if(owner.timelineSnap>0)return owner.timelineSnap;
+double ArrangementView::gridBeats()const{return gridStep(false);}
+// SNAP on: gestures lock to the grid; off: free. Shift during a drag does the opposite.
+double ArrangementView::gridStep(bool shift)const{
+    if(owner.timelineSnapOn==shift)return 0.;if(owner.timelineSnap>0)return owner.timelineSnap;
     // Auto: the finest musical step that is still at least 14 px wide at this zoom.
     for(double step:{.125,.25,.5,1.,2.,4.})if(step/4*pixelsPerBar>=14)return step;return 4.;}
-double ArrangementView::snapBeat(double beat,bool bypass)const{const double grid=bypass?0.:gridBeats();return std::max(0.,grid>0?std::round(beat/grid)*grid:std::round(beat*960)/960.);}
+double ArrangementView::snapBeat(double beat,bool shift)const{const double grid=gridStep(shift);return std::max(0.,grid>0?std::round(beat/grid)*grid:std::round(beat*960)/960.);}
 void ArrangementView::captureDragImages(){
     dragImages.clear();auto indices=selectedClips;indices.insert({clipTrack,clipSource});const auto& p=owner.project;
     for(const auto& id:indices){if(id.track<0||id.track>=(int)p.tracks.size()||id.index<0||id.index>=(int)p.tracks[(size_t)id.track].clips.size())continue;
@@ -413,12 +418,12 @@ void ArrangementView::mouseDrag(const juce::MouseEvent& e){
     if(panning){const auto offset=e.getEventRelativeTo(&owner).position-panAnchor;owner.arrangementPort.setViewPosition(panStart.x-juce::roundToInt(offset.x),panStart.y-juce::roundToInt(offset.y));return;}
     if(heightTrack>=0){trackHeights[(size_t)heightTrack]=std::clamp(heightBefore+juce::roundToInt(e.position.y-heightAnchorY),40,240);owner.updateSizes();repaint();return;}
     if(resizeBefore&&resizeFront&&resizeTrack>=0){
-        const double grid=e.mods.isShiftDown()||gridBeats()<=0?1./960.:gridBeats();double start=resizeOriginalStart+(e.position.x-resizeAnchorX)*4./pixelsPerBar;
-        if(!e.mods.isShiftDown()&&gridBeats()>0)start=std::round(start/grid)*grid;
+        const double grid=gridStep(e.mods.isShiftDown());double start=resizeOriginalStart+(e.position.x-resizeAnchorX)*4./pixelsPerBar;
+        if(grid>0)start=std::round(start/grid)*grid;
         owner.project.tracks[(size_t)resizeTrack]=resizeBefore->tracks[(size_t)resizeTrack];
         if(owner.project.trimClipStart(resizeTrack,resizeSectionIndex,start)){resizeLastLength=owner.project.clipLength(resizeTrack,resizeSectionIndex);}
         owner.refreshControls();repaint();return;}
-    if(resizeBefore){const double grid=resizeTrack<0?4.:e.mods.isShiftDown()||gridBeats()<=0?1./960.:gridBeats();const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,resizeTrack<0?512.:maxClipBeats);
+    if(resizeBefore){const double step=gridStep(e.mods.isShiftDown()),grid=resizeTrack<0?4.:step<=0?1./960.:step;const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,resizeTrack<0?512.:maxClipBeats);
         if(duration!=resizeLastLength){
             // A clip edge only touches its own track (and the loop locators): restore just those
             // instead of copying the whole project on every mouse move.
@@ -460,7 +465,7 @@ void ArrangementView::mouseMove(const juce::MouseEvent& e){{const auto v=owner.a
     if(hoverTrack>=0&&hoverClip>=0&&e.y<rowY(rowForTrack(hoverTrack))+18){const auto& c=owner.project.tracks[(size_t)hoverTrack].clips[(size_t)hoverClip];if(std::any_of(c.feel.begin(),c.feel.end(),[](double v){return v>=0;})){setTooltip(tr("Frozen Feel")+": "+tr("Density")+" "+juce::String(c.feel[0]<0?owner.project.settings.density:c.feel[0],2)+" / "+tr("Swing")+" "+juce::String(c.feel[1]<0?owner.project.settings.swing:c.feel[1],2)+" / "+tr("Feel")+" "+juce::String(c.feel[2]<0?owner.project.settings.humanize:c.feel[2],2));return;}}
     const bool edge=header?edgeAt(-1,e.position.x)>=0:e.y>=view.getY()+rulerHeight&&hoverRow>=0&&e.y<rowY(hoverRow)+rowHeight(hoverRow)&&(edgeAt(trackAtRow(hoverRow),e.position.x)>=0||(e.position.y>=rowY(hoverRow)+rowHeight(hoverRow)*.45f&&frontEdgeAt(trackAtRow(hoverRow),e.position.x)>=0));
     setMouseCursor(edge?juce::MouseCursor::LeftRightResizeCursor:juce::MouseCursor::NormalCursor);
-    if(edge){setTooltip(tr(header?"Drag this guide edge to change its duration. Music and automation after it move with the following sections. Escape cancels; Undo restores.":"Drag this edge to resize only this clip loop. Shorten and extend without losing the source; Shift for quarter-beat timing. Escape cancels; Undo restores."));return;}
+    if(edge){setTooltip(tr(header?"Drag this guide edge to change its duration. Music and automation after it move with the following sections. Escape cancels; Undo restores.":"Drag this edge to resize only this clip. With SNAP on it follows the grid, with SNAP off it moves freely; Shift does the opposite during the drag. Shortening keeps the source, so extending restores it. Escape cancels; Undo restores."));return;}
     const auto v=owner.arrangementPort.getViewArea();if(e.y>=v.getY()+32&&e.y<v.getY()+rulerHeight&&e.x>=v.getX()+headerWidth){const int loopEdge=loopEdgeAt(e.position.x);const double beat=(e.position.x-headerWidth)*4./pixelsPerBar;const bool inside=owner.project.hasLoopRegion()&&beat>owner.project.loopStart&&beat<owner.project.loopEnd;
         setMouseCursor(loopEdge!=loopNone?juce::MouseCursor::LeftRightResizeCursor:inside?juce::MouseCursor::DraggingHandCursor:juce::MouseCursor::NormalCursor);setTooltip(tr("Drag the loop edges to resize it, drag inside it to move it, or drag on the ruler to draw a new loop. Click to seek; double-click the loop to remove it."));return;}
     if(e.y<v.getY()+rulerHeight){setTooltip(tr("Click a section name to start playback from that position."));return;}const int row=rowAt(e.y);if(row<0)return;if(e.x>=v.getX()&&e.x<v.getX()+132&&e.y<rowY(row)+rowHeight(row)){const int ti=trackAtRow(row);const auto& t=owner.project.tracks[(size_t)ti];setTooltip(Localisation::upper(utf(t.name))+juce::String::fromUTF8("  ·  ")+owner.cachedSourceName(ti)+"\n"+tr("Double-click a track name to show its inspector."));return;}if(e.y<rowY(row)+rowHeight(row)){setTooltip(tr("Click to select without moving playback. Click the section-name header to listen from a position. Double-click or E opens MIDI editing. Drag to move; Alt-drag copies. Shift-click adds clips on any track. Double-click the title to rename a clip. Use the edit toolbar or right-click for split, cut, copy, paste, duplicate and delete."));return;}setTooltip(tr("Volume automation: click to add, drag to move, Shift for free timing, Alt-drag a segment to curve it; right-click for bypass or delete. Hiding a lane does not bypass it."));}

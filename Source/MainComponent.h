@@ -94,7 +94,8 @@ public:
     std::set<ClipId> selectedClips;
     int fadeTrack=-1,fadeClip=-1,fadeSide=0;
     int dropTrack=-1; // a sample dragged from the browser over this track
-    double snapBeat(double beat,bool bypass=false) const;
+    double snapBeat(double beat,bool shift=false) const;   // shift: the opposite of SNAP for this drag
+    double gridStep(bool shift) const;                      // 0 = free
     double gridBeats() const;   // the active snap step in beats (Auto follows the zoom), 0 when snap is off
 private:
     friend class MainComponent;

@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.53.1
+
+- SNAP: its tooltip now says what it does (it showed a generic text). SNAP on locks moving clips, their edges (also the new front edge) and the loop locators to the grid; SNAP off moves and trims freely; Shift now does the opposite in every one of those drags (before, Shift only freed them).
+
 ## 0.53.0
 
 - Export ends with the music: an audio clip counts only the part it plays (its trimmed region), not the whole file, and the empty "Audio take" room added at the end for a long take is removed once the take is trimmed (also when an existing project opens). Before, a trimmed vocal kept the song running to the end of the original file, with silence.

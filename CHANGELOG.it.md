@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.53.1
+
+- SNAP: il tooltip ora spiega cosa fa (mostrava un testo generico). SNAP attivo aggancia alla griglia lo spostamento delle clip, i loro bordi (anche il nuovo bordo sinistro) e i locatori del loop; SNAP spento sposta e taglia liberamente; Maiusc ora fa il contrario in tutti questi trascinamenti (prima li liberava soltanto).
+
 ## 0.53.0
 
 - L'esportazione finisce con la musica: una clip audio conta solo la parte che suona (la regione tagliata), non l'intero file, e lo spazio vuoto "Audio take" aggiunto in fondo per un audio lungo viene tolto quando lo accorci (anche aprendo un progetto esistente). Prima una voce tagliata faceva durare il brano fino alla fine del file originale, con silenzio.

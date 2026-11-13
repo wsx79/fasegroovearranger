@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.53.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.53.1**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -178,7 +178,7 @@ When the mixer is closed, its MIXER/levels caption is replaced by a **stereo mas
 - **Right edge of a section header**: resize the guide in whole bars. Intro, Main, Break and the following guide labels move; clips, locators and volume automation stay at their musical times. Right-click the header to rename it, change its role, insert, duplicate, reorder or delete a guide section. **Escape** cancels a drag; **UNDO** restores it.
 - **Drag a clip** to move it along the timeline or onto another track; **Alt-drag** copies it. The original position becomes a gap when moving. Destination overlaps are replaced while outside fragments are retained. The target track keeps its sound; drum MIDI maps to its lane. **Shift-click** selects more clips on the same track; **Ctrl/Cmd+A** selects all its clips.
 - **Cut, copy, paste, split, duplicate and delete** are in the clip's right-click menu and on the keyboard. Paste uses the cursor; click the numbered ruler, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
-- **SNAP** chooses bars, beats, half/quarter beats or free timing. Hold **Shift during a drag** for free timing. Right-click empty track space for **Create empty MIDI clip**. Double-click a clip to edit its notes in the original full instrument editor.
+- **SNAP** on (lit): moving clips, dragging their edges and the loop locators follow the grid chosen next to it (Bar, 1/2, 1/4 … 1/32, or Auto by zoom). **SNAP** off: move and trim freely by hand. Hold **Shift during a drag** to do the opposite for that drag. Right-click empty track space for **Create empty MIDI clip**. Double-click a clip to edit its notes in the original full instrument editor.
 - **Click the bar ruler** to seek precisely, as in the MIDI editor ruler; **Shift-drag** sets the loop range. Both locators remain visible with LOOP off.
 - The toolbar above the timeline holds **SNAP**, **ZOOM SELECTION**, **LOOP SELECTION**, **FIT SONG / F** (complete form), **FOLLOW** (scrolls during playback) and **AUTOMATION**; on its right **GUITAR LEADS**, then **INSPECTOR / I**, **BROWSER / B** and **MIXER / F3** toggle the panels.
 - Drop a MIDI file or personal sample on a track row to target that track.
@@ -859,7 +859,7 @@ The app is free and open source, **GNU AGPL v3 or later**, built with JUCE and t
 
 In the piano roll, **Select** chooses a group of notes. Play (or Space) auditions only those notes and stops at their end. Enabling Loop repeats that selection without changing clips, mute/solo states or project loop locators. With no notes selected, ordinary project playback remains available; the clip audition button retains its function. Repeated **+12 / −12** edits retain the note selection.
 
-The **Grid/Snap** menu above the tracks snaps clip moves, clip edges and loop locators: one bar is four beats; one beat is a quarter note in 4/4. OFF permits free positioning; Shift temporarily bypasses snapping. It does not quantise existing MIDI notes; use Quantise in the piano roll for that.
+The **Grid/Snap** menu above the tracks snaps clip moves, clip edges and loop locators: one bar is four beats; one beat is a quarter note in 4/4. Turn **SNAP** off for free positioning; Shift does the opposite of SNAP during a drag. It does not quantise existing MIDI notes; use Quantise in the piano roll for that.
 
 Closing the app saves mixer/inspector visibility, panel dimensions, zoom and window state. The X beside Full Screen uses the normal unsaved-changes close flow. Clicking the Fase Groove Arranger name/logo opens credits. The first launch opens Info with an invitation to support the project.
 
