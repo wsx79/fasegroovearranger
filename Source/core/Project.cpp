@@ -175,7 +175,7 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
         }
         ps.bassLineOverride=std::move(line);
     }
-    ps.humanizeSeed=e.humanizeSeed?e.humanizeSeed:seed;
+    ps.humanizeSeed=seed;   // NEW FEEL (e.humanizeSeed) is applied after generation: it must never change the notes
     ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
     ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
     ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;
@@ -689,6 +689,14 @@ int freshFormVariant(const Project& p,std::uint32_t seed){
     }return first;
 }
 }
+// About half the sections that lead into a drop end with a short full-band stop: one beat or
+// two. The choice belongs to the form, so it is drawn when the form is drawn.
+static void chooseDropGaps(Project& p,std::uint32_t seed){
+    for(size_t si=0;si<p.sections.size();++si){auto& s=p.sections[si];s.dropGap=0;
+        if(si+1>=p.sections.size()||p.sections[si+1].type!=Section::drop||s.type==Section::drop||s.type==Section::intro||s.bars<2)continue;
+        const auto r=mix(seed^(0x68e31da4U+(std::uint32_t)si*0x1b873593U));const int chance=s.type==Section::buildup?60:35;
+        if((int)(r%100)<chance)s.dropGap=(r>>8)%3==0?2:1;}
+}
 static void arrangeSongVariant(Project& p,int variant) {
     p.normalise();
     // Each style has its own phrase lengths and dramatic arc.
@@ -750,6 +758,7 @@ static void arrangeSongVariant(Project& p,int variant) {
     std::vector<SongSection> bounded;
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
     p.sections=std::move(bounded);for(auto& t:p.tracks)if(!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
+    chooseDropGaps(p,p.settings.seed^((std::uint32_t)variant*0x9e3779b9U));
     p.normalise();p.loopStart=0;p.loopEnd=p.length();
 }
 void arrangeSong(Project& p){
@@ -1118,7 +1127,7 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
     for(const auto& t:project.tracks){if(t.locked)return false;for(const auto& c:t.clips)if(c.locked)return false;}
     auto plan=project;plan.tracks.resize(trackCount);
     for(auto& t:plan.tracks){t.freeTimeline=false;t.clips.clear();}
-    arrangeSongVariant(plan,freshFormVariant(project,seed));varyForm(plan,seed);
+    arrangeSongVariant(plan,freshFormVariant(project,seed));varyForm(plan,seed);chooseDropGaps(plan,seed);
     // Reusing MIDI must not shorten an already clean DJ outro into its harmonic
     // portion. Preserve factory mix passages at their original lengths.
     if(factoryForm(project,project.settings.genre)&&project.sections.front().type==Section::intro&&project.sections.back().type==Section::outro){plan.sections.front().bars=project.sections.front().bars;plan.sections.back().bars=project.sections.back().bars;}
@@ -1224,6 +1233,42 @@ static void ornamentDrumTake(Clip& clip,int track,double beats){
     }
     clip.notes.insert(clip.notes.end(),added.begin(),added.end());std::sort(clip.notes.begin(),clip.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
 }
+// Some accompaniment voicings add fixed colour tones (a major 9th, a minor 7th) whatever the
+// key: over a Phrygian or Mixolydian chord they land outside both the chord and the scale,
+// and as held or on-beat notes they sound wrong. Those move to the nearest chord or scale
+// tone; short off-beat passing and blue notes are left alone.
+static void fitSustainedTensions(Clip& clip,const Project& p,int section,double clipStart,double period){
+    const auto s=activeHarmony(p,section);const auto& scale=sgk::scaleIntervals(s.scale);
+    const auto fits=[&](int pitch,const sgk::Chord& chord){const int pc=((pitch-s.key)%12+12)%12,rel=((pitch-chord.rootPc)%12+12)%12;
+        if(std::find(scale.begin(),scale.end(),pc)!=scale.end()||rel==0)return true;
+        for(int iv:{chord.third,chord.fifth,chord.seventh,chord.ninth,chord.eleventh,chord.thirteenth,chord.sixth})if(iv>=0&&iv%12==rel)return true;return false;};
+    bool changed=false;
+    for(auto& n:clip.notes){if(n.length<.5&&!(n.length>=.25&&std::abs(n.start-std::round(n.start))<.05))continue;
+        const double wrapped=period>0&&clip.loopPhase>0?std::fmod(n.start-clip.loopPhase+period*2,period):n.start;const auto chord=chordAtBeat(s,clipStart+wrapped);
+        if(fits(n.pitch,chord))continue;
+        for(int step:{-1,1,-2,2})if(n.pitch+step>=0&&n.pitch+step<=127&&fits(n.pitch+step,chord)){n.pitch+=step;changed=true;break;}}
+    if(!changed)return;
+    // A moved tone may now double another voice of the same chord: keep one.
+    std::sort(clip.notes.begin(),clip.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+    clip.notes.erase(std::unique(clip.notes.begin(),clip.notes.end(),[](const Note& a,const Note& b){return a.pitch==b.pitch&&std::abs(a.start-b.start)<1./64.;}),clip.notes.end());
+}
+// NEW FEEL: another performance of the same notes. Each attack (a chord moves as one) gets
+// its own small timing offset and dynamics; pitches, order and lengths stay as written.
+static void applyFeelSeed(Clip& clip,std::uint32_t feelSeed,double humanize){
+    if(clip.notes.empty())return;const double amount=std::clamp(std::max(humanize,.25),0.,1.);
+    const double reach=.006+.018*amount;const int accent=(int)std::lround(5+9*amount);
+    std::sort(clip.notes.begin(),clip.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+    // Notes closer than a sixteenth-triplet (a chord, a grace note and its target) move together.
+    double groupStart=-1,last=-1,offset=0,previousMoved=-1;int groupVelocity=0;std::uint32_t r=0;
+    for(size_t i=0;i<clip.notes.size();++i){auto& n=clip.notes[i];
+        if(groupStart<0||n.start-last>1./12.){groupStart=n.start;r=mix(feelSeed^(std::uint32_t)std::lround(n.start*960.)*0x9e3779b1U);
+            offset=((double)(r&0xffff)/65535.-.5)*2.*reach;groupVelocity=(int)((r>>16)%(unsigned)(2*accent+1))-accent;
+            // Never let a group reach the one before it: the order of attacks stays as written.
+            if(previousMoved>=0)offset=std::max(offset,previousMoved+1./32.-n.start);}
+        last=n.start;
+        const double end=n.start+n.length,moved=std::max(0.,n.start+offset);n.start=moved;n.length=std::max(1./64.,end-moved);previousMoved=std::max(previousMoved,moved);
+        n.velocity=std::clamp(n.velocity+groupVelocity+(int)(mix(r+(std::uint32_t)i)%5)-2,1,127);}
+}
 static void varyStringsTake(Clip& clip){
     if(clip.notes.empty())return;
     const auto v=mix(clip.seed^0x7f4a7c15U);const int registerChoice=(int)(v%3);int voicing=(int)((v>>4)%4);const int bowing=(int)((v>>9)%4);   // sustained, bowed again halfway, with a breath, half length
@@ -1326,12 +1371,26 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
     }
 }
 static void transitionMacros(Project& p,Scope scope,int track,int section,int lastClip=-1){for(int si=0;si+1<(int)p.sections.size();++si){if(p.sections[(size_t)(si+1)].type!=Section::drop)continue;const auto& options=p.sections[(size_t)si];const double finish=p.sectionStart(si+1);for(int ti:{0,1,4,5,6,16}){auto& t=p.tracks[(size_t)ti];for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=finish-4)continue;if(options.preDropSilence&&(ti==1||ti==4)){const double silence=finish-2-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[silence](const Note& n){return n.start>=silence;}),c.notes.end());for(auto& n:c.notes)n.length=std::min(n.length,std::max(0.,silence-n.start));}if(options.snareRoll&&(ti==5||ti==6)){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[from,to](const Note& n){return n.start>=from&&n.start<to;}),c.notes.end());for(double at=from;at<to-1e-6;){const double remaining=to-at,step=remaining>2?.5:remaining>1?.25:.125;c.notes.push_back({at,std::min(step*.7,to-at),fgd::defaultNote(ti-4),std::clamp((int)(65+60*(1-remaining/4)),1,127),ti-4});at+=step;}}if(options.reverseCrash&&ti==16&&t.instrument=="sample"){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);if(to>from)c.notes.push_back({from,to-from,t.sampleRoot,105,12,true});}tidyNotes(c,options.preDropSilence&&(ti==1||ti==4)?std::clamp(finish-2-start,0.,length):length);}}}}
+// The stop before a drop: every part rests for the last one or two beats, so the drop lands
+// on silence. Crash and reverse crash (lane 12) and sustained FX keep ringing through it.
+static void applyDropGaps(Project& p,Scope scope,int track,int section,int lastClip=-1){
+    for(int si=0;si+1<(int)p.sections.size();++si){const int gap=p.sections[(size_t)si].dropGap;if(gap<=0||p.sections[(size_t)(si+1)].type!=Section::drop)continue;
+        const double finish=p.sectionStart(si+1),from=finish-gap;
+        for(int ti=0;ti<(int)p.tracks.size();++ti){if(ti==16||(isManualTrack(ti)&&!p.tracks[(size_t)ti].vocalChops))continue;auto& t=p.tracks[(size_t)ti];
+            for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];if(c.audioOffset>=0)continue;
+                const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=from)continue;const double rest=from-start;
+                if(c.loopLength>0)continue;   // a looped take keeps its own repetition
+                // Humanised attacks can land a few milliseconds early: they belong to the stop too.
+                const double edge=rest-1./32.;
+                c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=edge&&n.start<finish-start-1./32.;}),c.notes.end());
+                for(auto& n:c.notes)if(n.start<edge&&n.start+n.length>rest)n.length=rest-n.start;}}}
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
     if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
     generateNotes(p,scope,track,section,seed,lastClip);
     generateVocalChops(p,scope,track,section,seed,lastClip);
-    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);
+    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -1475,7 +1534,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                     for(size_t i=0;i<patterns.size();++i)if(patterns[i].name=="Chicago Chank"){gs.pattern=(int)i;break;}
                 }
                 gs.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+393U));gs.stepsPerChord=ps.stepsPerChord;
-                gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
+                gs.density=ps.riffDensity; gs.swing=ps.swing; gs.humanize=ps.humanize; gs.humanizeSeed=clip.seed;
                 gs.tempo=s.bpm; gs.roomForBand=true; gs.numChords=ps.progressionLength; gs.fillEveryBars=e.fillEvery; gs.variationEvery=e.variationEvery; gs.fillStyle=(fgg::FillStyle)(e.fillStyle<0?(int)fgg::FillStyle::mix:std::min(e.fillStyle,fgg::numFillStyles-1));
                 gs.velocity=e.velocity;gs.accentGroove=(float)e.accent;gs.strumMs=(float)(e.strum*80);gs.grooveBars=e.grooveBars;gs.segmentOrder=e.segments;gs.letRing=e.letRing;gs.roomForBand=e.roomForBand;gs.pushChanges=e.pushChanges;gs.strumAfterFill=e.afterFill;
                 for(size_t l=0;l<12;++l){gs.levels[l]=(float)e.laneLevel[l];gs.laneSwing[l]=(float)e.laneSwing[l];gs.laneShift[l]=(float)e.laneShift[l];gs.octaves[l]=e.laneOctave[l];gs.muted[l]=e.laneMute[l];}
@@ -1490,7 +1549,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 ls.globalOctave=e.globalOctave;ls.key=ps.keyRoot;ls.scale=(int)ps.scale;ls.stepsPerChord=ps.stepsPerChord;
                 ls.pattern=e.pattern>=0&&e.pattern<(int)fgl::leadPatterns().size()?e.pattern:fgl::randomPatternIndex();
                 ls.randomGenre=engineGenre(s.genre);ls.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+2227U));
-                ls.density=ps.riffDensity;ls.swing=ps.swing;ls.humanize=ps.humanize;ls.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;
+                ls.density=ps.riffDensity;ls.swing=ps.swing;ls.humanize=ps.humanize;ls.humanizeSeed=clip.seed;
                 ls.tempo=s.bpm;ls.numChords=ps.progressionLength;ls.fillEveryBars=mixing?0:e.fillEvery;ls.variationEvery=mixing?0:e.variationEvery;
                 ls.fillStyle=(fgl::FillStyle)(e.fillStyle<0?(int)fgl::FillStyle::mix:std::min(e.fillStyle,fgl::numFillStyles-1));
                 ls.velocity=e.velocity;ls.accentGroove=(float)e.accent;ls.attackMs=(float)(e.strum*80);ls.grooveBars=e.grooveBars;
@@ -1531,6 +1590,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
             if(p.settings.grooveEnabled)for(auto& n:clip.notes){const int slot=((int)std::llround(n.start*4)%16+16)%16;n.start=std::max(0.,n.start+p.settings.grooveOffsets[(size_t)slot]);n.velocity=std::clamp((int)std::lround(n.velocity*p.settings.grooveAccents[(size_t)slot]),1,127);}
+            if(ti==0||ti==2||ti==3)fitSustainedTensions(clip,p,guide,p.clipStart(ti,(int)si),period);
+            if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
             if(period>0){clip.loopSource=clip.notes;if(!rebuildClipLoop(clip,duration))throw std::length_error("Generated loop exceeds the note limit");}
@@ -1558,7 +1619,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
         for(auto& c:t.clips)if(!c.locked){if(parameters&densityFeel)c.feel[0]=-1;if(parameters&swingFeel)c.feel[1]=-1;if(parameters&humanizeFeel)c.feel[2]=-1;}
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;

@@ -73,7 +73,9 @@ struct SectionHarmony {
     std::array<int,8> degrees{0,3,4,0,0,0,0,0},freeChords{-1,-1,-1,-1,-1,-1,-1,-1};
     std::array<bool,8> manualChords{};
 };
-struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false; };
+struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false;
+    int dropGap=0; // automatic full-band stop before the next drop, in beats (0 none, 1 or 2); not an authored edit
+};
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
 // MIDI file use musical order through trackAtRow().
 int trackAtRow(int row);

@@ -19,6 +19,7 @@ void check(bool b,const char* message){if(!b)throw std::runtime_error(message);}
 #include "MusicalGenerationChecks.h"
 #include "HarmonyRecheckChecks.h"
 #include "VarietyAuditChecks.h"
+#include "ArrangementAuditChecks.h"
 #include "AuditRegressionChecks.h"
 #include "GlobalFeelChecks.h"
 #include "DeepAuditChecks.h"
@@ -249,6 +250,7 @@ void verifySectionDevelopment(){
     }
 }
 int main(int argc,char** argv){try{
+    if(argc==2&&std::string(argv[1])=="--arrangement-audit"){arrangementaudit::verify();std::cout<<"Arrangement audit passed\n";return 0;}
     if(argc==2&&std::string(argv[1])=="--variety-audit"){varietyaudit::verify();std::cout<<"Variety audit passed\n";return 0;}
     if(argc==2&&std::string(argv[1])=="--harmony-recheck"){harmonyrecheck::verify();std::cout<<"Harmony recheck passed\n";return 0;}
     if(argc>=2&&std::string(argv[1])=="--arrangement-review"){arrangementchecks::verify(argc>2?argv[2]:"");std::cout<<"All-genre arrangement regressions passed\n";return 0;}
