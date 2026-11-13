@@ -95,6 +95,7 @@ public:
     int fadeTrack=-1,fadeClip=-1,fadeSide=0;
     int dropTrack=-1; // a sample dragged from the browser over this track
     double snapBeat(double beat,bool bypass=false) const;
+    double gridBeats() const;   // the active snap step in beats (Auto follows the zoom), 0 when snap is off
 private:
     friend class MainComponent;
     MainComponent& owner;
@@ -119,7 +120,11 @@ public:
     bool verifyLoopEditing();
 private:
     int clipTrack=-1,clipSource=-1,clipTarget=-1;
-    double clipAnchorX=0,clipDropBeat=0;
+    double clipAnchorX=0,clipDropBeat=0,clipLiveBeat=0;float clipLiveY=0,clipAnchorY=0;
+    // Live drag: the moving clips are captured once, then follow the mouse continuously;
+    // the snapped landing place is outlined. Only the changed region is repainted.
+    struct DragImage{juce::Image image;juce::Rectangle<int> source;int track=0,index=0;};std::vector<DragImage> dragImages;juce::Rectangle<int> dragDirty;
+    void captureDragImages();juce::Rectangle<int> dragBounds()const;
     bool clipMoving=false;
     bool panning=false;
     juce::Point<int> panStart;
@@ -474,7 +479,8 @@ private:
     Clip emptyClip;
     bool noClipSelection=false;
     double selectionBeat=0,editCursor=-1;
-    double timelineSnap=1;
+    double timelineSnap=1;        // the chosen step in beats; -1 = Auto (follows the zoom)
+    bool timelineSnapOn=true;juce::TextButton snapButton{"SNAP"};
     IconButton zoomSelectionButton{IconButton::Icon::zoomSelection},loopSelectionButton{IconButton::Icon::loopSelection};
     juce::ComboBox timelineGrid;
     juce::File projectFile;

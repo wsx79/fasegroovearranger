@@ -740,7 +740,7 @@ void MainComponent::resized(){
     const int masterWidth=showQuit?120:152;place(masterSlider,x-masterWidth,8,masterWidth,40);
     // Arrangement toolbars: generation on the first row, harmony and feel on the second.
     const int rowA=controlBarHeight+4,rowB=controlBarHeight+toolRowHeight+4;
-    for(auto* b:{&zoomSelectionButton,&loopSelectionButton})b->setVisible(song);timelineGrid.setVisible(song);
+    for(auto* b:{&zoomSelectionButton,&loopSelectionButton})b->setVisible(song);timelineGrid.setVisible(song);snapButton.setVisible(song);
     if(song){
 
         // The three scope buttons are only used by the instrument page (APPLY TRACK / CLIP)
@@ -773,10 +773,10 @@ void MainComponent::resized(){
         arrangementPort.setBounds(left,top,right-left,std::max(60,footer-8-top));
         // Snap and the view tools sit in the corner above the track headers.
         const int corner=arrangementPort.getX();
-        place(timelineGrid,corner+8,top+4,headerWidth-16,24);
+        place(snapButton,corner+8,top+4,52,24);place(timelineGrid,corner+64,top+4,headerWidth-72,24);
         place(addTrackButton,corner+160,top+31,48,24);addTrackButton.toFront(false);
         x=corner+4;for(auto* b:{&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton}){place(*b,x,top+31,22,24);x+=24;}
-        for(juce::Component* c:std::initializer_list<juce::Component*>{&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
+        for(juce::Component* c:std::initializer_list<juce::Component*>{&snapButton,&timelineGrid,&zoomSelectionButton,&loopSelectionButton,&fitSongButton,&followButton,&automationButton})c->toFront(false);
         inspectorPort.setScrollBarsShown(inspectorVisible,false);
         inspectorPort.setBounds(12,top,inspectorVisible?inspectorWidth:0,std::max(60,footer-top));trackInspector.setSize(inspectorWidth-16,trackInspector.preferredHeight());
         inspectorCollapse.setVisible(inspectorVisible);inspectorCollapse.toFront(false);
