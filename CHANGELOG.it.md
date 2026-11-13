@@ -2,6 +2,7 @@
 
 ## 0.53.0
 
+- L'esportazione finisce con la musica: una clip audio conta solo la parte che suona (la regione tagliata), non l'intero file, e lo spazio vuoto "Audio take" aggiunto in fondo per un audio lungo viene tolto quando lo accorci (anche aprendo un progetto esistente). Prima una voce tagliata faceva durare il brano fino alla fine del file originale, con silenzio.
 - GENERA BRANO rinnova tutto tranne il genere anche con audio sulla timeline: tempo, tonalità, armonia e forma cambiano come senza audio (prima una traccia audio o scritta a mano bloccava la forma). Le clip audio restano al loro posto e continuano a corrispondere al loro audio con il nuovo tempo; lo stesso quando cambi il tempo a mano.
 - Eliminare una traccia MIDI scritta a mano non ricarica più tutti gli strumenti e i campioni: le tracce successive mantengono il suono caricato, spostate di un posto.
 - Studio: cambiando il SOURCE BPM di una clip audio si attiva Tempo Sync, così la clip segue subito.

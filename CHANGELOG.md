@@ -2,6 +2,7 @@
 
 ## 0.53.0
 
+- Export ends with the music: an audio clip counts only the part it plays (its trimmed region), not the whole file, and the empty "Audio take" room added at the end for a long take is removed once the take is trimmed (also when an existing project opens). Before, a trimmed vocal kept the song running to the end of the original file, with silence.
 - GENERATE SONG renews everything but the genre also with audio on the timeline: tempo, key, harmony and form change as without audio (before, an audio or handwritten track froze the form). Audio clips stay in place and keep matching their audio at the new tempo; the tempo field does the same.
 - Deleting a handwritten MIDI track no longer reloads every instrument and sample: the tracks after it keep their loaded sound, moved down one place.
 - Studio: changing SOURCE BPM of an audio clip turns Tempo Sync on, so the clip follows at once.

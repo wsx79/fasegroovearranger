@@ -390,7 +390,24 @@ bool Project::resizeSectionLoop(int index,int bars){
     size_t count=0;for(size_t ti=0;ti<tracks.size();++ti)for(size_t si=0;si<tracks[ti].clips.size();++si){const auto& c=(int)si==index?clips[ti]:tracks[ti].clips[si];count+=c.notes.size()+c.loopSource.size();if(count>2000000)return false;}
     resizeSection(index,bars);for(size_t ti=0;ti<tracks.size();++ti)tracks[ti].clips[(size_t)index]=std::move(clips[ti]);normalise();return true;
 }
+// Sections named "Audio take" are added only to make room for a long dropped or recorded take.
+// Once the audio there is trimmed away, the empty ones at the end go, so the song (and its
+// export) ends with the music instead of with silence.
+void Project::dropUnusedAudioTakeSections(){
+    if(sections.empty()||sections.back().name!="Audio take")return;
+    std::vector<double> starts(sections.size()+1,0.);for(size_t i=0;i<sections.size();++i)starts[i+1]=starts[i]+sections[i].bars*4.;
+    double used=0;
+    for(const auto& t:tracks)for(size_t ci=0;ci<t.clips.size();++ci){const auto& c=t.clips[ci];
+        const bool content=!c.notes.empty()||c.audioOffset>=0;if(!content)continue;
+        const double from=t.freeTimeline?c.position:starts[std::min(ci,sections.size())];
+        const double to=t.freeTimeline?c.position+c.span:ci<sections.size()?(c.span>0?from+c.span:starts[ci+1]):from;used=std::max(used,to);}
+    while(sections.size()>1&&sections.back().name=="Audio take"){
+        const size_t last=sections.size()-1;if(starts[last]<used-1e-9){const int bars=(int)std::ceil((used-starts[last])/4.-1e-9);if(bars<sections.back().bars)sections.back().bars=std::max(1,bars);break;}
+        sections.pop_back();for(auto& t:tracks)if(!t.freeTimeline&&t.clips.size()>sections.size())t.clips.resize(sections.size());}
+    const double end=[&]{double e=0;for(const auto& x:sections)e+=x.bars*4.;return e;}();if(loopEnd>end)loopEnd=end;if(loopStart>loopEnd)loopStart=0;
+}
 void Project::normalise() {
+    dropUnusedAudioTakeSections();
     for(int b=0;b<2;++b){auto& rack=returnEffects[(size_t)b];rack.name=b==0?"Return A":"Return B";if(rack.effects.size()>maxTrackEffects)rack.effects.resize(maxTrackEffects);}
     masterEffects.name="Master";if(masterEffects.effects.size()>maxTrackEffects)masterEffects.effects.resize(maxTrackEffects);
     auto& s=settings;

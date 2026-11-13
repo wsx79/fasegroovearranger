@@ -883,6 +883,8 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
             const double pitch=(mode==2?0:note.pitch-track.sampleRoot)+settings.transpose+settings.fine*.01;
             const double speed=settings.sync?p.settings.bpm/settings.sourceBpm:std::pow(2.,pitch/12.);
             double duration=(to-from)*asset->seconds()/speed;
+            // An audio clip plays only its region (trimmed start/end), not the whole file.
+            if(track.clips[ci].audioOffset>=0&&track.clips[ci].audioDuration>0)duration=std::min(duration,track.clips[ci].audioDuration/speed+settings.release);
             if(mode==0){const double gate=note.length*60./p.settings.bpm+settings.release;duration=settings.loop?gate:std::min(duration,gate);}
             endSeconds=std::max(endSeconds,(p.clipStart((int)ti,(int)ci)+note.start)*60./p.settings.bpm+duration);
         }

@@ -236,6 +236,10 @@ void PianoRoll::finishGesture(){
 }
 bool PianoRoll::verifyEditing(){
     const auto saved=owner.clip();const int savedTool=tool;const bool savedFlam=flamBrush;tool=0;flamBrush=false;owner.clip().notes.clear();fitNotes();
+    // A whole-song clip fitted to a small screen draws a 1/16 note a few pixels wide: edit the
+    // test notes at a zoom where their edges can be grabbed, then restore the user's zoom.
+    struct ZoomBack{PianoRoll& roll;double zoom;~ZoomBack(){roll.pixelsPerBeat=zoom;roll.owner.updateSizes();}} zoomBack{*this,pixelsPerBeat};
+    if(pixelsPerBeat<24){pixelsPerBeat=24;owner.updateSizes();}
     const auto source=juce::Desktop::getInstance().getMainMouseSource();const auto time=juce::Time::getCurrentTime();
     auto event=[&](juce::Point<float> point){return juce::MouseEvent(source,point,juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier),1,0,0,0,0,this,this,time,point,time,1,false);};
     const float x=leftMargin()+(float)(2*pixelsPerBeat)+2;const float y=laneView()?58:noteY({2,.25,(lowNote+highNote)/2,100,0})+noteHeight()/2;
@@ -243,12 +247,12 @@ bool PianoRoll::verifyEditing(){
     if(ok&&!owner.audio.isPlaying()){ok=previewTrack==owner.selectedTrack&&!previewPitches.empty()&&isTimerRunning()&&ok;
         juce::AudioBuffer<float> sound(2,512);juce::AudioIODeviceCallbackContext context;float peak=0;
         for(int block=0;block<6;++block){owner.audio.audioDeviceIOCallbackWithContext(nullptr,0,sound.getArrayOfWritePointers(),2,512,context);peak=std::max(peak,sound.getMagnitude(0,512));}
-        ok=peak>1.e-6f&&ok;stopPreview();ok=previewPitches.empty()&&!isTimerRunning()&&ok;
+                ok=peak>1.e-6f&&ok;stopPreview();ok=previewPitches.empty()&&!isTimerRunning()&&ok;
     }if(ok&&ownerTrackIsDrum())ok=std::abs(owner.clip().notes.front().length-std::min(defaultDrumNoteLength(owner.selectedTrack),owner.clipLength()-owner.clip().notes.front().start))<1e-9;
     if(ok){const auto n=owner.clip().notes.front();auto at=juce::Point<float>(leftMargin()+(float)(n.start*pixelsPerBeat),getHeight()-12-velocityHeight()*.5f);mouseDown(event(at));mouseUp(event(at));ok=owner.clip().notes.front().velocity>=60&&owner.clip().notes.front().velocity<=66&&ok;
         const auto beforeMove=owner.clip().notes.front();at={leftMargin()+(float)(beforeMove.start*pixelsPerBeat)+2,noteY(beforeMove)+noteHeight()/2};mouseDown(event(at));mouseDrag(event(at.translated((float)pixelsPerBeat,0)));mouseUp(event(at.translated((float)pixelsPerBeat,0)));ok=std::abs(owner.clip().notes.front().start-beforeMove.start-1)<1./960.&&ok;
         if(!laneView()||ownerTrackIsDrum()){const auto beforeResize=owner.clip().notes.front();at={leftMargin()+(float)((beforeResize.start+beforeResize.length)*pixelsPerBeat)-1,noteY(beforeResize)+noteHeight()/2};mouseDown(event(at));mouseDrag(event(at.translated((float)(grid*pixelsPerBeat),0)));mouseUp(event(at.translated((float)(grid*pixelsPerBeat),0)));ok=owner.clip().notes.front().length>beforeResize.length&&ok;}
-        deleteSelected();ok=owner.clip().notes.empty()&&ok;
+                deleteSelected();ok=owner.clip().notes.empty()&&ok;
     }
     if(!laneView()){
         // Audition each new pitch before release, without retriggering within a row.
@@ -267,7 +271,7 @@ bool PianoRoll::verifyEditing(){
         ok=heard(62,66)&&!active[61]&&!active[65]&&owner.undoStack.empty()&&ok;
         mouseUp(event(start.translated(0,-2*rowHeight())));stopPreview();drain();active=owner.audio.activeNotes(owner.selectedTrack);
         ok=owner.undoStack.size()==1&&!active[62]&&!active[66]&&previewPitches.empty()&&ok;
-        owner.undoStack=undos;owner.redoStack=redos;
+                owner.undoStack=undos;owner.redoStack=redos;
     }
     if(scaleGuideAvailable()){
         const int key=owner.project.settings.key,scale=owner.project.settings.scale;const bool guide=showScaleGuide;

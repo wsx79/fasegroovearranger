@@ -239,6 +239,7 @@ struct Project {
     // Audio clips span what their audio plays: with Tempo Sync the source BPM sets the length,
     // without it the project tempo (and varispeed transpose). Call after a tempo change.
     void refitAudioClips();
+    void dropUnusedAudioTakeSections();   // trailing empty "Audio take" sections (called by normalise)
     bool resizeSectionLoop(int index, int bars);
 };
 inline double projectSeconds(const Project& p){return p.settings.bpm>0?p.length()*60./p.settings.bpm:0;}

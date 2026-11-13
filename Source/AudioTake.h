@@ -18,11 +18,13 @@ inline int addAudioTake(Project& project,const AudioTake& take,bool muted){
     if(!fitsSampleMemory(take.frames,take.rate,2)||!std::isfinite(take.start)||take.playableSeconds()<=0||!take.file.existsAsFile()||project.tracks.size()>=(size_t)maxTracks)return -1;
     const double start=std::max(0.,take.start),duration=take.playableSeconds()*project.settings.bpm/60.,end=start+duration;
     int bars=(int)std::ceil(std::max(0.,end-project.length())/4.);if((int)project.sections.size()+(bars+127)/128>64)return -1;
-    while(bars>0){int count=std::min(128,bars);project.sections.push_back({Section::main,count,"Audio take"});bars-=count;}
     const int index=project.addMidiTrack();if(index<0)return -1;auto& track=project.tracks[(size_t)index];
     track.name=take.file.getFileNameWithoutExtension().toStdString();track.instrument="sample";track.instrumentPath=take.file.getFullPathName().toStdString();track.sampleRoot=60;track.gain=1;track.mute=muted;track.freeTimeline=true;
     track.sampler.mode=1;track.sampler.start=(double)take.trimFrames()/take.frames;track.sampler.sourceBpm=take.tempo;track.sampler.attack=0;track.sampler.decay=0;track.sampler.sustain=1;track.sampler.fadeIn=0;track.sampler.fadeOut=0;track.sampler.velocity=0;
-    track.clips.clear();Clip clip;clip.position=start;clip.span=duration;clip.audioOffset=take.trimFrames()/take.rate;clip.audioDuration=take.playableSeconds();clip.notes={{0,duration,60,127,0}};track.clips.push_back(std::move(clip));project.normalise();return index;
+    track.clips.clear();Clip clip;clip.position=start;clip.span=duration;clip.audioOffset=take.trimFrames()/take.rate;clip.audioDuration=take.playableSeconds();clip.notes={{0,duration,60,127,0}};track.clips.push_back(std::move(clip));
+    // Room for the take after the song, added once the clip exists (empty "Audio take" sections are dropped).
+    while(bars>0){int count=std::min(128,bars);project.sections.push_back({Section::main,count,"Audio take"});bars-=count;}
+    project.normalise();return index;
 }
 // The callback only enqueues already allocated stereo frames. Encoding, disk I/O,
 // WAV header finalization and destruction belong to the control/disk threads.

@@ -286,6 +286,24 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
         }
         for(auto f:{acidFile,namedFile,measuredFile})f.deleteFile();
     }
+    {   // A take longer than the song adds "Audio take" room at the end; trimming the clip removes
+        // it again, and the export ends with the music (plus the effect tail), not with silence.
+        waitForSampleImportForTests();
+        const auto longFile=folder.getChildFile("long-vocal.wav");{juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(longFile.createOutputStream().release(),44100,2,16,{},0));
+            juce::AudioBuffer<float> b(2,(int)(44100*(project.length()*60./project.settings.bpm+40)));for(int i=0;i<b.getNumSamples();++i){const float v=.3f*std::sin((float)i*.04f);b.setSample(0,i,v);b.setSample(1,i,v);}if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());}
+        const auto sectionsBefore=project.sections.size();const double songEnd=project.length();
+        importAudioClip(longFile,selectedTrack,0,false);const bool done=waitForSampleImportForTests();const int added=(int)project.tracks.size()-1;
+        const double clipEnd=done?project.clipStart(added,0)+project.clipLength(added,0):0;
+        check(done&&clipEnd>songEnd&&project.sections.size()>sectionsBefore&&std::abs(project.length()-std::ceil(clipEnd/4.-1e-9)*4.)<1e-6,"a take longer than the song adds room for it at the end");
+        if(done){checkpoint();const double shorter=std::max(1.,songEnd/2);project.resizeClipLoop(added,0,shorter);
+            check(project.sections.size()==sectionsBefore&&std::abs(project.length()-songEnd)<1e-6,"trimming the take back inside the song removes the extra empty sections");
+            const auto out=folder.getChildFile("trimmed-take-song.wav");const auto r=audio.exportAudio(project,out,added,false,[]{return false;},[](double){});double seconds=0;   // a stem has the song's length
+            {juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(out));if(reader)seconds=reader->lengthInSamples/reader->sampleRate;}
+            const double expected=songEnd*60./project.settings.bpm;out.deleteFile();
+            check(r.wasOk()&&seconds>=expected&&seconds<expected+16,"the song export ends with the arrangement, not with the untrimmed take");report+="MEASURED export "+juce::String(seconds,2)+" s, arrangement "+juce::String(expected,2)+" s, untrimmed take "+juce::String(clipEnd*60./project.settings.bpm,2)+" s\n";
+            undo(false);}
+        if(done)undo(false);longFile.deleteFile();
+    }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif
 }
