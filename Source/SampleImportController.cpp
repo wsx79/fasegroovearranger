@@ -47,7 +47,7 @@ void MainComponent::startSampleImport(int track,const juce::File& file,SamplerSe
     cancelSampleImport();const auto& t=project.tracks[(size_t)track];
     sampleImportSession=t.sessionId;sampleImportInstrument=t.instrument;sampleImportPath=t.instrumentPath;
     sampleImportBefore=t.sampler;sampleImportRoot=t.sampleRoot;sampleImportRestore=restore;
-    sampleImportJob=std::make_unique<SampleImportJob>(file,settings,root,isDrumTrack(track),audio.spectrumSampleRate(),sampleImportLimits(),automaticSlices,preset);
+    sampleImportJob=std::make_unique<SampleImportJob>(file,settings,root,isDrumTrack(track),audio.spectrumSampleRate(),sampleImportLimits(),automaticSlices,preset);sampleImportJob->detectTempo=!restore&&!preset;
     if(!sampleImportJob->startThread()){sampleImportJob.reset();lastSampleImportStatus="Cannot start sample import worker.";message(lastSampleImportStatus,true);}
 }
 void MainComponent::pollSampleImport(){
@@ -70,13 +70,15 @@ void MainComponent::pollSampleImport(){
     });
     if(result.wasOk()){
         if(appending){project=std::move(*appended);project.tracks[(size_t)track].sampleHash=job.asset->hash.toStdString();
-            if(job.analyse){auto& imported=project.tracks[(size_t)track];imported.audioBpm=job.tempo.bpm;imported.audioBpmConfidence=job.tempo.confidence;imported.audioKey=job.key.tonal?job.key.key:-1;imported.audioMinor=job.key.minor;imported.audioKeyConfidence=job.key.confidence;
-                if(job.tempo.bpm>0&&job.tempo.confidence>=.35)imported.sampler.sourceBpm=job.tempo.bpm;}select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();
+            if(job.analyse){auto& imported=project.tracks[(size_t)track];const bool embedded=job.embedded.bpm>0;imported.audioBpm=embedded?job.embedded.bpm:job.tempo.bpm;imported.audioBpmConfidence=embedded?1.:job.tempo.confidence;imported.audioKey=job.key.tonal?job.key.key:-1;imported.audioMinor=job.key.minor;imported.audioKeyConfidence=job.key.confidence;
+                if(const double bpm=job.chosenBpm();bpm>0)imported.sampler.sourceBpm=bpm;}select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();
             if(job.analyse&&openStudioAfterImport){openStudioAfterImport=false;showStudio(0);}}
         else if(!restoring){const auto previous=t.sampler;t.sampler=job.settings;t.sampleRoot=job.root;
+            // A new sample takes its own tempo: written in the file (ACID / Apple loop), in its name, or measured.
+            if(job.detectTempo){if(const double bpm=job.chosenBpm();bpm>0){t.sampler.sourceBpm=bpm;t.audioBpm=bpm;t.audioBpmConfidence=job.embedded.bpm>0?1.:job.tempo.confidence;}}
             remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=job.file.getFullPathName().toStdString();
             t.sampleHash=job.asset->hash.toStdString();t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();}
-        lastSampleImportStatus="Sample loaded: "+job.file.getFileName();if(appending&&job.analyse){lastSampleImportStatus+="  ·  "+audioAnalysisSummary(project.tracks[(size_t)track]);message(lastSampleImportStatus);}
+        lastSampleImportStatus="Sample loaded: "+job.file.getFileName();if(job.embedded.bpm>0)lastSampleImportStatus+="  ·  "+juce::String(job.embedded.bpm,job.embedded.bpm==std::round(job.embedded.bpm)?0:1)+" BPM ("+tr(job.embedded.source)+")";else if(!appending&&job.detectTempo&&job.chosenBpm()>0)lastSampleImportStatus+="  ·  "+juce::String(job.chosenBpm(),1)+" BPM ("+tr("measured")+")";if(appending&&job.analyse){if(job.embedded.bpm<=0)lastSampleImportStatus+="  ·  "+audioAnalysisSummary(project.tracks[(size_t)track]);message(lastSampleImportStatus);}else if(!appending&&!restoring&&job.detectTempo&&job.chosenBpm()>0)message(lastSampleImportStatus);
     }else{
         lastSampleImportStatus=result.getErrorMessage();
         if(restoring){audio.markMissing(track);reportExternal(lastSampleImportStatus+" · "+juce::String(t.name));}
@@ -226,6 +228,43 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
             studioWindow->trimSilenceForTests();check(std::abs(project.tracks[(size_t)added].clips[0].audioOffset-(1.-.005))<.003,"TRIM SILENCE button trims the clip on the track");
             while(undoStack.size()>before)undo(false);check(std::abs(project.tracks[(size_t)added].clips[0].audioOffset)<1e-9&&project.tracks[(size_t)added].sampler.gainDb==0,"Undo restores the clip as dropped");}
         closeStudio();undo(false);stemFile.deleteFile();
+    }
+    {   // A new sample takes its own tempo: the ACID chunk, else the file name, else a measured one.
+        waitForSampleImportForTests();juce::MessageManager::getInstance()->runDispatchLoopUntil(30);
+        auto writeLoop=[&](const juce::File& f,const juce::StringPairArray& meta,bool pulses){juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(f.createOutputStream().release(),44100,2,24,meta,0));
+            juce::AudioBuffer<float> b(2,44100*6);juce::Random random(7);for(int i=0;i<b.getNumSamples();++i){const double t=i/44100.,in=std::fmod(t,60./124.);const float v=pulses?(float)(.7*std::exp(-in*30)*std::sin(2*juce::MathConstants<double>::pi*60*t)):.2f*(random.nextFloat()*2-1);b.setSample(0,i,v);b.setSample(1,i,v);}
+            if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());};
+        check(loopTempoFromName("Groove_124BPM")==124&&loopTempoFromName("deep chords 97 bpm")==97&&loopTempoFromName("Kick 01")==0&&loopTempoFromName("vox 12.5bpm")==0,"tempo in the file name (124BPM, 97 bpm; none in 'Kick 01')");
+        auto loaded=[&](const juce::File& f){const double before=project.tracks[(size_t)track].sampler.sourceBpm;juce::ignoreUnused(before);loadSampleFile(track,f);waitForSampleImportForTests();return project.tracks[(size_t)track].sampler.sourceBpm;};
+        juce::StringPairArray acid;acid.set(juce::WavAudioFormat::acidTempo,"128");acid.set(juce::WavAudioFormat::acidBeats,"8");acid.set(juce::WavAudioFormat::acidStretch,"1");
+        const auto acidFile=folder.getChildFile("acidized-loop.wav");writeLoop(acidFile,acid,true);
+        check(readLoopTempo(acidFile).bpm==128&&readLoopTempo(acidFile).source=="ACID","ACID tempo read from an acidized WAV");
+        check(std::abs(loaded(acidFile)-128)<1e-9,"an acidized WAV loaded on a track takes its ACID tempo (128, not the project's)");
+        const auto namedFile=folder.getChildFile("noise loop 97bpm.wav");writeLoop(namedFile,{},false);
+        check(std::abs(loaded(namedFile)-97)<1e-9,"a loop with the tempo in its name takes it (97 BPM)");
+        const auto measuredFile=folder.getChildFile("pulses.wav");writeLoop(measuredFile,{},true);const double measured=loaded(measuredFile);
+        check(std::abs(measured-124)<.6,"a loop with no tempo data is measured (124 BPM)");report+="MEASURED loaded loop tempo "+juce::String(measured,2)+" BPM\n";
+        // Dropped on the timeline: the ACID tempo wins over the measurement, and the front edge trims.
+        importAudioClip(acidFile,selectedTrack,8,false);const bool dropped=waitForSampleImportForTests();const int added=(int)project.tracks.size()-1;
+        check(dropped&&project.tracks[(size_t)added].audioBpm==128&&project.tracks[(size_t)added].sampler.sourceBpm==128,"a dropped acidized loop is marked 128 BPM");
+        if(dropped&&project.tracks[(size_t)added].clips.size()==1){auto& t=project.tracks[(size_t)added];const double start=project.clipStart(added,0),end=start+project.clipLength(added,0),spb=t.clips[0].audioDuration/project.clipLength(added,0);
+            {   // The real gesture: press on the clip's front edge and drag it right by two beats (Shift: free timing).
+                showArrangement();arrangement.pixelsPerBar=40;resized();arrangementPort.setViewPosition(0,0);int row=-1;for(int r=0;r<(int)project.tracks.size();++r)if(trackAtRow(r)==added){row=r;break;}
+                const auto history=undoStack.size();const float x=(float)(216+start*arrangement.pixelsPerBar/4.+2.),y=(float)(arrangement.rowY(row)+arrangement.rowHeight(row)-8);
+                const auto source=juce::Desktop::getInstance().getMainMouseSource();auto mouse=[&](float px,juce::ModifierKeys mods){const auto now=juce::Time::getCurrentTime();const juce::Point<float> at(px,y);return juce::MouseEvent(source,at,mods,1,0,0,0,0,&arrangement,&arrangement,now,{x,y},now,1,px!=x);};
+                const auto held=juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier|juce::ModifierKeys::shiftModifier);const float dx=(float)(2*arrangement.pixelsPerBar/4.);
+                if(row>=0){arrangement.mouseDown(mouse(x,juce::ModifierKeys::leftButtonModifier));arrangement.mouseDrag(mouse(x+dx,held));arrangement.mouseUp(mouse(x+dx,held));}
+                check(row>=0&&std::abs(project.clipStart(added,0)-(start+2))<.02&&std::abs(project.clipStart(added,0)+project.clipLength(added,0)-end)<1e-6&&undoStack.size()==history+1,"dragging the front edge with the mouse trims the clip start (one Undo)");
+                if(undoStack.size()>history)undo(false);arrangement.pixelsPerBar=6;resized();}
+            checkpoint();const bool front=project.trimClipStart(added,0,start+2);const auto& c=project.tracks[(size_t)added].clips[0];
+            check(front&&std::abs(project.clipStart(added,0)-(start+2))<1e-9&&std::abs(project.clipStart(added,0)+project.clipLength(added,0)-end)<1e-9&&std::abs(c.audioOffset-2*spb)<1e-6,"dragging an audio clip's front edge trims its start, the end and the audio stay in place");
+            project.trimClipStart(added,0,start-4);check(std::abs(project.clipStart(added,0)-start)<1e-9&&std::abs(project.tracks[(size_t)added].clips[0].audioOffset)<1e-9,"the front edge cannot go before the start of the file");
+            undo(false);}
+        {const int midi=project.addMidiTrack();if(midi>=0&&project.tracks[(size_t)midi].freeTimeline&&!project.tracks[(size_t)midi].clips.empty()){auto& c=project.tracks[(size_t)midi].clips[0];c.loopLength=c.loopPhase=0;c.loopSource.clear();c.notes={{1,1,60,100,0},{3,.5,62,100,0}};
+            const double start=project.clipStart(midi,0);project.trimClipStart(midi,0,start+2);const auto& n=project.tracks[(size_t)midi].clips[0].notes;
+            check(n.size()==1&&std::abs(n[0].start-1)<1e-9&&n[0].pitch==62,"a MIDI clip's front edge keeps the remaining notes where they were in time");}
+         else check(false,"free MIDI track for the front-edge test");}
+        for(auto f:{acidFile,namedFile,measuredFile})f.deleteFile();
     }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif

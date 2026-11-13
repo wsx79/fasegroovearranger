@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.53.0
+
+- Returns A / B are always editable effect chains, preset with Reverb on A and Tempo Delay on B (as in new projects): a project saved with the earlier fixed returns is converted the first time Bus & Send shows them, keeping its send and return levels (one Undo restores them). No more "Enable editable returns" step.
+- Clips on audio tracks and added MIDI tracks can be trimmed from the front: drag the left edge to move the start while the end stays put. Audio starts later or earlier in its file (never before the file's start); MIDI keeps the remaining notes in time. One Undo.
+- Samples take their own tempo when loaded on any track or dropped on the timeline: the ACID tempo of an acidized WAV (or its beat count), the beats of an Apple loop AIFF, a tempo in the file name ("Groove 124bpm.wav"), otherwise the measured tempo. SOURCE BPM no longer stays at the project tempo; the status bar says where the tempo came from.
+
 ## 0.52.0
 
 - Stems and loops: dropping an audio file on the timeline opens the Studio on it, and the Studio now edits the audio clip itself. START / END (knobs or waveform handles) trim the clip in place, so leading or trailing silence goes away; new **TRIM SILENCE** finds where the sound begins and ends. TEMPO SYNC and SOURCE BPM stretch it to the project tempo; without Tempo Sync, TRANSPOSE / FINE change its speed and the clip length follows. New **GAIN (dB)** per sample (−24…+24 dB, saved with the project). Double-clicking an audio clip, the track's instrument button or the clip menu's **Edit in Studio** open the Studio on it. One Undo per change. A file dropped on the timeline is no longer dropped silently when you select another track while it is still being imported.

@@ -352,6 +352,19 @@ bool resizedLoop(Clip& clip,double previous,double duration){
 bool rebuildClipLoop(Clip& clip,double duration){
     return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
 }
+bool Project::trimClipStart(int track,int index,double start){
+    if(track<0||track>=(int)tracks.size()||!tracks[(size_t)track].freeTimeline||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(start))return false;
+    auto& t=tracks[(size_t)track];auto& c=t.clips[(size_t)index];const double from=c.position,length=c.span,end=from+length;
+    double lowest=0;if(index>0)lowest=t.clips[(size_t)index-1].position+t.clips[(size_t)index-1].span;
+    start=std::clamp(std::round(start*960)/960.,lowest,end-.25);
+    if(c.audioOffset>=0&&c.audioDuration>0&&length>0){const double secondsPerBeat=c.audioDuration/length;start=std::max(start,from-c.audioOffset/secondsPerBeat);
+        const double delta=start-from;c.audioOffset=std::max(0.,c.audioOffset+delta*secondsPerBeat);c.audioDuration=(end-start)*secondsPerBeat;c.position=start;c.span=end-start;
+        c.loopLength=c.loopPhase=0;c.loopSource.clear();if(c.notes.empty())c.notes.push_back({0,c.span,t.sampleRoot,127,0});c.notes.resize(1);c.notes[0].start=0;c.notes[0].length=c.span;normalise();return true;}
+    const double delta=start-from;if(std::abs(delta)<1e-9)return true;const double newLength=end-start;
+    if(c.loopLength>0){c.loopPhase=std::fmod(std::fmod(c.loopPhase+delta,c.loopLength)+c.loopLength,c.loopLength);if(!rebuildClipLoop(c,newLength))return false;}
+    else{std::vector<Note> kept;for(auto n:c.notes){n.start-=delta;const double noteEnd=n.start+n.length;if(noteEnd<=1./960.)continue;if(n.start<0){n.length=noteEnd;n.start=0;}if(n.start>=newLength)continue;n.length=std::min(n.length,newLength-n.start);kept.push_back(n);}c.notes=std::move(kept);}
+    c.position=start;c.span=newLength;normalise();return true;
+}
 bool Project::resizeClipLoop(int track,int section,double beats){
     if(track<0||track>=(int)tracks.size()||section<0||section>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(beats))return false;
     beats=std::clamp(std::round(beats*960)/960.,.25,maxClipBeats);auto candidate=tracks[(size_t)track].clips[(size_t)section];

@@ -301,6 +301,9 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     owner.selectClip(ti,index,inSelection);
     if(e.mods.isPopupMenu()){owner.showClipMenu(ti,index);return;}
     if(edge>=0){beginResize(edge,ti,e);return;}
+    // The front edge trims from the lower part of the clip; its upper part still moves it, so a
+    // clip grabbed at its start is dragged as before.
+    if(const int front=e.mods.isPopupMenu()||e.position.y<rowY(row)+rowHeight(row)*.45f?-1:frontEdgeAt(ti,e.position.x);front>=0){beginResize(front,ti,e);resizeFront=true;resizeOriginalStart=owner.project.clipStart(ti,front);return;}
     if(index>=0&&!e.mods.isShiftDown()&&!e.mods.isAltDown()&&!e.mods.isCommandDown()&&rowHeight(row)>=34&&e.position.y<rowY(row)+15.f&&owner.project.clipLength(ti,index)/4.*pixelsPerBar>42.){const double endBeat=owner.project.clipStart(ti,index)+owner.project.clipLength(ti,index);const float clipRight=headerWidth+(float)(endBeat/4.*pixelsPerBar);if(e.position.x>=clipRight-18.f&&e.position.x<clipRight-5.f){owner.checkpoint();owner.project.tracks[(size_t)ti].clips[(size_t)index].locked=!owner.project.tracks[(size_t)ti].clips[(size_t)index].locked;owner.changed(false);return;}}
     repaint();
     if(index>=0){clipTrack=ti;clipSource=index;clipTarget=ti;clipAnchorX=e.position.x;clipAnchorY=e.position.y;clipDropBeat=clipLiveBeat=owner.project.clipStart(ti,index);clipMoving=false;dragImages.clear();copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();}grabKeyboardFocus();
@@ -370,12 +373,17 @@ juce::Rectangle<int> ArrangementView::dragBounds()const{
     return all.expanded(4,22);
 }
 int ArrangementView::clipAt(int track,float x)const{return owner.project.clipAtBeat(track,(x-headerWidth)*4./pixelsPerBar);}
+int ArrangementView::frontEdgeAt(int track,float x)const{
+    const auto& p=owner.project;if(track<0||track>=(int)p.tracks.size()||!p.tracks[(size_t)track].freeTimeline)return -1;const float left=(float)(owner.arrangementPort.getViewPositionX()+headerWidth);if(x<left)return -1;
+    for(size_t i=0;i<p.tracks[(size_t)track].clips.size();++i){const float edge=headerWidth+(float)(p.clipStart(track,(int)i)/4*pixelsPerBar);if(edge>=left&&x>=edge&&x-edge<=5&&p.clipLength(track,(int)i)/4*pixelsPerBar>12)return (int)i;}return -1;
+}
 int ArrangementView::edgeAt(int track,float x)const{
     const auto& p=owner.project;const float left=(float)(owner.arrangementPort.getViewPositionX()+headerWidth);if(x<left)return -1;double occupied=0;
     const size_t count=track<0?p.sections.size():p.tracks[(size_t)track].clips.size();
     for(size_t i=0;i<count;++i){const double start=track<0?p.sectionStart((int)i):p.clipStart(track,(int)i),end=track<0?p.sectionStart((int)i+1):start+p.clipLength(track,(int)i),from=std::max(start,occupied);occupied=std::max(occupied,end);if(from>=end)continue;const float edge=headerWidth+(float)(end/4*pixelsPerBar);if(edge>=left&&x<=edge&&edge-x<=5)return (int)i;}return -1;
 }
 void ArrangementView::beginResize(int section,int track,const juce::MouseEvent& e){
+    resizeFront=false;
     if(track<0)owner.select(owner.selectedTrack,section);else owner.selectClip(track,section);resizeSectionIndex=section;resizeTrack=track;resizeAnchorX=e.position.x;
     resizeOriginalLength=resizeLastLength=track<0?owner.project.sections[(size_t)section].bars*4.:owner.project.clipLength(track,section);resizeBefore=std::make_unique<Project>(owner.project);
     clipTrack=clipSource=clipTarget=-1;grabKeyboardFocus();
@@ -404,6 +412,12 @@ void ArrangementView::mouseDrag(const juce::MouseEvent& e){
 
     if(panning){const auto offset=e.getEventRelativeTo(&owner).position-panAnchor;owner.arrangementPort.setViewPosition(panStart.x-juce::roundToInt(offset.x),panStart.y-juce::roundToInt(offset.y));return;}
     if(heightTrack>=0){trackHeights[(size_t)heightTrack]=std::clamp(heightBefore+juce::roundToInt(e.position.y-heightAnchorY),40,240);owner.updateSizes();repaint();return;}
+    if(resizeBefore&&resizeFront&&resizeTrack>=0){
+        const double grid=e.mods.isShiftDown()||gridBeats()<=0?1./960.:gridBeats();double start=resizeOriginalStart+(e.position.x-resizeAnchorX)*4./pixelsPerBar;
+        if(!e.mods.isShiftDown()&&gridBeats()>0)start=std::round(start/grid)*grid;
+        owner.project.tracks[(size_t)resizeTrack]=resizeBefore->tracks[(size_t)resizeTrack];
+        if(owner.project.trimClipStart(resizeTrack,resizeSectionIndex,start)){resizeLastLength=owner.project.clipLength(resizeTrack,resizeSectionIndex);}
+        owner.refreshControls();repaint();return;}
     if(resizeBefore){const double grid=resizeTrack<0?4.:e.mods.isShiftDown()||gridBeats()<=0?1./960.:gridBeats();const double duration=std::clamp(std::round((resizeOriginalLength+(e.position.x-resizeAnchorX)*4./pixelsPerBar)/grid)*grid,resizeTrack<0?4.:.25,resizeTrack<0?512.:maxClipBeats);
         if(duration!=resizeLastLength){
             // A clip edge only touches its own track (and the loop locators): restore just those
@@ -444,7 +458,7 @@ void ArrangementView::mouseMove(const juce::MouseEvent& e){{const auto v=owner.a
         setTooltip(slots.gear.contains(at)?instrumentTip:slots.solo.contains(at)?tr("Listen to soloed tracks."):slots.mute.contains(at)?tr("Mute this track."):slots.automation.contains(at)?controlTip("AUTOMATION"):tr("Double-click to open the inspector."));return;
     }
     if(hoverTrack>=0&&hoverClip>=0&&e.y<rowY(rowForTrack(hoverTrack))+18){const auto& c=owner.project.tracks[(size_t)hoverTrack].clips[(size_t)hoverClip];if(std::any_of(c.feel.begin(),c.feel.end(),[](double v){return v>=0;})){setTooltip(tr("Frozen Feel")+": "+tr("Density")+" "+juce::String(c.feel[0]<0?owner.project.settings.density:c.feel[0],2)+" / "+tr("Swing")+" "+juce::String(c.feel[1]<0?owner.project.settings.swing:c.feel[1],2)+" / "+tr("Feel")+" "+juce::String(c.feel[2]<0?owner.project.settings.humanize:c.feel[2],2));return;}}
-    const bool edge=header?edgeAt(-1,e.position.x)>=0:e.y>=view.getY()+rulerHeight&&hoverRow>=0&&e.y<rowY(hoverRow)+rowHeight(hoverRow)&&edgeAt(trackAtRow(hoverRow),e.position.x)>=0;
+    const bool edge=header?edgeAt(-1,e.position.x)>=0:e.y>=view.getY()+rulerHeight&&hoverRow>=0&&e.y<rowY(hoverRow)+rowHeight(hoverRow)&&(edgeAt(trackAtRow(hoverRow),e.position.x)>=0||(e.position.y>=rowY(hoverRow)+rowHeight(hoverRow)*.45f&&frontEdgeAt(trackAtRow(hoverRow),e.position.x)>=0));
     setMouseCursor(edge?juce::MouseCursor::LeftRightResizeCursor:juce::MouseCursor::NormalCursor);
     if(edge){setTooltip(tr(header?"Drag this guide edge to change its duration. Music and automation after it move with the following sections. Escape cancels; Undo restores.":"Drag this edge to resize only this clip loop. Shorten and extend without losing the source; Shift for quarter-beat timing. Escape cancels; Undo restores."));return;}
     const auto v=owner.arrangementPort.getViewArea();if(e.y>=v.getY()+32&&e.y<v.getY()+rulerHeight&&e.x>=v.getX()+headerWidth){const int loopEdge=loopEdgeAt(e.position.x);const double beat=(e.position.x-headerWidth)*4./pixelsPerBar;const bool inside=owner.project.hasLoopRegion()&&beat>owner.project.loopStart&&beat<owner.project.loopEnd;

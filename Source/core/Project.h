@@ -232,6 +232,10 @@ struct Project {
     void moveSection(int from, int to);
     void resizeSection(int index, int bars, bool shiftAfter = false);
     bool resizeClipLoop(int track, int section, double beats);
+    // Free-timeline clips (audio, added MIDI tracks): move the clip's front edge to `start`,
+    // keeping its end. Audio keeps playing the same source moments (its file offset moves);
+    // MIDI keeps its notes where they were in time (a loop keeps its phase).
+    bool trimClipStart(int track, int clip, double start);
     bool resizeSectionLoop(int index, int bars);
 };
 inline double projectSeconds(const Project& p){return p.settings.bpm>0?p.length()*60./p.settings.bpm:0;}

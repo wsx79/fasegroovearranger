@@ -57,7 +57,17 @@ public:
         startTimerHz(15);refresh();
     }
     ~Panel()override{for(auto& port:chainPorts)port.setViewedComponent(nullptr,false);setLookAndFeel(nullptr);stopTimer();for(auto* slider:levels)if(slider)slider->setLookAndFeel(nullptr);}
-    void refresh(){if(owner.project.tracks.empty())return;updating=true;
+    // Returns A / B are always editable: a project saved with the old fixed returns is converted
+    // the first time this view shows them, to the preset chains (Reverb on A, Tempo Delay on B).
+    // Send and return levels stay; one Undo restores the old routing.
+    bool autoConvert=true;   // off while the self-test exercises the historic fixed returns
+    void convertFixedReturns(){
+        if(!autoConvert||groupView||owner.project.returnChains||!isShowing()||owner.pluginsBusy()||owner.editingRestricted())return;
+        owner.checkpoint();owner.project.enableReturnChains();
+        for(int b=0;b<2;++b)for(const auto& fx:owner.project.returnEffects[(size_t)b].effects)owner.loadEffectFile(returnEffectTrack+b,juce::File(),juce::String::fromUTF8(fx.pluginId.c_str()),juce::String::fromUTF8(fx.state.c_str()),fx.slot);
+        owner.changed(false);owner.message(tr("Returns A / B are now editable: Reverb on A, Tempo Delay on B."));
+    }
+    void refresh(){if(owner.project.tracks.empty())return;convertFixedReturns();updating=true;
         juce::StringArray names;for(auto& track:owner.project.tracks)names.add(juce::String::fromUTF8(track.name.c_str()));if(names!=trackNames){trackNames=names;target.clear(juce::dontSendNotification);target.addItemList(names,1);}target.setSelectedId(index()+1,juce::dontSendNotification);target.setEnabled(!owner.audio.isRecording());
         const auto& buses=owner.project.buses;if(route.getNumItems()!=3){route.addItemList({"Direct to master","GROUP A","GROUP B"},1);}route.changeItemText(1,tr("Direct to master"));for(int i=0;i<2;++i){const auto name=juce::String::fromUTF8(buses[(size_t)i].name.c_str());route.changeItemText(i+2,tr(displayBusTitle(i))+(name==busTitle(i)||name==tr(busTitle(i))?juce::String():" / "+name));}route.setSelectedId(selected().group+2,juce::dontSendNotification);
         for(int i=0;i<2;++i)sends[(size_t)i].setValue(owner.project.buses[(size_t)(i+2)].gain*100,juce::dontSendNotification);for(auto& update:updates)update();
@@ -114,7 +124,7 @@ public:
         repaint();
     }
     bool verify(const juce::File& folder){
-        const auto saved=owner.project;auto undos=owner.undoStack,redos=owner.redoStack;const int track=owner.selectedTrack;const bool dirty=owner.dirty;owner.select(0,owner.selectedSection);refresh();const auto midi=midiFile(owner.project);bool ok=true;const double originalGain=owner.project.buses[0].gain;owner.project.buses[0].gain=.7341;const auto precise=juce::JSON::toString(projectJson(owner.project),false,17);refresh();ok=ok&&precise==juce::JSON::toString(projectJson(owner.project),false,17);owner.project.buses[0].gain=originalGain;refresh();
+        autoConvert=false;const auto saved=owner.project;auto undos=owner.undoStack,redos=owner.redoStack;const int track=owner.selectedTrack;const bool dirty=owner.dirty;owner.select(0,owner.selectedSection);refresh();const auto midi=midiFile(owner.project);bool ok=true;const double originalGain=owner.project.buses[0].gain;owner.project.buses[0].gain=.7341;const auto precise=juce::JSON::toString(projectJson(owner.project),false,17);refresh();ok=ok&&precise==juce::JSON::toString(projectJson(owner.project),false,17);owner.project.buses[0].gain=originalGain;refresh();
         auto change=[&](std::function<void()> action,std::function<bool()> check){const auto count=owner.undoStack.size();action();ok=ok&&check()&&owner.undoStack.size()==count+1&&midiFile(owner.project)==midi;owner.undo(false);refresh();owner.undo(true);refresh();ok=ok&&check()&&midiFile(owner.project)==midi;owner.undo(false);refresh();};
         const int nextGroup=selected().group==1?0:1;change([&]{route.setSelectedId(nextGroup+2,juce::sendNotificationSync);},[&]{return selected().group==nextGroup;});
         selected().sends[0]=.23;owner.project.tracks[1].sends[0]=.48;const double nextSend=.62;change([&]{sends[0].setValue(nextSend*100,juce::sendNotificationSync);},[&]{return std::abs(owner.project.buses[2].gain-nextSend)<1e-9&&selected().sends[0]==1&&owner.project.tracks[1].sends[0]==1;});
@@ -137,6 +147,12 @@ public:
         groupView=previousView;setSize(normal.x,normal.y);refresh();
         ok=ok&&effects[0].size()==4&&effects[1].size()==4&&effects[2].size()==2&&effects[3].size()==4&&sends[0].getSliderStyle()==juce::Slider::RotaryHorizontalVerticalDrag;
         for(auto* c:getChildren())if(c->isVisible()&&c!=tips.get())ok=ok&&getLocalBounds().contains(c->getBounds())&&!c->getBounds().isEmpty();auto image=createComponentSnapshot(getLocalBounds());if(auto out=folder.getChildFile("mixer-buses.png").createOutputStream())ok=juce::PNGImageFormat().writeImageToStream(image,*out)&&ok;else ok=false;
+        {   // Historic fixed returns are converted the first time this view shows them (one Undo).
+            autoConvert=true;owner.project.returnChains=false;for(auto& rack:owner.project.returnEffects)rack.effects.clear();groupView=false;const auto count=owner.undoStack.size();refresh();
+            const auto& r=owner.project.returnEffects;const bool converted=!isShowing()||(owner.project.returnChains&&r[0].effects.size()==1&&r[0].effects[0].pluginId=="fga:native-reverb"&&r[1].effects.size()==1&&r[1].effects[0].pluginId=="fga:native-delay"&&owner.undoStack.size()==count+1&&!convert.isVisible());
+            const auto settleUntil=juce::Time::getMillisecondCounterHiRes()+5000;while(owner.pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<settleUntil)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+            folder.getChildFile("mixer-return-conversion.txt").replaceWithText(!isShowing()?"NOT RUN routing window hidden":converted?"PASS historic fixed returns convert to Reverb / Tempo Delay chains on first view, one Undo":"FAIL historic return conversion");
+            if(isShowing()&&owner.undoStack.size()>count)owner.undo(false);ok=ok&&converted;autoConvert=false;}   // stays off for the rest of this self-test session
         owner.project=saved;owner.undoStack=std::move(undos);owner.redoStack=std::move(redos);owner.selectedTrack=track;owner.dirty=dirty;owner.audio.updateMix(owner.project);owner.refreshControls();refresh();folder.getChildFile("mixer-routing.txt").replaceWithText(ok?"PASS sidechain source/attack/release/curve/depth Undo/Redo and MIDI preservation; default/minimum layout; output groups and rotary sends; dB faders map 0 dB to unity and floor to silence; editable pan and bus mute support Undo and preserve MIDI; vertical meters and faders align at minimum/default sizes; return FX knobs remain return-only; safe wheel gestures and plain meter labels":"FAIL mixer routing");return ok;
     }
     bool verifyChains(const juce::File& folder){

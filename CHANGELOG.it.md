@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.53.0
+
+- I ritorni A / B sono sempre catene di effetti modificabili, già pronte con Riverbero su A e Tempo Delay su B (come nei progetti nuovi): un progetto salvato con i vecchi ritorni fissi viene convertito la prima volta che Bus e mandate li mostra, con livelli di mandata e di ritorno invariati (un Annulla li ripristina). Non serve più il passaggio "Attiva ritorni modificabili".
+- Le clip delle tracce audio e delle tracce MIDI aggiunte si possono accorciare anche dall'inizio: trascina il bordo sinistro per spostare l'inizio lasciando fermo il finale. L'audio parte più avanti o più indietro nel suo file (mai prima dell'inizio del file); il MIDI lascia le note rimaste al loro posto nel tempo. Un solo Annulla.
+- I campioni prendono il loro tempo quando li carichi su una traccia o li trascini sulla timeline: il tempo ACID di un WAV acidizzato (o il numero di battute), le battute di un AIFF Apple Loop, un tempo scritto nel nome del file ("Groove 124bpm.wav"), altrimenti il tempo misurato. SOURCE BPM non resta più al tempo del progetto; la barra di stato dice da dove arriva il tempo.
+
 ## 0.52.0
 
 - Stem e loop: trascinando un file audio sulla timeline si apre lo Studio, che ora modifica la clip audio stessa. START / END (manopole o maniglie della forma d'onda) tagliano la clip sul posto, eliminando i silenzi all'inizio o alla fine; il nuovo **TAGLIA SILENZI** trova da solo dove il suono inizia e finisce. TEMPO SYNC e SOURCE BPM la adattano al tempo del progetto; senza Tempo Sync, TRASPOSIZIONE / FINE ne cambiano la velocità e la lunghezza della clip segue. Nuovo **GUADAGNO (dB)** per campione (−24…+24 dB, salvato nel progetto). Il doppio clic sulla clip audio, il pulsante strumento della traccia o la voce **Modifica nello Studio** del menu della clip aprono lo Studio su di essa. Un Annulla per ogni modifica. Un file trascinato sulla timeline non viene più perso in silenzio se, mentre si importa, selezioni un'altra traccia.

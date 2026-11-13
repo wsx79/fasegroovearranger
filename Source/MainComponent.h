@@ -136,7 +136,8 @@ private:
     void cancelResize();
     int resizeSectionIndex=-1,resizeTrack=-1;
     float resizeAnchorX=0;
-    double resizeOriginalLength=0,resizeLastLength=0;
+    double resizeOriginalLength=0,resizeLastLength=0,resizeOriginalStart=0;bool resizeFront=false;
+    int frontEdgeAt(int track,float x) const;   // a free-timeline clip's left edge under x
     std::unique_ptr<Project> resizeBefore;
     double originalCurve=0;
     float dragY=0;
