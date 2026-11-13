@@ -53,7 +53,7 @@ namespace
     enum class Kick { fourFloor, twoStep, broken, halfTime };
 
     // The genres, in grooveCategories() order.
-    enum Genre { pianoHouse = 0, soulful, deep, gospel, jackin, jackinPiano, garage, afro, funky, nineties, neoSoul, chill, dance };
+    enum Genre { pianoHouse = 0, soulful, deep, gospel, jackin, jackinPiano, garage, afro, funky, nineties, neoSoul, chill, dance, latin };
 
     /** Jackin' house after the dice, a section variation or a preset: open hat on every
         offbeat, a loud closed hat on the swung "a" (the accent curve makes that 16th the
@@ -293,12 +293,13 @@ namespace
             case jackin:      return { 0.0f,  0.0f,  0.5f,  0.2f,  0.05f, 0.7f,  0.45f, 0.55f, 0.7f,  Lane::cowbell };
             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
             case garage:      return { 0.0f,  0.85f, 0.15f, 0.15f, 0.0f,  0.55f, 0.2f,  0.2f,  0.85f, Lane::rim };
-            case afro:        return { 0.35f, 0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.15f, 0.0f, Lane::conga };
+            case afro:        return { 0.75f, 0.2f,  0.25f, 0.8f,  0.0f,  0.55f, 0.8f,  0.15f, 0.0f, Lane::rim };
             case funky:       return { 0.95f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
             case nineties:    return { 0.8f,  0.05f, 0.2f,  0.2f,  0.35f, 0.1f,  0.05f, 0.25f, 0.6f, Lane::conga };
             case neoSoul:     return { 0.0f,  0.15f, 0.15f, 0.25f, 0.0f,  0.2f,  0.05f, 0.1f,  0.7f, Lane::rim };
             case chill:       return { 0.05f, 0.0f,  0.25f, 0.55f, 0.05f, 0.15f, 0.05f, 0.05f, 0.15f, Lane::rim };
             case dance:       return { 0.85f, 0.0f,  0.1f,  0.0f,  0.3f,  0.15f, 0.0f,  0.2f,  0.6f, Lane::conga };
+            case latin:       return { 0.6f,  0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.3f,  0.1f, Lane::cowbell };
             default:          return { 0.2f,  0.0f,  0.2f,  0.4f,  0.0f,  0.3f,  0.1f,  0.2f,  0.2f, Lane::rim };
         }
     }
@@ -491,16 +492,22 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     };
     if (! brokenBeat && ! garageBeat && ! chillBeat && genre != dance && sixteenths() < 8 && r.chance (0.55f + 0.45f * density))
         setBar (genre == gospel || genre == funky || genre == nineties ? Lane::tambourine : Lane::shaker,
-                genre == soulful ? "xxxx xxxx xxxx xxxx" : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
+                genre == soulful ? "xxxx xxxx xxxx xxxx"
+                    // Afro house: a lightly shuffled shaker with its accent on the offbeat.
+                    : genre == afro ? pickOf ({ "gxXx gxXx gxXx gxXx", "g.Xx g.Xx g.Xx g.XX", "ggXg ggXg ggXg ggXx" })
+                    : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
 
     // ---- At most one sparse percussion line, maybe a low one ----
-    if (genre == afro && r.chance (0.6f))
-        setLoop (Lane::rim, "x... ..x. .... x... .... x... x... ....");   // the son clave
+    if (genre == latin && r.chance (0.6f))
+        setLoop (Lane::rim, "x... ..x. .... x... .... x... x... ....");   // the son clave (Latin, not Afro)
+    else if (genre == afro && r.chance (0.55f))
+        setLoop (Lane::rim, r.pick ({ "..x. .x.. x..x .x.. ..x. .x.. x... .x.x", "...x ..x. .... x... ...x ..x. ..x. ....",
+                                      "..x. .... x... .x.. ..x. .... x..x ...." }));   // the modern afro house rim figure
     else if (r.chance (style.percussion * more))   // (on the congas when the rim already plays the backbeat)
         setBar (std::any_of (p[style.percussionLane].begin(), p[style.percussionLane].end(), isHit) ? Lane::conga : style.percussionLane,
                 pickCell (r, percCells));
     if (r.chance (style.lowPercussion * more))
-        setBar (genre == afro || genre == deep || genre == jackin ? Lane::tom : Lane::conga, pickCell (r, lowPercCells));
+        setBar (genre == afro || genre == latin || genre == deep || genre == jackin ? Lane::tom : Lane::conga, pickCell (r, lowPercCells));
 
     // ---- Bar 2 answers at its very end ----
     if (r.chance (0.3f + 0.4f * density))
@@ -515,19 +522,65 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     Random accent (seed * 2246822519u + 3266489917u);
     if (genre == afro)
     {
-        // Three against four: a dotted-8th figure on the congas (or the shaker), and with the
-        // clave the clap often gives way.
+        // Modern afro house: the clap stays on 2 and 4 over a straight kick; the groove comes
+        // from a syncopated tom loop (tresillo-like, 3+3+2), the open hat on the offbeats and
+        // a subtle conga/bongo answer. No 12/8 bell, no snare backbeat.
+        if (accent.chance (0.75f))
+            setLoop (Lane::tom, accent.pick ({ "x..x ..x. ..x. x... x..x ..x. ..x. .x.x", "...x ..x. ..x. ...x ...x ..x. .x.. x...",
+                                                ".... ..x. ..x. x... .... ..x. ..x. x.x.", "..x. ..x. .x.. x..x ..x. ..x. .x.. x...",
+                                                ".x.. x... ..x. .x.. .x.. x... ..x. x..x" }));
+        if (accent.chance (0.45f))
+            setBar (Lane::conga, accent.pick ({ "...g ..x. ...g .x..", "..g. .x.. ..g. ..x.", ".... ...x ..g. .x..", "...x .... ..x. ...g" }));
+        if (! std::any_of (p[Lane::openHat].begin(), p[Lane::openHat].end(), isHit) && accent.chance (0.6f))
+            setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
+        // The backbeat is understated, not the house clap on every 2 and 4: a soft snap/rim,
+        // a clap on 4 only or every other bar, a syncopated or answering clap, or none at all
+        // while the percussion carries the groove.
+        p[Lane::clap].assign ((size_t) randomBeatLength, '.');
+        switch (accent.nextInt (7))
+        {
+            case 0:  setBar (Lane::rim, ".... x... .... x..."); break;                              // snap on 2 and 4
+            case 1:  setBar (Lane::clap, ".... .... .... x..."); break;                             // beat 4 only
+            case 2:  setLoop (Lane::clap, ".... .... .... x... .... x... .... x..g"); break;       // every other bar
+            case 3:  setBar (Lane::clap, "...x ..g. ...x ..g."); break;                             // syncopated
+            case 4:  setBar (Lane::clap, ".... ..x. .... ...x"); break;                             // answering offbeats
+            case 5:  setBar (Lane::clap, ".... g... .... x..g"); break;                             // a soft, ghosted backbeat
+            default: break;                                                                          // none: the toms lead
+        }
+        p[Lane::cowbell].assign ((size_t) randomBeatLength, '.');
+
+        // A light snare: ghosts, an afrobeat-style syncopation or a crisp 2 and 4 (only where no
+        // clap already marks them); often none.
+        p[Lane::snare].assign ((size_t) randomBeatLength, '.');
+        const bool clapOnBeats = p[Lane::clap][4] != '.' || p[Lane::clap][12] != '.';
+        switch (accent.nextInt (5))
+        {
+            case 0:  setBar (Lane::snare, ".... ...g .... ..g."); break;
+            case 1:  if (p[Lane::clap][3] == '.') setBar (Lane::snare, "...g ..x. ...g ..x."); break;
+            case 2:  if (! clapOnBeats) setBar (Lane::snare, ".... x... .... x..g"); break;
+            default: break;
+        }
+
+        // The kick stays on the four, warm and steady, with a small push: a pick-up into the
+        // next beat or a tresillo answer in the second bar.
+        switch (accent.nextInt (4))
+        {
+            case 0:  p[Lane::kick][15] = p[Lane::kick][31] = 'x'; break;
+            case 1:  p[Lane::kick][31] = 'x'; break;
+            case 2:  p[Lane::kick][19] = 'x'; p[Lane::kick][22] = 'x'; break;
+            default: break;
+        }
+    }
+    else if (genre == latin)
+    {
+        // Three against four on the congas (the tumbao's dotted figure) and the cowbell on the
+        // beat; with the clave the clap often gives way.
         if (accent.chance (0.5f))
             setBar (! std::any_of (p[Lane::conga].begin(), p[Lane::conga].end(), isHit) ? Lane::conga : Lane::shaker, "x..x ..x. .x.. x..x");
+        if (accent.chance (0.5f) && ! std::any_of (p[Lane::cowbell].begin(), p[Lane::cowbell].end(), isHit))
+            setBar (Lane::cowbell, accent.pick ({ "x... x... x... x...", "x..x ..x. ..x. x..." }));
         if (std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit) && accent.chance (0.4f))
             p[Lane::clap].assign ((size_t) randomBeatLength, '.');
-
-        // The snare talks too, lightly: a half-time hit, a sparse backbeat or a syncopated
-        // figure with ghosts around the clave (never the full house backbeat).
-        if (! std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit))
-            setBar (Lane::snare, accent.pick ({ ".... .... x... ....", ".... ..g. x... ..g.", "...g ..x. ...g x...",
-                                                ".g.. x... .g.. ..x.", "..g. .... ..x. .g..", ".... g..x .... g.x.",
-                                                "...x .... ..g. x..g", ".... .... x..g ..g." }));
     }
     else if (genre == deep && accent.chance (0.5f))
     {
@@ -609,7 +662,7 @@ DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
     };
 
     // House (and an unnamed grid) keeps the original five moves and the same dice.
-    const int table = genre == garage ? 1 : genre == afro ? 2 : genre == neoSoul ? 3 : 0;
+    const int table = genre == garage ? 1 : genre == afro || genre == latin ? 2 : genre == neoSoul ? 3 : 0;
     const int choices = table == 0 ? 5 : 4;
     const int moves = 1 + r.nextInt (2);
     for (int m = 0; m < moves; ++m)
@@ -627,7 +680,7 @@ DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
                 default: at (Lane::closedHat, 15) = 'g'; break;
             }
         }
-        else if (table == 2)   // afro: the congas answer. No tom, no open hat.
+        else if (table == 2)   // afro/latin: the percussion answers. No open hat lift.
         {
             switch (which)
             {

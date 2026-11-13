@@ -62,7 +62,7 @@ public:
         fga::prepareCrashDiagnostics();juce::SystemStats::setApplicationCrashHandler(writeCrashLog);
         auto args=getCommandLineParameterArray();
        #if FGA_SELF_TESTS
-        for(const auto* flag:{"--smoke-test","--ui-test","--mastering-ui-test","--dynamics-ui-test","--sidechain-ui-test","--export-ui-test","--target-layout-test","--piano-tools-test","--piano-roll-test","--sample-import-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
+        for(const auto* flag:{"--smoke-test","--ui-test","--groove-preview","--mastering-ui-test","--dynamics-ui-test","--sidechain-ui-test","--export-ui-test","--target-layout-test","--piano-tools-test","--piano-roll-test","--sample-import-test","--host-smoke-test","--effects-smoke-test","--club-audit","--startup-benchmark","--event-loop-audit","--startup-splash-test","--plugin-catalog-test"})
             if(args.contains(flag)){FaseGroove::useSelfTestPreferences();break;}
        #endif
        #if JUCE_MAC
@@ -181,6 +181,9 @@ public:
         }
         if(args.size()==2&&args[0]=="--piano-tools-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const juce::File folder(args[1]);folder.createDirectory();const bool ok=fga::verifyPianoTools(window->content->main,folder);setApplicationReturnValue(ok?0:1);quit();return;
+        }
+        if(args.size()==2&&args[0]=="--groove-preview"){
+            window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.writeGroovePreview(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;
         }
         if(args.size()==2&&args[0]=="--mastering-ui-test"){
             window=std::make_unique<Window>();window->content->main.audio.devices.closeAudioDevice();const bool ok=window->content->main.verifyMasteringAssistant(juce::File(args[1]));setApplicationReturnValue(ok?0:1);quit();return;

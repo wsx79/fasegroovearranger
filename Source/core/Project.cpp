@@ -41,6 +41,15 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
     const float density=(float)std::clamp(s.density,0.0,1.0);
     p.riffGenre=engineGenre(s.genre);
     auto pattern=sgk::makeRandomPattern(seed,density,engineGenre(s.genre));
+    if(s.genre==latinHouseGenre){
+        // Latin House plays a montuno over a tumbao left hand, never the Afro tresillo figure.
+        static const char* const right[]{
+            "x.x..x.x.x.x.x.x..x..x.x.x.x.x.x","x..x..x.x.x..x.x..x.x..x.x..x.x.",".x.x.xx..x.x.xx..x.x.xx..x.x.x.x",
+            "x.x.x..x.x.x..x..x.x..x.x.x..x.x","x..x..x...x.x.....x..x..x.x.x...","x.x..x.x.x..x.x.x.x..x.x..x.x.x."};
+        static const char* const left[]{
+            "......x=....x=........x=....x=..","x.....x.....x...x.....x.....x...","x.....x...x.......x...x.....x...","......x=...x..x.......x=...x..x."};
+        pattern.rightHand=right[mix(seed+41U)%6];pattern.leftHand=left[mix(seed+59U)%4];
+    }
     if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
     if(s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
     sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
@@ -291,19 +300,20 @@ const GenreProfile& genreProfile(int genre) {
         {122,128,125,32,false}, // Jackin' House: 122–128, centre 125, shuffle not speed garage
         {124,130,126,32,true},  // Jackin' Piano
         {130,135,132,32,true},  // Garage / UK
-        {115,125,122,32,false}, // Afro / Latin: percussion-led lift
+        {116,124,121,32,false}, // Afro House: percussion-led, swung, deep lift
         {112,124,120,32,false}, // Funky / Disco
         {120,130,126,32,true},  // 90s Piano
         { 92,112, 98,16,false}, // Neo Soul / Broken: warm-up/broken-groove policy
         { 90,115,100,16,false}, // Chill / Pads: downtempo warm-up policy
         {124,130,128,32,true},  // Dance Stabs
         {126,145,132,32,true},  // Techno
-        {124,132,128,32,true}   // Electro House
+        {124,132,128,32,true},  // Electro House
+        {120,127,124,32,false}  // Latin House: clave, cowbell and congas, straighter
     };
     static_assert(std::size(profiles)==numGenres);
     return profiles[normaliseGenre(genre)];
 }
-std::vector<std::string> genres() { std::vector<std::string> out; for(auto s:sgk::grooveCategories()) out.emplace_back(s);out[(size_t)deepHouseGenre]="Deep House";out.emplace_back("Techno");out.emplace_back("Electro House");return out; }
+std::vector<std::string> genres() { std::vector<std::string> out; for(auto s:sgk::grooveCategories()) out.emplace_back(s);out[(size_t)deepHouseGenre]="Deep House";out[(size_t)afroHouseGenre]="Afro House";out.emplace_back("Techno");out.emplace_back("Electro House");out.emplace_back("Latin House");return out; }
 double Project::sectionStart(int index) const { double p=0; for(int i=0;i<std::clamp(index,0,(int)sections.size());++i) p+=sections[(size_t)i].bars*4.0; return p; }
 double Project::clipLength(int track,int section) const {
     if(track>=0&&track<(int)tracks.size()&&tracks[(size_t)track].freeTimeline){const auto& clips=tracks[(size_t)track].clips;return section>=0&&section<(int)clips.size()?clips[(size_t)section].span:0;}
@@ -643,7 +653,7 @@ void applyGenre(Project& p,int genre) {
     const int feelOffset=(int)std::lround((finite(p.settings.density,.55,0,1)-.55)*4);
     const int takeOffset=(int)(mix(p.settings.seed+(std::uint32_t)p.settings.genre)%3)-1;
     p.settings.bpm=std::clamp(profile.preferredBpm+feelOffset+takeOffset,profile.minBpm,profile.maxBpm);
-    p.settings.swing=fgd::genreSwing(engineGenre(p.settings.genre));
+    p.settings.swing=fgd::genreSwing(drumGenre(p.settings.genre));
     p.settings.density=genreSound(p.settings.genre).density;
     p.settings.humanize=p.settings.genre==(int)Genre::neoSoul?.32:p.settings.genre==(int)Genre::chill?.28:.18;
     // A named factory groove from the previous genre must not override the new
@@ -686,7 +696,8 @@ std::vector<SongSection> genreForm(int genre,int variant=0) {
         {{Section::intro,16,"Chill intro"},{Section::main,24,"First landscape"},{Section::breakdown,16,"Space"},{Section::main,24,"Second landscape"},{Section::drop,16,"Warm return"},{Section::outro,16,"Chill outro"}},
         {{Section::intro,32,"Intro"},{Section::main,32,"Stab theme"},{Section::breakdown,16,"Breakdown"},{Section::buildup,16,"Tension"},{Section::drop,32,"Stab drop"},{Section::main,16,"Reprise"},{Section::outro,32,"Outro"}},
         {{Section::intro,32,"Drum intro"},{Section::main,32,"Hypnotic groove"},{Section::breakdown,16,"Atmosphere"},{Section::buildup,16,"Pressure build"},{Section::drop,32,"Techno drop"},{Section::main,32,"Evolution"},{Section::outro,32,"Drum outro"}},
-        {{Section::intro,32,"Drum intro"},{Section::main,16,"Electro hook"},{Section::breakdown,16,"Filter break"},{Section::buildup,16,"Pressure build"},{Section::drop,32,"Electro drop"},{Section::breakdown,8,"Filter break"},{Section::buildup,8,"Pressure build"},{Section::drop,32,"Final drop"},{Section::outro,32,"Drum outro"}}
+        {{Section::intro,32,"Drum intro"},{Section::main,16,"Electro hook"},{Section::breakdown,16,"Filter break"},{Section::buildup,16,"Pressure build"},{Section::drop,32,"Electro drop"},{Section::breakdown,8,"Filter break"},{Section::buildup,8,"Pressure build"},{Section::drop,32,"Final drop"},{Section::outro,32,"Drum outro"}},
+        {{Section::intro,16,"Percussion intro"},{Section::main,32,"Latin groove"},{Section::drop,16,"Montuno"},{Section::breakdown,16,"Timbales break"},{Section::buildup,8,"Rise"},{Section::drop,32,"Fiesta"},{Section::outro,16,"Percussion outro"}}
     };
 
     static_assert(std::size(forms)==numGenres);
@@ -904,7 +915,7 @@ int mixEntry(int genre,int track,int bars) {
         // Kick, closed hats and shaker provide a countable pulse from bar one.
         static constexpr int drums[]{0,16,8,16,0,8,16,0,8,8,16,24,32};
         entry=drums[lane];
-        if(genre==(int)Genre::afroHouse&&(lane==7||lane==9))entry=0; // Afro shaker/congas lead
+        if(isAfroLatinGenre(genre)&&(lane==7||lane==9))entry=0; // Afro/Latin shaker and congas lead
     }
     if(isElectronicGenre(genre)&&track==1)entry=genre==technoGenre?8:16;
     if(genre==technoGenre&&track==leadTrack)entry=16;
@@ -956,7 +967,7 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         // start in that window, so most songs never grew a string part.
         if(track==3&&!p.settings.guitarLead){
             if(genre==(int)Genre::jackinHouse)return phrase%2==1; // percussive guitar answers the chopped keys
-            if(genre==(int)Genre::afroHouse)return phrase%4>=(later?1:2); // percussion/guitar answers
+            if(isAfroLatinGenre(genre))return phrase%4>=(later?1:2); // percussion/guitar answers
             if(genre==(int)Genre::deepHouse||genre==(int)Genre::ninetiesHouse||genre==(int)Genre::danceStabs)return phrase>=(later?4:6);
             return phrase%4>=(later?1:2); // opening phrases leave room for the piano
         }
@@ -964,7 +975,7 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
         // backbeat or closed hat. These are compositional rests, not audio mute.
         if(track==14||track==15){
             if(genre==(int)Genre::jackinHouse&&(track==14||track==15))return true; // cowbell and tom are the jack, not a late answer
-            return genre==(int)Genre::afroHouse?phrase>=(later?1:2):phrase>=(later?2:4);
+            return isAfroLatinGenre(genre)?phrase>=(later?1:2):phrase>=(later?2:4);
         }
         return true;
     };
@@ -1005,7 +1016,7 @@ void varyGenerationFeel(Project& p,std::uint32_t seed){
     auto pick=[&](double previous,int lo,int hi,unsigned salt){const int count=hi-lo+1;int value=lo+(int)(mix(seed+salt)%(unsigned)count);if(value==(int)std::lround(previous*100)&&count>1)value=lo+(value-lo+1)%count;return value/100.;};
     const int centre=(int)std::lround(genreSound(s.genre).density*100);
     s.density=pick(s.density,std::max(12,centre-18),std::min(90,centre+18),1700U);
-    const int base=(int)std::lround(fgd::genreSwing(engineGenre(s.genre))*100);
+    const int base=(int)std::lround(fgd::genreSwing(drumGenre(s.genre))*100);
     int low=std::max(0,base-12),high=std::min(120,base+18);
     if(s.genre==(int)Genre::jackinHouse){low=36;high=72;}
     if(s.genre==technoGenre){low=0;high=8;}
@@ -1145,14 +1156,17 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
         {17,18,28,30,31,34,35,37,74,75,78,79,80,94,95,97},
         {17,28,30,31,33,37,54,58,74,75,76,79,94,101},
         {9,17,18,27,28,31,34,37,67,71,75,78,79,95},
-        {0,9,16,20,21,28,65,66,70,73,75,94,95,97},
+        {0,1,6,7,17,26,35,65,70,72,78,96},
         {9,21,32,33,4,12,54,57,60,74,76,77,80},
         {4,6,8,27,28,33,54,56,59,60,76},
         {2,3,19,24,29,12,40,41,46,51,53,54,57,61,85},
         {0,6,7,10,20,27,65,67,68,69,70,71,72,91},
         {4,6,9,17,27,28,33,54,56,60,74,76}
     };
-    const auto& choices=progressions[engineGenre(s.genre)];
+    // Latin House is brighter and moves every bar (montuno turnarounds, ii-V, the
+    // Andalusian cadence); Afro House stays on hypnotic minor and modal vamps.
+    static const std::vector<int> latinProgressions{3,4,12,21,22,32,33,49,52,59,74,90,93};
+    const auto& choices=s.genre==latinHouseGenre?latinProgressions:progressions[engineGenre(s.genre)];
     const auto first=mix(seed+701U)%choices.size();
     for(size_t i=0;i<choices.size();++i) {
         chooseProgression(p,choices[(first+i)%choices.size()]);
@@ -1174,10 +1188,11 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
     static const std::vector<int> bassLines[]{
         {8,12,13}, {10,11,23}, {7,16,17}, {10,11,23}, {13,14,22},
-        {8,12,13,14}, {9,18,19}, {15,9,14}, {0,1,2,3,20,21,22},
+        {8,12,13,14}, {9,18,19}, {15,16,17,8}, {0,1,2,3,20,21,22},
         {8,12,13}, {4,5,10,23}, {7,16,17}, {8,12,13,14}
     };
-    const auto& bass=bassLines[engineGenre(s.genre)];
+    static const std::vector<int> latinBass{2,3,9,11};
+    const auto& bass=s.genre==latinHouseGenre?latinBass:bassLines[engineGenre(s.genre)];
     auto at=mix(seed+1103U)%bass.size();
     if(sgk::bassModeForLine(bass[at])==s.bassMode)at=(at+1)%bass.size();
     s.bassMode=sgk::bassModeForLine(bass[at]);
@@ -1639,7 +1654,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 auto all=fgl::GrooveEngine::renderArrangement(ls,{{(fgl::Section)engineType,harmonicBars,clip.seed,-1}});
                 clip.notes=harmonicNotes(all,[](const fgl::NoteEvent& event){return !event.isController()&&event.lane<fgl::numLanes;});
             } else {
-                fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=engineGenre(s.genre);
+                fgd::DrumSettings ds; ds.pattern=e.pattern>=0&&e.pattern<(int)fgd::drumPatterns().size()?e.pattern:fgd::randomPatternIndex(); ds.randomGenre=drumGenre(s.genre);
                 // One kit seed for all drum stems keeps kick, backbeat and hats coherent.
                 ds.riffSeed=e.riffSeed?e.riffSeed:(clip.motifSeed?clip.motifSeed:mix(s.seed+313U)); ds.sectionVariation=mix(clip.seed+(std::uint32_t)si*977U);
                 ds.density=ps.riffDensity; ds.swing=ps.swing; ds.humanize=ps.humanize; ds.humanizeSeed=e.humanizeSeed?e.humanizeSeed:clip.seed;

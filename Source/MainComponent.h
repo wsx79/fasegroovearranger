@@ -341,6 +341,7 @@ public:
     void showMixAssistant();
     void showMasteringAssistant();
     bool verifyMasteringAssistant(const juce::File&);
+    bool writeGroovePreview(const juce::File&);   // WAV previews of the Afro / Latin House grooves (self-test build)
     void showAiComposer();
     bool pluginsBusy()const{return loadingPlugin>0;}
     int trackForSession(std::uint64_t id)const;

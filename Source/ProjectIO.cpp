@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "ProjectIO.h"
 #include "StudioIO.h"
+#include "../ThirdParty/fasegroovedrums/Source/engine/Drums.h"
 #include <cmath>
 #include <set>
 namespace fga {
@@ -155,7 +156,7 @@ juce::Result readReturnChain(const juce::var& value,Track& rack){
 }
 }
 juce::var projectJson(const Project& p){
-    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return !t.effects.empty()||t.instrumentState.rfind(hostedStatePrefix,0)==0||t.parameters.size()>8||std::any_of(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot<0;});})?4:extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);if(p.settings.grooveEnabled){auto g=object();juce::Array<juce::var> offsets,accents;for(int i=0;i<16;++i){offsets.add(p.settings.grooveOffsets[(size_t)i]);accents.add(p.settings.grooveAccents[(size_t)i]);}set(g,"offsets",offsets);set(g,"accents",accents);set(o,"groove",g);}
+    auto o=object();set(o,"format","fase-groove-arranger");set(o,"version",std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return !t.effects.empty()||t.instrumentState.rfind(hostedStatePrefix,0)==0||t.parameters.size()>8||std::any_of(t.parameters.begin(),t.parameters.end(),[](const auto& l){return l.slot<0;});})?4:extendedProject(p)?3:std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;})?2:1);set(o,"name",p.name);set(o,"drumPatternCount",(int)fgd::drumPatterns().size());if(p.settings.grooveEnabled){auto g=object();juce::Array<juce::var> offsets,accents;for(int i=0;i<16;++i){offsets.add(p.settings.grooveOffsets[(size_t)i]);accents.add(p.settings.grooveAccents[(size_t)i]);}set(g,"offsets",offsets);set(g,"accents",accents);set(o,"groove",g);}
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
@@ -235,6 +236,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.kind=(int)p.tracks.size();if(migrateSlots){const double id=num(a,"kind",t.kind);if(id<0||id>=maxTracks||std::floor(id)!=id||usedSlots[(size_t)(int)id])return juce::Result::fail("Invalid or duplicate legacy track slot.");t.kind=(int)id;usedSlots[(size_t)t.kind]=true;}t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         if(auto r=readSampler(a["sampler"],t.sampler);r.failed())return r;t.sampleHash=str(a,"sampleHash");t.group=(int)num(a,"group",-1);if(a.hasProperty("sends")){auto* sends=a["sends"].getArray();if(!sends||sends->size()!=2)return juce::Result::fail("Invalid send routing.");for(int i=0;i<2;++i)t.sends[(size_t)i]=(double)(*sends)[i];}
         t.vocalChops=(bool)a.getProperty("vocalChops",false);readEngine(a["engine"],t.engine);
+        // Drum patterns were appended (Afro and Latin House): the random and user sentinels follow
+        // the factory count, so a project saved with fewer patterns keeps its random/own beat.
+        if(isDrumTrack(t.kind)){const int saved=(int)num(o,"drumPatternCount",70),now=(int)fgd::drumPatterns().size();if(saved>0&&saved!=now&&t.engine.pattern>=saved&&t.engine.pattern<=saved+1)t.engine.pattern+=now-saved;}
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
         if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
         if(a.hasProperty("parameterAutomation")){auto* lanes=a["parameterAutomation"].getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");

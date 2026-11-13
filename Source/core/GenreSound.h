@@ -26,14 +26,15 @@ inline const GenreSound& genreSound(int genre){
         {6,0,3,3,3,3, .24,.18,.22,.18,1.1,.40,.30, .44,.73,.23,.24}, // chill: warm pad / nylon / lo-fi
         {2,3,0,0,8,4, .80,.18,.72,.72,.20,.03,.65, .56,.90,.12,.18}, // dance stabs: upper triads / 909
         {6,3,0,0,0,0, .25,.32,.45,.72,.28,.0,.45, .42,.88,.12,.15}, // techno: sub / 909 / pulse lead
-        {6,3,2,0,0,0, .60,.55,.78,.76,.22,.0,.62, .42,.88,.12,.15}  // electro: syncopated sub / 909 / saw lead
+        {6,3,2,0,0,0, .60,.55,.78,.76,.22,.0,.62, .42,.88,.12,.15}, // electro: syncopated sub / 909 / saw lead
+        {1,4,2,2,6,9, .58,.30,.58,.58,.44,.14,.58, .46,.84,.24,.36}  // latin: bright piano montuno / round bass / percussion
     };
     static_assert(std::size(styles)==numGenres);
     return styles[normaliseGenre(genre)];
 }
 inline void applyGenreSound(Project& p){
     const auto& a=genreSound(p.settings.genre);
-    static constexpr int extensions[]{2,2,2,2,1,0,1,1,1,0,3,2,0,0,0};
+    static constexpr int extensions[]{2,2,2,2,1,0,1,1,1,0,3,2,0,0,0,1};
     static_assert(std::size(extensions)==numGenres);
     p.settings.extension=extensions[normaliseGenre(p.settings.genre)];
     p.settings.voicing=a.voicing;p.settings.stringsMode=a.strings;
@@ -41,7 +42,7 @@ inline void applyGenreSound(Project& p){
     for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(t.locked)continue;auto& e=t.engine;
         e.fillEvery=isHarmonicTrack(ti)?16:8;e.variationEvery=8;e.afterFill=true;
         if(ti==0){e.gate=a.gate;e.strum=a.strum;e.centre=p.settings.genre==(int)Genre::chill?67:64;e.octaveTop=p.settings.genre==(int)Genre::ninetiesHouse;e.density=a.density;e.humanize=p.settings.genre==(int)Genre::neoSoul?.32:.14;}
-        if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==(int)Genre::deepHouse||p.settings.genre==(int)Genre::ukGarage||p.settings.genre==(int)Genre::afroHouse||p.settings.genre==(int)Genre::danceStabs)?2:0;e.humanize=.05;e.realism=true;}
+        if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==(int)Genre::deepHouse||p.settings.genre==(int)Genre::ukGarage||isAfroLatinGenre(p.settings.genre)||p.settings.genre==(int)Genre::danceStabs)?2:0;e.humanize=.05;e.realism=true;}
         if(p.settings.genre==(int)Genre::jackinHouse){
             // The bass is a short funky line, not a held low organ chord.
             if(ti==1){e.gate=.30;e.humanize=.08;e.bassFeel=1;}
@@ -62,7 +63,7 @@ inline void applyGenreSound(Project& p){
             // GuideDrums already scales each lane (kick .95, snare .6, hats .28).
             // Keep that balance audible instead of attenuating the upper kit twice.
             static constexpr double levels[]{.60,.90,.85,.90,.85,.85,.75,.90,.75,.72,.72,.72,.72};
-            t.gain=levels[lane];if(p.settings.genre==(int)Genre::afroHouse&&(lane==7||lane==9))t.gain*=1.35;
+            t.gain=levels[lane];if(isAfroLatinGenre(p.settings.genre)&&(lane==7||lane==9))t.gain*=1.35;
             if(lane>=4)t.pan=lane%2==0?-.15:.15;
             if(lane==1||lane==2||lane==12)e.reverb=.05;
         }

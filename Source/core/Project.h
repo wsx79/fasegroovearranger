@@ -247,15 +247,19 @@ inline double targetBeat(const Project& p){return p.settings.targetEnabled&&p.se
 enum class TargetFit { off, within, below, above };
 inline TargetFit targetFit(const Project& p){if(!p.settings.targetEnabled||!(p.settings.targetSeconds>0)||!(p.settings.bpm>0))return TargetFit::off;const double delta=projectSeconds(p)-p.settings.targetSeconds;const double tol=std::max(0.,p.settings.targetToleranceSeconds);if(std::abs(delta)<=tol)return TargetFit::within;return delta<0?TargetFit::below:TargetFit::above;}
 const char* sectionName(Section);
-enum class Genre : int { pianoHouse,soulful,deepHouse,gospel,jackinHouse,pianoJack,ukGarage,afroHouse,discoHouse,ninetiesHouse,neoSoul,chill,danceStabs,techno,electroHouse,count };
-constexpr int deepHouseGenre=(int)Genre::deepHouse,technoGenre=(int)Genre::techno,electroHouseGenre=(int)Genre::electroHouse,numGenres=(int)Genre::count;
+enum class Genre : int { pianoHouse,soulful,deepHouse,gospel,jackinHouse,pianoJack,ukGarage,afroHouse,discoHouse,ninetiesHouse,neoSoul,chill,danceStabs,techno,electroHouse,latinHouse,count };
+constexpr int deepHouseGenre=(int)Genre::deepHouse,technoGenre=(int)Genre::techno,electroHouseGenre=(int)Genre::electroHouse,latinHouseGenre=(int)Genre::latinHouse,afroHouseGenre=(int)Genre::afroHouse,numGenres=(int)Genre::count;
 // Invalid legacy IDs retain their old Dance Stabs fallback.
 // normaliseGenre -> 0..14: arranger arrays (styles, profiles, forms, extensions) have one row per style.
 inline int normaliseGenre(int genre){return genre<0?0:genre>=numGenres?12:genre;}
 inline bool isElectronicGenre(int genre){return genre==technoGenre||genre==electroHouseGenre;}
 // engineGenre -> 0..12: vendor engines only know the original thirteen styles; Techno and
 // Electro House reuse the Dance Stabs engine row but get their own arranger generators.
-inline int engineGenre(int genre){return isElectronicGenre(genre)?12:normaliseGenre(genre);}
+// Latin House (appended after Afro House split from it) plays the Afro row in the piano,
+// guitar and lead engines and its own groove family (13) in the drum engine.
+inline int engineGenre(int genre){return isElectronicGenre(genre)?12:genre==latinHouseGenre?afroHouseGenre:normaliseGenre(genre);}
+inline int drumGenre(int genre){return genre==latinHouseGenre?13:engineGenre(genre);}
+inline bool isAfroLatinGenre(int genre){return genre==afroHouseGenre||genre==latinHouseGenre;}
 std::vector<std::string> genres();
 // Automatic club-arrangement policy. These are curated working ranges, not
 // universal genre definitions; see docs/CLUB_ARRANGEMENT.md for the sources.

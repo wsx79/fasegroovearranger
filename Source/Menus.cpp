@@ -509,3 +509,28 @@ void MainComponent::adaptAudioTrack(int track,int action){
     message(action==0?tr("Audio follows the project tempo; pitch is preserved. Undo restores it."):action==1?tr("Audio transposed to the project key")+" ("+juce::String(s.transpose>0?"+":"")+juce::String(s.transpose)+" st). "+tr("Undo restores it."):tr("Original tempo and key restored."));
 }
 }
+
+namespace fga {
+// Listening previews: every Afro House and Latin House groove on the guide drum kit (8 bars),
+// three automatic (random) beats per genre, and one full-band excerpt per genre.
+bool MainComponent::writeGroovePreview(const juce::File& folder){
+    folder.createDirectory();bool ok=true;juce::String index;
+    auto render=[&](int genre,int pattern,std::uint32_t seed,bool drumsOnly,int bars,const juce::String& name){
+        audio.stop();project=newProject(genre);project.settings.seed=seed;project.settings.bpm=genre==afroHouseGenre?121:124;
+        project.sections={{Section::main,bars,"Preview"}};project.normalise();
+        for(int t=4;t<=16;++t)project.tracks[(size_t)t].engine.pattern=pattern;
+        generate(project,Scope::song,0,0,0);
+        for(int t=0;t<(int)project.tracks.size();++t)project.tracks[(size_t)t].mute=drumsOnly&&!isDrumTrack(t);
+        audio.publish(project);
+        const auto file=folder.getChildFile(name+".wav");const auto r=audio.exportAudio(project,file,-1,false,[]{return false;},[](double){});
+        ok=r.wasOk()&&file.existsAsFile()&&ok;index+=(r.wasOk()?"PASS ":"FAIL ")+name+".wav  ("+juce::String(project.settings.bpm,0)+" BPM, swing "+juce::String(project.settings.swing,2)+")\n";
+    };
+    const auto& patterns=fgd::drumPatterns();
+    for(size_t i=0;i<patterns.size();++i){const auto& category=patterns[i].category;
+        if(category=="Afro House")render(afroHouseGenre,(int)i,1,true,8,"afro-"+juce::String(patterns[i].name).replaceCharacter(' ','-').toLowerCase());
+        else if(category=="Latin House")render(latinHouseGenre,(int)i,1,true,8,"latin-"+juce::String(patterns[i].name).replaceCharacter(' ','-').toLowerCase());}
+    for(std::uint32_t seed:{11u,22u,33u}){render(afroHouseGenre,-1,seed,true,8,"afro-automatic-"+juce::String((int)seed));render(latinHouseGenre,-1,seed,true,8,"latin-automatic-"+juce::String((int)seed));}
+    render(afroHouseGenre,-1,7,false,16,"afro-full-band");render(latinHouseGenre,-1,7,false,16,"latin-full-band");
+    folder.getChildFile("groove-preview.txt").replaceWithText(index);return ok;
+}
+}

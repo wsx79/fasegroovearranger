@@ -69,7 +69,7 @@ if '--club-only' not in sys.argv[2:]:
     read(folder / 'test-kick.mid', 2)
     read(folder / 'test-piano-cc.mid',2,True)
 else:
-    assert len(list(folder.glob('club-*.mid'))) == 15, 'all 15 genre arrangements must be exported'
+    assert len(list(folder.glob('club-*.mid'))) == 16, 'all 16 genre arrangements must be exported'
 
 for path in sorted(folder.glob("club-*.mid")):
     read(path,19,min_markers=5)

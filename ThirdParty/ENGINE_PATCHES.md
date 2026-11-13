@@ -23,6 +23,7 @@
 ## Drums (`fgd`)
 
 - Jackin' house keeps a four-on-the-floor shuffle: `reinforceJackinHouse` after the dice, section variations and presets (main and drop); the swung "a" stays an accent in the humanizer; cowbell and tom from the first bar of the main part.
+- Afro House and Latin House are separate genres: `grooveCategories` appends "Latin House" (category 13, own swing in `genreSwing`); the earlier Latin/clave grooves move to it, Afro House gets modern grooves appended at the end of `drumPatterns` (earlier pattern numbers stay; the random/user sentinels move, the Arranger remaps them when loading older projects). `makeRandomPattern` has a `latin` genre (son clave, cowbell, tumbao congas) and a modern afro house one (straight four with small kick pushes, offbeat open hat, syncopated tom/rim loop, understated or syncopated clap and light snare, no 12/8 bell).
 - Not vendored (unused here): `generalMidiDrumName`, `makeRandomLane`, `defaultArrangement`.
 
 ## Guitar (`fgg`)
