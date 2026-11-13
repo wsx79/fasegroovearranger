@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Timeline: dragged clips follow the mouse continuously, with a landing line and a bar.beat.tick tag at the snapped position; SNAP on/off button; grid Bar, 1/2, 1/4, 1/8, 1/16, 1/32 and Auto (by zoom); Shift inverts snapping while dragging; left/right arrows nudge the selected clips by one grid step (Shift: one bar); lighter clip-edge resizing.
+
+- Audio: a loop or stem dropped on the timeline becomes an audio clip at the drop point on a new audio track; tempo and key are detected at import with a reliability (drums, voices and atonal material are reported as having no reliable key). The audio clip menu can make the audio follow the project tempo (pitch preserved) or key, restore the original, or set the project tempo or key from the audio so generated parts follow it.
+
+- Sections: an Energy setting (Auto, Low, Medium, High, Peak) in the section menu; Low and Medium thin every generated part, High and Peak play the same notes harder.
+
 ## 0.45.0
 
 - Mix and Mastering Assistants: measured values (integrated LUFS, true peak against the selected ceiling, sample peak, crest factor, correlation, difference from the reference, export QA, selected suggestions) are shown as cards with their scale; an Analyse → Review → Apply → Compare stepper shows where the workflow is; reports are coloured by kind (PASS, to check, measured, not checked, suggestions) with unchanged text; suggestion rows show their kind and applied state. The kick/bass EQ alternative now sits in the low band where the two parts were measured to overlap (60 or 115 Hz) instead of a fixed 100 Hz.

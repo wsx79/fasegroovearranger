@@ -37,7 +37,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
             if(c.locked||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&guide!=section))continue;
             if(seed)c.seed=hash(seed+ti*131U+ci*977U);else if(c.seed<=1)c.seed=hash(p.settings.seed+ti*131U+ci*977U);
             c.feel={takeFeel(t.engine.density,c.feel[0],p.settings.density),takeFeel(t.engine.swing,c.feel[1],p.settings.swing),takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize)};
-            const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=takeFeel(t.engine.density,c.feel[0],p.settings.density);
+            const double duration=p.clipLength(ti,ci),period=c.loopLength,beats=period>0?period:duration,density=std::clamp(takeFeel(t.engine.density,c.feel[0],p.settings.density)*energyScale(p.sections[(size_t)guide].energy),0.,1.);
             const auto role=p.sections[(size_t)guide].type;if(t.freeTimeline)c.role=(int)role;
             c.notes.clear();c.loopSource.clear();
             if(density<=0)continue;

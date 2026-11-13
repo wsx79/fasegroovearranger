@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## Unreleased
+
+- Timeline: le clip trascinate seguono il mouse in modo continuo, con una linea e un'etichetta battuta.beat.tick sulla posizione agganciata; pulsante SNAP on/off; griglia Battuta, 1/2, 1/4, 1/8, 1/16, 1/32 e Auto (in base allo zoom); Shift inverte l'aggancio durante il trascinamento; le frecce sinistra/destra spostano le clip selezionate di un passo di griglia (Shift: una battuta); ridimensionamento più leggero.
+
+- Audio: un loop o uno stem trascinato sulla timeline diventa una clip audio nel punto del rilascio, su una nuova traccia audio; tempo e tonalità vengono rilevati all'import con un'indicazione di affidabilità (batteria, voci e materiale atonale risultano senza tonalità affidabile). Dal menu della clip audio si può far seguire all'audio il tempo (con intonazione invariata) o la tonalità del progetto, tornare all'originale, oppure impostare tempo o tonalità del progetto dall'audio, così le parti generate lo seguono.
+
+- Sezioni: impostazione Energia (Auto, Bassa, Media, Alta, Picco) nel menu della sezione; Bassa e Media alleggeriscono tutte le parti generate, Alta e Picco suonano le stesse note con più forza.
+
 ## 0.45.0
 
 - Assistenti Mix e Mastering: i valori misurati (LUFS integrato, true peak rispetto al limite scelto, picco dei campioni, fattore di cresta, correlazione, differenza dal riferimento, QA export, suggerimenti selezionati) compaiono come card con la loro scala; uno stepper Analizza → Verifica → Applica → Confronta mostra il punto del flusso; i report sono colorati per tipo (PASS, da verificare, misura, non verificato, suggerimenti) senza cambiare il testo; le righe dei suggerimenti mostrano tipo e stato di applicazione. L'alternativa EQ cassa/basso ora cade nella banda bassa in cui è stata misurata la sovrapposizione (60 o 115 Hz) invece di un 100 Hz fisso.

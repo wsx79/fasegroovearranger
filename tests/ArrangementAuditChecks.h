@@ -42,6 +42,14 @@ inline void verify(){
     }
     std::cout<<"AUDIT drop_gaps="<<gaps<<"/"<<drops<<" drops in "<<songs<<" songs\n";check(gaps*5>=drops&&gaps*5<=drops*4,"some, not all, drops are preceded by a stop");
     std::cout<<"AUDIT build_bass_out="<<bassOut<<"/"<<builds<<"\n";check(bassOut*2>=builds&&bassOut<builds,"the bass usually, not always, leaves before the drop");
+    {   // Section energy: the same takes play less at Low and more at Peak; Auto keeps the notes as before.
+        for(int genre:{0,4,13}){auto p=newProject(genre);p.settings.randomAutomation=false;p.sections={{Section::main,8,"A"},{Section::main,8,"B"}};p.normalise();generate(p);
+            auto count=[&](int energy){auto q=p;q.sections[1].energy=energy;generate(q,Scope::section,0,1,0);double n=0;for(const auto& t:q.tracks)if(t.clips.size()>1)for(const auto& x:t.clips[1].notes)n+=x.velocity;return n;};   // activity: notes weighted by how hard they play
+            const auto autoCount=count(-1),low=count(0),peak=count(3);std::cout<<"AUDIT energy genre="<<genre<<" low="<<low<<" auto="<<autoCount<<" peak="<<peak<<"\n";
+            check(low<autoCount&&peak>autoCount,"genre "+std::to_string(genre)+": section energy changes how much the parts play");
+            auto again=p;generate(again,Scope::section,0,1,0);size_t same=0,before=0;for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].clips.size()>1){before+=p.tracks[ti].clips[1].notes.size();same+=again.tracks[ti].clips[1].notes.size();}
+            check(same==before,"genre "+std::to_string(genre)+": Auto energy leaves the section as generated");}
+    }
     ::check(weak==0,"arrangement audit found problems");
 }
 }

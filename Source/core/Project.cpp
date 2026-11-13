@@ -151,7 +151,9 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     auto s=p.settings;const auto& t=p.tracks[(size_t)track];const auto& e=t.engine;
     if(clip){int section=p.sectionAtBeat(clip->position);if(!t.freeTimeline)for(size_t i=0;i<t.clips.size();++i)if(&t.clips[i]==clip){section=(int)i;break;}s=resolveSectionHarmony(p,section);}
     if(clip){s.density=takeFeel(e.density,clip->feel[0],s.density);s.swing=takeFeel(e.swing,clip->feel[1],s.swing);s.humanize=takeFeel(e.humanize,clip->feel[2],s.humanize);}
-    auto trackSettings=s;if(e.density>=0)trackSettings.density=e.density;
+    double energy=1;if(clip){const int section=t.freeTimeline?p.sectionAtBeat(clip->position):[&]{for(size_t i=0;i<t.clips.size();++i)if(&t.clips[i]==clip)return (int)i;return -1;}();if(section>=0&&section<(int)p.sections.size())energy=energyScale(p.sections[(size_t)section].energy);}
+    s.density=std::clamp(s.density*energy,0.,1.);
+    auto trackSettings=s;if(e.density>=0)trackSettings.density=std::clamp(e.density*energy,0.,1.);
     // A regenerated track/song shares its musical take across sections. Legacy
     // projects retain the song motif until explicitly regenerated.
     const auto motifSeed=take?take:mix(s.seed+(std::uint32_t)track*131U);
@@ -176,7 +178,7 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
         ps.bassLineOverride=std::move(line);
     }
     ps.humanizeSeed=seed;   // NEW FEEL (e.humanizeSeed) is applied after generation: it must never change the notes
-    ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:e.density);
+    ps.swing=(float)(e.swing<0?s.swing:e.swing);ps.humanize=(float)(e.humanize<0?s.humanize:e.humanize);ps.riffDensity=(float)(e.density<0?s.density:std::clamp(e.density*energy,0.,1.));
     ps.velocity=e.velocity;ps.gate=(float)e.gate;ps.strum=(float)e.strum;ps.centre=e.centre;ps.movement=e.movement;ps.octaveTop=e.octaveTop;
     ps.strumDirection=e.strumDirection;ps.topLine=(sgk::TopLine)e.topLine;ps.approach=(sgk::ApproachStyle)e.approach;ps.evolveBars=e.evolveBars;ps.humanizeStyle=e.humanizeStyle;ps.bassFeel=e.bassFeel;
     ps.rangeLow=e.rangeLow;ps.rangeHigh=e.rangeHigh;ps.realism=e.realism;ps.grooveBars=e.grooveBars;ps.segmentOrder=e.segments;
@@ -1606,6 +1608,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             }
             if(p.settings.grooveEnabled)for(auto& n:clip.notes){const int slot=((int)std::llround(n.start*4)%16+16)%16;n.start=std::max(0.,n.start+p.settings.grooveOffsets[(size_t)slot]);n.velocity=std::clamp((int)std::lround(n.velocity*p.settings.grooveAccents[(size_t)slot]),1,127);}
             if(ti==0||ti==2||ti==3)fitSustainedTensions(clip,p,guide,p.clipStart(ti,(int)si),period);
+            if(guide>=0&&guide<(int)p.sections.size()&&p.sections[(size_t)guide].energy>=0){const double v=energyVelocity(p.sections[(size_t)guide].energy);for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*v),1,127);}
             if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);

@@ -69,7 +69,7 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
     const int section=harmonySection>=0?harmonySection:p.sectionAtBeat(begin);auto s=resolveSectionHarmony(p,section);if(!isElectronicGenre(s.genre))return false;
     if(track==2){if(requested||s.stringsMode!=0)return false;clip.notes.clear();return true;}
     const bool techno=s.genre==technoGenre,mixing=role==Section::intro||role==Section::outro,breakdown=role==Section::breakdown,build=role==Section::buildup,drop=role==Section::drop;
-    const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(takeFeel(e.density,clip.feel[0],s.density),0.,1.);
+    const auto& e=p.tracks[(size_t)track].engine;const double density=std::clamp(takeFeel(e.density,clip.feel[0],s.density)*(section>=0&&section<(int)p.sections.size()?energyScale(p.sections[(size_t)section].energy):1.),0.,1.);
     clip.notes.clear();if(density<=0)return true;
     const auto motif=clip.motifSeed?clip.motifSeed:clip.seed;const int variant=(int)(draw(motif)%8);
     // Independent musical choices give a vocabulary of phrases rather than eight

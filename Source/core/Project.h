@@ -75,6 +75,7 @@ struct SectionHarmony {
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false;
     int dropGap=0; // automatic full-band stop before the next drop, in beats (0 none, 1 or 2); not an authored edit
+    int energy=-1; // -1 auto; 0 low, 1 medium, 2 high, 3 peak: scales how much every part plays in this section
 };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and
 // MIDI file use musical order through trackAtRow().
@@ -296,6 +297,10 @@ bool regenerateClip(Project&, int track, int clip, std::uint32_t seed);
 // 1 pan, 2 + k plugin lane k, -1 every lane of the track(s).
 void randomiseAutomation(Project&, Scope scope, int track, int index, std::uint32_t seed, int onlyLane = -1);
 inline double takeFeel(double track,double take,double global){return track>=0?track:take>=0?take:global;}
+// Section energy as a density factor; auto (or an unknown section) leaves the density as set.
+// Low and medium thin the parts out; high and peak keep every note and play it harder.
+inline double energyScale(int energy){return energy==0?.55:energy==1?.8:1.;}
+inline double energyVelocity(int energy){return energy==0?.9:energy==1?.96:energy==2?1.05:energy==3?1.1:1.;}
 Settings resolveSectionHarmony(const Project&,int section);
 inline bool sectionHarmonyEnabled(const Project& p,int section){return section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled;}
 inline Settings activeHarmony(const Project& p,int section){return sectionHarmonyEnabled(p,section)?resolveSectionHarmony(p,section):p.settings;}
