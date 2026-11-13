@@ -165,12 +165,13 @@ void MainComponent::showClipMenu(int track,int index){
         // The other direction: the generated parts follow the imported audio.
         adapt.addItem(43,tr("Set project tempo from this audio"),source.audioBpm>0&&std::abs(source.audioBpm-project.settings.bpm)>.05);
         adapt.addItem(44,tr("Set project key from this audio"),source.audioKey>=0);
-        menu.addSubMenu(tr("Audio: tempo and key"),adapt);}
+        menu.addSubMenu(tr("Audio: tempo and key"),adapt);menu.addItem(33,tr("Edit in Studio"));}
     menu.addItem(32,tr("Clear Extracted Groove"),project.settings.grooveEnabled);menu.addItem(31,tr("Reset Clip Feel to Global"),candidate&&std::any_of(candidate->feel.begin(),candidate->feel.end(),[](double v){return v>=0;}));
     menu.addItem(1,tr("Rigenera solo questo clip"),hasClip);menu.addItem(2,tr("Blocca generazione"),hasClip,hasClip&&project.tracks[(size_t)track].clips[(size_t)index].locked);menu.addItem(6,tr("LOOP CLIP"),hasClip,hasClip&&project.loop&&project.loopMatches(project.clipStart(track,index),project.clipStart(track,index)+project.clipLength(track,index)));menu.addItem(7,tr("Clear loop"),project.loop||project.hasLoopRegion());
     juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,track,index](int id){if(!safe||!id)return;safe->selectClip(track,index,true);
         if(id==30){const auto asset=safe->audio.sampleAsset(track);if(!asset)return;safe->checkpoint();auto& t=safe->project.tracks[(size_t)track];auto& c=safe->clip();c.span=safe->clipLength();c.audioOffset=t.sampler.start*asset->seconds();c.audioDuration=std::min(c.span*60./safe->project.settings.bpm,std::max(0.,t.sampler.end*asset->seconds()-c.audioOffset));if(c.audioDuration<=0){safe->undo(false);return;}c.loopLength=c.loopPhase=0;c.loopSource.clear();c.notes[0].length=c.span;safe->changed();return;}
         if(id>=40&&id<=44){safe->adaptAudioTrack(track,id-40);return;}
+        if(id==33){safe->showStudio(0);return;}
         if(id==32){safe->checkpoint();safe->project.settings.grooveEnabled=false;generate(safe->project);safe->changed();return;}
         if(id==31){safe->checkpoint();safe->clip().feel={-1,-1,-1};generate(safe->project,Scope::clip,track,safe->clipIndex(),0);safe->changed();return;}
         if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id==19){safe->renameClip(track,index);return;}if(id>=11&&id<=18){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
@@ -464,6 +465,33 @@ namespace fga {
 // 0: follow the project tempo (pitch-preserving stretch from the detected BPM); 1: transpose to
 // the project key (also through the stretcher, so the tempo is unchanged); 2: original.
 // The region keeps its source seconds; its length in beats follows how it now plays.
+bool MainComponent::syncAudioRegions(int track,const SamplerSettings& before){
+    if(!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return false;auto& t=project.tracks[(size_t)track];const auto asset=audio.sampleAsset(track);
+    if(t.instrument!="sample"||!asset||asset->seconds()<=0)return false;const auto& s=t.sampler;const double total=asset->seconds();
+    const bool trimmed=s.start!=before.start||s.end!=before.end,timing=s.sync!=before.sync||s.sourceBpm!=before.sourceBpm||s.transpose!=before.transpose||s.fine!=before.fine;if(!trimmed&&!timing)return false;
+    bool any=false;
+    for(auto& c:t.clips){if(c.audioOffset<0||c.audioDuration<=0)continue;any=true;
+        if(trimmed){// The region keeps its place on the timeline; its source moves with the trim.
+            double from=c.audioOffset+(s.start-before.start)*total,to=c.audioOffset+c.audioDuration+(s.end-before.end)*total;
+            from=std::clamp(from,s.start*total,s.end*total-.01);to=std::clamp(to,from+.01,s.end*total);c.audioOffset=from;c.audioDuration=to-from;}
+        // Tempo Sync stretches to the project tempo; without it the audio plays at its own speed,
+        // faster or slower with TRANSPOSE / FINE (varispeed), and the clip length follows.
+        const double beats=c.audioDuration*(s.sync?s.sourceBpm:project.settings.bpm/std::pow(2.,(s.transpose+s.fine*.01)/12.))/60.;c.span=beats;c.loopLength=c.loopPhase=0;c.loopSource.clear();
+        if(c.notes.empty())c.notes.push_back({0,beats,t.sampleRoot,127,0});c.notes.resize(1);c.notes[0].start=0;c.notes[0].length=beats;}
+    if(any)project.normalise();return any;
+}
+bool MainComponent::trimSampleSilence(int track){
+    if(!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return false;const auto asset=audio.sampleAsset(track);if(!asset||asset->frames<2)return false;
+    const auto& a=asset->audio;const int frames=std::min(asset->frames,a.getNumSamples()),channels=a.getNumChannels();float peak=0;
+    for(int ch=0;ch<channels;++ch)peak=std::max(peak,a.getMagnitude(ch,0,frames));if(peak<=0)return false;
+    // Silence: 48 dB under the file's peak (never above -60 dBFS), so tails and room noise stay.
+    const float threshold=std::max(peak*.004f,.001f);auto loud=[&](int i){for(int ch=0;ch<channels;++ch)if(std::abs(a.getSample(ch,i))>threshold)return true;return false;};
+    int first=0;while(first<frames&&!loud(first))++first;int last=frames-1;while(last>first&&!loud(last))--last;if(first>=last)return false;
+    first=std::max(0,first-(int)(.005*asset->rate));last=std::min(frames-1,last+(int)(.02*asset->rate));   // 5 ms before the onset, 20 ms of tail
+    auto& s=project.tracks[(size_t)track].sampler;const double start=(double)first/frames,end=(double)(last+1)/frames;
+    if(std::abs(start-s.start)<1e-6&&std::abs(end-s.end)<1e-6)return false;
+    s.start=start;s.end=end;s.loopStart=std::clamp(s.loopStart,start,end);s.loopEnd=std::clamp(s.loopEnd,s.loopStart,end);s.normalise();return true;   // the caller syncs the audio clips
+}
 void MainComponent::adaptAudioTrack(int track,int action){
     if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||editingRestricted())return;checkpoint();auto& t=project.tracks[(size_t)track];auto& s=t.sampler;
     if(action==0&&t.audioBpm>0){s.sync=true;s.sourceBpm=t.audioBpm;}
@@ -475,7 +503,7 @@ void MainComponent::adaptAudioTrack(int track,int action){
     if(action==4&&t.audioKey>=0){const bool minorNow=sgk::scaleIsMinor(project.settings.scale);project.settings.key=t.audioKey;if(minorNow!=t.audioMinor)project.settings.scale=t.audioMinor?2:0;s.transpose=0;s.fine=0;
         s.normalise();applyInstrumentSettings(0,true);refreshControls();message(tr("Project key set from the audio; harmonic parts follow it. Undo restores it."));return;}
     s.normalise();
-    for(auto& c:t.clips)if(c.audioOffset>=0&&c.audioDuration>0){const double beats=c.audioDuration*(s.sync?s.sourceBpm:project.settings.bpm)/60.;c.span=beats;for(auto& n:c.notes){n.start=0;n.length=beats;}}
+    for(auto& c:t.clips)if(c.audioOffset>=0&&c.audioDuration>0){const double beats=c.audioDuration*(s.sync?s.sourceBpm:project.settings.bpm/std::pow(2.,(s.transpose+s.fine*.01)/12.))/60.;c.span=beats;for(auto& n:c.notes){n.start=0;n.length=beats;}}
     project.normalise();changed();
     if(action==3){refreshControls();message(tr("Project tempo set from the audio. Undo restores it."));return;}
     message(action==0?tr("Audio follows the project tempo; pitch is preserved. Undo restores it."):action==1?tr("Audio transposed to the project key")+" ("+juce::String(s.transpose>0?"+":"")+juce::String(s.transpose)+" st). "+tr("Undo restores it."):tr("Original tempo and key restored."));

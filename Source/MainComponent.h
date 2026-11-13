@@ -555,9 +555,17 @@ private:
     void loadSampleFile(int,const juce::File&);
     void loadSamplePreset(int,const juce::File&);
     void importAudioTakeAsync(const AudioTake&,bool muted,bool analyse=false);
-    void importAudioClip(const juce::File&,int track,double beat);   // a dropped audio file becomes an audio clip at that beat
+    // A dropped audio file becomes an audio clip at that beat; the Studio then opens on it, and
+    // its trims, speed and gain update the clip (syncAudioRegions).
+    void importAudioClip(const juce::File&,int track,double beat,bool openStudio=true);
+    bool openStudioAfterImport=false;
     juce::String audioAnalysisSummary(const Track&)const;
     void adaptAudioTrack(int track,int action);
+    // Studio trims, Tempo Sync and source BPM applied to the track's audio clips (stems, loops).
+    bool syncAudioRegions(int track,const SamplerSettings& before);
+    // Start/end trimmed to where the sound begins and ends (leading/trailing silence removed);
+    // the caller applies syncAudioRegions with the previous settings.
+    bool trimSampleSilence(int track);
     void startSampleImport(int,const juce::File&,SamplerSettings,int root,bool automaticSlices,bool preset,bool restore=false);
     void pollSampleImport();
     void cancelSampleImport();

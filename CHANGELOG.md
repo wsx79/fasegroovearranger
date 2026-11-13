@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## Unreleased
+
+- Stems and loops: dropping an audio file on the timeline opens the Studio on it, and the Studio now edits the audio clip itself. START / END (knobs or waveform handles) trim the clip in place, so leading or trailing silence goes away; new **TRIM SILENCE** finds where the sound begins and ends. TEMPO SYNC and SOURCE BPM stretch it to the project tempo; without Tempo Sync, TRANSPOSE / FINE change its speed and the clip length follows. New **GAIN (dB)** per sample (−24…+24 dB, saved with the project). Audio clip menu: **Edit in Studio**. One Undo per change.
+- Guide: the cover logo is a plain SVG that every browser draws the same; the in-app guide no longer shows the flag emoji as "GB" boxes.
+
 ## 0.51.1
 
 - User guide and READMEs: every screenshot replaced with the current interface (arrangement, guitar lanes and lane mixer, piano, lead, sampler, recording, groups, AI composer, settings, inspector); guide text describes the new keys and the mouse-wheel behaviour.

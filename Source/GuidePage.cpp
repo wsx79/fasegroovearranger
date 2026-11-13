@@ -55,7 +55,9 @@ public:
     std::function<void(juce::String)> navigate;
     float fontSize=15;juce::String query;
     void setMarkdown(const juce::String& md){
-        blocks.clear();chapters.clear();auto lines=juce::StringArray::fromLines(md);
+        // Flag emoji (regional indicator pairs) have no glyph in the app font: drop them.
+        const auto text=md.replace(juce::String::fromUTF8("\xf0\x9f\x87\xac\xf0\x9f\x87\xa7 "),"").replace(juce::String::fromUTF8("\xf0\x9f\x87\xae\xf0\x9f\x87\xb9 "),"");
+        blocks.clear();chapters.clear();auto lines=juce::StringArray::fromLines(text);
         auto cells=[](juce::String line){juce::StringArray result;line=line.trimCharactersAtStart("|").trimCharactersAtEnd("|");for(auto token:juce::StringArray::fromTokens(line,"|",""))result.add(token.trim());return result;};
         auto special=[](const juce::String& s){return s.isEmpty()||s.startsWith("#")||s.startsWith("|")||s.startsWith(">")||s.startsWith("![")||s.startsWith("<p ")||s.startsWith("- ")||s=="---"||s.startsWith("```")||(s.length()>2&&juce::CharacterFunctions::isDigit(s[0])&&s.contains(". "));};
         for(int i=0;i<lines.size();){auto raw=lines[i];auto line=raw.trim();if(line.isEmpty()){++i;continue;}Block b;

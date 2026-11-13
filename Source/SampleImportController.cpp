@@ -70,7 +70,8 @@ void MainComponent::pollSampleImport(){
     if(result.wasOk()){
         if(appending){project=std::move(*appended);project.tracks[(size_t)track].sampleHash=job.asset->hash.toStdString();
             if(job.analyse){auto& imported=project.tracks[(size_t)track];imported.audioBpm=job.tempo.bpm;imported.audioBpmConfidence=job.tempo.confidence;imported.audioKey=job.key.tonal?job.key.key:-1;imported.audioMinor=job.key.minor;imported.audioKeyConfidence=job.key.confidence;
-                if(job.tempo.bpm>0&&job.tempo.confidence>=.35)imported.sampler.sourceBpm=job.tempo.bpm;}select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();}
+                if(job.tempo.bpm>0&&job.tempo.confidence>=.35)imported.sampler.sourceBpm=job.tempo.bpm;}select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();
+            if(job.analyse&&openStudioAfterImport){openStudioAfterImport=false;showStudio(0);}}
         else if(!restoring){const auto previous=t.sampler;t.sampler=job.settings;t.sampleRoot=job.root;
             remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=job.file.getFullPathName().toStdString();
             t.sampleHash=job.asset->hash.toStdString();t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();}
@@ -156,7 +157,7 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
         const auto loopFile=folder.getChildFile("dropped-124bpm.wav");{juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(loopFile.createOutputStream().release(),44100,2,24,{},0));
             juce::AudioBuffer<float> b(2,44100*12);for(int i=0;i<b.getNumSamples();++i){const double t=i/44100.,in=std::fmod(t,60./124.);const float v=(float)(.7*std::exp(-in*30)*std::sin(2*juce::MathConstants<double>::pi*60*in)+.2*std::sin(2*juce::MathConstants<double>::pi*220*t)*.3);b.setSample(0,i,v);b.setSample(1,i,v);}
             if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());}
-        const auto tracksBefore=project.tracks.size();importAudioClip(loopFile,selectedTrack,8);const bool done=waitForSampleImportForTests();
+        const auto tracksBefore=project.tracks.size();importAudioClip(loopFile,selectedTrack,8,false);const bool done=waitForSampleImportForTests();
         const int added=(int)project.tracks.size()-1;const bool created=done&&project.tracks.size()==tracksBefore+1&&project.tracks[(size_t)added].clips.size()==1&&std::abs(project.clipStart(added,0)-8)<1e-9&&project.tracks[(size_t)added].clips[0].audioOffset>=0;
         check(created,"dropped audio becomes an audio clip at the drop beat on a new audio track");
         if(created){const auto& t=project.tracks[(size_t)added];check(std::abs(t.audioBpm-124)<.6&&t.audioBpmConfidence>.3,"imported audio tempo detected (124 BPM)");
@@ -164,6 +165,29 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
             adaptAudioTrack(added,2);check(!project.tracks[(size_t)added].sampler.sync&&std::abs(project.clipLength(added,0)-seconds*project.settings.bpm/60.)<1e-6,"original tempo restores the native length");
             undo(false);undo(false);}
         loopFile.deleteFile();
+    }
+    {   // A stem with silence before and after it: TRIM SILENCE moves the audio clip's source,
+        // the clip keeps its place and shortens; Studio trims and gain behave the same way.
+        const auto stemFile=folder.getChildFile("stem-with-silence.wav");{juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(stemFile.createOutputStream().release(),44100,2,24,{},0));
+            juce::AudioBuffer<float> b(2,44100*5);b.clear();for(int i=44100;i<44100*4;++i){const float v=.5f*std::sin((float)i*.05f);b.setSample(0,i,v);b.setSample(1,i,v);}
+            if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());}
+        importAudioClip(stemFile,selectedTrack,4,false);const bool done=waitForSampleImportForTests();const int added=(int)project.tracks.size()-1;
+        const bool region=done&&!project.tracks[(size_t)added].clips.empty()&&project.tracks[(size_t)added].clips[0].audioOffset>=0;check(region,"stem with silence becomes an audio clip");
+        if(region){const auto history=undoStack.size();const double position=project.clipStart(added,0);checkpoint();const auto before=project.tracks[(size_t)added].sampler;
+            const bool trimmed=trimSampleSilence(added)&&syncAudioRegions(added,before);const auto& c=project.tracks[(size_t)added].clips[0];
+            check(trimmed&&std::abs(c.audioOffset-(1.-.005))<.003&&std::abs(c.audioDuration-(3.+.005+.02))<.004&&std::abs(project.clipStart(added,0)-position)<1e-9
+                  &&std::abs(project.clipLength(added,0)-c.audioDuration*project.settings.bpm/60.)<1e-6,"TRIM SILENCE starts the clip on the sound and ends it after the tail, in place");
+            auto s=project.tracks[(size_t)added].sampler;const auto beforeEnd=s;s.end-=.1;project.tracks[(size_t)added].sampler=s;syncAudioRegions(added,beforeEnd);
+            check(std::abs(project.tracks[(size_t)added].clips[0].audioDuration-(3.025-.5))<.004,"a Studio END trim shortens the audio clip by the same time");
+            {auto fast=project.tracks[(size_t)added].sampler;const auto beforeFast=fast;const double length=project.clipLength(added,0);fast.transpose=12;project.tracks[(size_t)added].sampler=fast;syncAudioRegions(added,beforeFast);
+             check(std::abs(project.clipLength(added,0)-length/2)<1e-6,"without Tempo Sync, +12 semitones plays twice as fast and the clip halves");
+             const auto beforeSlow=project.tracks[(size_t)added].sampler;project.tracks[(size_t)added].sampler.transpose=0;syncAudioRegions(added,beforeSlow);}
+            auto timing=project.tracks[(size_t)added].sampler;const auto beforeSync=timing;timing.sync=true;timing.sourceBpm=project.settings.bpm*2;project.tracks[(size_t)added].sampler=timing;syncAudioRegions(added,beforeSync);
+            check(std::abs(project.clipLength(added,0)-project.tracks[(size_t)added].clips[0].audioDuration*timing.sourceBpm/60.)<1e-6,"Tempo Sync and SOURCE BPM set the audio clip length");
+            SamplerSettings gain;gain.gainDb=-6.5;SamplerSettings read;check(readSampler(samplerJson(gain),read).wasOk()&&read.gainDb==-6.5&&!(read==SamplerSettings{}),"sample GAIN is saved and reloaded");
+            undo(false);check(undoStack.size()==history&&std::abs(project.tracks[(size_t)added].clips[0].audioOffset-0)<1e-9,"Undo restores the untrimmed clip");
+            undo(false);}
+        stemFile.deleteFile();
     }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif
@@ -178,10 +202,10 @@ juce::String MainComponent::audioAnalysisSummary(const Track& t)const{
     s+="  ·  "+(t.audioKey>=0?juce::String(names[t.audioKey])+(t.audioMinor?"m":"")+" ("+trust(t.audioKeyConfidence)+")":tr("no reliable key (drums, voice or atonal)"));
     return s;
 }
-void MainComponent::importAudioClip(const juce::File& file,int track,double beat){
+void MainComponent::importAudioClip(const juce::File& file,int track,double beat,bool openStudio){
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
     if(!reader||reader->sampleRate<=0||reader->lengthInSamples<=0){message(tr("Cannot read this audio file."),true);return;}
     AudioTake take;take.file=file;take.rate=reader->sampleRate;take.frames=reader->lengthInSamples;take.start=std::max(0.,beat);take.tempo=project.settings.bpm;
-    reader.reset();juce::ignoreUnused(track);importAudioTakeAsync(take,false,true);
+    reader.reset();juce::ignoreUnused(track);importAudioTakeAsync(take,false,true);openStudioAfterImport=openStudio&&sampleImportActive();
 }
 }

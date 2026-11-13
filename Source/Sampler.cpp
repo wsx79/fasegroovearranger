@@ -124,7 +124,7 @@ public:
     void pitchWheelMoved(int value)override{pitchWheel=value;}
     void controllerMoved(int,int)override{}
     void renderNextBlock(juce::AudioBuffer<float>& output,int start,int count)override{
-        if(!data||!isVoiceActive())return;updateParameters();const auto& p=owner.settings();
+        if(!data||!isVoiceActive())return;updateParameters();const auto& p=owner.settings();const float trim=p.gainDb==0?1.f:(float)std::pow(10.,p.gainDb/20.);
         // Fixed stack buffers bound work and avoid allocation at any host block size.
         for(int done=0;done<count&&data;){const int n=std::min(256,count-done);float left[256]{},right[256]{};float* target[]{left,right};
             int consumedInput=0;
@@ -141,7 +141,7 @@ public:
                 const auto at=elapsed-lag;
                 if(!looping&&playedSource>=finish-begin){envelope.reset();shaped.reset();clearCurrentNote();data=nullptr;break;}
                 const float linear=envelope.getNextSample(),bent=shaped.next();
-                float gain=(shaped.curved()?bent:linear)*level;
+                float gain=(shaped.curved()?bent:linear)*level*trim;
                 if(retriggerLeft>0&&retriggerDelay==0){const float wet=(float)retriggerLeft/retriggerTotal;gain*=retriggerFadeIn?1.f-wet:wet;}
                 if(region){const double remaining=std::max(0.,finish-begin-playedSource)/(data->rate*std::max(.001,speed()));const double elapsedSeconds=at/getSampleRate();gain*=(float)(std::clamp(elapsedSeconds/std::max(.0025,fadeIn),0.,1.)*std::clamp(remaining/std::max(.0025,fadeOut),0.,1.));}
                 if(p.fadeIn>0){const float lin=(float)std::clamp(at/(p.fadeIn*getSampleRate()),0.,1.);gain*=std::abs(p.fadeInCurve)<1e-7f?lin:(float)sampleEnvelopeCurve(lin,p.fadeInCurve);}

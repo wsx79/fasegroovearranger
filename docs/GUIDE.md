@@ -276,6 +276,8 @@ Drop an audio file from the browser or operating system onto the waveform, or pr
 
 **SAMPLER.** Load WAV, AIFF, FLAC or OGG samples up to 30 minutes and 512 MiB decoded per file. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
+**Stems and loops on the timeline.** Drop an audio file on the timeline and the Studio opens on its new audio track. What you change there updates the clip straight away: move **START** to where the sound begins (or press **TRIM SILENCE**) and the clip starts on the sound in the same place on the timeline; move **END**, and it ends there. **TEMPO SYNC** with **SOURCE BPM** stretches it to the project tempo without changing pitch; without Tempo Sync, **TRANSPOSE** and **FINE** change speed and pitch together, and the clip gets shorter or longer to match. **GAIN (dB)** sets the level of the audio itself, before the track fader. The audio clip menu (right-click) also has **Edit in Studio**. Every change has one Undo.
+
 **AMPLITUDE ENVELOPE** on the waveform shows or hides the curve, handles and volume shape; initially hidden. This changes only the view. **REVERSE** also updates the waveform: it mirrors the active region or each slice in Slices mode, matching playback.
 
 - **Classic / gate** follows MIDI note-off; **One-shot** plays the complete region even for short notes. Use One-shot for crashes and cymbals.
