@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.51.1
+
+- Guida e README: tutte le schermate sostituite con l'interfaccia attuale (arrangiamento, corsie e mixer della chitarra, piano, lead, campionatore, registrazione, gruppi, compositore IA, impostazioni, inspector); il testo descrive i nuovi tasti e il comportamento della rotellina.
+- Finestra Informazioni su Windows: logo ASIO Compatible accanto all'avviso del marchio ASIO®, come chiedono le linee guida Steinberg; le righe dei marchi non si sovrappongono più ai pulsanti. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
+- Editor MIDI: i pennelli ACCENTO / COLPO / GHOST / FLAM non coprono più NOTE / RIGHE.
+
 ## 0.51.0
 
 - I pulsanti sono disegnati come tasti hardware in rilievo ovunque (DAW, Studio, assistenti, browser): bordo superiore illuminato e ombra, si abbassano quando premuti. Le azioni principali (GENERA BRANO, SEARCH, STUDIO, LOAD, Analizza) sono tasti grafite con un filo ambra invece del riempimento giallo; le scelte attive (sorgente del suono nell'Inspector, SNAP) mantengono il riquadro ambra e si illuminano dall'interno; al passaggio del mouse una leggera tinta calda. I potenziometri hanno una manopola 3D.

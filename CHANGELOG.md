@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.51.1
+
+- User guide and READMEs: every screenshot replaced with the current interface (arrangement, guitar lanes and lane mixer, piano, lead, sampler, recording, groups, AI composer, settings, inspector); guide text describes the new keys and the mouse-wheel behaviour.
+- Windows About box: ASIO Compatible Logo beside the ASIO® trademark notice, as the Steinberg ASIO Usage Guidelines ask; the trademark lines no longer overlap the link buttons. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
+- MIDI editor: the ACCENT / HIT / GHOST / FLAM brushes no longer cover NOTES / LANES.
+
 ## 0.51.0
 
 - Buttons are drawn as raised hardware keys everywhere (DAW, Studio, assistants, browsers): a lit top edge and a shadow, sinking when pressed. Main actions (GENERATE SONG, SEARCH, STUDIO, LOAD, Analyse) are graphite keys with an amber rim instead of a solid yellow fill; latched choices (Inspector sound source, SNAP) keep the amber frame and light up from inside; hover is a subtle warm tint. Knobs have a 3D cap.
