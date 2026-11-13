@@ -1,6 +1,6 @@
 # Vocaltest Preview — Windows x64
 
-Preview di prova, versione applicativa 0.44.0. Lo ZIP viene caricato soltanto dopo
+Preview di prova, versione applicativa 0.45.0. Lo ZIP viene caricato soltanto dopo
 build e test automatici Windows riusciti. Ascolto, dispositivo reale e prove
 dall'applicazione.
 

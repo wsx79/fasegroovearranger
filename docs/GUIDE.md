@@ -30,7 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.44.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.45.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+
+**0.45.0** adds a short full-band stop before some drops, build-ups that rise into the drop, NEW FEEL that changes only timing and dynamics, and a clearer Mix/Mastering Assistant with measured-value cards.
 
 **0.44.0** adds ASIO® support on Windows (choose **ASIO** in **Audio device / buffer**), redesigned EQ, compressor, reverb, delay and Bus & Send windows, and Vocal Chops patterns for jacking house. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
 

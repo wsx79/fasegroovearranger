@@ -30,7 +30,9 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.44.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.45.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+
+La **0.45.0** aggiunge un breve stop di tutta la band prima di alcuni drop, build-up che crescono verso il drop, un NEW FEEL che cambia solo tempi e dinamiche e assistenti Mix/Mastering più chiari, con le misure in card.
 
 La **0.44.0** aggiunge il supporto ASIO® su Windows (scegli **ASIO** in **Dispositivo audio / buffer**), nuove finestre di EQ, compressore, riverbero, delay e Bus & Send, e pattern Vocal Chops per la jacking house. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
 

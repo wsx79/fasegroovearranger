@@ -1,13 +1,17 @@
 # Changelog — Fase Groove Arranger
 
-## 0.44.0
-
+## 0.45.0
 
 - Mix and Mastering Assistants: measured values (integrated LUFS, true peak against the selected ceiling, sample peak, crest factor, correlation, difference from the reference, export QA, selected suggestions) are shown as cards with their scale; an Analyse → Review → Apply → Compare stepper shows where the workflow is; reports are coloured by kind (PASS, to check, measured, not checked, suggestions) with unchanged text; suggestion rows show their kind and applied state. The kick/bass EQ alternative now sits in the low band where the two parts were measured to overlap (60 or 115 Hz) instead of a fixed 100 Hz.
 
 - Build-ups now rise: seeded per song and section, the bass usually leaves for the last one or two bars, the kick sometimes for the last bar, and the percussion grows from a softer start into the drop.
 
 - Arrangement and harmony audit (new `arrangement_audit` test, every genre): about half of the sections leading into a drop now end with a one- or two-beat full-band stop (crash and reverse crash ring through), saved with the project. Held or on-beat accompaniment tones that fell outside both the key and the chord (fixed guitar colour tones over Phrygian/Mixolydian chords, a few piano tones) move to the nearest chord or scale tone; short passing and blue notes are kept. NEW FEEL now changes only timing and dynamics, never the notes, and works on Techno and Electro House too. Loud export: a 20 ms limiter hold removes the low-frequency gain modulation (two-tone IMD 0.199% → 0.003%); the mode stays hidden until a listening check.
+
+- Reliability: MP3 export no longer passes empty encoder frames as a null buffer, WAV readers never receive a null stream, and the reverb editor no longer redraws its display while silent (found with AddressSanitizer, UndefinedBehaviorSanitizer and ThreadSanitizer, also with hosted VST3 plugins).
+
+## 0.44.0
+
 
 - Regeneration variety audit (new `variety_audit` test over every genre): plugin-parameter automation now draws a different figure on each roll (LFO, ramp, steps, saw, random walk, swell, gate) with its own rate, depth and centre, and build-up sweeps vary their contour; a lane's own dice always writes movement. Strings takes choose register, voicing and bowing without hiding chord changes; Techno/Electro piano and guitar have a wider phrase vocabulary; drum lanes add per-take ghost notes and kick pushes without removing written hits; RANDOM CHORDS draws from a larger pool when a scale has few written progressions. macOS: engine tests no longer depend on the application dispatch loop or on bit-exact arm64 arithmetic.
 
