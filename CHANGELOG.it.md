@@ -5,6 +5,8 @@
 
 ## 0.43.2
 
+- Verifica della varietà delle rigenerazioni (nuovo test `variety_audit` su tutti i generi): l'automazione dei parametri plugin estrae a ogni tiro una figura diversa (LFO, rampa, gradini, sega, random walk, swell, gate) con velocità, profondità e centro propri, e gli sweep dei build-up cambiano profilo; il dado di una lane scrive sempre un movimento. Gli archi scelgono registro, voicing e articolazione senza nascondere i cambi d'accordo; piano e chitarra Techno/Electro hanno più frasi; le percussioni aggiungono note fantasma e spinte di cassa senza togliere colpi scritti; RANDOM CHORDS pesca da un bacino più ampio quando una scala ha poche progressioni scritte. macOS: i test del motore non dipendono più dal ciclo eventi dell'applicazione né dall'aritmetica bit-esatta su arm64.
+
 - Windows: supporto ASIO® tramite gli header dello Steinberg ASIO SDK 2.3.4 (opzione GPLv3), con licenza, provenienza e attribuzione del marchio; logo ASIO Compatible nel dialogo del dispositivo audio. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
 
 - Rimosso completamente Vocal Studio (codice, dati di progetto, test, CI, pacchetto e documentazione). I progetti che contengono ancora quei dati si aprono normalmente; i dati vengono scartati al salvataggio. Nuova grafica per EQ, compressore, riverbero, delay e Bus & Send nativi. Generatore Vocal Chops riscritto per la jacking house: hook sincopato di una battuta, battuta d'eco, risposta, stutter in ottavi e roll in sedicesimi alla fine dei build-up.

@@ -34,7 +34,14 @@ void legacy(){
             f.finish(count);
             for(int s=0;s<count;++s){const int t=at+s;const float source=t%997<5?(t%2?-.2f:.1f):0;const float detector=std::min(1.f,std::abs(source)*6.f);duck=detector>duck?detector:duck*coefficient;
                 const float expected=.25f*(1.f-.7f*duck);
-                require(f.output.getSample(0,s)==expected&&f.output.getSample(1,s)==expected*.5f,"default ducking differs from the exact historical sample law");}
+                // Bit-exact where the compiler keeps separate multiply and add; arm64 clang fuses
+                // them (FMA), which legitimately moves the last bit.
+#if defined(__aarch64__) || defined(_M_ARM64)
+                const float slack=2.e-7f;
+#else
+                const float slack=0.f;
+#endif
+                require(std::abs(f.output.getSample(0,s)-expected)<=slack&&std::abs(f.output.getSample(1,s)-expected*.5f)<=slack,"default ducking differs from the exact historical sample law");}
             f.configure(at<total/2?60:240,false);
         }++cases;
     }
@@ -118,9 +125,9 @@ void realtime(){
 }
 void integratedInserts(AudioEngine& engine,Project project,const juce::File& folder){
     const auto description=nativeCompressorDescription();bool installed=true;int completed=0;
-    struct Deadline final:juce::Timer{bool expired=false;Deadline(){startTimer(5000);}void timerCallback()override{expired=true;juce::MessageManager::getInstance()->stopDispatchLoop();}} deadline;
-    for(int track:{0,masterEffectTrack})engine.loadEffect(track,description,[&](juce::Result result){installed=installed&&result.wasOk();if(++completed==2)juce::MessageManager::getInstance()->stopDispatchLoop();},1);
-    juce::MessageManager::getInstance()->runDispatchLoop();deadline.stopTimer();require(!deadline.expired&&installed&&completed==2,"integrated native track/master install");
+    for(int track:{0,masterEffectTrack})engine.loadEffect(track,description,[&](juce::Result result){installed=installed&&result.wasOk();++completed;},1);
+    {const auto end=juce::Time::getMillisecondCounter()+5000u;while(completed<2&&juce::Time::getMillisecondCounter()<end)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);}
+    require(installed&&completed==2,"integrated native track/master install");
     EffectSlot effect;effect.slot=1;effect.path=description.fileOrIdentifier.toStdString();effect.pluginName=description.name.toStdString();effect.pluginId=description.createXml()->toString().toStdString();
     project.tracks[0].effects={effect};project.masterEffects.effects={effect};project.tracks[0].gain=2;
     auto set=[&](int track,int index,float value){engine.effectPlugin(track,1)->getParameters()[index]->setValue((value-CompressorDSP::minimum[(size_t)index])/(CompressorDSP::maximum[(size_t)index]-CompressorDSP::minimum[(size_t)index]));};

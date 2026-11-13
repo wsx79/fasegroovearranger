@@ -136,10 +136,13 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
             if(track==0&&techno){
                 static constexpr double stabBeats[8][2]{{1.5,-1},{1.5,2.75},{0.75,2.25},{1.5,3.5},{1.75,-1},{2.5,-1},{.5,2.5},{.75,3.25}};
                 const bool answer=bar%4>=2;const int fig=(rhythm+(answer?reply%5:0))%std::size(stabBeats);
-                const int count=stabBeats[fig][1]>=0?2:1;
+                // Each take also decides whether the second stab stays, whether phrase ends get a
+                // pickup, and the register: the same eight figures no longer bound the vocabulary.
+                const bool single=(contour>>3)%4==0,pickup=(contour>>6)%3==0&&bar%4==3&&!breakdown&&!mixing;const int low=(contour>>9)%3==0?43:48;
+                const int count=(stabBeats[fig][1]>=0&&!single?2:1)+(pickup?1:0);
                 for(int h=0;h<count;++h){
-                    const double at=base+stabBeats[fig][h];const auto chord=chordForBeat(s,begin+at);
-                    const int root=nearestPitch(chord.rootPc,previousRoot,48,60);previousRoot=root;const double length=breakdown?1.25:.16;
+                    const double at=base+(pickup&&h==count-1?3.75:stabBeats[fig][h]);const auto chord=chordForBeat(s,begin+at);
+                    const int root=nearestPitch(chord.rootPc,previousRoot,low,low+12);previousRoot=root;const double length=breakdown?1.25:.16;
                     note(at,length,root,breakdown?55:70);note(at,length,root+chord.fifth,64);
                     if(!mixing&&!breakdown)note(at,length,root+12,57);
                     if(drop){note(at,length,root+chord.third,58);if(chord.seventh>=0)note(at,length,root+chord.seventh,52);}
@@ -148,15 +151,19 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
                 static constexpr double stabs[8][6]{{.5,1.5,2.5,3.5,-1},{0,.75,1.5,2,2.75,3.5},{.5,1.5,2.5,3.25,-1},{.75,1.5,2.75,3.5,-1},
                     {.5,1.75,2.5,3.5,-1},{0,1.5,2.5,3.25,-1},{.75,1.5,2.5,3.75,-1},{.5,1.25,2.75,3.5,-1}};
                 const int fig=(rhythm+(bar%4>=2?reply%5:0))%std::size(stabs);
-                for(int hit=0;hit<(breakdown?1:6);++hit){if(!breakdown&&stabs[fig][hit]<0)break;const double at=base+(breakdown?1.:stabs[fig][hit]);
-                    const auto chord=chordForBeat(s,begin+at);previousVoicing=voiceTriad(chord,previousVoicing);
-                    for(size_t voice=0;voice<previousVoicing.size();++voice)note(at,breakdown?1.25:.18,previousVoicing[voice],(breakdown?52:hit==0?72:63)-(int)voice*3);
+                const int rest=(int)((contour>>3)%6);   // one inner stab may rest in each take
+                for(int hit=0;hit<(breakdown?1:6);++hit){if(!breakdown&&stabs[fig][hit]<0)break;if(!breakdown&&hit>0&&hit==rest)continue;const double at=base+(breakdown?1.:stabs[fig][hit]);
+                    const auto chord=chordForBeat(s,begin+at);previousVoicing=voiceTriad(chord,previousVoicing);                    for(size_t voice=0;voice<previousVoicing.size();++voice)note(at,breakdown?1.25:.18,previousVoicing[voice],(breakdown?52:hit==0?72:63)-(int)voice*3);
                 }
             }else{
                 static constexpr double answers[]{.5,1.25,1.5,1.75,2.25,2.5,2.75,3.5};
-                const double at=base+answers[(rhythm+(bar%8>=4?reply%5:0))%std::size(answers)];
-                const auto chord=chordForBeat(s,begin+at);const int root=nearestPitch(chord.rootPc,previousRoot,55,67);previousRoot=root;
-                note(at,techno?.18:.45,root,58,11);note(at,techno?.18:.45,root+chord.fifth,51,10);
+                // One or two answers per phrase; the take picks position, echo, interval and register.
+                const int first=(int)((rhythm+(bar%8>=4?reply%5:0))%std::size(answers)),echo=(int)((contour>>4)%4),colour=(int)((contour>>7)%3),low=(contour>>10)%2?55:50;
+                for(int h=0;h<(echo==0?1:2);++h){
+                    const double at=base+(h==0?answers[first]:answers[(first+1+echo)%std::size(answers)]);if(h==1&&at<=base+answers[first])continue;
+                    const auto chord=chordForBeat(s,begin+at);const int root=nearestPitch(chord.rootPc,previousRoot,low,low+12);previousRoot=root;
+                    note(at,techno?.18:.45,root,h?50:58,11);note(at,techno?.18:.45,root+(colour==0?chord.fifth:colour==1?12:chord.fifth-12),h?45:51,10);
+                }
             }
         }else if(track==leadTrack){
             if((mixing&&bar%4!=0)||(build&&bar>=bars-1)||(breakdown&&bar%4!=0))continue;

@@ -558,9 +558,14 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     }
     // Preserve a written phrase and its cadence. Cutting an arbitrary rotated
     // window out of a longer progression used to leave half a harmonic sentence.
-    if(!exact.empty())candidates=std::move(exact);
+    // With few exact matches, shorter phrases that repeat whole inside the length join them.
+    if(exact.size()>=8)candidates=std::move(exact);
     else if(!complete.empty())candidates=std::move(complete);
-    if(candidates.empty()){
+    else if(!exact.empty())candidates=std::move(exact);
+    // A scale with only a handful of written progressions of this length would repeat
+    // itself after a few rolls: share the draw with the genre's progression generator.
+    const size_t pool=std::max<size_t>(candidates.size()*2,32);
+    if(candidates.empty()||mix(seed^0x51ed270bU)%pool>=candidates.size()){
         auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
         for(int i=0;i<count;++i)if(!s.manualChords[(size_t)i]){s.degrees[(size_t)i]=degrees[(size_t)i];s.freeChords[(size_t)i]=-1;}
         return;
@@ -1184,6 +1189,54 @@ static int partitionHarmonyClips(Project& p,Scope scope,int track,int section){
 }
 static void generateNotes(Project& p,Scope scope,int track,int section,std::uint32_t seed,int lastClip=-1);
 static void randomiseAutomationRange(Project&,Scope,int,int,std::uint32_t,int,double);
+// The string engine renders one arrangement per harmony, so a new take used to return the
+// same notes. Each take now chooses a register, a voicing (full, without the top, bottom or
+// inner voices) and a bowing for long chords. Pitch classes never change.
+// A genre has few written drum grooves, so a single lane often came back identical. Each
+// take adds its own small ornaments on top of the groove: the kick may push into the next
+// phrase, the other lanes get one or two quiet ghost hits every two bars. Nothing the groove wrote
+// is removed: downbeats, backbeat and four-on-the-floor stay where they are.
+static void ornamentDrumTake(Clip& clip,int track,double beats){
+    const int lane=track-4;if(lane==12||clip.notes.size()<2)return;   // lane 12 is the crash
+    const auto h=mix(clip.seed^(0x2545f491U+(std::uint32_t)lane*0x9e3779b1U));
+    const auto occupied=[&](double at){return std::any_of(clip.notes.begin(),clip.notes.end(),[&](const Note& n){return std::abs(n.start-at)<.1;});};
+    const Note model=clip.notes.front();std::vector<Note> added;
+    if(lane==0){
+        // Only complete four-on-the-floor bars at a phrase end take a push.
+        const int choice=(int)(h%4);if(choice==0)return;
+        for(double bar=28;bar+4<=beats+1e-9;bar+=32){int floor=0;for(const auto& n:clip.notes)if(n.start>=bar-1e-6&&n.start<bar+4&&std::abs(n.start-std::round(n.start))<.05)++floor;if(floor<4)continue;
+            for(double at:{choice!=2?bar+3.5:-1.,choice>=2?bar+2.75:-1.})if(at>=0&&!occupied(at)){auto n=model;n.start=at;n.velocity=std::clamp(model.velocity-22,1,127);added.push_back(n);}}
+    }else{
+        const int mode=(int)(h%4);if(mode==0)return;
+        for(double bar=0;bar+8<=beats+1e-9;bar+=8){const auto r=h;   // the same ornament every two bars: a groove, not noise
+            for(int ghost=0;ghost<(mode==3?2:1);++ghost){const double at=bar+(double)((r>>(ghost*5))%8)+.5;   // the straight offbeat eighths: no swung sixteenth is touched
+                if(!occupied(at)&&at<beats){auto n=model;n.start=at;n.length=std::min(model.length,.2);n.velocity=std::clamp(38+(int)((r>>12)%18),1,127);added.push_back(n);}}
+        }
+    }
+    clip.notes.insert(clip.notes.end(),added.begin(),added.end());std::sort(clip.notes.begin(),clip.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+}
+static void varyStringsTake(Clip& clip){
+    if(clip.notes.empty())return;
+    const auto v=mix(clip.seed^0x7f4a7c15U);const int registerChoice=(int)(v%3);int voicing=(int)((v>>4)%4);const int bowing=(int)((v>>9)%4);   // sustained, bowed again halfway, with a breath, half length
+    int low=127,high=0;for(const auto& n:clip.notes){low=std::min(low,n.pitch);high=std::max(high,n.pitch);}
+    const int shift=registerChoice==1&&high+12<=96?12:registerChoice==2&&low-12>=36?-12:0;
+    std::vector<std::vector<Note>> chords;
+    for(size_t i=0;i<clip.notes.size();){
+        size_t j=i;while(j<clip.notes.size()&&std::abs(clip.notes[j].start-clip.notes[i].start)<1./32.)++j;
+        chords.emplace_back(clip.notes.begin()+(long)i,clip.notes.begin()+(long)j);std::sort(chords.back().begin(),chords.back().end(),[](const Note& a,const Note& b){return a.pitch<b.pitch;});i=j;
+    }
+    const auto reduce=[](std::vector<Note> chord,int mode){
+        if(chord.size()>=3){if(mode==1)chord.pop_back();else if(mode==2)chord.erase(chord.begin());else if(mode==3)chord={chord.front(),chord.back()};}
+        return chord;};
+    const auto pitches=[](const std::vector<Note>& chord){std::vector<int> p;for(const auto& n:chord)p.push_back(n.pitch);return p;};
+    // A thinner voicing must never hide a chord change behind common tones.
+    for(size_t k=1;voicing!=0&&k<chords.size();++k)if(pitches(chords[k])!=pitches(chords[k-1])&&pitches(reduce(chords[k],voicing))==pitches(reduce(chords[k-1],voicing)))voicing=0;
+    std::vector<Note> out;
+    for(const auto& full:chords)for(auto n:reduce(full,voicing)){n.pitch+=shift;
+        if(bowing==1&&n.length>=4){const double half=std::floor(n.length*.5);auto second=n;second.start+=half;second.length=n.length-half;second.velocity=std::max(1,n.velocity-8);n.length=half;out.push_back(n);out.push_back(second);}
+        else{if(n.length>=2)n.length*=bowing==2?.75:bowing==3?.5:1.;out.push_back(n);}}
+    std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});clip.notes=std::move(out);
+}
 // Compare the audible entry and its phrase, rather than the distant turnaround.
 // No velocity, octave/transposition or sub-sixteenth timing can count as variety.
 static std::vector<std::pair<int,int>> primaryGuitarPhrase(const Clip& clip){
@@ -1458,6 +1511,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 clip.notes=notesFrom(all,beats,[ti](const fgd::NoteEvent& e){return e.lane==ti-4;});
             }
             } // Vendor engines are used only when the dedicated generator declines.
+            if(isDrumTrack(ti)&&e.pattern<0&&type!=Section::intro&&type!=Section::outro&&type!=Section::breakdown)ornamentDrumTake(clip,ti,beats);
             if(isDrumTrack(ti))for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
             shapeBandRoles(clip,p,ti,guide);
             shapeMixSection(clip,s.genre,ti,type,renderBars);
@@ -1468,7 +1522,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
                 shapeMixSection(clip,s.genre,ti,type,renderBars);
             }
             if(p.settings.grooveEnabled)for(auto& n:clip.notes){const int slot=((int)std::llround(n.start*4)%16+16)%16;n.start=std::max(0.,n.start+p.settings.grooveOffsets[(size_t)slot]);n.velocity=std::clamp((int)std::lround(n.velocity*p.settings.grooveAccents[(size_t)slot]),1,127);}
-            if(ti==2)clip.stringsStyleAtGeneration=s.stringsMode;
+            if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
             if(period>0){clip.loopSource=clip.notes;if(!rebuildClipLoop(clip,duration))throw std::length_error("Generated loop exceeds the note limit");}
         }
@@ -1525,6 +1579,25 @@ struct AutomationDice {
 // snare and clap keep the floor (they stay where they are).
 bool volumeMoves(int ti){return ti==0||ti==2||ti==3||ti==leadTrack||ti==8||ti==9||ti==11||ti==12||ti==13;}
 bool panMoves(int ti){return ti==2||ti==3||ti==leadTrack||ti==9||ti==11||ti==12||ti==13||ti==14;}
+// Movement for a plugin parameter over [a,b]: every roll draws the figure itself (LFO, ramp,
+// steps, saw, random walk, swell, gate), then its rate, depth, centre and direction, so two
+// rolls of the same lane differ in kind and not only in amount.
+void pluginFigure(std::vector<VolumePoint>& add,AutomationDice& dice,double a,double b,double neutral,double tick){
+    const double depth=dice.between(.12,.4),centre=std::clamp(neutral+dice.between(-.12,.12),depth,1.-depth);
+    const auto lo=centre-depth,hi=centre+depth;const bool up=dice.chance(.5);
+    static constexpr double rates[]{2,4,8,16};const double rate=rates[(int)(dice.next()*4)%4];
+    const auto value=[](double v){return std::clamp(v,0.,1.);};
+    switch((int)(dice.next()*7)%7){
+    case 0:{bool high=up;const double bend=dice.between(-.5,.5);for(double x=a;x<b-1e-9;x+=rate*.5){add.push_back({x,value(high?hi:lo),high?bend:-bend});high=!high;}break;}            // triangle / sine-like LFO
+    case 1:add.push_back({a,value(up?lo:hi),dice.between(-.7,.7)});add.push_back({b-tick,value(up?hi:lo),0});break;                                                       // one ramp across the part
+    case 2:{double last=-1;for(double x=a;x<b-1e-9;x+=rate){double v=dice.between(lo,hi);if(std::abs(v-last)<depth*.3)v=v>centre?lo:hi;if(x>a)add.push_back({x-tick,value(last),0});add.push_back({x,value(v),0});last=v;}break;} // sample and hold
+    case 3:for(double x=a;x<b-1e-9;x+=rate){add.push_back({x,value(up?lo:hi),dice.between(-.3,.6)});add.push_back({std::min(b,x+rate)-tick,value(up?hi:lo),0});}break;       // saw
+    case 4:{double v=centre;for(double x=a;x<b-1e-9;x+=rate*.5){v=std::clamp(v+dice.between(-depth,depth),lo,hi);add.push_back({x,value(v),dice.between(-.4,.4)});}break;}        // random walk
+    case 5:{const double peak=a+(b-a)*dice.between(.3,.8);add.push_back({a,value(up?lo:hi),dice.between(.2,.7)});add.push_back({peak,value(up?hi:lo),dice.between(-.7,-.2)});add.push_back({b-tick,value(up?lo:hi),0});break;} // swell
+    default:{const double step=std::min(rate,4.)*.5,duty=dice.between(.3,.7);for(double x=a;x<b-1e-9;x+=step){add.push_back({x,value(hi),0});add.push_back({x+step*duty-tick,value(hi),0});add.push_back({x+step*duty,value(lo),0});add.push_back({std::min(b,x+step)-tick,value(lo),0});}break;} // gate
+    }
+    add.push_back({b,neutral,0});
+}
 }
 static void randomiseAutomationRange(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane,double clipEnd){
     p.normalise();
@@ -1571,20 +1644,23 @@ static void randomiseAutomationRange(Project& p,Scope scope,int track,int index,
                 case Section::buildup:
                     if(kind==0){add.push_back({a,dice.between(.72,.86),dice.between(.3,.6)});add.push_back({b-tick,dice.between(1.08,1.2),0});add.push_back({b,1,0});}         // the riser into the drop
                     else if(kind==1){const double side=dice.chance(.5)?1:-1,width=dice.between(.12,.3);add.push_back({a,neutral,.2});add.push_back({b-tick,std::clamp(neutral+side*width,0.,1.),0});add.push_back({b,neutral,0});} // it opens up
-                    else{add.push_back({a,dice.between(.12,.3),dice.between(.4,.7)});add.push_back({b-tick,dice.between(.82,1.),0});add.push_back({b,neutral,0});}             // the filter sweep
+                    else{const double low=dice.between(.08,.3),high=dice.between(.82,1.);const int contour=(int)(dice.next()*3)%3;
+                        if(contour==2&&length>=8){const int steps=length>=16?8:4;for(int k=0;k<steps;++k){const double x=a+length*k/steps,v=low+(high-low)*k/(steps-1.);if(k)add.push_back({x-tick,low+(high-low)*(k-1)/(steps-1.),0});add.push_back({x,v,0});}add.push_back({b-tick,high,0});}
+                        else{add.push_back({a,low,contour==0?dice.between(-.2,.2):dice.between(.4,.8)});add.push_back({b-tick,high,0});}
+                        add.push_back({b,neutral,0});}             // the filter sweep: straight, exponential or stepped
                     break;
                 case Section::breakdown:
                     if(kind==0&&(ti==0||ti==2)){add.push_back({a,dice.between(.88,.95),.3});add.push_back({a+length*.5,dice.between(1.02,1.08),-.3});add.push_back({b-tick,dice.between(.94,1.),0});add.push_back({b,1,0});}
-                    else if(kind==1&&dice.chance(.7)){const double width=dice.between(.08,.22);for(double x=a;x<b-1e-9;x+=8){const bool left=std::fmod((x-a)/8,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.3,.3)});}add.push_back({b,neutral,0});}
-                    else if(kind>=2){add.push_back({a,neutral,.3});add.push_back({a+length*.5,dice.between(.28,.45),-.3});add.push_back({b-tick,neutral,0});}
+                    else if(kind==1&&(asked||dice.chance(.7))){const double width=dice.between(.08,.22);for(double x=a;x<b-1e-9;x+=8){const bool left=std::fmod((x-a)/8,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.3,.3)});}add.push_back({b,neutral,0});}
+                    else if(kind>=2&&(asked||dice.chance(.8)))pluginFigure(add,dice,a,b,neutral,tick);
                     break;
                 case Section::main:
                 case Section::drop:
-                    if(kind==0&&dice.chance(.5)){const double depth=dice.between(.04,.09);for(double x=a;x<b-1e-9;x+=8){add.push_back({x,1,.4});if(x+4<b)add.push_back({x+4,1-depth,-.4});}add.push_back({b,1,0});}
-                    else if(kind==1&&dice.chance(.55)){const double width=dice.between(.06,.18),bar=dice.chance(.5)?4.:8.;for(double x=a;x<b-1e-9;x+=bar){const bool left=std::fmod((x-a)/bar,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.4,.4)});}add.push_back({b,neutral,0});}
-                    else if(kind>=2&&dice.chance(.35)){const double depth=dice.between(.08,.2);for(double x=a;x+16<=b+1e-9;x+=16){add.push_back({x,neutral,.5});add.push_back({x+8,std::clamp(neutral+depth,0.,1.),-.5});}add.push_back({b,neutral,0});}
+                    if(kind==0&&(asked||dice.chance(.5))){const double depth=dice.between(.04,.09);for(double x=a;x<b-1e-9;x+=8){add.push_back({x,1,.4});if(x+4<b)add.push_back({x+4,1-depth,-.4});}add.push_back({b,1,0});}
+                    else if(kind==1&&(asked||dice.chance(.55))){const double width=dice.between(.06,.18),bar=dice.chance(.5)?4.:8.;for(double x=a;x<b-1e-9;x+=bar){const bool left=std::fmod((x-a)/bar,2.)<.5;add.push_back({x,std::clamp(neutral+(left?-width:width),0.,1.),dice.between(-.4,.4)});}add.push_back({b,neutral,0});}
+                    else if(kind>=2&&(asked||dice.chance(.65)))pluginFigure(add,dice,a,b,neutral,tick);
                     break;
-                default: break;   // intro and outro: no fades, the level stays as mixed
+                default: if(kind>=2&&asked)pluginFigure(add,dice,a,b,neutral,tick);break;   // intro and outro: no fades; a plugin lane moves only when its own dice is rolled
                 }
             }
             // What follows the range keeps its own first point; without one the lane comes back to neutral.

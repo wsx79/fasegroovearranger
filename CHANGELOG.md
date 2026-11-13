@@ -3,6 +3,8 @@
 ## 0.44.0
 
 
+- Regeneration variety audit (new `variety_audit` test over every genre): plugin-parameter automation now draws a different figure on each roll (LFO, ramp, steps, saw, random walk, swell, gate) with its own rate, depth and centre, and build-up sweeps vary their contour; a lane's own dice always writes movement. Strings takes choose register, voicing and bowing without hiding chord changes; Techno/Electro piano and guitar have a wider phrase vocabulary; drum lanes add per-take ghost notes and kick pushes without removing written hits; RANDOM CHORDS draws from a larger pool when a scale has few written progressions. macOS: engine tests no longer depend on the application dispatch loop or on bit-exact arm64 arithmetic.
+
 - Windows: ASIO® support through the Steinberg ASIO SDK 2.3.4 interface headers (GPLv3 option), with licence, provenance and trademark attribution; ASIO Compatible Logo in the audio device dialog. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
 
 - Remove Vocal Studio completely (code, project data, tests, CI, packaging and documentation). Projects that still contain its data open normally; the data is dropped on save. Restyle the native EQ, compressor, reverb, delay and Bus & Send windows. Rewrite the Vocal Chops generator for jacking house: one-bar syncopated hook, echo bar, answer and 8th-note stutter, 16th roll at the end of build-ups.

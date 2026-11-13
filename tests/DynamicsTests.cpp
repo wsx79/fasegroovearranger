@@ -88,16 +88,18 @@ void dspChecks(){using namespace fga;
     std::cout<<"Native compressor local benchmark: 1024000 stereo frames, ms="<<juce::Time::getMillisecondCounterHiRes()-start<<", DSP bytes="<<sizeof(CompressorDSP)<<"\n";
     std::cout<<"PASS compressor: 15 rate/buffer configurations, curve/knee/timing/stereo/smooth bypass, zero measured allocations\n";
 }
-struct Deadline final : juce::Timer {bool expired=false;Deadline(){startTimer(5000);}void timerCallback()override{expired=true;juce::MessageManager::getInstance()->stopDispatchLoop();}};
+// Pump the message queue until the condition holds. A console test has no application
+// loop to stop, and stopDispatchLoop/runDispatchLoop behave differently on macOS.
+template<class Done> bool pumpUntil(Done done,int timeoutMs=5000){const auto end=juce::Time::getMillisecondCounter()+(juce::uint32)timeoutMs;while(!done()&&juce::Time::getMillisecondCounter()<end)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);return done();}
 void hostChecks(){using namespace fga;
     AudioEngine engine(AudioEngine::Offline{});const auto description=nativeCompressorDescription();
     auto malformed=description;malformed.fileOrIdentifier="fga:unknown";require(isNativeCompressor(description)&&!isNativeCompressor(malformed),"native identity must be exact");
-    int returned=0;bool installed=true,cancelled=false;auto complete=[&]{if(++returned==4)juce::MessageManager::getInstance()->stopDispatchLoop();};
+    int returned=0;bool installed=true,cancelled=false;auto complete=[&]{++returned;};
     for(int slot:{1,2})engine.loadEffect(0,description,[&](juce::Result result){installed=installed&&result.wasOk();complete();},slot);
     engine.loadEffect(masterEffectTrack,description,[&](juce::Result result){installed=installed&&result.wasOk();complete();},1);
     engine.loadEffect(1,description,[&](juce::Result result){cancelled=result.failed();complete();},1);engine.clearEffect(1,1);
-    Deadline deadline;juce::MessageManager::getInstance()->runDispatchLoop();deadline.stopTimer();
-    require(!deadline.expired&&returned==4&&installed&&cancelled&&!engine.effectPlugin(1,1),"native async load/cancellation lifecycle");
+    const bool finished=pumpUntil([&]{return returned==4;});
+    require(finished&&returned==4&&installed&&cancelled&&!engine.effectPlugin(1,1),"native async load/cancellation lifecycle");
     auto project=newProject(0);project.settings.bpm=120;project.settings.freeTempo=true;project.sections={{Section::main,1,"Compressor"}};project.normalise();project.masterGain=1;project.masterAutomation.enabled=false;
     for(auto& track:project.tracks){track.gain=0;track.pan=0;track.volume.enabled=false;track.sends={};for(auto& clip:track.clips)clip.notes.clear();}
     auto& track=project.tracks[0];track.gain=1;track.instrument="sample";track.sampleRoot=60;track.sampler.mode=1;track.sampler.attack=track.sampler.decay=0;track.sampler.sustain=1;track.sampler.velocity=0;track.clips[0].notes={{0,4,60,127,0}};
