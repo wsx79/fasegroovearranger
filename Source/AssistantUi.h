@@ -23,12 +23,15 @@ inline juce::String db(double gain,int decimals=1){return gain>1e-9?juce::String
 inline void drawMetrics(juce::Graphics& g,juce::Rectangle<int> area,const std::vector<Metric>& metrics,const juce::String& emptyText){
     Daw::devicePanel(g,area.toFloat(),{});
     if(metrics.empty()){g.setColour(Daw::textFaint);g.setFont(Daw::font(12.f));g.drawText(emptyText,area,juce::Justification::centred);return;}
-    auto row=area.reduced(6,8);const int w=row.getWidth()/(int)metrics.size();
-    for(size_t i=0;i<metrics.size();++i){
-        const auto& m=metrics[i];auto cell=row.removeFromLeft(i+1==metrics.size()?row.getWidth():w).reduced(10,2);
+    auto row=area.reduced(6,8);
+    // Narrow windows: fewer, tighter cards. The first ones (loudness and peaks) are kept.
+    const size_t fit=std::max<size_t>(1,std::min(metrics.size(),(size_t)(row.getWidth()/96)));const bool compact=row.getWidth()/(int)fit<140;
+    const int w=row.getWidth()/(int)fit;
+    for(size_t i=0;i<fit;++i){
+        const auto& m=metrics[i];auto cell=row.removeFromLeft(i+1==fit?row.getWidth():w).reduced(compact?6:10,2);
         if(i>0){g.setColour(juce::Colour(0xff222529));g.drawVerticalLine(cell.getX()-10,(float)cell.getY()+4,(float)cell.getBottom()-4);}
         Daw::drawCaps(g,m.label,cell.removeFromTop(14),Daw::textFaint);
-        auto value=cell.removeFromTop(30);g.setFont(Daw::font(22.f,true));g.setColour(m.level==Level::neutral?Daw::text:levelColour(m.level));
+        auto value=cell.removeFromTop(30);g.setFont(Daw::font(compact?17.f:22.f,true));g.setColour(m.level==Level::neutral?Daw::text:levelColour(m.level));
         const auto shown=m.value.isEmpty()?juce::String("--"):m.value;const int vw=juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),shown);
         g.drawText(shown,value.withWidth(vw+2),juce::Justification::centredLeft);
         g.setFont(Daw::font(11.f));g.setColour(Daw::textDim);g.drawText(m.unit,value.withTrimmedLeft(vw+6),juce::Justification::centredLeft);
