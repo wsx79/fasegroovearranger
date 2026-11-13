@@ -363,6 +363,10 @@ bool MainComponent::verifyExports(const juce::File& folder,const juce::PluginDes
     // Only the effects fixture supplies this description; no production path changes.
     juce::AudioPluginInstance* originalEffect=nullptr;
     if(effect){
+        // A load still in flight (the instrument fixture on a slow runner) makes
+        // loadEffectDescription return without loading: wait for it first.
+        const auto idle=juce::Time::getMillisecondCounterHiRes()+15000;
+        while((pluginsBusy()||editingRestricted())&&juce::Time::getMillisecondCounterHiRes()<idle)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
         loadEffectDescription(0,*effect,{},false,1);
         const auto until=juce::Time::getMillisecondCounterHiRes()+15000;
         while(pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
