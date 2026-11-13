@@ -236,6 +236,9 @@ struct Project {
     // keeping its end. Audio keeps playing the same source moments (its file offset moves);
     // MIDI keeps its notes where they were in time (a loop keeps its phase).
     bool trimClipStart(int track, int clip, double start);
+    // Audio clips span what their audio plays: with Tempo Sync the source BPM sets the length,
+    // without it the project tempo (and varispeed transpose). Call after a tempo change.
+    void refitAudioClips();
     bool resizeSectionLoop(int index, int bars);
 };
 inline double projectSeconds(const Project& p){return p.settings.bpm>0?p.length()*60./p.settings.bpm:0;}

@@ -173,6 +173,9 @@ public:
     void stopPreview();
     void freezeTrack(int,const juce::File&,double bpm,std::uint64_t session);
     void unfreezeTrack(int);
+    // A deleted handwritten track: the instruments (sample, plugin, effects) of the tracks after it
+    // move down one slot as loaded, so nothing is reloaded; the freed last slot returns to internal.
+    void removeTrackSlot(int track);
     void invalidateFrozenTempo(double bpm){for(int i=0;i<maxTracks;++i)if(frozenFlags[(size_t)i]&&std::abs(frozenTempo[(size_t)i]-bpm)>1e-6)unfreezeTrack(i);}
     std::array<double,maxTracks> frozenTempo{};
     bool trackFrozen(int track)const{return track>=0&&track<maxTracks&&frozenFlags[(size_t)track].load();}

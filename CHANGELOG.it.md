@@ -2,6 +2,10 @@
 
 ## 0.53.0
 
+- GENERA BRANO rinnova tutto tranne il genere anche con audio sulla timeline: tempo, tonalità, armonia e forma cambiano come senza audio (prima una traccia audio o scritta a mano bloccava la forma). Le clip audio restano al loro posto e continuano a corrispondere al loro audio con il nuovo tempo; lo stesso quando cambi il tempo a mano.
+- Eliminare una traccia MIDI scritta a mano non ricarica più tutti gli strumenti e i campioni: le tracce successive mantengono il suono caricato, spostate di un posto.
+- Studio: cambiando il SOURCE BPM di una clip audio si attiva Tempo Sync, così la clip segue subito.
+- La conversione dei ritorni in catene modificabili carica solo i due effetti di ritorno invece di ricaricare tutto il progetto.
 - I ritorni A / B sono sempre catene di effetti modificabili, già pronte con Riverbero su A e Tempo Delay su B (come nei progetti nuovi): un progetto salvato con i vecchi ritorni fissi viene convertito la prima volta che Bus e mandate li mostra, con livelli di mandata e di ritorno invariati (un Annulla li ripristina). Non serve più il passaggio "Attiva ritorni modificabili".
 - Le clip delle tracce audio e delle tracce MIDI aggiunte si possono accorciare anche dall'inizio: trascina il bordo sinistro per spostare l'inizio lasciando fermo il finale. L'audio parte più avanti o più indietro nel suo file (mai prima dell'inizio del file); il MIDI lascia le note rimaste al loro posto nel tempo. Un solo Annulla.
 - I campioni prendono il loro tempo quando li carichi su una traccia o li trascini sulla timeline: il tempo ACID di un WAV acidizzato (o il numero di battute), le battute di un AIFF Apple Loop, un tempo scritto nel nome del file ("Groove 124bpm.wav"), altrimenti il tempo misurato. SOURCE BPM non resta più al tempo del progetto; la barra di stato dice da dove arriva il tempo.

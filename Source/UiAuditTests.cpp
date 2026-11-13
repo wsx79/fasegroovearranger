@@ -381,7 +381,7 @@ MainComponent::MainComponent(){
     progressionBox.onChange=[this]{if(refreshing||loadingPlugin||editingRestricted())return;instrumentPanel.flushRender();checkpoint();if(sectionHarmonyEnabled(project,selectedSection)){auto edited=resolveSectionHarmony(project,selectedSection);chooseProgression(edited,progressionBox.getSelectedItemIndex());storeHarmony(project,selectedSection,edited);generate(project,Scope::section,selectedTrack,selectedSection,0);changed();}else{chooseProgression(project,progressionBox.getSelectedItemIndex());applyInstrumentSettings(0,true);}if(instrumentIsOpen())instrumentPanel.rebuild();};
     bassBox.onChange=[this,setting]{setting([this]{project.settings.bassMode=bassBox.getSelectedItemIndex();});};
     stringsBox.onChange=[this,setting]{setting([this]{project.settings.stringsMode=stringsBox.getSelectedItemIndex();});};
-    tempoSlider.onValueChange=[this]{if(!refreshing){project.settings.bpm=tempoSlider.getValue();changed(false);}};
+    tempoSlider.onValueChange=[this]{if(!refreshing){project.settings.bpm=tempoSlider.getValue();project.refitAudioClips();changed(false);}};   // audio clips keep matching their audio
     auto feel=[this](juce::Slider& control,unsigned parameter,double Settings::* member){control.onValueChange=[this,&control,parameter,member]{if(refreshing||loadingPlugin||editingRestricted())return;project.settings.*member=control.getValue()/100.;queueGlobalFeel(control,parameter);};};
     feel(densitySlider,densityFeel,&Settings::density);feel(swingSlider,swingFeel,&Settings::swing);feel(humanizeSlider,humanizeFeel,&Settings::humanize);
     masterSlider.onValueChange=[this]{if(!refreshing){project.masterGain=gainFromControl(masterSlider);mixChanged();}};

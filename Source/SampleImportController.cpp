@@ -264,6 +264,26 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
             const double start=project.clipStart(midi,0);project.trimClipStart(midi,0,start+2);const auto& n=project.tracks[(size_t)midi].clips[0].notes;
             check(n.size()==1&&std::abs(n[0].start-1)<1e-9&&n[0].pitch==62,"a MIDI clip's front edge keeps the remaining notes where they were in time");}
          else check(false,"free MIDI track for the front-edge test");}
+        {   // Deleting a handwritten track before an audio track keeps the audio loaded (no reload).
+            waitForSampleImportForTests();const int midi=project.addMidiTrack();changed(false);importAudioClip(acidFile,selectedTrack,4,false);const bool done=waitForSampleImportForTests();const int audioTrack=(int)project.tracks.size()-1;
+            const auto asset=audio.sampleAsset(audioTrack);const auto session=project.tracks[(size_t)audioTrack].sessionId;
+            if(done&&midi>=0&&audioTrack==midi+1&&asset){select(midi,0);deleteMidiTrack(midi);
+                check(project.tracks[(size_t)midi].sessionId==session&&audio.sampleAsset(midi)==asset&&!sampleImportActive()&&!restoringProject&&!loadingView.isVisible(),"deleting a MIDI track keeps the following audio track loaded, with no reload");
+                {const auto out=folder.getChildFile("moved-audio-export.wav");const auto r=audio.exportAudio(project,out,midi,false,[]{return false;},[](double){});float peak=0;
+                 {juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(out));if(reader){juce::AudioBuffer<float> b((int)reader->numChannels,(int)reader->lengthInSamples);reader->read(&b,0,b.getNumSamples(),0,true,true);peak=b.getMagnitude(0,b.getNumSamples());}}
+                 out.deleteFile();check(r.wasOk()&&peak>.05f,"the moved audio track still plays (track export is not silent)");}}
+            else check(false,"fixture for deleting a track before an audio track");
+            // GENERATE SONG with audio on the timeline renews tempo, key and form; the audio clip
+            // keeps matching its audio at the new tempo.
+            const int at=done?midi:-1;if(at>=0){project.tracks[(size_t)at].sampler.sync=false;project.refitAudioClips();
+                bool renewed=false;double mismatch=0;for(int attempt=0;attempt<4&&!renewed;++attempt){std::vector<int> bars;for(const auto& x:project.sections)bars.push_back(x.bars);const double bpm=project.settings.bpm;
+                    generate(project,Scope::song,0,0,(std::uint32_t)(9001+attempt));std::vector<int> after;for(const auto& x:project.sections)after.push_back(x.bars);renewed=after!=bars&&project.settings.bpm!=bpm;}
+                const auto& c=project.tracks[(size_t)at].clips[0];mismatch=std::abs(project.clipLength(at,0)-c.audioDuration*project.settings.bpm/60.);
+                check(renewed&&mismatch<1e-6,"GENERATE SONG with an audio clip renews the form and tempo; the clip still matches its audio");
+                // Studio-style SOURCE BPM edit: Tempo Sync follows, the clip length follows.
+                const auto before=project.tracks[(size_t)at].sampler;project.tracks[(size_t)at].sampler.sourceBpm=100;project.tracks[(size_t)at].sampler.sync=true;syncAudioRegions(at,before);
+                check(std::abs(project.clipLength(at,0)-project.tracks[(size_t)at].clips[0].audioDuration*100/60.)<1e-6,"SOURCE BPM 100 with Tempo Sync: the clip spans the audio at 100 BPM");}
+        }
         for(auto f:{acidFile,namedFile,measuredFile})f.deleteFile();
     }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;

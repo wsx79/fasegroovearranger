@@ -747,6 +747,16 @@ void AudioEngine::startPreview(juce::AudioBuffer<float>&& audio,double rate,doub
     previewing=clip->audio.getNumSamples()>1;previews.post(std::move(clip));++previewGeneration;
 }
 void AudioEngine::freezeTrack(int track,const juce::File& file,double bpm,std::uint64_t session){if(track<0||track>=maxTracks)return;std::shared_ptr<const SampleAsset> asset;if(readSampleAsset(file,asset).failed())return;auto state=std::make_unique<FrozenAudio>();state->audio=asset->audio;state->rate=asset->rate;state->bpm=bpm;state->session=session;{const EngineControlLock lock(*this);auto& i=*instruments[(size_t)track];if(i.plugin){i.freezePaused[0]=i.plugin->isSuspended();i.plugin->suspendProcessing(true);}for(size_t s=0;s<i.effects.size();++s)if(auto* fx=i.effects[s].plugin.get()){i.freezePaused[s+1]=fx->isSuspended();fx->suspendProcessing(true);}}frozenAudio[(size_t)track].post(std::move(state));frozenTempo[(size_t)track]=bpm;frozenFlags[(size_t)track]=true;adoptWhileStopped();}
+void AudioEngine::removeTrackSlot(int track){
+    if(track<0||track>=maxTracks||!isManualTrack(track))return;
+    for(int t=track;t<maxTracks;++t)unfreezeTrack(t);
+    {const EngineControlLock lock(*this);
+        std::rotate(instruments.begin()+track,instruments.begin()+track+1,instruments.begin()+maxTracks);
+        for(int t=track;t<maxTracks;++t){auto& i=*instruments[(size_t)t];i.kind=t;i.releaseVoices();for(auto& revision:loadRevision[(size_t)t])++revision;
+            meters[(size_t)t]=0;trackClip[(size_t)t]=false;liveHeld[(size_t)t].fill(0);livePedal[(size_t)t].fill(false);for(auto& mask:activeKeyMasks[(size_t)t])mask.store(0);for(auto& side:sideMeters[(size_t)t])side.store(0);}
+        needsReset=true;hardReset=true;}
+    invalidatePluginStates();clearEffect(maxTracks-1);useInternal(maxTracks-1);
+}
 void AudioEngine::unfreezeTrack(int track){if(track<0||track>=maxTracks||!frozenFlags[(size_t)track])return;frozenAudio[(size_t)track].post(std::make_unique<FrozenAudio>());frozenFlags[(size_t)track]=false;{const EngineControlLock lock(*this);auto& i=*instruments[(size_t)track];if(i.plugin)i.plugin->suspendProcessing(i.freezePaused[0]);for(size_t s=0;s<i.effects.size();++s)if(auto* fx=i.effects[s].plugin.get())fx->suspendProcessing(i.freezePaused[s+1]);i.hostedPaused.fill(true);for(auto& midi:i.hostedMidi)midi.dirty=true;i.sounding.fill(false);i.resync=true;needsResync=true;}adoptWhileStopped();}
 void AudioEngine::stopPreview(){++previewGeneration;previewing=false;previews.post(std::make_unique<PreviewClip>());}
 // Audio thread: the audition plays on top of the output, stopped or playing.

@@ -499,7 +499,7 @@ void MainComponent::adaptAudioTrack(int track,int action){
         const int tonic=(h.key+(t.audioMinor&&!projectMinor?9:!t.audioMinor&&projectMinor?3:0))%12;s.transpose=((tonic-t.audioKey)%12+18)%12-6;s.fine=0;
         if(!s.sync){s.sync=true;s.sourceBpm=project.settings.bpm;}}
     if(action==2){s.sync=false;s.transpose=0;s.fine=0;}
-    if(action==3&&t.audioBpm>0){project.settings.bpm=std::clamp(t.audioBpm,20.,300.);s.sync=false;s.sourceBpm=t.audioBpm;}
+    if(action==3&&t.audioBpm>0){project.settings.bpm=std::clamp(t.audioBpm,20.,300.);s.sync=false;s.sourceBpm=t.audioBpm;s.normalise();project.refitAudioClips();}
     if(action==4&&t.audioKey>=0){const bool minorNow=sgk::scaleIsMinor(project.settings.scale);project.settings.key=t.audioKey;if(minorNow!=t.audioMinor)project.settings.scale=t.audioMinor?2:0;s.transpose=0;s.fine=0;
         s.normalise();applyInstrumentSettings(0,true);refreshControls();message(tr("Project key set from the audio; harmonic parts follow it. Undo restores it."));return;}
     s.normalise();

@@ -2,6 +2,10 @@
 
 ## 0.53.0
 
+- GENERATE SONG renews everything but the genre also with audio on the timeline: tempo, key, harmony and form change as without audio (before, an audio or handwritten track froze the form). Audio clips stay in place and keep matching their audio at the new tempo; the tempo field does the same.
+- Deleting a handwritten MIDI track no longer reloads every instrument and sample: the tracks after it keep their loaded sound, moved down one place.
+- Studio: changing SOURCE BPM of an audio clip turns Tempo Sync on, so the clip follows at once.
+- Converting the returns to editable chains loads only the two return effects instead of reloading the whole project.
 - Returns A / B are always editable effect chains, preset with Reverb on A and Tempo Delay on B (as in new projects): a project saved with the earlier fixed returns is converted the first time Bus & Send shows them, keeping its send and return levels (one Undo restores them). No more "Enable editable returns" step.
 - Clips on audio tracks and added MIDI tracks can be trimmed from the front: drag the left edge to move the start while the end stays put. Audio starts later or earlier in its file (never before the file's start); MIDI keeps the remaining notes in time. One Undo.
 - Samples take their own tempo when loaded on any track or dropped on the timeline: the ACID tempo of an acidized WAV (or its beat count), the beats of an Apple loop AIFF, a tempo in the file name ("Groove 124bpm.wav"), otherwise the measured tempo. SOURCE BPM no longer stays at the project tempo; the status bar says where the tempo came from.

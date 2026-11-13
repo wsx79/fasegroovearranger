@@ -320,7 +320,8 @@ void MainComponent::deleteMidiTrack(int track){
     selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();piano.clearSelection();
     for(int ti=track;ti<maxTracks-1;++ti){arrangement.trackHeights[(size_t)ti]=arrangement.trackHeights[(size_t)ti+1];arrangement.volumeVisible[(size_t)ti]=arrangement.volumeVisible[(size_t)ti+1];arrangement.laneTarget[(size_t)ti]=arrangement.laneTarget[(size_t)ti+1];}
     arrangement.trackHeights.back()=40;arrangement.volumeVisible.back()=false;arrangement.laneTarget.back()=0;
-    soundBoxTrack=-1;restoreInstruments();select(selectedTrack,selectedSection);changed();
+    // The tracks after it keep their loaded instruments, moved down one slot: no reload.
+    soundBoxTrack=-1;cancelSampleImport();audio.removeTrackSlot(track);audio.publish(project);refreshControls();select(selectedTrack,selectedSection);changed();
     if(instrumentIsOpen()){instrumentPanel.rebuild();instrumentWindow->refresh();}
 }
 void MainComponent::showAddTrackMenu(){

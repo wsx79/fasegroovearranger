@@ -352,6 +352,12 @@ bool resizedLoop(Clip& clip,double previous,double duration){
 bool rebuildClipLoop(Clip& clip,double duration){
     return repeatLoop(clip.loopSource,clip.loopLength,duration,clip.notes,clip.loopPhase);
 }
+void Project::refitAudioClips(){
+    for(auto& t:tracks){if(t.instrument!="sample")continue;const auto& s=t.sampler;
+        const double beatsPerSecond=(s.sync?s.sourceBpm:settings.bpm/std::pow(2.,(s.transpose+s.fine*.01)/12.))/60.;
+        for(auto& c:t.clips)if(c.audioOffset>=0&&c.audioDuration>0){c.span=c.audioDuration*beatsPerSecond;c.loopLength=c.loopPhase=0;c.loopSource.clear();if(!c.notes.empty()){c.notes.resize(1);c.notes[0].start=0;c.notes[0].length=c.span;}}}
+    normalise();
+}
 bool Project::trimClipStart(int track,int index,double start){
     if(track<0||track>=(int)tracks.size()||!tracks[(size_t)track].freeTimeline||index<0||index>=(int)tracks[(size_t)track].clips.size()||!std::isfinite(start))return false;
     auto& t=tracks[(size_t)track];auto& c=t.clips[(size_t)index];const double from=c.position,length=c.span,end=from+length;
@@ -1034,7 +1040,8 @@ static int formPhraseBars(const Project& p){
 // An empty target leaves the generated form exactly as before.
 void fitFormToTarget(Project& p){
     const auto& s=p.settings;if(!s.targetEnabled||!(s.targetSeconds>0)||p.sections.empty()||!(s.bpm>0))return;
-    if(std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline||t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
+    // Audio clips and handwritten tracks no longer freeze the form: they keep their place in time.
+    if(std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
     const int phrase=std::clamp(formPhraseBars(p),4,32);
     auto totalBars=[&]{int n=0;for(const auto& x:p.sections)n+=x.bars;return n;};
     const auto body=[](Section t){return t==Section::main||t==Section::drop;};
@@ -1055,8 +1062,7 @@ void fitFormToTarget(Project& p){
 }
 void varyForm(Project& p,std::uint32_t seed) {
     const bool locked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});});
-    const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline;});
-    if(locked||free||p.sections.empty())return;
+    if(locked||p.sections.empty())return;   // audio and handwritten tracks keep their clips in time; only locks keep the form
     const int phrase=formPhraseBars(p);
     auto pickLength=[&](const int* choices,int count,int index,int grid)->int{
         std::vector<int> valid;for(int i=0;i<count;++i)if(choices[i]%grid==0)valid.push_back(choices[i]);
@@ -1096,7 +1102,7 @@ void renewForm(Project& p) {
     bool otherGenre=false;
     for(int genre=0;genre<numGenres;++genre)if(genre!=p.settings.genre&&factoryForm(p,genre))otherGenre=true;
     const bool authored=std::any_of(p.sections.begin(),p.sections.end(),[](const SongSection& sec){return sec.harmony.enabled||sec.preDropSilence||sec.snareRoll||sec.reverseCrash;})
-        ||std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline||(isManualTrack(t.kind)&&!t.vocalChops&&std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& clip){return !clip.notes.empty();}));});
+;   // GENERATE SONG renews everything but the genre: audio and handwritten tracks no longer keep the form
     if(!authored&&(otherGenre||factoryForm(p,p.settings.genre))){
         arrangeSongVariant(p,freshFormVariant(p,p.settings.seed));
         if(!hadRegion)p.clearLoop();else if(!wholeLoop){p.loopStart=std::min(from,p.length());p.loopEnd=std::min(to,p.length());}
@@ -1472,7 +1478,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
-        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);
+        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);p.refitAudioClips();
     }
     if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);
     const auto& s=p.settings;
