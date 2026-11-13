@@ -567,6 +567,15 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     const size_t pool=std::max<size_t>(candidates.size()*2,32);
     if(candidates.empty()||mix(seed^0x51ed270bU)%pool>=candidates.size()){
         auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
+        // Two-chord vamps (Deep, Jackin', Afro) leave the walk only one move, so it kept
+        // returning the same dozen pairs. Dorian and Aeolian draw from the full set of
+        // idiomatic house vamps instead; each mode skips its own diminished degree.
+        if(count==2&&(s.scale==1||s.scale==2)){
+            static constexpr int vamps[][2]{{0,3},{0,6},{0,4},{0,2},{3,0},{6,0},{4,0},{2,0},{3,4},{3,6},{2,6},{2,3},{6,3},{4,3},{6,2},{0,5},{5,6},{5,0},{5,4},{5,3},{3,5},{2,5},{0,1},{1,4},{1,0},{3,1}};
+            const int avoid=s.scale==1?5:1;std::vector<int> usable;
+            for(int i=0;i<(int)std::size(vamps);++i)if(vamps[i][0]!=avoid&&vamps[i][1]!=avoid)usable.push_back(i);
+            const auto& pair=vamps[usable[(size_t)(mix(seed^0x3c6ef372U)%usable.size())]];degrees[0]=pair[0];degrees[1]=pair[1];
+        }
         for(int i=0;i<count;++i)if(!s.manualChords[(size_t)i]){s.degrees[(size_t)i]=degrees[(size_t)i];s.freeChords[(size_t)i]=-1;}
         return;
     }
