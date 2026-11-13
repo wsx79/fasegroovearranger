@@ -42,7 +42,7 @@ void MainComponent::zoomAt(bool editor,double factor,double viewportX){
     const int margin=editor?piano.leftMargin():headerWidth;const auto view=port.getViewArea();
     viewportX=std::clamp(viewportX,(double)margin,(double)std::max(margin,view.getWidth()-20));
     const double time=(view.getX()+viewportX-margin)/scale;
-    scale=std::clamp(scale*factor,editor?2.:.05,160.);
+    scale=std::clamp(scale*factor,editor?2.:.05,editor?160.:maxArrangementZoom);
     zoomSlider.setValue(scale,juce::dontSendNotification);updateSizes();
     port.setViewPosition(juce::roundToInt(margin+time*scale-viewportX),view.getY());
     suspendFollow();port.repaint();
@@ -81,7 +81,7 @@ void MainComponent::zoomSelection(){
     else if(!clipSelectionSpan(from,to))return;
     auto& port=editor?pianoPort:arrangementPort;const int margin=editor?piano.leftMargin():headerWidth;
     auto& scale=editor?piano.pixelsPerBeat:arrangement.pixelsPerBar;
-    scale=std::clamp((std::max(40,port.getWidth()-margin-48))/(to-from)*(editor?1.:4.),editor?2.:.05,160.);
+    scale=std::clamp((std::max(40,port.getWidth()-margin-48))/(to-from)*(editor?1.:4.),editor?2.:.05,editor?160.:maxArrangementZoom);
     zoomSlider.setValue(scale,juce::dontSendNotification);updateSizes();
     port.setViewPosition(std::max(0,juce::roundToInt(from*(editor?scale:scale/4)-12)),port.getViewPositionY());
     suspendFollow();port.repaint();

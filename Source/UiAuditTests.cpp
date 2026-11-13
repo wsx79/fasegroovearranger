@@ -263,7 +263,7 @@ MainComponent::MainComponent(){
     Localisation::loadSaved();for(int track=0;track<maxTracks;++track){const auto key="trackHeight"+juce::String(track);arrangement.trackHeights[(size_t)track]=std::clamp(Localisation::setting(key.toRawUTF8(),"40").getIntValue(),40,240);}if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);setLookAndFeel(&theme);setWantsKeyboardFocus(true);project=newProject();selectedTrack=4;mixerHeight=std::clamp(Localisation::setting("mixerHeight","244").getIntValue(),160,4096);inspectorWidth=std::clamp(Localisation::setting("inspectorWidth","248").getIntValue(),224,480);sampleBrowserWidth=std::max(0,Localisation::setting("sampleBrowserWidth","0").getIntValue());
     inspectorVisible=Localisation::setting("inspectorVisible","1")=="1";
     mixerVisible=Localisation::setting("mixerVisible","1")=="1";
-    arrangement.pixelsPerBar=std::clamp(Localisation::setting("arrangementZoom","6").getDoubleValue(),.05,160.);
+    arrangement.pixelsPerBar=std::clamp(Localisation::setting("arrangementZoom","6").getDoubleValue(),.05,maxArrangementZoom);
     piano.pixelsPerBeat=std::clamp(Localisation::setting("pianoZoom","76").getDoubleValue(),2.,160.);
     addAndMakeVisible(timelineGrid);timelineGrid.addItemList({"Bar","1/2","1/4","1/8","1/16","1/32","Auto"},1);timelineGrid.setSelectedId(3);timelineGrid.getProperties().set("fgaTip","Grid used by SNAP: a bar, a half bar, a beat or finer steps. Auto follows the zoom. Existing MIDI timing is unchanged.");timelineGrid.onChange=[this]{const double grids[]{4,2,1,.5,.25,.125,-1};timelineSnap=grids[std::clamp(timelineGrid.getSelectedItemIndex(),0,6)];arrangement.repaint();};
     addAndMakeVisible(snapButton);snapButton.setClickingTogglesState(true);snapButton.setToggleState(true,juce::dontSendNotification);snapButton.setColour(juce::TextButton::buttonOnColourId,Daw::accent.withAlpha(.85f));snapButton.setColour(juce::TextButton::textColourOnId,Daw::onAccent);
@@ -364,7 +364,7 @@ MainComponent::MainComponent(){
     slider(tempoSlider,30,300,.1," BPM");slider(swingSlider,0,150,1,"% swing");slider(densitySlider,0,100,1,"% notes");slider(humanizeSlider,0,100,1,"% feel");slider(masterSlider,-60,6,.1," dB");
     for(auto* knob:{&densitySlider,&swingSlider,&humanizeSlider,&masterSlider}){knob->setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);knob->setMouseDragSensitivity(180);}
     densitySlider.setComponentID("song-density");swingSlider.setComponentID("song-swing");humanizeSlider.setComponentID("song-feel");masterSlider.setComponentID("master-gain");
-    slider(zoomSlider,.05,160,.05," zoom");slider(gainSlider,-60,6,.1," dB");slider(panSlider,-100,100,1," pan");slider(velocitySlider,1,127,1," vel");velocitySlider.setValue(96);
+    slider(zoomSlider,.05,maxArrangementZoom,.05," zoom");slider(gainSlider,-60,6,.1," dB");slider(panSlider,-100,100,1," pan");slider(velocitySlider,1,127,1," vel");velocitySlider.setValue(96);
     for(size_t i=0;i<genres().size();++i)genreBox.addItem(utf(genres()[i]),(int)i+1);
     for(int i=0;i<12;++i)keyBox.addItem(sgk::spelledNote(i,9,0),i+1);
     for(int i=0;i<13;++i)scaleBox.addItem(sgk::scaleName(i),i+1);

@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.53.1**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.53.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -174,7 +174,7 @@ When the mixer is closed, its MIXER/levels caption is replaced by a **stereo mas
 
 - **Click a clip or the grid** to select without moving the cursor or interrupting playback. **Click the section-name header** to place the cursor and immediately listen from that position. The numbered ruler still positions the cursor and controls the loop. **Double-click** or **E** opens the full MIDI editor.
 - **Right edge of a clip**: drag to shorten or extend just that loop in beat steps; **Shift** allows quarter-beat steps. MIDI repeats with its timing and velocities intact. Shortening retains the source, so extending restores it. You can cross a section boundary; the extended clip takes precedence over covered parts on the same track, preventing doubled notes.
-- **Left edge of a clip** (audio tracks and added MIDI tracks): drag to move the start of the clip while its end stays put. An audio clip starts later or earlier in its file, so you can cut a silent or unwanted beginning (it cannot go before the start of the file); a MIDI clip keeps the remaining notes where they were in time.
+- **Left edge of a clip** (any track; grab it in the lower half of the clip, the upper half moves the clip): drag to move the start of the clip while its end stays put. On a generated track the first front trim frees that track from the sections, as moving a clip does. An audio clip starts later or earlier in its file, so you can cut a silent or unwanted beginning (it cannot go before the start of the file); a MIDI clip keeps the remaining notes where they were in time.
 - **Right edge of a section header**: resize the guide in whole bars. Intro, Main, Break and the following guide labels move; clips, locators and volume automation stay at their musical times. Right-click the header to rename it, change its role, insert, duplicate, reorder or delete a guide section. **Escape** cancels a drag; **UNDO** restores it.
 - **Drag a clip** to move it along the timeline or onto another track; **Alt-drag** copies it. The original position becomes a gap when moving. Destination overlaps are replaced while outside fragments are retained. The target track keeps its sound; drum MIDI maps to its lane. **Shift-click** selects more clips on the same track; **Ctrl/Cmd+A** selects all its clips.
 - **Cut, copy, paste, split, duplicate and delete** are in the clip's right-click menu and on the keyboard. Paste uses the cursor; click the numbered ruler, including after the current ending, to choose its position. Split cuts the selected clip at the cursor; duplicate places copies after the selected range. Delete leaves a gap. Use **Ctrl/Cmd+X / C / V**, **S or Ctrl/Cmd+E**, **Ctrl/Cmd+D**, and **Delete / Backspace**.
@@ -356,7 +356,7 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 
 ### Navigation and selection
 
-- **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The MIDI editor also has a ZOOM slider.
+- **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. The timeline zooms in down to 1/32 steps, the finest SNAP grid. **+ / −** zoom around the centre of the visible area. The MIDI editor also has a ZOOM slider.
 - **Wheel** scrolls vertically; **Shift + wheel** scrolls horizontally. Knobs and faders, in the mixer, inspector and instrument panels, ignore the wheel: scrolling over them moves the view, and values change only by clicking and dragging. Horizontal trackpad gestures also scroll horizontally. **Middle-button drag**, in the arrangement, pans both axes. Manual navigation turns FOLLOW off; enable it again to follow playback.
 - **ZOOM SELECTION / Z** frames the selected clips; in the MIDI editor, **Z** frames selected notes, or the whole clip if no notes are selected. **FIT SONG / F** restores the complete arrangement view.
 - **LOOP SELECTION / Ctrl/Cmd + L** sets both playback locators from the selected clips. In the MIDI editor it uses the selected notes, or the complete clip. This changes playback only and can be undone.

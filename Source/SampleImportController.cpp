@@ -304,6 +304,25 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
             undo(false);}
         if(done)undo(false);longFile.deleteFile();
     }
+    {   // Two touching clips on a generated (section-based) track: shorten the first from its end,
+        // then trim the next one from its front with the mouse; the deepest zoom reaches 1/32.
+        waitForSampleImportForTests();const auto saved=project;const auto history=undoStack.size();
+        const int savedTrack=selectedTrack,savedSection=selectedSection;project=newProject(0);project.sections={{Section::main,4,"A"},{Section::main,4,"B"}};project.normalise();const int t=4;selectedTrack=t;selectedSection=0;selectedClip=-1;
+        for(int c=0;c<2;++c)project.tracks[(size_t)t].clips[(size_t)c].notes={{0,1,36,100,0},{4,1,36,100,0},{8,1,36,100,0},{12,1,36,100,0}};changed(false);
+        showArrangement();arrangement.pixelsPerBar=40;resized();arrangementPort.setViewPosition(0,0);
+        checkpoint();project.resizeClipLoop(t,0,12);changed(false);
+        int row=-1;for(int r=0;r<(int)project.tracks.size();++r)if(trackAtRow(r)==t){row=r;break;}
+        const double nextStart=project.clipStart(t,1),nextEnd=nextStart+project.clipLength(t,1);
+        const float x=(float)(216+nextStart*arrangement.pixelsPerBar/4.+2.),y=(float)(arrangement.rowY(row)+arrangement.rowHeight(row)-6);
+        const auto source=juce::Desktop::getInstance().getMainMouseSource();auto mouse=[&](float px,juce::ModifierKeys mods){const auto now=juce::Time::getCurrentTime();const juce::Point<float> at(px,y);return juce::MouseEvent(source,at,mods,1,0,0,0,0,&arrangement,&arrangement,now,{x,y},now,1,px!=x);};
+        const auto held=juce::ModifierKeys(juce::ModifierKeys::leftButtonModifier);const float dx=(float)(4*arrangement.pixelsPerBar/4.);const auto before=undoStack.size();
+        arrangement.mouseDown(mouse(x,held));arrangement.mouseDrag(mouse(x+dx,held));arrangement.mouseUp(mouse(x+dx,held));
+        const int next=project.clipAtBeat(t,nextStart+4+1./1920.);
+        check(row>=0&&project.tracks[(size_t)t].freeTimeline&&next>=0&&std::abs(project.clipStart(t,next)-(nextStart+4))<1e-6&&std::abs(project.clipStart(t,next)+project.clipLength(t,next)-nextEnd)<1e-6&&undoStack.size()==before+1,
+              "on a generated track, after shortening a clip, the next clip trims from its front with the mouse (not only moves)");
+        zoomAt(false,1000.,300);check(arrangement.pixelsPerBar==maxArrangementZoom&&[&]{const double g=timelineSnap;timelineSnap=-1;const double step=arrangement.gridBeats();timelineSnap=g;return step==.125;}(),"the deepest timeline zoom reaches the 1/32 grid (Auto snap = 1/32)");
+        arrangement.pixelsPerBar=6;project=saved;selectedTrack=savedTrack;selectedSection=savedSection;selectedClip=-1;while(undoStack.size()>history)undoStack.pop_back();redoStack.clear();changed(false);resized();
+    }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif
 }

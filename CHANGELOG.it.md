@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.53.2
+
+- Trascinando una clip con SNAP attivo, la clip stessa ora salta subito dove atterrerà, di griglia in griglia, invece di seguire il mouse e spostarsi solo al rilascio; il punto di partenza resta visibile in trasparenza.
+- Bordo sinistro delle clip su tutte le tracce: dopo aver accorciato una clip attaccata alla successiva, ora la successiva si può accorciare dall'inizio (prima, sulle tracce generate, si poteva solo spostare). Il primo taglio dall'inizio svincola quella traccia dalle sezioni, come lo spostamento di una clip.
+- La timeline si ingrandisce fino ai passi da 1/32 (512 px per battuta), la griglia SNAP più fine; il righello mostra le linee da 1/32 e lo snap Auto arriva a 1/32.
+
 ## 0.53.1
 
 - SNAP: il tooltip ora spiega cosa fa (mostrava un testo generico). SNAP attivo aggancia alla griglia lo spostamento delle clip, i loro bordi (anche il nuovo bordo sinistro) e i locatori del loop; SNAP spento sposta e taglia liberamente; Maiusc ora fa il contrario in tutti questi trascinamenti (prima li liberava soltanto).

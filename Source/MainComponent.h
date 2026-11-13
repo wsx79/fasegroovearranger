@@ -61,6 +61,8 @@ public:
         g.endTransparencyLayer();
     }
 };
+// Deepest timeline zoom (pixels per bar): a 1/32 step, the finest SNAP grid, is 16 px wide.
+constexpr double maxArrangementZoom=512;
 class ArrangementView : public juce::Component, public juce::SettableTooltipClient {
 public:
     explicit ArrangementView(MainComponent&);

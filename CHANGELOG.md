@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.53.2
+
+- Dragging a clip with SNAP on, the clip itself now jumps to where it will land, grid step by grid step, instead of following the mouse and moving only on release; its starting place stays shown as a faint outline.
+- Clip front edge on every track: after shortening a clip that touches the next one, the next clip can now be trimmed from its start (before, on generated tracks it could only be moved). The first front trim frees that track from the sections, as a clip move does.
+- The timeline zooms in down to 1/32 steps (512 px per bar), the finest SNAP grid; the ruler shows the 1/32 lines and Auto snap reaches 1/32.
+
 ## 0.53.1
 
 - SNAP: its tooltip now says what it does (it showed a generic text). SNAP on locks moving clips, their edges (also the new front edge) and the loop locators to the grid; SNAP off moves and trims freely; Shift now does the opposite in every one of those drags (before, Shift only freed them).
