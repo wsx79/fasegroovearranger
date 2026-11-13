@@ -9,7 +9,7 @@ inline void verify(){
     // Harmony of each bar: the pitch classes that sound in it.
     const auto pitches=[](const Clip& c){std::vector<int> v(64,0);for(const auto& n:c.notes){const int bar=std::clamp((int)std::floor((n.start+.125)/4),0,63);v[(size_t)bar]|=1<<(n.pitch%12);}return v;};
     const auto timing=[](const Clip& c){std::vector<int> v;for(const auto& n:c.notes){v.push_back((int)std::lround(n.start*960));v.push_back(n.velocity);}return v;};
-    int gaps=0,drops=0,songs=0;
+    int gaps=0,drops=0,songs=0,builds=0,bassOut=0;
     for(int genre=0;genre<numGenres;++genre){
         int outside=0,total=0;
         for(unsigned seed=1;seed<=12;++seed){auto p=newProject(genre);generate(p,Scope::song,0,0,seed*2654435761U);++songs;
@@ -20,6 +20,8 @@ inline void verify(){
                     const bool inKey=std::find(scale.begin(),scale.end(),pc)!=scale.end();bool inChord=rel==0;for(int iv:{chord.third,chord.fifth,chord.seventh,chord.ninth,chord.eleventh,chord.thirteenth,chord.sixth})inChord=inChord||(iv>=0&&iv%12==rel);
                     // Short off-beat chromatic notes are approach / blue notes; a long or on-beat one is a wrong chord tone.
                     const bool heavy=ti!=1&&ti!=leadTrack&&(n.length>=.5||(n.length>=.25&&std::abs(n.start-std::round(n.start))<.05));   /* bass and lead lines use chromatic approach notes */++total;outside+=heavy&&!(inKey||inChord);}}
+            for(size_t si=0;si+1<p.sections.size();++si)if(p.sections[si].type==Section::buildup&&p.sections[si+1].type==Section::drop&&!p.tracks[1].clips[si].notes.empty()){++builds;const double finish=p.sectionStart((int)si+1)-p.clipStart(1,(int)si);
+                bassOut+=std::none_of(p.tracks[1].clips[si].notes.begin(),p.tracks[1].clips[si].notes.end(),[&](const Note& n){return n.start>=finish-4+1./32.;});}
             for(size_t si=0;si+1<p.sections.size();++si)if(p.sections[si+1].type==Section::drop&&p.sections[si].type!=Section::drop){++drops;const int gap=p.sections[si].dropGap;if(!gap)continue;++gaps;
                 const double finish=p.sectionStart((int)si+1);bool silent=true;
                 for(int ti=0;ti<(int)p.tracks.size();++ti){if(ti==16)continue;for(size_t ci=0;ci<p.tracks[(size_t)ti].clips.size();++ci){const double start=p.clipStart(ti,(int)ci);for(const auto& n:p.tracks[(size_t)ti].clips[ci].notes){const double a=start+n.start,b=a+n.length;if(a<finish-1./32.&&b>finish-gap+1./64.)silent=false;}}}
@@ -39,6 +41,7 @@ inline void verify(){
         check(forms.size()>=4,"genre "+std::to_string(genre)+": a new arrangement changes the form");
     }
     std::cout<<"AUDIT drop_gaps="<<gaps<<"/"<<drops<<" drops in "<<songs<<" songs\n";check(gaps*5>=drops&&gaps*5<=drops*4,"some, not all, drops are preceded by a stop");
+    std::cout<<"AUDIT build_bass_out="<<bassOut<<"/"<<builds<<"\n";check(bassOut*2>=builds&&bassOut<builds,"the bass usually, not always, leaves before the drop");
     ::check(weak==0,"arrangement audit found problems");
 }
 }

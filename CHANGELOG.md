@@ -3,6 +3,8 @@
 ## 0.44.0
 
 
+- Build-ups now rise: seeded per song and section, the bass usually leaves for the last one or two bars, the kick sometimes for the last bar, and the percussion grows from a softer start into the drop.
+
 - Arrangement and harmony audit (new `arrangement_audit` test, every genre): about half of the sections leading into a drop now end with a one- or two-beat full-band stop (crash and reverse crash ring through), saved with the project. Held or on-beat accompaniment tones that fell outside both the key and the chord (fixed guitar colour tones over Phrygian/Mixolydian chords, a few piano tones) move to the nearest chord or scale tone; short passing and blue notes are kept. NEW FEEL now changes only timing and dynamics, never the notes, and works on Techno and Electro House too. Loud export: a 20 ms limiter hold removes the low-frequency gain modulation (two-tone IMD 0.199% → 0.003%); the mode stays hidden until a listening check.
 
 - Regeneration variety audit (new `variety_audit` test over every genre): plugin-parameter automation now draws a different figure on each roll (LFO, ramp, steps, saw, random walk, swell, gate) with its own rate, depth and centre, and build-up sweeps vary their contour; a lane's own dice always writes movement. Strings takes choose register, voicing and bowing without hiding chord changes; Techno/Electro piano and guitar have a wider phrase vocabulary; drum lanes add per-take ghost notes and kick pushes without removing written hits; RANDOM CHORDS draws from a larger pool when a scale has few written progressions. macOS: engine tests no longer depend on the application dispatch loop or on bit-exact arm64 arithmetic.

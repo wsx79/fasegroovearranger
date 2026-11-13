@@ -1371,6 +1371,21 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
     }
 }
 static void transitionMacros(Project& p,Scope scope,int track,int section,int lastClip=-1){for(int si=0;si+1<(int)p.sections.size();++si){if(p.sections[(size_t)(si+1)].type!=Section::drop)continue;const auto& options=p.sections[(size_t)si];const double finish=p.sectionStart(si+1);for(int ti:{0,1,4,5,6,16}){auto& t=p.tracks[(size_t)ti];for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=finish-4)continue;if(options.preDropSilence&&(ti==1||ti==4)){const double silence=finish-2-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[silence](const Note& n){return n.start>=silence;}),c.notes.end());for(auto& n:c.notes)n.length=std::min(n.length,std::max(0.,silence-n.start));}if(options.snareRoll&&(ti==5||ti==6)){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[from,to](const Note& n){return n.start>=from&&n.start<to;}),c.notes.end());for(double at=from;at<to-1e-6;){const double remaining=to-at,step=remaining>2?.5:remaining>1?.25:.125;c.notes.push_back({at,std::min(step*.7,to-at),fgd::defaultNote(ti-4),std::clamp((int)(65+60*(1-remaining/4)),1,127),ti-4});at+=step;}}if(options.reverseCrash&&ti==16&&t.instrument=="sample"){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);if(to>from)c.notes.push_back({from,to-from,t.sampleRoot,105,12,true});}tidyNotes(c,options.preDropSilence&&(ti==1||ti==4)?std::clamp(finish-2-start,0.,length):length);}}}}
+// A build-up has to rise: the engines render it as flat as a main section except for the
+// snare. Seeded per song and section: the bass usually leaves for the last bar or two, the
+// kick sometimes for the last bar, and the percussion grows from a softer start.
+static void shapeBuildups(Project& p,Scope scope,int track,int section,int lastClip=-1){
+    for(int si=0;si+1<(int)p.sections.size();++si){const auto& sec=p.sections[(size_t)si];if(sec.type!=Section::buildup||p.sections[(size_t)(si+1)].type!=Section::drop||sec.bars<2)continue;
+        const double begin=p.sectionStart(si),finish=p.sectionStart(si+1),length=finish-begin;const auto r=mix(p.settings.seed^(0x7a3d5c1fU+(std::uint32_t)si*0x85ebca6bU));
+        const double bassOut=(r%10)<7?std::min(8.,std::max(4.,length/4)):0.,kickOut=((r>>4)%10)<4&&length>=8?4.:0.;
+        for(int ti=0;ti<(int)p.tracks.size();++ti){const bool bass=ti==1,kick=ti==4,percussion=isDrumTrack(ti)&&ti!=4&&ti!=16;if(!bass&&!kick&&!percussion)continue;
+            const double out=bass?bassOut:kick?kickOut:0.;if(out<=0&&!percussion)continue;auto& t=p.tracks[(size_t)ti];
+            for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];if(c.audioOffset>=0||c.loopLength>0)continue;
+                const double start=p.clipStart(ti,(int)ci),clipLength=p.clipLength(ti,(int)ci);if(start>=finish||start+clipLength<=begin)continue;
+                if(out>0){const double rest=finish-out-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=rest-1./32.&&n.start<finish-start;}),c.notes.end());
+                    for(auto& n:c.notes)if(n.start<rest&&n.start+n.length>rest)n.length=std::max(1./64.,rest-n.start);}
+                if(percussion&&length>=8)for(auto& n:c.notes){const double at=start+n.start;if(at<begin||at>=finish)continue;n.velocity=std::clamp((int)std::lround(n.velocity*(.82+.18*(at-begin)/length)),1,127);}}}}
+}
 // The stop before a drop: every part rests for the last one or two beats, so the drop lands
 // on silence. Crash and reverse crash (lane 12) and sustained FX keep ringing through it.
 static void applyDropGaps(Project& p,Scope scope,int track,int section,int lastClip=-1){
@@ -1390,7 +1405,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
     generateNotes(p,scope,track,section,seed,lastClip);
     generateVocalChops(p,scope,track,section,seed,lastClip);
-    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
+    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -1619,7 +1634,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
         for(auto& c:t.clips)if(!c.locked){if(parameters&densityFeel)c.feel[0]=-1;if(parameters&swingFeel)c.feel[1]=-1;if(parameters&humanizeFeel)c.feel[2]=-1;}
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
