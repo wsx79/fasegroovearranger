@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.51.0
+
+- Buttons are drawn as raised hardware keys everywhere (DAW, Studio, assistants, browsers): a lit top edge and a shadow, sinking when pressed. Main actions (GENERATE SONG, SEARCH, STUDIO, LOAD, Analyse) are graphite keys with an amber rim instead of a solid yellow fill; latched choices (Inspector sound source, SNAP) keep the amber frame and light up from inside; hover is a subtle warm tint. Knobs have a 3D cap.
+- Knobs and mixer faders no longer react to the mouse wheel: scrolling over them scrolls the view, values change only by clicking and dragging.
+
 ## 0.50.0
 
 - Target duration now drives generation: with a target, GENERATE SONG and NEW ARRANGEMENT build the form to that length within the tolerance (whole phrases first, then 4-bar steps; the tempo moves slightly inside the genre range only when needed). An empty field (shown as "auto") lets the generator choose, exactly as before. The target and tolerance fields are aligned with the rest of the bar.

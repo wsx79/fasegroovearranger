@@ -102,7 +102,7 @@ public:
     }
     void positionComboBoxText(juce::ComboBox& b,juce::Label& l)override{l.setBounds(10,0,b.getWidth()-32,b.getHeight());l.setFont(getComboBoxFont(b));}
     juce::Slider::SliderLayout getSliderLayout(juce::Slider& slider)override{
-        juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(22);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(90,value.getWidth()),20);r.removeFromBottom(2);layout.sliderBounds=r;return layout;
+        slider.setScrollWheelEnabled(false);juce::Slider::SliderLayout layout;auto r=slider.getLocalBounds();auto value=r.removeFromBottom(22);layout.textBoxBounds=value.withSizeKeepingCentre(std::min(90,value.getWidth()),20);r.removeFromBottom(2);layout.sliderBounds=r;return layout;
     }
     void drawRotarySlider(juce::Graphics& g,int x,int y,int w,int h,float pos,float start,float end,juce::Slider& slider)override{
         juce::ignoreUnused(start,end);

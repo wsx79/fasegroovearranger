@@ -88,10 +88,17 @@ inline void drawKnob(juce::Graphics& g,juce::Rectangle<float> bounds,float norm,
     g.setColour(juce::Colour(0xff2a2d33).withMultipliedAlpha(alpha));g.strokePath(track,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
     if(std::abs(angle-from)>.01f){juce::Path v;v.addCentredArc(c.x,c.y,arcR,arcR,0,std::min(from,angle),std::max(from,angle),true);
         g.setColour(ink.withMultipliedAlpha(alpha));g.strokePath(v,juce::PathStrokeType(arcW,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
+    // 3D cap, as the hardware keys: soft drop shadow, a bevelled skirt lit from above and a
+    // slightly concave face (darker at the top), with a small specular highlight.
     const auto cap=juce::Rectangle<float>(body*2,body*2).withCentre(c);
-    g.setColour(juce::Colours::black.withAlpha(.4f));g.fillEllipse(cap.translated(0,1.5f));
-    g.setGradientFill(juce::ColourGradient(juce::Colour(active?0xff34383f:0xff2e3137),c.x,cap.getY(),juce::Colour(0xff23262b),c.x,cap.getBottom(),false));g.fillEllipse(cap);
-    g.setColour(juce::Colours::white.withAlpha(.06f));g.drawEllipse(cap.reduced(.5f),1.f);
+    g.setColour(juce::Colours::black.withAlpha(.22f*alpha));g.fillEllipse(cap.expanded(1.f).translated(0,2.5f));
+    g.setColour(juce::Colours::black.withAlpha(.45f*alpha));g.fillEllipse(cap.translated(0,1.5f));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(active?0xff40454e:0xff3a3e46).withMultipliedAlpha(alpha),c.x,cap.getY(),juce::Colour(0xff1d1f24).withMultipliedAlpha(alpha),c.x,cap.getBottom(),false));g.fillEllipse(cap);
+    const auto face=cap.reduced(std::max(1.5f,body*.16f));
+    g.setGradientFill(juce::ColourGradient(juce::Colour(0xff26292e).withMultipliedAlpha(alpha),c.x,face.getY(),juce::Colour(active?0xff363a42:0xff31353c).withMultipliedAlpha(alpha),c.x,face.getBottom(),false));g.fillEllipse(face);
+    g.setColour(juce::Colours::black.withAlpha(.35f*alpha));g.drawEllipse(face,.8f);
+    {juce::Path rim;rim.addCentredArc(c.x,c.y,body-.6f,body-.6f,0,-1.1f,1.1f,true);g.setColour(juce::Colours::white.withAlpha(.16f*alpha));g.strokePath(rim,juce::PathStrokeType(1.f));}
+    g.setColour(juce::Colour(0xff101114).withMultipliedAlpha(alpha));g.drawEllipse(cap,1.f);
     g.setColour(juce::Colour(0xfff2f3f5).withMultipliedAlpha(alpha));
     g.drawLine({c.getPointOnCircumference(body*.45f,angle),c.getPointOnCircumference(body*.88f,angle)},outer>30.f?2.2f:1.8f);
 }
@@ -138,6 +145,51 @@ inline void fillElevatedSurface(juce::Graphics& g,juce::Rectangle<float> r,juce:
     g.setColour(juce::Colours::black.withAlpha(.35f));
     g.fillRect(r.getX()+cornerRadius,r.getBottom()-1.f,std::max(0.f,r.getWidth()-2.f*cornerRadius),1.f);
 }
+// Hardware key shared by every button: a raised graphite key that sinks when pressed.
+// selected = latched (amber frame, lit from inside); primary = main action (amber rim on top,
+// no flat yellow fill); body = a custom key colour (mute, solo, sends), transparent = graphite.
+struct KeyLook {bool hover=false,down=false,selected=false,primary=false;juce::Colour body{};bool joinLeft=false,joinRight=false;};
+inline bool isNeutralKey(juce::Colour c){return c.isTransparent()||c==control||c==controlHi||c==surfaceHi||c==Palette::control||c==Palette::background;}
+inline juce::Path keyShape(juce::Rectangle<float> r,float corner,const KeyLook& k){
+    juce::Path p;p.addRoundedRectangle(r.getX(),r.getY(),r.getWidth(),r.getHeight(),corner,corner,!k.joinLeft,!k.joinRight,!k.joinLeft,!k.joinRight);return p;}
+inline void drawKey(juce::Graphics& g,juce::Rectangle<float> bounds,const KeyLook& k,float corner=radius){
+    const bool pressed=k.down||k.selected,custom=!isNeutralKey(k.body);
+    auto r=bounds.withTrimmedBottom(1.f);const auto shape=keyShape(r,corner,k);
+    juce::Colour top,bot;
+    if(custom){top=pressed?k.body.darker(.28f):k.body.brighter(.12f);bot=pressed?k.body.darker(.06f):k.body.darker(.2f);}
+    else{top=pressed?juce::Colour(26,28,33):juce::Colour(52,56,64);bot=juce::Colour(34,37,43);}
+    if(k.hover&&!custom){const float a=k.selected?.18f:.10f,b=k.selected?.12f:.06f;top=top.interpolatedWith(accent,a);bot=bot.interpolatedWith(accent,b);}
+    else if(k.hover){top=top.brighter(.08f);bot=bot.brighter(.06f);}
+    if(!pressed){g.setColour(juce::Colours::black.withAlpha(.38f));g.fillPath(keyShape(r.translated(0,1.f),corner,k));}
+    g.setGradientFill(juce::ColourGradient(top,r.getX(),r.getY(),bot,r.getX(),r.getBottom(),false));g.fillPath(shape);
+    const float inset=k.joinLeft&&k.joinRight?0.f:corner;
+    if(!pressed){
+        g.setColour(custom?juce::Colours::white.withAlpha(.2f):juce::Colour(92,97,107));g.fillRect(r.getX()+inset,r.getY()+1.f,r.getWidth()-2*inset,1.f);
+        g.setColour(juce::Colour(14,15,18).withAlpha(.9f));g.fillRect(r.getX()+inset,r.getBottom()-1.5f,r.getWidth()-2*inset,1.f);
+    }else{
+        juce::Graphics::ScopedSaveState s(g);g.reduceClipRegion(shape);
+        g.setColour(juce::Colours::black.withAlpha(.38f));g.fillRect(r.getX(),r.getY(),r.getWidth(),1.f);
+        g.setColour(juce::Colours::black.withAlpha(.18f));g.fillRect(r.getX(),r.getY()+1.f,r.getWidth(),1.f);
+    }
+    if(k.selected&&!custom){
+        juce::Graphics::ScopedSaveState s(g);g.reduceClipRegion(shape);
+        const auto c=r.getCentre();juce::ColourGradient glow(accent.withAlpha(0.f),c.x,c.y,accent.withAlpha(k.hover?.22f:.13f),r.getX(),r.getY(),true);
+        g.setGradientFill(glow);g.fillRect(r);
+        g.setColour(accent.darker(.15f));g.strokePath(keyShape(r.reduced(1.5f),std::max(1.f,corner-1.5f),k),juce::PathStrokeType(1.f));
+    }
+    if(k.primary){
+        const auto bar=juce::Rectangle<float>(r.getX()+6.f,r.getY()+(pressed?3.f:2.f),std::max(0.f,r.getWidth()-12.f),2.f);
+        g.setColour(accent.withAlpha(.22f));g.fillRoundedRectangle(bar.expanded(1.f,1.5f),2.f);
+        g.setColour(accent);g.fillRoundedRectangle(bar,1.f);
+    }
+    g.setColour(pressed?juce::Colour(10,11,13):juce::Colour(16,17,20));g.strokePath(shape,juce::PathStrokeType(1.f));
+}
+// Label colour on a key.
+inline juce::Colour keyInk(const KeyLook& k){
+    if(k.selected&&isNeutralKey(k.body))return accent.interpolatedWith(juce::Colours::white,.25f);
+    if(!isNeutralKey(k.body)&&k.body.getPerceivedBrightness()>.55f)return onAccent;
+    return text;
+}
 }
 
 class DawLookAndFeel : public FamilyLookAndFeel {
@@ -179,25 +231,25 @@ public:
     juce::Font getAlertWindowMessageFont() override{return Daw::font(Daw::body);}
     juce::Font getAlertWindowFont() override{return Daw::font(Daw::body);}
     int getAlertWindowButtonHeight() override{return 30;}
-    // Flat buttons: a 3 px radius, a hairline edge and a 1 px top light; on = accent.
+    // Hardware keys (Daw::drawKey). A button whose colour is the accent is a primary action;
+    // a toggle whose on-colour is the accent is latched (amber frame); other colours stay keys of that colour.
+    static Daw::KeyLook keyLookFor(juce::Button& b,const juce::Colour& background,bool highlighted,bool down){
+        Daw::KeyLook k;const bool on=b.getToggleState();const auto onColour=b.findColour(juce::TextButton::buttonOnColourId);
+        k.hover=highlighted&&b.isEnabled();k.down=down;k.joinLeft=b.isConnectedOnLeft();k.joinRight=b.isConnectedOnRight();
+        k.primary=(background==Daw::accent||(bool)b.getProperties().getWithDefault("dawFeatured",false))&&!on;
+        if(on){if(onColour==Daw::accent||onColour.getHue()==Daw::accent.getHue())k.selected=true;else k.body=onColour;}
+        else if(!k.primary)k.body=background;
+        return k;
+    }
     void drawButtonBackground(juce::Graphics& g,juce::Button& b,const juce::Colour& background,bool highlighted,bool down) override{
-        const auto r=b.getLocalBounds().toFloat().reduced(.5f);const bool on=b.getToggleState();
-        auto fill=on?b.findColour(juce::TextButton::buttonOnColourId):background;
-        if(fill==Palette::control||fill==Palette::background)fill=Daw::control;
-        if(!b.isEnabled())fill=fill.withMultipliedAlpha(.45f);else if(down)fill=fill.darker(.18f);else if(highlighted)fill=fill==Daw::control?Daw::controlHi:fill.brighter(.08f);
-        juce::Path shape;shape.addRoundedRectangle(r.getX(),r.getY(),r.getWidth(),r.getHeight(),Daw::radius,Daw::radius,!b.isConnectedOnLeft(),!b.isConnectedOnRight(),!b.isConnectedOnLeft(),!b.isConnectedOnRight());
-        g.setGradientFill(juce::ColourGradient(fill.brighter(.09f),r.getX(),r.getY(),fill.darker(.08f),r.getX(),r.getBottom(),false));g.fillPath(shape);
-        if(!down&&b.isEnabled()){g.setColour(juce::Colours::white.withAlpha(fill.getPerceivedBrightness()>.4f?.18f:.08f));g.fillRect(r.getX()+Daw::radius,r.getY()+.5f,r.getWidth()-2*Daw::radius,1.f);}
-        g.setColour(down?Daw::accent.withAlpha(.8f):fill.getPerceivedBrightness()>.4f?fill.darker(.3f):juce::Colours::black.withAlpha(.45f));
-        g.strokePath(shape,juce::PathStrokeType(Daw::hairline()));
+        g.beginTransparencyLayer(b.isEnabled()?1.f:.45f);Daw::drawKey(g,b.getLocalBounds().toFloat().reduced(.5f),keyLookFor(b,background,highlighted,down));g.endTransparencyLayer();
     }
     juce::Font getTextButtonFont(juce::TextButton&,int) override{return Daw::font(Daw::small,true);}
     void drawButtonText(juce::Graphics& g,juce::TextButton& b,bool,bool) override{
         if((bool)b.getProperties().getWithDefault("fgaIconOnly",false)){auto r=b.getLocalBounds().toFloat().reduced(6.f);juce::Path pencil;pencil.startNewSubPath(r.getX()+2.f,r.getBottom()-2.f);pencil.lineTo(r.getRight()-3.f,r.getY()+3.f);g.setColour(b.isEnabled()?Daw::text:Daw::textFaint);g.strokePath(pencil,juce::PathStrokeType(1.5f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));return;}
-        const bool on=b.getToggleState();const auto fill=b.findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
-        auto ink=fill.getPerceivedBrightness()>.4f?Daw::onAccent:Daw::text;
+        const auto k=keyLookFor(b,b.findColour(juce::TextButton::buttonColourId),false,b.isDown());const auto ink=Daw::keyInk(k);
         g.setColour(ink.withMultipliedAlpha(b.isEnabled()?1.f:.78f));auto f=getTextButtonFont(b,b.getHeight());f.setExtraKerningFactor(.03f);g.setFont(f);
-        g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(4,1),juce::Justification::centred,1,.5f);
+        g.drawFittedText(b.getButtonText(),b.getLocalBounds().reduced(4,1).withTrimmedBottom(1).translated(0,k.down||k.selected?1:0),juce::Justification::centred,1,.5f);
     }
     void drawComboBox(juce::Graphics& g,int width,int height,bool,int,int,int,int,juce::ComboBox& box) override{
         const auto r=juce::Rectangle<float>(0,0,(float)width,(float)height).reduced(.5f);
@@ -246,6 +298,9 @@ public:
         };
         if(range){drawThumb(minPos);drawThumb(maxPos);}else drawThumb(pos);
     }
+    // Knobs and faders never follow the mouse wheel: the wheel scrolls the view under them
+    // (JUCE forwards it to the parent), values change only by clicking and dragging.
+    juce::Slider::SliderLayout getSliderLayout(juce::Slider& s) override{s.setScrollWheelEnabled(false);return FamilyLookAndFeel::getSliderLayout(s);}
     int getSliderThumbRadius(juce::Slider& s) override{return s.getSliderStyle()==juce::Slider::LinearVertical?7:5;}
     juce::Label* createSliderTextBox(juce::Slider& s) override{
         auto* l=FamilyLookAndFeel::createSliderTextBox(s);l->setFont(Daw::font(s.getSliderStyle()==juce::Slider::LinearBarVertical?Daw::display:11.f,s.getSliderStyle()==juce::Slider::LinearBarVertical));

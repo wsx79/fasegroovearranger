@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.51.0
+
+- I pulsanti sono disegnati come tasti hardware in rilievo ovunque (DAW, Studio, assistenti, browser): bordo superiore illuminato e ombra, si abbassano quando premuti. Le azioni principali (GENERA BRANO, SEARCH, STUDIO, LOAD, Analizza) sono tasti grafite con un filo ambra invece del riempimento giallo; le scelte attive (sorgente del suono nell'Inspector, SNAP) mantengono il riquadro ambra e si illuminano dall'interno; al passaggio del mouse una leggera tinta calda. I potenziometri hanno una manopola 3D.
+- Potenziometri e fader del mixer non reagiscono più alla rotellina del mouse: scorrendo sopra di essi si scorre la vista, i valori si cambiano solo cliccando e trascinando.
+
 ## 0.50.0
 
 - La durata obiettivo ora guida la generazione: con un obiettivo, GENERA BRANO e NUOVO ARRANGIAMENTO costruiscono la forma su quella durata entro la tolleranza (prima frasi intere, poi passi di 4 battute; il tempo si sposta di poco nel range del genere solo se serve). Con il campo vuoto (indicato come "auto") la lunghezza la sceglie il generatore, come prima. I campi obiettivo e tolleranza sono allineati al resto della barra.

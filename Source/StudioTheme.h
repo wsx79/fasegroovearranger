@@ -48,7 +48,7 @@ public:
     juce::Font getComboBoxFont(juce::ComboBox&)override{return StudioStyle::font(12);}
     juce::Label* createSliderTextBox(juce::Slider& s)override{auto* label=DawLookAndFeel::createSliderTextBox(s);label->setFont(StudioStyle::font(12));return label;}
     void drawToggleButton(juce::Graphics& g,juce::ToggleButton& b,bool hover,bool)override{
-        using namespace StudioStyle;const auto r=b.getLocalBounds().toFloat().reduced(2);const bool on=b.getToggleState();const bool down=b.isDown();g.beginTransparencyLayer(b.isEnabled()?1.f:.4f);auto fill=on?accent:hover?controlHi:control;if(down)fill=fill.darker(.18f);Daw::fillElevatedSurface(g,r,fill,radius);g.setColour(down?accent:line);g.drawRoundedRectangle(r,radius,1);g.setFont(font(11));g.setColour(on?onAccent:text);g.drawFittedText(b.getButtonText(),r.reduced(6,2).toNearestInt(),juce::Justification::centred,1,.8f);g.endTransparencyLayer();
+        using namespace StudioStyle;const auto r=b.getLocalBounds().toFloat().reduced(2);const bool on=b.getToggleState();const bool down=b.isDown();g.beginTransparencyLayer(b.isEnabled()?1.f:.4f);Daw::KeyLook k;k.hover=hover&&b.isEnabled();k.down=down;k.selected=on;Daw::drawKey(g,r,k,radius);g.setFont(font(11));g.setColour(Daw::keyInk(k));g.drawFittedText(b.getButtonText(),r.reduced(6,2).withTrimmedBottom(1.f).translated(0,on||down?.6f:0.f).toNearestInt(),juce::Justification::centred,1,.8f);g.endTransparencyLayer();
     }
     void drawPopupMenuBackground(juce::Graphics& g,int w,int h)override{g.fillAll(StudioStyle::surface);g.setColour(StudioStyle::line);g.drawRect(0,0,w,h);}
 };

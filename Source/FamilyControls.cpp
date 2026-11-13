@@ -343,8 +343,8 @@ const char* IconButton::iconTitle (Icon i)
 void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
     auto r = getLocalBounds().toFloat().reduced (0.5f);
-    if (down) { g.setColour (Daw::accent); g.drawRoundedRectangle (r.reduced (1.f), Daw::radius, 1.5f); }
     const bool on = getToggleState();
+    Daw::KeyLook keyLook;
     const bool filled = (on && ! quiet) || primary;
     const bool flatLeft = isConnectedOnLeft(), flatRight = isConnectedOnRight();
 
@@ -359,23 +359,15 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
     }
     else
     {
-        auto fillColour = filled ? onColour : Daw::control;
-        if (accentHover && highlighted && isEnabled()) fillColour = down ? Daw::accent.darker (0.12f) : Daw::accent;
-        else if (down)        fillColour = fillColour.darker (0.18f);
-        else if (highlighted) fillColour = filled ? fillColour.brighter (0.08f) : Daw::controlHi;
-        if (! isEnabled())    fillColour = fillColour.withMultipliedAlpha (0.45f);
-        g.setColour (fillColour);
-        g.fillPath (shape);
-        if (! down && isEnabled())
-        {
-            g.setColour (juce::Colours::white.withAlpha (filled ? 0.18f : 0.045f));
-            g.fillRect (r.getX() + Daw::radius, r.getY() + 0.5f, r.getWidth() - 2.0f * Daw::radius, 1.0f);
-        }
-        g.setColour (down ? Daw::accent.withAlpha (0.8f) : filled ? fillColour.darker (0.3f) : juce::Colours::black.withAlpha (0.45f));
-        g.strokePath (shape, juce::PathStrokeType (1.0f));
+        // Same hardware key as the other buttons: primary = amber rim, toggled = latched.
+        Daw::KeyLook k; k.hover = highlighted && isEnabled(); k.down = down; k.joinLeft = flatLeft; k.joinRight = flatRight;
+        k.primary = primary && ! on;
+        if (on) { if (onColour == Daw::accent || onColour.getHue() == Daw::accent.getHue()) k.selected = true; else k.body = onColour; }
+        g.beginTransparencyLayer (isEnabled() ? 1.f : 0.45f); Daw::drawKey (g, r, k); g.endTransparencyLayer();
+        keyLook = k;
     }
 
-    auto ink = (filled || (accentHover && highlighted)) ? Daw::onAccent : quiet && on ? onColour : Daw::text.withAlpha (quiet ? 0.82f : 0.92f);
+    auto ink = quiet ? (on ? onColour : Daw::text.withAlpha (0.82f)) : keyLook.primary ? Daw::accent : Daw::keyInk (keyLook);
     if (quiet && highlighted && ! on) ink = Daw::text;
     if (! isEnabled())
         ink = ink.withMultipliedAlpha (0.35f);
@@ -407,25 +399,26 @@ void IconButton::paintButton (juce::Graphics& g, bool highlighted, bool down)
 }
 
 void ActionButton::paintButton(juce::Graphics& g,bool over,bool down){
+    // Same hardware key as every TextButton (Daw::drawKey). Featured = primary action (amber rim);
+    // fgaOutlineSelected (Inspector choices) and accent toggles latch with the amber frame.
     const bool on=getToggleState(),featured=(bool)getProperties().getWithDefault("dawFeatured",false);
-    auto fill=findColour(on?juce::TextButton::buttonOnColourId:juce::TextButton::buttonColourId);
-    if(featured&&!on)fill=Daw::surfaceHi.interpolatedWith(Daw::accent,.09f);
     const bool outline=(bool)getProperties().getWithDefault("fgaOutlineSelected",false);
-    if(outline)fill=on?Daw::surfaceHi.interpolatedWith(Daw::accent,.09f):findColour(juce::TextButton::buttonColourId);
-    if(over&&isEnabled())fill=outline?Daw::accent:fill.brighter(.07f);if(down)fill=fill.darker(.14f);
+    const auto onColour=findColour(juce::TextButton::buttonOnColourId),offColour=findColour(juce::TextButton::buttonColourId);
+    Daw::KeyLook k;k.hover=over&&isEnabled();k.down=down;
+    k.primary=(featured||offColour==Daw::accent)&&!on;
+    if(on){if(outline||onColour==Daw::accent||onColour.getHue()==Daw::accent.getHue())k.selected=true;else k.body=onColour;}
+    else if(!k.primary)k.body=offColour;
     auto r=getLocalBounds().toFloat().reduced(.5f);
-    g.beginTransparencyLayer(isEnabled()?1.f:.42f);g.setColour(fill);g.fillRoundedRectangle(r,5.f);
-    g.setColour(down||(outline&&on)?Daw::accent:featured?Daw::accent.withAlpha(.5f):on?fill.darker(.25f):Daw::lineStrong.withAlpha(over?.9f:.6f));g.drawRoundedRectangle(r,5.f,1.f);
-    if(!down){g.setColour(juce::Colours::white.withAlpha(.045f));g.drawHorizontalLine(1,5.f,getWidth()-5.f);}
-    g.endTransparencyLayer();
-    auto area=r.reduced(7.f,2.f);const bool bright=fill.getPerceivedBrightness()>.4f;const auto ink=(bright?Daw::onAccent:Daw::text).withMultipliedAlpha(isEnabled()?1.f:.78f);
+    g.beginTransparencyLayer(isEnabled()?1.f:.42f);Daw::drawKey(g,r,k,5.f);g.endTransparencyLayer();
+    const bool sunk=k.down||k.selected;
+    auto area=r.withTrimmedBottom(1.f).reduced(7.f,2.f).translated(0,sunk?.6f:0.f);const auto ink=Daw::keyInk(k).withMultipliedAlpha(isEnabled()?1.f:.78f);
     auto font=Daw::font(Daw::small,true);font.setExtraKerningFactor(.025f);
     const float iconSize=std::min(16.f,area.getHeight()*.72f);const bool icon=glyph!=IconButton::Icon::none;
     const bool iconOnly=(bool)getProperties().getWithDefault("fgaIconOnly",false);
     const auto label=iconOnly?juce::String():getButtonText();
     const float width=juce::GlyphArrangement::getStringWidth(font,label)+(icon?iconSize+6.f:0.f);
     area=area.withSizeKeepingCentre(std::min(area.getWidth(),std::max(iconSize,width)),area.getHeight());
-    if(icon){IconButton::drawIcon(g,glyph,(label.isEmpty()?area:area.removeFromLeft(iconSize)).withSizeKeepingCentre(iconSize,iconSize),bright?ink:featured?Daw::accent:Daw::textDim);if(label.isNotEmpty())area.removeFromLeft(6.f);}
+    if(icon){IconButton::drawIcon(g,glyph,(label.isEmpty()?area:area.removeFromLeft(iconSize)).withSizeKeepingCentre(iconSize,iconSize),k.selected?ink:k.primary?Daw::accent:Daw::textDim);if(label.isNotEmpty())area.removeFromLeft(6.f);}
     if(label.isNotEmpty()){g.setColour(ink);g.setFont(font);g.drawFittedText(label,area.toNearestInt(),juce::Justification::centred,1,.55f);}
 }
 

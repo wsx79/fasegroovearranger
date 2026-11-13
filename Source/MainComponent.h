@@ -53,11 +53,11 @@ public:
         // Same disabled fade as the labelled action next to it: during a take the whole
         // generation block dims together instead of leaving an active-looking caret.
         g.beginTransparencyLayer(isEnabled()?1.f:.38f);
-        g.setColour(down?Daw::accent.darker(.12f):over&&isEnabled()?Daw::accent.brighter(.06f):Daw::accent);g.fillRoundedRectangle(r,Daw::radius);
-        g.setColour(juce::Colours::black.withAlpha(.35f));g.drawRoundedRectangle(r,Daw::radius,1.f);
-        const float cx=r.getCentreX(),cy=r.getCentreY();juce::Path caret;
+        // Hardware key with the amber rim of the primary action it belongs to.
+        Daw::KeyLook k;k.hover=over&&isEnabled();k.down=down;k.primary=true;Daw::drawKey(g,r,k,5.f);
+        const float cx=r.getCentreX(),cy=r.getCentreY()+(down?1.f:.5f);juce::Path caret;
         caret.startNewSubPath(cx-3.5f,cy-1.5f);caret.lineTo(cx,cy+2.f);caret.lineTo(cx+3.5f,cy-1.5f);
-        g.setColour(Daw::onAccent);g.strokePath(caret,juce::PathStrokeType(1.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
+        g.setColour(Daw::accent);g.strokePath(caret,juce::PathStrokeType(1.6f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));
         g.endTransparencyLayer();
     }
 };
