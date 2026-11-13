@@ -1,4 +1,4 @@
-# Steinberg ASIO SDK (interface headers only)
+# Steinberg ASIO® SDK (interface headers only)
 
 ASIO® is a registered trademark of Steinberg Media Technologies GmbH.
 
@@ -30,5 +30,12 @@ source.
 
 Trademark use follows the "Steinberg ASIO Usage Guidelines" shipped with the SDK
 (version 2.3.4): the unmodified ASIO Compatible Logo (`Resources/asio-compatible-logo.png`,
-Steinberg artwork) is shown in the audio device dialog where ASIO can be enabled, and the
-attribution above appears in the app credits and the documentation.
+Steinberg artwork) is shown in the audio device dialog where ASIO can be enabled and in the
+About box of the Windows build; the black-and-white logo with the trademark line
+(`docs/images/asio-compatible-logo-bw.png`) appears in the guides and READMEs; the
+attribution above appears in the app credits and the documentation. Both PNG files are
+byte-identical to the SDK's `Steinberg ASIO Logo Artwork` files
+(`ASIO-compatible-logo-Steinberg-®-white-transparent-RGB.png`,
+SHA-256 `49a5d8e047d26ef4a74228082197e5cc5f45423f6fc57b64046f81e4c317ec8a`;
+`ASIO-compatible-logo-Steinberg-TM-BW.png`,
+SHA-256 `5b5c4aae4baeaed70da70966713e1dbd255977649f37df4c503752f2207a5c86`).

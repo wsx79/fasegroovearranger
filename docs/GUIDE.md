@@ -112,7 +112,7 @@ New piano regenerations compare the previous rhythmic attacks against draws from
 
 ### Current interface
 
-Active controls are highlighted; sound sources and **LOCK TRACK** use an outline when selected. Actions show feedback while pressed without leaving an amber border after clicking. **Amber** marks the main actions; piano, bass, strings, guitar and drums keep their family colours. Every button has its tooltip. Click a track name to select it in the inspector, its gear to open the instrument panel, and double-click a clip to edit its notes.
+Buttons are raised keys that sink while pressed. Selected choices (sound sources, **LOCK TRACK**, **SNAP**) stay pressed with an amber frame and a soft inner light; nothing keeps an amber border after a click. Main actions such as **GENERATE SONG**, **SEARCH** and **STUDIO** carry a thin **amber** rim along the top; piano, bass, strings, guitar and drums keep their family colours. Every button has its tooltip. Click a track name to select it in the inspector, its gear to open the instrument panel, and double-click a clip to edit its notes.
 
 The top contains project commands, transport and the controls shared by everyone: **tempo, key and scale**. Below are genre, resulting duration and chord progression. The large area is the song, with sections across and instruments down the side.
 
@@ -188,7 +188,7 @@ Moving a multiple-note selection in the piano roll preserves spacing at clip and
 
 <p align="center"><img src="images/guide_ai.png" alt="AI composer: Groq free-tier example" width="900"></p>
 
-The amber **AI COMPOSER** button, with sparkles in the arrangement toolbar, opens a separate composer window. AI writes MIDI notes and song sections; your **assigned guide sounds, samples and VST/AU instruments** play them. Every note remains editable.
+The **AI COMPOSER** button, with sparkles in the arrangement toolbar, opens a separate composer window. AI writes MIDI notes and song sections; your **assigned guide sounds, samples and VST/AU instruments** play them. Every note remains editable.
 
 1. Choose **SERVICE**. **Ollama · local, no API key** is the initial choice and needs no key: Ollama must be running on your computer with a downloaded text model. For cloud use choose Groq, OpenRouter Free, Gemini, DeepSeek, OpenAI or Anthropic / Claude; follow [AI services, models and free APIs](#ai-services-models-and-free-apis) to create a key and check quotas and costs.
 2. Choose **MODEL**. For Ollama normally leave `http://127.0.0.1:11434` and press **CHECK**: only installed local models appear; **COMPOSE** stays disabled without a connection/models. For cloud services paste the API key, select a suggestion or press **REFRESH** for the current catalogue; you can also enter an exact compatible ID. **API keys / help** opens the official page and shows instructions in the preview; **SETUP GUIDE** opens the manual. Keys stay only in memory for the session.
@@ -354,7 +354,7 @@ Sends follow track and group levels; master controls returns too. Use song Play 
 ### Navigation and selection
 
 - **Wheel on the ruler** or **Ctrl/Cmd + wheel** over clips/notes: zoom around the mouse pointer. **+ / −** zoom around the centre of the visible area. The MIDI editor also has a ZOOM slider.
-- **Wheel** scrolls vertically; **Shift + wheel** scrolls horizontally. Horizontal trackpad gestures also scroll horizontally. **Middle-button drag**, in the arrangement, pans both axes. Manual navigation turns FOLLOW off; enable it again to follow playback.
+- **Wheel** scrolls vertically; **Shift + wheel** scrolls horizontally. Knobs and faders, in the mixer, inspector and instrument panels, ignore the wheel: scrolling over them moves the view, and values change only by clicking and dragging. Horizontal trackpad gestures also scroll horizontally. **Middle-button drag**, in the arrangement, pans both axes. Manual navigation turns FOLLOW off; enable it again to follow playback.
 - **ZOOM SELECTION / Z** frames the selected clips; in the MIDI editor, **Z** frames selected notes, or the whole clip if no notes are selected. **FIT SONG / F** restores the complete arrangement view.
 - **LOOP SELECTION / Ctrl/Cmd + L** sets both playback locators from the selected clips. In the MIDI editor it uses the selected notes, or the complete clip. This changes playback only and can be undone.
 

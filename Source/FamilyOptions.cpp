@@ -5,9 +5,13 @@
 #include "Branding.h"
 #include "Localisation.h"
 #include "Updater.h"
+#include <BinaryData.h>
 namespace fga {
 OptionsOverlay::OptionsOverlay() : artist (Branding::artistLogo())
 {
+#if JUCE_ASIO || FGA_PREVIEW_ASIO_ABOUT
+    asioLogo = juce::ImageCache::getFromMemory (BinaryData::asiocompatiblelogo_png, BinaryData::asiocompatiblelogo_pngSize);
+#endif
     setInterceptsMouseClicks (true, true);
 
     auto styleTab = [this] (juce::TextButton& b)
@@ -190,7 +194,7 @@ void OptionsOverlay::resized()
     licencesButton.setBounds(extra.removeFromLeft(180));
 
     // About tab: link buttons above the footer
-    auto row = inner.withTrimmedBottom (26).removeFromBottom (30);
+    auto row = inner.withTrimmedBottom (aboutFooterHeight() + 8).removeFromBottom (30);
     juce::Array<juce::Component*> buttons;
     for (auto* b : { &sourceButton, &kofiButton, &paypalButton, &spotifyButton })
         if (b->isVisible())
@@ -289,12 +293,24 @@ void OptionsOverlay::paint (juce::Graphics& g)
     g.drawText (tr ("AI coding assistant"), r.removeFromTop (16.0f), juce::Justification::centred);
 
     g.setFont (FamilyTheme::font (11.0f));
-    g.drawText ("ASIO is a registered trademark of Steinberg Media Technologies GmbH",
-                r.removeFromBottom (16.0f), juce::Justification::centred);
-    g.drawText (tr ("Built with JUCE") + dot + "VST is a registered trademark of Steinberg Media Technologies GmbH",
+    const juce::String asioNotice ("ASIO is a registered trademark of Steinberg Media Technologies GmbH.");
+    if (asioLogo.isValid())
+    {
+        // Unmodified Steinberg artwork beside the attribution (ASIO Usage Guidelines 1e, 15).
+        auto line = r.removeFromBottom (30.0f);
+        const float lh = 28.0f, lw = lh * (float) asioLogo.getWidth() / (float) asioLogo.getHeight();
+        const float tw = juce::GlyphArrangement::getStringWidth (g.getCurrentFont(), asioNotice);
+        auto group = line.withSizeKeepingCentre (lw + 10.0f + tw, lh);
+        g.drawImage (asioLogo, group.removeFromLeft (lw), juce::RectanglePlacement::centred);
+        group.removeFromLeft (10.0f);
+        g.drawText (asioNotice, group, juce::Justification::centredLeft);
+    }
+    else
+        g.drawText (asioNotice, r.removeFromBottom (16.0f), juce::Justification::centred);
+    g.drawText (tr ("Built with JUCE") + dot + "VST is a registered trademark of Steinberg Media Technologies GmbH.",
                 r.removeFromBottom (16.0f), juce::Justification::centred);
 
-    r.removeFromBottom (48.0f);   // link buttons
+    r.removeFromBottom (8.0f + 48.0f);   // gap + link buttons
     g.setColour (Palette::dim);
     g.setFont (FamilyTheme::font (12.0f));
     g.drawText (juce::String (Branding::sourceUrl).fromFirstOccurrenceOf ("://", false, false),

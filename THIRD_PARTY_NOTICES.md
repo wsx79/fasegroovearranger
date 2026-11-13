@@ -22,13 +22,13 @@ See `ThirdParty/*/LICENSE`, original notices and `docs/ARCHITECTURE.md`. The ori
 
 JUCE 8.0.9 — https://github.com/juce-framework/JUCE. Copyright JUCE contributors / Raw Material Software. JUCE is available under AGPLv3 and commercial terms. This source distribution uses the open-source AGPL option. JUCE includes its own platform/component notices, available in the fetched/local JUCE source. Keep the corresponding source and notices when distributing binaries.
 
-## Steinberg ASIO SDK 2.3.4 (Windows only)
+## Steinberg ASIO® SDK 2.3.4 (Windows only)
 
 ASIO® is a registered trademark of Steinberg Media Technologies GmbH.
 
 ASIO SDK — Copyright (c) 2025 Steinberg Media Technologies GmbH. The SDK is dual licensed (proprietary Steinberg ASIO License or GNU GPL version 3); this application uses the **GNU General Public License version 3** option. Only the interface headers `asio.h`, `asiosys.h` and `iasiodrv.h` are included, unmodified, in `ThirdParty/asiosdk/common`, with Steinberg's licence text (`ThirdParty/asiosdk/LICENSE.txt`), the full GPLv3 text (`ThirdParty/asiosdk/GPL-3.0.txt`) and provenance/checksums (`ThirdParty/asiosdk/README.md`). They are compiled only into the Windows build (JUCE `JUCE_ASIO=1`). Section 13 of the GNU AGPL v3 and GNU GPL v3 permits this combination; complete corresponding source is provided with every binary.
 
-The unmodified ASIO Compatible Logo (`Resources/asio-compatible-logo.png`) is Steinberg artwork, used according to the Steinberg ASIO Usage Guidelines in the audio device dialog where ASIO can be selected. It is not covered by this application's licence.
+The unmodified ASIO Compatible Logos are Steinberg artwork from the SDK's "Steinberg ASIO Logo Artwork" folder, used according to the Steinberg ASIO Usage Guidelines: `Resources/asio-compatible-logo.png` (white, transparent) in the Windows audio device dialog where ASIO can be selected and in the Windows About box, and `docs/images/asio-compatible-logo-bw.png` (black and white, with the trademark line) in the guides and READMEs. They are not covered by this application's licence.
 
 ## Inter
 

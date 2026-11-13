@@ -754,6 +754,17 @@ return false;
     {juce::StringArray missing;showArrangement();showSampleBrowser(true);missing.addArray(iconButtonsWithoutTips());showSampleBrowser(false);for(int track:{0,3,4,leadTrack}){select(track,1);showInstrument();missing.addArray(iconButtonsWithoutTips());showEditor();missing.addArray(iconButtonsWithoutTips());}showArrangement();select(4,0);
         if(!missing.isEmpty())fail="icon buttons without a tooltip: "+missing.joinIntoString(", ");ok=mark("icon-tips",missing.isEmpty())&&ok;}
     ok=mark("presentation",verifyPresentation(folder))&&ok;
+    // Guide screenshots, one set per manual language (docs/images): the arrangement with the
+    // mixer, the guitar lane editor and the inspector, each taken in a single language.
+    {const auto language=Localisation::current();const auto guide=folder.getChildFile("guide");guide.createDirectory();
+        for(auto [lang,suffix]:std::initializer_list<std::pair<Localisation::Language,const char*>>{{Localisation::Language::english,""},{Localisation::Language::italian,"_it"}}){
+            Localisation::setCurrent(lang);applyLanguage();showArrangement();select(4,1);resized();juce::MessageManager::getInstance()->runDispatchLoopUntil(40);
+            auto shot=[&](juce::Component& c,const juce::String& name){bool wrote=false;if(auto out=guide.getChildFile(name+suffix+".png").createOutputStream())wrote=juce::PNGImageFormat().writeImageToStream(c.createComponentSnapshot(c.getLocalBounds()),*out);ok=mark("guide-png",wrote)&&ok;};
+            shot(*this,"guide_arrangement");shot(trackInspector,"inspector");
+            select(3,1);piano.guitarNotes=false;showEditor();juce::MessageManager::getInstance()->runDispatchLoopUntil(40);shot(*this,"guide_guitar");
+            {bool clear=true;for(auto* b:{&brushAccent,&brushHit,&brushGhost,&brushFlam})clear=clear&&!b->getBounds().intersects(guitarNotesButton.getBounds())&&!b->getBounds().intersects(editorLabel.getBounds());ok=mark("editor-brushes-clear",clear)&&ok;}
+            showArrangement();select(4,0);}
+        Localisation::setCurrent(language);applyLanguage();}
     folder.getChildFile("ui.txt").replaceWithText(ok?"PASS separate arrangement, instrument panels, full MIDI editors, drum isolation, guitar lanes/notes, instrument regeneration creates a new take":"FAIL interface routing: "+fail);return ok;
 #endif
 }

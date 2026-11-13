@@ -112,7 +112,7 @@ Le nuove rigenerazioni del piano confrontano gli attacchi della figura precedent
 
 ### Interfaccia attuale
 
-I controlli attivi sono evidenziati; le sorgenti sonore e **BLOCCA TRACCIA** usano un bordo quando selezionati. Le azioni mostrano il feedback durante la pressione senza lasciare un bordo giallo dopo il clic. L’**ambra** indica le azioni principali; piano, basso, archi, chitarra e batteria mantengono i colori della famiglia.
+I pulsanti sono tasti in rilievo che si abbassano quando li premi. Le scelte attive (sorgenti sonore, **BLOCCA TRACCIA**, **SNAP**) restano abbassate con un riquadro ambra e una leggera luce interna; dopo un clic non resta nessun bordo ambra. Le azioni principali come **GENERA BRANO**, **SEARCH** e **STUDIO** hanno un sottile filo **ambra** in alto; piano, basso, archi, chitarra e batteria mantengono i colori della famiglia.
 Ogni pulsante ha il suo tooltip. Clicca il nome per selezionare la traccia; l’ingranaggio accanto a Solo apre i controlli dello strumento. Doppio clic sul clip per le note.
 
 In alto trovi i comandi del progetto, il trasporto e quello che vale per tutti: **tempo, tonalità e scala**. Sotto scegli genere e giro di accordi; la durata mostrata è quella risultante. La parte grande è il brano, con le sezioni in orizzontale e gli strumenti in verticale.
@@ -187,7 +187,7 @@ La selezione multipla nel piano roll mantiene le distanze fra le note anche ai b
 
 <p align="center"><img src="images/guide_ai_it.png" alt="Compositore IA: esempio con Groq e quota gratuita" width="900"></p>
 
-Il pulsante ambra **CREA CON IA**, con le scintille nella barra dell’arrangiamento, apre il compositore in una finestra separata. L’IA scrive le note MIDI e le sezioni; ascolti con **suoni guida, campioni e VST/AU già assegnati** alle tracce. Tutte le note restano modificabili.
+Il pulsante **CREA CON IA**, con le scintille nella barra dell’arrangiamento, apre il compositore in una finestra separata. L’IA scrive le note MIDI e le sezioni; ascolti con **suoni guida, campioni e VST/AU già assegnati** alle tracce. Tutte le note restano modificabili.
 
 1. Scegli **SERVIZIO**. **Ollama · locale, senza API** è la scelta iniziale e non richiede chiavi: sul computer devono essere aperti Ollama e un modello di testo già scaricato. Per usare il cloud scegli Groq, OpenRouter Free, Gemini, DeepSeek, OpenAI o Anthropic / Claude; segui [Servizi IA, modelli e API gratuite](#servizi-ia-modelli-e-api-gratuite) per creare la chiave e controllare quote e costi.
 2. Scegli **MODELLO**. Per Ollama lascia normalmente `http://127.0.0.1:11434` e premi **VERIFICA**: compaiono solo i modelli locali installati; senza connessione o modelli **COMPONI** resta disabilitato. Per il cloud incolla la chiave API, scegli un suggerimento o premi **AGGIORNA** per il catalogo attuale; puoi anche scrivere un ID compatibile esatto. **Chiavi API / aiuto** apre la pagina ufficiale e mostra le istruzioni nell’anteprima; **GUIDA IA** apre il manuale. Le chiavi restano solo in memoria per la sessione.
@@ -351,7 +351,7 @@ Le mandate seguono livello e gruppo della traccia; il master controlla anche i r
 ### Navigazione e selezione
 
 - **Rotella sul righello** o **Ctrl/Cmd + rotella** sopra clip/note: zoom attorno al puntatore. **+ / −** usa il centro della vista. L’editor MIDI ha anche lo slider ZOOM.
-- **Rotella** scorre in verticale; **Maiusc + rotella** e i gesti orizzontali del trackpad scorrono in orizzontale. Nell’arrangiamento puoi trascinare con il **tasto centrale** sui due assi. La navigazione manuale disattiva SEGUI; riattivalo per seguire la riproduzione.
+- **Rotella** scorre in verticale; **Maiusc + rotella** e i gesti orizzontali del trackpad scorrono in orizzontale. Potenziometri e fader, nel mixer, nell’inspector e nei pannelli strumento, ignorano la rotellina: scorrendo sopra di essi si muove la vista, i valori si cambiano solo cliccando e trascinando. Nell’arrangiamento puoi trascinare con il **tasto centrale** sui due assi. La navigazione manuale disattiva SEGUI; riattivalo per seguire la riproduzione.
 - **ZOOM SELEZIONE / Z** inquadra i clip selezionati. Nell’editor MIDI, **Z** inquadra le note selezionate oppure tutto il clip. **ADATTA BRANO / F** torna all’intero arrangiamento.
 - **LOOP SELEZIONE / Ctrl/Cmd + L** imposta i locatori sui clip selezionati. Nell’editor usa le note selezionate oppure il clip intero. È annullabile e cambia soltanto la riproduzione.
 

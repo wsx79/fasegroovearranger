@@ -31,6 +31,8 @@ private:
 
     bool showingAbout = false;
     juce::Image artist;
+    juce::Image asioLogo;   // Windows: ASIO Compatible Logo in the About box (Steinberg ASIO Usage Guidelines 1e)
+    int aboutFooterHeight() const { return asioLogo.isValid() ? 46 : 32; }
     juce::TextButton settingsTab, aboutTab, closeButton;
     juce::TextButton sourceButton, kofiButton, paypalButton, spotifyButton;
     juce::TextButton pluginButton, audioButton, guideButton, privacyButton, licencesButton;
