@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.54.0
+
+- Afro House e Latin House sono due generi distinti. Latin House (nuovo) ha clave, cowbell, cascara, timbales e congas in tumbao, un'armonia più luminosa che cambia ogni battuta (ii–V, turnaround, cadenza andalusa, i–iv–V7), il piano in montuno sopra una mano sinistra tumbao, bassi camminati e anticipati e una forma propria (Montuno, Timbales break, Fiesta).
+- Afro House è l'Afro House moderna: cassa costante in quattro con piccole spinte, open hat in levare, shaker leggermente shuffle, loop sincopati di tom/rim e bongos, clap discreto o sincopato e rullante leggero (niente campana in 12/8); sei groove nuovi; armonia su vamp minori e modali con bassi profondi.
+- I progetti salvati prima mantengono il loro beat casuale o personale (i numeri dei pattern di batteria sono cresciuti).
+
 ## 0.53.2
 
 - Trascinando una clip con SNAP attivo, la clip stessa ora salta subito dove atterrerà, di griglia in griglia, invece di seguire il mouse e spostarsi solo al rilascio; il punto di partenza resta visibile in trasparenza.

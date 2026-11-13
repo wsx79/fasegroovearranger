@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.53.2**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.54.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 La **0.53.0** aggiunge il taglio delle clip dal bordo sinistro e legge il tempo salvato nei loop (ACID, Apple Loop, nome del file). La **0.52.0** ha permesso allo Studio di modificare stem e loop sulla timeline: tagli, velocità e guadagno si riflettono sulla clip. La **0.51.0** ha dato a pulsanti e potenziometri un aspetto hardware 3D e impedisce a potenziometri e fader di seguire la rotellina del mouse. La **0.50.0** ha portato il trascinamento fluido delle clip con SNAP on/off e griglie più fini, clip audio dai file trascinati con rilevamento di tempo e tonalità, l’Energia di sezione e una Durata obiettivo che costruisce il brano sulla lunghezza richiesta.
 
@@ -659,9 +659,9 @@ Techno ed Electro House usano generatori dedicati per batteria, basso e lead. La
 | **Drop** | Il ritorno del groove pieno. Non deve per forza suonare identico alla prima parte. |
 | **Outro** | Gli strumenti escono progressivamente dentro la sezione; l’ultima frase ritmica permette il passaggio al brano successivo. Nessuna parte per il mixaggio viene aggiunta fuori dalla canzone. |
 
-La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro & Latin** dà spazio alle percussioni; **Funky & Disco** alterna strofe e ritornelli.
+La forma segue il genere. **Deep e Chill** si sviluppano con parti più distese; **Jackin'** ha break brevi e ripartenze; **Garage & UK** alterna due drop e un taglio; **Soulful e Gospel** lavorano su risposte e riprese; **Afro House** si regge su tom sincopati, bongos e un clap discreto sopra una cassa costante, con vamp minori; **Latin House** suona clave, cowbell, timbales e un montuno di piano con accordi più luminosi che cambiano ogni battuta; **Funky & Disco** alterna strofe e ritornelli.
 
-I BPM sono scelti nel range del genere: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125. Il controllo tempo usa normalmente il range dello stile scelto; con un brano IA a tempo libero il range diventa 30–300 BPM. Le categorie Neo Soul / Broken e Chill / Pads mantengono un carattere da warm-up a BPM più bassi. La durata in secondi è `battute × 240 / BPM`.
+I BPM sono scelti nel range del genere: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro House 116–124, Latin House 120–127. Il controllo tempo usa normalmente il range dello stile scelto; con un brano IA a tempo libero il range diventa 30–300 BPM. Le categorie Neo Soul / Broken e Chill / Pads mantengono un carattere da warm-up a BPM più bassi. La durata in secondi è `battute × 240 / BPM`.
 
 Il groove di base resta riconoscibile fra le sezioni: cambiano interpretazione, densità e ruoli. Le sezioni automatiche seguono frasi da otto battute anche con progressioni di tre, cinque o sette accordi; il ciclo armonico continua attraverso i confini invece di ripartire sempre dal primo accordo.
 

@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## Unreleased
+## 0.54.0
 
 - Afro House and Latin House are two genres. Latin House (new) keeps the clave, cowbell, cascara, timbales and tumbao congas, a brighter harmony that moves every bar (ii–V, turnarounds, the Andalusian cadence, i–iv–V7), a piano montuno over a tumbao left hand and walking, anticipated bass lines, its own form (Montuno, Timbales break, Fiesta).
 - Afro House is modern afro house: steady four-on-the-floor kick with small pushes, offbeat open hat, lightly shuffled shaker, syncopated tom/rim loops and bongos, an understated or syncopated clap and a light snare (no 12/8 bell); six new grooves; harmony on hypnotic minor and modal vamps with deep, rolling bass.

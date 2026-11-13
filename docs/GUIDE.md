@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.53.2**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.54.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -654,9 +654,9 @@ Techno and Electro House use dedicated drum, bass and lead generators. Regenerat
 | **Drop** | The full groove comes back. It need not sound exactly like the first main part. |
 | **Outro** | Instruments leave progressively within the outro. The final rhythmic phrase allows the next blend; no separate mixing passage is appended outside the song. |
 
-The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro & Latin** develops its percussion; **Funky & Disco** moves between verses and choruses.
+The form follows the style. **Deep and Chill** develop through longer passages; **Jackin'** uses short breaks and returns; **Garage & UK** has two drops and a cut; **Soulful and Gospel** use answers and reprises; **Afro House** builds on syncopated toms, bongos and an understated clap over a steady kick, with minor vamps; **Latin House** plays clave, cowbell, timbales and a piano montuno with brighter chords that move every bar; **Funky & Disco** moves between verses and choruses.
 
-Tempo is chosen within the genre range: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro & Latin 115–125 BPM. The tempo control normally uses the selected style’s range; AI songs with free tempo use 30–300 BPM. Neo Soul / Broken and Chill / Pads retain their slower warm-up character. Duration in seconds is `bars × 240 / BPM`.
+Tempo is chosen within the genre range: Soulful 118–125, Deep 115–125, Garage & UK 130–135, Afro House 116–124, Latin House 120–127 BPM. The tempo control normally uses the selected style’s range; AI songs with free tempo use 30–300 BPM. Neo Soul / Broken and Chill / Pads retain their slower warm-up character. Duration in seconds is `bars × 240 / BPM`.
 
 The song keeps its base groove across sections, changing performance, density and roles. Generated sections follow eight-bar phrases even with three, five or seven chords; the harmonic cycle continues across section boundaries instead of always restarting at chord one.
 
