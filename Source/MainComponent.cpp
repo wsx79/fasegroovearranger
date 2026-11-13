@@ -1183,7 +1183,11 @@ void MainComponent::filesDropped(const juce::StringArray& files,int x,int y){
         const auto point=arrangement.getLocalPoint(this,juce::Point<int>(x,y));const int row=arrangement.rowAt(point.y);const auto view=arrangementPort.getViewArea();
         if(row>=0&&point.y>=view.getY()+rulerHeight){const int track=trackAtRow(row);if(point.x>=view.getX()+headerWidth){dropBeat=arrangement.snapBeat(std::max(0.,(point.x-headerWidth)*4./arrangement.pixelsPerBar));selectClip(track,project.clipAtBeat(track,dropBeat),false,dropBeat);}else select(track,selectedSection);}
     }
-    if(file.hasFileExtension("mid;midi"))importFile(file,dropBeat);else loadSampleFile(selectedTrack,file);
+    // A loop or stem (2 s or longer) dropped on the lanes becomes an audio clip where it lands,
+    // on a new audio track. A one-shot, or any file dropped on a track header, still loads
+    // that track's sampler (replacing a drum sound by dropping a hit on its row).
+    auto longAudio=[&]{juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> r(formats.createReaderFor(file));return r&&r->sampleRate>0&&r->lengthInSamples>=(juce::int64)(r->sampleRate*2);};
+    if(file.hasFileExtension("mid;midi"))importFile(file,dropBeat);else if(dropBeat>=0&&longAudio())importAudioClip(file,selectedTrack,dropBeat);else loadSampleFile(selectedTrack,file);
 }
 void MainComponent::showChordCirclePopover(int initialSlot){
     if(editingRestricted()||loadingPlugin||!juce::isPositiveAndBelow(selectedSection,(int)project.sections.size()))return;

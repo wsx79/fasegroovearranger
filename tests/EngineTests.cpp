@@ -21,6 +21,7 @@ void runImprovementEngineTests();
 void runStudioEngineTests();
 void runVocalChopsTests();
 void runSampleImportTests();
+void runAudioAnalysisTests();
 void runEngineAuditTests();
 void runDeepAuditEngineTests();
 void runRecordedRegionTests();
@@ -28,6 +29,7 @@ int main(int argc,char** argv){
     juce::ScopedJuceInitialiser_GUI gui;
     try{
         if(argc==2&&juce::String(argv[1])=="--sample-import-test"){runSampleImportTests();return 0;}
+        if(argc==2&&juce::String(argv[1])=="--audio-analysis-test"){runAudioAnalysisTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--sidechain"){runSidechainTests();return 0;}

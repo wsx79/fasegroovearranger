@@ -32,13 +32,13 @@ void MainComponent::loadSamplePreset(int track,const juce::File& file){
     if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||loadingPlugin||editingRestricted())return;
     startSampleImport(track,file,{},60,false,true);
 }
-void MainComponent::importAudioTakeAsync(const AudioTake& take,bool muted){
+void MainComponent::importAudioTakeAsync(const AudioTake& take,bool muted,bool analyse){
     if(loadingPlugin||editingRestricted())return;
     cancelSampleImport();auto next=project;const int target=addAudioTake(next,take,muted);
     if(target<0){message("Cannot import audio take: invalid audio or track limit.",true);return;}
     const auto settings=next.tracks[(size_t)target].sampler;const int root=next.tracks[(size_t)target].sampleRoot;
     sampleImportNextTrack=target;sampleImportProjectRevision=uiRevision;sampleImportNext=std::move(next);sampleImportRestore=false;
-    sampleImportJob=std::make_unique<SampleImportJob>(take.file,settings,root,false,audio.spectrumSampleRate(),sampleImportLimits(),false,false);
+    sampleImportJob=std::make_unique<SampleImportJob>(take.file,settings,root,false,audio.spectrumSampleRate(),sampleImportLimits(),false,false);sampleImportJob->analyse=analyse;
     if(!sampleImportJob->startThread()){sampleImportJob.reset();sampleImportNext.reset();message("Cannot start sample import worker.",true);}
 }
 void MainComponent::startSampleImport(int track,const juce::File& file,SamplerSettings settings,int root,bool automaticSlices,bool preset,bool restore){
@@ -68,11 +68,13 @@ void MainComponent::pollSampleImport(){
         if(!restoring){closePluginEditor(track,0);audio.invalidatePluginState(track,0);checkpoint();}
     });
     if(result.wasOk()){
-        if(appending){project=std::move(*appended);project.tracks[(size_t)track].sampleHash=job.asset->hash.toStdString();select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();}
+        if(appending){project=std::move(*appended);project.tracks[(size_t)track].sampleHash=job.asset->hash.toStdString();
+            if(job.analyse){auto& imported=project.tracks[(size_t)track];imported.audioBpm=job.tempo.bpm;imported.audioBpmConfidence=job.tempo.confidence;imported.audioKey=job.key.tonal?job.key.key:-1;imported.audioMinor=job.key.minor;imported.audioKeyConfidence=job.key.confidence;
+                if(job.tempo.bpm>0&&job.tempo.confidence>=.35)imported.sampler.sourceBpm=job.tempo.bpm;}select(track,project.sectionAtBeat(project.clipStart(track,0)));changed(true,track);piano.fitNotes();updateSizes();}
         else if(!restoring){const auto previous=t.sampler;t.sampler=job.settings;t.sampleRoot=job.root;
             remapVocalChops(project,track,previous,true);t.instrument="sample";t.instrumentPath=job.file.getFullPathName().toStdString();
             t.sampleHash=job.asset->hash.toStdString();t.instrumentId.clear();t.instrumentState.clear();changed(false);sampleBrowser.refreshTarget();}
-        lastSampleImportStatus="Sample loaded: "+job.file.getFileName();
+        lastSampleImportStatus="Sample loaded: "+job.file.getFileName();if(appending&&job.analyse){lastSampleImportStatus+="  ·  "+audioAnalysisSummary(project.tracks[(size_t)track]);message(lastSampleImportStatus);}
     }else{
         lastSampleImportStatus=result.getErrorMessage();
         if(restoring){audio.markMissing(track);reportExternal(lastSampleImportStatus+" · "+juce::String(t.name));}
@@ -150,7 +152,36 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
     loadSampleFile(track,file);project.tracks[(size_t)track].sampler.transpose=7;pollSampleImport();check(!sampleImportActive()&&audio.sampleAsset(track)==retained,"edited sampler rejects stale completion");project.tracks[(size_t)track].sampler.transpose=0;
     const int obsolete=project.addMidiTrack();loadSampleFile(obsolete,file);project.tracks.erase(project.tracks.begin()+obsolete);pollSampleImport();check(!sampleImportActive(),"deleted target cannot receive late sample data");
     report+="Local synchronous preparation ms="+juce::String(synchronousMs,3)+"; async dispatch ms="+juce::String(dispatchMs,3)+"; total import ms="+juce::String(completionMs,3)+"\n";
+    {   // A dropped audio file becomes an audio clip at the drop beat, analysed for tempo and key.
+        const auto loopFile=folder.getChildFile("dropped-124bpm.wav");{juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(loopFile.createOutputStream().release(),44100,2,24,{},0));
+            juce::AudioBuffer<float> b(2,44100*12);for(int i=0;i<b.getNumSamples();++i){const double t=i/44100.,in=std::fmod(t,60./124.);const float v=(float)(.7*std::exp(-in*30)*std::sin(2*juce::MathConstants<double>::pi*60*in)+.2*std::sin(2*juce::MathConstants<double>::pi*220*t)*.3);b.setSample(0,i,v);b.setSample(1,i,v);}
+            if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());}
+        const auto tracksBefore=project.tracks.size();importAudioClip(loopFile,selectedTrack,8);const bool done=waitForSampleImportForTests();
+        const int added=(int)project.tracks.size()-1;const bool created=done&&project.tracks.size()==tracksBefore+1&&project.tracks[(size_t)added].clips.size()==1&&std::abs(project.clipStart(added,0)-8)<1e-9&&project.tracks[(size_t)added].clips[0].audioOffset>=0;
+        check(created,"dropped audio becomes an audio clip at the drop beat on a new audio track");
+        if(created){const auto& t=project.tracks[(size_t)added];check(std::abs(t.audioBpm-124)<.6&&t.audioBpmConfidence>.3,"imported audio tempo detected (124 BPM)");
+            const double seconds=t.clips[0].audioDuration;adaptAudioTrack(added,0);check(project.tracks[(size_t)added].sampler.sync&&std::abs(project.clipLength(added,0)-seconds*project.tracks[(size_t)added].audioBpm/60.)<1e-3,"follow project tempo stretches the region to its musical length");
+            adaptAudioTrack(added,2);check(!project.tracks[(size_t)added].sampler.sync&&std::abs(project.clipLength(added,0)-seconds*project.settings.bpm/60.)<1e-6,"original tempo restores the native length");
+            undo(false);undo(false);}
+        loopFile.deleteFile();
+    }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif
+}
+}
+
+namespace fga {
+juce::String MainComponent::audioAnalysisSummary(const Track& t)const{
+    static const char* names[]{"C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"};
+    const auto trust=[](double c){return tr(c>=.7?"reliable":c>=.35?"likely":"uncertain");};
+    juce::String s=t.audioBpm>0?juce::String(t.audioBpm,t.audioBpm==std::round(t.audioBpm)?0:1)+" BPM ("+trust(t.audioBpmConfidence)+")":tr("tempo not detected");
+    s+="  ·  "+(t.audioKey>=0?juce::String(names[t.audioKey])+(t.audioMinor?"m":"")+" ("+trust(t.audioKeyConfidence)+")":tr("no reliable key (drums, voice or atonal)"));
+    return s;
+}
+void MainComponent::importAudioClip(const juce::File& file,int track,double beat){
+    juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
+    if(!reader||reader->sampleRate<=0||reader->lengthInSamples<=0){message(tr("Cannot read this audio file."),true);return;}
+    AudioTake take;take.file=file;take.rate=reader->sampleRate;take.frames=reader->lengthInSamples;take.start=std::max(0.,beat);take.tempo=project.settings.bpm;
+    reader.reset();juce::ignoreUnused(track);importAudioTakeAsync(take,false,true);
 }
 }

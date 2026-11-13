@@ -13,6 +13,7 @@ void SampleImportJob::run(){
         if(result.wasOk()&&expectedHash.isNotEmpty()&&asset->hash!=expectedHash)result=juce::Result::fail("Preset sample changed. Restore its media folder.");
         if(result.wasOk()&&!threadShouldExit()){
             if(autoSlice){const auto points=detectSampleSlices(*asset,0,1,.5,16);settings.slices.fill(0);settings.sliceCount=(int)points.size();std::copy(points.begin(),points.end(),settings.slices.begin());}
+            if(analyse){tempo=estimateTempo(asset->audio,asset->rate);key=estimateKey(asset->audio,asset->rate);}
             settings.normalise();prepared=std::make_unique<SampleSynth>(asset,settings,std::clamp(root,0,127),drum);prepared->setCurrentPlaybackSampleRate(rate);progress=1;
         }
     }catch(const std::exception& e){result=juce::Result::fail("Sample import failed: "+juce::String(e.what()));}

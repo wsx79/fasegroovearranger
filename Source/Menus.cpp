@@ -156,10 +156,18 @@ void MainComponent::showClipMenu(int track,int index){
     const auto* candidate=hasClip?&source.clips[(size_t)index]:nullptr;
     const bool convertible=candidate&&candidate->audioOffset<0&&source.instrument=="sample"&&(source.sampler.mode==1||(source.sampler.mode<0&&isDrumTrack(track)))&&candidate->notes.size()==1&&candidate->notes[0].pitch==source.sampleRoot&&std::abs(candidate->notes[0].start)<1e-9&&audio.sampleAsset(track);
     menu.addItem(30,tr("Convert to Audio Region"),convertible);
+    // Imported audio: adapt to the project's tempo and key from the analysis made at import.
+    if(candidate&&candidate->audioOffset>=0&&source.instrument=="sample"){static const char* keys[]{"C","C#","D","Eb","E","F","F#","G","Ab","A","Bb","B"};
+        juce::PopupMenu adapt;adapt.addSectionHeader(audioAnalysisSummary(source));
+        adapt.addItem(40,tr("Follow project tempo")+(source.audioBpm>0?"  ("+juce::String(source.audioBpm,1)+" BPM)":juce::String()),source.audioBpm>0,source.sampler.sync&&source.audioBpm>0&&std::abs(source.sampler.sourceBpm-source.audioBpm)<1e-6);
+        adapt.addItem(41,tr("Transpose to project key")+(source.audioKey>=0?"  ("+juce::String(keys[source.audioKey])+(source.audioMinor?"m":"")+")":juce::String()),source.audioKey>=0);
+        adapt.addItem(42,tr("Original tempo and key"),source.sampler.sync||source.sampler.transpose!=0||source.sampler.fine!=0);
+        menu.addSubMenu(tr("Audio: tempo and key"),adapt);}
     menu.addItem(32,tr("Clear Extracted Groove"),project.settings.grooveEnabled);menu.addItem(31,tr("Reset Clip Feel to Global"),candidate&&std::any_of(candidate->feel.begin(),candidate->feel.end(),[](double v){return v>=0;}));
     menu.addItem(1,tr("Rigenera solo questo clip"),hasClip);menu.addItem(2,tr("Blocca generazione"),hasClip,hasClip&&project.tracks[(size_t)track].clips[(size_t)index].locked);menu.addItem(6,tr("LOOP CLIP"),hasClip,hasClip&&project.loop&&project.loopMatches(project.clipStart(track,index),project.clipStart(track,index)+project.clipLength(track,index)));menu.addItem(7,tr("Clear loop"),project.loop||project.hasLoopRegion());
     juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,track,index](int id){if(!safe||!id)return;safe->selectClip(track,index,true);
         if(id==30){const auto asset=safe->audio.sampleAsset(track);if(!asset)return;safe->checkpoint();auto& t=safe->project.tracks[(size_t)track];auto& c=safe->clip();c.span=safe->clipLength();c.audioOffset=t.sampler.start*asset->seconds();c.audioDuration=std::min(c.span*60./safe->project.settings.bpm,std::max(0.,t.sampler.end*asset->seconds()-c.audioOffset));if(c.audioDuration<=0){safe->undo(false);return;}c.loopLength=c.loopPhase=0;c.loopSource.clear();c.notes[0].length=c.span;safe->changed();return;}
+        if(id>=40&&id<=42){safe->adaptAudioTrack(track,id-40);return;}
         if(id==32){safe->checkpoint();safe->project.settings.grooveEnabled=false;generate(safe->project);safe->changed();return;}
         if(id==31){safe->checkpoint();safe->clip().feel={-1,-1,-1};generate(safe->project,Scope::clip,track,safe->clipIndex(),0);safe->changed();return;}
         if(id==4){safe->checkpoint();humanize(safe->clip(),.65,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),safe->clipLength());tidyNotes(safe->clip(),safe->clipLength());safe->changed();return;}if(id==19){safe->renameClip(track,index);return;}if(id>=11&&id<=18){safe->timelineCommand(id-10);return;}if(id==1)safe->regenerate(Scope::clip);if(id==2){safe->checkpoint();safe->clip().locked=!safe->clip().locked;safe->changed(false);}if(id==6)safe->toggleClipLoop();if(id==7)safe->clearLoop();});
@@ -442,5 +450,23 @@ bool MainComponent::verifyExports(const juce::File& folder,const juce::PluginDes
     if(effect){closePluginEditor();audio.clearEffect(0,1);}
     project=saved;projectFile=savedFile;dirty=wasDirty;audio.publish(project);Localisation::setSetting("exportSampleRate",oldRate);Localisation::setSetting("exportBitDepth",oldBits);Localisation::setSetting("lastExportFolder",oldFolder);Localisation::setSetting("lastSaveFolder",oldSave);refreshControls();folder.getChildFile("export-ui.txt").replaceWithText(report);return ok;
 #endif
+}
+}
+
+namespace fga {
+// 0: follow the project tempo (pitch-preserving stretch from the detected BPM); 1: transpose to
+// the project key (also through the stretcher, so the tempo is unchanged); 2: original.
+// The region keeps its source seconds; its length in beats follows how it now plays.
+void MainComponent::adaptAudioTrack(int track,int action){
+    if(!juce::isPositiveAndBelow(track,(int)project.tracks.size())||editingRestricted())return;checkpoint();auto& t=project.tracks[(size_t)track];auto& s=t.sampler;
+    if(action==0&&t.audioBpm>0){s.sync=true;s.sourceBpm=t.audioBpm;}
+    if(action==1&&t.audioKey>=0){const auto h=activeHarmony(project,selectedSection);const bool projectMinor=sgk::scaleIsMinor(h.scale);
+        const int tonic=(h.key+(t.audioMinor&&!projectMinor?9:!t.audioMinor&&projectMinor?3:0))%12;s.transpose=((tonic-t.audioKey)%12+18)%12-6;s.fine=0;
+        if(!s.sync){s.sync=true;s.sourceBpm=project.settings.bpm;}}
+    if(action==2){s.sync=false;s.transpose=0;s.fine=0;}
+    s.normalise();
+    for(auto& c:t.clips)if(c.audioOffset>=0&&c.audioDuration>0){const double beats=c.audioDuration*(s.sync?s.sourceBpm:project.settings.bpm)/60.;c.span=beats;for(auto& n:c.notes){n.start=0;n.length=beats;}}
+    project.normalise();changed();
+    message(action==0?tr("Audio follows the project tempo; pitch is preserved. Undo restores it."):action==1?tr("Audio transposed to the project key")+" ("+juce::String(s.transpose>0?"+":"")+juce::String(s.transpose)+" st). "+tr("Undo restores it."):tr("Original tempo and key restored."));
 }
 }

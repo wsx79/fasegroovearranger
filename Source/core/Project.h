@@ -131,6 +131,9 @@ struct Track {
     std::vector<ParameterAutomation> parameters; // hosted plugin parameters, at most maxParameterLanes
     SamplerSettings sampler;
     std::string sampleHash;
+    // Analysis of an imported audio file (0 / -1 = not analysed). Kept with the project so
+    // "adapt to project" can be offered later; never changes playback by itself.
+    double audioBpm=0,audioBpmConfidence=0,audioKeyConfidence=0;int audioKey=-1;bool audioMinor=false;
     int group=-1;
     std::array<double,2> sends{};
     EngineOptions engine;

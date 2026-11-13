@@ -554,7 +554,10 @@ private:
     void exportFile(int type,int track,const juce::File& destination={},bool configured=false);
     void loadSampleFile(int,const juce::File&);
     void loadSamplePreset(int,const juce::File&);
-    void importAudioTakeAsync(const AudioTake&,bool muted);
+    void importAudioTakeAsync(const AudioTake&,bool muted,bool analyse=false);
+    void importAudioClip(const juce::File&,int track,double beat);   // a dropped audio file becomes an audio clip at that beat
+    juce::String audioAnalysisSummary(const Track&)const;
+    void adaptAudioTrack(int track,int action);
     void startSampleImport(int,const juce::File&,SamplerSettings,int root,bool automaticSlices,bool preset,bool restore=false);
     void pollSampleImport();
     void cancelSampleImport();
