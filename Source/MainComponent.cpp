@@ -514,11 +514,11 @@ void MainComponent::updateEditingAvailability(){
     }
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
-void MainComponent::checkpoint(){lastCheckpointControl=nullptr;if(!loadingPlugin)captureUndoPluginStates();undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
-void MainComponent::checkpointMix(const void* control){const auto now=juce::Time::getMillisecondCounter();if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpoint(){++editRevision;lastCheckpointControl=nullptr;if(!loadingPlugin)captureUndoPluginStates();undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+void MainComponent::checkpointMix(const void* control){++editRevision;const auto now=juce::Time::getMillisecondCounter();if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
-    const auto now=juce::Time::getMillisecondCounter();
+    ++editRevision;const auto now=juce::Time::getMillisecondCounter();
     if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}
     checkpoint();lastCheckpointControl=control;lastCheckpointTime=now;
 }

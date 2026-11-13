@@ -448,6 +448,9 @@ public:
     }
     void endSession(){owner.audio.monitorSamplePitch(-1);owner.audio.stopSampleAudition();finish();finishAudioTake();releasePads();keys.allNotesOff(0);refreshAudioControls();}
     void refreshSampleState(){refresh();}
+    int editedTrack(){return selected()?track:-1;}
+    bool setControlForTests(const juce::String& caption,double value){for(auto& f:fields){const auto source=f.caption->getProperties()["labelSource"].toString();if(f.caption->getText()==caption||source==caption||f.caption->getText().equalsIgnoreCase(tr(caption))){f.slider->setValue(value,juce::sendNotificationSync);return true;}}return false;}
+    void trimSilenceForTests(){trimSilence.triggerClick();juce::MessageManager::getInstance()->runDispatchLoopUntil(30);}
     void showTab(int n){owner.audio.stopSampleAudition();if(!owner.audio.isRecording())setTarget(std::clamp(owner.selectedTrack,0,(int)owner.project.tracks.size()-1));tabs.setCurrentTabIndex(std::clamp(n,0,2));resized();refresh();if(!owner.audio.isRecording())owner.audio.setMidiMonitor(track,monitor.getToggleState());}
     void paint(juce::Graphics& g)override{g.fillAll(StudioStyle::base);Daw::fillElevatedSurface(g,{0.f,0.f,(float)getWidth(),52.f},StudioStyle::surface);g.setColour(StudioStyle::line);g.drawHorizontalLine(51,0.f,(float)getWidth());}
     void resized()override{
@@ -630,6 +633,9 @@ StudioWindow::StudioWindow(MainComponent& m):DocumentWindow("FASE GROOVE - STUDI
 void StudioWindow::resized(){juce::DocumentWindow::resized();dismissButton.setBounds(getWidth()-46,12,28,28);dismissButton.toFront(false);}
 StudioWindow::~StudioWindow(){clearContentComponent();setLookAndFeel(nullptr);}
 void StudioWindow::refreshSampleState(){panel->refreshSampleState();}
+int StudioWindow::editedTrack(){return panel->editedTrack();}
+bool StudioWindow::setControlForTests(const juce::String& caption,double value){return panel->setControlForTests(caption,value);}
+void StudioWindow::trimSilenceForTests(){panel->trimSilenceForTests();}
 void StudioWindow::finishRecording(){panel->endSession();}
 void StudioWindow::closeButtonPressed(){panel->endSession();owner.dismissAuxiliaryWindow(*this);}
 bool StudioWindow::verify(const juce::File& folder){bool ok=panel->verify(folder);const juce::Point<int> standard(getWidth(),getHeight());setSize(standard.x+160,standard.y+100);ok=getWidth()==standard.x+160&&ok;setTopLeftPosition(7,9);dismissButton.onClick();ok=!isVisible()&&getName()=="FASE GROOVE - STUDIO"&&ok;open(0);ok=getWidth()==standard.x&&getHeight()==standard.y&&isAlwaysOnTop()&&isVisible()&&getPosition()!=juce::Point<int>(7,9)&&ok;folder.getChildFile("studio.txt").replaceWithText(ok?"PASS native Studio panels, sample load/trim/undo, MIDI routing and take recovery on close, drum slice pitches/editor, always-on-top and centred reopening":"FAIL Studio integration");return ok;}

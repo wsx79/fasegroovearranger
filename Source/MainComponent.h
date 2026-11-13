@@ -518,6 +518,9 @@ private:
     int sampleImportRoot=60;bool sampleImportRestore=false;
     juce::String lastSampleImportStatus;
     std::uint64_t uiRevision=0;
+    // Counts project edits (every checkpoint, also coalesced control steps). A dropped audio file
+    // is imported into a copy of the project: only a real edit meanwhile cancels it, not selecting.
+    std::uint64_t editRevision=0;
     void refreshControls();
     void refreshTrack();
     void updateSizes();

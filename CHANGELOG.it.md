@@ -1,11 +1,9 @@
 # Novità — Fase Groove Arranger
 
-## In arrivo
+## 0.52.0
 
-- Stem e loop: trascinando un file audio sulla timeline si apre lo Studio, che ora modifica la clip audio stessa. START / END (manopole o maniglie della forma d'onda) tagliano la clip sul posto, eliminando i silenzi all'inizio o alla fine; il nuovo **TAGLIA SILENZI** trova da solo dove il suono inizia e finisce. TEMPO SYNC e SOURCE BPM la adattano al tempo del progetto; senza Tempo Sync, TRASPOSIZIONE / FINE ne cambiano la velocità e la lunghezza della clip segue. Nuovo **GUADAGNO (dB)** per campione (−24…+24 dB, salvato nel progetto). Menu della clip audio: **Modifica nello Studio**. Un Annulla per ogni modifica.
+- Stem e loop: trascinando un file audio sulla timeline si apre lo Studio, che ora modifica la clip audio stessa. START / END (manopole o maniglie della forma d'onda) tagliano la clip sul posto, eliminando i silenzi all'inizio o alla fine; il nuovo **TAGLIA SILENZI** trova da solo dove il suono inizia e finisce. TEMPO SYNC e SOURCE BPM la adattano al tempo del progetto; senza Tempo Sync, TRASPOSIZIONE / FINE ne cambiano la velocità e la lunghezza della clip segue. Nuovo **GUADAGNO (dB)** per campione (−24…+24 dB, salvato nel progetto). Il doppio clic sulla clip audio, il pulsante strumento della traccia o la voce **Modifica nello Studio** del menu della clip aprono lo Studio su di essa. Un Annulla per ogni modifica. Un file trascinato sulla timeline non viene più perso in silenzio se, mentre si importa, selezioni un'altra traccia.
 - Guida: il logo di copertina è un SVG semplice che tutti i browser disegnano allo stesso modo; nella guida dell'app la bandierina non appare più come riquadri "GB".
-
-## 0.51.1
 
 - Guida e README: tutte le schermate sostituite con l'interfaccia attuale (arrangiamento, corsie e mixer della chitarra, piano, lead, campionatore, registrazione, gruppi, compositore IA, impostazioni, inspector); il testo descrive i nuovi tasti e il comportamento della rotellina.
 - Finestra Informazioni su Windows: logo ASIO Compatible accanto all'avviso del marchio ASIO®, come chiedono le linee guida Steinberg; le righe dei marchi non si sovrappongono più ai pulsanti. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.

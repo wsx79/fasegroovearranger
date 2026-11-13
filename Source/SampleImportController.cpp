@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
 #include "Localisation.h"
+#include "StudioWindow.h"
 namespace fga {
 SampleLoadLimits MainComponent::sampleImportLimits()const{
     SampleLoadLimits limits;
@@ -37,7 +38,7 @@ void MainComponent::importAudioTakeAsync(const AudioTake& take,bool muted,bool a
     cancelSampleImport();auto next=project;const int target=addAudioTake(next,take,muted);
     if(target<0){message("Cannot import audio take: invalid audio or track limit.",true);return;}
     const auto settings=next.tracks[(size_t)target].sampler;const int root=next.tracks[(size_t)target].sampleRoot;
-    sampleImportNextTrack=target;sampleImportProjectRevision=uiRevision;sampleImportNext=std::move(next);sampleImportRestore=false;
+    sampleImportNextTrack=target;sampleImportProjectRevision=editRevision;sampleImportNext=std::move(next);sampleImportRestore=false;
     sampleImportJob=std::make_unique<SampleImportJob>(take.file,settings,root,false,audio.spectrumSampleRate(),sampleImportLimits(),false,false);sampleImportJob->analyse=analyse;
     if(!sampleImportJob->startThread()){sampleImportJob.reset();sampleImportNext.reset();message("Cannot start sample import worker.",true);}
 }
@@ -53,7 +54,7 @@ void MainComponent::pollSampleImport(){
     if(!sampleImportJob)return;
     const bool appending=sampleImportNext.has_value();
     int track=appending?sampleImportNextTrack:-1;
-    if(appending&&uiRevision!=sampleImportProjectRevision){cancelSampleImport();return;}
+    if(appending&&editRevision!=sampleImportProjectRevision){cancelSampleImport();return;}
     if(!appending)for(size_t i=0;i<project.tracks.size();++i)if(project.tracks[i].sessionId==sampleImportSession){track=(int)i;break;}
     if(track<0){cancelSampleImport();return;}
     auto& t=appending?sampleImportNext->tracks[(size_t)track]:project.tracks[(size_t)track];
@@ -189,6 +190,43 @@ bool MainComponent::verifySampleImport(const juce::File& folder){
             undo(false);}
         stemFile.deleteFile();
     }
+    {   // End to end through the interface: drop -> the Studio opens on the track; the track's
+        // instrument button and a double-click on the clip open it again; the Studio's own knobs
+        // edit the clip, and the rendered audio starts on the sound at the clip's start.
+        const auto stemFile=folder.getChildFile("stem-late-start.wav");{juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatWriter> w(wav.createWriterFor(stemFile.createOutputStream().release(),44100,2,24,{},0));
+            juce::AudioBuffer<float> b(2,44100*5);b.clear();for(int i=44100;i<44100*4;++i){const float v=.5f*std::sin((float)i*.031f);b.setSample(0,i,v);b.setSample(1,i,v);}
+            if(w)w->writeFromAudioSampleBuffer(b,0,b.getNumSamples());}
+        waitForSampleImportForTests();juce::MessageManager::getInstance()->runDispatchLoopUntil(50);   // let Undo's sample restores of the earlier blocks finish
+        lastSampleImportStatus.clear();const auto editsBefore=editRevision;importAudioClip(stemFile,selectedTrack,4,true);select(0,0);   // selecting another track while it imports must not drop it
+        const bool done=waitForSampleImportForTests();juce::MessageManager::getInstance()->runDispatchLoopUntil(80);const int added=(int)project.tracks.size()-1;
+        auto studioOn=[&]{return studioWindow&&studioWindow->isVisible()&&studioWindow->editedTrack()==added;};auto closeStudio=[&]{if(studioWindow)studioWindow->setVisible(false);};
+        check(done&&studioOn(),"dropping audio opens the Studio on its new track, even after selecting another track meanwhile");if(!(done&&studioOn()))report+="INFO done="+juce::String((int)done)+" tracks="+juce::String((int)project.tracks.size())+" last="+juce::String(project.tracks.back().name)+" active="+juce::String((int)sampleImportActive())+" restricted="+juce::String((int)editingRestricted())+" edits="+juce::String((int)(editRevision-editsBefore))+" size="+juce::String(stemFile.getSize())+" status="+lastSampleImportStatus+"\n";
+        closeStudio();select(0,0);openInstrumentFor(added);check(studioOn(),"the audio track's instrument button opens the Studio on it");
+        closeStudio();select(0,0);showArrangement();arrangementPort.setViewPosition(0,0);resized();
+        {int row=-1;for(int r=0;r<(int)project.tracks.size();++r)if(trackAtRow(r)==added){row=r;break;}
+         const float x=(float)(216+project.clipStart(added,0)*arrangement.pixelsPerBar/4.+3.),y=(float)(arrangement.rowY(row)+arrangement.rowHeight(row)-6);
+         const auto source=juce::Desktop::getInstance().getMainMouseSource();const auto now=juce::Time::getCurrentTime();const juce::Point<float> at(x,y);
+         if(row>=0)arrangement.mouseDoubleClick(juce::MouseEvent(source,at,juce::ModifierKeys::leftButtonModifier,1,0,0,0,0,&arrangement,&arrangement,now,at,now,2,false));
+         check(row>=0&&studioOn()&&page==Page::arrangement,"double-clicking the audio clip opens the Studio on it (not the MIDI editor)");}
+        if(studioOn()){const auto before=undoStack.size();const double position=project.clipStart(added,0);
+            const bool moved=studioWindow->setControlForTests("START",1./5.);const auto& c=project.tracks[(size_t)added].clips[0];
+            check(moved&&std::abs(c.audioOffset-1.)<.002&&std::abs(c.audioDuration-4.)<.002&&std::abs(project.clipStart(added,0)-position)<1e-9&&undoStack.size()==before+1,
+                  "Studio START at 1 s: the clip keeps its place and starts on the sound (one Undo)");
+            // Export only this track (the Export menu's track render) and find where the sound begins.
+            const auto exported=folder.getChildFile("stem-late-start-export.wav");exported.deleteFile();
+            const auto rendered=audio.exportAudio(project,exported,added,false,[]{return false;},[](double){});
+            double onset=-1;{juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(exported));
+                if(reader){juce::AudioBuffer<float> mix((int)reader->numChannels,(int)reader->lengthInSamples);reader->read(&mix,0,mix.getNumSamples(),0,true,true);
+                    for(int i=0;i<mix.getNumSamples()&&onset<0;++i)for(int ch=0;ch<mix.getNumChannels();++ch)if(std::abs(mix.getSample(ch,i))>.01f){onset=i/reader->sampleRate;break;}}}
+            const double expected=position*60./project.settings.bpm;exported.deleteFile();
+            check(rendered.wasOk()&&onset>=0&&std::abs(onset-expected)<.03,"exported audio starts on the sound at the clip start");report+="MEASURED "+(rendered.wasOk()?juce::String():rendered.getErrorMessage()+" ")+"sound onset "+juce::String(onset,3)+" s, clip start "+juce::String(expected,3)+" s\n";
+            const double length=project.clipLength(added,0);studioWindow->setControlForTests("TRANSPOSE",12);
+            check(std::abs(project.clipLength(added,0)-length/2)<1e-6,"Studio TRANSPOSE +12 (no Tempo Sync): twice as fast, the clip on the track halves");
+            studioWindow->setControlForTests("GAIN (dB)",-6);check(std::abs(project.tracks[(size_t)added].sampler.gainDb+6)<1e-9,"Studio GAIN sets the clip's level");
+            studioWindow->trimSilenceForTests();check(std::abs(project.tracks[(size_t)added].clips[0].audioOffset-(1.-.005))<.003,"TRIM SILENCE button trims the clip on the track");
+            while(undoStack.size()>before)undo(false);check(std::abs(project.tracks[(size_t)added].clips[0].audioOffset)<1e-9&&project.tracks[(size_t)added].sampler.gainDb==0,"Undo restores the clip as dropped");}
+        closeStudio();undo(false);stemFile.deleteFile();
+    }
     folder.getChildFile("sample-import.txt").replaceWithText(report);return ok;
 #endif
 }
@@ -206,6 +244,6 @@ void MainComponent::importAudioClip(const juce::File& file,int track,double beat
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
     if(!reader||reader->sampleRate<=0||reader->lengthInSamples<=0){message(tr("Cannot read this audio file."),true);return;}
     AudioTake take;take.file=file;take.rate=reader->sampleRate;take.frames=reader->lengthInSamples;take.start=std::max(0.,beat);take.tempo=project.settings.bpm;
-    reader.reset();juce::ignoreUnused(track);importAudioTakeAsync(take,false,true);openStudioAfterImport=openStudio&&sampleImportActive();
+    reader.reset();juce::ignoreUnused(track);openStudioAfterImport=openStudio;importAudioTakeAsync(take,false,true);if(!sampleImportActive()&&openStudioAfterImport){openStudioAfterImport=false;}
 }
 }

@@ -30,9 +30,9 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.51.1**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.52.0**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
-**0.51.0** gives buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
+**0.52.0** lets the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
 **0.45.0** adds a short full-band stop before some drops, build-ups that rise into the drop, NEW FEEL that changes only timing and dynamics, and a clearer Mix/Mastering Assistant with measured-value cards.
 
@@ -276,7 +276,7 @@ Drop an audio file from the browser or operating system onto the waveform, or pr
 
 **SAMPLER.** Load WAV, AIFF, FLAC or OGG samples up to 30 minutes and 512 MiB decoded per file. Drag the nearest waveform edge to trim start/end; **mouse wheel** and **trackpad pinch** zoom around the pointer; horizontal gestures or **Shift+wheel** move the view. **Double-click** fits the whole sample. **ZERO CROSSING** snaps an edit to a nearby zero crossing. Start/end values are fractions of the sample, from 0 to 1; fades and envelope times are seconds.
 
-**Stems and loops on the timeline.** Drop an audio file on the timeline and the Studio opens on its new audio track. What you change there updates the clip straight away: move **START** to where the sound begins (or press **TRIM SILENCE**) and the clip starts on the sound in the same place on the timeline; move **END**, and it ends there. **TEMPO SYNC** with **SOURCE BPM** stretches it to the project tempo without changing pitch; without Tempo Sync, **TRANSPOSE** and **FINE** change speed and pitch together, and the clip gets shorter or longer to match. **GAIN (dB)** sets the level of the audio itself, before the track fader. The audio clip menu (right-click) also has **Edit in Studio**. Every change has one Undo.
+**Stems and loops on the timeline.** Drop an audio file on the timeline and the Studio opens on its new audio track. What you change there updates the clip straight away: move **START** to where the sound begins (or press **TRIM SILENCE**) and the clip starts on the sound in the same place on the timeline; move **END**, and it ends there. **TEMPO SYNC** with **SOURCE BPM** stretches it to the project tempo without changing pitch; without Tempo Sync, **TRANSPOSE** and **FINE** change speed and pitch together, and the clip gets shorter or longer to match. **GAIN (dB)** sets the level of the audio itself, before the track fader. Double-click the clip, or use the track's instrument button or **Edit in Studio** in the clip menu (right-click), to open it again. Every change has one Undo.
 
 **AMPLITUDE ENVELOPE** on the waveform shows or hides the curve, handles and volume shape; initially hidden. This changes only the view. **REVERSE** also updates the waveform: it mirrors the active region or each slice in Slices mode, matching playback.
 

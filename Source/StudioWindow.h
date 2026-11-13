@@ -13,6 +13,11 @@ public:
     void refreshSampleState();
     void open(int tab=0);
     bool verify(const juce::File& folder);
+    // Self-tests drive the real controls: the track the Studio edits, a knob moved through its
+    // own callback (Undo checkpoint, commit, audio clip sync) and the TRIM SILENCE button.
+    int editedTrack();
+    bool setControlForTests(const juce::String& caption,double value);
+    void trimSilenceForTests();
 private:
     class Panel;
     MainComponent& owner;
