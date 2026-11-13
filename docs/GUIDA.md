@@ -76,6 +76,8 @@ Download e preparazione rimangono in `Downloads/Fase Groove Arranger updates`, o
 
 **Windows, ASIO®:** in **Dispositivo audio / buffer** scegli **ASIO** come tipo di dispositivo per usare il driver ASIO della tua scheda audio a bassa latenza. Windows Audio (WASAPI) e DirectSound restano disponibili. ASIO è un marchio registrato di Steinberg Media Technologies GmbH.
 
+<p align="center"><img src="images/asio-compatible-logo-bw.png" alt="ASIO Compatible" width="120"></p>
+
 > Parti dal suono guida. Puoi ascoltare e costruire tutto il brano prima di scegliere i tuoi strumenti.
 
 ---

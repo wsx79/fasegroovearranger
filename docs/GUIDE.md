@@ -76,6 +76,8 @@ Downloads and staging remain in `Downloads/Fase Groove Arranger updates`, or Doc
 
 **Windows, ASIO®:** in **Audio device / buffer** choose **ASIO** as the device type to use your audio interface's ASIO driver for low latency. Windows Audio (WASAPI) and DirectSound remain available. ASIO is a registered trademark of Steinberg Media Technologies GmbH.
 
+<p align="center"><img src="images/asio-compatible-logo-bw.png" alt="ASIO Compatible" width="120"></p>
+
 > Start with the guide sound. You can hear and build the whole song before choosing your instruments.
 
 ---
