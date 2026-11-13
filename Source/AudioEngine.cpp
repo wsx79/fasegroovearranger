@@ -943,8 +943,8 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     std::uint32_t frames=0;const juce::int64 encodeTotal=total+Mp3Encoder::encoderDelay+Mp3Encoder::decoderDelay;
     for(juce::int64 at=0;at<encodeTotal;at+=frame){++frames;if(cancelled())return juce::Result::fail("Esportazione annullata.");audio.clear();if(at<total)reader->read(&audio,0,(int)std::min<juce::int64>(frame,total-at),at,true,true);
         for(int i=0;i<frame;++i)for(int ch=0;ch<2;++ch)pcm[(size_t)i*2+(size_t)ch]=(std::int16_t)std::lround(std::clamp(audio.getSample(ch,i),-.999f,.999f)*32767.f);
-        auto bytes=encoder.encode(pcm.data());if(!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");progress(.8+.2*std::min(1.,(double)(at+frame)/(double)encodeTotal));
-    }auto bytes=encoder.flush();if(!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");
+        auto bytes=encoder.encode(pcm.data());if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");progress(.8+.2*std::min(1.,(double)(at+frame)/(double)encodeTotal));
+    }auto bytes=encoder.flush();if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");
     const auto info=Mp3Encoder::infoFrame(frames,(std::uint32_t)out->getPosition(),total);
     if(!out->setPosition(0)||!out->write(info.data(),info.size()))return juce::Result::fail("Scrittura MP3 fallita.");out->flush();if(out->getStatus().failed())return juce::Result::fail("Scrittura MP3 fallita.");out.reset();
     if(cancelled())return juce::Result::fail("Esportazione annullata.");

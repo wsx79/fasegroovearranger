@@ -106,7 +106,7 @@ private:
         auto screen=diagram.toFloat();Daw::deviceScreen(g,screen);
         const float room=(float)sliders[0]->getValue(),damp=(float)sliders[1]->getValue(),mix=(float)sliders[2]->getValue();
         const float seconds=.4f+room*3.6f,shown=std::max(2.f,std::ceil(seconds*1.25f));
-        auto meters=screen.removeFromRight(64.f);auto plot=screen.reduced(18.f,16.f);plot.removeFromTop(46.f);auto axis=plot.removeFromBottom(16.f);
+        auto meters=screen.removeFromRight(64.f);meterStrip=meters.toNearestInt();auto plot=screen.reduced(18.f,16.f);plot.removeFromTop(46.f);auto axis=plot.removeFromBottom(16.f);
         g.setFont(Daw::font(10.f));
         for(int t=0;t<=(int)shown;++t){const float x=plot.getX()+plot.getWidth()*t/shown;g.setColour(juce::Colours::white.withAlpha(.05f));g.drawVerticalLine((int)x,plot.getY(),plot.getBottom());g.setColour(Daw::textFaint);g.drawText(juce::String(t)+" s",juce::Rectangle<float>(x-16,axis.getY()+2,32,12),juce::Justification::centred);}
         g.setColour(juce::Colours::white.withAlpha(.12f));g.drawHorizontalLine((int)plot.getBottom(),plot.getX(),plot.getRight());
@@ -167,11 +167,13 @@ private:
         bool changed=false;
         for(size_t i=0;i<sliders.size();++i){bool editing=gestures[i];for(auto* child:sliders[i]->getChildren())if(auto* label=dynamic_cast<juce::Label*>(child))editing=editing||label->isBeingEdited();const auto next=processor.getParameters()[(int)i]->getValue();if(!editing&&std::abs(sliders[i]->getValue()-next)>1.e-7){sliders[i]->setValue(next,juce::dontSendNotification);changed=true;}}
         const auto bpm=processor.currentBpm();if(delay&&std::abs(bpm-lastBpm)>.001){lastBpm=bpm;changed=true;}
-        if(!delay){auto follow=[](float& shown,float target){shown=target>shown?target:shown*.86f;};for(int c=0;c<2;++c){follow(inShown[c],processor.inLevel[c].load(std::memory_order_relaxed));follow(outShown[c],processor.outLevel[c].load(std::memory_order_relaxed));}repaint(diagram);}
+        if(!delay){auto follow=[](float& shown,float target){shown=target>shown?target:shown*.86f;if(shown<1.e-6f)shown=0;};for(int c=0;c<2;++c){follow(inShown[c],processor.inLevel[c].load(std::memory_order_relaxed));follow(outShown[c],processor.outLevel[c].load(std::memory_order_relaxed));}
+            // Only the meter strip moves with the signal; the impulse view redraws on parameter changes.
+            const float metered=inShown[0]+inShown[1]+outShown[0]+outShown[1];if(std::abs(metered-lastMetered)>1.e-5f){lastMetered=metered;repaint(meterStrip);}}
         if(changed)repaint(diagram);
     }
     ReturnEffect& processor;bool delay;juce::Colour colour;DawLookAndFeel theme;double lastBpm=0;
-    juce::Rectangle<int> diagram,readout;float inShown[2]{},outShown[2]{};std::vector<juce::Rectangle<int>> tiles;
+    juce::Rectangle<int> diagram,readout,meterStrip;float lastMetered=-1;float inShown[2]{},outShown[2]{};std::vector<juce::Rectangle<int>> tiles;
     std::vector<std::unique_ptr<juce::Slider>> sliders;std::vector<std::unique_ptr<juce::Label>> labels;std::array<bool,5> gestures{};
 };
 juce::AudioProcessorEditor* ReturnEffect::createEditor(){return new ReturnEditor(*this);}

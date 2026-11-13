@@ -344,7 +344,7 @@ void InstrumentPanel::resized(){
         card("PROGRESSION",18,10,W-36,128);
         put("Ready progressions",32,59,134,28);tool("RANDOM CHORDS",174,59,74);put("Length",32,105,94,24);put("Each chord",134,105,180,24);
         tool("VARIANTS",150,17,96);tool("LEARN",256,59,58);
-        const auto& names=owner.cachedChordNames();const int slotW=(W-346)/8;
+        const int slotW=(W-346)/8;
         for(int i=0;i<8;++i){const int x=328+i*slotW;put("Degree "+juce::String(i+1),x,101,slotW-8,24);
             if(piano&&track==0){put("Inversion "+juce::String(i+1),x,40,slotW-8,22);for(auto& c:controls)if(c.component->getProperties()["fgaControl"].toString()=="Inversion "+juce::String(i+1))if(auto* slider=dynamic_cast<juce::Slider*>(c.component.get())){slider->setSliderStyle(juce::Slider::IncDecButtons);slider->setTextBoxStyle(juce::Slider::TextBoxLeft,false,32,20);}}
         }

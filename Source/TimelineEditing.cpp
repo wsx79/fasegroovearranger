@@ -55,9 +55,9 @@ void MainComponent::timelineCommand(int command){
     if(command==1||command==2){if(!have)return;timelineClipboard=pieces;if(command==2){message("Clips copied. Paste places them at the playback cursor.");return;}}
     if(command==3&&timelineClipboard.empty())return;
     if(command!=3&&command!=8&&!have)return;
-    auto edited=project;std::vector<ClipPlacement> placed;int splitIndex=-1;double splitBeat=timelinePosition();
+    auto edited=project;std::vector<ClipPlacement> placed;int splitIndex=-1;
     if(command==1||command==6){if(!edited.removeClipGroup(ids)){message("Clip edit exceeds the project limits.",true);return;}}
-    if(command==4){const double beat=arrangement.snapBeat(timelinePosition());if(std::none_of(pieces.begin(),pieces.end(),[&](const ClipGroupPiece& piece){return piece.rowDelta==0&&beat>origin+piece.clip.position&&beat<origin+piece.clip.position+piece.clip.span;}))return;const int index=edited.clipAtBeat(selectedTrack,beat);if(index<0)return;splitIndex=edited.splitClip(selectedTrack,index,beat);if(splitIndex<0)return;splitBeat=beat;}
+    if(command==4){const double beat=arrangement.snapBeat(timelinePosition());if(std::none_of(pieces.begin(),pieces.end(),[&](const ClipGroupPiece& piece){return piece.rowDelta==0&&beat>origin+piece.clip.position&&beat<origin+piece.clip.position+piece.clip.span;}))return;const int index=edited.clipAtBeat(selectedTrack,beat);if(index<0)return;splitIndex=edited.splitClip(selectedTrack,index,beat);if(splitIndex<0)return;}
     if(command==3||command==5||command==8){auto copies=command==3?timelineClipboard:pieces;double destination=arrangement.snapBeat(timelinePosition());
         if(command==5)destination=endBeat;
         if(command==8){ClipGroupPiece empty;empty.clip.span=4;copies={empty};}

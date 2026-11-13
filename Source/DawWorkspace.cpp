@@ -291,7 +291,7 @@ void MixerStrip::tick(){if(track>=0&&track<(int)owner.project.tracks.size()){con
 float MixerStrip::faderY(double db)const{return (float)gain.getY()+(float)gain.getPositionOfValue(db);}
 juce::Rectangle<int> MixerStrip::meterBounds()const{const bool master=track<0;const int width=master?14:9;const int top=(int)std::floor(faderY(6)),bottom=(int)std::ceil(faderY(-60));return {getWidth()-width-8,top,width,std::max(4,bottom-top)};}
 void MixerStrip::paint(juce::Graphics& g){
-    const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth(),h=getHeight();
+    const bool master=track<0,current=track==owner.selectedTrack;const auto colour=master?Daw::accent:ink(track);const int w=getWidth();
     const auto body=getLocalBounds().toFloat().reduced(.5f);Daw::fillElevatedSurface(g,body,master||current?Daw::surfaceHi:Daw::surface,Daw::radius);
     g.setColour(colour.withAlpha(master?.85f:.95f));g.fillRoundedRectangle(2.f,1.f,(float)w-4.f,5.f,2.f);g.setColour(juce::Colours::white.withAlpha(.22f));g.fillRect(4.f,1.f,(float)w-8.f,1.f);
     // dB scale beside the fader, meters on the right (two sides with peak hold).
