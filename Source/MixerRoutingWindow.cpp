@@ -22,6 +22,23 @@ const char* displayBusTitle(int bus){return bus==0?"GROUP 1":bus==1?"GROUP 2":bu
 const char* busTitle(int bus){return bus==0?"GROUP A":bus==1?"GROUP B":bus==2?"REVERB":"DELAY";}
 
 }
+// "Receives from": the tracks feeding a group or a return, as chips in their colours; a click
+// selects the track and shows it in the mixer.
+class SourceChips : public juce::Component,public juce::SettableTooltipClient {
+public:
+    std::function<void(int)> onPick;
+    void set(std::vector<std::pair<int,juce::String>> next,juce::String empty){if(next==items&&empty==none)return;items=std::move(next);none=std::move(empty);repaint();}
+    void paint(juce::Graphics& g)override{hits.clear();g.setFont(StudioStyle::font(Daw::small,true));int x=0;const int h=getHeight();
+        g.setColour(StudioStyle::textFaint);const auto label=tr("RECEIVES FROM");const int lw=juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),label)+8;g.drawText(label,0,0,lw,h,juce::Justification::centredLeft);x+=lw;
+        if(items.empty()){g.drawText(none,x,0,getWidth()-x,h,juce::Justification::centredLeft);return;}
+        for(const auto& [track,name]:items){const int w=std::min(120,juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),name)+14);if(x+w>getWidth()){g.setColour(StudioStyle::textDim);g.drawText("+"+juce::String((int)items.size()-(int)hits.size()),x,0,30,h,juce::Justification::centredLeft);break;}
+            const juce::Rectangle<int> chip(x,2,w,h-4);const auto tone=Daw::trackColour(track);g.setColour(tone.withAlpha(.22f));g.fillRoundedRectangle(chip.toFloat(),4.f);g.setColour(tone);g.drawRoundedRectangle(chip.toFloat().reduced(.5f),4.f,1.f);
+            g.setColour(StudioStyle::text);g.drawFittedText(name,chip.reduced(6,0),juce::Justification::centred,1,.8f);hits.push_back({chip,track});x+=w+4;}}
+    void mouseDown(const juce::MouseEvent& e)override{for(const auto& [area,track]:hits)if(area.contains(e.getPosition())){if(onPick)onPick(track);return;}}
+    void mouseMove(const juce::MouseEvent& e)override{bool over=false;for(const auto& hit:hits)over=over||hit.first.contains(e.getPosition());setMouseCursor(over?juce::MouseCursor::PointingHandCursor:juce::MouseCursor::NormalCursor);}
+private:
+    std::vector<std::pair<int,juce::String>> items;juce::String none;std::vector<std::pair<juce::Rectangle<int>,int>> hits;
+};
 class MixerRoutingWindow::Panel : public juce::Component,private juce::Timer {
 public:
     explicit Panel(MainComponent& o):owner(o){
@@ -33,6 +50,8 @@ public:
         for(int i=0;i<2;++i){auto& send=sends[(size_t)i];addAndMakeVisible(send);addAndMakeVisible(sendCaptions[(size_t)i]);Localisation::bindLabel(sendCaptions[(size_t)i],i==0?"A - REVERB":"B - DELAY");sendCaptions[(size_t)i].setFont(StudioStyle::font(Daw::small));sendCaptions[(size_t)i].setJustificationType(juce::Justification::centred);send.setComponentID(i==0?"send-a-level":"send-b-level");send.setRange(0,200,1);send.setColour(juce::Slider::rotarySliderFillColourId,Daw::returnColour(i));rotary(send);send.setTextValueSuffix(" %");send.setDoubleClickReturnValue(true,25);owner.trackGesture(send,{},true);Localisation::bindTip(send,i==0?"Shared return A level for every enabled track. Editing this unifies historic per-track send amounts.":"Shared return B level for every enabled track. Editing this unifies historic per-track send amounts.");send.onValueChange=[this,i]{if(updating)return;owner.checkpointMix(&sends[(size_t)i]);owner.project.buses[(size_t)(i+2)].gain=sends[(size_t)i].getValue()/100.;for(auto& track:owner.project.tracks)if(track.sends[(size_t)i]>0)track.sends[(size_t)i]=1.;owner.mixChanged();};}
         for(int bus=0;bus<4;++bus){
             auto* name=control<juce::Label>();names[(size_t)bus]=name;name->setEditable(false,true,false);name->setFont(StudioStyle::font(14,true));name->setMinimumHorizontalScale(.75f);name->setColour(juce::Label::textColourId,bus>=2?Daw::returnColour(bus-2):StudioStyle::text);name->onEditorShow=[this,name,bus]{if(auto* editor=name->getCurrentTextEditor())editor->setText(juce::String(owner.project.buses[(size_t)bus].name),false);};Localisation::bindTip(*name,"Double-click to rename this group or return.");name->onTextChange=[this,name,bus]{if(updating)return;auto value=name->getText().trim();if(value.isEmpty()){refresh();return;}if(value.toStdString()==owner.project.buses[(size_t)bus].name)return;owner.checkpoint();owner.project.buses[(size_t)bus].name=value.substring(0,40).toStdString();owner.mixChanged();};updates.push_back([this,name,bus]{auto raw=juce::String::fromUTF8(owner.project.buses[(size_t)bus].name.c_str());name->setText(raw==busTitle(bus)?tr(displayBusTitle(bus)):raw,juce::dontSendNotification);});
+            {auto& row=receives[(size_t)bus];addAndMakeVisible(row);row.onPick=[this](int track){owner.select(track,owner.selectedSection);owner.mixer.reveal(track);refresh();};
+             updates.push_back([this,bus]{std::vector<std::pair<int,juce::String>> list;for(size_t t=0;t<owner.project.tracks.size();++t){const auto& track=owner.project.tracks[t];if(bus<2?track.group==bus:track.sends[(size_t)(bus-2)]>0)list.push_back({(int)t,juce::String::fromUTF8(track.name.c_str())});}receives[(size_t)bus].set(std::move(list),tr(bus<2?"no tracks: assign them with OUTPUT":"no tracks: enable A / B on a mixer strip"));});}
             scalar(bus,"LEVEL",&BusSettings::gain,0,2);scalar(bus,"PAN",&BusSettings::pan,-1,1);
             for(bool solo:{false,true}){auto* b=control<juce::TextButton>();(solo?solos:mutes)[(size_t)bus]=b;b->setButtonText(solo?"S":"M");b->setColour(juce::TextButton::buttonOnColourId,solo?StudioStyle::solo:StudioStyle::mute);b->setComponentID("bus-"+juce::String(bus)+(solo?"-solo":"-mute"));Localisation::bindTip(*b,solo?"Listen to this mixer group or return on its own.":"Mute this mixer group or return.");b->onClick=[this,b,bus,solo]{owner.checkpoint();auto& settings=owner.project.buses[(size_t)bus];auto& value=solo?settings.solo:settings.mute;value=!value;b->setToggleState(value,juce::dontSendNotification);owner.mixChanged();};updates.push_back([this,b,bus,solo]{const auto& settings=owner.project.buses[(size_t)bus];b->setToggleState(solo?settings.solo:settings.mute,juce::dontSendNotification);});}
             if(bus<2){
@@ -75,6 +94,9 @@ public:
         tabs[0].setToggleState(!groupView,juce::dontSendNotification);tabs[1].setToggleState(groupView,juce::dontSendNotification);
         hint.setText(tr(groupView?"Groups receive track outputs. Sidechain reduces the tracks assigned to that group.":owner.project.returnChains?"A / B are shared by all tracks. Enable them in the mixer; set their common level and effects here.":"Historic project: fixed reverb / delay preserved. Conversion is optional."),juce::dontSendNotification);
         if(!groupView&&std::any_of(owner.project.tracks.begin(),owner.project.tracks.end(),[](const Track& t){return (t.sends[0]>0&&t.sends[0]!=1)||(t.sends[1]>0&&t.sends[1]!=1);}))hint.setText(tr("Historic individual sends preserved. Editing a common level makes all enabled sends equal."),juce::dontSendNotification);
+        if(groupView&&owner.selectedTrack>=0&&owner.selectedTrack<(int)owner.project.tracks.size()){const auto& t=owner.project.tracks[(size_t)owner.selectedTrack];const juce::String arrow=juce::String::fromUTF8(" \xe2\x86\x92 ");
+            juce::String path=juce::String::fromUTF8(t.name.c_str()).toUpperCase()+arrow+(t.group>=0?juce::String::fromUTF8(owner.project.buses[(size_t)t.group].name.c_str()).toUpperCase()+arrow:juce::String())+"MASTER";for(int b=0;b<2;++b)if(t.sends[(size_t)b]>0)path+=juce::String::fromUTF8("  \xc2\xb7  ")+(b==0?"A ":"B ")+juce::String(t.sends[(size_t)b]*100,0)+"%";
+            hint.setText(tr("Signal path")+": "+path+"\n"+hint.getText(),juce::dontSendNotification);}
         convert.setVisible(!groupView&&!owner.project.returnChains);convert.setEnabled(!owner.pluginsBusy()&&!owner.editingRestricted());
         trackLabel.setText(tr(groupView?"TRACK":"SHARED RETURNS"),juce::dontSendNotification);outputLabel.setText(tr(groupView?"OUTPUT":"ENABLE A / B IN THE MIXER"),juce::dontSendNotification);target.setVisible(groupView);route.setVisible(groupView);
         updating=false;resized();
@@ -103,13 +125,13 @@ public:
         auto hintArea=area.removeFromTop(38);if(!groupView&&!owner.project.returnChains)convert.setBounds(hintArea.removeFromRight(220).reduced(0,4));hint.setBounds(hintArea);area.removeFromTop(4);
         const int width=(area.getWidth()-12)/2;
         for(int i=0;i<4;++i){const bool visible=groupView?i<2:i>=2;
-            for(auto* c:std::initializer_list<juce::Component*>{names[(size_t)i],levels[(size_t)i],pans[(size_t)i],mutes[(size_t)i],solos[(size_t)i],&meters[(size_t)i]})c->setVisible(visible);
+            for(auto* c:std::initializer_list<juce::Component*>{names[(size_t)i],levels[(size_t)i],pans[(size_t)i],mutes[(size_t)i],solos[(size_t)i],&meters[(size_t)i],&receives[(size_t)i]})c->setVisible(visible);
             for(auto& field:effects[(size_t)i]){field.slider->setVisible(visible&&(i<2||!owner.project.returnChains));field.caption->setVisible(field.slider->isVisible());}
             if(i<2){memberLabels[(size_t)i]->setVisible(groupView);sources[(size_t)i]->setVisible(groupView);sourceLabels[(size_t)i].setVisible(groupView);sends[(size_t)i].setVisible(!groupView);sendCaptions[(size_t)i].setVisible(!groupView);chainPorts[(size_t)i].setVisible(!groupView&&owner.project.returnChains);}
             if(!visible)continue;
             const int column=i%2;auto card=juce::Rectangle<int>(area.getX()+column*(width+12),area.getY(),width,area.getHeight());cards[(size_t)i]=card;names[(size_t)i]->setBounds(card.reduced(12,0).withTrimmedTop(8).withHeight(26).withTrimmedLeft(8));
-            if(i<2)memberLabels[(size_t)i]->setBounds(card.reduced(12,0).withTrimmedTop(40).withHeight(20));
-            auto body=card.reduced(12,0).withTrimmedTop(i<2?66:50).withTrimmedBottom(10);const int faderX=groupView?body.getRight()-100:body.getX();
+            if(i<2)memberLabels[(size_t)i]->setVisible(false);receives[(size_t)i].setBounds(card.reduced(12,0).withTrimmedTop(42).withHeight(22));
+            auto body=card.reduced(12,0).withTrimmedTop(66).withTrimmedBottom(10);const int faderX=groupView?body.getRight()-100:body.getX();
             const int panTop=groupView?body.getY():body.getY()+86;pans[(size_t)i]->setBounds(faderX+13,panTop,74,50);
             const int faderY=panTop+68,footer=body.getBottom();levels[(size_t)i]->setVisible(groupView);levels[(size_t)i]->setBounds(faderX+1,faderY,80,std::max(28,footer-faderY-58));mutes[(size_t)i]->setBounds(faderX+8,footer-24,36,24);solos[(size_t)i]->setBounds(faderX+50,footer-24,36,24);signalReadouts[(size_t)i]={faderX,footer-48,100,16};
             const int meterTop=juce::roundToInt(levels[(size_t)i]->getY()+levels[(size_t)i]->getPositionOfValue(6)),meterBottom=juce::roundToInt(levels[(size_t)i]->getY()+levels[(size_t)i]->getPositionOfValue(-60));meters[(size_t)i].setBounds(faderX+66,meterTop,10,std::max(1,meterBottom-meterTop));
@@ -198,6 +220,7 @@ public:
 
 private:
     std::array<juce::TextButton,2> tabs;bool groupView=false;
+    std::array<SourceChips,4> receives;
     juce::Label trackLabel,outputLabel,hint;std::array<juce::Label,2> sourceLabels;juce::TextButton convert;
     std::array<std::uint64_t,2> chainSessions{};
     std::array<std::unique_ptr<EffectChainView>,2> chainViews;std::array<juce::Viewport,2> chainPorts;

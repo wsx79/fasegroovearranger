@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MasteringAssistantWindow.h"
 #include "MixAssistantWindow.h"
+#include "MixerRoutingWindow.h"
 #include "AssistantProject.h"
 #include "MainComponent.h"
 #include "MasteringAnalysis.h"
@@ -203,6 +204,8 @@ bool MainComponent::uiPreview(const juce::File& folder){
     project.enableReturnChains();restoreInstruments();if(!wait())return false;openHostedEditor(returnEffectTrack,project.returnEffects[0].effects.empty()?1:project.returnEffects[0].effects[0].slot);juce::MessageManager::getInstance()->runDispatchLoopUntil(200);
     snapshotPluginWindow(folder.getChildFile("editor-return-a.png"));closePluginEditor();
     refreshControls();shot(*this,"main-mixer.png");
+    mixerReadable=true;mixer.resized();resized();juce::MessageManager::getInstance()->runDispatchLoopUntil(100);shot(*this,"main-mixer-readable.png");mixerReadable=false;mixer.resized();resized();
+    project.tracks[1].group=0;project.tracks[2].group=0;changed(false);showMixerRouting(1);juce::MessageManager::getInstance()->runDispatchLoopUntil(300);if(mixerRoutingWindow){shot(*mixerRoutingWindow,"routing.png");mixerRoutingWindow->setVisible(false);}
     showMixAssistant();const bool ok=mixAssistantWindow&&mixAssistantWindow->demo(folder.getChildFile("mix"));if(mixAssistantWindow)mixAssistantWindow->closeButtonPressed();
     return ok;
 }

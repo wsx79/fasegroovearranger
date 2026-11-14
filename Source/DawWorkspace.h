@@ -100,6 +100,6 @@ private:
     std::array<float,2> compactPeaks{},compactHolds{};
     std::array<int,2> compactHoldTicks{};
     ActionButton mixAssistantButton{"MIX ASSIST"},masteringAssistantButton{"MASTER ASSIST"};
-    ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"},masterEffectsButton{"EFFECTS"};
+    ActionButton collapseButton{"COLLAPSE MIXER"},routingButton{"BUS & SEND"},masterEffectsButton{"EFFECTS"},readableButton{"READABLE"};
 };
 }

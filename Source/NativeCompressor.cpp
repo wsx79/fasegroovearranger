@@ -388,9 +388,11 @@ class ReductionMeter final : public juce::Component
 public:
     void setReduction(float db)
     {
-        if (std::abs(db - shown) < 0.01f) return;
+        // The last seconds of reduction, drawn left of the bar: pumping and recovery become visible.
+        history[(size_t)written] = std::max(0.0f, db); written = (written + 1) % (int)history.size(); ++ticks;
+        const bool moved = std::abs(db - shown) >= 0.01f;
         shown = db;
-        repaint();
+        if (moved || ticks % 3 == 0) repaint();
     }
 
     void paint(juce::Graphics& g) override
@@ -407,11 +409,27 @@ public:
         g.setColour(shown > 0.05f ? juce::Colour(0xffffa64d) : Daw::textFaint);
         g.drawText("-" + juce::String(shown, 1) + " dB", area.removeFromTop(34.0f).toNearestInt(), juce::Justification::centred);
 
-        auto meter = area.reduced(18.0f, 4.0f);
+        auto meter = area.reduced(8.0f, 4.0f);
         const int labelWidth = 34;
         auto scale = meter.removeFromRight((float)labelWidth);
         const float barWidth = std::min(18.0f, meter.getWidth());
-        auto bar = meter.withSizeKeepingCentre(barWidth, meter.getHeight());
+        auto bar = meter.removeFromRight(barWidth);
+        if (meter.getWidth() > 30.0f)
+        {
+            auto graph = meter.withTrimmedRight(6.0f);
+            Daw::deviceScreen(g, graph);
+            juce::Path line; const int n = (int)history.size();
+            for (int i = 0; i < n; ++i)
+            {
+                const float v = history[(size_t)((written + i) % n)];
+                const float x = graph.getX() + 2.0f + (graph.getWidth() - 4.0f) * (float)i / (float)(n - 1);
+                const float y = graph.getY() + 2.0f + (graph.getHeight() - 4.0f) * (float)std::clamp((double)v / 30.0, 0.0, 1.0);
+                if (i == 0) line.startNewSubPath(x, y); else line.lineTo(x, y);
+            }
+            g.setColour(juce::Colour(0xffffa64d)); g.strokePath(line, juce::PathStrokeType(1.5f));
+            g.setColour(Daw::textFaint); g.setFont(Daw::smallFont(8.5f));
+            g.drawText(ui::loc("LAST 4 s", "ULTIMI 4 s"), graph.reduced(4.0f, 2.0f).toNearestInt(), juce::Justification::bottomLeft);
+        }
 
         Daw::deviceScreen(g, bar);
         {
@@ -432,6 +450,8 @@ public:
 
 private:
     float shown = 0.0f;
+    std::array<float, 120> history {};   // 4 s at the editor's 30 Hz refresh
+    int written = 0; unsigned ticks = 0;
 };
 
 } // namespace ui
@@ -569,7 +589,7 @@ public:
         };
         row(ui::loc("STEREO LINKED", "STEREO COLLEGATO"));
         row(processor.getLatencySamples()==0?ui::loc("ZERO LATENCY", "ZERO LATENZA"):ui::loc("ROUTING", "COMPENSAZIONE")+" "+juce::String(processor.getLatencySamples())+" smp");
-        row(ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
+        row(processor.limiterMode?ui::loc("LOOKAHEAD 1.5 ms","LOOKAHEAD 1,5 ms"):ui::loc("NO LOOKAHEAD", "SENZA LOOKAHEAD"));
         const double rate = processor.getSampleRate();
         g.setColour(Daw::textFaint);
         g.drawText(ui::loc("Sample rate", "Frequenza") + ": " + (rate > 0.0 ? juce::String(rate / 1000.0, 1) + " kHz" : "--"), signal.removeFromTop(14).toNearestInt(), juce::Justification::centredLeft);
@@ -623,7 +643,7 @@ public:
                                         area.getY() + (i / columns) * cellH, cellW, cellH);
 
         auto left = bottom;
-        const int grWidth = std::clamp(bottom.getWidth() / 5, 150, 210);
+        const int grWidth = std::clamp(bottom.getWidth() / 4, 180, 270);
         const int infoWidth = std::clamp(bottom.getWidth() / 6, 150, 220);
         left.removeFromRight(grWidth + infoWidth + 20);
         curve.setBounds(left);
