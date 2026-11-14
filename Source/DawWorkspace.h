@@ -56,7 +56,9 @@ public:
     void paint(juce::Graphics&) override;
     void resized() override;
     void mouseDown(const juce::MouseEvent&) override;
+    void paintOverChildren(juce::Graphics&) override;
 private:
+    juce::Rectangle<int> badgeBounds(bool forPan)const;juce::String badgeText(bool forPan)const;juce::String drawnBadges;
     MainComponent& owner;
     int track;
     float peak=0,drawnLevel=-1;

@@ -28,6 +28,20 @@ juce::String description(const Project& p,const AssistantChange& c){
     else{const char* names[]{"Threshold","Ratio","Knee","Attack","Release","Makeup"};const double range=CompressorDSP::maximum[(size_t)c.parameter]-CompressorDSP::minimum[(size_t)c.parameter],base=CompressorDSP::minimum[(size_t)c.parameter];value=tr("Native Compressor")+" / "+tr(names[c.parameter])+": "+juce::String(base+c.before*range,1)+" -> "+juce::String(base+c.after*range,1)+(c.parameter==1?" :1":" ms");}
     return nameOf(p,c)+" / "+value+" / "+c.reason;
 }
+// The list columns: what (processor and parameter), now, proposed.
+struct Columns {juce::String what,now,next;};
+Columns columns(const AssistantChange& c){
+    auto dbText=[](double gain){return juce::String(juce::Decibels::gainToDecibels(gain,-120.),1)+" dB";};
+    if(c.kind==AssistantChange::gain)return {tr("Volume"),dbText(c.before),dbText(c.after)};
+    if(c.kind==AssistantChange::eq){const bool cut=c.filterType==(int)EqFilterType::LowCut;
+        return {"EQ "+tr(cut?"high-pass":c.filterType==(int)EqFilterType::LowShelf?"low shelf":c.filterType==(int)EqFilterType::HighShelf?"high shelf":"bell")+" "+juce::String(c.frequency,0)+" Hz","-",cut?tr("on"):juce::String(c.after>0?"+":"")+juce::String(c.after,1)+" dB"};}
+    if(c.kind==AssistantChange::insert)return {tr(c.effect)+" ("+tr("insert")+")","-",c.effect=="Limiter"?tr("ceiling")+" "+juce::String(c.values[0],1)+" / +"+juce::String(c.values[5],1)+" dB":juce::String(c.values[0],1)+" dB / "+juce::String(c.values[1],1)+":1"};
+    if(c.kind==AssistantChange::send)return {tr(c.parameter==0?"Reverb send (A)":"Delay send (B)"),juce::String(c.before*100,0)+"%",juce::String(c.after*100,0)+"%"};
+    if(c.kind==AssistantChange::group)return {tr("Group"),c.before<0?tr("none"):juce::String::charToString((juce::juce_wchar)('A'+(int)c.before)),juce::String::charToString((juce::juce_wchar)('A'+(int)c.after))};
+    if(c.kind==AssistantChange::sidechain)return {tr("Kick sidechain"),juce::String(c.before*100,0)+"%",juce::String(c.after*100,0)+"%"};
+    const char* names[]{"Threshold","Ratio","Knee","Attack","Release","Makeup"};const double range=CompressorDSP::maximum[(size_t)c.parameter]-CompressorDSP::minimum[(size_t)c.parameter],base=CompressorDSP::minimum[(size_t)c.parameter];
+    return {tr("Native Compressor")+" "+tr(names[c.parameter]),juce::String(base+c.before*range,1),juce::String(base+c.after*range,1)};
+}
 }
 RenderProgressTask* MainComponent::renderAssistantProject(std::shared_ptr<AssistantAudio> files,
     std::function<juce::Result(AssistantAudio&,const std::function<bool()>&,const std::function<void(double)>&)> work,
@@ -107,6 +121,7 @@ void ProjectAssistantPanel::renderProject(){
         assistantEqChanges(safe->owner.project,*safe->mixReport,safe->changes);assistantCompressorChanges(safe->owner.audio,safe->owner.project,masterEffectTrack,safe->mixReport->mix,safe->changes);
         if(!safe->master)assistantMixProcessing(safe->owner.project,*safe->mixReport,safe->audio->tracks,safe->changes);
         if(!safe->master)for(size_t i=0;i<safe->audio->tracks.size()&&i+1<safe->mixReport->inputLevels.size();++i)assistantCompressorChanges(safe->owner.audio,safe->owner.project,safe->audio->tracks[i],safe->mixReport->inputLevels[i+1],safe->changes);
+        {auto order=[&](const AssistantChange& c){if(c.kind==AssistantChange::sidechain)return 1000;const int ti=indexOf(safe->owner.project,c.session);return ti==masterEffectTrack?999:ti;};std::stable_sort(safe->changes.begin(),safe->changes.end(),[&](const auto& x,const auto& y){return order(x)<order(y);});}   // grouped by track
         safe->list.updateContent();safe->present();safe->timerCallback();
     },{});
     if(!task){release(audio);text.setText(tr("Wait for the current operation to finish."),false);}
@@ -204,7 +219,15 @@ void ProjectAssistantPanel::paintListBoxItem(int row,juce::Graphics& g,int width
     const juce::String kind=tr(c.kind==AssistantChange::gain?"GAIN":c.kind==AssistantChange::eq?"EQ":c.kind==AssistantChange::send?"SEND":c.kind==AssistantChange::group?"GROUP":c.kind==AssistantChange::sidechain?"SIDECH":c.kind==AssistantChange::insert&&c.effect=="Limiter"?"LIMIT":"COMP");auto badge=juce::Rectangle<int>(40,height/2-9,54,18);
     g.setColour(juce::Colour(0xff1d1f23));g.fillRoundedRectangle(badge.toFloat(),3.f);Daw::drawCaps(g,kind,badge,c.selected?tone:Daw::textDim,juce::Justification::centred);
     auto textArea=juce::Rectangle<int>(104,2,width-110,height-4);if(applied){auto state=textArea.removeFromRight(90);Daw::drawCaps(g,tr(c.selected?"applied":""),state,Daw::meterLow,juce::Justification::centredRight);}
-    g.setColour(c.selected?Daw::text:Daw::textDim);g.setFont(Daw::font(12.5f));g.drawFittedText(description(owner.project,c),textArea,juce::Justification::centredLeft,2,1.f);}
+    // Columns: track (in its colour, only on the first row of its group), what, now -> proposed, why.
+    const bool first=row==0||changes[(size_t)row-1].session!=c.session||(c.kind==AssistantChange::sidechain)!=(changes[(size_t)row-1].kind==AssistantChange::sidechain);
+    const int ti=indexOf(owner.project,c.session);const auto col=columns(c);auto area=textArea;
+    auto trackArea=area.removeFromLeft(118);auto whatArea=area.removeFromLeft(std::min(230,area.getWidth()/3));auto valueArea=area.removeFromLeft(150);area.removeFromLeft(8);
+    if(first){g.setColour(c.kind==AssistantChange::sidechain?Daw::returnA:ti==masterEffectTrack?Daw::accent:ti>=0?Daw::trackColour(ti):Daw::textDim);g.fillRect(trackArea.removeFromLeft(3).reduced(0,4));trackArea.removeFromLeft(6);
+        g.setColour(c.selected?Daw::text:Daw::textDim);g.setFont(Daw::font(12.5f,true));g.drawFittedText(c.kind==AssistantChange::sidechain?tr("GROUP A"):nameOf(owner.project,c),trackArea,juce::Justification::centredLeft,1,.8f);}
+    g.setColour(c.selected?Daw::text:Daw::textDim);g.setFont(Daw::font(12.5f));g.drawFittedText(col.what,whatArea,juce::Justification::centredLeft,2,.85f);
+    g.setFont(Daw::font(12.5f,true));g.drawFittedText(col.now+juce::String::fromUTF8("  \xe2\x86\x92  ")+col.next,valueArea,juce::Justification::centredLeft,1,.8f);
+    g.setColour(Daw::textDim);g.setFont(Daw::font(11.5f));g.drawFittedText(c.reason,area,juce::Justification::centredLeft,2,.9f);}
 void ProjectAssistantPanel::listBoxItemClicked(int row,const juce::MouseEvent&){if(task||stale||applied||!juce::isPositiveAndBelow(row,(int)changes.size()))return;stopPreview();changes[(size_t)row].selected=!changes[(size_t)row].selected;comparison.reset();release(beforeAfter);list.repaint();timerCallback();}
 int ProjectAssistantPanel::step()const{const bool analysed=masterReport&&!masterReport->files.empty();return task?0:!analysed||stale?-1:comparison||beforeAfter?3:applied?2:1;}
 void ProjectAssistantPanel::paint(juce::Graphics& g){g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,520,54},tr(master?"MASTERING ASSISTANT":"MIX ASSISTANT"),tr("CURRENT PROJECT / MEASURE / SELECT / APPLY"),master?Daw::returnB:Daw::returnA);

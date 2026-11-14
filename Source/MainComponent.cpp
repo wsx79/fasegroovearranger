@@ -338,13 +338,27 @@ void MainComponent::addMidiTrack(bool vocal){
     instrumentPanel.flushRender();checkpoint();const int track=vocal?project.addVocalChopsTrack():project.addMidiTrack();if(track<0)return;
     select(track,0);changed();showEditor();if(vocal)message(tr("Load a voice sample, then shape its slices in Studio. REGENERATE writes another sparse vocal phrase."));
 }
+juce::String MainComponent::effectPath(int track,int slot,juce::Colour& colour)const{
+    const juce::String arrow=juce::String::fromUTF8(" \xe2\x86\x92 ");juce::String where;
+    if(track==masterEffectTrack){where="MASTER";colour=Daw::accent;}
+    else if(isReturnTrack(track)){const int b=track-returnEffectTrack;where=tr(b==0?"RETURN A":"RETURN B");colour=Daw::returnColour(b);}
+    else if(track>=0&&track<(int)project.tracks.size()){where=utf(project.tracks[(size_t)track].name).toUpperCase();colour=Daw::trackColour(track);}
+    if(slot==0)return where+arrow+tr("INSTRUMENT");
+    const auto& rack=project.effectTarget(track);int position=0;juce::String name;
+    for(size_t i=0;i<rack.effects.size();++i)if(rack.effects[i].slot==slot){position=(int)i+1;name=utf(rack.effects[i].name.empty()?rack.effects[i].pluginName:rack.effects[i].name);}
+    juce::String path=where+arrow+tr("INSERT")+" "+juce::String(position)+arrow+name.toUpperCase();
+    if(isReturnTrack(track)){const int b=track-returnEffectTrack;int shared=0;for(const auto& t:project.tracks)if(t.sends[(size_t)b]>0)++shared;
+        path+=juce::String::fromUTF8(" \xc2\xb7 ")+tr("SHARED BY")+" "+juce::String(shared)+" "+tr(shared==1?"TRACK":"TRACKS");}
+    return path;
+}
+void MainComponent::snapshotPluginWindow(const juce::File& file){if(!pluginWindow)return;if(auto stream=file.createOutputStream())juce::PNGImageFormat().writeImageToStream(pluginWindow->createComponentSnapshot(pluginWindow->getLocalBounds()),*stream);}
 void MainComponent::openHostedEditor(int track,int slot){
     if(loadingPlugin||editingRestricted()||!validEffectTrack(track))return;
     auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin)return;const auto session=effectTrack(track).sessionId;
     pluginWindow=nullptr;for(auto& window:pluginWindows)if(window->session==session&&window->slot==slot){pluginWindow=window.get();break;}
     if(!pluginWindow){juce::StringArray names;for(const auto& t:project.tracks)names.add(utf(t.name));juce::Component::SafePointer<MainComponent> safe(this);configureNativeCompressorEditor(plugin,names,[safe,session,slot]{if(!safe)return;const int ti=safe->trackForSession(session);if(ti<0)return;safe->checkpoint();if(auto* fx=safe->effectTrack(ti).effect(slot))if(auto xml=juce::XmlDocument::parse(utf(fx->pluginId))){juce::PluginDescription description;if(description.loadFromXml(*xml)&&isNativeCompressor(description)){description.version="2";fx->pluginId=description.createXml()->toString().toStdString();}}});configureNativeReturnEditor(plugin,[safe]{if(safe)safe->checkpoint();});auto window=std::make_unique<PluginWindow>(*this,*plugin,session,slot,track);pluginWindow=window.get();pluginWindows.push_back(std::move(window));}
     else if(!pluginWindow->isVisible())pluginWindow->showCentred();
-    pluginWindow->setName(plugin->getName());if(slot>0)if(auto* fx=effectTrack(track).effect(slot))if(!fx->name.empty())pluginWindow->setName(utf(fx->name)+juce::String::fromUTF8(" \xc2\xb7 ")+plugin->getName());
+    {juce::Colour tone;const auto path=effectPath(track,slot,tone);pluginWindow->setName(path);if(pluginWindow->frame)pluginWindow->frame->setPath(path);}
     lastActivePluginSession=session;lastActivePluginSlot=slot;pluginWindow->setAlwaysOnTop(true);pluginWindow->toFront(true);
 }
 void MainComponent::captureUndoPluginStates(){

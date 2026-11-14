@@ -190,5 +190,21 @@ bool MainComponent::assistantDemo(const juce::File& folder){
     showMasteringAssistant();ok=masteringAssistantWindow&&masteringAssistantWindow->demo(folder.getChildFile("master"))&&ok;if(masteringAssistantWindow)masteringAssistantWindow->closeButtonPressed();
     ok=render("after-master.mp3")&&ok;return ok;
 }
+// --ui-preview: the screens of this release (editor path bar, AUTO/TRIM badges, the assistants' columns).
+bool MainComponent::uiPreview(const juce::File& folder){
+    folder.createDirectory();auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+120000;while(pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy();};
+    auto shot=[&](juce::Component& c,const char* name){if(auto stream=folder.getChildFile(name).createOutputStream())juce::PNGImageFormat().writeImageToStream(c.createComponentSnapshot(c.getLocalBounds()),*stream);};
+    project=newProject(0);generate(project,Scope::song,0,0,4242);project.normalise();
+    auto& piano=project.tracks[0];piano.gain=juce::Decibels::decibelsToGain(1.2);piano.volume.enabled=true;piano.volume.points={{0,.6,0},{64,1.,0}};piano.panAutomation.enabled=true;piano.panAutomation.points={{0,.3,0},{64,.7,0}};
+    for(auto& t:project.tracks)if(t.kind==2||t.kind==0)t.sends={.25,.1};
+    restoreInstruments();if(!wait())return false;mixerVisible=true;resized();refreshControls();audio.seek(16);audio.play(true);for(int i=0;i<40;++i)juce::MessageManager::getInstance()->runDispatchLoopUntil(10);audio.play(false);
+    addNativeCompressor(0);if(!wait())return false;closePluginEditor();openHostedEditor(0,1);juce::MessageManager::getInstance()->runDispatchLoopUntil(200);
+    snapshotPluginWindow(folder.getChildFile("editor-piano-insert.png"));closePluginEditor();
+    project.enableReturnChains();restoreInstruments();if(!wait())return false;openHostedEditor(returnEffectTrack,project.returnEffects[0].effects.empty()?1:project.returnEffects[0].effects[0].slot);juce::MessageManager::getInstance()->runDispatchLoopUntil(200);
+    snapshotPluginWindow(folder.getChildFile("editor-return-a.png"));closePluginEditor();
+    refreshControls();shot(*this,"main-mixer.png");
+    showMixAssistant();const bool ok=mixAssistantWindow&&mixAssistantWindow->demo(folder.getChildFile("mix"));if(mixAssistantWindow)mixAssistantWindow->closeButtonPressed();
+    return ok;
+}
 bool MainComponent::verifyMasteringAssistant(const juce::File& f){f.createDirectory();showMasteringAssistant();return masteringAssistantWindow&&masteringAssistantWindow->verify(f);}
 }

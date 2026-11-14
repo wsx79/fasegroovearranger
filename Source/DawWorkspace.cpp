@@ -25,6 +25,8 @@ void MainComponent::updateGainDisplay(juce::Slider& control,double base,const Vo
     if(control.getMaximum()!=upper)control.setRange(-60,upper,.1);
     const double shown=std::clamp(std::round(value*10.)/10.,-60.,upper);
     control.getProperties().set("automationOffsetDb",following?shown-baseDb:0.);
+    // AUTO / TRIM badge: an active lane drives this control; a manual move trims its base.
+    control.getProperties().set("fgaAuto",lane.active());control.getProperties().set("fgaTrim",lane.active()&&std::abs(baseDb)>.05?juce::String(baseDb>0?"+":"")+juce::String(baseDb,1)+" dB":juce::String());
     control.setValue(shown,juce::dontSendNotification);
 }
 double MainComponent::gainFromControl(const juce::Slider& control)const{
@@ -40,6 +42,7 @@ void MainComponent::updatePanDisplay(juce::Slider& control,double base,const Vol
     const double shown=audio.isPlaying()&&lane.active()?panFromAutomation(lane.valueAt(audio.position()))*100.:base*100.;
     control.setValue(shown,juce::dontSendNotification);
     control.getProperties().set("automationOffset",control.getValue()-base*100.);
+    control.getProperties().set("fgaAuto",lane.active());control.getProperties().set("fgaTrim",lane.active()&&std::abs(base)>.005?juce::String(base>0?"R ":"L ")+juce::String(std::abs(base)*100.,0):juce::String());
 }
 void MainComponent::updateParameterDisplay(juce::Slider& control,double base,int index,const Track& track,bool cutoff){
     if(inGesture(control))return;
@@ -280,6 +283,7 @@ void MixerStrip::tick(){if(track>=0&&track<(int)owner.project.tracks.size()){con
     if(track<0||track<(int)owner.project.tracks.size())owner.updateGainDisplay(gain,track<0?owner.project.masterGain:owner.project.tracks[(size_t)track].gain,track<0?owner.project.masterAutomation:owner.project.tracks[(size_t)track].volume,gainGesture);
     if(gain.getMaximum()!=previousMaximum)repaint();
     else if(gain.getValue()!=previousValue)repaint(4,gain.getBottom()+2,getWidth()-8,16);
+    {const auto badges=badgeText(false)+"|"+badgeText(true);if(badges!=drawnBadges){drawnBadges=badges;repaint();}}
     peak=std::max(track<0?owner.audio.masterLevel():owner.audio.level(track),peak*.82f);clip.setToggleState(owner.audio.hasClipped(),juce::dontSendNotification);
     // Each side falls smoothly; its peak holds for 1.5 s, then falls too.
     for(int side=0;side<2;++side){const float now=track<0?owner.audio.masterLevel(side):owner.audio.level(track,side);sides[(size_t)side]=std::max(now,sides[(size_t)side]*.82f);
@@ -322,7 +326,17 @@ void MixerStrip::resized(){const int w=getWidth(),h=getHeight();const bool maste
     const int meterWidth=master?14:9,faderRight=w-meterWidth-10;const bool sourceVisible=!master&&h>=120;instrument.setVisible(sourceVisible);instrument.setBounds(5,h-22,w-10,18);clip.setBounds(6,32,w-12,18);
     if(compact){pan.setVisible(false);const int cell=(w-13)/4;mute.setBounds(4,32,cell,18);solo.setBounds(7+cell,32,cell,18);sendA.setBounds(10+cell*2,32,cell,18);sendB.setBounds(13+cell*3,32,cell,18);effects.setBounds(5,54,w-10,18);const int top=76;gain.setBounds(10,top,faderRight-10,std::max(18,h-top-(sourceVisible?40:22)));}
     else{pan.setVisible(!master);pan.setBounds(6,32,28,28);mute.setBounds(38,32,w-43,15);solo.setBounds(38,49,w-43,15);sendA.setBounds(5,73,(w-13)/2,18);sendB.setBounds(8+(w-13)/2,73,(w-13)/2,18);effects.setBounds(5,95,w-10,18);const int top=master?86:118;if(master)effects.setBounds(5,56,w-10,22);gain.setBounds(10,top,faderRight-10,std::max(20,h-top-40));}}
-void MixerStrip::mouseDown(const juce::MouseEvent& e){if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
+// AUTO / TRIM badges under the pan and at the foot of the fader: why the control moves and what a
+// manual move changes; a click opens the lane.
+juce::String MixerStrip::badgeText(bool forPan)const{const auto& c=forPan?pan:gain;if(!(bool)c.getProperties().getWithDefault("fgaAuto",false))return {};const auto trim=c.getProperties().getWithDefault("fgaTrim","").toString();return juce::String(forPan?"PAN AUTO":"VOL AUTO")+(trim.isEmpty()?juce::String():"\n"+tr("TRIM")+" "+trim);}
+juce::Rectangle<int> MixerStrip::badgeBounds(bool forPan)const{
+    if(!gain.isVisible())return {};auto height=[&](bool p){const auto t=badgeText(p);return t.isEmpty()?0:t.containsChar('\n')?24:13;};
+    const int bottom=gain.getBottom(),volume=height(false);return forPan?juce::Rectangle<int>(gain.getX()-6,bottom-volume-(volume?2:0)-height(true),gain.getWidth()+4,height(true)):juce::Rectangle<int>(gain.getX()-6,bottom-volume,gain.getWidth()+4,volume);}
+void MixerStrip::paintOverChildren(juce::Graphics& g){for(const bool forPan:{false,true}){const auto text=badgeText(forPan);const auto area=badgeBounds(forPan);if(text.isEmpty()||area.isEmpty())continue;
+    g.setColour(Daw::accent.withAlpha(.92f));g.fillRoundedRectangle(area.toFloat(),3.f);g.setColour(Daw::onAccent);g.setFont(Daw::font(9.5f,true));
+    auto lines=juce::StringArray::fromLines(text);auto box=area.reduced(2,0);const int line=box.getHeight()/lines.size();for(const auto& l:lines)g.drawFittedText(l,box.removeFromTop(line),juce::Justification::centred,1,.6f);}}
+void MixerStrip::mouseDown(const juce::MouseEvent& e){for(const bool forPan:{false,true})if(track>=0&&badgeText(forPan).isNotEmpty()&&badgeBounds(forPan).contains(e.getPosition())){owner.selectAutomation(track,-2,forPan?ArrangementView::lanePan:ArrangementView::laneVolume,{},{});return;}
+    if(track>=0){owner.select(track,owner.selectedSection);if(e.mods.isPopupMenu())owner.showTrackMenu(track);}}
 DawMixer::DawMixer(MainComponent& m):owner(m),master(m,-1){getProperties().set("fgaTip","Drag the mixer header to resize its height; double-click to restore the default.");port.setViewedComponent(&channels,false);port.setScrollBarsShown(false,true);addAndMakeVisible(port);addAndMakeVisible(master);addAndMakeVisible(collapseButton);addAndMakeVisible(routingButton);routingButton.setIcon(IconButton::Icon::routing);collapseButton.setIcon(IconButton::Icon::mixer);routingButton.setComponentID("mixer-routing");routingButton.onClick=[this]{owner.showMixerRouting();};addAndMakeVisible(masteringAssistantButton);masteringAssistantButton.setComponentID("mastering-assistant");masteringAssistantButton.onClick=[this]{owner.showMasteringAssistant();};tip(masteringAssistantButton,"Local reference comparison and export QA; no automatic processing.");addAndMakeVisible(mixAssistantButton);mixAssistantButton.onClick=[this]{owner.showMixAssistant();};tip(mixAssistantButton,"Local WAV mix analysis and reversible suggestions.");masterEffectsButton.onClick=[this]{owner.showEffectChain(masterEffectTrack);};addAndMakeVisible(masterEffectsButton);masterEffectsButton.setComponentID("master-effects");addAndMakeVisible(loudnessLabel);loudnessLabel.setComponentID("master-loudness");loudnessLabel.setFont(Daw::font(Daw::small));loudnessLabel.setColour(juce::Label::textColourId,Daw::textDim);loudnessLabel.setBorderSize(juce::BorderSize<int>(0));Localisation::bindTip(loudnessLabel,"Short-term and integrated loudness (LUFS)");tip(routingButton,"Open mixer output groups and shared reverb/delay sends and returns.");collapseButton.setComponentID("mixer-collapse");
     tip(collapseButton,"Collapse the mixer to make room for tracks; click again to restore it. Shortcut: F3.");
     collapseButton.onClick=[this]{owner.mixerVisible=!owner.mixerVisible;owner.mixerToggle.setToggleState(owner.mixerVisible,juce::dontSendNotification);owner.resized();};

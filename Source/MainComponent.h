@@ -250,6 +250,7 @@ public:
     void changed(bool schedule=true,int onlyTrack=-1);
     void mixChanged();
     void select(int track,int section);
+    juce::String effectPath(int track,int slot,juce::Colour& colour)const;   // "PIANO → INSERT 2 → COMPRESSOR"
     void showTrackMenu(int);
     void showAddTrackMenu();
     void addMidiTrack(bool vocal=false);
@@ -338,7 +339,7 @@ public:
     bool verifyAuditRepairs(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
-    void showMixAssistant();bool assistantDemo(const juce::File&);
+    void showMixAssistant();bool assistantDemo(const juce::File&);bool uiPreview(const juce::File&);void snapshotPluginWindow(const juce::File&);
     void showMasteringAssistant();
     bool verifyMasteringAssistant(const juce::File&);
     bool writeGroovePreview(const juce::File&);   // WAV previews of the Afro / Latin House grooves (self-test build)

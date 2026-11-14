@@ -50,11 +50,33 @@ public:
     bool keyPressed(const juce::KeyPress& key)override{return owner.keyPressed(key);}
 };
 
+// Every plugin editor sits under a bar that says where it works, in the destination's colour:
+// "PIANO → INSERT 2 → COMPRESSOR", "RETURN A → REVERB · SHARED BY 5 TRACKS", with Show track.
+class EditorFrame final : public juce::Component, private juce::ComponentListener {
+public:
+    static constexpr int barHeight=30;
+    EditorFrame(juce::Component* body,juce::String path,juce::Colour tone,std::function<void()> show):editor(body),text(std::move(path)),colour(tone),onShow(std::move(show)){
+        addAndMakeVisible(editor.get());editor->addComponentListener(this);
+        showTrack.setButtonText(tr("Show track"));showTrack.onClick=[this]{if(onShow)onShow();};showTrack.setVisible((bool)onShow);addAndMakeVisible(showTrack);
+        setSize(editor->getWidth(),editor->getHeight()+barHeight);
+    }
+    ~EditorFrame()override{if(editor)editor->removeComponentListener(this);}
+    juce::Component* body()const{return editor.get();}
+    const juce::String& path()const{return text;}
+    void setPath(juce::String path){text=std::move(path);repaint();}
+    void paint(juce::Graphics& g)override{auto bar=getLocalBounds().removeFromTop(barHeight);g.setColour(Daw::well);g.fillRect(bar);g.setColour(colour);g.fillRect(bar.removeFromLeft(5));g.fillRect(0,barHeight-2,getWidth(),2);
+        g.setColour(Daw::text);g.setFont(Daw::font(12.5f,true));g.drawFittedText(text,bar.reduced(10,0).withTrimmedRight(showTrack.isVisible()?110:0),juce::Justification::centredLeft,1,.8f);}
+    void resized()override{auto area=getLocalBounds();auto bar=area.removeFromTop(barHeight);showTrack.setBounds(bar.removeFromRight(104).reduced(4,4));if(editor&&!resizing){const juce::ScopedValueSetter<bool> guard(resizing,true);editor->setBounds(area);}}
+private:
+    void componentMovedOrResized(juce::Component&,bool,bool wasResized)override{if(wasResized&&!resizing){const juce::ScopedValueSetter<bool> guard(resizing,true);setSize(editor->getWidth(),editor->getHeight()+barHeight);}}
+    std::unique_ptr<juce::Component> editor;juce::String text;juce::Colour colour;std::function<void()> onShow;juce::TextButton showTrack;bool resizing=false;
+};
 class MainComponent::PluginWindow : public juce::DocumentWindow,private juce::AudioProcessorListener {
 public:
     MainComponent& owner;juce::AudioPluginInstance& processor;
     std::uint64_t session;int slot,track;
-    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot,int trackIndex):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot),track(trackIndex){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);setContentOwned(editor,true);processor.addListener(this);editor->addMouseListener(this,true);markState();setResizable(editor->isResizable(),false);setDraggable(false);setSize(editor->getWidth(),editor->getHeight());showCentred();}
+    PluginWindow(MainComponent& m,juce::AudioPluginInstance& p,std::uint64_t id,int effectSlot,int trackIndex):DocumentWindow(p.getName(),Palette::panel,DocumentWindow::closeButton),owner(m),processor(p),session(id),slot(effectSlot),track(trackIndex){const juce::ScopedLock processorLock(p.getCallbackLock());setUsingNativeTitleBar(true);setAlwaysOnTop(true);auto* editor=p.createEditorIfNeeded();if(!editor)editor=new juce::GenericAudioProcessorEditor(p);const bool resizable=editor->isResizable();juce::Colour tone;const auto path=m.effectPath(trackIndex,effectSlot,tone);juce::Component::SafePointer<MainComponent> safe(&m);std::function<void()> show;if(trackIndex<maxTracks)show=[safe,owned=id]{if(!safe)return;const int ti=safe->trackForSession(owned);if(ti>=0)safe->select(ti,std::max(0,safe->selectedSection));};frame=new EditorFrame(editor,path,tone,show);setContentOwned(frame,true);processor.addListener(this);editor->addMouseListener(this,true);markState();setResizable(resizable,false);setDraggable(false);setSize(frame->getWidth(),frame->getHeight());showCentred();}
+    EditorFrame* frame=nullptr;
     void showCentred(){
         setVisible(true);centreWithSize(getWidth(),getHeight());
         // Cocoa can apply the native frame/content size after the first message
@@ -72,7 +94,7 @@ public:
     void mouseUp(const juce::MouseEvent& e)override{markState();juce::DocumentWindow::mouseUp(e);}
     ~PluginWindow()override{
         {const juce::ScopedLock processorLock(processor.getCallbackLock());processor.removeListener(this);}
-        if(auto* editor=getContentComponent())editor->removeMouseListener(this);
+        if(frame&&frame->body())frame->body()->removeMouseListener(this);
         clearContentComponent();markState();
     }
     void closeButtonPressed()override{markState();owner.dismissAuxiliaryWindow(*this);}
