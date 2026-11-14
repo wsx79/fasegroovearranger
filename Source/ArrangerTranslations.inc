@@ -1485,7 +1485,6 @@
     { "RETURN B", "RITORNO B", "RETURN B", "RETURN B", "RETURN B", "RETURN B" },
     { "INSERT", "INSERT", "INSERT", "INSERT", "INSERT", "INSERT" },
     { "SHARED BY", "CONDIVISO DA", "SHARED BY", "SHARED BY", "SHARED BY", "SHARED BY" },
-    { "TRACKS", "TRACCE", "TRACKS", "TRACKS", "TRACKS", "TRACKS" },
     { "TRIM", "TRIM", "TRIM", "TRIM", "TRIM", "TRIM" },
     { "on", "attivo", "on", "on", "on", "on" },
     { "insert", "insert", "insert", "insert", "insert", "insert" },
