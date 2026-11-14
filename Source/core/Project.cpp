@@ -1470,7 +1470,7 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
                 if(beat<start||beat>=start+length)continue;
                 const double at=beat-start;
                 clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),
-                    [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1e-6;}),clip.notes.end());
+                    [at,crashLane](const Note& n){return n.lane==crashLane&&std::abs(n.start-at)<1./16.;}),clip.notes.end());   // also a humanized crash a few ms off the downbeat: one hit, not a flam
                 const auto place=std::upper_bound(clip.notes.begin(),clip.notes.end(),at,
                     [](double value,const Note& n){return value<n.start;});
                 const double gate=std::min(defaultDrumNoteLength(ti),length-at);
