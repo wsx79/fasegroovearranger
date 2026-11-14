@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.0
+
+- La melodia del Lead è scritta per genere (Lead casuale): ritmi propri dello stile, variati a ogni take; frase di 4 battute (motivo, risposta, ripresa sull’accordo, chiusura su una nota lunga); linee per grado con colore pentatonico in Soulful, Gospel e Neo Soul, ribattuti sincopati in Jackin’ e Funky, richiami 3-3-2 in Afro, poche note lunghe in Deep e Chill, hook da inno in Piano House, corse tipo montuno in Latin; staccato o legato e accenti per stile. Prima il Lead saltava tra le note dell’accordo in un loop di due battute in ogni genere. Pause, ottava globale, tempi del NEW FEEL e preset del Lead restano; Techno ed Electro House mantengono il loro Lead elettronico.
+
 ## 0.56.1
 
 - Barra del mixer: il pulsante ETICHETTE AUTO mostra o nasconde le etichette gialle AUTO / TRIM sui fader; EFFETTI ora si chiama EFFETTI MASTER; EFFETTI MASTER, LEGGIBILE ed ETICHETTE AUTO spariscono quando il mixer è chiuso.
