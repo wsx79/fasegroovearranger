@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.56.1
+
+- Barra del mixer: il pulsante ETICHETTE AUTO mostra o nasconde le etichette gialle AUTO / TRIM sui fader; EFFETTI ora si chiama EFFETTI MASTER; EFFETTI MASTER, LEGGIBILE ed ETICHETTE AUTO spariscono quando il mixer è chiuso.
+
 ## 0.56.0
 
 - La band suona insieme: nel Latin House il montuno del piano guida e chitarra e Lead rispondono nelle sue pause; nell’Afro House cassa, basso e percussioni tengono l’ostinato mentre chitarra e Lead si alternano frase per frase.

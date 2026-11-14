@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.56.1
+
+- Mixer header: an AUTO TAGS button shows or hides the yellow AUTO / TRIM tags on the faders; EFFECTS is now MASTER EFFECTS; MASTER EFFECTS, READABLE and AUTO TAGS hide while the mixer is collapsed.
+
 ## 0.56.0
 
 - Band interplay: in Latin House the piano montuno leads and guitar and lead answer in its gaps; in Afro House kick, bass and percussion keep the ostinato while guitar and lead take turns phrase by phrase.
