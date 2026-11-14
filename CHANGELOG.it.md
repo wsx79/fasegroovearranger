@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.1
+
+- Verifica armonica su tutti i generi: le parti della band non stridono più a un semitono. Una nota di archi o chitarra a una seconda/nona minore dal piano si sposta di ottava (o, se già raddoppiata, viene tolta) e una nota lunga del Lead passa alla nota dell’accordo più vicina che non stride. Scontri ogni 100 battute: Chill 171 → 5, Soulful 106 → 2, Deep 86 → 1, Neo Soul 81 → 4, ’90s 38 → 2, Gospel 35 → 2; note e accordi invariati.
+
 ## 0.57.0
 
 - La melodia del Lead è scritta per genere (Lead casuale): ritmi propri dello stile, variati a ogni take; frase di 4 battute (motivo, risposta, ripresa sull’accordo, chiusura su una nota lunga); linee per grado con colore pentatonico in Soulful, Gospel e Neo Soul, ribattuti sincopati in Jackin’ e Funky, richiami 3-3-2 in Afro, poche note lunghe in Deep e Chill, hook da inno in Piano House, corse tipo montuno in Latin; staccato o legato e accenti per stile. Prima il Lead saltava tra le note dell’accordo in un loop di due battute in ogni genere. Pause, ottava globale, tempi del NEW FEEL e preset del Lead restano; Techno ed Electro House mantengono il loro Lead elettronico.

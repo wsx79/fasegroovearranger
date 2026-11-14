@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.1
+
+- Harmony audit across all genres: band parts no longer rub a semitone apart. A strings or guitar note a minor 2nd/9th from the piano moves an octave (or, when already doubled, drops), and a held lead note moves to the nearest chord tone that fits. Sustained semitone rubs per 100 bars: Chill 171 → 5, Soulful 106 → 2, Deep 86 → 1, Neo Soul 81 → 4, '90s 38 → 2, Gospel 35 → 2; pitch classes and chords unchanged.
+
 ## 0.57.0
 
 - The lead melody is written per genre (random lead takes): the style's own rhythm cells, varied on every take; a 4-bar phrase (motif, answer, the motif moved with the chord, a held chord tone to close); stepwise lines with pentatonic colour in Soulful, Gospel and Neo Soul, chopped repeats in Jackin' and Funky, 3-3-2 calls in Afro, sparse long notes in Deep and Chill, anthem hooks in Piano House, montuno-like runs in Latin; staccato or legato and accents by style. Before, the lead jumped between chord tones in a two-bar loop in every genre. Pauses, the global octave, the NEW FEEL timing and lead presets are kept; Techno and Electro House keep their electronic lead.
