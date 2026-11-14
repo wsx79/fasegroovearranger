@@ -133,7 +133,9 @@ bool ProjectAssistantPanel::stageInserts(std::function<void()> then){
     staging=(int)missing.size();juce::Component::SafePointer<ProjectAssistantPanel> safe(this);
     for(const auto* c:missing){const int ti=indexOf(owner.project,c->session);const auto state=nativeCompressorState(c->values,c->effect=="Limiter");const int slot=c->slot;
         owner.audio.loadEffect(ti,nativeCompressorDescription(),[safe,ti,state,slot,then](juce::Result r){if(!safe)return;if(r.wasOk())safe->owner.audio.restoreEffectState(ti,state,slot);
-            if(--safe->staging==0){if(r.failed()){safe->text.setText(r.getErrorMessage(),false);return;}juce::MessageManager::callAsync([safe,then]{if(safe)then();});}},slot);}
+            // staging stays above zero until the continuation has started the B render, so a
+            // caller waiting on it (and on task) never sees an idle gap in between
+            if(safe->staging==1){if(r.failed()){safe->staging=0;safe->text.setText(r.getErrorMessage(),false);return;}juce::MessageManager::callAsync([safe,then]{if(!safe)return;safe->staging=0;then();});}else --safe->staging;},slot);}
     return true;
 }
 void ProjectAssistantPanel::prepareComparison(int side,bool applyAfter){
