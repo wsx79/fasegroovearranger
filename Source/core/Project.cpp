@@ -610,10 +610,25 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     if(exact.size()>=8)candidates=std::move(exact);
     else if(!complete.empty())candidates=std::move(complete);
     else if(!exact.empty())candidates=std::move(exact);
+    // Afro House stays hypnotic: its own written vamps, or a two-chord vamp repeated over the
+    // length; never a diminished or half-diminished degree (audit M7, Afro only).
+    if(s.genre==afroHouseGenre){
+        static constexpr int afroPresets[]{0,1,6,7,17,26,35,65,70,72,78,96};
+        std::vector<int> own;for(int i:candidates)if(std::find(std::begin(afroPresets),std::end(afroPresets),i)!=std::end(afroPresets))own.push_back(i);
+        if(!own.empty()&&mix(seed^0x2545f491U)%10<6){candidates=std::move(own);}
+        else{
+            auto diminished=[&](int d){const auto c=sgk::buildChord(s.key,s.scale,d,sgk::Extension::triad);return c.third==3&&c.fifth==6;};
+            static constexpr int vamps[][2]{{0,3},{0,6},{0,4},{0,2},{3,0},{6,0},{4,0},{2,0},{3,4},{3,6},{2,6},{2,3},{6,3},{4,3},{6,2},{0,5},{5,6},{5,0},{5,4},{5,3},{3,5},{2,5},{0,1},{1,4},{1,0},{3,1}};
+            std::vector<int> usable;for(int i=0;i<(int)std::size(vamps);++i)if(!diminished(vamps[i][0])&&!diminished(vamps[i][1]))usable.push_back(i);
+            if(!usable.empty()){const auto& pair=vamps[usable[(size_t)(mix(seed^0x3c6ef372U)%usable.size())]];
+                for(int i=0;i<count;++i)if(!s.manualChords[(size_t)i]){s.degrees[(size_t)i]=pair[i%2];s.freeChords[(size_t)i]=-1;}
+                return;}
+        }
+    }
     // A scale with only a handful of written progressions of this length would repeat
     // itself after a few rolls: share the draw with the genre's progression generator.
     const size_t pool=std::max<size_t>(candidates.size()*2,32);
-    if(candidates.empty()||mix(seed^0x51ed270bU)%pool>=candidates.size()){
+    if(candidates.empty()||(s.genre!=afroHouseGenre&&mix(seed^0x51ed270bU)%pool>=candidates.size())){
         auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
         // Two-chord vamps (Deep, Jackin', Afro) leave the walk only one move, so it kept
         // returning the same dozen pairs. Dorian and Aeolian draw from the full set of
