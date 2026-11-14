@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.55.0
+
+- Mix Assistant processes the sound: per-track EQ (high-pass by role, measured low-mid cut and presence lift), a native compressor inserted where a part has none (bass, lead, keys, your audio), reverb and delay send levels by role (kick and bass stay dry), and the kick sidechain on group A (amount by genre). Level trims as before.
+- Mastering Assistant builds a master chain: a master EQ (new; 25 Hz high-pass and shelves from the measured or the reference balance), a glue compressor and a lookahead limiter that reaches the LUFS target (about -14 by default) under the dBTP ceiling. Mastering now changes only the master.
+- New limiter mode of the Native Compressor: 1.5 ms lookahead brickwall, never above its ceiling.
+- Every suggestion stays selectable, A/B-comparable and undone with one Undo; inserted effects are normal Native Compressors in the chain.
+- Afro House drums follow the references: open hat on every offbeat, swung 16th shaker (60%), congas and bongos pushing just before beats 3 and 4, short supporting toms, sometimes a 3:2 clave on the rim, a backbeat of clap with snare or clap and rimshot taking turns; Afro bass lines play off the beat.
+
 ## 0.54.1
 
 - Latin House harmony check: the piano montuno uses octave triads and close sevenths (it inherited the Afro quartal voicings, which clashed with its brighter chords); the bass keeps root, fifth and octave anticipations (no boogie or gospel walks). Notes outside the chord drop from about 22% to 7% on the piano and from 21% to 9% on the bass.

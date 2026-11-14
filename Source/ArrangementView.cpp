@@ -252,7 +252,7 @@ bool ArrangementView::verifyLoopEditing(){
     const bool on=owner.timelineSnapOn;owner.timelineSnapOn=false;ok=ok&&gridBeats()==0.&&std::abs(snapBeat(2.9)-2.9)<=.5/960.;
     // SNAP off + Shift snaps for that drag (the opposite of SNAP); SNAP on + Shift is free.
     {const double g=gridStep(true);ok=ok&&g>0&&std::abs(snapBeat(2.9,true)-std::round(2.9/g)*g)<1e-12;}owner.timelineSnapOn=true;ok=ok&&gridStep(true)==0.;owner.timelineSnapOn=on;
-    translateControls(owner);ok=ok&&owner.snapButton.getTooltip().contains(tr("SNAP on: moving clips").substring(0,10))&&!owner.snapButton.getTooltip().contains(tr("Changes re-render this part right away; locked tracks and clips are kept."));
+    translateControls(owner);ok=ok&&owner.snapButton.getTooltip().contains(tr(owner.snapButton.getProperties()["fgaTip"].toString()).substring(0,10))&&!owner.snapButton.getTooltip().contains(tr("Changes re-render this part right away; locked tracks and clips are kept."));
     owner.project=saved;pixelsPerBar=zoom;owner.timelineSnap=snap;owner.changed(false);owner.updateSizes();return ok;
 }
 void ArrangementView::setHover(int track,int clip){

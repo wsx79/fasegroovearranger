@@ -1188,7 +1188,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
     static const std::vector<int> bassLines[]{
         {8,12,13}, {10,11,23}, {7,16,17}, {10,11,23}, {13,14,22},
-        {8,12,13,14}, {9,18,19}, {15,16,17,8}, {0,1,2,3,20,21,22},
+        {8,12,13,14}, {9,18,19}, {8,12,15}, {0,1,2,3,20,21,22},
         {8,12,13}, {4,5,10,23}, {7,16,17}, {8,12,13,14}
     };
     static const std::vector<int> latinBass{2,9,12};   // root/fifth/octave anticipations, no boogie or gospel walks

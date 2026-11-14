@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.55.0
+
+- L’assistente Mix lavora sul suono: EQ per traccia (passa-alto per ruolo, taglio dei medio-bassi e spinta di presenza in base alle misure), un compressore nativo inserito dove manca (basso, lead, tastiere, le tue tracce audio), mandate di riverbero e delay per ruolo (cassa e basso asciutti) e sidechain della cassa sul gruppo A (quantità secondo il genere). Volumi come prima.
+- L’assistente Mastering crea una catena sul master: EQ master (nuovo; passa-alto a 25 Hz e shelf dal bilanciamento misurato o dal riferimento), compressore glue e limiter con lookahead che raggiunge il LUFS obiettivo (circa -14 di default) sotto il tetto dBTP. Il Mastering ora cambia solo il master.
+- Nuova modalità limiter del Native Compressor: brickwall con lookahead di 1,5 ms, mai sopra il tetto.
+- Ogni proposta resta selezionabile, confrontabile in A/B e annullabile con un solo Annulla; gli effetti inseriti sono normali Native Compressor nella catena.
+- Batteria Afro House secondo i riferimenti: open hat su ogni levare, shaker a sedicesimi con swing (60%), congas e bongos che anticipano il 3° e il 4° movimento, tom brevi di supporto, a volte clave 3:2 sul rim, backbeat di clap con snare o clap e rimshot alternati; bassi Afro in levare.
+
 ## 0.54.1
 
 - Check armonia del Latin House: il montuno di piano usa triadi all'ottava e settime strette (ereditava le voicing quartali dell'Afro, in contrasto con i suoi accordi più luminosi); il basso resta su fondamentale, quinta e ottava anticipate (niente walking boogie o gospel). Le note fuori accordo scendono da circa 22% a 7% nel piano e da 21% a 9% nel basso.

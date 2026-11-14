@@ -522,54 +522,41 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     Random accent (seed * 2246822519u + 3266489917u);
     if (genre == afro)
     {
-        // Modern afro house: the clap stays on 2 and 4 over a straight kick; the groove comes
-        // from a syncopated tom loop (tresillo-like, 3+3+2), the open hat on the offbeats and
-        // a subtle conga/bongo answer. No 12/8 bell, no snare backbeat.
-        if (accent.chance (0.75f))
-            setLoop (Lane::tom, accent.pick ({ "x..x ..x. ..x. x... x..x ..x. ..x. .x.x", "...x ..x. ..x. ...x ...x ..x. .x.. x...",
-                                                ".... ..x. ..x. x... .... ..x. ..x. x.x.", "..x. ..x. .x.. x..x ..x. ..x. .x.. x...",
-                                                ".x.. x... ..x. .x.. .x.. x... ..x. x..x" }));
-        if (accent.chance (0.45f))
-            setBar (Lane::conga, accent.pick ({ "...g ..x. ...g .x..", "..g. .x.. ..g. ..x.", ".... ...x ..g. .x..", "...x .... ..x. ...g" }));
-        if (! std::any_of (p[Lane::openHat].begin(), p[Lane::openHat].end(), isHit) && accent.chance (0.6f))
-            setBar (Lane::openHat, "..x. ..x. ..x. ..x.");
-        // The backbeat is understated, not the house clap on every 2 and 4: a soft snap/rim,
-        // a clap on 4 only or every other bar, a syncopated or answering clap, or none at all
-        // while the percussion carries the groove.
+        // Afro house (Black Coffee, Keinemusik, Caiiro): a warm four-on-the-floor kick, the open hat
+        // on every offbeat, a swung 16th shaker between kick and backbeat, congas/bongos pushing
+        // just before beats 3 and 4, short tuned toms filling the gaps, sometimes a 3:2 clave on
+        // the rim. The backbeat is a clap layered with a snare, or a clap and a dry rimshot taking
+        // turns; never a 12/8 bell.
+        setBar (Lane::openHat, accent.chance (0.8f) ? "..x. ..x. ..x. ..x." : "..x. ..g. ..x. ..x.");
+        for (int i = 2; i < randomBeatLength; i += 4)
+            p[Lane::closedHat][(size_t) i] = '.';
+        if (! std::any_of (p[Lane::shaker].begin(), p[Lane::shaker].end(), isHit) || accent.chance (0.5f))
+            setBar (Lane::shaker, accent.pick ({ "gxXx gxXx gxXx gxXx", "g.Xx g.Xx g.Xx g.XX", "ggXg ggXg ggXg ggXx" }));
+        setBar (Lane::conga, accent.pick ({ "...g ..xx ...g .x..", "..g. ...x ..g. .xx.", ".... ..gx ..g. .x.x", "...x ...x ..g. .x..",
+                                            "..gx ...x .... .xx." }));
+        if (accent.chance (0.6f))
+            setLoop (Lane::tom, accent.pick ({ ".... ..x. .... .x.. .... ..x. ..x. x...", "...x .... ..x. .... ...x .... .x.. ..x.",
+                                                ".... .... ..x. ...x .... .... ..x. x.x." }));
+        p[Lane::rim].assign ((size_t) randomBeatLength, '.');
+        if (accent.chance (0.3f))
+            setLoop (Lane::rim, "x..x ..x. .... x... ..x. x... .... ....");   // 3:2 son clave, on the rim
+
         p[Lane::clap].assign ((size_t) randomBeatLength, '.');
-        switch (accent.nextInt (7))
+        p[Lane::snare].assign ((size_t) randomBeatLength, '.');
+        const bool clave = std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit);
+        switch (accent.nextInt (5))
         {
-            case 0:  setBar (Lane::rim, ".... x... .... x..."); break;                              // snap on 2 and 4
-            case 1:  setBar (Lane::clap, ".... .... .... x..."); break;                             // beat 4 only
-            case 2:  setLoop (Lane::clap, ".... .... .... x... .... x... .... x..g"); break;       // every other bar
-            case 3:  setBar (Lane::clap, "...x ..g. ...x ..g."); break;                             // syncopated
-            case 4:  setBar (Lane::clap, ".... ..x. .... ...x"); break;                             // answering offbeats
-            case 5:  setBar (Lane::clap, ".... g... .... x..g"); break;                             // a soft, ghosted backbeat
-            default: break;                                                                          // none: the toms lead
+            case 0:  setBar (Lane::clap, ".... x... .... x..."); setBar (Lane::snare, ".... g... .... g..."); break;   // clap + snare layer
+            case 1:  setBar (Lane::clap, ".... x... .... ...."); if (! clave) setBar (Lane::rim, ".... .... .... x..."); break;   // clap and rimshot take turns
+            case 2:  setLoop (Lane::clap, ".... x... .... x... .... x... .... ...."); if (! clave) setLoop (Lane::rim, ".... .... .... .... .... .... .... x..g"); break;
+            case 3:  setBar (Lane::clap, ".... x... .... x..g"); break;
+            default: setBar (Lane::clap, ".... .... .... x..."); if (! clave) setBar (Lane::rim, ".... x... .... ...."); break;
         }
         p[Lane::cowbell].assign ((size_t) randomBeatLength, '.');
 
-        // A light snare: ghosts, an afrobeat-style syncopation or a crisp 2 and 4 (only where no
-        // clap already marks them); often none.
-        p[Lane::snare].assign ((size_t) randomBeatLength, '.');
-        const bool clapOnBeats = p[Lane::clap][4] != '.' || p[Lane::clap][12] != '.';
-        switch (accent.nextInt (5))
-        {
-            case 0:  setBar (Lane::snare, ".... ...g .... ..g."); break;
-            case 1:  if (p[Lane::clap][3] == '.') setBar (Lane::snare, "...g ..x. ...g ..x."); break;
-            case 2:  if (! clapOnBeats) setBar (Lane::snare, ".... x... .... x..g"); break;
-            default: break;
-        }
-
-        // The kick stays on the four, warm and steady, with a small push: a pick-up into the
-        // next beat or a tresillo answer in the second bar.
-        switch (accent.nextInt (4))
-        {
-            case 0:  p[Lane::kick][15] = p[Lane::kick][31] = 'x'; break;
-            case 1:  p[Lane::kick][31] = 'x'; break;
-            case 2:  p[Lane::kick][19] = 'x'; p[Lane::kick][22] = 'x'; break;
-            default: break;
-        }
+        // The kick stays on the four, warm and steady; now and then a pick-up into the next bar.
+        if (accent.chance (0.3f))
+            p[Lane::kick][31] = 'x';
     }
     else if (genre == latin)
     {
