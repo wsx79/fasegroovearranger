@@ -3,6 +3,12 @@
 #pragma once
 inline void verifyHarmonyContracts(){
     using namespace fga;
+    // Parts never rub a semitone apart for long (piano, strings, guitar, lead; audit of the full band).
+    for(int genre:{1,2,10,11})for(unsigned seed=1;seed<=3;++seed){auto p=newProject(genre);generate(p,Scope::song,0,0,seed*7919u);
+        struct Ev{double a,b;int pitch,track;};std::vector<Ev> ev;for(int ti:{0,2,3,leadTrack}){const auto& t=p.tracks[(size_t)ti];if(t.mute)continue;for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(ti,(int)ci);for(const auto& n:t.clips[ci].notes)ev.push_back({at+n.start,at+n.start+n.length,n.pitch,ti});}}
+        std::sort(ev.begin(),ev.end(),[](const Ev& x,const Ev& y){return x.a<y.a;});double rubs=0;
+        for(size_t i=0;i<ev.size();++i)for(size_t j=i+1;j<ev.size()&&ev[j].a<ev[i].b;++j){if(ev[i].track==ev[j].track||std::min(ev[i].b,ev[j].b)-ev[j].a<.5)continue;const int lo=std::min(ev[i].pitch,ev[j].pitch),hi=std::max(ev[i].pitch,ev[j].pitch);if(hi!=lo&&(hi-lo)%12==1)++rubs;}
+        check(rubs*100/(p.length()/4)<25,"band parts avoid sustained semitone rubs");}
     // Guitar and lead never add a tone the piano chord does not have (audit A1: sus, 11ths).
     for(int scale=0;scale<13;++scale)for(int degree=0;degree<7;++degree)for(int e=0;e<12;++e){
         const auto piano=sgk::buildChord(0,scale,degree,(sgk::Extension)e);unsigned tones=1;for(int i=0;i<piano.tones.size;++i)tones|=1u<<(unsigned)(((piano.tones[i])%12+12)%12);

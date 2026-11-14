@@ -1604,6 +1604,13 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start<b.start;});
         for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::max(1./32.,std::min(out[i].length,coverEnd(out[i].start)-out[i].start));}
         if(out.size()<2)continue;
+        // a held melody note never sits a semitone from the accompaniment it sounds with: it moves to
+        // the nearest chord tone that does not
+        {struct Held{double from,to;int pitch;};std::vector<Held> band;for(int ti:{0,2,3}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].mute)continue;const auto& bt=p.tracks[(size_t)ti];
+            for(size_t bc=0;bc<bt.clips.size();++bc){const double bat=p.clipStart(ti,(int)bc)-at;for(const auto& m:bt.clips[bc].notes)if(bat+m.start<length&&bat+m.start+m.length>0)band.push_back({bat+m.start,bat+m.start+m.length,m.pitch});}}
+         auto rubs=[&](int pitch,double from,double to){for(const auto& h:band){if(h.from>=to||h.to<=from||std::min(h.to,to)-std::max(h.from,from)<.25)continue;const int lo=std::min(pitch,h.pitch),hi=std::max(pitch,h.pitch);if(hi!=lo&&(hi-lo)%12==1)return true;}return false;};
+         for(auto& n:out){if(n.length<.5||!rubs(n.pitch,n.start,n.start+n.length))continue;
+            for(int k=1;k<7;++k){bool done=false;for(int q:{n.pitch-k,n.pitch+k})if(q>=low-2&&q<=high+2&&chordTone(q,n.start)&&!rubs(q,n.start,n.start+n.length)){n.pitch=q;done=true;break;}if(done)break;}}}
         // NEW FEEL and humanize stay audible: each note takes the micro-timing of the engine's nearest onset
         for(auto& n:out){const Note* near=nullptr;for(const auto& m:melody)if(!near||std::abs(m.start-n.start)<std::abs(near->start-n.start))near=&m;
             if(near&&std::abs(near->start-n.start)<.5){const double offset=near->start-std::round(near->start*4)/4;if(std::abs(offset)<.1)n.start=std::max(0.,n.start+offset);}
@@ -1629,6 +1636,23 @@ static void ensembleVoicing(Project& p,const std::function<bool(int,int)>& inSco
             const bool taken=std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return std::abs(o.start-n.start)<1./16.&&o.pitch==n.pitch-12;});   // never stack two equal notes
             if(high>=0&&!taken&&n.pitch>=low-2&&n.pitch<=high+2&&n.pitch-12>=48)n.pitch-=12;}
         tidyNotes(c,p.clipLength(2,(int)ci));}
+    // No semitone between parts: a strings (or guitar) note a minor second / minor ninth above or
+    // below a piano note it sustains with moves an octave, to the side where the interval becomes a
+    // major seventh; the piano keeps its voicing. Pitch classes stay, so the harmony is unchanged.
+    {const auto piano=spans(0);auto declash=[&](int ti,const std::vector<Span>& against){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute||against.empty())return;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);bool moved=false;
+            auto clashes=[&](int pitch,double from,double to){int count=0;for(const auto& o:against){if(o.from>=to||o.to<=from||std::min(o.to,to)-std::max(o.from,from)<.25)continue;const int lo=std::min(pitch,o.pitch),hi=std::max(pitch,o.pitch);if(hi!=lo&&(hi-lo)%12==1)++count;}return count;};
+            for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;const int now=clashes(n.pitch,from,to);if(!now)continue;
+                int best=n.pitch,fewest=now;for(int shift:{-12,12,-24,24}){const int q=n.pitch+shift;if(q<36||q>96)continue;
+                    if(std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.pitch==q&&std::abs(o.start-n.start)<1./16.;}))continue;
+                    const int k=clashes(q,from,to);if(k<fewest){fewest=k;best=q;}}
+                if(best!=n.pitch){n.pitch=best;moved=true;}
+                // still a semitone: when the piano or this part already holds that pitch class in another
+                // octave, this doubling goes
+                const bool doubledHere=std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.velocity>0&&o.pitch!=n.pitch&&((o.pitch-n.pitch)%12+12)%12==0&&std::abs(o.start-n.start)<1./16.;});
+                if(fewest>0&&(doubledHere||std::any_of(against.begin(),against.end(),[&](const Span& o){return o.from<to&&o.to>from&&((o.pitch-n.pitch)%12+12)%12==0;}))){n.velocity=0;moved=true;}}
+            if(moved){c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(ti,(int)ci));}}};
+     declash(2,piano);auto withStrings=piano;const auto strings2=spans(2);withStrings.insert(withStrings.end(),strings2.begin(),strings2.end());declash(3,withStrings);}
     auto& guitar=p.tracks[3];
     if(!guitar.locked&&!bass.empty())for(size_t ci=0;ci<guitar.clips.size();++ci){auto& c=guitar.clips[ci];if(c.locked||!inScope(3,(int)ci))continue;const double at=p.clipStart(3,(int)ci);
         std::map<long,std::vector<size_t>> chords;for(size_t i=0;i<c.notes.size();++i)chords[std::lround(c.notes[i].start*8)].push_back(i);
