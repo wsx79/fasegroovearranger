@@ -535,6 +535,10 @@ bool MainComponent::writeGroovePreview(const juce::File& folder){
         const auto file=folder.getChildFile(name+".wav");const auto r=audio.exportAudio(project,file,-1,false,[]{return false;},[](double){});
         ok=r.wasOk()&&file.existsAsFile()&&ok;index+=(r.wasOk()?"PASS ":"FAIL ")+name+".wav  ("+juce::String(project.settings.bpm,0)+" BPM, swing "+juce::String(project.settings.swing,2)+")\n";
     };
+    // The lead in several styles: the whole band, 16 bars, the genre's own tempo.
+    for(int genre:{0,1,2,4,7,8,10,15}){audio.stop();project=newProject(genre);project.settings.seed=4242;project.sections={{Section::main,16,"Lead"}};project.normalise();generate(project,Scope::song,0,0,0);
+        project.tracks[leadTrack].gain=std::min(2.,project.tracks[leadTrack].gain*1.6);audio.publish(project);const auto file=folder.getChildFile("lead-"+juce::String(genre)+".wav");
+        const auto r=audio.exportAudio(project,file,-1,false,[]{return false;},[](double){});ok=r.wasOk()&&ok;index+=(r.wasOk()?"PASS ":"FAIL ")+file.getFileName()+"  "+juce::String(genres()[(size_t)genre])+"\n";}
     const auto& patterns=fgd::drumPatterns();
     for(size_t i=0;i<patterns.size();++i){const auto& category=patterns[i].category;
         if(category=="Afro House")render(afroHouseGenre,(int)i,1,true,8,"afro-"+juce::String(patterns[i].name).replaceCharacter(' ','-').toLowerCase());

@@ -1510,6 +1510,108 @@ static void applyDropGaps(Project& p,Scope scope,int track,int section,int lastC
                 c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=edge&&n.start<finish-start-1./32.;}),c.notes.end());
                 for(auto& n:c.notes)if(n.start<edge&&n.start+n.length>rest)n.length=rest-n.start;}}}
 }
+// The lead's melody, written per genre. The engine's line jumped between chord tones in a two-bar
+// loop in every style; this keeps the engine's chords and writes the single-note melody again:
+// the genre's own rhythm cells, a phrase form (motif, answer, the motif moved with the chord,
+// cadence on a long chord tone), stepwise or repeated or leaping motion in the genre's balance,
+// its register and articulation. Random lead patterns only; generated, unlocked clips only.
+namespace {
+struct LeadStyle {std::vector<const char*> cells;double step,repeat,leap;int centre,width;bool legato,pentatonic,hypnotic;double accent;};
+const LeadStyle& leadStyle(int genre){
+    static const LeadStyle styles[]{
+        {{"x..x..x...x.x...","x.x...x.x...x...","..x...x...x.x.x."},.45,.15,.25,74,9,false,false,false,.25},   // Piano House: anthem hooks
+        {{"x...x.x.....x...","x.....x.x..x....","..x.x...x......."},.65,.10,.10,72,8,true,true,false,.15},     // Soulful: sung, stepwise
+        {{"x.....x...x.....","x.......x...x...","..x...x.......x.","x...x.....x.....","x.......x.x.....","....x...x...x..."},.60,.20,.10,67,7,true,false,true,.10},     // Deep: sparse, long
+        {{"x.x.x...x.x.x...","x..x..x.x.......","..x.x.x.x.x....."},.65,.05,.20,74,10,true,true,false,.20},   // Gospel: runs
+        {{"x.xx..x.x.xx..x.","..x...xx..x...x.","x..x.x..x..x.x.."},.30,.40,.20,70,6,false,false,false,.35},  // Jackin': chopped repeats
+        {{"x..x..x.x..x..x.","x.x..x.x..x.x...","..x..x..x..x.x.."},.40,.30,.20,72,7,false,false,false,.30},  // Jackin' Piano
+        {{"x...x..x..x...x.","..x..x....x..x..","x..x....x..x...."},.45,.25,.20,70,7,false,false,false,.25},  // Garage: skipping
+        {{"x..x..x.x..x..x.","..x.x..x..x.x...","x.x..x..x.x..x.."},.40,.35,.15,69,7,false,true,true,.30},    // Afro: 3-3-2 calls, pentatonic
+        {{"x.xx.x.xx.x..xx.","..x.xx.x..x.xx..","x..x.xx.x..x.x.."},.45,.25,.20,72,8,false,false,false,.35},  // Funky & Disco
+        {{"x...x...x...x.x.","x..x..x..x..x...","x.x...x...x.x..."},.40,.20,.30,74,10,false,false,false,.25}, // '90s Piano House
+        {{"x....x...x......","..x.....x..x....","x.......x.x.....","...x..x.....x...","x..x......x....."},.70,.05,.15,70,9,true,true,false,.10},    // Neo Soul: lazy, stepwise
+        {{"x.......x.......","x.....x...x.....","..x.....x.......","x...........x...","x...x.......x...","....x.....x...x."},.70,.10,.10,69,7,true,false,true,.05},    // Chill: long notes
+        {{"x.x.x.x.x.x.x.x.","x..x..x..x..x.x.","x.x..x.x..x.x.x."},.35,.30,.30,76,12,false,false,false,.30}, // Dance Stabs: big intervals
+        {{"x..x..x.x..x..x.","x...x...x...x...","..x...x...x...x."},.15,.65,.15,67,5,false,false,true,.30},   // Techno: hypnotic repeats
+        {{"x.x..x.x..x.x.x.","x..x.x..x..x.x..","..xx..x...xx..x."},.30,.35,.30,72,12,false,false,false,.35}, // Electro: octave jumps
+        {{"x.x.x.x..x.x.x..","..x.x.x.x.x.x.x.","x.x..x.x.x..x.x."},.60,.10,.20,74,9,false,false,false,.25},  // Latin: montuno-like runs
+    };
+    return styles[(size_t)std::clamp(genre,0,(int)std::size(styles)-1)];
+}
+}
+static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh){
+    if((int)p.tracks.size()<=leadTrack)return;auto& t=p.tracks[(size_t)leadTrack];
+    if(t.locked||t.engine.pattern>=0||isElectronicGenre(p.settings.genre))return;   // electronic leads keep their own engine path
+    const auto& style=leadStyle(p.settings.genre);
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!fresh(leadTrack,(int)ci))continue;
+        const double at=p.clipStart(leadTrack,(int)ci),length=p.clipLength(leadTrack,(int)ci);
+        // chords (two or more notes together) stay as the engine wrote them; the melody is rewritten
+        // the lead is one voice: every engine note is part of the melody being rewritten
+        std::vector<Note> chords,melody=c.notes;
+        if(melody.size()<2)continue;
+        // where the engine's melody is silent (a section entry, a break), the new one rests too
+        // the new melody plays only where the engine's did: inside its notes or across gaps of a beat
+        // at most; longer silences (the stop before a drop, response windows) stay silent
+        std::sort(melody.begin(),melody.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+        auto playing=[&](double beat){const Note* prev=nullptr;const Note* next=nullptr;for(const auto& n:melody){if(n.start<=beat+1e-6)prev=&n;else{next=&n;break;}}
+            if(!prev)return false;const double end=prev->start+prev->length;return beat<end||(next&&next->start-end<=1.&&beat<next->start);};
+        auto coverEnd=[&](double beat){double end=-1;for(const auto& n:melody){const double e=n.start+n.length;if(n.start<=beat+1e-6){if(beat<e||end>=0&&n.start-end<=1.)end=std::max(end,e);else end=-1;}
+                else if(end>=0&&n.start-end<=1.)end=std::max(end,e);else if(end>=0)break;}return end<0?beat:end;};
+        double loudness=0;for(const auto& n:melody)loudness+=n.velocity;loudness/=melody.size();
+        // the take's dice follow the engine's own take (its notes), so every regeneration is a new melody
+        std::uint32_t r=mix(c.seed^mix(c.motifSeed+0x6c8e9cf5U)^mix(t.engine.riffSeed+0x2545f491U));for(const auto& n:melody)r=mix(r^(std::uint32_t)((n.pitch-melody.front().pitch+64)*131+std::lround(n.start*4)*7));/* intervals: an octave change keeps the take */auto dice=[&](){r=mix(r+0x9e3779b9U);return (r&0xffffff)/16777216.;};
+        auto harmony=[&](double beat){return activeHarmony(p,std::max(0,p.sectionAtBeat(at+beat)));};
+        auto scaleOk=[&](int pitch,double beat){const auto h=harmony(beat);const int pc=((pitch-h.key)%12+12)%12;std::array<bool,12> in{};
+            for(int d=0;d<7;++d){const int root=((sgk::buildChord(0,h.scale,d,sgk::Extension::triad).rootPc)%12+12)%12;if(style.pentatonic&&(d==3||d==6))continue;in[(size_t)root]=true;}return in[(size_t)pc];};
+        auto chordTone=[&](int pitch,double beat){const auto ch=chordAtBeat(harmony(beat),at+beat);const int iv=((pitch-ch.rootPc)%12+12)%12;return iv==0||iv==ch.third||iv==ch.fifth||iv==ch.seventh;};
+        auto stepFrom=[&](int pitch,int dir,double beat){int q=pitch;for(int k=0;k<4;++k){q+=dir;if(scaleOk(q,beat))return q;}return pitch+dir*2;};
+        auto nearestChordTone=[&](int pitch,double beat){for(int k=0;k<7;++k){if(chordTone(pitch+k,beat))return pitch+k;if(chordTone(pitch-k,beat))return pitch-k;}return pitch;};
+        // the register follows the engine's take (global octave, room for the band); the width is the genre's
+        double average=0;for(const auto& n:melody)average+=n.pitch;const int centre=(int)std::lround(average/melody.size());
+        const int low=centre-style.width,high=centre+style.width;
+        std::vector<Note> out;std::vector<int> motif;int pitch=nearestChordTone(centre+(int)std::lround((dice()-.5)*8),0),dir=dice()<.5?1:-1;
+        const int bars=(int)std::floor(length/4+1e-9);
+        // two rhythm cells from the genre's vocabulary, each varied a little: an onset moved by a 16th,
+        // an added 8th, or a dropped weak hit, so takes differ while staying in the style
+        auto varied=[&](const char* base){std::string cell(base);
+            if(dice()<.6){for(int tries=0;tries<8;++tries){const int i=(int)(dice()*16);if(cell[(size_t)i]!='x'||i%4==0)continue;const int j=i+(dice()<.5?-1:1);if(j<0||j>15||cell[(size_t)j]=='x')continue;cell[(size_t)i]='.';cell[(size_t)j]='x';break;}}
+            if(dice()<.35){const int i=(int)(dice()*8)*2;if(cell[(size_t)i]!='x')cell[(size_t)i]='x';}
+            if(dice()<.25){for(int tries=0;tries<8;++tries){const int i=(int)(dice()*16);if(cell[(size_t)i]=='x'&&i%4!=0){cell[(size_t)i]='.';break;}}}
+            return cell;};
+        const std::string cellA=varied(style.cells[(size_t)(dice()*style.cells.size())]),cellB=varied(style.cells[(size_t)(dice()*style.cells.size())]);
+        for(int bar=0;bar<bars;++bar){
+            const int inPhrase=bar%4;const bool cadence=inPhrase==3;const bool reuse=inPhrase==2||(style.hypnotic&&inPhrase!=3);
+            const std::string& cell=inPhrase==1?cellB:cellA;std::vector<int> barMotif;int index=0;
+            for(int step=0;step<16;++step){if(cell[step]!='x')continue;const double beat=bar*4+step*.25;if(!playing(beat)){++index;continue;}
+                if(cadence&&step>=8)break;   // the phrase ends early, on a held note
+                const bool strong=step%4==0;
+                if(reuse&&index<(int)motif.size()){   // the motif again, moved with the chord (same steps from the chord)
+                    pitch=nearestChordTone(motif[(size_t)index],beat);if(!strong)pitch=scaleOk(motif[(size_t)index],beat)?motif[(size_t)index]:stepFrom(motif[(size_t)index],1,beat);}
+                else{const double roll=dice();
+                    if(strong||roll<style.leap*.5){if(roll<style.leap){pitch=nearestChordTone(pitch+dir*(dice()<.5?4:7),beat);}else pitch=nearestChordTone(pitch,beat);}
+                    else if(roll<style.leap*.5+style.repeat){/* the same note again */}
+                    else pitch=stepFrom(pitch,dir,beat);
+                    if(dice()<.25)dir=-dir;}
+                while(pitch>high)pitch-=12;while(pitch<low)pitch+=12;if(pitch>high-2)dir=-1;if(pitch<low+2)dir=1;
+                Note n;n.start=beat;n.pitch=pitch;n.lane=0;n.velocity=std::clamp((int)std::lround(loudness*(strong?1.+style.accent*.5:1.-style.accent*.4)+(dice()-.5)*8),20,127);
+                double next=4;for(int k=step+1;k<16;++k)if(cell[k]=='x'){next=(k-step)*.25;break;}
+                n.length=style.legato?std::min(next,2.)*.95:std::min(next*.6,.3);out.push_back(n);barMotif.push_back(pitch);++index;}
+            if(cadence){const double beat=bar*4+(out.empty()||out.back().start<bar*4?0.:2.);if(playing(beat)){const auto ch=chordAtBeat(harmony(beat),at+beat);int end=pitch;for(int k=0;k<7;++k){const int iv1=((pitch+k-ch.rootPc)%12+12)%12,iv2=((pitch-k-ch.rootPc)%12+12)%12;if(iv1==0||iv1==ch.third){end=pitch+k;break;}if(iv2==0||iv2==ch.third){end=pitch-k;break;}}
+                Note n;n.start=std::max(beat,out.empty()?0.:out.back().start+.25);n.length=std::max(.5,bar*4+4-n.start-.1);n.pitch=std::clamp(end,low-2,high+2);n.velocity=(int)std::lround(loudness);n.lane=0;if(n.start<length-.25)out.push_back(n);}}
+            if(inPhrase==0)motif=barMotif;}
+        out.erase(std::remove_if(out.begin(),out.end(),[&](const Note& n){return n.start>=length-1./32.||!playing(n.start);}),out.end());
+        // one voice: each note ends before the next starts
+        std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+        for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::max(1./32.,std::min(out[i].length,coverEnd(out[i].start)-out[i].start));}
+        if(out.size()<2)continue;
+        // NEW FEEL and humanize stay audible: each note takes the micro-timing of the engine's nearest onset
+        for(auto& n:out){const Note* near=nullptr;for(const auto& m:melody)if(!near||std::abs(m.start-n.start)<std::abs(near->start-n.start))near=&m;
+            if(near&&std::abs(near->start-n.start)<.5){const double offset=near->start-std::round(near->start*4)/4;if(std::abs(offset)<.1)n.start=std::max(0.,n.start+offset);}
+            n.length=std::max(1./32.,std::min(n.length,coverEnd(n.start)-n.start));}
+        for(size_t i=0;i+1<out.size();++i)out[i].length=std::max(1./64.,std::min(out[i].length,out[i+1].start-out[i].start-1./128.));
+        c.notes=std::move(chords);c.notes.insert(c.notes.end(),out.begin(),out.end());tidyNotes(c,length);
+    }
+}
 // Voicings across the band, pitch classes untouched: where the lead plays, a strings chord of
 // three or more notes moves its notes inside the lead's register an octave down (not below C3);
 // a guitar chord of three or more notes lifts its lowest note an octave when it doubles the bass
@@ -1575,7 +1677,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateVocalChops(p,scope,track,section,seed,lastClip);
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<3;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
-     bandInterplay(p,fresh);ensembleVoicing(p,fresh);}
+     shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);}
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(scope==Scope::song||(int)ti==track)applyArticulation(p,(int)ti,(int)ci);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
