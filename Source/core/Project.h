@@ -139,6 +139,9 @@ struct Track {
     std::array<double,2> sends{};
     EngineOptions engine;
     bool vocalChops = false; // optional generated sample part; keeps legacy routing IDs
+    // VST articulation profile, applied to generated clips while the track plays a plugin:
+    // 0 off, 1 dynamics on the mod wheel (CC1), 2 keyswitches C0 long / C#0 short, 3 legato overlap.
+    int articulation = 0;
     bool freeTimeline = false;
     std::vector<Clip> clips;
 };
@@ -336,6 +339,7 @@ void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool k
 // Section-aligned clip gestures retain the fixed instrument routing.
 bool transferClip(Project&, int track, int from, int to, bool copy);
 void tidyNotes(Clip&, double beats);
+void applyArticulation(Project&,int track,int clip);   // the track's VST articulation profile on one clip
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1, double limit = 0);
 void humanize(Clip&, double amount, std::uint32_t seed, double beats);

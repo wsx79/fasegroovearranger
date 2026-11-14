@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "Project.h"
 #include "GenreSound.h"
+#include <set>
+#include <map>
+#include <functional>
 #include "ElectronicStyles.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/Comping.h"
 #include "../../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
@@ -1507,12 +1510,73 @@ static void applyDropGaps(Project& p,Scope scope,int track,int section,int lastC
                 c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=edge&&n.start<finish-start-1./32.;}),c.notes.end());
                 for(auto& n:c.notes)if(n.start<edge&&n.start+n.length>rest)n.length=rest-n.start;}}}
 }
+// Voicings across the band, pitch classes untouched: where the lead plays, a strings chord of
+// three or more notes moves its notes inside the lead's register an octave down (not below C3);
+// a guitar chord of three or more notes lifts its lowest note an octave when it doubles the bass
+// note sounding at that moment. Generated, unlocked clips only.
+static void ensembleVoicing(Project& p,const std::function<bool(int,int)>& inScope){
+    if((int)p.tracks.size()<=leadTrack||isElectronicGenre(p.settings.genre))return;
+    struct Span{double from,to;int pitch;};
+    auto spans=[&](int ti){std::vector<Span> out;const auto& t=p.tracks[(size_t)ti];if(t.mute)return out;for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(ti,(int)ci);for(const auto& n:t.clips[ci].notes)out.push_back({at+n.start,at+n.start+n.length,n.pitch});}return out;};
+    const auto lead=spans(leadTrack),bass=spans(1);
+    auto& strings=p.tracks[2];
+    if(!strings.locked&&!lead.empty())for(size_t ci=0;ci<strings.clips.size();++ci){auto& c=strings.clips[ci];if(c.locked||!inScope(2,(int)ci))continue;const double at=p.clipStart(2,(int)ci);
+        std::map<long,int> chord;for(const auto& n:c.notes)++chord[std::lround(n.start*8)];
+        for(auto& n:c.notes){if(chord[std::lround(n.start*8)]<3)continue;const double from=at+n.start,to=from+n.length;int low=128,high=-1;
+            for(const auto& l:lead)if(l.from<to&&l.to>from){low=std::min(low,l.pitch);high=std::max(high,l.pitch);}
+            const bool taken=std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return std::abs(o.start-n.start)<1./16.&&o.pitch==n.pitch-12;});   // never stack two equal notes
+            if(high>=0&&!taken&&n.pitch>=low-2&&n.pitch<=high+2&&n.pitch-12>=48)n.pitch-=12;}
+        tidyNotes(c,p.clipLength(2,(int)ci));}
+    auto& guitar=p.tracks[3];
+    if(!guitar.locked&&!bass.empty())for(size_t ci=0;ci<guitar.clips.size();++ci){auto& c=guitar.clips[ci];if(c.locked||!inScope(3,(int)ci))continue;const double at=p.clipStart(3,(int)ci);
+        std::map<long,std::vector<size_t>> chords;for(size_t i=0;i<c.notes.size();++i)chords[std::lround(c.notes[i].start*8)].push_back(i);
+        // the doubled root leaves the bass register: up an octave, or out when that octave is
+        // already in the chord (its pitch class stays, so the bar's harmony is unchanged)
+        std::vector<bool> drop(c.notes.size(),false);
+        for(const auto& [step,members]:chords){if(members.size()<3)continue;size_t lowest=members[0];for(size_t i:members)if(c.notes[i].pitch<c.notes[lowest].pitch)lowest=i;
+            const double beat=at+c.notes[lowest].start;bool doubled=false;for(const auto& b:bass)if(b.from<=beat+1e-6&&b.to>beat+1e-6&&((b.pitch-c.notes[lowest].pitch)%12+12)%12==0){doubled=true;break;}
+            if(!doubled)continue;const int up=c.notes[lowest].pitch+12;const double start=c.notes[lowest].start;const bool there=std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return o.pitch==up&&std::abs(o.start-start)<1./16.;});
+            if(there)drop[lowest]=true;else if(up<=84)c.notes[lowest].pitch=up;}
+        std::vector<Note> kept;for(size_t i=0;i<c.notes.size();++i)if(!drop[i])kept.push_back(c.notes[i]);c.notes=std::move(kept);
+        tidyNotes(c,p.clipLength(3,(int)ci));}   // the canonical order and overlaps, as normalise() leaves them
+}
+// Band interplay (Afro and Latin House): one part leads, the others answer instead of all
+// playing at once. Latin: the piano montuno leads, guitar and lead drop the hits that land on a
+// montuno attack, so they answer in its gaps. Afro: kick, bass and the percussion ostinato stay;
+// guitar and lead take turns phrase by phrase (4 bars) where both would play. Only generated,
+// unlocked clips change, and a clip never loses more than 70% of its notes.
+static void bandInterplay(Project& p,const std::function<bool(int,int)>& inScope){
+    const int genre=p.settings.genre;if(genre!=afroHouseGenre&&genre!=latinHouseGenre)return;
+    if((int)p.tracks.size()<=leadTrack)return;
+    auto thin=[&](int ti,const std::function<bool(double)>& drop){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute)return;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);
+            std::vector<Note> kept;for(const auto& n:c.notes)if(!drop(at+n.start))kept.push_back(n);
+            if(kept.size()*10>=c.notes.size()*3)c.notes=std::move(kept);}};
+    if(genre==latinHouseGenre){
+        std::set<long> montuno;const auto& piano=p.tracks[0];
+        for(size_t ci=0;ci<piano.clips.size();++ci){const double at=p.clipStart(0,(int)ci);for(const auto& n:piano.clips[ci].notes)montuno.insert(std::lround((at+n.start)*4));}
+        for(int ti:{3,leadTrack})thin(ti,[&](double beat){return montuno.count(std::lround(beat*4))>0;});
+    }else{
+        std::map<long,std::array<int,2>> busy;   // per 4-bar phrase: guitar and lead note counts
+        for(int which=0;which<2;++which){const int ti=which?leadTrack:3;const auto& t=p.tracks[(size_t)ti];if(t.mute)continue;
+            for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(ti,(int)ci);for(const auto& n:t.clips[ci].notes)++busy[(long)std::floor((at+n.start)/16.)][(size_t)which];}}
+        for(int which=0;which<2;++which)thin(which?leadTrack:3,[&](double beat){const long phrase=(long)std::floor(beat/16.);const auto it=busy.find(phrase);
+            return it!=busy.end()&&it->second[0]>0&&it->second[1]>0&&(phrase%2==0)==(which==0);});   // even phrases: the lead answers, odd: the guitar
+    }
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
+    // The band passes below touch only the clips this generation wrote (their notes changed):
+    // regenerating one take, or APPLY with the same seed, gives the same result as the song pass.
+    std::array<std::vector<std::vector<Note>>,3> written;const int bandTracks[3]{2,3,leadTrack};
+    for(int k=0;k<3;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)written[(size_t)k].push_back(c.notes);
     if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
     generateNotes(p,scope,track,section,seed,lastClip);
     generateVocalChops(p,scope,track,section,seed,lastClip);
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
+    {const auto fresh=[&](int ti,int ci){for(int k=0;k<3;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
+     bandInterplay(p,fresh);ensembleVoicing(p,fresh);}
+    for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(scope==Scope::song||(int)ti==track)applyArticulation(p,(int)ti,(int)ci);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -1866,6 +1930,26 @@ static void randomiseAutomationRange(Project& p,Scope scope,int track,int index,
     }
 }
 void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_t seed,int onlyLane){randomiseAutomationRange(p,scope,track,index,seed,onlyLane,-1.);}
+// Articulation profiles for hosted instruments (library-agnostic conventions):
+// 1 the mod wheel (CC1, the modulation lane) follows the part's dynamics half-bar by half-bar;
+// 2 keyswitches: C0 before a run of long notes, C#0 before short ones (chank, staccato);
+// 3 legato: in a single line each note overlaps the next by a 32nd when the gap is small.
+void applyArticulation(Project& p,int track,int ci){
+    if(track<0||track>=(int)p.tracks.size())return;auto& t=p.tracks[(size_t)track];if(t.articulation<=0||t.instrument!="plugin"||ci<0||ci>=(int)t.clips.size())return;
+    auto& c=t.clips[(size_t)ci];if(c.locked||c.notes.empty())return;const double length=p.clipLength(track,ci);
+    constexpr int keyLong=24,keyShort=25;constexpr double tick=1./32.;
+    c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return (n.pitch==keyLong||n.pitch==keyShort)&&std::abs(n.length-tick)<1e-6;}),c.notes.end());
+    if(t.articulation==1){auto& lane=c.expression[1];lane.enabled=true;lane.points.clear();
+        for(double at=0;at<length;at+=2){double sum=0;int count=0;for(const auto& n:c.notes)if(n.start>=at&&n.start<at+2){sum+=n.velocity;++count;}
+            const double value=count?std::clamp(sum/count/127.*1.15,.2,1.):(lane.points.empty()?.5:lane.points.back().value);lane.points.push_back({at,value,0});}}
+    else if(t.articulation==2){std::vector<Note> keys;int state=-1;
+        for(const auto& n:c.notes){const int want=n.length<=.3?keyShort:keyLong;if(want==state)continue;state=want;Note k=n;k.pitch=want;k.velocity=100;k.start=std::max(0.,n.start-tick);k.length=tick;keys.push_back(k);}
+        c.notes.insert(c.notes.end(),keys.begin(),keys.end());}
+    else if(t.articulation==3){std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+        for(size_t i=0;i+1<c.notes.size();++i){auto& n=c.notes[i];const auto& next=c.notes[i+1];if(next.start-n.start<1./16.)continue;   // chords stay as they are
+            const double gap=next.start-(n.start+n.length);if(gap>=0&&gap<.5)n.length=next.start-n.start+tick;}}
+    tidyNotes(c,length);
+}
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;
     c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[beats,tick](const Note& n){return !std::isfinite(n.start)||!std::isfinite(n.length)||n.start>beats-tick||n.length<=0||n.pitch<0||n.pitch>127||n.velocity<1||n.velocity>127;}),c.notes.end());

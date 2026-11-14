@@ -4,11 +4,34 @@
 #include "MainComponent.h"
 #include "UiText.h"
 #include "CircleOfFifths.h"
+#include "core/ElectronicStyles.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/HarmonyAnalyzer.h"
 namespace fga {
 namespace {
 sgk::GroovePattern playingPattern(const MainComponent& m){auto s=pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed,m.clip().motifSeed);return sgk::applySegmentOrder(sgk::GrooveEngine::basePattern(s),s.segmentOrder);}
+// DEVELOP: an answer to a written theme, in the next clip of the track. The opening keeps the
+// theme's characteristic attack (rhythm and contour, moved with the harmony); the second half
+// varies (A same contour, B answered an eighth later, C mirrored); the last note lands on a tone
+// of the chord it meets. Everything snaps to the scale of the harmony it falls on.
+std::vector<Note> developTheme(const Project& p,int track,int fromClip,std::vector<Note> theme,int variant,int& toClip){
+    toClip=-1;const auto& t=p.tracks[(size_t)track];if(fromClip<0||fromClip+1>=(int)t.clips.size()||theme.empty())return {};
+    toClip=fromClip+1;std::sort(theme.begin(),theme.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+    const double from=p.clipStart(track,fromClip),to=p.clipStart(track,toClip),room=p.clipLength(track,toClip);
+    auto harmony=[&](double beat){return activeHarmony(p,std::max(0,p.sectionAtBeat(beat)));};
+    auto scalePcs=[&](double beat){const auto s=harmony(beat);std::array<bool,12> in{};for(int d=0;d<7;++d)in[(size_t)sgk::buildChord(s.key,s.scale,d,sgk::Extension::triad).rootPc]=true;return in;};
+    auto snap=[&](int pitch,double beat){const auto in=scalePcs(beat);for(int k:{0,-1,1,-2,2}){const int q=pitch+k;if(in[(size_t)(((q%12)+12)%12)])return q;}return pitch;};
+    const auto a=chordAtBeat(harmony(from+theme[0].start),from+theme[0].start),b=chordAtBeat(harmony(to+theme[0].start),to+theme[0].start);
+    int shift=((b.rootPc-a.rootPc)%12+12)%12;if(shift>6)shift-=12;
+    std::vector<Note> out;const size_t half=std::max<size_t>(1,theme.size()/2);
+    for(size_t i=0;i<theme.size();++i){Note n=theme[i];n.pitch+=shift;
+        if(i>=half){if(variant==1)n.start+=.5;if(variant==2&&i>0){const int step=theme[i].pitch-theme[i-1].pitch;n.pitch=out.back().pitch-step;}}
+        if(n.start>=room-1./16.)continue;n.length=std::min(n.length,room-n.start);n.pitch=std::clamp(snap(n.pitch,to+n.start),24,108);out.push_back(n);}
+    if(!out.empty()){auto& last=out.back();const auto chord=chordAtBeat(harmony(to+last.start),to+last.start);int best=last.pitch,distance=99;
+        for(int k=-6;k<=6;++k){const int q=last.pitch+k;const int iv=((q-chord.rootPc)%12+12)%12;if((iv==0||iv==chord.third||iv==chord.fifth)&&std::abs(k)<distance&&(variant==0||k!=0)){distance=std::abs(k);best=q;}}
+        last.pitch=best;}
+    return out;
+}
 class MusicalTools:public juce::Component {
 public:
     MusicalTools(MainComponent& m,int type):owner(&m),kind(type),source(playingPattern(m)),seed((std::uint32_t)juce::Random::getSystemRandom().nextInt()){
@@ -23,12 +46,14 @@ public:
         if(type==2){title="MORPH";for(size_t i=0;i<sgk::groovePatterns().size();++i)a.addItem(juce::String::fromUTF8(sgk::groovePatterns()[i].name.c_str()),(int)i+1);}
         if(type==3){title="A/B";for(int i=0;i<sgk::numVoicings;++i){a.addItem(tr(sgk::voicingName(i)),i+1);b.addItem(tr(sgk::voicingName(i)),i+1);}a.setSelectedId(m.project.settings.voicing+1,juce::dontSendNotification);b.setSelectedId((m.project.settings.voicing+1)%sgk::numVoicings+1,juce::dontSendNotification);}
         if(type==4){title="VARIANTS";variants=sgk::GrooveEngine::progressionVariants(pianoEngineSettings(m.project,m.selectedTrack,m.clip().seed,m.clip().motifSeed));for(size_t i=0;i<variants.size();++i)a.addItem(tr(variants[i].name),(int)i+1);}
+        if(type==9){title="DEVELOP";a.addItem(tr("A: same opening, new ending on the next chord"),1);a.addItem(tr("B: the answer comes an eighth later"),2);a.addItem(tr("C: mirrored contour in the second half"),3);
+            const auto& c=m.clip();for(int i:m.selectedNoteIndices())if(i>=0&&i<(int)c.notes.size())themeNotes.push_back(c.notes[(size_t)i]);if(themeNotes.empty())themeNotes=c.notes;}
         if(type==5){title="CIRCLE OF FIFTHS";circle.setFamilyFont(true);circle.setFreeMode(true);circle.onPick=[this](int root,bool minor){if(!owner)return;owner->checkpoint();auto& s=owner->project.settings;const bool modeMinor=sgk::scaleIsMinor(s.scale);s.key=root;if(minor!=modeMinor)s.scale=minor?2:0;owner->changed(false);updateCircle();};circle.onMoveChord=[this](int slot,int degree,int root,bool minor){if(!owner||slot<0||slot>=owner->project.settings.chordCount)return;owner->checkpoint();auto& s=owner->project.settings;if(degree>=0){s.degrees[(size_t)slot]=degree;s.freeChords[(size_t)slot]=-1;s.manualChords[(size_t)slot]=false;}else{s.freeChords[(size_t)slot]=sgk::freeChordCode(root-s.key,minor);s.manualChords[(size_t)slot]=true;}owner->changed(false);updateCircle();};updateCircle();}
         if(a.getSelectedId()==0)a.setSelectedId(1,juce::dontSendNotification);
         a.onChange=[this]{chosenVoice=a.getSelectedItemIndex();chosenB=false;updateReport();};b.onChange=[this]{chosenVoice=b.getSelectedItemIndex();chosenB=true;updateReport();};amount.onValueChange=[this]{updateReport();};
-        apply.onClick=[this]{commit();};hearA.onClick=[this]{audition(a.getSelectedItemIndex());};hearB.onClick=[this]{audition(b.getSelectedItemIndex(),true);};
+        apply.onClick=[this]{commit();};hearA.onClick=[this]{if(kind==9){if(!owner)return;int to=-1;const auto answer=developTheme(owner->project,owner->selectedTrack,owner->clipIndex(),themeNotes,a.getSelectedItemIndex(),to);if(to>=0&&!answer.empty())owner->audio.playSelectedNotes(owner->selectedTrack,answer,owner->project.clipStart(owner->selectedTrack,to),false);return;}audition(a.getSelectedItemIndex());};hearB.onClick=[this]{audition(b.getSelectedItemIndex(),true);};
         close.onClick=[this]{if(auto* dialog=findParentComponentOfClass<juce::DialogWindow>())dialog->closeButtonPressed();};
-        a.setVisible(type!=5);b.setVisible(type==3);amount.setVisible(type==2);keepRhythm.setVisible(type==1);keepHarmony.setVisible(type==1);hearA.setVisible(type==3);hearB.setVisible(type==3);circle.setVisible(type==5);report.setVisible(type!=5);apply.setVisible(type!=5);
+        a.setVisible(type!=5);b.setVisible(type==3);amount.setVisible(type==2);keepRhythm.setVisible(type==1);keepHarmony.setVisible(type==1);hearA.setVisible(type==3||type==9);hearB.setVisible(type==3);circle.setVisible(type==5);report.setVisible(type!=5);apply.setVisible(type!=5);
         setSize(850,650);updateReport();
     }
     bool verifyCoachChoice(){if(!owner||kind!=3)return false;auto saved=owner->project;a.setSelectedItemIndex(0,juce::dontSendNotification);b.setSelectedItemIndex(1,juce::dontSendNotification);chosenVoice=1;chosenB=true;a.setSelectedItemIndex(2,juce::sendNotificationSync);const bool labelled=apply.getButtonText()==tr("APPLY A");commit();bool ok=labelled&&owner->project.settings.voicing==2;b.setSelectedItemIndex(3,juce::sendNotificationSync);const bool bLabel=apply.getButtonText()==tr("APPLY B");commit();ok=ok&&bLabel&&owner->project.settings.voicing==3;owner->project=std::move(saved);owner->changed(false);return ok;}
@@ -47,17 +72,22 @@ private:
         if(kind==3){for(auto* box:{&a,&b}){auto s=pianoEngineSettings(owner->project,owner->selectedTrack,owner->clip().seed,owner->clip().motifSeed);s.voicing=(sgk::Voicing)box->getSelectedItemIndex();auto v=sgk::GrooveEngine::voicingReport(s);text+=box==&a?"A: ":"B: ";text+=box->getText()+"\n"+tr("Range")+": "+juce::String(v.lowest)+" - "+juce::String(v.highest)+"\n"+tr("Average movement")+": "+juce::String(v.averageMove,2)+"\n"+tr("Biggest top leap")+": "+juce::String(v.biggestTopLeap)+"\n"+tr("Clashes")+": "+juce::String(v.clashes)+"\n\n";}}
         else if(kind==2){auto target=sgk::groovePatterns()[(size_t)a.getSelectedItemIndex()];auto mixed=sgk::morphPatterns(source,target,amount.getValue()/100.,seed);text+=juce::String::fromUTF8(mixed.rightHand.c_str())+"\n"+juce::String::fromUTF8(mixed.leftHand.c_str());}
         else if(kind==4&&!variants.empty()){auto p=owner->project;applyCodes(p,variants[(size_t)a.getSelectedItemIndex()].codes);for(auto& name:chordNames(p.settings))text+=juce::String::fromUTF8(name.c_str())+"   ";}
+        else if(kind==9){int to=-1;const auto answer=developTheme(owner->project,owner->selectedTrack,owner->clipIndex(),themeNotes,a.getSelectedItemIndex(),to);
+            if(to<0)text=tr("Select the theme's notes in a clip that has a following clip on this track: the answer goes there.");
+            else{text=tr("Theme")+": "+juce::String((int)themeNotes.size())+" "+tr("notes")+"  ->  "+tr("answer in the next clip, at the same place; it replaces the notes it covers (one Undo)")+"\n\n";for(const auto& n:answer)text+=juce::MidiMessage::getMidiNoteName(n.pitch,true,true,4)+" @ "+juce::String(n.start,2)+"   ";}}
         else text+=controlTip("DNA");report.setText(text,false);
     }
     static void applyCodes(Project& p,const std::vector<int>& codes){sgk::ProgressionPreset preset{"Variation",p.settings.scale,{},"",codes};auto slots=sgk::presetSlots(preset);p.settings.manualChords.fill(false);p.settings.chordCount=std::min(8,(int)slots.size());for(int i=0;i<p.settings.chordCount;++i){p.settings.degrees[(size_t)i]=slots[(size_t)i].degree;p.settings.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}}
     void commit(){if(!owner||owner->editingRestricted())return;owner->checkpoint();auto& p=owner->project;auto& e=p.tracks[(size_t)owner->selectedTrack].engine;
         if(kind==1)applyPianoIntention(p,owner->selectedTrack,a.getSelectedItemIndex(),keepRhythm.getToggleState(),keepHarmony.getToggleState(),seed);
         if(kind==2){auto blend=sgk::morphPatterns(source,sgk::groovePatterns()[(size_t)a.getSelectedItemIndex()],amount.getValue()/100.,seed);for(int i=0;i<4;++i)if(e.segmentLocked[(size_t)i])sgk::copySegment(blend,source,i);e.segments={0,1,2,3};setPianoPattern(e,blend);}
+        if(kind==9){int to=-1;const auto answer=developTheme(p,owner->selectedTrack,owner->clipIndex(),themeNotes,a.getSelectedItemIndex(),to);if(to>=0&&!answer.empty()){auto& target=p.tracks[(size_t)owner->selectedTrack].clips[(size_t)to];if(!target.locked){const double first=answer.front().start,last=answer.back().start+answer.back().length;
+            target.notes.erase(std::remove_if(target.notes.begin(),target.notes.end(),[&](const Note& n){return n.start>=first-1e-6&&n.start<last;}),target.notes.end());target.notes.insert(target.notes.end(),answer.begin(),answer.end());tidyNotes(target,p.clipLength(owner->selectedTrack,to));}}}
         if(kind==3)p.settings.voicing=chosenVoice>=0?chosenVoice:a.getSelectedItemIndex();if(kind==4&&!variants.empty())applyCodes(p,variants[(size_t)a.getSelectedItemIndex()].codes);
         owner->changed(false);owner->showInstrument();updateReport();
     }
     void audition(int voicing,bool fromB=false){if(!owner||owner->editingRestricted()||owner->project.tracks[(size_t)owner->selectedTrack].locked||owner->clip().locked)return;owner->ensureTimelineClip();chosenVoice=voicing;chosenB=fromB;hearA.setToggleState(voicing==a.getSelectedItemIndex(),juce::dontSendNotification);hearB.setToggleState(voicing==b.getSelectedItemIndex(),juce::dontSendNotification);owner->checkpoint();owner->project.settings.voicing=voicing;generate(owner->project,Scope::clip,owner->selectedTrack,owner->clipIndex());owner->changed();owner->showInstrument();owner->audio.seek(owner->clipStart());owner->audio.play(true);updateReport();}
-    juce::Component::SafePointer<MainComponent> owner;int kind;int chosenVoice=-1;bool chosenB=false;sgk::GroovePattern source;std::uint32_t seed;DawLookAndFeel theme;juce::String title;juce::ComboBox a,b;juce::Slider amount;juce::ToggleButton keepRhythm,keepHarmony;juce::TextButton apply,hearA,hearB,close;juce::TextEditor report;CircleOfFifths circle;std::vector<sgk::GrooveEngine::ProgressionVariant> variants;
+    std::vector<Note> themeNotes;juce::Component::SafePointer<MainComponent> owner;int kind;int chosenVoice=-1;bool chosenB=false;sgk::GroovePattern source;std::uint32_t seed;DawLookAndFeel theme;juce::String title;juce::ComboBox a,b;juce::Slider amount;juce::ToggleButton keepRhythm,keepHarmony;juce::TextButton apply,hearA,hearB,close;juce::TextEditor report;CircleOfFifths circle;std::vector<sgk::GrooveEngine::ProgressionVariant> variants;
 };
 class LearnChords:public juce::Component,private juce::MidiInputCallback {
 public:

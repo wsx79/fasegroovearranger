@@ -250,6 +250,7 @@ public:
     void changed(bool schedule=true,int onlyTrack=-1);
     void mixChanged();
     void select(int track,int section);
+    std::vector<int> selectedNoteIndices()const{return std::vector<int>(piano.selected.begin(),piano.selected.end());}
     juce::String effectPath(int track,int slot,juce::Colour& colour)const;   // "PIANO → INSERT 2 → COMPRESSOR"
     void showTrackMenu(int);
     void showAddTrackMenu();
