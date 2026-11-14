@@ -338,7 +338,7 @@ public:
     bool verifyAuditRepairs(const juce::File&);
     void showStudio(int tab=0);
     void showMixerRouting(int track=-1);
-    void showMixAssistant();
+    void showMixAssistant();bool assistantDemo(const juce::File&);
     void showMasteringAssistant();
     bool verifyMasteringAssistant(const juce::File&);
     bool writeGroovePreview(const juce::File&);   // WAV previews of the Afro / Latin House grooves (self-test build)

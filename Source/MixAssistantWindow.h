@@ -6,6 +6,6 @@ class MixAssistantWindow:public juce::DocumentWindow {
 public:
  explicit MixAssistantWindow(MainComponent&);~MixAssistantWindow()override;
  void open();void closeButtonPressed()override;
- bool verify(const juce::File&);
+ bool verify(const juce::File&);bool demo(const juce::File&);
 private:class Panel;Panel* panel;ProjectAssistantPanel* projectPanel;juce::TabbedComponent* tabs;MainComponent& owner;
 };}

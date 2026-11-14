@@ -17,21 +17,30 @@ struct AssistantAudio {
     std::vector<MixInput> mixInputs()const;
 };
 struct AssistantChange {
-    enum Kind {gain,eq,compressor};Kind kind=gain;
-    std::uint64_t session=0;int slot=0,parameter=0;double before=0,after=0,frequency=100,q=.707;
+    // gain/eq/compressor change existing settings; insert adds a native compressor (or a limiter)
+    // with values; send sets a return level (parameter = return 0/1); group moves a track to a
+    // group bus; sidechain sets a group bus's kick ducking (parameter = bus).
+    enum Kind {gain,eq,compressor,insert,send,group,sidechain};Kind kind=gain;
+    std::uint64_t session=0;int slot=0,parameter=0,filterType=0;double before=0,after=0,frequency=100,q=.707;
+    std::array<float,6> values{};juce::String effect;
     EqSettings originalEq;
     juce::String reason;
     bool selected=true;
 };
 std::vector<AssistantChange> assistantGainChanges(const Project&,const MixReport&);
 void assistantEqChanges(const Project&,const MixReport&,std::vector<AssistantChange>&);
+// Channel processing by role: EQ, compressor inserts, reverb/delay sends, kick sidechain.
+void assistantMixProcessing(const Project&,const MixReport&,const std::vector<int>& tracks,std::vector<AssistantChange>&);
+// Master chain: EQ, glue compressor and limiter towards the LUFS target and the dBTP ceiling.
+void assistantMasterChain(const Project&,const MasteringReport&,const MasteringTargets&,std::vector<AssistantChange>&);
+juce::String nativeCompressorState(const std::array<float,6>&,bool limiter=false);
 void assistantCompressorChanges(AudioEngine&,const Project&,int track,const MixMeasure&,std::vector<AssistantChange>&);
 juce::Result assistantCandidate(const Project&,AudioEngine&,const std::vector<AssistantChange>&,Project&);
 void assistantParameters(AudioEngine&,const Project&,const std::vector<AssistantChange>&,bool after);
 class ProjectAssistantPanel final:public juce::Component,private juce::Timer,private juce::ListBoxModel {
 public:
     ProjectAssistantPanel(MainComponent&,bool mastering);~ProjectAssistantPanel()override;
-    void open();void close();bool verify(const juce::File&);
+    void open();void close();bool verify(const juce::File&);bool demo(const juce::File&);
     void resized()override;void paint(juce::Graphics&)override;
 private:
     MainComponent& owner;bool master;
@@ -47,7 +56,7 @@ private:
     std::uint64_t revision=0,preview=0,generation=0;
     Localisation::Language language=Localisation::current();
     bool stale=false,applied=false,referenceMode=false;juce::Rectangle<int> metrics;int shownStep=-99;int step()const;
-    void prepareComparison(int side,bool applyAfter);
+    void prepareComparison(int side,bool applyAfter);bool stageInserts(std::function<void()> then);int staging=0;
     void renderProject();void previewSide(int);void applySelected();void present();void invalidate();void stopPreview();
     void release(std::shared_ptr<AssistantAudio>&);void timerCallback()override;
     int getNumRows()override{return (int)changes.size();}

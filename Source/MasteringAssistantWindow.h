@@ -5,7 +5,7 @@ namespace fga {class MainComponent;class ProjectAssistantPanel;
 class MasteringAssistantWindow:public juce::DocumentWindow {
 public:
     explicit MasteringAssistantWindow(MainComponent&);~MasteringAssistantWindow()override;
-    void open();void closeButtonPressed()override;bool verify(const juce::File&);
+    void open();void closeButtonPressed()override;bool verify(const juce::File&);bool demo(const juce::File&);
 private:
     class Panel;Panel* panel;ProjectAssistantPanel* projectPanel;juce::TabbedComponent* tabs;
 };}

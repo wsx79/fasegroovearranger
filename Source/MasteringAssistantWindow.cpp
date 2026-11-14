@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MasteringAssistantWindow.h"
+#include "MixAssistantWindow.h"
 #include "AssistantProject.h"
 #include "MainComponent.h"
 #include "MasteringAnalysis.h"
@@ -174,7 +175,20 @@ MasteringAssistantWindow::MasteringAssistantWindow(MainComponent& m):DocumentWin
 MasteringAssistantWindow::~MasteringAssistantWindow(){clearContentComponent();setLookAndFeel(nullptr);}
 void MasteringAssistantWindow::open(){tabs->setCurrentTabIndex(0);projectPanel->open();panel->open();centreWithSize(1100,780);setVisible(true);toFront(true);}
 void MasteringAssistantWindow::closeButtonPressed(){projectPanel->close();panel->close();setVisible(false);}
+bool MasteringAssistantWindow::demo(const juce::File& f){tabs->setCurrentTabIndex(0);return projectPanel->demo(f);}
 bool MasteringAssistantWindow::verify(const juce::File& f){tabs->setCurrentTabIndex(1);const bool old=panel->verify(f);tabs->setCurrentTabIndex(0);return projectPanel->verify(f.getChildFile("project"))&&old;}
 void MainComponent::showMasteringAssistant(){if(editingRestricted()||loadingPlugin)return;if(!masteringAssistantWindow)masteringAssistantWindow=std::make_unique<MasteringAssistantWindow>(*this);masteringAssistantWindow->open();}
+// --assistant-demo: a generated song, the Mix then the Mastering suggestions all applied, with the
+// before/after MP3s, the screenshots and the lists of changes (for a listening review).
+bool MainComponent::assistantDemo(const juce::File& folder){
+    folder.createDirectory();auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+120000;while(pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy();};
+    project=newProject(0);generate(project,Scope::song,0,0,4242);project.normalise();restoreInstruments();if(!wait())return false;refreshControls();
+    auto render=[&](const char* name){audio.capturePluginStates(project);return audio.exportAudio(project,folder.getChildFile(name),-1,true,[]{return false;},[](double){}).wasOk();};
+    bool ok=render("before.mp3");
+    showMixAssistant();ok=mixAssistantWindow&&mixAssistantWindow->demo(folder.getChildFile("mix"))&&ok;if(mixAssistantWindow)mixAssistantWindow->closeButtonPressed();
+    ok=render("after-mix.mp3")&&ok;
+    showMasteringAssistant();ok=masteringAssistantWindow&&masteringAssistantWindow->demo(folder.getChildFile("master"))&&ok;if(masteringAssistantWindow)masteringAssistantWindow->closeButtonPressed();
+    ok=render("after-master.mp3")&&ok;return ok;
+}
 bool MainComponent::verifyMasteringAssistant(const juce::File& f){f.createDirectory();showMasteringAssistant();return masteringAssistantWindow&&masteringAssistantWindow->verify(f);}
 }

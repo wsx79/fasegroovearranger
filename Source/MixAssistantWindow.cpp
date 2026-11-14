@@ -121,6 +121,7 @@ MixAssistantWindow::MixAssistantWindow(MainComponent& m):DocumentWindow(tr("Mix 
 MixAssistantWindow::~MixAssistantWindow(){clearContentComponent();setLookAndFeel(nullptr);}
 void MixAssistantWindow::open(){tabs->setCurrentTabIndex(0);projectPanel->open();panel->open();centreWithSize(1100,780);setVisible(true);toFront(true);}
 void MixAssistantWindow::closeButtonPressed(){projectPanel->close();panel->close();setVisible(false);}
+bool MixAssistantWindow::demo(const juce::File& f){tabs->setCurrentTabIndex(0);return projectPanel->demo(f);}
 bool MixAssistantWindow::verify(const juce::File& folder){tabs->setCurrentTabIndex(1);const bool old=panel->verify(folder);tabs->setCurrentTabIndex(0);const bool ok=projectPanel->verify(folder.getChildFile("project"))&&old;folder.getChildFile("mix-assistant-ui.txt").replaceWithText(ok?"PASS preview A/B leaves project/Undo unchanged; explicit Apply and Undo/Redo; project-edit invalidation, real worker Cancel/retry/close":"FAIL Mix Assistant UI");return ok;}
 void MainComponent::showMixAssistant(){if(editingRestricted()||loadingPlugin)return;if(!mixAssistantWindow)mixAssistantWindow=std::make_unique<MixAssistantWindow>(*this);mixAssistantWindow->open();}
 }

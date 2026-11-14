@@ -72,7 +72,7 @@ std::unique_ptr<MixState> mixState(const Project& p){
         x.pump=t.engine.pump;x.pumpRelease=t.engine.pumpRelease;x.pumpRate=std::clamp(t.engine.pumpRate,0,3);x.pumpSource=std::clamp(t.engine.pumpSource,0,1);
         x.drumNote=isDrumTrack((int)ti)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
         for(size_t lane=0;lane<x.laneVolume.size();++lane){x.laneVolume[lane]=(float)t.engine.laneVolume[lane];x.laneMute[lane]=t.engine.laneMute[lane];}}
-    auto& master=m->tracks[(size_t)masterEffectTrack];master.mute=true;master.parameters=p.masterEffects.parameters;
+    auto& master=m->tracks[(size_t)masterEffectTrack];master.mute=true;master.parameters=p.masterEffects.parameters;master.eq=p.masterEffects.eq;   // the master EQ runs before the master inserts
     for(const auto& fx:p.masterEffects.effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&master.effectCount<maxTrackEffects){master.effectOrder[(size_t)master.effectCount++]=fx.slot;master.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}
     for(int b=0;b<2;++b){auto& mix=m->tracks[(size_t)(returnEffectTrack+b)];mix.mute=true;mix.session=p.returnEffects[(size_t)b].sessionId;if(p.returnChains)for(const auto& fx:p.returnEffects[(size_t)b].effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&mix.effectCount<maxTrackEffects){mix.effectOrder[(size_t)mix.effectCount++]=fx.slot;mix.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}}
     return m;
@@ -523,10 +523,11 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     }}
     busGraph.finish(output,channels,count,masterActive?masterGains.data():nullptr);
     // Full mixes and live clip previews pass through the master inserts; stems stay dry of master inserts.
-    if((onlyTrack<0||clipSource>=0)&&instruments[(size_t)masterEffectTrack]->effectCount>0){auto& rack=*instruments[(size_t)masterEffectTrack];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();
+    if((onlyTrack<0||clipSource>=0)&&(instruments[(size_t)masterEffectTrack]->effectCount>0||instruments[(size_t)masterEffectTrack]->strip.engaged())){auto& rack=*instruments[(size_t)masterEffectTrack];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();
         for(int ch=0;ch<std::min(channels,2);++ch)if(output[ch])block.copyFrom(ch,0,output[ch],count);
         // A mono device supplies one real side; duplicate it before a stereo or mono insert.
         if(channels==1&&output[0])block.copyFrom(1,0,block,0,0,count);
+        rack.strip.process(block,count);
         for(int k=0;k<rack.effectCount;++k){const int slot=rack.effectOrder[(size_t)k];auto* fx=rack.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,rack.effectBypass[(size_t)(slot-1)]);if(!native&&rack.effectBypass[(size_t)(slot-1)])continue;
             if(rack.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             rack.chainMidi.clear();processHosted(rack,*fx,block,rack.chainMidi,beat,slot);

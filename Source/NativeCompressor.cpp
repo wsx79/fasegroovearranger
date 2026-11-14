@@ -70,13 +70,21 @@ public:
     const juce::String getName()const override{return "Native Compressor";}
     void fillInPluginDescription(juce::PluginDescription& description)const override{description=nativeCompressorDescription();}
     bool isBusesLayoutSupported(const BusesLayout& layout)const override{return layout.getMainInputChannelSet()==layout.getMainOutputChannelSet()&&(layout.getMainOutputChannelSet()==juce::AudioChannelSet::stereo()||layout.getMainOutputChannelSet()==juce::AudioChannelSet::mono());}
-    void prepareToPlay(double rate,int)override{dsp.prepare(rate,values());dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;for(auto& level:inLevel)level.store(0);for(auto& level:outLevel)level.store(0);keyLevel.store(0);inputDb.store(-100);}
+    void prepareToPlay(double rate,int)override{limiter.prepare(rate);setLatencySamples(inputDelay+(limiterMode?limiter.latency():0));dsp.prepare(rate,values());dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;for(auto& level:inLevel)level.store(0);for(auto& level:outLevel)level.store(0);keyLevel.store(0);inputDb.store(-100);}
     void releaseResources()override{}
-    void reset()override{dsp.reset();dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
+    void reset()override{limiter.reset();dsp.reset();dsp.setMix(mixParameter->plain(),true);inputWrite=detectorWrite=inputValid=detectorValid=0;reduction=0;}
     void processBlock(juce::AudioBuffer<float>& block,juce::MidiBuffer&)override{
         if(block.getNumChannels()<1)return;
         const int count=block.getNumSamples();
         if(inputDelay>0)for(int n=0;n<count;++n){for(int c=0;c<std::min(2,block.getNumChannels());++c){inputLine.setSample(c,inputWrite,block.getSample(c,n));block.setSample(c,n,inputValid>=inputDelay?inputLine.getSample(c,(inputWrite-inputDelay+inputLine.getNumSamples())%inputLine.getNumSamples()):0);}inputWrite=(inputWrite+1)%inputLine.getNumSamples();inputValid=std::min(inputValid+1,inputLine.getNumSamples());}
+        if(limiterMode){   // limiter mode: Threshold is the ceiling, Makeup the input gain
+            const auto v=values();const int channels=std::min(2,block.getNumChannels());float in=0,out=0;
+            for(int c=0;c<channels;++c)in=std::max(in,block.getMagnitude(c,0,count));
+            limiter.configure(bypassed?0.:v[0],bypassed?0.:v[5],v[4]);limiter.process(block.getWritePointer(0),channels>1?block.getWritePointer(1):nullptr,count);
+            for(int c=0;c<channels;++c)out=std::max(out,block.getMagnitude(c,0,count));
+            for(int c=0;c<2;++c){inLevel[(size_t)c].store(in,std::memory_order_relaxed);outLevel[(size_t)c].store(out,std::memory_order_relaxed);}
+            inputDb.store(in>1.e-8f?(float)(20*std::log10((double)in)):-100.f,std::memory_order_relaxed);reduction.store((float)limiter.reductionDb(),std::memory_order_relaxed);return;
+        }
         dsp.configure(values());dsp.setMix(mixParameter->plain());dsp.setBypassed(bypassed);
         const int channels=std::min(2,block.getNumChannels());float inPeak[2]{},key=0;
         for(int n=0;n<count;++n)for(int c=0;c<channels;++c){const float sample=block.getSample(c,n);if(std::isfinite(sample))inPeak[c]=std::max(inPeak[c],std::abs(sample));}
@@ -97,8 +105,8 @@ public:
     double getTailLengthSeconds()const override{return 0;}
     int getNumPrograms()override{return 1;}int getCurrentProgram()override{return 0;}void setCurrentProgram(int)override{}
     const juce::String getProgramName(int)override{return "Default";}void changeProgramName(int,const juce::String&)override{}
-    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());state.setAttribute("sidechainSource",sourceParameter->source());state.setAttribute("mix",(double)mixParameter->plain());copyXmlToBinary(state,data);}
-    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));sourceParameter->setValue((std::clamp(state->getIntAttribute("sidechainSource",-1),-1,maxTracks-1)+1)/(float)maxTracks);mixParameter->setValue(state->hasAttribute("mix")?(float)std::clamp(state->getDoubleAttribute("mix"),0.,1.):1.f);}
+    void getStateInformation(juce::MemoryBlock& data)override{juce::XmlElement state("FgaCompressor");state.setAttribute("version",1);for(int i=0;i<6;++i)state.setAttribute(ids[i],(double)parameters[(size_t)i]->plain());if(limiterMode)state.setAttribute("limiter",1);state.setAttribute("sidechainSource",sourceParameter->source());state.setAttribute("mix",(double)mixParameter->plain());copyXmlToBinary(state,data);}
+    void setStateInformation(const void* data,int bytes)override{auto state=getXmlFromBinary(data,bytes);if(!state||!state->hasTagName("FgaCompressor")||state->getIntAttribute("version")!=1)return;limiterMode=state->getBoolAttribute("limiter",false);setLatencySamples(inputDelay+(limiterMode?limiter.latency():0));for(int i=0;i<6;++i)if(state->hasAttribute(ids[i]))parameters[(size_t)i]->setValue(parameters[(size_t)i]->normalized((float)state->getDoubleAttribute(ids[i])));sourceParameter->setValue((std::clamp(state->getIntAttribute("sidechainSource",-1),-1,maxTracks-1)+1)/(float)maxTracks);mixParameter->setValue(state->hasAttribute("mix")?(float)std::clamp(state->getDoubleAttribute("mix"),0.,1.):1.f);}
     bool hasEditor()const override{return true;}juce::AudioProcessorEditor* createEditor()override;
     const float* detector=nullptr; // audio-side borrowed buffer, reset by host before each process call
     SourceParameter* sourceParameter=nullptr;MixParameter* mixParameter=nullptr;
@@ -114,13 +122,14 @@ public:
         // The new source enters the existing aligned timeline without a silence gap.
         if(input!=inputDelay){inputDelay=input;inputLine.setSize(input>0?2:0,input>0?input+1:0);inputWrite=inputValid=0;}
         if(detection!=detectorDelay){detectorDelay=detection;detectorLine.resize(detection>0?(size_t)detection+1:0);detectorWrite=detectorValid=0;}
-        setLatencySamples(inputDelay);
+        setLatencySamples(inputDelay+(limiterMode?limiter.latency():0));
     }
 
     juce::StringArray sourceNames;std::function<void()> beforeSourceEdit; // editor/message thread only
     std::atomic<bool> bypassed{false};std::atomic<float> reduction{0};
     std::array<CompressorParameter*,6> parameters{};
-private:CompressorDSP dsp;
+    std::atomic<bool> limiterMode{false};
+private:CompressorDSP dsp;LimiterDSP limiter;
 };
 namespace ui {
 const juce::Colour blue(0xff4d8dff);
@@ -534,7 +543,7 @@ public:
     {
         g.fillAll(Daw::base);
 
-        Daw::deviceHeader(g,{18,8,430,50},ui::loc("COMPRESSOR", "COMPRESSORE"),"DYNAMICS",ui::blue);
+        Daw::deviceHeader(g,{18,8,430,50},processor.limiterMode?ui::loc("LIMITER (THRESHOLD = CEILING, MAKEUP = INPUT GAIN)","LIMITER (THRESHOLD = TETTO, MAKEUP = GUADAGNO IN INGRESSO)"):ui::loc("COMPRESSOR", "COMPRESSORE"),"DYNAMICS",ui::blue);
         Daw::devicePanel(g,sourcePanel.toFloat(),{});
         Daw::devicePanel(g,knobPanel.toFloat(),{});
         for (int i = 1; i < 7; ++i) if (knobs[(size_t)i]->getY() == knobs[0]->getY()) { g.setColour(juce::Colour(0xff222529)); g.drawVerticalLine(knobs[(size_t)i]->getX(), (float)knobPanel.getY() + 18, (float)knobPanel.getBottom() - 18); }

@@ -95,6 +95,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
         }
         if(!previewFound&&energies[0]/(2*n)>1e-6){result.previewStart=std::clamp(at/readers[0]->sampleRate-.05,0.,899.);previewFound=true;}
         for(size_t k=0;k<6;++k)result.mix.bandPower[k]+=bands[0][k]*n;
+        for(size_t f=1;f<inputs.size();++f)for(size_t k=0;k<6;++k)result.inputLevels[f].bandPower[k]+=bands[f][k]*n;   // each stem's tonal balance (assistant EQ)
         auto& audio=buffers[0];
         meter.process(audio.getArrayOfWritePointers(),(int)readers[0]->numChannels,n);
         for(int i=0;i<n;++i){const double l=audio.getSample(0,i),r=audio.getSample(1,i);ll+=l*l;rr+=r*r;lr+=l*r;}
@@ -110,6 +111,7 @@ juce::Result analyseMixFiles(const std::vector<MixInput>& inputs,MixReport& resu
         }
     }
     for(auto& energy:result.mix.bandPower)energy/=std::max<juce::int64>(1,frames);
+    for(size_t f=1;f<result.inputLevels.size();++f)for(auto& energy:result.inputLevels[f].bandPower)energy/=std::max<juce::int64>(1,frames);
     result.mix.rms=std::sqrt(sum/std::max(1.,2.*frames));
     for(auto& level:result.inputLevels)level.rms=std::sqrt(level.rms/std::max(1.,2.*frames));
     result.mix.correlationValid=readers[0]->numChannels==2&&ll>1e-15&&rr>1e-15;

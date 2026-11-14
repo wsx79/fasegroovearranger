@@ -50,6 +50,7 @@ private:
     int rampSamples = 1;
     bool active = false;
 public:
+    bool engaged() const { return active && activeCount > 0; }
     void reset() {
         for (auto& f : filters) { f.reset(); f.used = false; f.ramp = 0; f.type = -1; f.freq = 0; }
     }

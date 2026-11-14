@@ -19,7 +19,12 @@ juce::String nameOf(const Project& p,const AssistantChange& c){const int ti=inde
 juce::String description(const Project& p,const AssistantChange& c){
     juce::String value;
     if(c.kind==AssistantChange::gain)value=tr("Volume")+": "+juce::String(juce::Decibels::gainToDecibels(c.before,-120.),2)+" -> "+juce::String(juce::Decibels::gainToDecibels(c.after,-120.),2)+" dB";
-    else if(c.kind==AssistantChange::eq)value="EQ "+juce::String(c.frequency,0)+" Hz / 0 -> "+juce::String(c.after,1)+" dB / Q "+juce::String(c.q,2);
+    else if(c.kind==AssistantChange::eq)value=c.filterType==(int)EqFilterType::LowCut?"EQ "+tr("high-pass")+" "+juce::String(c.frequency,0)+" Hz":"EQ "+tr(c.filterType==(int)EqFilterType::LowShelf?"low shelf":c.filterType==(int)EqFilterType::HighShelf?"high shelf":"bell")+" "+juce::String(c.frequency,0)+" Hz / "+juce::String(c.after,1)+" dB"+(c.filterType==(int)EqFilterType::Bell?" / Q "+juce::String(c.q,2):juce::String());
+    else if(c.kind==AssistantChange::insert&&c.effect=="Limiter")value=tr("Limiter")+" ("+tr("Native Compressor")+"): "+tr("ceiling")+" "+juce::String(c.values[0],1)+" dB / "+tr("input gain")+" "+juce::String(c.values[5],1)+" dB / lookahead 1.5 ms";
+    else if(c.kind==AssistantChange::insert)value=tr(c.effect)+" ("+tr("Native Compressor")+"): "+juce::String(c.values[0],1)+" dB / "+juce::String(c.values[1],1)+":1 / "+juce::String(c.values[3],1)+"-"+juce::String(c.values[4],0)+" ms"+(std::abs(c.values[5])>.05f?" / "+tr("Makeup")+" "+juce::String(c.values[5],1)+" dB":juce::String());
+    else if(c.kind==AssistantChange::send)value=tr(c.parameter==0?"Reverb send (A)":"Delay send (B)")+": "+juce::String(c.before*100,0)+"% -> "+juce::String(c.after*100,0)+"%";
+    else if(c.kind==AssistantChange::group)value=tr("Group")+": "+(c.before<0?tr("none"):juce::String::charToString((juce::juce_wchar)('A'+(int)c.before)))+" -> "+juce::String::charToString((juce::juce_wchar)('A'+(int)c.after));
+    else if(c.kind==AssistantChange::sidechain)return tr("GROUP A")+" / "+tr("Kick sidechain")+": "+juce::String(c.before*100,0)+"% -> "+juce::String(c.after*100,0)+"% / "+c.reason;
     else{const char* names[]{"Threshold","Ratio","Knee","Attack","Release","Makeup"};const double range=CompressorDSP::maximum[(size_t)c.parameter]-CompressorDSP::minimum[(size_t)c.parameter],base=CompressorDSP::minimum[(size_t)c.parameter];value=tr("Native Compressor")+" / "+tr(names[c.parameter])+": "+juce::String(base+c.before*range,1)+" -> "+juce::String(base+c.after*range,1)+(c.parameter==1?" :1":" ms");}
     return nameOf(p,c)+" / "+value+" / "+c.reason;
 }
@@ -94,19 +99,48 @@ void ProjectAssistantPanel::renderProject(){
         if(!safe)return;safe->task=nullptr;if(token!=safe->generation)return;safe->revision=safe->owner.controlRevision();
         if(result.failed()){safe->text.setText(tr(result.getErrorMessage()),false);safe->release(safe->audio);safe->mixReport.reset();safe->masterReport.reset();return;}
         safe->targets.startA=safe->mixReport->previewStart;safe->revision=safe->owner.controlRevision();safe->changes=assistantGainChanges(safe->owner.project,*safe->mixReport);
-        if(safe->master){auto& out=safe->changes;out.erase(std::remove_if(out.begin(),out.end(),[](const auto& c){return c.session==0;}),out.end());const auto& measured=safe->masterReport->files[0].mix;
+        if(safe->master){auto& out=safe->changes;out.clear();   // mastering works on the master only; track levels belong to the Mix assistant
+           const auto& measured=safe->masterReport->files[0].mix;
             double delta=std::min(0.,safe->targets.ceilingDb-.05-juce::Decibels::gainToDecibels(safe->masterReport->files[0].truePeak,-120.));if(safe->targets.useLufs&&measured.lufs> -99)delta=std::min(delta,safe->targets.lufs-measured.lufs);
-            if(delta< -.05&&safe->owner.project.masterGain>0){AssistantChange change;change.before=safe->owner.project.masterGain;change.after=change.before*juce::Decibels::decibelsToGain(delta);change.reason=tr("Suggested master attenuation; remeasure after applying.");out.insert(out.begin(),change);}}
+            assistantMasterChain(safe->owner.project,*safe->masterReport,safe->targets,out);const bool limiter=std::any_of(out.begin(),out.end(),[](const auto& c){return c.kind==AssistantChange::insert&&c.effect=="Limiter";});
+            if(!limiter&&delta< -.05&&safe->owner.project.masterGain>0){AssistantChange change;change.before=safe->owner.project.masterGain;change.after=change.before*juce::Decibels::decibelsToGain(delta);change.reason=tr("Suggested master attenuation; remeasure after applying.");out.insert(out.begin(),change);}}
         assistantEqChanges(safe->owner.project,*safe->mixReport,safe->changes);assistantCompressorChanges(safe->owner.audio,safe->owner.project,masterEffectTrack,safe->mixReport->mix,safe->changes);
+        if(!safe->master)assistantMixProcessing(safe->owner.project,*safe->mixReport,safe->audio->tracks,safe->changes);
         if(!safe->master)for(size_t i=0;i<safe->audio->tracks.size()&&i+1<safe->mixReport->inputLevels.size();++i)assistantCompressorChanges(safe->owner.audio,safe->owner.project,safe->audio->tracks[i],safe->mixReport->inputLevels[i+1],safe->changes);
         safe->list.updateContent();safe->present();safe->timerCallback();
     },{});
     if(!task){release(audio);text.setText(tr("Wait for the current operation to finish."),false);}
 }
+// A suggested insert must exist in the engine before its B render: load each native compressor
+// into its free slot (not yet in the project) with the suggested state. Returns true while loading;
+// the continuation then retries.
+bool ProjectAssistantPanel::demo(const juce::File& folder){
+    folder.createDirectory();auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+300000;while((task||staging>0||owner.pluginsBusy())&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !task&&staging==0&&!owner.pluginsBusy();};
+    renderProject();if(!wait()||!audio||changes.empty())return false;
+    juce::String list;for(auto& c:changes){c.selected=true;list+=description(owner.project,c)+"\n";}folder.getChildFile("changes.txt").replaceWithText(list+"\n"+text.getText());
+    this->list.updateContent();if(auto stream=folder.getChildFile("panel.png").createOutputStream())juce::PNGImageFormat().writeImageToStream(createComponentSnapshot(getLocalBounds()),*stream);
+    prepareComparison(-1,true);if(!wait())return false;const auto until=juce::Time::getMillisecondCounterHiRes()+5000;while(!applied&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);
+    folder.getChildFile("result.txt").replaceWithText(text.getText());if(auto stream=folder.getChildFile("applied.png").createOutputStream())juce::PNGImageFormat().writeImageToStream(createComponentSnapshot(getLocalBounds()),*stream);
+    return applied;
+}
+bool ProjectAssistantPanel::stageInserts(std::function<void()> then){
+    if(staging>0)return true;
+    std::vector<const AssistantChange*> missing;
+    for(const auto& c:changes){if(!c.selected||c.kind!=AssistantChange::insert)continue;const int ti=indexOf(owner.project,c.session);if(ti<0)continue;
+        if(auto* fx=owner.audio.effectPlugin(ti,c.slot)){juce::PluginDescription d;fx->fillInPluginDescription(d);if(isNativeCompressor(d)){owner.audio.restoreEffectState(ti,nativeCompressorState(c.values,c.effect=="Limiter"),c.slot);continue;}}
+        missing.push_back(&c);}
+    if(missing.empty())return false;
+    staging=(int)missing.size();juce::Component::SafePointer<ProjectAssistantPanel> safe(this);
+    for(const auto* c:missing){const int ti=indexOf(owner.project,c->session);const auto state=nativeCompressorState(c->values,c->effect=="Limiter");const int slot=c->slot;
+        owner.audio.loadEffect(ti,nativeCompressorDescription(),[safe,ti,state,slot,then](juce::Result r){if(!safe)return;if(r.wasOk())safe->owner.audio.restoreEffectState(ti,state,slot);
+            if(--safe->staging==0){if(r.failed()){safe->text.setText(r.getErrorMessage(),false);return;}juce::MessageManager::callAsync([safe,then]{if(safe)then();});}},slot);}
+    return true;
+}
 void ProjectAssistantPanel::prepareComparison(int side,bool applyAfter){
     if(task||owner.editingRestricted()||owner.pluginsBusy())return;owner.instrumentPanel.flushRender();
     if(!audio||stale||applied||owner.editingRestricted()||revision!=owner.controlRevision())return;
     Project candidate;auto result=assistantCandidate(owner.project,owner.audio,changes,candidate);if(result.failed()){text.setText(result.getErrorMessage(),false);return;}
+    if(stageInserts([this,side,applyAfter]{prepareComparison(side,applyAfter);}))return;
     beforeAfter=std::make_shared<AssistantAudio>();beforeAfter->snapshot=std::move(candidate);const auto original=audio;const auto pair=std::make_shared<MasteringReport>();auto target=targets;target.startB=target.startA;const auto token=++generation;juce::Component::SafePointer<ProjectAssistantPanel> safe(this);
     task=owner.renderAssistantProject(beforeAfter,[original,pair,target](AssistantAudio& changed,const auto& cancel,const auto& progress){return analyseMastering({{original->mix()}},changed.mix(),target,*pair,cancel,progress);},[safe,token,pair,side,applyAfter](juce::Result result){
         if(!safe)return;safe->task=nullptr;if(token!=safe->generation)return;safe->revision=safe->owner.controlRevision();
@@ -150,7 +184,7 @@ void ProjectAssistantPanel::present(){
     if(comparison&&comparison->hasReference)value+="\n"+tr("Rendered proposal True Peak: ")+juce::String(juce::Decibels::gainToDecibels(comparison->reference.truePeak,-120.),2)+" dBTP / LUFS "+juce::String(comparison->reference.mix.lufs,2)+"\n";
     if(comparison&&comparison->hasReference&&comparison->reference.truePeak>juce::Decibels::decibelsToGain(targets.ceilingDb))value+=tr("Proposal remains above the selected ceiling; remeasure after Apply or retain Transparent export protection.")+"\n";
 
-    value+="\n"+tr("Select numeric changes below. EQ/compression are listening proposals; automatic compressor edits require an existing non-automated native compressor.");
+    value+="\n"+tr("Select the changes below: EQ, compressors and limiter (inserted when missing), reverb/delay sends, kick sidechain and levels. Compare A/B, then Apply with one Undo.");
     if(applied)value+="\n\n"+tr("Suggestions applied. One Undo restores the previous settings.");assistantui::showReport(text,value);repaint();list.repaint();
 }
 void ProjectAssistantPanel::timerCallback(){if(const int now=step();now!=shownStep){shownStep=now;repaint();}
@@ -165,7 +199,7 @@ void ProjectAssistantPanel::paintListBoxItem(int row,juce::Graphics& g,int width
     // Checkbox, kind badge, the change itself; applied rows say so.
     auto box=juce::Rectangle<float>(12.f,(float)height/2-8,16,16);g.setColour(c.selected?tone:juce::Colour(0xff1d1f23));g.fillRoundedRectangle(box,3.f);g.setColour(c.selected?tone:juce::Colour(0xff3a3e45));g.drawRoundedRectangle(box.reduced(.5f),3.f,1.f);
     if(c.selected){juce::Path tick;tick.startNewSubPath(box.getX()+4,box.getCentreY());tick.lineTo(box.getX()+7,box.getBottom()-4.5f);tick.lineTo(box.getRight()-3.5f,box.getY()+4.5f);g.setColour(Daw::onAccent);g.strokePath(tick,juce::PathStrokeType(1.8f,juce::PathStrokeType::curved,juce::PathStrokeType::rounded));}
-    const juce::String kind=tr(c.kind==AssistantChange::gain?"GAIN":c.kind==AssistantChange::eq?"EQ":"COMP");auto badge=juce::Rectangle<int>(40,height/2-9,54,18);
+    const juce::String kind=tr(c.kind==AssistantChange::gain?"GAIN":c.kind==AssistantChange::eq?"EQ":c.kind==AssistantChange::send?"SEND":c.kind==AssistantChange::group?"GROUP":c.kind==AssistantChange::sidechain?"SIDECH":c.kind==AssistantChange::insert&&c.effect=="Limiter"?"LIMIT":"COMP");auto badge=juce::Rectangle<int>(40,height/2-9,54,18);
     g.setColour(juce::Colour(0xff1d1f23));g.fillRoundedRectangle(badge.toFloat(),3.f);Daw::drawCaps(g,kind,badge,c.selected?tone:Daw::textDim,juce::Justification::centred);
     auto textArea=juce::Rectangle<int>(104,2,width-110,height-4);if(applied){auto state=textArea.removeFromRight(90);Daw::drawCaps(g,tr(c.selected?"applied":""),state,Daw::meterLow,juce::Justification::centredRight);}
     g.setColour(c.selected?Daw::text:Daw::textDim);g.setFont(Daw::font(12.5f));g.drawFittedText(description(owner.project,c),textArea,juce::Justification::centredLeft,2,1.f);}
@@ -185,7 +219,7 @@ bool ProjectAssistantPanel::verify(const juce::File& folder){
     folder.createDirectory();close();owner.audio.capturePluginStates(owner.project);const auto languageBefore=Localisation::current();Localisation::setCurrent(Localisation::Language::italian);
     const auto saved=owner.project;const auto undos=owner.undoStack,redos=owner.redoStack;const bool dirty=owner.dirty;const int selected=owner.selectedTrack,section=owner.selectedSection,clip=owner.selectedClip;const double beat=owner.audio.position();
     juce::String checks;bool ok=true;auto check=[&](bool condition,const char* label){checks+=(condition?"PASS ":"FAIL ")+juce::String(label)+"\n";ok=condition&&ok;};
-    auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while((task||owner.pluginsBusy())&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !task&&!owner.pluginsBusy()&&!owner.editingRestricted()&&!owner.audio.isExporting();};
+    auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+60000;while((task||staging>0||owner.pluginsBusy())&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !task&&!owner.pluginsBusy()&&!owner.editingRestricted()&&!owner.audio.isExporting();};
     owner.project=newProject(731);owner.project.sections={{Section::main,1,"Assistant fixture"}};owner.project.settings.bpm=120;owner.project.normalise();owner.project.masterGain=2;
     for(auto& t:owner.project.tracks){t.mute=true;t.group=-1;t.sends={};t.parameters.clear();for(auto& c:t.clips)c.notes.clear();}
     for(int ti:{0,1,4}){auto& t=owner.project.tracks[(size_t)ti];t.mute=false;t.gain=2;t.clips[0].notes={{0,1.8,ti==1?36:ti==4?36:69,127,0}};}owner.project.tracks[1].group=0;owner.project.tracks[1].sends={.2,.1};owner.project.buses[0].sidechainAmount=.3;
