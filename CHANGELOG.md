@@ -2,6 +2,7 @@
 
 ## 0.57.1
 
+- Drums audit across all genres and the 80 factory grooves: one fix, the crash on a section downbeat no longer doubles a humanized crash a few milliseconds away (a flam in Techno and Electro House).
 - Harmony audit across all genres: band parts no longer rub a semitone apart. A strings or guitar note a minor 2nd/9th from the piano moves an octave (or, when already doubled, drops), and a held lead note moves to the nearest chord tone that fits. Sustained semitone rubs per 100 bars: Chill 171 → 5, Soulful 106 → 2, Deep 86 → 1, Neo Soul 81 → 4, '90s 38 → 2, Gospel 35 → 2; pitch classes and chords unchanged.
 
 ## 0.57.0

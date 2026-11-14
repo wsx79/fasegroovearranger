@@ -2,6 +2,7 @@
 
 ## 0.57.1
 
+- Verifica della batteria su tutti i generi e sugli 80 groove di fabbrica: una correzione, il crash sul primo tempo di sezione non raddoppia più un crash umanizzato a pochi millisecondi (un flam in Techno ed Electro House).
 - Verifica armonica su tutti i generi: le parti della band non stridono più a un semitono. Una nota di archi o chitarra a una seconda/nona minore dal piano si sposta di ottava (o, se già raddoppiata, viene tolta) e una nota lunga del Lead passa alla nota dell’accordo più vicina che non stride. Scontri ogni 100 battute: Chill 171 → 5, Soulful 106 → 2, Deep 86 → 1, Neo Soul 81 → 4, ’90s 38 → 2, Gospel 35 → 2; note e accordi invariati.
 
 ## 0.57.0
