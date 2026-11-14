@@ -1191,7 +1191,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
         {8,12,13,14}, {9,18,19}, {15,16,17,8}, {0,1,2,3,20,21,22},
         {8,12,13}, {4,5,10,23}, {7,16,17}, {8,12,13,14}
     };
-    static const std::vector<int> latinBass{2,3,9,11};
+    static const std::vector<int> latinBass{2,9,12};   // root/fifth/octave anticipations, no boogie or gospel walks
     const auto& bass=s.genre==latinHouseGenre?latinBass:bassLines[engineGenre(s.genre)];
     auto at=mix(seed+1103U)%bass.size();
     if(sgk::bassModeForLine(bass[at])==s.bassMode)at=(at+1)%bass.size();
@@ -1509,7 +1509,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         const bool harmonyLocked=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){
             return isHarmonicTrack(t.kind)&& std::any_of(t.clips.begin(),t.clips.end(),[&](const Clip& c){return (t.locked||c.locked)&&!c.notes.empty();});
         });
-        if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
+        if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(p.settings.genre==latinHouseGenre){static constexpr int latinFeel[][2]{{7,0},{7,1},{0,1},{8,1}};const auto& f=latinFeel[mix(seed+977U)%4];p.settings.voicing=f[0];p.settings.extension=f[1];}   // montuno: octave triads and close 7ths, not the Afro quartal stacks
+        else if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
         varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);p.refitAudioClips();
     }
     if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);

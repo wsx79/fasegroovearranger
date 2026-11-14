@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.54.1
+
+- Check armonia del Latin House: il montuno di piano usa triadi all'ottava e settime strette (ereditava le voicing quartali dell'Afro, in contrasto con i suoi accordi più luminosi); il basso resta su fondamentale, quinta e ottava anticipate (niente walking boogie o gospel). Le note fuori accordo scendono da circa 22% a 7% nel piano e da 21% a 9% nel basso.
+
 ## 0.54.0
 
 - Afro House e Latin House sono due generi distinti. Latin House (nuovo) ha clave, cowbell, cascara, timbales e congas in tumbao, un'armonia più luminosa che cambia ogni battuta (ii–V, turnaround, cadenza andalusa, i–iv–V7), il piano in montuno sopra una mano sinistra tumbao, bassi camminati e anticipati e una forma propria (Montuno, Timbales break, Fiesta).

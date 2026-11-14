@@ -27,7 +27,7 @@ inline const GenreSound& genreSound(int genre){
         {2,3,0,0,8,4, .80,.18,.72,.72,.20,.03,.65, .56,.90,.12,.18}, // dance stabs: upper triads / 909
         {6,3,0,0,0,0, .25,.32,.45,.72,.28,.0,.45, .42,.88,.12,.15}, // techno: sub / 909 / pulse lead
         {6,3,2,0,0,0, .60,.55,.78,.76,.22,.0,.62, .42,.88,.12,.15}, // electro: syncopated sub / 909 / saw lead
-        {1,4,2,2,6,9, .58,.30,.58,.58,.44,.14,.58, .46,.84,.24,.36}  // latin: bright piano montuno / round bass / percussion
+        {1,4,2,2,7,9, .58,.30,.58,.58,.44,.14,.58, .46,.84,.24,.36}  // latin: bright piano montuno (octave triads) / round bass / percussion
     };
     static_assert(std::size(styles)==numGenres);
     return styles[normaliseGenre(genre)];

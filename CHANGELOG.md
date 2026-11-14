@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.54.1
+
+- Latin House harmony check: the piano montuno uses octave triads and close sevenths (it inherited the Afro quartal voicings, which clashed with its brighter chords); the bass keeps root, fifth and octave anticipations (no boogie or gospel walks). Notes outside the chord drop from about 22% to 7% on the piano and from 21% to 9% on the bass.
+
 ## 0.54.0
 
 - Afro House and Latin House are two genres. Latin House (new) keeps the clave, cowbell, cascara, timbales and tumbao congas, a brighter harmony that moves every bar (ii–V, turnarounds, the Andalusian cadence, i–iv–V7), a piano montuno over a tumbao left hand and walking, anticipated bass lines, its own form (Montuno, Timbales break, Fiesta).

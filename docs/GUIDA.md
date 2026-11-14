@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.54.0**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.54.1**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 La **0.53.0** aggiunge il taglio delle clip dal bordo sinistro e legge il tempo salvato nei loop (ACID, Apple Loop, nome del file). La **0.52.0** ha permesso allo Studio di modificare stem e loop sulla timeline: tagli, velocità e guadagno si riflettono sulla clip. La **0.51.0** ha dato a pulsanti e potenziometri un aspetto hardware 3D e impedisce a potenziometri e fader di seguire la rotellina del mouse. La **0.50.0** ha portato il trascinamento fluido delle clip con SNAP on/off e griglie più fini, clip audio dai file trascinati con rilevamento di tempo e tonalità, l’Energia di sezione e una Durata obiettivo che costruisce il brano sulla lunghezza richiesta.
 
