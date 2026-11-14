@@ -125,7 +125,7 @@ void MainComponent::addSongSection(Section type){
 void MainComponent::freezeTrack(int track){
     // The freeze render is written without normalisation (legacy mode), 24 dB under the live level
     // so peaks above full scale survive 24-bit PCM; playback restores the level exactly.
-    constexpr double freezeHeadroom=1./16.;
+    static constexpr double freezeHeadroom=1./16.;
     if(track<0||track>=(int)project.tracks.size()||loadingPlugin||exportTask)return;
     if(audio.trackFrozen(track)){audio.unfreezeTrack(track);refreshControls();return;}
     // A compressor keyed by another track cannot be reproduced by the isolated freeze render.
