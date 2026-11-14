@@ -3,6 +3,11 @@
 #pragma once
 inline void verifyHarmonyContracts(){
     using namespace fga;
+    // Guitar and lead never add a tone the piano chord does not have (audit A1: sus, 11ths).
+    for(int scale=0;scale<13;++scale)for(int degree=0;degree<7;++degree)for(int e=0;e<12;++e){
+        const auto piano=sgk::buildChord(0,scale,degree,(sgk::Extension)e);unsigned tones=1;for(int i=0;i<piano.tones.size;++i)tones|=1u<<(unsigned)(((piano.tones[i])%12+12)%12);
+        const auto band=bandChord(0,scale,degree,-1,(sgk::Extension)e);const unsigned shift=(unsigned)(((band.root-piano.rootPc)%12+12)%12);unsigned m=fgg::chordTypeMask(band.type);m=((m<<shift)|(m>>(12-shift)))&0xfffu;
+        check((m&~tones)==0,"band chord is a subset of the piano chord");}
     struct Quality {int scale,degree,extension,root;unsigned mask;};
     const Quality qualities[]{
         {0,0,0,0,0x091}, {0,0,1,0,0x891}, {0,0,2,0,0x895},

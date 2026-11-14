@@ -1521,8 +1521,9 @@
          { "Full Circle  I-IV-vii-iii-vi-ii-V-I", 0, { 0, 3, 6, 2, 5, 1, 4, 0 }, "Circle of 5ths" },
 +
          { "Minor Circle  i - iv - VII - III",  2, { 0, 3, 6, 2 }, "Circle of 5ths" },
+-        { "Dorian Circle  i - iv - VII - III", 1, { 0, 3, 6, 2 }, "Circle of 5ths" },
 +
-         { "Dorian Circle  i - iv - VII - III", 1, { 0, 3, 6, 2 }, "Circle of 5ths" },
++        { "Dorian Circle  i - IV - VII - III", 1, { 0, 3, 6, 2 }, "Circle of 5ths" },
 +
          { "Jackin' Minor  i - iv",             2, { 0, 3 },       "Jackin' & funky" },
 +
@@ -1555,8 +1556,9 @@
          { "Jackin' Stab  i - III - IV",        1, { 0, 2, 3, 3 }, "Jackin' & funky" },
 +
          { "Jack Swing  i - v - VII - IV",      1, { 0, 4, 6, 3 }, "Jackin' & funky" },
+-        { "Funky Dominant  I7 - IV7",          3, { 0, 3 },       "Jackin' & funky" },
 +
-         { "Funky Dominant  I7 - IV7",          3, { 0, 3 },       "Jackin' & funky" },
++        { "Funky Dominant  I7 - IV7",          3, { 0, 0 },       "Jackin' & funky", { 24, 29 } },   // both dominant (Mixolydian's IV is maj7)
 +
          { "Disco Jack  ii - V - I - vi",       0, { 1, 4, 0, 5 }, "Jackin' & funky" },
 +

@@ -49,17 +49,26 @@ private:
     int activeCount = 0;
     int rampSamples = 1;
     bool active = false;
+    int fading = 0;   // samples left of the ramp to flat after a bypass
+    bool bypassedLive = false;   // switched off while running: switching on again fades in
 public:
     bool engaged() const { return active && activeCount > 0; }
     void reset() {
         for (auto& f : filters) { f.reset(); f.used = false; f.ramp = 0; f.type = -1; f.freq = 0; }
     }
     void configure(const EqSettings& p, double rate) {
-        active = p.enabled;
         const double sr = std::max(8000., rate);
         rampSamples = std::max(1, (int)std::lround(sr * 0.004));
+        const bool fadeIn = !(active && fading == 0) && bypassedLive;
+        if (!p.enabled) {
+            // Bypass ramps every filter to flat (4 ms) before the dry path takes over, so a big
+            // boost does not jump; the filters keep running until the ramp ends.
+            if (active && fading == 0 && activeCount > 0) { for (int i = 0; i < activeCount; ++i) filters[i].target({1, 0, 0, 0, 0}, rampSamples); fading = rampSamples; bypassedLive = true; }
+            else if (fading == 0) { active = false; activeCount = 0; }
+            return;
+        }
+        active = true;fading = 0;bypassedLive = false;
         activeCount = 0;
-        if (!active) return;
         const auto append=[&](EqBand b){
             b.normalise();if (!b.enabled) return;
             const auto c=eqCoefficients(b,sr);
@@ -67,7 +76,9 @@ public:
             const double ratio=f.freq>0?b.freq/f.freq:1;
             const bool moved=!f.used||f.type!=b.type||ratio>4.||ratio<.25;
             f.used=true;f.type=b.type;f.freq=b.freq;
-            if(moved){f.reset();f.snap(c);}else f.target(c,rampSamples);
+            // switching on fades in from flat as well
+            if(fadeIn){f.reset();f.snap({1,0,0,0,0});f.target(c,rampSamples);}
+            else if(moved){f.reset();f.snap(c);}else f.target(c,rampSamples);
         };
         if(p.bands.empty()){for(const auto& b:p.legacyBands())append(b);}
         else for(size_t i=0;i<std::min(p.bands.size(),(size_t)maxFilters);++i)append(p.bands[i]);
@@ -76,6 +87,7 @@ public:
     void process(juce::AudioBuffer<float>& audio, int count) {
         if (!active || activeCount <= 0) return;
         count = std::min(count, audio.getNumSamples());
+        if (fading > 0 && (fading -= count) <= 0) { fading = 0; active = false; }   // this block still finishes the ramp
         const int channels = std::min(2, audio.getNumChannels());
         for (int n = 0; n < count; ++n) {
             for (int i = 0; i < activeCount; ++i) filters[i].advance();

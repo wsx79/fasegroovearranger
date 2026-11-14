@@ -1479,6 +1479,7 @@
     { "Master limiter: about -14 LUFS under the dBTP ceiling.", "Limiter master: circa -14 LUFS sotto il tetto dBTP.", "Master limiter: about -14 LUFS under the dBTP ceiling.", "Master limiter: about -14 LUFS under the dBTP ceiling.", "Master limiter: about -14 LUFS under the dBTP ceiling.", "Master limiter: about -14 LUFS under the dBTP ceiling." },
     { "ceiling", "tetto", "ceiling", "ceiling", "ceiling", "ceiling" },
     { "input gain", "guadagno in ingresso", "input gain", "input gain", "input gain", "input gain" },
+    { "Freeze is not available while a compressor on this track listens to another track (sidechain).", "Il Freeze non è disponibile mentre un compressore su questa traccia ascolta un’altra traccia (sidechain).", "Freeze is not available while a compressor on this track listens to another track (sidechain).", "Freeze is not available while a compressor on this track listens to another track (sidechain).", "Freeze is not available while a compressor on this track listens to another track (sidechain).", "Freeze is not available while a compressor on this track listens to another track (sidechain)." },
     { "Analyse project", "Analizza progetto", "Analyse project", "Analyse project", "Analyse project", "Analyse project" },
     { "Apply suggestions", "Applica suggerimenti", "Apply suggestions", "Apply suggestions", "Apply suggestions", "Apply suggestions" },
     { "A: original", "A: originale", "A: original", "A: original", "A: original", "A: original" },

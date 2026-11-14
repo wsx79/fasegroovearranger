@@ -225,7 +225,10 @@ void laneNotes (Lane lane, const ChordTones& chord, const ChordVoicing&, int ste
         note = 60 + mod12 (key) + intervals[(size_t) index] + 12 * ((d - index) / 7);
     }
     note += 12 * (octave + (roomForBand ? 1 : 0));
-    out.add (std::clamp (note, 36, 108));
+    // fold by octaves into range: a clamp turned every high note into the same out-of-chord pitch
+    while (note > 108) note -= 12;
+    while (note < 36) note += 12;
+    out.add (note);
 }
 
 std::vector<int> laneNotes (Lane lane, const ChordTones& chord, int stepInBar, int octave)

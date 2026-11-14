@@ -1415,7 +1415,20 @@ fgg::Chord bandChord(int key,int scale,int degree,int free,sgk::Extension ext){
     else if(c.seventh<0)type=(int)T::major;
     else if(c.seventh==11)type=c.ninth==2?(int)T::maj9:(int)T::maj7;
     else if(c.seventh==10)type=(int)(c.ninth==1?T::dom7b9:c.ninth==2?T::dom9:T::dom7);
-    return {c.rootPc,type};
+    // The band chord must be a subset of what the piano plays: a type that adds a tone the piano
+    // does not have (a b7 under a sus without seventh, a #11 under a diatonic 11) clashes. Keep
+    // the type above when it fits, else the fullest type made only of the piano's tones.
+    unsigned piano=1u;for(int i=0;i<c.tones.size;++i)piano|=1u<<(unsigned)(((c.tones[i])%12+12)%12);
+    auto bitsIn=[](unsigned m){int n=0;for(;m;m&=m-1)++n;return n;};auto extra=[&](int t){return bitsIn(fgg::chordTypeMask(t)&~piano);};
+    // When no type on the root fits (a sus chord with a major seventh), an upper triad made only
+    // of the piano's tones takes its place (G major over C sus maj7).
+    int root=c.rootPc;
+    if(extra(type)>0){int best=type,score=-100000;
+        for(int shift=0;shift<12;++shift)for(int t=0;t<fgg::numChordTypes;++t){unsigned m=fgg::chordTypeMask(t);m=((m<<(unsigned)shift)|(m>>(unsigned)(12-shift)))&0xfffu;
+            const int value=10*bitsIn(m&piano)-100*bitsIn(m&~piano)-(shift?15:0)+(!shift&&c.third>=0&&((m>>(unsigned)c.third)&1u)?5:0);
+            if(value>score){score=value;best=t;root=(c.rootPc+shift)%12;}}
+        type=best;}
+    return {root,type};
 }
 // Every section that follows a filled one gets a crash on its first beat: each
 // section is rendered on its own, so the fill on the last bar had no answer.

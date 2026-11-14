@@ -19,6 +19,7 @@
 - Comments: `riffGenre`, the genre preset in `Generators.h`.
 - Chord names follow the key signature (`spelledNote`, `chordName` takes the key). Altered V only when the scale's fifth is perfect. Chromatic numerals mark augmented chords. `pentatonicNotes` is an explicit five-note set per scale. Voicings are clamped to MIDI 0–127. `grooveFromNotes` is unused by the arranger and marked as such.
 - `bestChord` also matches diminished, half-diminished, augmented and suspended chords.
+- Progression names and chords: "Dorian Circle i - IV - VII - III" (Dorian's IV is major); "Funky Dominant I7 - IV7" plays explicit dominant sevenths (free chords 24, 29) instead of Mixolydian's IVmaj7.
 
 ## Drums (`fgd`)
 
@@ -40,3 +41,4 @@
 
 - `LeadSettings::stepsPerChord`: shared harmonic duration (8/16/32/64 sixteenth steps). The current harmonic slot, anticipation and loop length follow it; standalone defaults to 16. All melodic phrase generation and the guide synth are vendored from Lead.
 - The same shared `BandTheory.inl` and the appended `mMaj7`, `dim7` and `dom7b9` chord types as the guitar.
+- A note out of range folds by octaves (it kept its pitch class) instead of being clamped to 36/108, which turned every high note into the same pitch outside the chord.

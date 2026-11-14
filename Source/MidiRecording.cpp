@@ -23,7 +23,8 @@ void assembleMidiTake(MidiTake& take,double grid){take.notes.clear();std::array<
         if(type==0x90&&e.value>0){if(h.velocity)finish(ch,note,e.elapsed);h={e.beat,std::max(0.,e.elapsed),e.value,false};}
         else if(type==0x80||(type==0x90&&e.value==0)){if(pedal[(size_t)ch])h.released=true;else finish(ch,note,e.elapsed);}
         else if(type==0xb0&&note==64){pedal[(size_t)ch]=e.value>=64;if(!pedal[(size_t)ch])for(int n=0;n<128;++n)if(held[(size_t)(ch*128+n)].released)finish(ch,n,e.elapsed);}
-        else if(type==0xb0&&(note==120||note==123)){for(int n=0;n<128;++n)finish(ch,n,e.elapsed);pedal[(size_t)ch]=false;}
+        else if(type==0xb0&&note==123){for(int n=0;n<128;++n){auto& x=held[(size_t)(ch*128+n)];if(!x.velocity)continue;if(pedal[(size_t)ch])x.released=true;else finish(ch,n,e.elapsed);}}   // All Notes Off: as note-offs, the sustain pedal still holds them
+        else if(type==0xb0&&note==120){for(int n=0;n<128;++n)finish(ch,n,e.elapsed);pedal[(size_t)ch]=false;}   // All Sound Off: immediate
     }
     for(int c=0;c<16;++c)for(int n=0;n<128;++n)finish(c,n,take.duration);
     std::sort(take.notes.begin(),take.notes.end(),[](const auto& a,const auto& b){return a.beat<b.beat;});
