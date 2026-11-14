@@ -410,7 +410,7 @@ private:
     TrackInspector trackInspector{*this};
     DawMixer mixer{*this};
     InspectorResizer inspectorResizer{*this},browserResizer{*this,true};
-    bool inspectorVisible=true,mixerVisible=true,followPlayhead=false,mixerReadable=false;   // mixerReadable: wider strips, larger controls
+    bool inspectorVisible=true,mixerVisible=true,followPlayhead=false,mixerReadable=false,mixerBadges=true;   // mixerReadable: wider strips, larger controls
     bool timeDisplay=false;
     juce::String positionLegend;
     DisplayButton positionModeButton;
