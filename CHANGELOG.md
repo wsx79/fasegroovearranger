@@ -1,5 +1,16 @@
 # Changelog — Fase Groove Arranger
 
+## 0.56.0
+
+- Band interplay: in Latin House the piano montuno leads and guitar and lead answer in its gaps; in Afro House kick, bass and percussion keep the ostinato while guitar and lead take turns phrase by phrase.
+- Ensemble voicing: strings chords make room for the lead's register, and a guitar chord no longer doubles the bass note in the low register (harmony unchanged).
+- DEVELOP (musical tools): three answers to a theme you select, written into the next clip (same opening with a new ending on the next chord, an eighth later, or a mirrored contour), with preview and one Undo.
+- VST articulations (track menu, for plugin instruments): dynamics on the mod wheel (CC1), keyswitches C0 long / C#0 short, or legato overlaps on generated clips.
+- Every plugin editor opens under a bar showing where it works (PIANO → INSERT 2 → COMPRESSOR, RETURN A → REVERB · SHARED BY 5 TRACKS) with Show track.
+- Mixer: VOL/PAN AUTO and TRIM badges (click opens the lane) and a READABLE mode with wider strips and larger controls. Bus & Send lists the tracks each group or return receives from (click to select) and shows the selected track's signal path.
+- Native Compressor: the last 4 seconds of gain reduction drawn beside the meter. Assistants list their suggestions by track, in columns (what / now → proposed / why).
+- Audit fixes: guitar and lead chords never add a tone the piano does not play; Freeze keeps the live level (and is refused while a compressor on the track listens to another track); long songs at high sample rates no longer risk the audio callback; lead notes out of range fold by octaves; switching EQ on/off ramps; recorded All Notes Off respects the sustain pedal; "Funky Dominant" plays two dominant sevenths. Random Chords in Afro House stay on its vamps (no diminished chords).
+
 ## 0.55.0
 
 - Mix Assistant processes the sound: per-track EQ (high-pass by role, measured low-mid cut and presence lift), a native compressor inserted where a part has none (bass, lead, keys, your audio), reverb and delay send levels by role (kick and bass stay dry), and the kick sidechain on group A (amount by genre). Level trims as before.

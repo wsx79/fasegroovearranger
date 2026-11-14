@@ -1496,7 +1496,7 @@
     { "no tracks: assign them with OUTPUT", "nessuna traccia: assegnale con USCITA", "no tracks: assign them with OUTPUT", "no tracks: assign them with OUTPUT", "no tracks: assign them with OUTPUT", "no tracks: assign them with OUTPUT" },
     { "no tracks: enable A / B on a mixer strip", "nessuna traccia: attiva A / B su una strip del mixer", "no tracks: enable A / B on a mixer strip", "no tracks: enable A / B on a mixer strip", "no tracks: enable A / B on a mixer strip", "no tracks: enable A / B on a mixer strip" },
     { "Signal path", "Percorso del segnale", "Signal path", "Signal path", "Signal path", "Signal path" },
-    { "DEVELOP", "SVILUPPA TEMA", "DEVELOP", "DEVELOP", "DEVELOP", "DEVELOP" },
+    { "DEVELOP", "SVILUPPA", "DEVELOP", "DEVELOP", "DEVELOP", "DEVELOP" },
     { "A: same opening, new ending on the next chord", "A: stesso attacco, nuovo finale sull’accordo successivo", "A: same opening, new ending on the next chord", "A: same opening, new ending on the next chord", "A: same opening, new ending on the next chord", "A: same opening, new ending on the next chord" },
     { "B: the answer comes an eighth later", "B: la risposta arriva un ottavo dopo", "B: the answer comes an eighth later", "B: the answer comes an eighth later", "B: the answer comes an eighth later", "B: the answer comes an eighth later" },
     { "C: mirrored contour in the second half", "C: profilo specchiato nella seconda metà", "C: mirrored contour in the second half", "C: mirrored contour in the second half", "C: mirrored contour in the second half", "C: mirrored contour in the second half" },

@@ -1,5 +1,16 @@
 # Novità — Fase Groove Arranger
 
+## 0.56.0
+
+- La band suona insieme: nel Latin House il montuno del piano guida e chitarra e Lead rispondono nelle sue pause; nell’Afro House cassa, basso e percussioni tengono l’ostinato mentre chitarra e Lead si alternano frase per frase.
+- Voicing d’insieme: gli accordi degli archi lasciano spazio al registro del Lead e la chitarra non raddoppia più nel grave la nota del basso (armonia invariata).
+- SVILUPPA (strumenti musicali): tre risposte a un tema che selezioni, scritte nella clip successiva (stesso attacco con nuovo finale sull’accordo successivo, un ottavo dopo, oppure profilo specchiato), con anteprima e un solo Annulla.
+- Articolazioni VST (menu traccia, strumenti plugin): dinamica sulla rotella di modulazione (CC1), keyswitch C0 lunghe / C#0 corte, oppure legato con note sovrapposte sulle clip generate.
+- Ogni editor di plugin si apre sotto una barra che dice dove lavora (PIANO → INSERT 2 → COMPRESSORE, RITORNO A → RIVERBERO · CONDIVISO DA 5 TRACCE) con Mostra traccia.
+- Mixer: badge VOL/PAN AUTO e TRIM (il clic apre la corsia) e modalità LEGGIBILE con strip più larghe e controlli più grandi. Bus & Send elenca le tracce da cui riceve ogni gruppo o ritorno (clic per selezionarle) e mostra il percorso della traccia selezionata.
+- Native Compressor: gli ultimi 4 secondi di riduzione accanto al meter. Gli assistenti elencano le proposte per traccia, a colonne (cosa / attuale → proposta / motivo).
+- Correzioni dall’audit: chitarra e Lead non aggiungono mai note che il piano non suona; il Freeze mantiene il livello del live (e viene rifiutato se un compressore della traccia ascolta un’altra traccia); i brani lunghi a frequenze alte non mettono più a rischio il callback audio; le note fuori estensione del Lead si spostano di ottava; accendere/spegnere l’EQ passa per una rampa; l’All Notes Off registrato rispetta il pedale; “Funky Dominant” suona due settime di dominante. Random Chords nell’Afro House resta sui suoi vamp (niente accordi diminuiti).
+
 ## 0.55.0
 
 - L’assistente Mix lavora sul suono: EQ per traccia (passa-alto per ruolo, taglio dei medio-bassi e spinta di presenza in base alle misure), un compressore nativo inserito dove manca (basso, lead, tastiere, le tue tracce audio), mandate di riverbero e delay per ruolo (cassa e basso asciutti) e sidechain della cassa sul gruppo A (quantità secondo il genere). Volumi come prima.
