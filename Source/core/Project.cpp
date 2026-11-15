@@ -1666,6 +1666,20 @@ static void ensembleVoicing(Project& p,const std::function<bool(int,int)>& inSco
         std::vector<Note> kept;for(size_t i=0;i<c.notes.size();++i)if(!drop[i])kept.push_back(c.notes[i]);c.notes=std::move(kept);
         tidyNotes(c,p.clipLength(3,(int)ci));}   // the canonical order and overlaps, as normalise() leaves them
 }
+// A note held over a chord change ends at the change when it is not a tone of the new chord
+// (a piano chord ringing into the next one, a strings pad late on the change). Tones the
+// new chord shares keep ringing; anticipations (the next chord pushed early) are its tones.
+static void trimHoldovers(Project& p,const std::function<bool(int,int)>& fresh){
+    auto tone=[](int pitch,const sgk::Chord& c){const int r=((pitch-c.rootPc)%12+12)%12;if(r==0)return true;for(int iv:{c.third,c.fifth,c.seventh,c.ninth,c.eleventh,c.thirteenth,c.sixth})if(iv>=0&&iv%12==r)return true;return false;};
+    for(int ti:{0,2,3,leadTrack}){if(ti>=(int)p.tracks.size())continue;auto& t=p.tracks[(size_t)ti];if(t.locked)continue;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!fresh(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);bool cut=false;
+            for(auto& n:c.notes){const double a=at+n.start,b=a+n.length;
+                for(double x=std::floor(a*2)/2+.5;x<b-.125;x+=.5){const int s0=std::max(0,p.sectionAtBeat(x-.01)),s1=std::max(0,p.sectionAtBeat(x+.01));
+                    const auto before=chordAtBeat(activeHarmony(p,s0),x-.01),after=chordAtBeat(activeHarmony(p,s1),x+.01);
+                    if(before.rootPc==after.rootPc&&before.third==after.third&&before.fifth==after.fifth)continue;
+                    if(!tone(n.pitch,after)&&x-a>=1./16.){n.length=x-a-1./64.;cut=true;}break;}}
+            if(cut)tidyNotes(c,p.clipLength(ti,(int)ci));}}
+}
 // Band interplay (Afro and Latin House): one part leads, the others answer instead of all
 // playing at once. Latin: the piano montuno leads, guitar and lead drop the hits that land on a
 // montuno attack, so they answer in its gaps. Afro: kick, bass and the percussion ostinato stay;
@@ -1694,14 +1708,14 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
     // The band passes below touch only the clips this generation wrote (their notes changed):
     // regenerating one take, or APPLY with the same seed, gives the same result as the song pass.
-    std::array<std::vector<std::vector<Note>>,3> written;const int bandTracks[3]{2,3,leadTrack};
-    for(int k=0;k<3;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)written[(size_t)k].push_back(c.notes);
+    std::array<std::vector<std::vector<Note>>,4> written;const int bandTracks[4]{2,3,leadTrack,0};
+    for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)written[(size_t)k].push_back(c.notes);
     if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
     generateNotes(p,scope,track,section,seed,lastClip);
     generateVocalChops(p,scope,track,section,seed,lastClip);
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
-    {const auto fresh=[&](int ti,int ci){for(int k=0;k<3;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
-     shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);}
+    {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
+     shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);}
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(scope==Scope::song||(int)ti==track)applyArticulation(p,(int)ti,(int)ci);
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
