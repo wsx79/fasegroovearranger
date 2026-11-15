@@ -38,6 +38,8 @@ void shine_close_bit_stream(bitstream_t *bs) {
  * N = number of bits of val
  */
 void shine_putbits(bitstream_t *bs, unsigned int val, unsigned int N) {
+  if (N == 0) /* nothing to write: a shift by the full 32-bit width is undefined */
+    return;
 #ifdef DEBUG
   if (N > 32)
     printf("Cannot write more than 32 bits at a time.\n");
