@@ -1708,6 +1708,38 @@ static void bandInterplay(Project& p,const std::function<bool(int,int)>& inScope
 // interplay, ensemble voicing, held-over notes and the VST articulation profiles. Every path that
 // writes takes (generation, a global feel change) runs them, so the result never depends on it.
 static std::uint64_t engineOutput(const std::vector<Note>& notes){std::uint64_t h=1469598103934665603ULL;for(const auto& n:notes)for(long v:{std::lround(n.start*3840),std::lround(n.length*3840),(long)n.pitch,(long)n.velocity,(long)n.lane}){h^=(std::uint64_t)v;h*=1099511628211ULL;}return h?h:1;}
+// A player is never a grid: the time drifts a few milliseconds and comes back (a slow random walk,
+// not a dice roll per note), a section's chord enters voice by voice, and each phrase breathes (its
+// downbeat leans in, the line swells toward the turnaround). Deterministic per take; the kick and
+// the crash stay on the grid, electronic genres get half the drift.
+static void livePerformance(Clip& c,const Project& p,int ti,double beats){
+    if(c.notes.empty())return;
+    static constexpr double driftMs[legacyTrackCount+1]{5.5,4.5,8,5.5, 0,2,2,3,3.5,3,3,4,4,4,3.5,3,0, 7};
+    const int slot=ti==leadTrack?legacyTrackCount:ti;if(slot<0||slot>legacyTrackCount)return;
+    const double scale=isElectronicGenre(p.settings.genre)?.5:1.,ms=driftMs[slot]*scale;
+    const double beat=60000./std::max(30.,p.settings.bpm);   // ms per beat
+    std::uint32_t r=mix(c.seed^mix((std::uint32_t)ti*0x9e3779b1U+0x51ed270bU));auto dice=[&](){r=mix(r+0x9e3779b9U);return (r&0xffffff)/16777216.;};
+    // the drift: one value per beat, each pulled back toward zero (it wanders, it does not run away)
+    const int count=(int)std::ceil(beats)+2;std::vector<double> walk((size_t)count);double x=(dice()-.5)*1.4;
+    for(auto& w:walk){x=x*.72+(dice()-.5)*1.3;w=std::clamp(x,-1.,1.);}
+    auto driftAt=[&](double b){const double f=std::clamp(b,0.,(double)count-1.001);const int i=(int)f;return walk[(size_t)i]+(walk[(size_t)i+1]-walk[(size_t)i])*(f-i);};
+    std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+    const bool drums=isDrumTrack(ti);
+    for(size_t i=0;i<c.notes.size();){size_t j=i;while(j<c.notes.size()&&c.notes[j].start-c.notes[i].start<1./24.)++j;   // a chord moves together
+        const double at=c.notes[i].start;const double shift=ms>0?((driftAt(at)+1.)*.5*ms+dice()*ms*.2)/beat:0;   // behind the grid, by an amount that wanders: never ahead of its beat or chord
+        const int bar=(int)std::floor(at/4+1e-9),inPhrase=bar%8;
+        // phrase dynamics: the first downbeat of each 4 bars leans in, and the line swells through 8
+        const double swell=1.+.05*((inPhrase+std::fmod(at,4.)/4.)/8.-.5)+((bar%4==0&&std::fmod(at,4.)<.05)?.04:0.);
+        for(size_t k=i;k<j;++k){auto& n=c.notes[k];
+            double voice=0;int lift=0;
+            if(ti==2&&j-i>=2){voice=dice()*ms*2.2/beat;lift=(k==j-1?4:0)+(int)std::lround((dice()-.5)*8);}   // strings: each desk enters on its own, the top line sings
+            const double end=n.start+n.length,start=std::clamp(n.start+shift+voice,0.,std::max(0.,beats-1./64.));
+            n.start=start;n.length=std::max(1./64.,std::min(end+std::min(shift,0.),beats)-start);   // the release stays where it was: a held chord never crosses into the next phrase
+            if(!drums||ti>=8)n.velocity=std::clamp((int)std::lround(n.velocity*swell)+lift,1,127);}
+        i=j;}
+    tidyNotes(c,beats);
+    if(ti==leadTrack)for(size_t i=0;i+1<c.notes.size();++i)c.notes[i].length=std::max(1./64.,std::min(c.notes[i].length,c.notes[i+1].start-c.notes[i].start-1./64.));
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -1718,6 +1750,8 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
     shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
+        for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&articulate((int)ti))for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(clips[ci].loopLength<=0&&(kept.count({ti,(int)ci})||freshIn(ti,(int)ci)))clips[ci].bandResult=engineOutput(clips[ci].notes);}
@@ -1938,6 +1972,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(guide>=0&&guide<(int)p.sections.size()&&p.sections[(size_t)guide].energy>=0){const double v=energyVelocity(p.sections[(size_t)guide].energy);for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*v),1,127);}
             if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
+            if((ti!=0&&ti!=2&&ti!=3&&ti!=leadTrack)||period>0)livePerformance(clip,p,ti,beats);   // band loops: the passes leave them as written
             tidyNotes(clip,beats);if(ti==leadTrack)monophonicLead(clip);
             if(period>0){clip.loopSource=clip.notes;if(!rebuildClipLoop(clip,duration))throw std::length_error("Generated loop exceeds the note limit");}
         }

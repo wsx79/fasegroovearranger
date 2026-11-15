@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.4
+
+- More human playing: bass, piano, guitar, strings, lead and percussion now sit slightly behind the grid (2–8 ms depending on the instrument) by an amount that drifts slowly from bar to bar, as a player does, instead of repeating the same micro-timing every bar. Kick and crash stay on the grid; Techno and Electro House get half the drift. Notes are never anticipated and held notes still end where they did.
+- Strings: in a chord each voice enters on its own with its own velocity, and the top line sings a little more (before, the whole chord started as one block).
+- Phrase dynamics: the first downbeat of every 4 bars leans in and the line swells slightly over 8 bars.
+
 ## 0.57.3
 
 - Arrangement: the chord popover, the Circle of Fifths and the piano roll follow the harmony of the selected section when it has its own; the KEY caption is highlighted when a section overrides the song key.

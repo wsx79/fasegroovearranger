@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.4
+
+- Esecuzione più umana: basso, piano, chitarra, archi, Lead e percussioni stanno leggermente dietro la griglia (2–8 ms a seconda dello strumento), con un ritardo che cambia lentamente di battuta in battuta come fa un musicista, invece di ripetere lo stesso micro-timing ogni battuta. Cassa e crash restano a tempo; Techno ed Electro House hanno metà dell’effetto. Le note non vengono mai anticipate e le note tenute finiscono dove finivano.
+- Archi: negli accordi ogni voce entra per conto suo con la propria velocity e la voce più acuta canta un po’ di più (prima l’accordo partiva come un blocco unico).
+- Dinamica di frase: un accento sul primo battere ogni 4 battute e un leggero crescendo sulle 8.
+
 ## 0.57.3
 
 - Arrangiamento: il popup accordi, il Circolo delle Quinte e il piano roll seguono l’armonia della sezione selezionata quando ne ha una propria; la didascalia KEY si evidenzia quando una sezione cambia la tonalità del brano.
