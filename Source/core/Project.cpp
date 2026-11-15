@@ -1947,7 +1947,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
         for(auto& c:t.clips)if(!c.locked){if(parameters&densityFeel)c.feel[0]=-1;if(parameters&swingFeel)c.feel[1]=-1;if(parameters&humanizeFeel)c.feel[2]=-1;}
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
@@ -2161,7 +2161,7 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
             for(const auto& n:t.clips[si].notes) {
                 if(n.start>=end||n.start+n.length<=from)continue;
                 TimedEvent on{begin+std::max(from,n.start),(int)ti,n.pitch,n.velocity,n.lane};
-                const auto& clip=t.clips[si];if(clip.audioOffset>=0){const double secondsPerBeat=clip.audioDuration/p.clipLength((int)ti,(int)si);on.audioOffset=clip.audioOffset+std::max(from,n.start)*secondsPerBeat;on.audioBeats=std::min(end,n.start+n.length)-std::max(from,n.start);on.audioDuration=on.audioBeats*secondsPerBeat;}
+                const auto& clip=t.clips[si];if(clip.audioOffset>=0){const double secondsPerBeat=clip.audioDuration/std::max(1e-9,end);on.audioOffset=clip.audioOffset+std::max(from,n.start)*secondsPerBeat;on.audioBeats=std::min(end,n.start+n.length)-std::max(from,n.start);on.audioDuration=on.audioBeats*secondsPerBeat;}
                 on.reverse=n.reverse;if(n.reverse&&on.audioOffset<0){on.audioOffset=0;on.audioDuration=n.length*60./p.settings.bpm;on.audioBeats=n.length;}on.fadeIn=t.clips[si].clipFadeIn;on.fadeOut=t.clips[si].clipFadeOut;out.push_back(on);
                 out.push_back({begin+std::min(end,n.start+n.length),(int)ti,n.pitch,0,n.lane});
             }

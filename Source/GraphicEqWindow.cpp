@@ -267,7 +267,7 @@ public:
     void timerCallback() override {
         if(!isShowing())return;
         if(getSampleRate){const double rate=getSampleRate();if(std::isfinite(rate)&&rate>=8000)sampleRate=rate;}
-        std::vector<float> pre,post;
+        pre.clear();post.clear();
         const bool heard=analyzerMode!=0&&getSpectrum&&getSpectrum(pre,post);
         if(heard){auto peak=[](const std::vector<float>& v){float p=0;for(float s:v)p=std::max(p,std::abs(s));return p;};inPeak=peak(pre);outPeak=peak(post);}
         inShown=inPeak>inShown?inPeak:inShown*.9f;outShown=outPeak>outShown?outPeak:outShown*.9f;
@@ -708,7 +708,7 @@ private:
         else editOnce(apply);
     }
     EqAnalyzer analyzer;
-    EqAnalyzer::Trace preBands{},postBands{};
+    EqAnalyzer::Trace preBands{},postBands{};std::vector<float> pre,post;
     float inPeak=0,outPeak=0,inShown=0,outShown=0;
     double sampleRate=44100,displayRange=12,nodeStartFreq=1000,nodeStartGain=0;
     int analyzerMode=1,spectrumSpeed=1;
