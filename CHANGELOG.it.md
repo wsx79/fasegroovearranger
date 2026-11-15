@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.3
+
+- Arrangiamento: il popup accordi, il Circolo delle Quinte e il piano roll seguono l’armonia della sezione selezionata quando ne ha una propria; la didascalia KEY si evidenzia quando una sezione cambia la tonalità del brano.
+- Feel: APPLICA ora rimodella anche Lead, interplay della band e voicing della nuova versione e mantiene le articolazioni degli strumenti (prima un nuovo feel le saltava); un APPLICA senza modifiche lascia ancora ogni parte identica.
+- Mixer: i picchi dei meter restano visibili un po’ più a lungo e un clic sul meter azzera picco e indicatore di clip. Le schede dell’Inspector sono separate più chiaramente.
+- Ridisegno più rapido della finestra dell’EQ grafico.
+
 ## 0.57.2
 
 - Armonia: una nota di piano, archi, chitarra o Lead tenuta oltre il cambio d’accordo ora si ferma al cambio se non appartiene al nuovo accordo (il vecchio accordo non suona più sopra quello nuovo). Ogni 100 battute: Deep 9,5 → 0,6, Garage 7,0 → 0,5, Gospel 5,8 → 0,7, archi Dance Stabs 3,7 → 0,1.

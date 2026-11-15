@@ -58,6 +58,11 @@ struct Clip {
     // Saved default when this take was rendered; preserves an explicit Strings take
     // while distinguishing a later user change to Off. -1 migrates legacy clips.
     int stringsStyleAtGeneration = -1;
+    // Runtime only (not saved, not compared): the engine output the band passes last shaped.
+    // The same output again (an unchanged APPLY) keeps the shaped notes instead of redoing them
+    // against a context that another take has meanwhile changed.
+    std::uint64_t bandSource = 0;
+    std::uint64_t bandResult = 0;   // ...and the notes that shaping produced
     bool operator==(const Clip& o) const { return stringsStyleAtGeneration == o.stringsStyleAtGeneration && notes == o.notes && motifSeed == o.motifSeed && seed == o.seed && locked == o.locked && span == o.span && audioOffset == o.audioOffset && audioDuration == o.audioDuration && clipFadeIn == o.clipFadeIn && clipFadeOut == o.clipFadeOut && expression == o.expression && feel == o.feel && loopPhase == o.loopPhase && loopLength == o.loopLength && loopSource == o.loopSource && position == o.position && role == o.role && name == o.name; }
 };
 struct ClipId {

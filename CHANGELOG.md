@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.3
+
+- Arrangement: the chord popover, the Circle of Fifths and the piano roll follow the harmony of the selected section when it has its own; the KEY caption is highlighted when a section overrides the song key.
+- Feel: APPLY now also reshapes the lead, the band interplay and the voicings of the new take, and keeps the instrument articulations (before, a new feel bypassed them); an unchanged APPLY still leaves every part exactly as it was.
+- Mixer: meter peaks hold a little longer and a click on a meter resets its peak and clip indicators. Inspector cards are separated more clearly.
+- Faster graphic EQ window redraw.
+
 ## 0.57.2
 
 - Harmony: a piano, strings, guitar or lead note held over a chord change now ends at the change when it does not belong to the new chord (the old chord no longer rings over the new one). Per 100 bars: Deep 9.5 → 0.6, Garage 7.0 → 0.5, Gospel 5.8 → 0.7, Dance Stabs strings 3.7 → 0.1.

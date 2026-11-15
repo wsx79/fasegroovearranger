@@ -1704,6 +1704,24 @@ static void bandInterplay(Project& p,const std::function<bool(int,int)>& inScope
             return it!=busy.end()&&it->second[0]>0&&it->second[1]>0&&(phrase%2==0)==(which==0);});   // even phrases: the lead answers, odd: the guitar
     }
 }
+// The passes that run on freshly written takes, after the engines: the lead's melody, the band's
+// interplay, ensemble voicing, held-over notes and the VST articulation profiles. Every path that
+// writes takes (generation, a global feel change) runs them, so the result never depends on it.
+static std::uint64_t engineOutput(const std::vector<Note>& notes){std::uint64_t h=1469598103934665603ULL;for(const auto& n:notes)for(long v:{std::lround(n.start*3840),std::lround(n.length*3840),(long)n.pitch,(long)n.velocity,(long)n.lane}){h^=(std::uint64_t)v;h*=1099511628211ULL;}return h?h:1;}
+static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
+    // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
+    static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
+    for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
+        for(size_t ci=0;ci<clips.size();++ci){auto& c=clips[ci];if(c.loopLength>0){kept.insert({ti,(int)ci});continue;}   // a loop clip is rebuilt from its source: left as the engine wrote it
+            const auto source=engineOutput(c.notes);
+            if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
+            else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
+    const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
+    shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&articulate((int)ti))for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
+    for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
+        for(size_t ci=0;ci<clips.size();++ci)if(clips[ci].loopLength<=0&&(kept.count({ti,(int)ci})||freshIn(ti,(int)ci)))clips[ci].bandResult=engineOutput(clips[ci].notes);}
+}
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
     // The band passes below touch only the clips this generation wrote (their notes changed):
@@ -1715,8 +1733,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateVocalChops(p,scope,track,section,seed,lastClip);
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
-     shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);}
-    for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(scope==Scope::song||(int)ti==track)applyArticulation(p,(int)ti,(int)ci);
+     bandPasses(p,fresh,[&](int ti){return scope==Scope::song||ti==track;},&written);}
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -1947,7 +1964,8 @@ void applyGlobalFeel(Project& p,unsigned parameters){
         for(auto& c:t.clips)if(!c.locked){if(parameters&densityFeel)c.feel[0]=-1;if(parameters&swingFeel)c.feel[1]=-1;if(parameters&humanizeFeel)c.feel[2]=-1;}
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
+    std::array<std::vector<std::vector<Note>>,4> shaped;{const int bandTracks[4]{2,3,leadTrack,0};for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)shaped[(size_t)k].push_back(c.notes);}
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int){return true;},&shaped);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
