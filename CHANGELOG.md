@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.2
+
+- Harmony: a piano, strings, guitar or lead note held over a chord change now ends at the change when it does not belong to the new chord (the old chord no longer rings over the new one). Per 100 bars: Deep 9.5 → 0.6, Garage 7.0 → 0.5, Gospel 5.8 → 0.7, Dance Stabs strings 3.7 → 0.1.
+- Code audit with AddressSanitizer and UBSan (core tests and the full UI smoke test): the only reports were two undefined behaviours in the bundled MP3 encoder, now fixed; MP3 output unchanged.
+
 ## 0.57.1
 
 - Drums audit across all genres and the 80 factory grooves: one fix, the crash on a section downbeat no longer doubles a humanized crash a few milliseconds away (a flam in Techno and Electro House).

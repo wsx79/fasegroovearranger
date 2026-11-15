@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.2
+
+- Armonia: una nota di piano, archi, chitarra o Lead tenuta oltre il cambio d’accordo ora si ferma al cambio se non appartiene al nuovo accordo (il vecchio accordo non suona più sopra quello nuovo). Ogni 100 battute: Deep 9,5 → 0,6, Garage 7,0 → 0,5, Gospel 5,8 → 0,7, archi Dance Stabs 3,7 → 0,1.
+- Verifica del codice con AddressSanitizer e UBSan (test core e smoke test completo dell’interfaccia): gli unici problemi erano due comportamenti indefiniti nell’encoder MP3 incluso, ora corretti; l’MP3 esportato resta identico.
+
 ## 0.57.1
 
 - Verifica della batteria su tutti i generi e sugli 80 groove di fabbrica: una correzione, il crash sul primo tempo di sezione non raddoppia più un crash umanizzato a pochi millisecondi (un flam in Techno ed Electro House).
