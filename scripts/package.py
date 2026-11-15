@@ -12,13 +12,9 @@ import zipfile
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--build-dir', default='build', help='Native CMake build directory')
 parser.add_argument('--stage-only', action='store_true', help='Prepare payload without creating a ZIP')
-parser.add_argument('--vocaltest-preview', action='store_true', help='Windows preview with complete corresponding source')
-parser.add_argument('--juce-source', help='Exact compiled JUCE Git checkout for the preview source bundle')
 args = parser.parse_args()
 root = Path(__file__).resolve().parent.parent
 system = {'Darwin': 'macOS'}.get(platform.system(), platform.system())
-if args.vocaltest_preview and (system != 'Windows' or not args.juce_source or args.stage_only):
-    raise SystemExit('Preview requires native Windows, --juce-source and ZIP creation')
 native = root / args.build_dir / 'FaseGrooveArranger_artefacts/Release'
 app_name = 'Fase Groove Arranger' + ('.app' if system == 'macOS' else '.exe' if system == 'Windows' else '')
 source_app = native / app_name
@@ -41,8 +37,7 @@ files = {'ThirdParty/signalsmith-stretch/LICENSE.txt', 'ThirdParty/signalsmith-l
          'ThirdParty/fasegrooveguitar/LICENSE', 'ThirdParty/fasegroovelead/LICENSE',
          'ThirdParty/asiosdk/LICENSE.txt', 'ThirdParty/asiosdk/GPL-3.0.txt', 'ThirdParty/asiosdk/README.md'}
 files.update({'docs/VOCAL_CHOPS_PHASE02.md',
-              'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
-              'docs/VOCALTEST_PREVIEW_WINDOWS.it.md'})
+              'docs/VOCAL_CHOPS_IMPORT.md', 'docs/VOCAL_CHOPS_IMPORT_PERFORMANCE.json'})
 if system == 'Windows':
     files.add('Resources/arranger-project.ico')
 # Follow the general manuals' local links/images; unrelated development assets stay out.
@@ -70,10 +65,7 @@ sha = os.environ.get('FGA_SOURCE_SHA') or os.environ.get('GITHUB_SHA') or subpro
 if args.stage_only:
     print(f'Staged {stage}; no ZIP created. Validate runtime and corresponding source before distribution.')
     raise SystemExit(0)
-if args.vocaltest_preview:
-    from preview_package import add_preview
-    add_preview(stage, root, args.juce_source, source_app, sha)
-archive = dist / ('FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip' if args.vocaltest_preview else f'FaseGrooveArranger-{system}.zip')
+archive = dist / f'FaseGrooveArranger-{system}.zip'
 if archive.exists():
     archive.unlink()
 if system == 'macOS':
@@ -89,7 +81,4 @@ with zipfile.ZipFile(archive) as check:
     if system == 'Linux':
         assert check.getinfo(entry).external_attr >> 16 & 0o111, 'Executable permissions missing'
     assert 'SOURCE.txt' in check.namelist() and 'docs/GUIDE.md' in check.namelist()
-if args.vocaltest_preview:
-    from preview_package import verify_preview
-    verify_preview(archive)
 print(f'Packaged {archive.name}: {archive.stat().st_size:,} bytes')

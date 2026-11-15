@@ -51,8 +51,7 @@ for system, suffix in systems:
             assert 'Resources/Inter-Regular.otf' not in names and 'Resources/Inter-SemiBold.otf' not in names
             assert 'Resources/Inter-OFL.txt' in names and 'ThirdParty/shine/COPYING' in names
             for guide in ['VOCAL_CHOPS_PHASE02.md',
-                          'VOCAL_CHOPS_IMPORT.md', 'VOCAL_CHOPS_IMPORT_PERFORMANCE.json',
-                          'VOCALTEST_PREVIEW_WINDOWS.it.md']:
+                          'VOCAL_CHOPS_IMPORT.md', 'VOCAL_CHOPS_IMPORT_PERFORMANCE.json']:
                 entry = 'docs/' + guide
                 assert archive.read(entry) == (repo / entry).read_bytes()
             assert not any(name.lower().endswith(('.dll', '/perl.exe', '/sox.exe', '/espeak.exe')) for name in names)

@@ -1,7 +1,7 @@
 name: Build and test standalone
 on:
   push:
-    branches: [main, Vocaltest]
+    branches: [main]
     tags: ["v*"]
     paths-ignore: [README.md, docs/VALIDATION.md, docs/ARCHITECTURE.md]
   pull_request:
@@ -30,118 +30,7 @@ concurrency:
   group: build-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
-  vocaltest-preview:
-    name: Vocaltest Preview Windows x64
-    if: github.ref == 'refs/heads/Vocaltest' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Validate existing resources and packaging
-        run: |
-          python scripts/verify-family.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python tests/test-packaging.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          python tests/test-preview-packaging.py
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Windows MP3 verification dependency (QA only, never packaged)
-        run: if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg -y --no-progress }
-      - name: Configure native MSVC x64
-        run: cmake -S . -B build -A x64 -DCMAKE_BUILD_TYPE=Release -DFGA_BUILD_HOST_TEST_PLUGIN=ON
-      - name: Build Release
-        run: cmake --build build --config Release --parallel 2
-      - name: Windows CTest (external voice tools intentionally absent)
-        run: ctest --test-dir build -C Release --output-on-failure -V --output-junit windows-ctest.xml
-      - name: Native compressor and sidechain UI regressions
-        shell: python
-        run: |
-          from pathlib import Path
-          import sys
-          sys.path.insert(0, 'scripts')
-          from native_test_support import build_root, output_folder, run_application
-          for name, report in [('dynamics', 'native-compressor-ui.txt'), ('sidechain', 'mixer-routing.txt')]:
-              folder = output_folder(name, 'build/preview-validation/' + name)
-              run_application(build_root(), '--' + name + '-ui-test', folder, timeout=180)
-              result = (folder / report).read_text(encoding='utf-8')
-              if not result.startswith('PASS ') or 'FAIL ' in result:
-                  raise RuntimeError(name + ' native UI report missing or failed')
-      - name: Native UI, WAV and MP3 regressions
-        run: python scripts/test-native-render.py --output build/preview-validation/native
-      - name: Native VST3 effects regressions
-        run: python scripts/test-native-effects.py --output build/preview-validation/effects
-      - name: Native VST3 instrument regressions
-        run: python scripts/test-native-host.py --output build/preview-validation/host
-      - name: Verify native Cancel evidence before packaging
-        shell: python
-        run: |
-          from pathlib import Path
-          import json, os
-          root = Path('build/preview-validation')
-          results = {}
-          required = ['legacy Cancel reproduces blocked UI cleanup handshake (finite test probe)',
-              'real Cancel keeps message dispatch alive for worker cleanup (no synchronous UI join)',
-              'Cancel immediately after launch', 'Cancel during float rendering and writing',
-              'Cancel during offline scaling and PCM writing',
-              'Cancel near final verification before atomic publication',
-              'Repeated Cancel and close keep UI responsive and engine alive',
-              'Cancel stem worker without joining futures on the UI',
-              'Cancel with group sidechain and shared A/B return effects',
-              'new export succeeds after all repeated/button cancellations']
-          for fixture in ('native', 'host', 'effects'):
-              reports = list((root / fixture).rglob('export-ui.txt'))
-              if len(reports) != 1:
-                  raise RuntimeError(f'{fixture}: expected one actual export UI report')
-              lines = reports[0].read_text(encoding='utf-8').splitlines()
-              if not lines or any(not line.startswith('PASS ') for line in lines):
-                  raise RuntimeError(f'{fixture}: incomplete or failed export UI report')
-              if any('PASS ' + label not in lines for label in required):
-                  raise RuntimeError(f'{fixture}: a required Cancel scenario was not exercised')
-              results[fixture] = {'PASS': len(lines), 'FAIL': 0,
-                  'details': reports[0].with_name('export-cancel-details.txt').read_text(encoding='utf-8')}
-          summary = {'source_sha': os.environ['GITHUB_SHA'], 'platform': 'native Windows x64',
-              'fixtures': results, 'manual_user_plugin_hardware': 'NOT RUN', 'public_release': 'NO-GO'}
-          (root / 'windows-cancel.json').write_text(json.dumps(summary, indent=2), encoding='utf-8')
-          print(json.dumps(summary, indent=2))
-      - name: Asynchronous sample UI
-        run: python scripts/test-vocal-preview.py --output build/preview-validation/vocal
-      - name: Build portable preview with corresponding source
-        env:
-          FGA_SOURCE_SHA: ${{ github.sha }}
-        run: python scripts/package.py --vocaltest-preview --juce-source build/_deps/juce-src
-      - name: Verify extracted portable executable
-        run: |
-          Expand-Archive dist/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip build/extracted-preview
-          $app = Join-Path $pwd 'build/extracted-preview/Standalone/Fase Groove Arranger.exe'
-          $out = Join-Path $pwd 'build/preview-validation/extracted'
-          $p = Start-Process -FilePath $app -ArgumentList @('--sample-import-test', ('"' + $out + '"')) -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw 'Extracted preview sample/UI regression failed' }
-          if (-not (Get-Content "$out/sample-import.txt" -Raw).StartsWith('PASS ')) { throw 'Extracted report missing' }
-      - name: Upload tested portable ZIP only
-        uses: actions/upload-artifact@v4
-        with:
-          name: Vocaltest-Preview-Windows-x64
-          path: dist/FaseGrooveArranger-Vocaltest-Preview-Windows-x64.zip
-          if-no-files-found: error
-          retention-days: 30
-          compression-level: 0
-      - name: Preserve diagnostics (not a distributable build)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Vocaltest-Windows-diagnostics
-          path: |
-            build/preview-validation/
-            build/Testing/Temporary/
-            build/windows-ctest.xml
-          if-no-files-found: ignore
-          retention-days: 14
-
   family:
-    if: github.ref != 'refs/heads/Vocaltest'
     name: Verify pinned family module
     runs-on: ubuntu-latest
     steps:
@@ -341,7 +230,7 @@ jobs:
   release:
     name: Publish release
     needs: [family, core, standalone]
-    if: github.ref != 'refs/heads/Vocaltest' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')))
+    if: (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
