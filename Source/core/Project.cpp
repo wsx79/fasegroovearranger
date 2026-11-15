@@ -1712,11 +1712,27 @@ static std::uint64_t engineOutput(const std::vector<Note>& notes){std::uint64_t 
 // not a dice roll per note), a section's chord enters voice by voice, and each phrase breathes (its
 // downbeat leans in, the line swells toward the turnaround). Deterministic per take; the kick and
 // the crash stay on the grid, electronic genres get half the drift.
+// A bassist walks into the next chord: a short note on the last eighth before a change of root
+// becomes a chromatic or scale step onto the new root (soul and gospel often, deep house sometimes,
+// techno never), when the bass does land on that root.
+static void bassApproach(Clip& c,const Project& p,double at,double beats){
+    const auto g=(Genre)p.settings.genre;
+    const double chance=g==Genre::soulful||g==Genre::gospel||g==Genre::neoSoul||g==Genre::discoHouse?.55:g==Genre::deepHouse||g==Genre::ninetiesHouse||g==Genre::pianoHouse||g==Genre::chill?.3:g==Genre::afroHouse||g==Genre::latinHouse||g==Genre::ukGarage?.2:0.;
+    if(chance<=0||c.notes.size()<3)return;std::uint32_t r=mix(c.seed^0x7a3b91c5U);auto dice=[&](){r=mix(r+0x9e3779b9U);return (r&0xffffff)/16777216.;};
+    std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+    for(size_t i=0;i+1<c.notes.size();++i){auto& n=c.notes[i];const auto& next=c.notes[i+1];const double qs=std::round(n.start*8)/8,change=std::floor(qs+1e-6)+1;   // read on the written grid: a new feel never changes the choice
+        if(change-qs>.5+1e-6||change-qs<.2||n.length>.5+1e-6||std::abs(next.start-change)>.06||change>=beats)continue;
+        const int si=std::max(0,p.sectionAtBeat(at+n.start));const auto h=activeHarmony(p,si);const auto now=chordAtBeat(h,at+qs),then=chordAtBeat(h,at+change);
+        if(now.rootPc==then.rootPc||((next.pitch-then.rootPc)%12+12)%12!=0||dice()>=chance)continue;
+        const int step=dice()<.6?1:2,approach=next.pitch+(dice()<.5?-step:step);if(std::abs(approach-n.pitch)>7)continue;
+        n.pitch=approach;}
+}
 static void livePerformance(Clip& c,const Project& p,int ti,double beats){
     if(c.notes.empty())return;
     static constexpr double driftMs[legacyTrackCount+1]{5.5,4.5,8,5.5, 0,2,2,3,3.5,3,3,4,4,4,3.5,3,0, 7};
     const int slot=ti==leadTrack?legacyTrackCount:ti;if(slot<0||slot>legacyTrackCount)return;
-    const double scale=isElectronicGenre(p.settings.genre)?.5:1.,ms=driftMs[slot]*scale;
+    const auto& t=p.tracks[(size_t)ti];const double human=takeFeel(t.engine.humanize,c.feel[2],p.settings.humanize);if(human<=.01)return;   // HUMANIZE 0: exactly as written
+    const double scale=(isElectronicGenre(p.settings.genre)?.5:1.)*std::clamp(.6+human*1.6,.6,1.4),ms=driftMs[slot]*scale;
     const double beat=60000./std::max(30.,p.settings.bpm);   // ms per beat
     std::uint32_t r=mix(c.seed^mix((std::uint32_t)ti*0x9e3779b1U+0x51ed270bU));auto dice=[&](){r=mix(r+0x9e3779b9U);return (r&0xffffff)/16777216.;};
     // the drift: one value per beat, each pulled back toward zero (it wanders, it does not run away)
@@ -1740,6 +1756,61 @@ static void livePerformance(Clip& c,const Project& p,int ti,double beats){
     tidyNotes(c,beats);
     if(ti==leadTrack)for(size_t i=0;i+1<c.notes.size();++i)c.notes[i].length=std::max(1./64.,std::min(c.notes[i].length,c.notes[i+1].start-c.notes[i].start-1./64.));
 }
+// The piano states a two-bar idea and answers it: in each four-bar phrase the third bar plays the
+// first bar's rhythm again (its accents and lengths), on the chord that bar holds; the second and
+// fourth bars keep their own figure, so the variation lands at the turnaround. A bar the engine left
+// sparse (a gap, an entry) keeps what it has.
+static void pianoMotif(Clip& c,const Project& p,double length){
+    if(isElectronicGenre(p.settings.genre)||c.notes.size()<8)return;
+    {   // decisions read the written grid (1/32), so a feel that moves a chord a few ms never changes them
+        const int bars=(int)std::floor(length/4+1e-9);auto q=[](double x){return std::round(x*8)/8;};
+        auto groups=[&](int bar){std::vector<std::vector<Note>> g;for(const auto& n:c.notes){if(q(n.start)<bar*4-1e-9||q(n.start)>=bar*4+4-1e-9)continue;if(g.empty()||n.start-g.back().front().start>=1./24.)g.push_back({});g.back().push_back(n);}return g;};
+        std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+        bool changed=false;
+        for(int phrase=0;phrase+2<bars;phrase+=4){const int from=phrase,to=phrase+2;const auto src=groups(from),dst=groups(to);
+            if(src.size()<2||dst.size()<2||dst.size()*2<src.size()||src.size()*2<dst.size())continue;
+            if(q(dst.front().front().start)-to*4>1.+1e-9||q(dst.back().front().start)-to*4<2.-1e-9)continue;   // a bar with a gap keeps its own notes
+            double srcV=0,dstV=0;int sn=0,dn=0;for(const auto& g:src)for(const auto& n:g){srcV+=n.velocity;++sn;}for(const auto& g:dst)for(const auto& n:g){dstV+=n.velocity;++dn;}const double scale=(dstV/dn)/std::max(1.,srcV/sn);
+            std::vector<Note> made;
+            for(const auto& g:src){const double rel=g.front().start-from*4,at=to*4+rel;
+                const std::vector<Note>* chord=&dst.front();for(const auto& d:dst)if(q(d.front().start)<=q(at)+1e-6)chord=&d;   // the chord this bar holds at that moment
+                double len=0;for(const auto& n:g)len=std::max(len,n.length);len=std::min(len,to*4+4-at-1./64.);if(len<1./32.)continue;
+                const int vel=(int)std::lround(g.front().velocity*scale);
+                for(const auto& n:*chord){Note m=n;m.start=at;m.length=len;m.velocity=std::clamp(vel+(n.velocity-chord->front().velocity),1,127);made.push_back(m);}}
+            if(made.empty())continue;
+            c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return q(n.start)>=to*4-1e-9&&q(n.start)<to*4+4-1e-9;}),c.notes.end());
+            c.notes.insert(c.notes.end(),made.begin(),made.end());changed=true;}
+        if(changed)tidyNotes(c,length);}
+}
+// The lead listens: where the piano strikes it steps back a little, in the piano's gaps it speaks up.
+static void leadAnswer(Project& p,const std::function<bool(int,int)>& fresh){
+    if((int)p.tracks.size()<=leadTrack||p.tracks[(size_t)leadTrack].locked||isElectronicGenre(p.settings.genre))return;
+    std::vector<std::pair<double,double>> piano;for(size_t ci=0;ci<p.tracks[0].clips.size();++ci){const double at=p.clipStart(0,(int)ci);for(const auto& n:p.tracks[0].clips[ci].notes)piano.push_back({at+n.start,at+n.start+n.length});}
+    if(piano.empty()||p.tracks[0].mute)return;std::sort(piano.begin(),piano.end());
+    auto& t=p.tracks[(size_t)leadTrack];
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!fresh(leadTrack,(int)ci))continue;const double at=p.clipStart(leadTrack,(int)ci);
+        for(auto& n:c.notes){const double x=at+n.start;bool hit=false,sounding=false;
+            auto it=std::lower_bound(piano.begin(),piano.end(),std::make_pair(x-4.,0.));
+            for(;it!=piano.end()&&it->first<=x+1./16.;++it){if(std::abs(it->first-x)<1./16.)hit=true;if(it->first<=x&&it->second>x)sounding=true;}
+            if(hit)n.velocity=std::clamp((int)std::lround(n.velocity*.9),1,127);else if(!sounding)n.velocity=std::clamp((int)std::lround(n.velocity*1.06),1,127);}}
+}
+// Intros and outros keep the colour for later: piano, strings and guitar play triads and sevenths
+// there, the added 9ths, 11ths and 13ths arrive with the body of the song.
+static void sectionTension(Project& p,const std::function<bool(int,int)>& fresh){
+    if(isElectronicGenre(p.settings.genre))return;
+    for(int ti:{0,2,3}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& t=p.tracks[(size_t)ti];
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.empty()||!fresh(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);
+            const int si=std::max(0,p.sectionAtBeat(at));if(si>=(int)p.sections.size())continue;const auto type=p.sections[(size_t)si].type;if(type!=Section::intro&&type!=Section::outro)continue;
+            const auto h=activeHarmony(p,si);
+            std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start==b.start?a.pitch<b.pitch:a.start<b.start;});
+            std::vector<Note> out;
+            for(size_t i=0;i<c.notes.size();){size_t j=i;while(j<c.notes.size()&&c.notes[j].start-c.notes[i].start<1./24.)++j;
+                const auto ch=chordAtBeat(h,at+c.notes[i].start);std::vector<Note> core,colour;
+                for(size_t k=i;k<j;++k){const int iv=((c.notes[k].pitch-ch.rootPc)%12+12)%12;(iv==0||iv==ch.third||iv==ch.fifth||iv==ch.seventh?core:colour).push_back(c.notes[k]);}
+                if(core.size()>=3||(core.size()>=2&&j-i>=4)){out.insert(out.end(),core.begin(),core.end());}else{for(size_t k=i;k<j;++k)out.push_back(c.notes[k]);}
+                i=j;}
+            c.notes=out;}}
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -1749,7 +1820,7 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
-    shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    sectionTension(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&articulate((int)ti))for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
@@ -1970,6 +2041,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(p.settings.grooveEnabled)for(auto& n:clip.notes){const int slot=((int)std::llround(n.start*4)%16+16)%16;n.start=std::max(0.,n.start+p.settings.grooveOffsets[(size_t)slot]);n.velocity=std::clamp((int)std::lround(n.velocity*p.settings.grooveAccents[(size_t)slot]),1,127);}
             if(ti==0||ti==2||ti==3)fitSustainedTensions(clip,p,guide,p.clipStart(ti,(int)si),period);
             if(guide>=0&&guide<(int)p.sections.size()&&p.sections[(size_t)guide].energy>=0){const double v=energyVelocity(p.sections[(size_t)guide].energy);for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*v),1,127);}
+            if(ti==1&&e.pattern<0&&!isElectronicGenre(s.genre))bassApproach(clip,p,p.clipStart(ti,(int)si),beats);
+            if(ti==0&&e.pattern<0)pianoMotif(clip,p,beats);   // a chosen pattern plays as written
             if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
             if((ti!=0&&ti!=2&&ti!=3&&ti!=leadTrack)||period>0)livePerformance(clip,p,ti,beats);   // band loops: the passes leave them as written

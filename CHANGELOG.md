@@ -1,5 +1,16 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.5
+
+- Header: each group of controls (song, generate, sections, harmony, feel) sits on its own panel; GENERATE SONG is the one amber action.
+- Arrangement: tracks with nothing on the timeline fold to a slim row until selected; each section tints the lanes under it; a clip too narrow for its name shows only its colour.
+- Mixer: AUTO / TRIM tags fit on one line, outlined, in their own room under the fader (a dot on short strips), so they never cover the fader or the names; the pan value is no longer hidden by A / B; LUFS shows — when stopped.
+- Piano: in every four-bar phrase the third bar plays the first bar's rhythm again on its own chords, so the comping states an idea and answers it.
+- Bass: before a change of root a short note on the last eighth can walk into the new root by a chromatic or scale step (often in Soulful, Gospel, Neo Soul and Disco, never in Techno).
+- Lead: steps back where the piano strikes and speaks up in its gaps. Intros and outros play triads and sevenths; 9ths, 11ths and 13ths arrive with the body of the song.
+- A pattern you choose plays as written, and HUMANIZE 0 means no timing drift.
+- Fixes: the UI preview screenshots no longer catch the loading screen; the nightly build no longer cancels a release in progress.
+
 ## 0.57.4
 
 - More human playing: bass, piano, guitar, strings, lead and percussion now sit slightly behind the grid (2–8 ms depending on the instrument) by an amount that drifts slowly from bar to bar, as a player does, instead of repeating the same micro-timing every bar. Kick and crash stay on the grid; Techno and Electro House get half the drift. Notes are never anticipated and held notes still end where they did.

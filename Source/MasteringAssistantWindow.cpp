@@ -193,7 +193,7 @@ bool MainComponent::assistantDemo(const juce::File& folder){
 }
 // --ui-preview: the screens of this release (editor path bar, AUTO/TRIM badges, the assistants' columns).
 bool MainComponent::uiPreview(const juce::File& folder){
-    folder.createDirectory();auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+120000;while(pluginsBusy()&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy();};
+    folder.createDirectory();auto wait=[&]{const auto until=juce::Time::getMillisecondCounterHiRes()+120000;while((pluginsBusy()||restoringProject||loadingView.isVisible())&&juce::Time::getMillisecondCounterHiRes()<until)juce::MessageManager::getInstance()->runDispatchLoopUntil(5);return !pluginsBusy()&&!restoringProject;};
     auto shot=[&](juce::Component& c,const char* name){if(auto stream=folder.getChildFile(name).createOutputStream())juce::PNGImageFormat().writeImageToStream(c.createComponentSnapshot(c.getLocalBounds()),*stream);};
     project=newProject(0);generate(project,Scope::song,0,0,4242);project.normalise();
     auto& piano=project.tracks[0];piano.gain=juce::Decibels::decibelsToGain(1.2);piano.volume.enabled=true;piano.volume.points={{0,.6,0},{64,1.,0}};piano.panAutomation.enabled=true;piano.panAutomation.points={{0,.3,0},{64,.7,0}};

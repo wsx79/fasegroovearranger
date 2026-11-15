@@ -1,5 +1,16 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.5
+
+- Barra superiore: ogni gruppo di controlli (brano, genera, sezioni, armonia, feel) ha un suo pannello; GENERATE SONG è l’unico pulsante arancione.
+- Arrangiamento: le tracce senza clip diventano righe basse finché non le selezioni; ogni sezione colora leggermente le tracce sotto di sé; una clip troppo stretta per il nome mostra solo il colore.
+- Mixer: i tag AUTO / TRIM stanno su una riga, solo contornati, in uno spazio sotto il fader (un pallino nelle strisce basse), così non coprono più fader e nomi; il valore del pan non è più coperto da A / B; LUFS mostra — a progetto fermo.
+- Piano: in ogni frase di 4 battute la terza riprende il ritmo della prima sui propri accordi, così l’accompagnamento propone un’idea e le risponde.
+- Basso: prima di un cambio di fondamentale una nota breve sull’ultimo ottavo può arrivare alla nuova fondamentale per passo cromatico o di scala (spesso in Soulful, Gospel, Neo Soul e Disco, mai in Techno).
+- Lead: si fa più piccola dove il piano colpisce e più presente nelle sue pause. Intro e outro suonano triadi e settime; 9ª, 11ª e 13ª arrivano nel corpo del brano.
+- Un pattern scelto da te suona come scritto, e HUMANIZE 0 significa nessuna variazione di timing.
+- Correzioni: gli screenshot di anteprima non catturano più la schermata di caricamento; il build notturno non annulla più una release in corso.
+
 ## 0.57.4
 
 - Esecuzione più umana: basso, piano, chitarra, archi, Lead e percussioni stanno leggermente dietro la griglia (2–8 ms a seconda dello strumento), con un ritardo che cambia lentamente di battuta in battuta come fa un musicista, invece di ripetere lo stesso micro-timing ogni battuta. Cassa e crash restano a tempo; Techno ed Electro House hanno metà dell’effetto. Le note non vengono mai anticipate e le note tenute finiscono dove finivano.

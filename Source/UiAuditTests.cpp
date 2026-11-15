@@ -397,7 +397,7 @@ MainComponent::MainComponent(){
     pianoPlayButton.setIcon(IconButton::Icon::play);pianoPlayButton.getProperties().set("fgaTip","Play only the selected clip in a loop. Click again to stop.");
     pianoPlayButton.onClick=[this]{if(!piano.selected.empty()){togglePlayback();return;}if(editingRestricted()||loadingPlugin||clipIndex()<0)return;piano.stopPreview();if(audio.isClipPlaying())audio.play(false);else{editCursor=-1;audio.playClip(selectedTrack,clipStart(),clipStart()+clipLength());}};
     sectionLoopButton.onClick=[this]{toggleClipLoop();};sectionLoopButton.getProperties().set("fgaTip","Loop the selected clip; click again to remove the loop.");
-    addAndMakeVisible(studioButton);studioButton.setIcon(IconButton::Icon::studio);studioButton.getProperties().set("dawFeatured",true);Localisation::bindTip(studioButton,"Sampler, MIDI/audio recording and project samples");studioButton.onClick=[this]{showStudio();};
+    addAndMakeVisible(studioButton);studioButton.setIcon(IconButton::Icon::studio);studioButton.getProperties().set("dawFeatured",false);Localisation::bindTip(studioButton,"Sampler, MIDI/audio recording and project samples");studioButton.onClick=[this]{showStudio();};
     addAndMakeVisible(aiComposeButton);aiComposeButton.primary=false;aiComposeButton.setButtonText("AI COMPOSER");aiComposeButton.getProperties().set("fgaTip","Compose MIDI notes and an arrangement with your selected AI service.");aiComposeButton.onClick=[this]{showAiComposer();};
     songButton.onClick=[this]{regenerate(Scope::song);};trackButton.onClick=[this]{regenerate(Scope::track,page!=Page::instrument);};sectionButton.onClick=[this]{regenerate(Scope::section);};clipButton.onClick=[this]{regenerate(Scope::clip,page!=Page::instrument);};
     // One slot for the four generation scopes: the main button still generates the song with a
@@ -419,7 +419,7 @@ MainComponent::MainComponent(){
     pluginEditorButton.onClick=[this]{openHostedEditor(selectedTrack,0);};
     soundBox.onChange=[this]{if(refreshing)return;checkpoint();project.tracks[(size_t)selectedTrack].sound=soundBox.getSelectedItemIndex();changed(false);};
     importButton.onClick=[this]{chooseFile(tr("Import notes into the selected section"),"*.mid;*.midi",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){importFile(f);});};
-    addSectionButton.onClick=[this]{showAddSectionMenu();};spotlightButton.setIcon(IconButton::Icon::zoomIn);spotlightButton.setPrimary(true);spotlightButton.setTooltip(tr("Spotlight Quick Search (Ctrl/Cmd+K): search actions, genres, tracks, sounds and VST3/AU plugins."));spotlightButton.onClick=[this]{showSpotlightSearch();};
+    addSectionButton.onClick=[this]{showAddSectionMenu();};spotlightButton.setIcon(IconButton::Icon::zoomIn);spotlightButton.setPrimary(false);spotlightButton.setTooltip(tr("Spotlight Quick Search (Ctrl/Cmd+K): search actions, genres, tracks, sounds and VST3/AU plugins."));spotlightButton.onClick=[this]{showSpotlightSearch();};
     saveButton.onClick=[this]{save(false);};saveAsButton.onClick=[this]{save(true);};
     openButton.onClick=[this]{chooseFile(tr("Open Fase Groove Arranger project"),"*.fga",juce::FileBrowserComponent::openMode|juce::FileBrowserComponent::canSelectFiles,[this](juce::File f){open(f);});};
     newButton.onClick=[this]{juce::Component::SafePointer<MainComponent> safe(this);requestClose([safe]{if(safe)safe->createNewProject();});};
@@ -482,7 +482,7 @@ playButton.setTooltip(tr("Start or pause playback."));stopButton.setTooltip(tr("
         s->onValueChange=[this,s,callback,mix]{if(!refreshing&&!inGesture(*s)){if(mix)checkpointMix(s);else checkpoint(s);}if(callback)callback();};
     }
     for(auto* button:{&arrangeButton,&harmonyButton})button->setMouseClickGrabsKeyboardFocus(false);
-    arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);trackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
+    arrangeButton.setIcon(IconButton::Icon::song);songButton.setIcon(IconButton::Icon::dice);songButton.setPrimary(true);   // the one amber action in the headertrackButton.setIcon(IconButton::Icon::dice);sectionButton.setIcon(IconButton::Icon::dice);clipButton.setIcon(IconButton::Icon::dice);
     leadButton.setIcon(IconButton::Icon::guitar);instrumentButton.setIcon(IconButton::Icon::gear);editButton.setIcon(IconButton::Icon::pencil);backButton.setIcon(IconButton::Icon::left);addSectionButton.setIcon(IconButton::Icon::song);
     refreshControls();audio.publish(project);setSize(1440,980);select(4,0);showArrangement();fitSong();translateControls(*this);acceptTargetEdit=true;message(juce::String::fromUTF8("Ready - Space: play/pause - Right-click: options - Autosave every minute."));
     if(!juce::JUCEApplication::getCommandLineParameters().contains("test")){recoveryArmed=true;juce::Component::SafePointer<MainComponent> safe(this);juce::MessageManager::callAsync([safe]{if(safe)safe->offerRecovery();});}

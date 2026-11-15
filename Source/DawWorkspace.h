@@ -58,6 +58,7 @@ public:
     void mouseDown(const juce::MouseEvent&) override;
     void paintOverChildren(juce::Graphics&) override;
 private:
+    static constexpr int badgeRoom=30;bool badgesBelow=false;   // under the fader: the AUTO / TRIM tags
     juce::Rectangle<int> badgeBounds(bool forPan)const;juce::String badgeText(bool forPan)const;juce::String drawnBadges;
     MainComponent& owner;
     int track;

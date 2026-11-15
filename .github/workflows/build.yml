@@ -27,7 +27,7 @@ permissions:
 env:
   FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.full_suite }}
 concurrency:
-  group: build-${{ github.head_ref || github.ref_name }}
+  group: build-${{ github.event_name == 'schedule' && 'nightly' || github.head_ref || github.ref_name }}   # the nightly build never cancels a push (or a release) run
   cancel-in-progress: true
 jobs:
   family:

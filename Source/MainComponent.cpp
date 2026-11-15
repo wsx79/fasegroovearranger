@@ -1,5 +1,6 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
+#include <map>
 #include "Branding.h"
 #include "MainComponent.h"
 #include "RenderProgressTask.h"
@@ -689,6 +690,11 @@ void MainComponent::paint(juce::Graphics& g){
     g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(controlBarHeight-1,0,(float)w);g.drawHorizontalLine(toolbarBottom(),0,(float)w);
     g.setColour(juce::Colours::white.withAlpha(.04f));g.drawHorizontalLine(controlBarHeight,0,(float)w);
     Branding::drawFullLogo(g,{14,14,152,28});
+    // Header rows read as groups (song, generate, harmony, feel...): each run of controls between two
+    // dividers sits on its own faint panel, so the eye finds a group before a control.
+    {std::map<int,std::vector<int>> rows;for(const auto& d:toolbarDividers)if(d.getY()>controlBarHeight)rows[d.getY()].push_back(d.getX());
+     for(auto& [y,xs]:rows){std::sort(xs.begin(),xs.end());int from=8;xs.push_back(getWidth()-8);
+        for(int x:xs){const auto panel=juce::Rectangle<float>((float)from,(float)y-7.f,(float)(x-from-4),34.f);if(panel.getWidth()>40){g.setColour(juce::Colours::white.withAlpha(.022f));g.fillRoundedRectangle(panel,5.f);g.setColour(juce::Colours::black.withAlpha(.35f));g.drawRoundedRectangle(panel.reduced(.5f),5.f,1.f);}from=x+5;}}}
     for(const auto& divider:toolbarDividers){g.setColour(juce::Colours::black.withAlpha(.5f));g.fillRect(divider.withWidth(1));g.setColour(juce::Colours::white.withAlpha(.05f));g.fillRect(divider.withWidth(1).translated(1,0));}
     // Transport display: position, tempo, metre and key on a dark screen.
     g.setGradientFill(juce::ColourGradient(Daw::lcd.brighter(.08f),(float)lcdArea.getCentreX(),(float)lcdArea.getY(),Daw::lcd,(float)lcdArea.getCentreX(),(float)lcdArea.getBottom(),false));g.fillRoundedRectangle(lcdArea.toFloat(),Daw::panelRadius);g.setColour(Daw::accent.withAlpha(.22f));g.drawRoundedRectangle(lcdArea.toFloat().reduced(.5f),Daw::panelRadius,1.f);g.setColour(juce::Colours::white.withAlpha(.09f));g.fillRect((float)lcdArea.getX()+6.f,(float)lcdArea.getY()+1.f,(float)lcdArea.getWidth()-12.f,1.f);

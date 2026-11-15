@@ -76,7 +76,10 @@ public:
     void mouseWheelMove(const juce::MouseEvent&,const juce::MouseWheelDetails&) override;
     bool verifyAutomation(const juce::File&);
     bool keyPressed(const juce::KeyPress&) override;
-    int rowHeight(int row) const {return trackHeights[(size_t)trackAtRow(row)];}
+    // A track with nothing on the timeline (no clip with notes or audio) folds to a slim row until it is selected.
+    int rowHeight(int row) const {const int ti=trackAtRow(row);return emptyTrack(ti)?emptyRowHeight:trackHeights[(size_t)ti];}
+    static constexpr int emptyRowHeight=26;bool foldEmptyTracks=true;
+    bool emptyTrack(int track) const;
     int rowY(int row) const;
     int rowAt(int y) const;
     int totalHeight() const;
