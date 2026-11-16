@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.8
+
+- Arrangement: after the intro the track no longer starts at once. A first break (no kick, the harmony alone) comes first, its length different from song to song (8 or 16 bars); its last two or four beats stop, and the groove lands after it.
+- Target duration: when the form is too long by less than a phrase, breaks and builds can still lose four bars (Electro House at 3 minutes was 9 seconds over).
+
 ## 0.57.7
 
 - Arrangement: a build-up always empties before the drop. The kick leaves for the last bar (often two, sometimes four), then the whole band stops for half a bar, a bar or (long builds) two bars, and the drop lands on silence.

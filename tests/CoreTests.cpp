@@ -234,7 +234,8 @@ void verifyRearrange(){
             for(const auto& note:clip.notes){const int src=note.pitch-48;check(src>=0&&src<6&&note.velocity==81+src&&note.length==.75,"rearrange neither regenerates nor changes notes");}
             const auto src=(size_t)(clip.seed-100);check(src<6&&clip.motifSeed==200+src&&p.sections[c].type==original.sections[src].type,"rearrange matches section roles and preserves take identity");
         }check(changed,"rearrange changes the layout");
-        const auto& curve=p.tracks[0].volume;check(std::abs(curve.valueAt(p.sectionStart(1))-.8)<1.e-6,"automation follows its reused section");
+        const auto& curve=p.tracks[0].volume;int reused=-1;for(size_t c=0;c<p.sections.size()&&reused<0;++c)if(p.tracks[0].clips[c].seed-100==1)reused=(int)c;   /* wherever the form puts the verse (a first break may come before it) */
+        check(reused>=0&&std::abs(curve.valueAt(p.sectionStart(reused))-.8)<1.e-6,"automation follows its reused section");
     }
     auto locked=original;locked.tracks[0].clips[0].locked=true;const auto clips=locked.tracks[0].clips;check(!rearrangeSong(locked,2)&&locked.tracks[0].clips==clips&&locked.sections[0].bars==8,"locked rearrange is atomic");
 }

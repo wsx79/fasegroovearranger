@@ -82,7 +82,7 @@ inline void verifyEditorRegenerate(){
     p.tracks[0].engine.pattern=3;check(fga::regenerateClip(p,0,1,777),"regenerate after a panel change");
     auto r=p;r.tracks[0].clips[1].notes.clear();fga::generate(r,fga::Scope::clip,0,1,0);check(r.tracks[0].clips[1].notes==p.tracks[0].clips[1].notes,"regenerate uses the new groove setting");
     // Drums too.
-    auto d=fga::newProject(1);d.tracks[4].clips[1].notes.clear();check(fga::regenerateClip(d,4,1,55)&&!d.tracks[4].clips[1].notes.empty(),"drum clip regenerates");
+    auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.
     auto l=fga::newProject(1);l.tracks[0].clips[1].locked=true;const auto locked=l.tracks[0].clips[1];
     check(!fga::regenerateClip(l,0,1,9)&&l.tracks[0].clips[1]==locked,"locked clip refuses regenerate");

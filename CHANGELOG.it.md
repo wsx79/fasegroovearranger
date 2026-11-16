@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.8
+
+- Arrangiamento: dopo l’intro la traccia non parte più di colpo. Prima arriva un primo break (senza cassa, solo l’armonia) di durata diversa da brano a brano (8 o 16 battute); gli ultimi due o quattro quarti si fermano e poi parte il groove.
+- Durata obiettivo: quando la forma è troppo lunga di meno di una frase, break e build-up possono ancora perdere quattro battute (Electro House a 3 minuti sforava di 9 secondi).
+
 ## 0.57.7
 
 - Arrangiamento: il build-up si svuota sempre prima del drop. La cassa esce per l’ultima battuta (spesso due, a volte quattro), poi tutta la band si ferma per mezza battuta, una battuta o (nei build lunghi) due, e il drop riparte dal silenzio.

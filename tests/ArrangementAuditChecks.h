@@ -40,7 +40,7 @@ inline void verify(){
             check(next.settings.key==harmony.key&&next.settings.scale==harmony.scale&&next.settings.degrees==harmony.degrees&&next.settings.freeChords==harmony.freeChords&&next.settings.chordCount==harmony.chordCount,"genre "+std::to_string(genre)+": a new arrangement keeps the chords");}
         check(forms.size()>=4,"genre "+std::to_string(genre)+": a new arrangement changes the form");
     }
-    std::cout<<"AUDIT drop_gaps="<<gaps<<"/"<<drops<<" drops in "<<songs<<" songs\n";check(gaps*5>=drops&&gaps*5<=drops*4,"some, not all, drops are preceded by a stop");
+    std::cout<<"AUDIT drop_gaps="<<gaps<<"/"<<drops<<" drops in "<<songs<<" songs\n";check(gaps*5>=drops*3&&gaps<drops,"most, not all, drops are preceded by a stop");
     std::cout<<"AUDIT build_bass_out="<<bassOut<<"/"<<builds<<"\n";check(bassOut*2>=builds&&bassOut<builds,"the bass usually, not always, leaves before the drop");
     {   // Section energy: the same takes play less at Low and more at Peak; Auto keeps the notes as before.
         for(int genre:{0,4,13}){auto p=newProject(genre);p.settings.randomAutomation=false;p.sections={{Section::main,8,"A"},{Section::main,8,"B"}};p.normalise();generate(p);

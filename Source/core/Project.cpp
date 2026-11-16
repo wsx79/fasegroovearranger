@@ -739,6 +739,9 @@ std::vector<SongSection> genreForm(int genre,int variant=0) {
         }
         if(!removed){const auto before=std::find_if(form.begin()+1,form.end(),[](const SongSection& sec){return sec.type==Section::breakdown;});form.insert(before,{Section::main,8,"Theme response"});}
     }else if(variant==3)form.insert(form.begin()+1,{Section::drop,8,"Theme preview"});
+    // After the intro the track does not start at once: a short break (no kick, the harmony alone)
+    // comes first, and the groove lands after it.
+    if(form.size()>2&&form[0].type==Section::intro&&form[1].type!=Section::breakdown&&form[1].type!=Section::buildup)form.insert(form.begin()+1,{Section::breakdown,8,"First break"});
     return form;
 }
 // A form nobody restructured: the factory section sequence of some genre.
@@ -760,6 +763,7 @@ int freshFormVariant(const Project& p,std::uint32_t seed){
 // two. The choice belongs to the form, so it is drawn when the form is drawn.
 static void chooseDropGaps(Project& p,std::uint32_t seed){
     for(size_t si=0;si<p.sections.size();++si){auto& s=p.sections[si];s.dropGap=0;
+        if(si==1&&si+1<p.sections.size()&&s.type==Section::breakdown&&p.sections[0].type==Section::intro&&p.sections[si+1].type!=Section::drop){s.dropGap=(mix(seed^0x3c6ef372U)&1)?4:2;continue;}   // the first break stops, then the track starts
         if(si+1>=p.sections.size()||p.sections[si+1].type!=Section::drop||s.type==Section::drop||s.type==Section::intro||s.bars<2)continue;
         const auto r=mix(seed^(0x68e31da4U+(std::uint32_t)si*0x1b873593U));const bool build=s.type==Section::buildup;const int roll=(int)((r>>8)%100);
         // A build-up always empties before the drop lands: half a bar, a whole bar, or (a long build) two bars
@@ -827,6 +831,8 @@ static void arrangeSongVariant(Project& p,int variant) {
         }
     }
     std::vector<SongSection> bounded;
+    // The break after the intro is a different length from song to song: four, eight or sixteen bars.
+    if(sections.size()>2&&sections[1].type==Section::breakdown&&sections[1].name=="First break"){static constexpr int lengths[]{4,8,8,16,8,16};sections[1].bars=lengths[mix(p.settings.seed^0x5bd1e995U^((std::uint32_t)variant*0x27d4eb2fU))%6];}
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
     p.sections=std::move(bounded);for(auto& t:p.tracks)if(!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     chooseDropGaps(p,p.settings.seed^((std::uint32_t)variant*0x9e3779b9U));
@@ -1112,11 +1118,12 @@ void fitFormToTarget(Project& p){
     for(int guard=0;guard<512;++guard){
         const double target=s.targetSeconds*s.bpm/240.,tolerance=s.targetToleranceSeconds*s.bpm/240.,diff=target-totalBars();
         if(std::abs(diff)<=tolerance+1e-9)break;
-        const int step=std::abs(diff)>=phrase*.75?phrase:4;if(step==4&&std::abs(diff)<2)break;
+        int step=std::abs(diff)>=phrase*.75?phrase:4;if(step==4&&std::abs(diff)<2)break;
         int pick=-1;
         if(diff>0){for(int pass=0;pass<2&&pick<0;++pass)for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];if((pass==0)!=body(x.type)||x.bars+step>128)continue;if(pick<0||x.bars<p.sections[(size_t)pick].bars)pick=(int)i;}
             if(pick<0)break;p.sections[(size_t)pick].bars+=step;}
-        else{for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}
+        else{for(int attempt=0;attempt<2&&pick<0;++attempt){if(attempt){if(step<=4)break;step=4;}   // nothing can lose a whole phrase: breaks and builds can still lose four bars
+            for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}}
             if(pick<0)break;p.sections[(size_t)pick].bars-=step;}
     }
     const double seconds=totalBars()*240./s.bpm;
@@ -1518,7 +1525,7 @@ static void shapeBuildups(Project& p,Scope scope,int track,int section,int lastC
 // The stop before a drop: every part rests for the last one or two beats, so the drop lands
 // on silence. Crash and reverse crash (lane 12) and sustained FX keep ringing through it.
 static void applyDropGaps(Project& p,Scope scope,int track,int section,int lastClip=-1){
-    for(int si=0;si+1<(int)p.sections.size();++si){const int gap=p.sections[(size_t)si].dropGap;if(gap<=0||p.sections[(size_t)(si+1)].type!=Section::drop)continue;
+    for(int si=0;si+1<(int)p.sections.size();++si){const int gap=p.sections[(size_t)si].dropGap;if(gap<=0)continue;
         const double finish=p.sectionStart(si+1),from=finish-gap;
         for(int ti=0;ti<(int)p.tracks.size();++ti){if(ti==16||(isManualTrack(ti)&&!p.tracks[(size_t)ti].vocalChops))continue;auto& t=p.tracks[(size_t)ti];
             for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];if(c.audioOffset>=0)continue;
