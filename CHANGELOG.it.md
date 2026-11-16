@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.7
+
+- Arrangiamento: il build-up si svuota sempre prima del drop. La cassa esce per l’ultima battuta (spesso due, a volte quattro), poi tutta la band si ferma per mezza battuta, una battuta o (nei build lunghi) due, e il drop riparte dal silenzio.
+- Forme senza build-up (Deep House, Disco, Neo Soul, Chill): un tema che entra direttamente in un drop sale nelle ultime otto battute, toglie la cassa nell’ultima e si ferma prima del drop.
+- I temi e i drop lunghi si muovono a onde invece di restare su un solo livello: aprono un po’ più leggeri, salgono, si svuotano a metà (la cassa tace per due o quattro battute e le parti di risposta escono, poi rientra tutto) e chiudono sulle otto battute più forti.
+- Vista arrangiamento: nelle clip melodiche le note più forti sono più luminose. Mixer: ogni striscia mostra il numero del canale.
+
 ## 0.57.6
 
 - Verifica dell’armonia su tutti i 16 generi: il piano non tiene più una nota una nona minore sopra una nota lunga del basso (negli accordi di quattro o più note); la nota di passaggio del basso evita il semitono sotto una nota dell’accordo che sta suonando; la Lead di Dance Stabs resta entro due ottave dal suo centro in ogni clip.

@@ -761,8 +761,12 @@ int freshFormVariant(const Project& p,std::uint32_t seed){
 static void chooseDropGaps(Project& p,std::uint32_t seed){
     for(size_t si=0;si<p.sections.size();++si){auto& s=p.sections[si];s.dropGap=0;
         if(si+1>=p.sections.size()||p.sections[si+1].type!=Section::drop||s.type==Section::drop||s.type==Section::intro||s.bars<2)continue;
-        const auto r=mix(seed^(0x68e31da4U+(std::uint32_t)si*0x1b873593U));const int chance=s.type==Section::buildup?60:35;
-        if((int)(r%100)<chance)s.dropGap=(r>>8)%3==0?2:1;}
+        const auto r=mix(seed^(0x68e31da4U+(std::uint32_t)si*0x1b873593U));const bool build=s.type==Section::buildup;const int roll=(int)((r>>8)%100);
+        // A build-up always empties before the drop lands: half a bar, a whole bar, or (a long build) two bars
+        // of nothing. Other sections stop less often and for less.
+        if(build)s.dropGap=s.bars>=16&&roll<18?8:roll<62?4:2;
+        else if(s.type==Section::main&&s.bars>=16)s.dropGap=roll<50?4:2;   // a verse that runs straight into a drop lifts and stops like a build
+        else if((int)(r%100)<55)s.dropGap=roll<40?4:roll<80?2:1;}
 }
 static void arrangeSongVariant(Project& p,int variant) {
     p.normalise();
@@ -963,6 +967,20 @@ void shapeBandRoles(Clip& clip,const Project& p,int track,int section) {
     // A short explicit source must contain its phrase before it is repeated.
     // Applying a full-section entry mask here could loop silence indefinitely.
     if(clip.loopLength>0&&clip.loopLength<32)return;
+    // A long verse or drop moves in waves instead of holding one level: it opens a little lighter,
+    // climbs, empties out in the middle (the kick rests for a few bars, the answering parts leave,
+    // then everything comes back) and ends on its loudest eight bars.
+    if(const int blocks=sec.bars/8;blocks>=3&&clip.loopLength<=0){
+        const int dip=blocks>=4?blocks/2:-1;const double kickRest=blocks>=6?16.:8.;
+        clip.notes.erase(std::remove_if(clip.notes.begin(),clip.notes.end(),[&](const Note& n){const int block=(int)(n.start/32+1e-6);const double in=n.start-block*32.;
+            if(block==dip){if(track==4)return in<kickRest-1./32.;if(track==leadTrack||track==3||track==10||track==12||track==14||track==15)return true;if(track==5||track==6)return in<kickRest-1./32.;}
+            if(block==dip-1&&(track==4||track==1))return in>=32.-2.-1./32.;   // the last two beats before the dip: the floor drops away
+            if(block==0&&blocks>=3&&sec.type==Section::main&&(track==12||track==14||track==15))return true;
+            return false;}),clip.notes.end());
+        if(track!=4&&track!=1)for(auto& n:clip.notes){const int block=std::min(blocks-1,(int)(n.start/32+1e-6));
+            const double level=block==dip?.88:block==blocks-1?1.07:block==0?.95:block==dip-1?1.03:1.;n.velocity=std::clamp((int)std::lround(n.velocity*level),1,127);}
+        for(auto& n:clip.notes){const int block=(int)(n.start/32+1e-6);if(block==dip-1&&(track==4||track==1)&&n.start+n.length>(block+1)*32.-2.)n.length=std::max(1./64.,(block+1)*32.-2.-n.start);}
+    }
     // Repeated verses/drops develop across the song, independently of seed
     // variation. Preserve the kick/bass foundation and explicit user patterns.
     int preceding=0,total=0;
@@ -1485,9 +1503,10 @@ static void transitionMacros(Project& p,Scope scope,int track,int section,int la
 // snare. Seeded per song and section: the bass usually leaves for the last bar or two, the
 // kick sometimes for the last bar, and the percussion grows from a softer start.
 static void shapeBuildups(Project& p,Scope scope,int track,int section,int lastClip=-1){
-    for(int si=0;si+1<(int)p.sections.size();++si){const auto& sec=p.sections[(size_t)si];if(sec.type!=Section::buildup||p.sections[(size_t)(si+1)].type!=Section::drop||sec.bars<2)continue;
-        const double begin=p.sectionStart(si),finish=p.sectionStart(si+1),length=finish-begin;const auto r=mix(p.settings.seed^(0x7a3d5c1fU+(std::uint32_t)si*0x85ebca6bU));
-        const double bassOut=(r%10)<7?std::min(8.,std::max(4.,length/4)):0.,kickOut=((r>>4)%10)<4&&length>=8?4.:0.;
+    for(int si=0;si+1<(int)p.sections.size();++si){const auto& sec=p.sections[(size_t)si];const bool build=sec.type==Section::buildup,lift=sec.type==Section::main&&sec.bars>=16;   // a form without a build-up: the verse's last eight bars do its job
+        if((!build&&!lift)||p.sections[(size_t)(si+1)].type!=Section::drop||sec.bars<2)continue;
+        const double finish=p.sectionStart(si+1),begin=lift?finish-32.:p.sectionStart(si),length=finish-begin;const auto r=mix(p.settings.seed^(0x7a3d5c1fU+(std::uint32_t)si*0x85ebca6bU));
+        const double bassOut=(r%10)<7?(lift?4.:std::min(8.,std::max(4.,length/4))):0.,kickOut=lift?4.:length<8?0.:((r>>4)%10)<3&&length>=64?16.:((r>>4)%10)<6&&length>=32?8.:4.;   // the kick always leaves before the drop: the last bar, often two, sometimes four
         for(int ti=0;ti<(int)p.tracks.size();++ti){const bool bass=ti==1,kick=ti==4,percussion=isDrumTrack(ti)&&ti!=4&&ti!=16;if(!bass&&!kick&&!percussion)continue;
             const double out=bass?bassOut:kick?kickOut:0.;if(out<=0&&!percussion)continue;auto& t=p.tracks[(size_t)ti];
             for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];if(c.audioOffset>=0||c.loopLength>0)continue;

@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.7
+
+- Arrangement: a build-up always empties before the drop. The kick leaves for the last bar (often two, sometimes four), then the whole band stops for half a bar, a bar or (long builds) two bars, and the drop lands on silence.
+- Forms without a build-up (Deep House, Disco, Neo Soul, Chill): a verse that runs straight into a drop lifts over its last eight bars, drops the kick for the last bar and stops before the drop.
+- Long verses and drops move in waves instead of holding one level: they open a little lighter, climb, empty out in the middle (the kick rests for two or four bars and the answering parts leave, then everything returns) and end on their loudest eight bars.
+- Arrangement view: louder notes are brighter inside melodic clips. Mixer: each strip shows its channel number.
+
 ## 0.57.6
 
 - Harmony audit on all 16 genres: the piano no longer holds a note a minor ninth over a long bass note (in chords of four or more notes); the bass approach note avoids a semitone under a tone of the chord still sounding; the Dance Stabs lead stays within two octaves of its centre in each clip.

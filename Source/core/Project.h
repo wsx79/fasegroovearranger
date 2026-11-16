@@ -79,7 +79,7 @@ struct SectionHarmony {
     std::array<bool,8> manualChords{};
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false;
-    int dropGap=0; // automatic full-band stop before the next drop, in beats (0 none, 1 or 2); not an authored edit
+    int dropGap=0; // automatic full-band stop before the next drop, in beats (0 none, up to 8); not an authored edit
     int energy=-1; // -1 auto; 0 low, 1 medium, 2 high, 3 peak: scales how much every part plays in this section
 };
 // Stable storage IDs preserve existing projects and plugin assignments. The UI and

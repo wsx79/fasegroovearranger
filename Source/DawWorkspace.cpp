@@ -315,7 +315,8 @@ void MixerStrip::paint(juce::Graphics& g){
         g.setColour(juce::Colours::black.withAlpha(.5f));g.fillRect(meter.getX(),faderY(0),meter.getWidth(),1.f);
         // The fader's value under it.
         const auto value=juce::Rectangle<float>(4.f,(float)gain.getBottom()+(badgesBelow?(float)badgeRoom:0.f)+2.f,(float)w-8.f,15.f);g.setColour(Daw::well);g.fillRoundedRectangle(value,2.f);
-        const float db=(float)gain.getValue();g.setColour(gain.isMouseOverOrDragging()?Daw::text:Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(db<=-59.9f?juce::String::fromUTF8("-\xe2\x88\x9e"):juce::String(db,1),value,juce::Justification::centred);}
+        const float db=(float)gain.getValue();g.setColour(gain.isMouseOverOrDragging()?Daw::text:Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(db<=-59.9f?juce::String::fromUTF8("-\xe2\x88\x9e"):juce::String(db,1),value,juce::Justification::centred);
+        if(!master&&w>=58){g.setColour(Daw::textFaint);g.setFont(Daw::font(9.f));g.drawText(juce::String(rowForTrack(track)+1).paddedLeft('0',2),value.reduced(4.f,0),juce::Justification::centredLeft);}}   // the channel number, as on a console
     if(pan.isVisible()){const double value=pan.getValue();g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawText(std::abs(value)<.5?juce::String("C"):(value<0?"L":"R")+juce::String((int)std::round(std::abs(value))),juce::Rectangle<int>(pan.getX()-6,pan.getBottom(),pan.getWidth()+12,12),juce::Justification::centred);}
     // Name at the foot, on a band of the track colour.
     const auto band=juce::Rectangle<float>(2.f,6.f,(float)w-4.f,22.f);g.setColour(master?Daw::control:colour.withAlpha(current?.55f:.2f));g.fillRoundedRectangle(band,2.f);
