@@ -719,6 +719,9 @@ void MainComponent::paint(juce::Graphics& g){
     const auto title=utf(project.name)+(dirty?" *":"")+juce::String::fromUTF8("  ·  ")+juce::String((int)seconds/60)+":"+juce::String((int)seconds%60).paddedLeft('0',2);
     g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawText(tr("by")+" Fabio 'Pitch' Serra",w-176,h-statusHeight,164,statusHeight,juce::Justification::centredRight);
     g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(title,w-536,h-statusHeight,352,statusHeight,juce::Justification::centredRight,true);
+    // the session at a glance, left of the title: device rate and how many tracks
+    {juce::String info;if(auto* device=audio.devices.getCurrentAudioDevice())info=juce::String(device->getCurrentSampleRate()/1000.,1)+" kHz"+juce::String::fromUTF8("  ·  ");info+=juce::String((int)project.tracks.size())+" "+tr("tracks");
+     const int titleWidth=(int)std::ceil(juce::GlyphArrangement::getStringWidth(Daw::font(Daw::small,true),title));if(titleWidth<352-150){g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawText(info,w-536,h-statusHeight,352-titleWidth-14,statusHeight,juce::Justification::centredRight,true);}}
 }
 void MainComponent::resized(){
     loadingView.setBounds(getLocalBounds());

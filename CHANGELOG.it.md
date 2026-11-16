@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.6
+
+- Verifica dell’armonia su tutti i 16 generi: il piano non tiene più una nota una nona minore sopra una nota lunga del basso (negli accordi di quattro o più note); la nota di passaggio del basso evita il semitono sotto una nota dell’accordo che sta suonando; la Lead di Dance Stabs resta entro due ottave dal suo centro in ogni clip.
+- Aspetto: i nomi delle sezioni sono etichette piene nel colore della sezione; striscia di colore più larga nelle intestazioni delle tracce; cappuccio del fader più alto con righe di presa nel mixer alto; la barra di stato mostra il numero di tracce e la frequenza di campionamento.
+- Una traccia vuota ripiegata che ridimensioni mantiene l’altezza che le dai.
+
 ## 0.57.5
 
 - Barra superiore: ogni gruppo di controlli (brano, genera, sezioni, armonia, feel) ha un suo pannello; GENERATE SONG è l’unico pulsante arancione.

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.6
+
+- Harmony audit on all 16 genres: the piano no longer holds a note a minor ninth over a long bass note (in chords of four or more notes); the bass approach note avoids a semitone under a tone of the chord still sounding; the Dance Stabs lead stays within two octaves of its centre in each clip.
+- Look: section names are filled labels in the section colour; wider colour strip on track headers; a taller fader cap with grip lines in the tall mixer; the status bar shows the track count and the device sample rate.
+- A folded empty track that you resize keeps the height you give it.
+
 ## 0.57.5
 
 - Header: each group of controls (song, generate, sections, harmony, feel) sits on its own panel; GENERATE SONG is the one amber action.

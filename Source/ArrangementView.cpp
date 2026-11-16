@@ -146,7 +146,7 @@ void ArrangementView::paint(juce::Graphics& g){
         const auto& t=p.tracks[(size_t)ti];const bool current=ti==owner.selectedTrack;const auto ink=colour(ti);
         Daw::fillElevatedSurface(g,{(float)hx,(float)y,(float)headerWidth,(float)h},current?Daw::surfaceHi:Daw::surface);
         const auto slots=headerChrome(hx,y,h);
-        g.setColour(t.mute?ink.withAlpha(.3f):ink);g.fillRect(hx,y,Daw::unit,h-1);
+        g.setColour(t.mute?ink.withAlpha(.3f):ink);g.fillRect(hx,y,Daw::unit+2,h-1);g.setColour(juce::Colours::white.withAlpha(t.mute?0.f:.18f));g.fillRect(hx,y,1,h-1);
         if(current){g.setColour(juce::Colours::white.withAlpha(.05f));g.fillRect(hx+Daw::unit,y,headerWidth-Daw::unit,1);}
         const auto icon=t.vocalChops?IconButton::Icon::studio:(ti==0||isManualTrack(ti))?IconButton::Icon::piano:ti==1?IconButton::Icon::bass:ti==2?IconButton::Icon::strings:ti==3?IconButton::Icon::guitar:ti==leadTrack?IconButton::Icon::lead:IconButton::Icon::drum;
         IconButton::drawIcon(g,icon,{(float)hx+3*Daw::unit,(float)y+2*Daw::unit+2,16,16},ink.withAlpha(t.mute?.35f:.85f));
@@ -177,12 +177,12 @@ void ArrangementView::paint(juce::Graphics& g){
         g.setColour(Daw::chrome);g.fillRect(view.getX(),y,view.getWidth(),32);g.setColour(Daw::well.brighter(.04f));g.fillRect(view.getX(),y+32,view.getWidth(),rulerHeight-32);
         for(size_t si=0;si<p.sections.size();++si){const float x0=beatX(p.sectionStart((int)si)),x1=beatX(p.sectionStart((int)si+1));if(x1<lanesLeft||x0>lanesRight)continue;
             const bool current=(int)si==owner.selectedSection;const auto sc=Daw::sectionColour((int)p.sections[si].type);const juce::Rectangle<float> marker(x0+1.f,(float)y+5,std::max(2.f,x1-x0-2.f),23.f);
-            g.setColour(sc.withAlpha(current?.3f:.14f));g.fillRoundedRectangle(marker,Daw::radius);g.setColour(sc);g.fillRoundedRectangle(marker.withWidth(3.f),1.f);
+            g.setColour(sc.withAlpha(current?.62f:.34f));g.fillRoundedRectangle(marker,Daw::radius);g.setColour(juce::Colours::white.withAlpha(.10f));g.fillRect(marker.getX()+4.f,marker.getY()+1.f,std::max(0.f,marker.getWidth()-8.f),1.f);g.setColour(sc);g.fillRoundedRectangle(marker.withWidth(3.f),1.f);
             if(current){g.setColour(sc.withAlpha(.8f));g.drawRoundedRectangle(marker.reduced(.5f),Daw::radius,1.f);}if(p.sections[si].harmony.enabled&&marker.getWidth()>34){g.setColour(Daw::accent);g.fillEllipse(marker.getRight()-9.f,marker.getCentreY()-2.5f,5.f,5.f);}
-            if(marker.getWidth()>24){auto r=marker.reduced(8.f,0).toNearestInt();g.setColour(current?Daw::text:Daw::text.withAlpha(.85f));auto font=Daw::font(Daw::small,true);const auto name=utf(p.sections[si].name);
+            if(marker.getWidth()>24){auto r=marker.reduced(8.f,0).toNearestInt();g.setColour(juce::Colours::white.withAlpha(current?1.f:.92f));auto font=Daw::font(Daw::small,true);const auto name=utf(p.sections[si].name);
                 const int nameWidth=std::min(r.getWidth(),(int)std::ceil(juce::GlyphArrangement::getStringWidth(font,name))+2);
                 g.setFont(font);g.drawFittedText(name,r.withWidth(nameWidth),juce::Justification::centredLeft,1,.6f);
-                if(r.getWidth()>nameWidth+36){g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawFittedText(juce::String(p.sections[si].bars)+" "+tr("bars"),r.withTrimmedLeft(nameWidth+6),juce::Justification::centredLeft,1,.7f);}}}
+                if(r.getWidth()>nameWidth+36){g.setColour(juce::Colours::white.withAlpha(.6f));g.setFont(Daw::font(Daw::small));g.drawFittedText(juce::String(p.sections[si].bars)+" "+tr("bars"),r.withTrimmedLeft(nameWidth+6),juce::Justification::centredLeft,1,.7f);}}}
         if(p.loopEnd>p.loopStart){const float from=beatX(p.loopStart),to=beatX(p.loopEnd);const auto ink=p.loop?Daw::accent:Daw::textFaint;
             g.setColour(ink.withAlpha(p.loop?.2f:.12f));g.fillRect(from,(float)y+33,to-from,rulerHeight-34.f);g.setColour(ink);g.fillRect(from,(float)y+33,to-from,3.f);g.fillRect(from,(float)y+33,2.f,rulerHeight-34.f);g.fillRect(to-2,(float)y+33,2.f,rulerHeight-34.f);}
         int labelStep=1;while(labelStep<1048576&&labelStep*pixelsPerBar<(owner.timeDisplay?78:34))labelStep*=2;int tickStep=1;while(tickStep<64&&tickStep*pixelsPerBar<6)tickStep*=2;
@@ -355,7 +355,7 @@ juce::String ArrangementView::envelopeTitle(int track) const{
 // or insert plugin (a new lane per parameter, at most maxParameterLanes per track).
 void ArrangementView::showLaneTargetMenu(int track){const int target=laneTarget[(size_t)track];const auto& lanes=owner.project.tracks[(size_t)track].parameters;owner.showAutomationPicker(track,target>=lanePlugin&&target-lanePlugin<(int)lanes.size()?lanes[(size_t)(target-lanePlugin)].slot:-2);}
 
-bool ArrangementView::emptyTrack(int ti) const {const auto& p=owner.project;if(!foldEmptyTracks||ti<0||ti>=(int)p.tracks.size()||ti==owner.selectedTrack||volumeVisible[(size_t)ti])return false;
+bool ArrangementView::emptyTrack(int ti) const {const auto& p=owner.project;if(!foldEmptyTracks||(ti>=0&&ti<maxTracks&&trackHeights[(size_t)ti]!=trackHeight)||ti<0||ti>=(int)p.tracks.size()||ti==owner.selectedTrack||volumeVisible[(size_t)ti])return false;
     for(const auto& c:p.tracks[(size_t)ti].clips)if(!c.notes.empty()||c.audioOffset>=0)return false;return true;}
 int ArrangementView::rowY(int row) const {int y=rulerHeight;for(int r=0;r<row;++r)y+=rowHeight(r)+(volumeVisible[(size_t)trackAtRow(r)]?80:0);return y;}
 int ArrangementView::rowAt(int y) const {if(y<rulerHeight||y>=totalHeight())return -1;for(int r=0;r<(int)owner.project.tracks.size();++r)if(y<rowY(r+1))return r;return -1;}

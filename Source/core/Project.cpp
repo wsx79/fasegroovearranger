@@ -1724,8 +1724,11 @@ static void bassApproach(Clip& c,const Project& p,double at,double beats){
         if(change-qs>.5+1e-6||change-qs<.2||n.length>.5+1e-6||std::abs(next.start-change)>.06||change>=beats)continue;
         const int si=std::max(0,p.sectionAtBeat(at+n.start));const auto h=activeHarmony(p,si);const auto now=chordAtBeat(h,at+qs),then=chordAtBeat(h,at+change);
         if(now.rootPc==then.rootPc||((next.pitch-then.rootPc)%12+12)%12!=0||dice()>=chance)continue;
-        const int step=dice()<.6?1:2,approach=next.pitch+(dice()<.5?-step:step);if(std::abs(approach-n.pitch)>7)continue;
-        n.pitch=approach;}
+        const int step=dice()<.6?1:2,sign=dice()<.5?-1:1;
+        // never a semitone under a tone of the chord still sounding: that passing note rubs against the piano
+        auto rubs=[&](int pitch){const int iv=((pitch+1-now.rootPc)%12+12)%12;return iv==0||iv==now.third||iv==now.fifth||iv==now.seventh;};
+        int approach=-1;for(const int d:{sign*step,-sign*step,sign*(3-step),-sign*(3-step)}){const int q=next.pitch+d;if(!rubs(q)&&std::abs(q-n.pitch)<=7){approach=q;break;}}
+        if(approach>=0)n.pitch=approach;}
 }
 static void livePerformance(Clip& c,const Project& p,int ti,double beats){
     if(c.notes.empty())return;
@@ -1786,8 +1789,11 @@ static void pianoMotif(Clip& c,const Project& p,double length){
 static void leadAnswer(Project& p,const std::function<bool(int,int)>& fresh){
     if((int)p.tracks.size()<=leadTrack||p.tracks[(size_t)leadTrack].locked||isElectronicGenre(p.settings.genre))return;
     std::vector<std::pair<double,double>> piano;for(size_t ci=0;ci<p.tracks[0].clips.size();++ci){const double at=p.clipStart(0,(int)ci);for(const auto& n:p.tracks[0].clips[ci].notes)piano.push_back({at+n.start,at+n.start+n.length});}
-    if(piano.empty()||p.tracks[0].mute)return;std::sort(piano.begin(),piano.end());
     auto& t=p.tracks[(size_t)leadTrack];
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!fresh(leadTrack,(int)ci))continue;
+        // Dance Stabs: the line stays within two octaves of its own centre
+        if(p.settings.genre==(int)Genre::danceStabs&&c.notes.size()>2){std::vector<int> ps;for(const auto& n:c.notes)ps.push_back(n.pitch);std::nth_element(ps.begin(),ps.begin()+(long)ps.size()/2,ps.end());const int mid=ps[ps.size()/2];for(auto& n:c.notes){while(n.pitch>mid+12)n.pitch-=12;while(n.pitch<mid-12)n.pitch+=12;}}}
+    if(piano.empty()||p.tracks[0].mute)return;std::sort(piano.begin(),piano.end());
     for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!fresh(leadTrack,(int)ci))continue;const double at=p.clipStart(leadTrack,(int)ci);
         for(auto& n:c.notes){const double x=at+n.start;bool hit=false,sounding=false;
             auto it=std::lower_bound(piano.begin(),piano.end(),std::make_pair(x-4.,0.));
@@ -1811,6 +1817,17 @@ static void sectionTension(Project& p,const std::function<bool(int,int)>& fresh)
                 i=j;}
             c.notes=out;}}
 }
+// The piano never holds a note a minor ninth over a long bass note (the muddiest rub there is):
+// in a chord of four or more that note is left out.
+static void pianoClearsBass(Project& p,const std::function<bool(int,int)>& fresh){
+    if(p.tracks.size()<2||p.tracks[0].locked||p.tracks[1].mute||isElectronicGenre(p.settings.genre))return;
+    struct Held{double from,to;int pitch;};std::vector<Held> bass;for(size_t ci=0;ci<p.tracks[1].clips.size();++ci){const double at=p.clipStart(1,(int)ci);for(const auto& n:p.tracks[1].clips[ci].notes)if(n.length>.5)bass.push_back({at+n.start,at+n.start+n.length,n.pitch});}
+    if(bass.empty())return;auto& t=p.tracks[0];
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!fresh(0,(int)ci))continue;const double at=p.clipStart(0,(int)ci);
+        auto rubs=[&](const Note& n){for(const auto& b:bass){if(b.from>=at+n.start+n.length||b.to<=at+n.start)continue;if(std::min(b.to,at+n.start+n.length)-std::max(b.from,at+n.start)<.25)continue;if(n.pitch>b.pitch&&(n.pitch-b.pitch)%12==1)return true;}return false;};
+        auto together=[&](const Note& n){int k=0;for(const auto& m:c.notes)if(std::abs(m.start-n.start)<1./24.)++k;return k;};
+        std::vector<Note> out;for(const auto& n:c.notes)if(!(rubs(n)&&together(n)>=4))out.push_back(n);c.notes=out;}
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -1820,7 +1837,7 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
-    sectionTension(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&articulate((int)ti))for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);

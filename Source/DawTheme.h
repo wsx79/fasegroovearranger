@@ -274,11 +274,12 @@ public:
             const float cx=x+width*.5f;const auto groove=juce::Rectangle<float>(cx-2.f,(float)y,4.f,(float)height);
             g.setColour(juce::Colours::black.withAlpha(.6f*alpha));g.fillRoundedRectangle(groove,2.f);
             g.setColour(Daw::line.withAlpha(alpha));g.drawRoundedRectangle(groove.expanded(.5f),2.f,1.f);
-            const auto cap=juce::Rectangle<float>(std::min(30.f,(float)width-4.f),14.f).withCentre({cx,pos});
+            const auto cap=juce::Rectangle<float>(std::min(30.f,(float)width-4.f),height>70?20.f:14.f).withCentre({cx,pos});
             g.setColour(juce::Colours::black.withAlpha(.4f));g.fillRoundedRectangle(cap.translated(0,1.5f),2.f);
             g.setGradientFill(juce::ColourGradient(juce::Colour(0xff50565f).withMultipliedAlpha(alpha),cx,cap.getY(),juce::Colour(0xff30343b).withMultipliedAlpha(alpha),cx,cap.getBottom(),false));g.fillRoundedRectangle(cap,2.f);
             g.setColour(juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(cap.reduced(.5f),2.f,1.f);
             g.setColour(juce::Colours::white.withAlpha(.15f*alpha));g.fillRect(cap.getX()+2.f,cap.getY()+1.f,cap.getWidth()-4.f,1.f);g.setColour(value==Daw::accent?Daw::accent.withAlpha(.95f*alpha):value.withMultipliedAlpha(alpha));g.fillRect(cap.getX()+3.f,pos-1.f,cap.getWidth()-6.f,2.f);
+            if(cap.getHeight()>16.f)for(const float dy:{-6.f,-3.5f,3.5f,6.f}){g.setColour(juce::Colours::black.withAlpha(.35f*alpha));g.fillRect(cap.getX()+4.f,pos+dy,cap.getWidth()-8.f,1.f);}   // grip lines
             return;
         }
         const bool horizontal=style!=juce::Slider::LinearVertical;
