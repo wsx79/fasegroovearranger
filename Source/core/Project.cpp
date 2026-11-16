@@ -831,8 +831,8 @@ static void arrangeSongVariant(Project& p,int variant) {
         }
     }
     std::vector<SongSection> bounded;
-    // The break after the intro is a different length from song to song: four, eight or sixteen bars.
-    if(sections.size()>2&&sections[1].type==Section::breakdown&&sections[1].name=="First break"){static constexpr int lengths[]{4,8,8,16,8,16};sections[1].bars=lengths[mix(p.settings.seed^0x5bd1e995U^((std::uint32_t)variant*0x27d4eb2fU))%6];}
+    // The break after the intro is a different length from song to song: eight or sixteen bars.
+    if(sections.size()>2&&sections[1].type==Section::breakdown&&sections[1].name=="First break"){static constexpr int lengths[]{8,16,8,16,8,8};sections[1].bars=lengths[mix(p.settings.seed^0x5bd1e995U^((std::uint32_t)variant*0x27d4eb2fU))%6];   /* whole 8-bar phrases: the DJ grid holds */}
     for(auto section:sections){int part=1;while(section.bars>128){bounded.push_back({section.type,128,section.name+" "+std::to_string(part++)});section.bars-=128;}if(part>1)section.name+=" "+std::to_string(part);bounded.push_back(std::move(section));}
     p.sections=std::move(bounded);for(auto& t:p.tracks)if(!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     chooseDropGaps(p,p.settings.seed^((std::uint32_t)variant*0x9e3779b9U));
