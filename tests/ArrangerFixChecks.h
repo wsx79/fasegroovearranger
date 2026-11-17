@@ -81,6 +81,14 @@ inline void verifyEditorRegenerate(){
     auto q=p;fga::generate(q,fga::Scope::clip,0,1,0);check(q.tracks[0].clips[1].notes==p.tracks[0].clips[1].notes,"regenerated clip follows the instrument settings");
     p.tracks[0].engine.pattern=3;check(fga::regenerateClip(p,0,1,777),"regenerate after a panel change");
     auto r=p;r.tracks[0].clips[1].notes.clear();fga::generate(r,fga::Scope::clip,0,1,0);check(r.tracks[0].clips[1].notes==p.tracks[0].clips[1].notes,"regenerate uses the new groove setting");
+    {   // Articulations touch only the takes a generation wrote, never a locked track or a locked CC1 curve.
+        auto a=fga::newProject(0);auto& t=a.tracks[0];t.instrument="plugin";t.articulation=3;
+        t.clips[1].notes={{0,.2,60,90,0},{.3,.2,62,90,0}};const auto hand=t.clips[1].notes;
+        t.locked=true;fga::applyArticulation(a,0,1);check(a.tracks[0].clips[1].notes==hand,"a locked track keeps its note lengths under Legato");
+        a.tracks[0].locked=false;fga::generate(a,fga::Scope::clip,0,0,5);check(a.tracks[0].clips[1].notes==hand,"regenerating one clip leaves the articulation of the others alone");
+        a.tracks[0].articulation=1;auto& lane=a.tracks[0].clips[1].expression[1];lane.enabled=true;lane.locked=true;lane.points={{0,.3,0}};const auto curve=lane;
+        fga::applyArticulation(a,0,1);check(a.tracks[0].clips[1].expression[1]==curve,"Dynamics keeps a locked CC1 curve");
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.

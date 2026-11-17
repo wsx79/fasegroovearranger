@@ -28,16 +28,21 @@ class SourceChips : public juce::Component,public juce::SettableTooltipClient {
 public:
     std::function<void(int)> onPick;
     void set(std::vector<std::pair<int,juce::String>> next,juce::String empty){if(next==items&&empty==none)return;items=std::move(next);none=std::move(empty);repaint();}
-    void paint(juce::Graphics& g)override{hits.clear();g.setFont(StudioStyle::font(Daw::small,true));int x=0;const int h=getHeight();
+    void paint(juce::Graphics& g)override{hits.clear();overflow={};g.setFont(StudioStyle::font(Daw::small,true));int x=0;const int h=getHeight();
         g.setColour(StudioStyle::textFaint);const auto label=tr("RECEIVES FROM");const int lw=juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),label)+8;g.drawText(label,0,0,lw,h,juce::Justification::centredLeft);x+=lw;
         if(items.empty()){g.drawText(none,x,0,getWidth()-x,h,juce::Justification::centredLeft);return;}
-        for(const auto& [track,name]:items){const int w=std::min(120,juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),name)+14);if(x+w>getWidth()){g.setColour(StudioStyle::textDim);g.drawText("+"+juce::String((int)items.size()-(int)hits.size()),x,0,30,h,juce::Justification::centredLeft);break;}
+        for(const auto& [track,name]:items){const int w=std::min(120,juce::GlyphArrangement::getStringWidthInt(g.getCurrentFont(),name)+14);if(x+w>getWidth()-34){overflow={x,2,30,h-4};g.setColour(StudioStyle::textDim);g.drawRoundedRectangle(overflow.toFloat().reduced(.5f),4.f,1.f);g.drawText("+"+juce::String((int)items.size()-(int)hits.size()),overflow,juce::Justification::centred);break;}
             const juce::Rectangle<int> chip(x,2,w,h-4);const auto tone=Daw::trackColour(track);g.setColour(tone.withAlpha(.22f));g.fillRoundedRectangle(chip.toFloat(),4.f);g.setColour(tone);g.drawRoundedRectangle(chip.toFloat().reduced(.5f),4.f,1.f);
             g.setColour(StudioStyle::text);g.drawFittedText(name,chip.reduced(6,0),juce::Justification::centred,1,.8f);hits.push_back({chip,track});x+=w+4;}}
-    void mouseDown(const juce::MouseEvent& e)override{for(const auto& [area,track]:hits)if(area.contains(e.getPosition())){if(onPick)onPick(track);return;}}
-    void mouseMove(const juce::MouseEvent& e)override{bool over=false;for(const auto& hit:hits)over=over||hit.first.contains(e.getPosition());setMouseCursor(over?juce::MouseCursor::PointingHandCursor:juce::MouseCursor::NormalCursor);}
+    void mouseDown(const juce::MouseEvent& e)override{for(const auto& [area,track]:hits)if(area.contains(e.getPosition())){if(onPick)onPick(track);return;}
+        if(overflow.contains(e.getPosition()))showOverflow();}
+    // "+N": the contributors that did not fit, in a menu (keyboard navigable) that selects the track
+    void showOverflow(){juce::PopupMenu menu;for(size_t i=hits.size();i<items.size();++i)menu.addItem((int)i+1,items[i].second);
+        menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(this).withTargetScreenArea(localAreaToGlobal(overflow)),[safe=juce::Component::SafePointer<juce::Component>(this),this](int id){if(!safe||id<=0||id>(int)items.size())return;if(onPick)onPick(items[(size_t)id-1].first);});}
+    bool keyPressed(const juce::KeyPress& key)override{if(!overflow.isEmpty()&&(key==juce::KeyPress::returnKey||key==juce::KeyPress::spaceKey)){showOverflow();return true;}return false;}
+    void mouseMove(const juce::MouseEvent& e)override{bool over=overflow.contains(e.getPosition());for(const auto& hit:hits)over=over||hit.first.contains(e.getPosition());setMouseCursor(over?juce::MouseCursor::PointingHandCursor:juce::MouseCursor::NormalCursor);}
 private:
-    std::vector<std::pair<int,juce::String>> items;juce::String none;std::vector<std::pair<juce::Rectangle<int>,int>> hits;
+    std::vector<std::pair<int,juce::String>> items;juce::String none;std::vector<std::pair<juce::Rectangle<int>,int>> hits;juce::Rectangle<int> overflow;
 };
 class MixerRoutingWindow::Panel : public juce::Component,private juce::Timer {
 public:

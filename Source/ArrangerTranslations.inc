@@ -531,6 +531,7 @@
 { "On-screen keyboard", "Tastiera sullo schermo", "Teclado en pantalla", "Clavier à l’écran", "Bildschirmtastatur", "Teclado na tela" },
 { "No count-in", "Nessun conteggio", "Sin cuenta previa", "Sans décompte", "Ohne Vorzähler", "Sem contagem" },
 { "1 bar count-in", "Conteggio di 1 battuta", "Cuenta de 1 compás", "Décompte de 1 mesure", "1 Takt Vorzähler", "Contagem de 1 compasso" },
+{ "The next clip is too short for the theme: there is nothing to write.", "La clip successiva è troppo corta per il tema: non c'è niente da scrivere.", "El siguiente clip es demasiado corto para el tema: no hay nada que escribir.", "Le clip suivant est trop court pour le thème : rien à écrire.", "Der nächste Clip ist zu kurz für das Thema: es gibt nichts zu schreiben.", "O próximo clipe é curto demais para o tema: não há nada a escrever." },
 { "tracks", "tracce", "pistas", "pistes", "Spuren", "faixas" },
 { "2 bars count-in", "Conteggio di 2 battute", "Cuenta de 2 compases", "Décompte de 2 mesures", "2 Takte Vorzähler", "Contagem de 2 compassos" },
 { "Quantise off", "Quantizzazione disattivata", "Sin cuantización", "Quantification désactivée", "Quantisierung aus", "Quantização desativada" },

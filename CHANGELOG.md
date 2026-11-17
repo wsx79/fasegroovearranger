@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.10
+
+- DEVELOP: the mirrored variant no longer crashes when earlier notes fall past the end of the next clip (it steps from the last pitch it produced); a destination too short for the theme says so; high notes fold by octaves instead of being clamped, so they stay in the key.
+- Articulations touch only the takes a generation wrote, never a locked track; Dynamics keeps a locked CC1 curve.
+- Techno / Electro lead passing tones come from the section's scale (D flat in C Phrygian, A flat over G minor in C Aeolian).
+- A held note is checked through every chord change it crosses, comparing the whole chord (Cmaj7 to C7 is a change).
+- The lead keeps the tail of a clip whose last bar is incomplete.
+- Mixer: a low mixer no longer cuts the READABLE layout; with a wide browser BUS & SEND becomes its icon and READABLE / AUTO TAGS step aside so LUFS stays visible. Routing: "+N" opens the contributors that did not fit. Assistant: APPLY is ticked only after the project was changed, not after a B preview.
+
 ## 0.57.9
 
 - REGENERATE on a bass clip now gives a new line: it used to change only the timing and dynamics, so in six genres every take had the same notes. The figure develops (other tones and pickups, same groove and anchors) unless a riff is pinned in the panel.

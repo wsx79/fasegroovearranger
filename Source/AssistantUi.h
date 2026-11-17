@@ -46,10 +46,11 @@ inline void drawMetrics(juce::Graphics& g,juce::Rectangle<int> area,const std::v
 }
 
 // Analyse -> Review -> Apply -> Compare. `step` is the stage reached (0..3), -1 before analysis.
-inline void drawSteps(juce::Graphics& g,juce::Rectangle<int> area,int step,bool busy){
+inline void drawSteps(juce::Graphics& g,juce::Rectangle<int> area,int step,bool busy,bool appliedDone=true){
     static const char* names[]{"ANALYSE","REVIEW","APPLY","COMPARE"};
     const int w=area.getWidth()/4;
-    for(int i=0;i<4;++i){auto cell=area.removeFromLeft(w).reduced(3,0);const bool done=i<step,current=i==step||(busy&&i==0);
+    for(int i=0;i<4;++i){auto cell=area.removeFromLeft(w).reduced(3,0);const bool done=i<step&&(i!=2||appliedDone),current=   // APPLY is ticked only when the project was changed, not after a B preview
+            i==step||(busy&&i==0);
         const auto ink=current?Daw::accent:done?Daw::text:Daw::textFaint;
         auto dot=cell.removeFromLeft(18).toFloat().withSizeKeepingCentre(16,16);
         g.setColour(current?Daw::accent.withAlpha(.18f):juce::Colour(0xff1d1f23));g.fillEllipse(dot);g.setColour(ink);g.drawEllipse(dot.reduced(.5f),1.f);

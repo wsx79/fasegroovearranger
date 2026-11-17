@@ -184,7 +184,10 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
                 int interval=tones[degree];
                 const bool cadence=bar%4==3&&i==count-1;
                 // a weak step can pass through the scale (a 9th, or a 4th / 6th on minor / major) instead of only arpeggiating the chord
-                if(!cadence&&clip.loopLength<=0&&cell%4!=0&&i>0&&(draw(motif+(unsigned)bar*131U+(unsigned)i*17U)%100)<(techno?28u:40u))interval=(draw(motif+(unsigned)bar*37U+(unsigned)i)%2)?2:(chord.third==3?5:9);
+                if(!cadence&&clip.loopLength<=0&&cell%4!=0&&i>0&&(draw(motif+(unsigned)bar*131U+(unsigned)i*17U)%100)<(techno?28u:40u)){int iv=(draw(motif+(unsigned)bar*37U+(unsigned)i)%2)?2:(chord.third==3?5:9);
+                    // a passing tone of the section's scale: the 2nd / 4th / 6th above the root, lowered a semitone when the scale has it flat (Phrygian, Aeolian over v)
+                    auto inScale=[&](int pc){pc=((pc%12)+12)%12;for(int d=0;d<7;++d)if(((sgk::buildChord(s.key,s.scale,d,sgk::Extension::triad).rootPc%12)+12)%12==pc)return true;return false;};
+                    if(!inScale(chord.rootPc+iv))iv=inScale(chord.rootPc+iv-1)?iv-1:inScale(chord.rootPc+iv+1)?iv+1:interval;interval=iv;}
                 if(cadence)interval=contour%2?0:chord.third;
                 else if(!techno&&!mixing&&!breakdown&&i==count-2&&cell%4!=0){auto colour=s;colour.extension=2;const auto extended=chordForBeat(colour,begin+at);const int upper=contour%2?extended.seventh:extended.ninth;if(upper>=0)interval=upper;}
                 const int voiced=nearestPitch(chord.rootPc+interval,previousLead,60,84);previousLead=voiced;const int pitch=std::clamp(voiced+12*e.globalOctave,0,127);const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);

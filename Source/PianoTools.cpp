@@ -24,13 +24,18 @@ std::vector<Note> developTheme(const Project& p,int track,int fromClip,std::vect
     const auto a=chordAtBeat(harmony(from+theme[0].start),from+theme[0].start),b=chordAtBeat(harmony(to+theme[0].start),to+theme[0].start);
     int shift=((b.rootPc-a.rootPc)%12+12)%12;if(shift>6)shift-=12;
     std::vector<Note> out;const size_t half=std::max<size_t>(1,theme.size()/2);
+    // Fold by octaves into the keyboard range: the pitch class (and so the scale) is kept, a clamp would not keep it.
+    auto fold=[](int pitch){while(pitch>108)pitch-=12;while(pitch<24)pitch+=12;return pitch;};
+    int previous=theme[0].pitch+shift;   // the mirrored line steps from the last pitch it produced, kept or not
     for(size_t i=0;i<theme.size();++i){Note n=theme[i];n.pitch+=shift;
-        if(i>=half){if(variant==1)n.start+=.5;if(variant==2&&i>0){const int step=theme[i].pitch-theme[i-1].pitch;n.pitch=out.back().pitch-step;}}
-        if(n.start>=room-1./16.)continue;n.length=std::min(n.length,room-n.start);n.pitch=std::clamp(snap(n.pitch,to+n.start),24,108);out.push_back(n);}
+        if(i>=half){if(variant==1)n.start+=.5;if(variant==2&&i>0){const int step=theme[i].pitch-theme[i-1].pitch;n.pitch=previous-step;}}
+        n.pitch=fold(snap(fold(n.pitch),to+n.start));previous=n.pitch;
+        if(n.start>=room-1./16.)continue;   // past the end of the destination clip
+        n.length=std::min(n.length,room-n.start);out.push_back(n);}
     if(!out.empty()){auto& last=out.back();const auto chord=chordAtBeat(harmony(to+last.start),to+last.start);int best=last.pitch,distance=99;
         for(int k=-6;k<=6;++k){const int q=last.pitch+k;const int iv=((q-chord.rootPc)%12+12)%12;if((iv==0||iv==chord.third||iv==chord.fifth)&&std::abs(k)<distance&&(variant==0||k!=0)){distance=std::abs(k);best=q;}}
-        last.pitch=best;}
-    return out;
+        last.pitch=fold(best);}
+    return out;   // may be empty: the destination clip is too short for any of the theme
 }
 class MusicalTools:public juce::Component {
 public:
@@ -74,6 +79,7 @@ private:
         else if(kind==4&&!variants.empty()){auto p=owner->project;applyCodes(p,variants[(size_t)a.getSelectedItemIndex()].codes);for(auto& name:chordNames(p.settings))text+=juce::String::fromUTF8(name.c_str())+"   ";}
         else if(kind==9){int to=-1;const auto answer=developTheme(owner->project,owner->selectedTrack,owner->clipIndex(),themeNotes,a.getSelectedItemIndex(),to);
             if(to<0)text=tr("Select the theme's notes in a clip that has a following clip on this track: the answer goes there.");
+            else if(answer.empty())text=tr("The next clip is too short for the theme: there is nothing to write.");
             else{text=tr("Theme")+": "+juce::String((int)themeNotes.size())+" "+tr("notes")+"  ->  "+tr("answer in the next clip, at the same place; it replaces the notes it covers (one Undo)")+"\n\n";for(const auto& n:answer)text+=juce::MidiMessage::getMidiNoteName(n.pitch,true,true,4)+" @ "+juce::String(n.start,2)+"   ";}}
         else text+=controlTip("DNA");report.setText(text,false);
     }

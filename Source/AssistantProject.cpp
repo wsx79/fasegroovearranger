@@ -231,7 +231,7 @@ void ProjectAssistantPanel::paintListBoxItem(int row,juce::Graphics& g,int width
 void ProjectAssistantPanel::listBoxItemClicked(int row,const juce::MouseEvent&){if(task||stale||applied||!juce::isPositiveAndBelow(row,(int)changes.size()))return;stopPreview();changes[(size_t)row].selected=!changes[(size_t)row].selected;comparison.reset();release(beforeAfter);list.repaint();timerCallback();}
 int ProjectAssistantPanel::step()const{const bool analysed=masterReport&&!masterReport->files.empty();return task?0:!analysed||stale?-1:comparison||beforeAfter?3:applied?2:1;}
 void ProjectAssistantPanel::paint(juce::Graphics& g){g.fillAll(Daw::base);Daw::deviceHeader(g,{18,8,520,54},tr(master?"MASTERING ASSISTANT":"MIX ASSISTANT"),tr("CURRENT PROJECT / MEASURE / SELECT / APPLY"),master?Daw::returnB:Daw::returnA);
-    assistantui::drawSteps(g,{getWidth()-460,24,442,22},step(),task!=nullptr);
+    assistantui::drawSteps(g,{getWidth()-460,24,442,22},step(),task!=nullptr,applied);
     std::vector<assistantui::Metric> m;
     if(masterReport&&!masterReport->files.empty()&&!stale){const auto& f=masterReport->files[0];m=assistantui::mixMetrics(f.mix.lufs,f.truePeak,f.mix.peak,f.mix.rms,f.mix.correlationValid,f.mix.correlation,ceiling.getValue());
         int chosen=0;for(const auto& c:changes)chosen+=c.selected;m.push_back({tr("SUGGESTIONS"),juce::String(chosen)+" / "+juce::String((int)changes.size()),tr(applied?"applied":"selected"),applied?assistantui::Level::good:assistantui::Level::neutral});}

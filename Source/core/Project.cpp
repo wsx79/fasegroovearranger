@@ -1599,7 +1599,7 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         double average=0;for(const auto& n:melody)average+=n.pitch;const int centre=(int)std::lround(average/melody.size());
         const int low=centre-style.width,high=centre+style.width;
         std::vector<Note> out;std::vector<int> motif;int pitch=nearestChordTone(centre+(int)std::lround((dice()-.5)*8),0),dir=dice()<.5?1:-1;
-        const int bars=(int)std::floor(length/4+1e-9);
+        const int bars=(int)std::ceil(length/4-1e-9);   /* a partial last bar is written too (its notes are cut to the clip below), so a free clip keeps its tail */
         // two rhythm cells from the genre's vocabulary, each varied a little: an onset moved by a 16th,
         // an added 8th, or a dropped weak hit, so takes differ while staying in the style
         auto varied=[&](const char* base){std::string cell(base);
@@ -1708,8 +1708,10 @@ static void trimHoldovers(Project& p,const std::function<bool(int,int)>& fresh){
             for(auto& n:c.notes){const double a=at+n.start,b=a+n.length;
                 for(double x=std::floor(a*2)/2+.5;x<b-.125;x+=.5){const int s0=std::max(0,p.sectionAtBeat(x-.01)),s1=std::max(0,p.sectionAtBeat(x+.01));
                     const auto before=chordAtBeat(activeHarmony(p,s0),x-.01),after=chordAtBeat(activeHarmony(p,s1),x+.01);
-                    if(before.rootPc==after.rootPc&&before.third==after.third&&before.fifth==after.fifth)continue;
-                    if(!tone(n.pitch,after)&&x-a>=1./16.){n.length=x-a-1./64.;cut=true;}break;}}
+                    // the whole chord (sevenths and extensions too: Cmaj7 -> C7 is a change), and every change the note crosses, not only the first
+                    if(before.rootPc==after.rootPc&&before.third==after.third&&before.fifth==after.fifth&&before.seventh==after.seventh&&before.ninth==after.ninth&&before.eleventh==after.eleventh&&before.thirteenth==after.thirteenth&&before.sixth==after.sixth)continue;
+                    if(tone(n.pitch,after))continue;
+                    if(x-a>=1./16.){n.length=x-a-1./64.;cut=true;}break;}}
             if(cut)tidyNotes(c,p.clipLength(ti,(int)ci));}}
 }
 // Band interplay (Afro and Latin House): one part leads, the others answer instead of all
@@ -1883,7 +1885,7 @@ static void pianoClearsBass(Project& p,const std::function<bool(int,int)>& fresh
         auto together=[&](size_t i){size_t a=i,b=i;while(a>0&&c.notes[i].start-c.notes[a-1].start<1./24.)--a;while(b+1<c.notes.size()&&c.notes[b+1].start-c.notes[i].start<1./24.)++b;return (int)(b-a+1);};
         std::vector<Note> out;for(size_t i=0;i<c.notes.size();++i)if(!(rubs(c.notes[i])&&together(i)>=4))out.push_back(c.notes[i]);c.notes=out;}
 }
-static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
+static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
@@ -1895,7 +1897,8 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
     sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
-    for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&articulate((int)ti))for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0)applyArticulation(p,(int)ti,(int)ci);
+    // only the takes this generation wrote: another clip of the track, or a locked one, keeps its articulation as it is
+    for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&!p.tracks[ti].locked)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0&&articulate((int)ti,(int)ci))applyArticulation(p,(int)ti,(int)ci);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(clips[ci].loopLength<=0&&(kept.count({ti,(int)ci})||freshIn(ti,(int)ci)))clips[ci].bandResult=engineOutput(clips[ci].notes);}
 }
@@ -1910,7 +1913,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     generateVocalChops(p,scope,track,section,seed,lastClip);
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
-     bandPasses(p,fresh,[&](int ti){return scope==Scope::song||ti==track;},&written);}
+     bandPasses(p,fresh,[&](int ti,int ci){return editableTake(p,scope,track,section,ti,ci,lastClip);},&written);}
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -2145,7 +2148,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
     std::array<std::vector<std::vector<Note>>,4> shaped;{const int bandTracks[4]{2,3,leadTrack,0};for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)shaped[(size_t)k].push_back(c.notes);}
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int){return true;},&shaped);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
@@ -2278,10 +2281,10 @@ void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_
 // 3 legato: in a single line each note overlaps the next by a 32nd when the gap is small.
 void applyArticulation(Project& p,int track,int ci){
     if(track<0||track>=(int)p.tracks.size())return;auto& t=p.tracks[(size_t)track];if(t.articulation<=0||t.instrument!="plugin"||ci<0||ci>=(int)t.clips.size())return;
-    auto& c=t.clips[(size_t)ci];if(c.locked||c.notes.empty())return;const double length=p.clipLength(track,ci);
+    auto& c=t.clips[(size_t)ci];if(t.locked||c.locked||c.notes.empty())return;const double length=p.clipLength(track,ci);
     constexpr int keyLong=24,keyShort=25;constexpr double tick=1./32.;
     c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return (n.pitch==keyLong||n.pitch==keyShort)&&std::abs(n.length-tick)<1e-6;}),c.notes.end());
-    if(t.articulation==1){auto& lane=c.expression[1];lane.enabled=true;lane.points.clear();
+    if(t.articulation==1&&!c.expression[1].locked){auto& lane=c.expression[1];lane.enabled=true;lane.points.clear();   // a CC1 curve you locked is kept
         for(double at=0;at<length;at+=2){double sum=0;int count=0;for(const auto& n:c.notes)if(n.start>=at&&n.start<at+2){sum+=n.velocity;++count;}
             const double value=count?std::clamp(sum/count/127.*1.15,.2,1.):(lane.points.empty()?.5:lane.points.back().value);lane.points.push_back({at,value,0});}}
     else if(t.articulation==2){std::vector<Note> keys;int state=-1;

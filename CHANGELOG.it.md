@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.10
+
+- DEVELOP: la variante specchiata non va più in crash quando le note precedenti cadono oltre la fine della clip successiva (parte dall’ultima altezza calcolata); se la clip di destinazione è troppo corta lo dice; le note alte si ripiegano per ottave invece di essere tagliate, quindi restano nella tonalità.
+- Le articolazioni toccano solo le take scritte dalla generazione, mai una traccia bloccata; Dynamics mantiene una curva CC1 bloccata.
+- Le note di passaggio della Lead di Techno / Electro vengono dalla scala della sezione (Reb in Do frigio, Lab sopra Sol minore in Do eolio).
+- Una nota tenuta viene controllata su ogni cambio d’accordo che attraversa, confrontando l’accordo intero (Cmaj7 → C7 è un cambio).
+- La Lead mantiene la coda di una clip con l’ultima battuta incompleta.
+- Mixer: un mixer basso non taglia più il layout LEGGIBILE; con un browser largo BUS & SEND diventa un’icona e LEGGIBILE / AUTO TAGS si fanno da parte, così LUFS resta visibile. Routing: “+N” apre i contributori che non entrano. Assistente: APPLICA risulta completato solo dopo aver modificato il progetto, non dopo l’anteprima B.
+
 ## 0.57.9
 
 - RIGENERA su una clip di basso ora dà una linea nuova: prima cambiava solo timing e dinamica, così in sei generi ogni take aveva le stesse note. La figura si sviluppa (altre note e anticipi, stesso groove e stessi appoggi) a meno che nel pannello sia fissato un riff.
