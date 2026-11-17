@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.9
+
+- REGENERATE on a bass clip now gives a new line: it used to change only the timing and dynamics, so in six genres every take had the same notes. The figure develops (other tones and pickups, same groove and anchors) unless a riff is pinned in the panel.
+- Deep House and Chill keys: each take picks its own voicing (one inversion up or down), whether chord changes are pushed an eighth early and whether long chords are struck again on beat three. Identical takes over 20 regenerations: 54 → 11 pairs of 190.
+- Techno and Electro House lead: the line takes another figure and contour every eight bars and passes through scale tones instead of only arpeggiating the chord; 12 different lines in 12 songs, 7 to 17 different notes per take (Techno used 4).
+- Code: shared helpers replace eight copies of the note ordering and three of the band passes' dice; two voicing checks look only at nearby notes instead of the whole song. AddressSanitizer and UBSan run of the core tests: clean.
+
 ## 0.57.8
 
 - Arrangement: after the intro the track no longer starts at once. A first break (no kick, the harmony alone) comes first, its length different from song to song (8 or 16 bars); its last two or four beats stop, and the groove lands after it.

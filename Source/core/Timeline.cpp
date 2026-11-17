@@ -177,7 +177,7 @@ bool Project::duplicateSection(int index){
     auto copy=sections[(size_t)index];if(copy.name.size()<60)copy.name+=" 2";
     const bool free=std::any_of(tracks.begin(),tracks.end(),[](const Track& t){return t.freeTimeline;});
     if(!free){const auto before=sections.size();return insertSection(index+1,std::move(copy),index)&&sections.size()==before+1;}
-    Project edited=*this;const double start=edited.sectionStart(index),end=edited.sectionStart(index+1),duration=end-start;
+    Project edited=*this;const double start=edited.sectionStart(index),end=edited.sectionStart(index+1);
     struct Held{int track;Clip clip;};std::vector<Held> copies;
     for(int ti=0;ti<(int)edited.tracks.size();++ti){auto& t=edited.tracks[(size_t)ti];if(!t.freeTimeline)continue;for(const auto& c:t.clips){const double from=std::max(c.position,start),to=std::min(c.position+c.span,end);if(to-from<tick)continue;copies.push_back({ti,slice(c,from-c.position,to-from,end+(from-start))});}}
     // Split crossing clips before inserting time: shifting only their starts

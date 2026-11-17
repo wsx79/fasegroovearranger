@@ -178,10 +178,13 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
                 {0,1,0,2},{2,1,0,0},{1,0,2,0},{0,2,1,0}};
             const int count=mixing?2:breakdown?1:techno?4:6;
             for(int i=0;i<count;++i){if(i>1&&density<.4&&i%2)continue;
-                const int phrase=(contour+(answer?1+reply%3:0))%8,figure=(rhythm+(answer?1+reply%5:0))%8,cell=techno?technoCells[figure][i]:electroCells[figure][i];const double at=base+cell*.25;
+                const int evolve=bar/8;   // every eight bars the line takes another figure and contour: it develops, it does not loop one riff all song
+                const int phrase=(contour+evolve*3+(answer?1+reply%3:0))%8,figure=(rhythm+evolve*5+(answer?1+reply%5:0))%8,cell=techno?technoCells[figure][i]:electroCells[figure][i];const double at=base+cell*.25;
                 const auto chord=chordPerBar?barChord:chordForBeat(s,begin+at);const int tones[]{0,chord.third,chord.fifth};const int degree=techno?technoDegrees[phrase][i]:electroDegrees[phrase][i];
                 int interval=tones[degree];
                 const bool cadence=bar%4==3&&i==count-1;
+                // a weak step can pass through the scale (a 9th, or a 4th / 6th on minor / major) instead of only arpeggiating the chord
+                if(!cadence&&clip.loopLength<=0&&cell%4!=0&&i>0&&(draw(motif+(unsigned)bar*131U+(unsigned)i*17U)%100)<(techno?28u:40u))interval=(draw(motif+(unsigned)bar*37U+(unsigned)i)%2)?2:(chord.third==3?5:9);
                 if(cadence)interval=contour%2?0:chord.third;
                 else if(!techno&&!mixing&&!breakdown&&i==count-2&&cell%4!=0){auto colour=s;colour.extension=2;const auto extended=chordForBeat(colour,begin+at);const int upper=contour%2?extended.seventh:extended.ninth;if(upper>=0)interval=upper;}
                 const int voiced=nearestPitch(chord.rootPc+interval,previousLead,60,84);previousLead=voiced;const int pitch=std::clamp(voiced+12*e.globalOctave,0,127);const double gate=breakdown?.8:techno?.13:std::clamp(e.gate*.55,.12,.3);

@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.9
+
+- RIGENERA su una clip di basso ora dà una linea nuova: prima cambiava solo timing e dinamica, così in sei generi ogni take aveva le stesse note. La figura si sviluppa (altre note e anticipi, stesso groove e stessi appoggi) a meno che nel pannello sia fissato un riff.
+- Piano di Deep House e Chill: ogni take sceglie il proprio voicing (un rivolto sopra o sotto), se anticipare di un ottavo i cambi d’accordo e se ribattere sul terzo tempo gli accordi lunghi. Take identiche su 20 rigenerazioni: da 54 a 11 coppie su 190.
+- Lead di Techno ed Electro House: ogni otto battute la linea cambia figura e contorno e passa per note della scala invece di arpeggiare solo l’accordo; 12 linee diverse in 12 brani, da 7 a 17 note diverse per take (in Techno erano 4).
+- Codice: funzioni comuni al posto di otto copie dell’ordinamento delle note e tre del generatore casuale dei passaggi; due controlli del voicing guardano solo le note vicine invece di tutto il brano. AddressSanitizer e UBSan sui test del core: nessun errore.
+
 ## 0.57.8
 
 - Arrangiamento: dopo l’intro la traccia non parte più di colpo. Prima arriva un primo break (senza cassa, solo l’armonia) di durata diversa da brano a brano (8 o 16 battute); gli ultimi due o quattro quarti si fermano e poi parte il groove.
