@@ -1,5 +1,14 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.11
+
+- Lead hook: the song's motif picks where the lead starts and the first notes of every phrase, so the same idea returns from section to section while the take varies rhythm and answers. REGENERATE on a lead clip gives it a new idea.
+- Final return: in the last of several drops the hook sings an octave higher (when it fits), so the climax is a development, not only more notes and velocity.
+- Afro / Latin interplay is weighted: a part keeps its accents (loudest hits, bar downbeats) and about one clash in four as an ensemble hit; only weak overlapping attacks give way. Latin guitar and lead no longer answer a muted piano.
+- The break after the intro depends on the genre: Jackin', Piano Jack, UK Garage, Techno and Electro House go straight into the groove.
+- Short notes keep their length under the live timing drift (staccato no longer shrinks into clicks).
+- Mixer: with the mixer collapsed, hidden buttons no longer take width from LUFS.
+
 ## 0.57.10
 
 - DEVELOP: the mirrored variant no longer crashes when earlier notes fall past the end of the next clip (it steps from the last pitch it produced); a destination too short for the theme says so; high notes fold by octaves instead of being clamped, so they stay in the key.

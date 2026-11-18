@@ -744,7 +744,9 @@ std::vector<SongSection> genreForm(int genre,int variant=0) {
     }else if(variant==3)form.insert(form.begin()+1,{Section::drop,8,"Theme preview"});
     // After the intro the track does not start at once: a short break (no kick, the harmony alone)
     // comes first, and the groove lands after it.
-    if(form.size()>2&&form[0].type==Section::intro&&form[1].type!=Section::breakdown&&form[1].type!=Section::buildup)form.insert(form.begin()+1,{Section::breakdown,8,"First break"});
+    // Genres built on a driving groove (Jackin', Piano Jack, UK Garage, Techno, Electro House) go straight in.
+    const auto g=(Genre)normaliseGenre(genre);const bool driving=g==Genre::jackinHouse||g==Genre::pianoJack||g==Genre::ukGarage||g==Genre::techno||g==Genre::electroHouse;
+    if(!driving&&form.size()>2&&form[0].type==Section::intro&&form[1].type!=Section::breakdown&&form[1].type!=Section::buildup)form.insert(form.begin()+1,{Section::breakdown,8,"First break"});
     return form;
 }
 // A form nobody restructured: the factory section sequence of some genre.
@@ -1588,7 +1590,9 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
                 else if(end>=0&&n.start-end<=1.)end=std::max(end,e);else if(end>=0)break;}return end<0?beat:end;};
         double loudness=0;for(const auto& n:melody)loudness+=n.velocity;loudness/=melody.size();
         // the take's dice follow the engine's own take (its notes), so every regeneration is a new melody
-        std::uint32_t r=mix(c.seed^mix(c.motifSeed+0x6c8e9cf5U)^mix(t.engine.riffSeed+0x2545f491U));for(const auto& n:melody)r=mix(r^(std::uint32_t)((n.pitch-melody.front().pitch+64)*131+std::lround(n.start*4)*7));/* intervals: an octave change keeps the take */auto dice=[&](){return nextDice(r);};
+        std::uint32_t r=mix(c.seed^mix(c.motifSeed+0x6c8e9cf5U)^mix(t.engine.riffSeed+0x2545f491U));for(const auto& n:melody)r=mix(r^(std::uint32_t)((n.pitch-melody.front().pitch+64)*131+std::lround(n.start*4)*7));/* intervals: an octave change keeps the take */// The hook: the song's motif (shared by every take of the lead) picks where the line starts and the first
+        // notes of each phrase, so the same idea returns from section to section; the take's rhythm and answers vary.
+        std::uint32_t h=mix(c.motifSeed^mix(t.engine.riffSeed+0x4b1d2c3eU));bool hook=false;auto dice=[&](){return nextDice(hook?h:r);};
         auto harmony=[&](double beat){return activeHarmony(p,std::max(0,p.sectionAtBeat(at+beat)));};
         auto scaleOk=[&](int pitch,double beat){const auto h=harmony(beat);const int pc=((pitch-h.key)%12+12)%12;std::array<bool,12> in{};
             for(int d=0;d<7;++d){const int root=((sgk::buildChord(0,h.scale,d,sgk::Extension::triad).rootPc)%12+12)%12;if(style.pentatonic&&(d==3||d==6))continue;in[(size_t)root]=true;}return in[(size_t)pc];};
@@ -1598,7 +1602,7 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         // the register follows the engine's take (global octave, room for the band); the width is the genre's
         double average=0;for(const auto& n:melody)average+=n.pitch;const int centre=(int)std::lround(average/melody.size());
         const int low=centre-style.width,high=centre+style.width;
-        std::vector<Note> out;std::vector<int> motif;int pitch=nearestChordTone(centre+(int)std::lround((dice()-.5)*8),0),dir=dice()<.5?1:-1;
+        hook=true;std::vector<Note> out;std::vector<int> motif;int pitch=nearestChordTone(centre+(int)std::lround((dice()-.5)*8),0),dir=dice()<.5?1:-1;hook=false;
         const int bars=(int)std::ceil(length/4-1e-9);   /* a partial last bar is written too (its notes are cut to the clip below), so a free clip keeps its tail */
         // two rhythm cells from the genre's vocabulary, each varied a little: an onset moved by a 16th,
         // an added 8th, or a dropped weak hit, so takes differ while staying in the style
@@ -1609,9 +1613,9 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
             return cell;};
         const std::string cellA=varied(style.cells[(size_t)(dice()*style.cells.size())]),cellB=varied(style.cells[(size_t)(dice()*style.cells.size())]);
         for(int bar=0;bar<bars;++bar){
-            const int inPhrase=bar%4;const bool cadence=inPhrase==3;const bool reuse=inPhrase==2||(style.hypnotic&&inPhrase!=3);
+            const int inPhrase=bar%4;hook=inPhrase==0;const bool cadence=inPhrase==3;const bool reuse=inPhrase==2||(style.hypnotic&&inPhrase!=3);
             const std::string& cell=inPhrase==1?cellB:cellA;std::vector<int> barMotif;int index=0;
-            for(int step=0;step<16;++step){if(cell[step]!='x')continue;const double beat=bar*4+step*.25;if(!playing(beat)){++index;continue;}
+            for(int step=0;step<16;++step){if(cell[step]!='x')continue;if(index>=3)hook=false;   /* the hook is the head of the phrase: its first notes */const double beat=bar*4+step*.25;if(!playing(beat)){++index;continue;}
                 if(cadence&&step>=8)break;   // the phrase ends early, on a held note
                 const bool strong=step%4==0;
                 if(reuse&&index<(int)motif.size()){   // the motif again, moved with the chord (same steps from the chord)
@@ -1633,6 +1637,10 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start<b.start;});
         for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::max(1./32.,std::min(out[i].length,coverEnd(out[i].start)-out[i].start));}
         if(out.size()<2)continue;
+        // The final return develops the first: in the last of several drops the same hook sings an octave higher
+        // (when it fits), rather than the climax coming only from more notes and more velocity.
+        {int last=-1,drops=0;for(size_t si=0;si<p.sections.size();++si)if(p.sections[si].type==Section::drop){last=(int)si;++drops;}
+         if(drops>1&&p.sectionAtBeat(at+.01)==last){int top=0;for(const auto& n:out)top=std::max(top,n.pitch);if(top+12<=88)for(auto& n:out)n.pitch+=12;}}
         // a held melody note never sits a semitone from the accompaniment it sounds with: it moves to
         // the nearest chord tone that does not
         {struct Held{double from,to;int pitch;};std::vector<Held> band;for(int ti:{0,2,3}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].mute)continue;const auto& bt=p.tracks[(size_t)ti];
@@ -1724,11 +1732,15 @@ static void bandInterplay(Project& p,const std::function<bool(int,int)>& inScope
     if((int)p.tracks.size()<=leadTrack)return;
     auto thin=[&](int ti,const std::function<bool(double)>& drop){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute)return;
         for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);
-            std::vector<Note> kept;for(const auto& n:c.notes)if(!drop(at+n.start))kept.push_back(n);
+            // weighted, not binary: a part keeps its own accents (the loudest hits and its bar downbeats) and about one
+            // clash in four as an intended ensemble hit; only its weak, overlapping attacks give way
+            int loudest=0;for(const auto& n:c.notes)loudest=std::max(loudest,n.velocity);
+            auto accent=[&](const Note& n){const double beat=at+n.start;return n.velocity*100>=loudest*92||std::abs(beat/4-std::round(beat/4))<1./128.||mix((std::uint32_t)std::lround(beat*8)*0x9e3779b1U^(std::uint32_t)ti)%4==0;};
+            std::vector<Note> kept;for(const auto& n:c.notes)if(accent(n)||!drop(at+n.start))kept.push_back(n);
             if(kept.size()*10>=c.notes.size()*3)c.notes=std::move(kept);}};
     if(genre==latinHouseGenre){
         std::set<long> montuno;const auto& piano=p.tracks[0];
-        for(size_t ci=0;ci<piano.clips.size();++ci){const double at=p.clipStart(0,(int)ci);for(const auto& n:piano.clips[ci].notes)montuno.insert(std::lround((at+n.start)*4));}
+        if(!piano.mute)for(size_t ci=0;ci<piano.clips.size();++ci)   // a muted piano is not heard: nothing answers it{const double at=p.clipStart(0,(int)ci);for(const auto& n:piano.clips[ci].notes)montuno.insert(std::lround((at+n.start)*4));}
         for(int ti:{3,leadTrack})thin(ti,[&](double beat){return montuno.count(std::lround(beat*4))>0;});
     }else{
         std::map<long,std::array<int,2>> busy;   // per 4-bar phrase: guitar and lead note counts
@@ -1787,7 +1799,7 @@ static void livePerformance(Clip& c,const Project& p,int ti,double beats){
             double voice=0;int lift=0;
             if(ti==2&&j-i>=2){voice=dice()*ms*2.2/beat;lift=(k==j-1?4:0)+(int)std::lround((dice()-.5)*8);}   // strings: each desk enters on its own, the top line sings
             const double end=n.start+n.length,start=std::clamp(n.start+shift+voice,0.,std::max(0.,beats-1./64.));
-            n.start=start;n.length=std::max(1./64.,std::min(end+std::min(shift,0.),beats)-start);   // the release stays where it was: a held chord never crosses into the next phrase
+            n.start=start;n.length=std::max(1./64.,n.length<.5?std::min({n.length,beats-start,std::ceil(end-1e-9)-start}):std::min(end+std::min(shift,0.),beats)-start);   // a short note keeps its length (shrinking it turned staccato into clicks) up to the next beat, where stops and phrases end; a long one keeps its release   // the release stays where it was: a held chord never crosses into the next phrase
             if(!drums||ti>=8)n.velocity=std::clamp((int)std::lround(n.velocity*swell)+lift,1,127);}
         i=j;}
     tidyNotes(c,beats);
@@ -2166,6 +2178,8 @@ bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     // so REGENERATE on a bass clip gave the same notes. It also develops the figure (same groove and
     // anchors, other tones and pickups), unless a riff is pinned in the panel.
     if(track==1&&t.engine.pattern<0&&!t.engine.riffSeed)c.motifSeed=mix(next^0x51a7c0deU)|1U;
+    // the lead's hook comes from the take's motif: a regenerated lead clip asks for a new idea, so it gets its own
+    if(track==leadTrack&&t.engine.pattern<0&&!t.engine.riffSeed)c.motifSeed=mix(next^0x1ead5eedU)|1U;
     generate(p,Scope::clip,track,clip,0);
     if(p.settings.randomAutomation)randomiseAutomationRange(p,Scope::clip,track,clip,next,-1,selectionEnd);
     return true;

@@ -1,5 +1,14 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.11
+
+- Hook della Lead: il motivo del brano sceglie dove parte la Lead e le prime note di ogni frase, così la stessa idea ritorna da una sezione all’altra mentre la take varia ritmo e risposte. RIGENERA su una clip di Lead le dà un’idea nuova.
+- Ritorno finale: nell’ultimo di più drop l’hook canta un’ottava sopra (se ci sta), così il culmine è uno sviluppo e non solo più note e più velocity.
+- Interplay Afro / Latin pesato: ogni parte tiene i propri accenti (colpi più forti, primi tempi di battuta) e circa una sovrapposizione su quattro come colpo d’insieme; cedono solo gli attacchi deboli sovrapposti. Chitarra e Lead Latin non rispondono più a un piano in mute.
+- Il break dopo l’intro dipende dal genere: Jackin’, Piano Jack, UK Garage, Techno ed Electro House entrano diretti nel groove.
+- Le note brevi mantengono la loro durata con la variazione di timing (lo staccato non si accorcia più in click).
+- Mixer: a mixer chiuso i pulsanti nascosti non tolgono più spazio a LUFS.
+
 ## 0.57.10
 
 - DEVELOP: la variante specchiata non va più in crash quando le note precedenti cadono oltre la fine della clip successiva (parte dall’ultima altezza calcolata); se la clip di destinazione è troppo corta lo dice; le note alte si ripiegano per ottave invece di essere tagliate, quindi restano nella tonalità.

@@ -89,6 +89,12 @@ inline void verifyEditorRegenerate(){
         a.tracks[0].articulation=1;auto& lane=a.tracks[0].clips[1].expression[1];lane.enabled=true;lane.locked=true;lane.points={{0,.3,0}};const auto curve=lane;
         fga::applyArticulation(a,0,1);check(a.tracks[0].clips[1].expression[1]==curve,"Dynamics keeps a locked CC1 curve");
     }
+    {   // Latin House: guitar and lead answer the montuno only when the piano is heard.
+        auto lp=fga::newProject(fga::latinHouseGenre);lp.tracks[0].mute=true;lp.settings.randomAutomation=false;fga::generate(lp);std::set<long> piano;int together=0;
+        for(size_t ci=0;ci<lp.tracks[0].clips.size();++ci){const double at=lp.clipStart(0,(int)ci);for(const auto& n:lp.tracks[0].clips[ci].notes)piano.insert(std::lround((at+n.start)*4));}
+        for(int ti:{3,fga::leadTrack})for(size_t ci=0;ci<lp.tracks[(size_t)ti].clips.size();++ci){const double at=lp.clipStart(ti,(int)ci);for(const auto& n:lp.tracks[(size_t)ti].clips[ci].notes)together+=piano.count(std::lround((at+n.start)*4))>0;}
+        check(together>0,"a muted piano leaves the Latin guitar and lead whole");
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.
