@@ -1,5 +1,12 @@
 # Validation record
 
+## 0.57.12 — targeted fixes and rack automation
+
+- Core Release CTest: 11/11 passed locally, including the new audible/muted Latin and articulation-lock/musical-note regressions. Family/guide/translation checks and packaging fixtures passed. These packaging fixtures are not native executable validation.
+- Added regressions for loop-source reverse/keyswitch ownership persistence, master/A/B parameter automation persistence and time edits, freeze memory reservation/release, actual rack playback and ordinary C++ callback allocation counting. Native UI checks edit/bypass/Undo/Redo all three rack targets and verify routing labels.
+- The existing native Linux/Windows/macOS CI build, CTest, UI smoke (Linux/Windows), VST3 integration and distribution checks gate publication. Consult the workflow for the exact release commit for their results. Listening, physical audio hardware/dropouts and commercial plugin validation remain manual.
+- No new runtime dependency. New project fields are optional in format 7. Historical keyswitches without ownership metadata are preserved conservatively; opening older application versions can drop new rack automation/loop metadata, so keep a copy.
+
 ## 0.31.14 — workspace, Studio and arrangement development
 
 - Ready Linux FD callbacks removed by another event are skipped, and nested dispatch retains a separate snapshot. The real pipe/event-loop regression passed; the configure adaptation passed fresh-application and idempotence checks. Native VST legacy reopening (formats 1/2/3 and upgraded saves), Play, independent editors and restored program/gain passed after awaiting deferred project restoration. The focused local rerun reused already-passed export UI evidence; default CI retains that entire flow.

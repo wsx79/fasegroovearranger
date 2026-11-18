@@ -138,6 +138,36 @@ static juce::Result readEnvelope(const juce::var& o,VolumeAutomation& v){
     }
     return juce::Result::ok();
 }
+static juce::var parameterLanesJson(const Track& t){
+    juce::Array<juce::var> lanes;
+    for(const auto& lane:t.parameters){auto l=envelopeJson(lane.curve);set(l,"slot",lane.slot);set(l,"index",lane.index);set(l,"name",lane.name);if(!lane.parameterId.empty())set(l,"parameterId",lane.parameterId);if(lane.generatedTone)set(l,"generatedTone",true);lanes.add(l);}
+    return lanes;
+}
+static juce::Result readParameterLanes(const juce::var& value,Track& t,bool rack=false){
+    auto* lanes=value.getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");
+    for(const auto& l:*lanes){
+        if(!l.isObject())return juce::Result::fail("Invalid plugin automation lane.");
+        ParameterAutomation lane;const double slot=num(l,"slot",0),index=num(l,"index",-1);
+        if(slot<(rack?1:-1)||slot>maxTrackEffects||std::floor(slot)!=slot||index<(rack?0:-1)||std::floor(index)!=index)return juce::Result::fail("Invalid automation target.");
+        lane.slot=(int)slot;lane.index=(int)index;lane.name=str(l,"name");lane.parameterId=str(l,"parameterId");
+        if(l.hasProperty("generatedTone")&&!l["generatedTone"].isBool())return juce::Result::fail("Invalid generated automation flag.");
+        lane.generatedTone=(bool)l.getProperty("generatedTone",false);
+        if(lane.generatedTone&&(rack||t.kind!=0||lane.slot!=-1||lane.index!=0))return juce::Result::fail("Invalid generated automation target.");
+        if(auto r=readEnvelope(l,lane.curve);r.failed())return r;
+        t.parameters.push_back(std::move(lane));
+    }
+    return juce::Result::ok();
+}
+static void writeNoteFlags(juce::var& object,const char* key,const std::vector<Note>& notes,bool articulation){
+    juce::Array<juce::var> flags;for(size_t i=0;i<notes.size();++i)if(articulation?notes[i].articulationKey:notes[i].reverse)flags.add((int)i);
+    if(!flags.isEmpty())set(object,key,flags);
+}
+static juce::Result readNoteFlags(const juce::var& object,const char* key,std::vector<Note>& notes,bool articulation){
+    if(!object.hasProperty(key))return juce::Result::ok();
+    const auto* flags=object[key].getArray();if(!flags||flags->size()>(int)notes.size())return juce::Result::fail("Invalid note flags.");
+    for(const auto& value:*flags){if(!value.isInt()||(int)value<0||(int)value>=(int)notes.size())return juce::Result::fail("Invalid note flag index.");auto& n=notes[(size_t)(int)value];if(articulation)n.articulationKey=true;else n.reverse=true;}
+    return juce::Result::ok();
+}
 namespace {
 bool currentEffectHost(const Project& project){
     auto needs=[](const Track& rack){for(const auto& fx:rack.effects){if(fx.path=="fga:native-reverb"||fx.path=="fga:native-delay")return true;if(fx.path=="fga:native-compressor")if(auto xml=juce::XmlDocument::parse(juce::String(fx.pluginId)))if(xml->getStringAttribute("version").getDoubleValue()>=2)return true;}return false;};
@@ -186,15 +216,15 @@ juce::var projectJson(const Project& p){
         set(a,"volumeAutomation",envelopeJson(t.volume));
         // Pan and plugin automation are written only when used: older projects save as before.
         if(!t.panAutomation.isDefault())set(a,"panAutomation",envelopeJson(t.panAutomation));
-        if(!t.parameters.empty()){juce::Array<juce::var> lanes;for(const auto& lane:t.parameters){auto l=envelopeJson(lane.curve);set(l,"slot",lane.slot);set(l,"index",lane.index);set(l,"name",lane.name);if(!lane.parameterId.empty())set(l,"parameterId",lane.parameterId);if(lane.generatedTone)set(l,"generatedTone",true);lanes.add(l);}set(a,"parameterAutomation",lanes);}
+        if(!t.parameters.empty())set(a,"parameterAutomation",parameterLanesJson(t));
         set(a,"instrument",t.instrument);set(a,"instrumentPath",t.instrumentPath);if(t.audioBpm>0){set(a,"audioBpm",t.audioBpm);set(a,"audioBpmConfidence",t.audioBpmConfidence);}if(t.audioKey>=0){set(a,"audioKey",t.audioKey);set(a,"audioMinor",t.audioMinor);set(a,"audioKeyConfidence",t.audioKeyConfidence);}set(a,"instrumentId",t.instrumentId);set(a,"instrumentState",t.instrumentState);
         if(!t.effects.empty()){juce::Array<juce::var> effects;for(const auto& e:t.effects){auto fx=object();set(fx,"slot",e.slot);set(fx,"name",e.name);set(fx,"pluginName",e.pluginName);set(fx,"path",e.path);set(fx,"pluginId",e.pluginId);set(fx,"state",e.state);set(fx,"bypassed",e.bypassed);effects.add(fx);}set(a,"effects",effects);}
         juce::Array<juce::var> clips;for(const auto& clip:t.clips){auto b=object();set(b,"seed",(juce::int64)clip.seed);if(clip.stringsStyleAtGeneration>=0)set(b,"stringsStyle",clip.stringsStyleAtGeneration);if(clip.motifSeed)set(b,"motifSeed",(juce::int64)clip.motifSeed);set(b,"locked",clip.locked);if(!clip.name.empty())set(b,"name",clip.name);if(t.freeTimeline){set(b,"position",clip.position);set(b,"role",clip.role);}if(clip.span>0)set(b,"span",clip.span);
-            juce::Array<juce::var> reversed;for(size_t i=0;i<clip.notes.size();++i)if(clip.notes[i].reverse)reversed.add((int)i);if(!reversed.isEmpty())set(b,"reverseNotes",reversed);if(clip.clipFadeIn>0)set(b,"clipFadeIn",clip.clipFadeIn);if(clip.clipFadeOut>0)set(b,"clipFadeOut",clip.clipFadeOut);juce::Array<juce::var> expression;for(const auto& lane:clip.expression)expression.add(envelopeJson(lane));if(std::any_of(clip.expression.begin(),clip.expression.end(),[](const auto& lane){return !lane.isDefault();}))set(b,"expression",expression);
+            writeNoteFlags(b,"reverseNotes",clip.notes,false);writeNoteFlags(b,"articulationKeys",clip.notes,true);if(clip.clipFadeIn>0)set(b,"clipFadeIn",clip.clipFadeIn);if(clip.clipFadeOut>0)set(b,"clipFadeOut",clip.clipFadeOut);juce::Array<juce::var> expression;for(const auto& lane:clip.expression)expression.add(envelopeJson(lane));if(std::any_of(clip.expression.begin(),clip.expression.end(),[](const auto& lane){return !lane.isDefault();}))set(b,"expression",expression);
             if(clip.audioOffset>=0){set(b,"audioOffset",clip.audioOffset);set(b,"audioDuration",clip.audioDuration);}
             if(clip.loopPhase!=0)set(b,"loopPhase",clip.loopPhase);
             if(std::any_of(clip.feel.begin(),clip.feel.end(),[](double f){return f>=0;})){juce::Array<juce::var> feel;for(auto f:clip.feel)feel.add(f);set(b,"takeFeel",feel);}
-            if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);}juce::Array<juce::var> notes;
+            if(clip.loopLength>0){set(b,"loopLength",clip.loopLength);juce::Array<juce::var> source;for(const auto& n:clip.loopSource){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);source.add(data);}set(b,"loopSource",source);writeNoteFlags(b,"reverseLoopNotes",clip.loopSource,false);writeNoteFlags(b,"articulationLoopKeys",clip.loopSource,true);}juce::Array<juce::var> notes;
             for(const auto& n:clip.notes){juce::Array<juce::var> data;data.add(n.start);data.add(n.length);data.add(n.pitch);data.add(n.velocity);data.add(n.lane);notes.add(data);}set(b,"notes",notes);clips.add(b);}set(a,"clips",clips);tracks.add(a);
     }set(o,"tracks",tracks);
     if(p.masterEffects.eq.enabled&&!p.masterEffects.eq.bands.empty()){auto q=object();juce::Array<juce::var> list;for(const auto& b:p.masterEffects.eq.bands){auto band=object();set(band,"enabled",b.enabled);set(band,"type",b.type);set(band,"freq",b.freq);set(band,"gain",b.gain);set(band,"q",b.q);list.add(band);}set(q,"bands",list);set(o,"masterEq",q);}
@@ -204,6 +234,10 @@ juce::var projectJson(const Project& p){
     const bool extended=std::any_of(p.sections.begin(),p.sections.end(),[](const auto& s){return s.harmony.enabled||s.preDropSilence||s.snareRoll||s.reverseCrash;})||std::any_of(p.buses.begin(),p.buses.end(),[](const auto& b){return b.sidechainAmount>0;})||std::any_of(p.tracks.begin(),p.tracks.end(),[](const auto& t){return !(t.eq==EqSettings{})||std::any_of(t.clips.begin(),t.clips.end(),[](const auto& c){return std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.reverse;})||c.clipFadeIn>0||c.clipFadeOut>0||std::any_of(c.expression.begin(),c.expression.end(),[](const auto& l){return !l.isDefault();});});});if(extended||p.settings.grooveEnabled)set(o,"version",6);
     if(p.returnChains){juce::Array<juce::var> chains;for(const auto& rack:p.returnEffects)chains.add(returnChainJson(rack));set(o,"returnChains",chains);set(o,"version",7);}
     if(currentEffectHost(p)){set(o,"effectRouting",true);set(o,"version",7);}
+    if(!p.masterEffects.parameters.empty()||!p.returnEffects[0].parameters.empty()||!p.returnEffects[1].parameters.empty()){
+        auto racks=object();set(racks,"master",parameterLanesJson(p.masterEffects));juce::Array<juce::var> returns;
+        for(const auto& rack:p.returnEffects)returns.add(parameterLanesJson(rack));set(racks,"returns",returns);set(o,"rackAutomation",racks);set(o,"effectRouting",true);set(o,"version",7);
+    }
     return o;
 }
 juce::Result projectFromJson(const juce::var& o,Project& result){
@@ -231,6 +265,12 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     if(auto* list=o["masterEq"]["bands"].getArray()){if(list->size()>16)return juce::Result::fail("Invalid master EQ.");for(const auto& bv:*list){if(!bv.isObject())return juce::Result::fail("Invalid master EQ.");EqBand b;b.enabled=(bool)bv.getProperty("enabled",true);b.type=(int)num(bv,"type",0);b.freq=num(bv,"freq",1000.0);b.gain=num(bv,"gain",0.0);b.q=num(bv,"q",0.707);b.normalise();p.masterEffects.eq.bands.push_back(b);}p.masterEffects.eq.enabled=!p.masterEffects.eq.bands.empty();}
     if(o.hasProperty("masterEffects")){auto* effects=o["masterEffects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid master effect chain.");
         for(const auto& fx:*effects){const double slot=num(fx,"slot",0);if(!fx.isObject()||slot<1||slot>maxTrackEffects||std::floor(slot)!=slot||p.masterEffects.effect((int)slot))return juce::Result::fail("Invalid master effect slot.");EffectSlot e;e.slot=(int)slot;e.name=str(fx,"name");e.pluginName=str(fx,"pluginName");e.path=str(fx,"path");e.pluginId=str(fx,"pluginId");e.state=str(fx,"state");e.bypassed=(bool)fx["bypassed"];if(e.path.empty()&&e.pluginId.empty())return juce::Result::fail("Missing master effect identifier.");p.masterEffects.effects.push_back(std::move(e));}}
+    if(o.hasProperty("rackAutomation")){
+        const auto racks=o["rackAutomation"];const auto* returns=racks["returns"].getArray();
+        if(!racks.isObject()||!returns||returns->size()!=2)return juce::Result::fail("Invalid rack automation.");
+        if(auto r=readParameterLanes(racks["master"],p.masterEffects,true);r.failed())return r;
+        for(int b=0;b<2;++b)if(auto r=readParameterLanes((*returns)[b],p.returnEffects[(size_t)b],true);r.failed())return r;
+    }
     p.masterGain=num(o,"masterGain",.8);if(auto r=readEnvelope(o["masterAutomation"],p.masterAutomation);r.failed())return r;p.loop=(bool)o["loop"];p.loopStart=num(o,"loopStart",0);p.loopEnd=num(o,"loopEnd",0);
     for(const auto& a:*sections){if(!a.isObject())return juce::Result::fail("Sezione non valida.");p.sections.push_back({(Section)(int)num(a,"type",0),(int)num(a,"bars",8),str(a,"name","Main")});auto& section=p.sections.back();section.preDropSilence=(bool)a["preDropSilence"];section.dropGap=std::clamp((int)num(a,"dropGap",0),0,8);section.energy=std::clamp((int)num(a,"energy",-1),-1,3);section.snareRoll=(bool)a["snareRoll"];section.reverseCrash=(bool)a["reverseCrash"];if(a.hasProperty("harmony")){const auto h=a["harmony"];if(!h.isObject())return juce::Result::fail("Invalid section harmony");auto& v=section.harmony;v.enabled=true;v.key=(int)num(h,"key",-1);v.scale=(int)num(h,"scale",-1);v.chordCount=(int)num(h,"count",4);v.chordSteps=(int)num(h,"steps",16);if(v.key< -1||v.key>11||v.scale< -1||v.scale>12||v.chordCount<1||v.chordCount>8||v.chordSteps<8||v.chordSteps>64)return juce::Result::fail("Invalid section harmony range");for(int i=0;i<8;++i){if(!h["degrees"].isArray()||h["degrees"].size()!=8||!h["free"].isArray()||h["free"].size()!=8||!h["manual"].isArray()||h["manual"].size()!=8)return juce::Result::fail("Invalid section chord arrays");v.degrees[(size_t)i]=(int)h["degrees"][i];v.freeChords[(size_t)i]=(int)h["free"][i];v.manualChords[(size_t)i]=(bool)h["manual"][i];if(v.degrees[(size_t)i]<0||v.degrees[(size_t)i]>6||v.freeChords[(size_t)i]< -1||v.freeChords[(size_t)i]>35)return juce::Result::fail("Invalid section chord");}}}
     const bool migrateSlots=tracks->size()<legacyTrackCount;std::array<bool,maxTracks> usedSlots{};
@@ -243,11 +283,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
         if(isDrumTrack(t.kind)){const int saved=(int)num(o,"drumPatternCount",70),now=(int)fgd::drumPatterns().size();if(saved>0&&saved!=now&&t.engine.pattern>=saved&&t.engine.pattern<=saved+1)t.engine.pattern+=now-saved;}
         if(auto r=readEnvelope(a["volumeAutomation"],t.volume);r.failed())return r;
         if(auto r=readEnvelope(a["panAutomation"],t.panAutomation);r.failed())return r;
-        if(a.hasProperty("parameterAutomation")){auto* lanes=a["parameterAutomation"].getArray();if(!lanes||lanes->size()>maxParameterLanes)return juce::Result::fail("Invalid plugin automation.");
-            for(const auto& l:*lanes){if(!l.isObject())return juce::Result::fail("Invalid plugin automation lane.");ParameterAutomation lane;const double slot=num(l,"slot",0);if(slot< -1||slot>maxTrackEffects||std::floor(slot)!=slot)return juce::Result::fail("Invalid automation target.");lane.slot=(int)slot;lane.index=(int)num(l,"index",-1);lane.name=str(l,"name");lane.parameterId=str(l,"parameterId");
-                if(l.hasProperty("generatedTone")&&!l["generatedTone"].isBool())return juce::Result::fail("Invalid generated automation flag.");
-                lane.generatedTone=(bool)l.getProperty("generatedTone",false);if(lane.generatedTone&&(t.kind!=0||lane.slot!=-1||lane.index!=0))return juce::Result::fail("Invalid generated automation target.");
-                if(auto r=readEnvelope(l,lane.curve);r.failed())return r;t.parameters.push_back(std::move(lane));}}
+        if(a.hasProperty("parameterAutomation"))if(auto r=readParameterLanes(a["parameterAutomation"],t);r.failed())return r;
         t.instrument=str(a,"instrument","internal");if(t.instrument!="internal"&&t.instrument!="sample"&&t.instrument!="plugin")return juce::Result::fail("Tipo strumento non valido.");
         t.instrumentPath=str(a,"instrumentPath");t.audioBpm=std::clamp(num(a,"audioBpm",0),0.,400.);t.audioBpmConfidence=std::clamp(num(a,"audioBpmConfidence",0),0.,1.);t.audioKey=std::clamp((int)num(a,"audioKey",-1),-1,11);t.audioMinor=(bool)a.getProperty("audioMinor",false);t.audioKeyConfidence=std::clamp(num(a,"audioKeyConfidence",0),0.,1.);t.instrumentId=str(a,"instrumentId");t.instrumentState=str(a,"instrumentState");
         if(a.hasProperty("effects")){auto* effects=a["effects"].getArray();if(!effects||effects->size()>maxTrackEffects)return juce::Result::fail("Invalid effect chain.");
@@ -292,6 +328,9 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
             if(b.hasProperty("loopSource")){auto* source=b["loopSource"].getArray();if(!source)return juce::Result::fail("Invalid loop source.");noteCount+=(size_t)source->size();if(noteCount>maxProjectNotes)return juce::Result::fail("Project loop source is too large.");
                 for(const auto& n:*source){if(!n.isArray()||n.size()<4)return juce::Result::fail("Invalid loop MIDI event.");double start=(double)n[0],length=(double)n[1];if(!std::isfinite(start)||!std::isfinite(length))return juce::Result::fail("Invalid loop MIDI time.");c.loopSource.push_back({start,length,noteValue(n[2],0,127),noteValue(n[3],0,127),n.size()>4?noteValue(n[4],0,12):0});}}
             if(b.hasProperty("reverseNotes")){const auto* reversed=b["reverseNotes"].getArray();if(!reversed||reversed->size()>(int)c.notes.size())return juce::Result::fail("Invalid reversed notes");for(const auto& value:*reversed){if(!value.isInt()||(int)value<0||(int)value>=(int)c.notes.size())return juce::Result::fail("Invalid reversed-note index");c.notes[(size_t)(int)value].reverse=true;}}
+            if(auto r=readNoteFlags(b,"reverseLoopNotes",c.loopSource,false);r.failed())return r;
+            if(auto r=readNoteFlags(b,"articulationKeys",c.notes,true);r.failed())return r;
+            if(auto r=readNoteFlags(b,"articulationLoopKeys",c.loopSource,true);r.failed())return r;
             t.clips.push_back(std::move(c));
         }p.tracks.push_back(std::move(t));
     }

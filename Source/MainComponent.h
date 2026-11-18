@@ -88,6 +88,10 @@ public:
     // 3 + k the track's plugin parameter lane k.
     enum LaneTarget { laneVolume=0, lanePan, laneMaster, lanePlugin };
     std::array<int,maxTracks> laneTarget{};
+    // Rack automation shares the existing timeline editor, like master volume.
+    // Session identity prevents a new project or removed rack from redirecting an edit.
+    std::array<std::uint64_t,maxTracks> laneRackSession{};
+    int automationRack(int anchor)const;
     VolumeAutomation& envelope(int track) const;
     void makeEnvelopeManual(int track);
     double envelopeMax(int track) const;       // 2 for a gain, 1 for pan and plugin parameters

@@ -74,7 +74,7 @@ std::unique_ptr<MixState> mixState(const Project& p){
         for(size_t lane=0;lane<x.laneVolume.size();++lane){x.laneVolume[lane]=(float)t.engine.laneVolume[lane];x.laneMute[lane]=t.engine.laneMute[lane];}}
     auto& master=m->tracks[(size_t)masterEffectTrack];master.mute=true;master.parameters=p.masterEffects.parameters;master.eq=p.masterEffects.eq;   // the master EQ runs before the master inserts
     for(const auto& fx:p.masterEffects.effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&master.effectCount<maxTrackEffects){master.effectOrder[(size_t)master.effectCount++]=fx.slot;master.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}
-    for(int b=0;b<2;++b){auto& mix=m->tracks[(size_t)(returnEffectTrack+b)];mix.mute=true;mix.session=p.returnEffects[(size_t)b].sessionId;if(p.returnChains)for(const auto& fx:p.returnEffects[(size_t)b].effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&mix.effectCount<maxTrackEffects){mix.effectOrder[(size_t)mix.effectCount++]=fx.slot;mix.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}}
+    for(int b=0;b<2;++b){auto& mix=m->tracks[(size_t)(returnEffectTrack+b)];mix.mute=true;mix.session=p.returnEffects[(size_t)b].sessionId;mix.parameters=p.returnEffects[(size_t)b].parameters;if(p.returnChains)for(const auto& fx:p.returnEffects[(size_t)b].effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&mix.effectCount<maxTrackEffects){mix.effectOrder[(size_t)mix.effectCount++]=fx.slot;mix.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}}
     return m;
 }
 std::uint64_t hashEvents(const std::vector<TimedEvent>& events){
@@ -382,7 +382,7 @@ void AudioEngine::prepareDelayLines(){
     returns=std::min(returns,Instrument::maxDelay-1);busGraph.prepareReturnDelay(returns);busGraph.setReturnLatency(returns);
     delayStorageNeeded=false;
 }
-void AudioEngine::refreshLatencies(){for(int ti=0;ti<maxTracks;++ti){auto& i=*instruments[(size_t)ti];const auto* cache=frozenAudio[(size_t)ti].current;i.frozenActive=cache&&i.controls&&cache->session==i.controls->session&&cache->audio.getNumSamples()>1;}
+void AudioEngine::refreshLatencies(){for(int ti=0;ti<maxTracks;++ti){auto& i=*instruments[(size_t)ti];const auto* cache=frozenAudio[(size_t)ti].current;i.frozenActive=cache&&i.controls&&cache->session==i.controls->session&&cache->asset&&cache->asset->frames>1;}
     if(sidechainRouting(instruments,false))delayStorageNeeded=true;
     // Plugin delay compensation: instrument + insert latency, every other track delayed to match.
     int maxLatency=0,returnLatency=0;
@@ -470,8 +470,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         if(i.leadEvents.size()>1&&!std::is_sorted(i.leadEvents.begin(),i.leadEvents.end(),ordered))std::sort(i.leadEvents.begin(),i.leadEvents.end(),ordered);
         if(i.guitarEvents.dropped){i.guitar.allNotesOff();i.guitarEvents.clear();capture.inputOverflow=true;}
         if(i.leadEvents.dropped){i.lead.allNotesOff();i.leadEvents.clear();capture.inputOverflow=true;}
-        const auto* frozen=ti<maxTracks?frozenAudio[(size_t)ti].current:nullptr;const bool frozenPlaying=frozen&&i.controls&&frozen->session==i.controls->session&&frozen->audio.getNumSamples()>1;
-        if(frozenPlaying){if(scheduled)for(int s=0;s<count;++s){const double at=(beat+s/samplesPerBeat)*60./frozen->bpm*frozen->rate;const int n=(int)at;if(n<0||n+1>=frozen->audio.getNumSamples())continue;const float fraction=(float)(at-n);for(int ch=0;ch<2;++ch){const auto* source=frozen->audio.getReadPointer(std::min(ch,frozen->audio.getNumChannels()-1));block.setSample(ch,s,source[n]+fraction*(source[n+1]-source[n]));}}}
+        const auto* frozen=ti<maxTracks?frozenAudio[(size_t)ti].current:nullptr;const bool frozenPlaying=frozen&&i.controls&&frozen->session==i.controls->session&&frozen->asset&&frozen->asset->frames>1;
+        if(frozenPlaying){if(scheduled)for(int s=0;s<count;++s){const double at=(beat+s/samplesPerBeat)*60./frozen->bpm*frozen->rate;const int n=(int)at;if(n<0||n+1>=frozen->asset->audio.getNumSamples())continue;const float fraction=(float)(at-n);for(int ch=0;ch<2;++ch){const auto* source=frozen->asset->audio.getReadPointer(std::min(ch,frozen->asset->audio.getNumChannels()-1));block.setSample(ch,s,(source[n]+fraction*(source[n+1]-source[n]))*(float)frozen->gain);}}}
         else if(i.mode==2&&i.plugin)processHosted(i,*i.plugin,block,i.midi,beat,0);
         else if(i.mode==1){if(i.sampler)static_cast<SampleSynth*>(i.sampler.get())->renderNextBlock(block,i.midi,0,count);}
         else if(i.mode==0){if(ti<3||isManualTrack(ti))i.synth.renderNextBlock(block,i.midi,0,count);else if(ti==3)i.guitar.render(block,i.guitarEvents,i.guitarLevels);else if(ti==leadTrack)i.lead.render(block,i.leadEvents,i.guitarLevels);else i.drums.render(block,i.midi,i.drumNotes,i.drumLevels,i.drumSamples);}
@@ -492,7 +492,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         for(int n=0;n<count;++n)detector[(size_t)n]=(!i.mute&&(!anySolo||i.solo))?std::max(std::abs(block.getSample(0,n)),std::abs(block.getSample(1,n))):0;
     }
     for(int ti=0;ti<maxTracks;++ti){if(onlyTrack>=0&&ti!=onlyTrack)continue;auto& i=*instruments[(size_t)ti];auto& block=i.scratch;
-        const auto* frozen=frozenAudio[(size_t)ti].current;const bool frozenPlaying=frozen&&i.controls&&frozen->session==i.controls->session&&frozen->audio.getNumSamples()>1;
+        const auto* frozen=frozenAudio[(size_t)ti].current;const bool frozenPlaying=frozen&&i.controls&&frozen->session==i.controls->session&&frozen->asset&&frozen->asset->frames>1;
         for(int k=0;!frozenPlaying&&k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,i.effectBypass[(size_t)(slot-1)]);if(!native&&i.effectBypass[(size_t)(slot-1)])continue;
             if(i.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
@@ -748,7 +748,13 @@ void AudioEngine::startPreview(juce::AudioBuffer<float>&& audio,double rate,doub
     if(sourceBpm>0&&clip->audio.getNumSamples()>1){auto data=std::make_shared<SampleAsset>();data->rate=clip->rate;data->frames=clip->audio.getNumSamples();data->audio.setSize(clip->audio.getNumChannels(),data->frames+4);data->audio.clear();for(int ch=0;ch<clip->audio.getNumChannels();++ch)data->audio.copyFrom(ch,0,clip->audio,ch,0,data->frames);clip->syncSettings.mode=1;clip->syncSettings.sync=true;clip->syncSettings.sourceBpm=sourceBpm;clip->syncSettings.attack=0;clip->syncSettings.fadeIn=.0025;clip->syncSettings.fadeOut=.0025;clip->root=sourceMidi<0?60:sourceMidi;clip->sourceKey=sourceMidi<0?-1:sourceMidi%12;clip->synced=std::make_unique<SampleSynth>(data,clip->syncSettings,clip->root,false);{const EngineControlLock lock(*this);clip->synced->setCurrentPlaybackSampleRate(deviceRate);clip->scratch.setSize(2,std::max(512,deviceBlock));}clip->midi.ensureSize(2048);}
     previewing=clip->audio.getNumSamples()>1;previews.post(std::move(clip));++previewGeneration;
 }
-void AudioEngine::freezeTrack(int track,const juce::File& file,double bpm,std::uint64_t session,double gain){if(track<0||track>=maxTracks)return;std::shared_ptr<const SampleAsset> asset;if(readSampleAsset(file,asset).failed())return;auto state=std::make_unique<FrozenAudio>();state->audio=asset->audio;if(gain!=1)state->audio.applyGain((float)gain);state->rate=asset->rate;state->bpm=bpm;state->session=session;{const EngineControlLock lock(*this);auto& i=*instruments[(size_t)track];if(i.plugin){i.freezePaused[0]=i.plugin->isSuspended();i.plugin->suspendProcessing(true);}for(size_t s=0;s<i.effects.size();++s)if(auto* fx=i.effects[s].plugin.get()){i.freezePaused[s+1]=fx->isSuspended();fx->suspendProcessing(true);}}frozenAudio[(size_t)track].post(std::move(state));frozenTempo[(size_t)track]=bpm;frozenFlags[(size_t)track]=true;adoptWhileStopped();}
+void AudioEngine::freezeTrack(int track,const juce::File& file,double bpm,std::uint64_t session,double gain){
+    std::shared_ptr<const SampleAsset> asset;if(readSampleAsset(file,asset).wasOk())freezeTrack(track,std::move(asset),bpm,session,gain);
+}
+void AudioEngine::freezeTrack(int track,std::shared_ptr<const SampleAsset> asset,double bpm,std::uint64_t session,double gain){
+    if(track<0||track>=maxTracks||!asset||asset->frames<2||!std::isfinite(gain)||gain<=0)return;
+    auto state=std::make_unique<FrozenAudio>();state->rate=asset->rate;state->asset=std::move(asset);state->gain=gain;state->bpm=bpm;state->session=session;
+    {const EngineControlLock lock(*this);auto& i=*instruments[(size_t)track];if(i.plugin){i.freezePaused[0]=i.plugin->isSuspended();i.plugin->suspendProcessing(true);}for(size_t s=0;s<i.effects.size();++s)if(auto* fx=i.effects[s].plugin.get()){i.freezePaused[s+1]=fx->isSuspended();fx->suspendProcessing(true);}}frozenAudio[(size_t)track].post(std::move(state));frozenTempo[(size_t)track]=bpm;frozenFlags[(size_t)track]=true;adoptWhileStopped();}
 void AudioEngine::removeTrackSlot(int track){
     if(track<0||track>=maxTracks||!isManualTrack(track))return;
     for(int t=track;t<maxTracks;++t)unfreezeTrack(t);

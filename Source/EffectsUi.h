@@ -21,7 +21,9 @@ private:
     MainComponent& owner;
     int currentTrack()const;
     std::uint64_t trackSession=0;
+    static constexpr int rowsTop=58,rowPitch=42;
     int dropPosition=-1;
+    juce::Label signalPath;
     juce::TextButton add{"+"};
     ActionButton automation{"AUTOMATION"};
     std::vector<std::unique_ptr<Row>> rows;

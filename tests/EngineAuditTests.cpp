@@ -5,6 +5,7 @@
 #include "../Source/NativeReturnEffects.h"
 #include <thread>
 #include <stdexcept>
+size_t countRealtimeCppAllocations(const std::function<void()>&);
 namespace fga {
 namespace {
 void requireAudit(bool condition,const char* message){if(!condition)throw std::runtime_error(message);}
@@ -401,7 +402,29 @@ struct EngineAuditTests {
         auto restored=std::make_unique<ProgramStatePlugin>();auto* probe=restored.get();engine.swapInstrument(0,std::move(restored),0,{});engine.restorePluginState(0,juce::String::fromUTF8(project.tracks[0].instrumentState.c_str()));
         requireAudit(std::abs(probe->privateEdit-.75f)<1e-6,"replacement Undo snapshot retains the latest opaque sound edit");
     }
-    static void run(){exportDeviceChanges();deviceTransportMatrix();densePanic();handoffLifetime();handoffStress();liveMidiRecovery();recordedMidiEffects();stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
+    static void rackAutomation(){
+        AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.enableReturnChains();project.settings.freeTempo=true;project.settings.bpm=120;
+        for(auto& track:project.tracks){track.gain=0;track.volume={};track.parameters.clear();for(auto& clip:track.clips)clip.notes.clear();}
+        project.tracks[0].gain=.1;project.tracks[0].sends={.5,.5};
+        auto source=std::make_unique<AuditPlugin>();engine.instruments[0]->plugin=std::move(source);engine.instruments[0]->mode=2;engine.instruments[0]->prepare(44100,512);
+        std::array<AuditPlugin*,3> probes{};
+        for(int k=0;k<3;++k){const int ti=k==0?masterEffectTrack:returnEffectTrack+k-1;
+            auto plugin=std::make_unique<AuditPlugin>(true);probes[(size_t)k]=plugin.get();auto& instrument=*engine.instruments[(size_t)ti];instrument.effects[0].plugin=std::move(plugin);instrument.prepare(44100,512);
+            auto& rack=project.effectTarget(ti);rack.effects={{1,"Probe","Probe","/probe"}};
+            ParameterAutomation lane;lane.slot=1;lane.index=0;lane.parameterId="gain";lane.curve.enabled=true;lane.curve.points={{0,.1,0},{.04,.9,0}};rack.parameters={lane};}
+        engine.hostedCount=4;engine.publish(project);engine.play(true);juce::AudioBuffer<float> block(2,512);juce::AudioIODeviceCallbackContext context;
+        for(int n=0;n<8;++n)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        for(auto* probe:probes){requireAudit(probe->calls>0&&probe->values[0]<.5f&&probe->getParameters()[0]->getValue()>.89f,"master and both returns follow parameter automation during playback");}
+        for(int k=0;k<3;++k){const int ti=k==0?masterEffectTrack:returnEffectTrack+k-1;project.effectTarget(ti).parameters[0].curve.points={{0,.9,0},{16,.1,0}};}
+        engine.publish(project);engine.seek(0);engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);
+        const auto started=juce::Time::getHighResolutionTicks();
+        const auto allocated=::countRealtimeCppAllocations([&]{for(int n=0;n<64;++n)engine.audioDeviceIOCallbackWithContext(nullptr,0,block.getArrayOfWritePointers(),2,512,context);});
+        const auto ms=juce::Time::highResolutionTicksToSeconds(juce::Time::getHighResolutionTicks()-started)*1000.;
+        requireAudit(allocated==0,"return/master automation allocates ordinary C++ memory in the audio callback");
+        std::cout<<"Rack automation 32768 stereo frames: "<<ms<<" ms, C++ allocations="<<allocated<<" (local probe fixture)\n";
+        engine.stop();
+    }
+    static void run(){rackAutomation();exportDeviceChanges();deviceTransportMatrix();densePanic();handoffLifetime();handoffStress();liveMidiRecovery();recordedMidiEffects();stoppedStateCapture();sourceReplacementCheckpoint();selectiveSnapshots();monoMaster();snapshotKeepsOtherTracksPlaying();effects();exportCompatibility();stateRestoreOrder();programEdits();nativePresetAuthority();isolatedClipPlayback();
         // Fixed-rate fixtures must not inherit the runner's physical audio device rate or latency.
         AudioEngine engine(AudioEngine::Offline{});engine.prepareDelayLines();for(auto& instrument:engine.instruments)instrument->prepare(44100,512);auto project=newProject(571);project.sections={{Section::main,2,"Audit"}};project.masterGain=1;project.settings.bpm=120;project.settings.freeTempo=true;
         for(auto& t:project.tracks){t.gain=0;for(auto& clip:t.clips)clip.notes.clear();}project.tracks[0].gain=1;project.normalise();

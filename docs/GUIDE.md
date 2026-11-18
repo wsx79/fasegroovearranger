@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.57.11**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.57.12**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.57.0** writes the lead melody per genre: its own rhythms, phrases with motif, answer and cadence, stepwise or repeated or leaping lines in the style's balance. **0.56.0** makes the band play together (in Latin the piano montuno leads and guitar and lead answer in its gaps; in Afro guitar and lead take turns by phrase), voices strings and guitar around the lead and the bass, adds DEVELOP (answers to your own theme), VST articulation profiles, a path bar on every plugin editor, AUTO/TRIM badges, a readable mixer and clickable sources in Bus & Send. **0.55.0** makes the Mix and Mastering Assistants process the sound, not only the levels: per-track EQ, compressors inserted where missing, reverb and delay sends, the kick sidechain, and on the master an EQ, a glue compressor and a lookahead limiter that reaches the LUFS target under the dBTP ceiling (every change selectable, A/B and one Undo). **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -909,3 +909,11 @@ Startup shows a loading screen. Opening a project displays progress as plugins a
 In **Studio**, a single sample audition finishes automatically and enables **Play sample** again. **Notes**, **Amplitude envelope** and **Audition loop** retain their choices across instrument changes and application restarts. Sound parameters remain track-specific. Resize the window using its borders or lower corner; closing and reopening restores the standard size.
 
 New arrangements and regeneration develop later Main/Drop sections with stronger dynamics and, in non-electronic genres, more guitar answers and percussion. Kick and bass retain their foundation. User patterns and locked parts are respected; intro/outro retain their mixing roles. Existing projects keep their stored notes until regeneration.
+
+### Return and master insert automation (0.57.12)
+
+Open master FX or return A/B’s chain in Bus & Send. Choose Automation, the insert and its parameter, then show the lane. This reuses the selected track’s existing timeline lane: its title explicitly names **Master / effect / parameter** or **Return A/B / effect / parameter**; the track’s routing is unchanged. Add and drag points as with track automation; bypass, curves and Undo/Redo work the same way. Use the track’s own automation selector to return to its lanes.
+
+The new data is optional in format 7. Existing projects remain readable; use 0.57.12 or newer to retain rack automation and new loop-note flags, and save a copy before opening older versions. Historical keyswitches without ownership metadata are not guessed and deleted: they may be real musical notes.
+
+Insert numbers show serial order; arrows and the path row identify groups, master and active sends. Freeze uses the shared sample-memory budget and can be rejected when insufficient space remains.

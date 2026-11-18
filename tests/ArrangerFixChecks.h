@@ -95,6 +95,29 @@ inline void verifyEditorRegenerate(){
         for(int ti:{3,fga::leadTrack})for(size_t ci=0;ci<lp.tracks[(size_t)ti].clips.size();++ci){const double at=lp.clipStart(ti,(int)ci);for(const auto& n:lp.tracks[(size_t)ti].clips[ci].notes)together+=piano.count(std::lround((at+n.start)*4))>0;}
         check(together>0,"a muted piano leaves the Latin guitar and lead whole");
     }
+    {
+        auto a=fga::newProject(0);auto& t=a.tracks[1];t.instrument="plugin";t.articulation=1;
+        auto& c=t.clips[1];c.notes={{0,1./32.,24,90,0},{1,1./32.,25,90,0},{2,.2,60,90,0}};
+        c.expression[1].enabled=true;c.expression[1].locked=true;c.expression[1].points={{0,.4,0}};const auto curve=c.expression[1];
+        check(fga::setTrackArticulation(a,1,3)&&c.expression[1]==curve,"profile menu change preserves a locked CC1 lane");
+        check(c.notes.size()==3&&c.notes[0].pitch==24&&c.notes[1].pitch==25,"Dynamics and Legato never identify musical C0/C#0 as keyswitches");
+        t.locked=true;const auto before=c.notes;check(!fga::setTrackArticulation(a,1,0)&&c.notes==before&&c.expression[1]==curve,"locked track rejects profile changes");
+        t.locked=false;check(fga::setTrackArticulation(a,1,2),"enable owned keyswitches");
+        check(std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.articulationKey;}),"keyswitches carry ownership");
+        check(fga::setTrackArticulation(a,1,0)&&std::none_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.articulationKey;}),"Off removes only owned keyswitches");
+        check(std::any_of(c.notes.begin(),c.notes.end(),[](const auto& n){return n.pitch==24&&!n.articulationKey;}),"Off preserves the musician's low note");
+    }
+    {
+        bool responds=false;
+        for(unsigned seed=1;seed<=8&&!responds;++seed){
+            auto on=fga::newProject(fga::latinHouseGenre);on.settings.randomAutomation=false;on.settings.humanize=0;on.settings.swing=0;
+            for(auto& t:on.tracks){t.engine.humanize=0;t.engine.swing=0;for(auto& c:t.clips)c.seed=seed;}
+            auto off=on;off.tracks[0].mute=true;fga::generate(on);fga::generate(off);
+            size_t heard=0,silent=0;for(const auto& c:on.tracks[3].clips)heard+=c.notes.size();for(const auto& c:off.tracks[3].clips)silent+=c.notes.size();
+            responds=heard<silent;
+        }
+        check(responds,"audible Latin montuno thins weak guitar attacks; mute disables the interaction");
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.

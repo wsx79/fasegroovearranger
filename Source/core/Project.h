@@ -34,7 +34,8 @@ enum class Scope { song, track, section, clip };
 struct Note {
     double start = 0, length = .25;
     int pitch = 60, velocity = 96, lane = 0;bool reverse=false;
-    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane && reverse == o.reverse; }
+    bool articulationKey=false; // owned keyswitch, never inferred from a musical pitch/duration
+    bool operator==(const Note& o) const { return start == o.start && length == o.length && pitch == o.pitch && velocity == o.velocity && lane == o.lane && reverse == o.reverse && articulationKey == o.articulationKey; }
 };
 struct Clip {
     std::vector<Note> notes;
@@ -345,6 +346,7 @@ void applyPianoIntention(Project&,int track,int intention,bool keepRhythm,bool k
 bool transferClip(Project&, int track, int from, int to, bool copy);
 void tidyNotes(Clip&, double beats);
 void applyArticulation(Project&,int track,int clip);   // the track's VST articulation profile on one clip
+bool setTrackArticulation(Project&,int track,int profile);
 void transpose(Clip&, int semitones);
 void quantise(Clip&, double grid, double strength = 1, double limit = 0);
 void humanize(Clip&, double amount, std::uint32_t seed, double beats);

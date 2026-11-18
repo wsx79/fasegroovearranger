@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.12
+
+- Corretto l’interplay montuno Latin con piano attivo o muto; preservati i blocchi delle articolazioni e distinte le note musicali basse dai keyswitch generati.
+- Conservati reverse e proprietà dei keyswitch nelle sorgenti dei loop dopo salvataggio, riapertura e tagli. Il freeze mantiene la prenotazione RAM condivisa e decodifica sul worker senza duplicare il PCM.
+- Automazione dei parametri degli insert su ritorni A/B e master tramite la corsia timeline esistente, con destinazione nominata, Undo/Redo e salvataggio nel progetto.
+- Catene effetti con insert numerati, collegamenti in serie e percorso effettivo traccia/gruppo/master/ritorni.
+
 ## 0.57.11
 
 - Hook della Lead: il motivo del brano sceglie dove parte la Lead e le prime note di ogni frase, così la stessa idea ritorna da una sezione all’altra mentre la take varia ritmo e risposte. RIGENERA su una clip di Lead le dà un’idea nuova.

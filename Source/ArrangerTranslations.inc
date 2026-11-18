@@ -1630,3 +1630,8 @@
     { "Montuno", "Montuno", "Montuno", "Montuno", "Montuno", "Montuno" },
     { "Timbales break", "Break di timbales", "Break de timbales", "Break de timbales", "Timbales-Break", "Break de timbales" },
     { "Fiesta", "Fiesta", "Fiesta", "Fiesta", "Fiesta", "Fiesta" },
+
+{ "Send", "Mandata", "Envío", "Départ", "Send", "Envio" },
+{ "Sends", "Mandate", "Envíos", "Départs", "Sends", "Envios" },
+{ "Return A", "Ritorno A", "Retorno A", "Retour A", "Return A", "Retorno A" },
+{ "Return B", "Ritorno B", "Retorno B", "Retour B", "Return B", "Retorno B" },

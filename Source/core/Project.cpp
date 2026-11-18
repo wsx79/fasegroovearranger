@@ -480,6 +480,10 @@ void Project::normalise() {
     }
     for(auto& section:sections){auto& h=section.harmony;h.key=std::clamp(h.key,-1,11);h.scale=std::clamp(h.scale,-1,12);h.chordCount=std::clamp(h.chordCount,1,8);h.chordSteps=std::clamp(h.chordSteps,8,64);if(h.chordSteps!=8&&h.chordSteps!=16&&h.chordSteps!=32&&h.chordSteps!=64)h.chordSteps=16;for(auto& d:h.degrees)d=std::clamp(d,0,6);for(auto& f:h.freeChords)f=std::clamp(f,-1,35);}for(auto& t:tracks)t.eq.normalise();
     for(auto& bus:buses)bus.normalise();
+    for(auto* rack:{&masterEffects,&returnEffects[0],&returnEffects[1]}){
+        if(rack->parameters.size()>(size_t)maxParameterLanes)rack->parameters.resize(maxParameterLanes);
+        for(auto& lane:rack->parameters){lane.generatedTone=false;lane.curve.normalise(length(),1.);}
+    }
     masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }
@@ -515,6 +519,7 @@ void Project::clearLoop() {loop=false;loopStart=loopEnd=0;}
 std::vector<std::pair<VolumeAutomation*,double>> Project::envelopes(){
     std::vector<std::pair<VolumeAutomation*,double>> all{{&masterAutomation,2.}};
     for(auto& t:tracks){all.push_back({&t.volume,2.});all.push_back({&t.panAutomation,1.});for(auto& lane:t.parameters)all.push_back({&lane.curve,1.});}
+    for(auto* rack:{&masterEffects,&returnEffects[0],&returnEffects[1]})for(auto& lane:rack->parameters)all.push_back({&lane.curve,1.});
     return all;
 }
 bool Project::withinNoteBudget()const{size_t count=0;for(const auto& t:tracks)for(const auto& c:t.clips){count+=c.notes.size()+c.loopSource.size();if(count>2000000)return false;}return true;}
@@ -1304,6 +1309,10 @@ bool rearrangeSong(Project& project,std::uint32_t seed){
         for(const auto& clip:track.clips){notes+=clip.notes.size()+clip.loopSource.size();if(notes>2000000)return false;}
     }
     if(!remap(next.masterAutomation,project.masterAutomation))return false;
+    for(int rack:{masterEffectTrack,returnEffectTrack,returnEffectTrack+1}){
+        auto& target=next.effectTarget(rack).parameters;const auto& original=project.effectTarget(rack).parameters;
+        for(size_t lane=0;lane<target.size();++lane)if(!remap(target[lane].curve,original[lane].curve))return false;
+    }
     next.loopStart=0;next.loopEnd=next.length();next.normalise();project=std::move(next);return true;
 }
 
@@ -1740,7 +1749,13 @@ static void bandInterplay(Project& p,const std::function<bool(int,int)>& inScope
             if(kept.size()*10>=c.notes.size()*3)c.notes=std::move(kept);}};
     if(genre==latinHouseGenre){
         std::set<long> montuno;const auto& piano=p.tracks[0];
-        if(!piano.mute)for(size_t ci=0;ci<piano.clips.size();++ci)   // a muted piano is not heard: nothing answers it{const double at=p.clipStart(0,(int)ci);for(const auto& n:piano.clips[ci].notes)montuno.insert(std::lround((at+n.start)*4));}
+        // A muted piano is not heard: nothing answers it.
+        if(!piano.mute){
+            for(size_t ci=0;ci<piano.clips.size();++ci){
+                const double at=p.clipStart(0,(int)ci);
+                for(const auto& n:piano.clips[ci].notes)montuno.insert(std::lround((at+n.start)*4));
+            }
+        }
         for(int ti:{3,leadTrack})thin(ti,[&](double beat){return montuno.count(std::lround(beat*4))>0;});
     }else{
         std::map<long,std::array<int,2>> busy;   // per 4-bar phrase: guitar and lead note counts
@@ -2294,20 +2309,31 @@ void randomiseAutomation(Project& p,Scope scope,int track,int index,std::uint32_
 // 2 keyswitches: C0 before a run of long notes, C#0 before short ones (chank, staccato);
 // 3 legato: in a single line each note overlaps the next by a 32nd when the gap is small.
 void applyArticulation(Project& p,int track,int ci){
-    if(track<0||track>=(int)p.tracks.size())return;auto& t=p.tracks[(size_t)track];if(t.articulation<=0||t.instrument!="plugin"||ci<0||ci>=(int)t.clips.size())return;
+    if(track<0||track>=(int)p.tracks.size())return;auto& t=p.tracks[(size_t)track];if(t.instrument!="plugin"||ci<0||ci>=(int)t.clips.size())return;
     auto& c=t.clips[(size_t)ci];if(t.locked||c.locked||c.notes.empty())return;const double length=p.clipLength(track,ci);
     constexpr int keyLong=24,keyShort=25;constexpr double tick=1./32.;
-    c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return (n.pitch==keyLong||n.pitch==keyShort)&&std::abs(n.length-tick)<1e-6;}),c.notes.end());
+    c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.articulationKey;}),c.notes.end());
     if(t.articulation==1&&!c.expression[1].locked){auto& lane=c.expression[1];lane.enabled=true;lane.points.clear();   // a CC1 curve you locked is kept
         for(double at=0;at<length;at+=2){double sum=0;int count=0;for(const auto& n:c.notes)if(n.start>=at&&n.start<at+2){sum+=n.velocity;++count;}
             const double value=count?std::clamp(sum/count/127.*1.15,.2,1.):(lane.points.empty()?.5:lane.points.back().value);lane.points.push_back({at,value,0});}}
     else if(t.articulation==2){std::vector<Note> keys;int state=-1;
-        for(const auto& n:c.notes){const int want=n.length<=.3?keyShort:keyLong;if(want==state)continue;state=want;Note k=n;k.pitch=want;k.velocity=100;k.start=std::max(0.,n.start-tick);k.length=tick;keys.push_back(k);}
+        for(const auto& n:c.notes){const int want=n.length<=.3?keyShort:keyLong;if(want==state)continue;state=want;Note k=n;k.pitch=want;k.velocity=100;k.start=std::max(0.,n.start-tick);k.length=tick;k.articulationKey=true;keys.push_back(k);}
         c.notes.insert(c.notes.end(),keys.begin(),keys.end());}
     else if(t.articulation==3){std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
         for(size_t i=0;i+1<c.notes.size();++i){auto& n=c.notes[i];const auto& next=c.notes[i+1];if(next.start-n.start<1./16.)continue;   // chords stay as they are
             const double gap=next.start-(n.start+n.length);if(gap>=0&&gap<.5)n.length=next.start-n.start+tick;}}
     tidyNotes(c,length);
+}
+bool setTrackArticulation(Project& p,int track,int profile){
+    if(track<0||track>=(int)p.tracks.size()||profile<0||profile>3)return false;
+    auto& t=p.tracks[(size_t)track];
+    if(t.locked||t.instrument!="plugin"||t.articulation==profile)return false;
+    const int before=t.articulation;t.articulation=profile;
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked)continue;
+        if(before==1&&profile!=1&&!c.expression[1].locked)c.expression[1]={};
+        applyArticulation(p,track,(int)ci);
+    }
+    return true;
 }
 void tidyNotes(Clip& c,double beats) {
     constexpr double tick=1./960.;
@@ -2317,7 +2343,7 @@ void tidyNotes(Clip& c,double beats) {
     // One MIDI channel per instrument: coalesce simultaneous guitar-string hits
     // and close retriggered pitches so a later note-off cannot cut the next note.
     std::vector<Note> clean;clean.reserve(c.notes.size());std::array<int,128> last;last.fill(-1);
-    for(auto n:c.notes){int index=last[(size_t)n.pitch];if(index>=0){auto& prev=clean[(size_t)index];if(n.start-prev.start<tick){prev.length=std::max(prev.length,n.start+n.length-prev.start);prev.velocity=std::max(prev.velocity,n.velocity);continue;}if(prev.start+prev.length>n.start)prev.length=n.start-prev.start;}
+    for(auto n:c.notes){int index=last[(size_t)n.pitch];if(index>=0){auto& prev=clean[(size_t)index];if(n.start-prev.start<tick){prev.length=std::max(prev.length,n.start+n.length-prev.start);prev.velocity=std::max(prev.velocity,n.velocity);prev.articulationKey=prev.articulationKey&&n.articulationKey;continue;}if(prev.start+prev.length>n.start)prev.length=n.start-prev.start;}
         last[(size_t)n.pitch]=(int)clean.size();clean.push_back(n);}
     c.notes=std::move(clean);
 }

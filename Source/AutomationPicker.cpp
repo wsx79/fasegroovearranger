@@ -8,7 +8,7 @@ juce::String text(const std::string& value){return juce::String::fromUTF8(value.
 juce::String parameterId(juce::AudioProcessorParameter* parameter){if(auto* hosted=dynamic_cast<juce::HostedAudioProcessorParameter*>(parameter))return hosted->getParameterID();return {};}
 class AutomationPicker final : public juce::Component,private juce::ListBoxModel {
 public:
-    AutomationPicker(MainComponent& component,int track,int preferred):owner(component),alive(&component),session(component.project.tracks[(size_t)track].sessionId){
+    AutomationPicker(MainComponent& component,int track,int preferred):owner(component),alive(&component),session(component.effectTrack(track).sessionId){
         if(Localisation::tipsEnabled())tooltips=std::make_unique<juce::TooltipWindow>(this,650);
         setSize(500,510);for(auto* c:std::initializer_list<juce::Component*>{&source,&search,&list,&choose,&remove,&close,&trackScope,&allScope,&hide})addAndMakeVisible(c);
         trackScope.setComponentID("automation-scope-track");allScope.setComponentID("automation-scope-all");hide.setComponentID("automation-hide");
@@ -22,12 +22,12 @@ public:
         search.setTextToShowWhenEmpty(tr("Search a parameter..."),Daw::textFaint);search.onTextChange=[this]{rebuild();};source.onChange=[this]{rebuild();};
         list.setModel(this);list.setRowHeight(36);list.setColour(juce::ListBox::backgroundColourId,Daw::base);list.setOutlineThickness(1);list.setColour(juce::ListBox::outlineColourId,Daw::line);
         choose.setButtonText(tr("SHOW AUTOMATION"));remove.setButtonText(tr("Remove lane"));choose.onClick=[this]{activate();};remove.onClick=[this]{removeLane();};
-        const auto& t=owner.project.tracks[(size_t)track];sources.push_back({-3,tr("Existing automation")});sources.push_back({-2,tr("Track and master")});if(t.instrument=="internal"||t.instrument=="sample")sources.push_back({-1,tr("Sound")+": "+owner.soundSourceName(track)});if(auto* plugin=owner.audio.plugin(track))sources.push_back({0,tr("Instrument")+": "+plugin->getName()});
+        const auto& t=owner.effectTrack(track);sources.push_back({-3,tr("Existing automation")});if(track<maxTracks)sources.push_back({-2,tr("Track and master")});if(track<maxTracks&&(t.instrument=="internal"||t.instrument=="sample"))sources.push_back({-1,tr("Sound")+": "+owner.soundSourceName(track)});if(auto* plugin=track<maxTracks?owner.audio.plugin(track):nullptr)sources.push_back({0,tr("Instrument")+": "+plugin->getName()});
         int position=0;for(const auto& fx:t.effects){++position;if(owner.audio.effectPlugin(track,fx.slot))sources.push_back({fx.slot,tr("Effect")+" "+juce::String(position)+": "+text(fx.displayName())});}
-        int selected=2;for(size_t i=0;i<sources.size();++i){source.addItem(sources[i].second,(int)i+1);if(sources[i].first==preferred)selected=(int)i+1;}source.setSelectedId(selected,juce::dontSendNotification);rebuild();
+        int selected=2;for(size_t i=0;i<sources.size();++i){source.addItem(sources[i].second,(int)i+1);if(sources[i].first==preferred)selected=(int)i+1;}source.setSelectedId(std::clamp(selected,1,(int)sources.size()),juce::dontSendNotification);rebuild();
         Localisation::bindTip(source,"Choose the track, its native sound, instrument plugin or one effect instance.");Localisation::bindTip(search,"Filter the parameters exposed by the selected sound or plugin.");Localisation::bindTip(choose,"Show the selected automation lane. Existing curves are reused.");Localisation::bindTip(remove,"Remove this parameter's automation curve. Undo restores it.");
     }
-    void paint(juce::Graphics& g)override{if(!alive)return;g.fillAll(Daw::surface);g.setColour(Daw::text);g.setFont(FamilyTheme::font(16,true));g.drawText(tr("AUTOMATION"),juce::Rectangle<int>(16,8,getWidth()-32,28),juce::Justification::centredLeft);g.setColour(Daw::textFaint);g.setFont(FamilyTheme::font(11));const int track=owner.trackForSession(session);if(track>=0)g.drawText(juce::String((int)owner.project.tracks[(size_t)track].parameters.size())+" / "+juce::String(maxParameterLanes)+"  "+tr("Parameter lanes"),juce::Rectangle<int>(16,getHeight()-84,getWidth()-200,24),juce::Justification::centredLeft);if(entries.empty())g.drawText(tr("No matching parameters"),list.getBounds().reduced(10),juce::Justification::centred);}
+    void paint(juce::Graphics& g)override{if(!alive)return;g.fillAll(Daw::surface);g.setColour(Daw::text);g.setFont(FamilyTheme::font(16,true));g.drawText(tr("AUTOMATION")+(owner.trackForSession(session)>=maxTracks?" / "+tr(text(owner.effectTrack(owner.trackForSession(session)).name)):juce::String()),juce::Rectangle<int>(16,8,getWidth()-32,28),juce::Justification::centredLeft);g.setColour(Daw::textFaint);g.setFont(FamilyTheme::font(11));const int track=owner.trackForSession(session);if(track>=0)g.drawText(juce::String((int)owner.effectTrack(track).parameters.size())+" / "+juce::String(maxParameterLanes)+"  "+tr("Parameter lanes"),juce::Rectangle<int>(16,getHeight()-84,getWidth()-200,24),juce::Justification::centredLeft);if(entries.empty())g.drawText(tr("No matching parameters"),list.getBounds().reduced(10),juce::Justification::centred);}
     void resized()override{auto r=getLocalBounds().reduced(16);auto title=r.removeFromTop(28);close.setBounds(title.removeFromRight(28));r.removeFromTop(8);auto scope=r.removeFromTop(32);trackScope.setBounds(scope.removeFromLeft(scope.getWidth()/2));allScope.setBounds(scope);r.removeFromTop(8);source.setBounds(r.removeFromTop(30));r.removeFromTop(8);search.setBounds(r.removeFromTop(28));r.removeFromTop(8);auto bottom=r.removeFromBottom(68);auto tools=bottom.removeFromTop(24);hide.setBounds(tools.removeFromRight(160));bottom.removeFromTop(6);remove.setBounds(bottom.removeFromLeft(130));bottom.removeFromLeft(8);choose.setBounds(bottom);r.removeFromBottom(8);list.setBounds(r);}
     int getNumRows()override{return (int)entries.size();}
     juce::String getTooltipForRow(int row)override{if(row<0||row>=(int)entries.size())return {};const auto& entry=entries[(size_t)row];return entry.title+(entry.value.isEmpty()?juce::String():"\n"+entry.value);}
@@ -42,17 +42,17 @@ private:
     juce::TextButton choose,remove,close,trackScope,allScope,hide;
     std::unique_ptr<juce::TooltipWindow> tooltips;
     std::vector<std::pair<int,juce::String>> sources;std::vector<Entry> entries;
-    void rebuild(){if(!alive)return;entries.clear();const int track=owner.trackForSession(session);if(track<0)return;const auto& t=owner.project.tracks[(size_t)track];const int selection=source.getSelectedId()-1;if(selection<0||selection>=(int)sources.size())return;const int slot=sources[(size_t)selection].first;const auto query=search.getText().trim();
+    void rebuild(){if(!alive)return;entries.clear();const int track=owner.trackForSession(session);if(track<0)return;const auto& t=owner.effectTrack(track);const int selection=source.getSelectedId()-1;if(selection<0||selection>=(int)sources.size())return;const int slot=sources[(size_t)selection].first;const auto query=search.getText().trim();
         auto add=[&](int target,int index,const juce::String& title,const juce::String& id={},const juce::String& value={}){if(query.isNotEmpty()&&!title.containsIgnoreCase(query))return;bool existing=target==-2&&(index==0?!t.volume.isDefault():index==1?!t.panAutomation.isDefault():!owner.project.masterAutomation.isDefault());for(const auto& lane:t.parameters)if(lane.slot==target&&((id.isNotEmpty()&&text(lane.parameterId)==id)||(id.isEmpty()&&lane.index==index)))existing=true;entries.push_back({target,index,title,id,value,existing});};
         if(slot==-2){add(-2,0,tr("Volume"));add(-2,1,tr("Pan"));add(-2,2,tr("Master volume"));}
-        else if(slot==-3){if(!t.volume.isDefault())add(-2,0,tr("Volume"));if(!t.panAutomation.isDefault())add(-2,1,tr("Pan"));if(!owner.project.masterAutomation.isDefault())add(-2,2,tr("Master volume"));for(const auto& lane:t.parameters){juce::String prefix=lane.slot<0?tr("Sound"):lane.slot==0?tr("Instrument"):t.effect(lane.slot)?text(t.effect(lane.slot)->displayName()):tr("Missing effect");add(lane.slot,lane.index,prefix+" / "+text(lane.name),text(lane.parameterId));}}
+        else if(slot==-3){if(track<maxTracks&&!t.volume.isDefault())add(-2,0,tr("Volume"));if(track<maxTracks&&!t.panAutomation.isDefault())add(-2,1,tr("Pan"));if(track<maxTracks&&!owner.project.masterAutomation.isDefault())add(-2,2,tr("Master volume"));for(const auto& lane:t.parameters){juce::String prefix=lane.slot<0?tr("Sound"):lane.slot==0?tr("Instrument"):t.effect(lane.slot)?text(t.effect(lane.slot)->displayName()):tr("Missing effect");add(lane.slot,lane.index,prefix+" / "+text(lane.name),text(lane.parameterId));}}
         else if(slot==-1){if(t.instrument=="internal"){add(-1,0,tr("Tone"));add(-1,1,tr("Reverb"));add(-1,2,tr("Chorus"));add(-1,3,tr("Pump"));}else if(t.instrument=="sample"){add(-1,4,tr("Filter cutoff"));add(-1,5,tr("Filter resonance"));}}
         else if(auto* plugin=slot==0?owner.audio.plugin(track):owner.audio.effectPlugin(track,slot)){for(int i=0;i<plugin->getParameters().size();++i){auto* p=plugin->getParameters()[i];if(!p->isAutomatable())continue;const auto name=p->getName(128);if(name.isNotEmpty())add(slot,i,name,parameterId(p),p->getText(p->getValue(),32));}}
         list.updateContent();list.deselectAllRows();choose.setEnabled(false);remove.setEnabled(false);repaint();
     }
     void dismiss(){if(auto* callout=findParentComponentOfClass<juce::CallOutBox>())callout->dismiss();}
     void activate(){if(!alive)return;const int row=list.getSelectedRow(),track=owner.trackForSession(session);if(track<0||row<0||row>=(int)entries.size())return;const auto entry=entries[(size_t)row];owner.selectAutomation(track,entry.slot,entry.index,entry.title,entry.id);dismiss();}
-    void removeLane(){if(!alive)return;const int row=list.getSelectedRow(),track=owner.trackForSession(session);if(track<0||row<0||row>=(int)entries.size()||owner.pluginsBusy()||owner.editingRestricted())return;const auto entry=entries[(size_t)row];auto& lanes=owner.project.tracks[(size_t)track].parameters;auto it=std::find_if(lanes.begin(),lanes.end(),[&](const auto& lane){return lane.slot==entry.slot&&(entry.id.isNotEmpty()?text(lane.parameterId)==entry.id:lane.index==entry.index);});if(it==lanes.end())return;owner.checkpoint();lanes.erase(it);owner.resetAutomationTarget(track);owner.changed(false);rebuild();}
+    void removeLane(){if(!alive)return;const int row=list.getSelectedRow(),track=owner.trackForSession(session);if(track<0||row<0||row>=(int)entries.size()||owner.pluginsBusy()||owner.editingRestricted())return;const auto entry=entries[(size_t)row];auto& lanes=owner.effectTrack(track).parameters;auto it=std::find_if(lanes.begin(),lanes.end(),[&](const auto& lane){return lane.slot==entry.slot&&(entry.id.isNotEmpty()?text(lane.parameterId)==entry.id:lane.index==entry.index);});if(it==lanes.end())return;owner.checkpoint();lanes.erase(it);owner.resetAutomationTarget(track);owner.changed(false);rebuild();}
 };
 }
 void MainComponent::showAutomationScope(bool enabled){
@@ -60,14 +60,29 @@ void MainComponent::showAutomationScope(bool enabled){
     updateSizes();arrangement.repaint();
 }
 void MainComponent::setAutomationScope(bool all,bool visible){automationAllTracks=all;showAutomationScope(visible);}
-void MainComponent::resetAutomationTarget(int track){if(track==masterEffectTrack)return;arrangement.laneTarget[(size_t)track]=ArrangementView::laneVolume;}
-void MainComponent::showAutomationPicker(int track,int source){if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;if(automationPicker)automationPicker->dismiss();select(track,selectedSection);arrangement.volumeVisible[(size_t)track]=true;updateSizes();arrangement.repaint();auto content=std::make_unique<AutomationPicker>(*this,track,source);auto& box=juce::CallOutBox::launchAsynchronously(std::move(content),automationButton.getScreenBounds(),nullptr);automationPicker=&box;box.setDismissalMouseClicksAreAlwaysConsumed(false);}
-void MainComponent::selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& id){if(loadingPlugin||editingRestricted()||!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;auto& t=project.tracks[(size_t)track];int target=ArrangementView::laneVolume;
-    if(slot==-2){if(index<0||index>2)return;target=index;}
+void MainComponent::resetAutomationTarget(int track){
+    if(track>=maxTracks){for(int anchor=0;anchor<(int)project.tracks.size();++anchor)if(arrangement.automationRack(anchor)==track){arrangement.laneRackSession[(size_t)anchor]=0;arrangement.laneTarget[(size_t)anchor]=ArrangementView::laneVolume;}}
+    else if(track>=0){arrangement.laneRackSession[(size_t)track]=0;arrangement.laneTarget[(size_t)track]=ArrangementView::laneVolume;}
+}
+void MainComponent::showAutomationPicker(int track,int source){
+    if(loadingPlugin||editingRestricted()||!validEffectTrack(track))return;
+    if(automationPicker)automationPicker->dismiss();
+    if(track<maxTracks)select(track,selectedSection);
+    const int anchor=std::clamp(selectedTrack,0,(int)project.tracks.size()-1);
+    arrangement.volumeVisible[(size_t)anchor]=true;updateSizes();arrangement.repaint();
+    auto content=std::make_unique<AutomationPicker>(*this,track,source);
+    auto& box=juce::CallOutBox::launchAsynchronously(std::move(content),automationButton.getScreenBounds(),nullptr);
+    automationPicker=&box;box.setDismissalMouseClicksAreAlwaysConsumed(false);
+}
+void MainComponent::selectAutomation(int track,int slot,int index,const juce::String& name,const juce::String& id){if(loadingPlugin||editingRestricted()||!validEffectTrack(track))return;auto& t=effectTrack(track);int target=ArrangementView::laneVolume;
+    if(slot==-2){if(track>=maxTracks||index<0||index>2)return;target=index;}
     else{
+        if(track>=maxTracks&&slot<1)return;
         int found=-1;for(size_t i=0;i<t.parameters.size();++i)if(t.parameters[i].slot==slot&&(id.isNotEmpty()?text(t.parameters[i].parameterId)==id:t.parameters[i].index==index)){found=(int)i;break;}
         if(found<0){if(slot>=0){auto* plugin=slot==0?audio.plugin(track):audio.effectPlugin(track,slot);if(!plugin||index<0||index>=plugin->getParameters().size())return;if(id.isNotEmpty()&&parameterId(plugin->getParameters()[index])!=id)return;}
 if(t.parameters.size()>=(size_t)maxParameterLanes){message("The automation lane limit has been reached.",true);return;}checkpoint();ParameterAutomation lane;lane.slot=slot;lane.index=index;lane.name=name.toStdString();lane.parameterId=id.toStdString();t.parameters.push_back(std::move(lane));found=(int)t.parameters.size()-1;changed(false);}target=ArrangementView::lanePlugin+found;}
-    arrangement.laneTarget[(size_t)track]=target;arrangement.volumeVisible[(size_t)track]=true;updateSizes();arrangement.repaint();
+    const int anchor=track<maxTracks?track:std::clamp(selectedTrack,0,(int)project.tracks.size()-1);
+    arrangement.laneRackSession[(size_t)anchor]=track>=maxTracks?t.sessionId:0;
+    arrangement.laneTarget[(size_t)anchor]=target;arrangement.volumeVisible[(size_t)anchor]=true;updateSizes();arrangement.repaint();
 }
 }

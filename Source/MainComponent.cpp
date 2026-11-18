@@ -323,8 +323,8 @@ void MainComponent::deleteMidiTrack(int track){
     if(!project.deleteMidiTrack(track))return;
     selectedTrack=std::clamp(selectedTrack>track?selectedTrack-1:selectedTrack,0,(int)project.tracks.size()-1);
     selectedClip=-1;noClipSelection=false;arrangement.selectedClips.clear();piano.clearSelection();
-    for(int ti=track;ti<maxTracks-1;++ti){arrangement.trackHeights[(size_t)ti]=arrangement.trackHeights[(size_t)ti+1];arrangement.volumeVisible[(size_t)ti]=arrangement.volumeVisible[(size_t)ti+1];arrangement.laneTarget[(size_t)ti]=arrangement.laneTarget[(size_t)ti+1];}
-    arrangement.trackHeights.back()=40;arrangement.volumeVisible.back()=false;arrangement.laneTarget.back()=0;
+    for(int ti=track;ti<maxTracks-1;++ti){arrangement.trackHeights[(size_t)ti]=arrangement.trackHeights[(size_t)ti+1];arrangement.volumeVisible[(size_t)ti]=arrangement.volumeVisible[(size_t)ti+1];arrangement.laneTarget[(size_t)ti]=arrangement.laneTarget[(size_t)ti+1];arrangement.laneRackSession[(size_t)ti]=arrangement.laneRackSession[(size_t)ti+1];}
+    arrangement.trackHeights.back()=40;arrangement.volumeVisible.back()=false;arrangement.laneTarget.back()=0;arrangement.laneRackSession.back()=0;
     // The tracks after it keep their loaded instruments, moved down one slot: no reload.
     soundBoxTrack=-1;cancelSampleImport();audio.removeTrackSlot(track);audio.publish(project);refreshControls();select(selectedTrack,selectedSection);changed();
     if(instrumentIsOpen()){instrumentPanel.rebuild();instrumentWindow->refresh();}
@@ -546,7 +546,8 @@ void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshCont
 // Only the window header (display legends, page title) and the status bar (project name and
 // length) are painted by the window itself.
 void MainComponent::repaintHeader(){repaint(0,0,getWidth(),toolbarBottom()+1);repaint(0,getHeight()-statusHeight,getWidth(),statusHeight);}
-void MainComponent::changed(bool schedule,int onlyTrack){audio.invalidateFrozenTempo(project.settings.bpm);audio.previewKey=project.settings.key;project.normalise();songLengthCache=-1;chordNameCacheReady=false;dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
+void MainComponent::changed(bool schedule,int onlyTrack){audio.invalidateFrozenTempo(project.settings.bpm);audio.previewKey=project.settings.key;project.normalise();
+    songLengthCache=-1;chordNameCacheReady=false;dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
 // Derived data asked for by paint() and the 20 Hz timer: recomputed only when the
 // harmony settings (chord names) or the form (length) change.
 const std::vector<std::string>& MainComponent::cachedChordNames(){
@@ -590,6 +591,10 @@ void MainComponent::select(int track,int section){++uiRevision;instrumentPanel.f
     if(page==Page::arrangement){const auto v=arrangementPort.getViewArea();const int y=arrangement.rowY(rowForTrack(selectedTrack));if(y<v.getY()+rulerHeight)arrangementPort.setViewPosition(v.getX(),std::max(0,y-rulerHeight));else if(y+arrangement.rowHeight(rowForTrack(selectedTrack))>v.getBottom())arrangementPort.setViewPosition(v.getX(),y+arrangement.rowHeight(rowForTrack(selectedTrack))-v.getHeight());}
     sampleBrowser.refreshTarget();if(instrumentIsOpen()&&(previousTrack!=selectedTrack||previousSection!=selectedSection)){instrumentPanel.rebuild();instrumentWindow->refresh();}arrangement.repaint();piano.repaint();}
 void MainComponent::refreshControls(){
+    for(size_t anchor=0;anchor<maxTracks;++anchor)if(arrangement.laneRackSession[anchor]){
+        const int rack=trackForSession(arrangement.laneRackSession[anchor]),index=arrangement.laneTarget[anchor]-ArrangementView::lanePlugin;
+        if(anchor>=project.tracks.size()||rack<maxTracks||index<0||index>=(int)effectTrack(rack).parameters.size()){arrangement.laneRackSession[anchor]=0;arrangement.laneTarget[anchor]=ArrangementView::laneVolume;}
+    }
     ++uiRevision;
     refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.

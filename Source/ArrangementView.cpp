@@ -295,8 +295,8 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
         if(e.x<v.getX()+headerWidth){owner.checkpoint();makeEnvelopeManual(ti);volume.enabled=!volume.enabled;owner.changed(false);return;}
         const int hit=pointAt(ti,e.position);
         if(e.mods.isPopupMenu()){
-            juce::PopupMenu menu;menu.addItem(1,tr(volume.enabled?"Bypass automation":"Enable automation"));menu.addItem(2,tr("Delete point"),hit>=0);menu.addItem(3,tr("Reset curve"),hit>=0);menu.addItem(4,tr("Clear automation"),!volume.points.empty());menu.addSeparator();menu.addItem(5,tr("Choose automation parameter"));menu.addItem(6,tr("Random automation for this lane"),laneTarget[(size_t)ti]!=laneMaster&&!owner.project.tracks[(size_t)ti].locked&&!volume.locked);menu.addItem(7,tr("Random automation for this track"),!owner.project.tracks[(size_t)ti].locked);menu.addItem(8,tr("Lock this lane"),true,volume.locked);menu.addItem(9,tr("Write automation when regenerating"),true,owner.project.settings.randomAutomation);
-            juce::Component::SafePointer<ArrangementView> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,ti,hit](int result){if(!safe||!result)return;auto& o=safe->owner;if(result==5){o.showAutomationPicker(ti);return;}o.checkpoint();if(result!=9)safe->makeEnvelopeManual(ti);if(result==7)for(auto& lane:o.project.tracks[(size_t)ti].parameters)if(!lane.curve.locked)lane.generatedTone=false;auto& a=safe->envelope(ti);if(result==6||result==7){const int target=safe->laneTarget[(size_t)ti];const int lane=result==7?-1:target==laneVolume?0:target==lanePan?1:2+(target-lanePlugin);randomiseAutomation(o.project,Scope::track,ti,0,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),lane);}else if(result==8)a.locked=!a.locked;else if(result==9)o.project.settings.randomAutomation=!o.project.settings.randomAutomation;if(result==1)a.enabled=!a.enabled;else if(result==2&&hit>=0&&hit<(int)a.points.size())a.points.erase(a.points.begin()+hit);else if(result==3&&hit>=0&&hit<(int)a.points.size())a.points[(size_t)hit].curve=0;else if(result==4){a.points.clear();a.enabled=false;}o.changed(false);});return;
+            juce::PopupMenu menu;menu.addItem(1,tr(volume.enabled?"Bypass automation":"Enable automation"));menu.addItem(2,tr("Delete point"),hit>=0);menu.addItem(3,tr("Reset curve"),hit>=0);menu.addItem(4,tr("Clear automation"),!volume.points.empty());menu.addSeparator();menu.addItem(5,tr("Choose automation parameter"));menu.addItem(6,tr("Random automation for this lane"),automationRack(ti)<maxTracks&&laneTarget[(size_t)ti]!=laneMaster&&!owner.project.tracks[(size_t)ti].locked&&!volume.locked);menu.addItem(7,tr("Random automation for this track"),automationRack(ti)<maxTracks&&!owner.project.tracks[(size_t)ti].locked);menu.addItem(8,tr("Lock this lane"),true,volume.locked);menu.addItem(9,tr("Write automation when regenerating"),true,owner.project.settings.randomAutomation);
+            juce::Component::SafePointer<ArrangementView> safe(this);menu.showMenuAsync(juce::PopupMenu::Options(),[safe,ti,hit](int result){if(!safe||!result)return;auto& o=safe->owner;if(result==5){o.showAutomationPicker(safe->automationRack(ti));return;}o.checkpoint();if(result!=9)safe->makeEnvelopeManual(ti);if(result==7)for(auto& lane:o.project.tracks[(size_t)ti].parameters)if(!lane.curve.locked)lane.generatedTone=false;auto& a=safe->envelope(ti);if((result==6||result==7)&&safe->automationRack(ti)<maxTracks){const int target=safe->laneTarget[(size_t)ti];const int lane=result==7?-1:target==laneVolume?0:target==lanePan?1:2+(target-lanePlugin);randomiseAutomation(o.project,Scope::track,ti,0,(std::uint32_t)juce::Random::getSystemRandom().nextInt(),lane);}else if(result==8)a.locked=!a.locked;else if(result==9)o.project.settings.randomAutomation=!o.project.settings.randomAutomation;if(result==1)a.enabled=!a.enabled;else if(result==2&&hit>=0&&hit<(int)a.points.size())a.points.erase(a.points.begin()+hit);else if(result==3&&hit>=0&&hit<(int)a.points.size())a.points[(size_t)hit].curve=0;else if(result==4){a.points.clear();a.enabled=false;}o.changed(false);});return;
         }
         if(hit<0&&!e.mods.isAltDown()&&volume.points.size()>=16384)return;
         owner.checkpoint();dragTrack=ti;dragPoint=hit;bending=e.mods.isAltDown();dragY=e.position.y;
@@ -319,41 +319,46 @@ void ArrangementView::mouseDown(const juce::MouseEvent& e){
     if(index>=0){clipTrack=ti;clipSource=index;clipTarget=ti;clipAnchorX=e.position.x;clipAnchorY=e.position.y;clipDropBeat=clipLiveBeat=owner.project.clipStart(ti,index);clipMoving=false;dragImages.clear();copyingClip=e.mods.isAltDown()||e.mods.isCommandDown();}grabKeyboardFocus();
 
 }
+int ArrangementView::automationRack(int anchor)const{
+    const auto session=laneRackSession[(size_t)anchor];
+    if(session){const int rack=owner.trackForSession(session);if(rack>=maxTracks)return rack;}
+    return anchor;
+}
 void ArrangementView::makeEnvelopeManual(int track){
-    auto& lanes=owner.project.tracks[(size_t)track].parameters;const int index=laneTarget[(size_t)track]-lanePlugin;
+    auto& lanes=owner.effectTrack(automationRack(track)).parameters;const int index=laneTarget[(size_t)track]-lanePlugin;
     if(index>=0&&index<(int)lanes.size())lanes[(size_t)index].generatedTone=false;
 }
 VolumeAutomation& ArrangementView::envelope(int track) const{
-    auto& t=owner.project.tracks[(size_t)track];const int target=laneTarget[(size_t)track];
+    auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return t.panAutomation;
     if(target==laneMaster)return owner.project.masterAutomation;
     if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size())return t.parameters[(size_t)(target-lanePlugin)].curve;
     return t.volume;
 }
-double ArrangementView::envelopeMax(int track) const{const int target=laneTarget[(size_t)track];return target==laneVolume||target==laneMaster||(target>=lanePlugin&&target-lanePlugin>=(int)owner.project.tracks[(size_t)track].parameters.size())?2.:1.;}
+double ArrangementView::envelopeMax(int track) const{const int target=laneTarget[(size_t)track];return target==laneVolume||target==laneMaster||(target>=lanePlugin&&target-lanePlugin>=(int)owner.effectTrack(automationRack(track)).parameters.size())?2.:1.;}
 double ArrangementView::envelopeDefault(int track) const{
-    const auto& t=owner.project.tracks[(size_t)track];const int target=laneTarget[(size_t)track];
+    const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return automationFromPan(t.pan);
     if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];
-        if(auto* plugin=lane.slot==0?owner.audio.plugin(track):lane.slot>0?owner.audio.effectPlugin(track,lane.slot):nullptr)if(lane.index>=0&&lane.index<plugin->getParameters().size())return plugin->getParameters()[lane.index]->getValue();
+        if(auto* plugin=lane.slot==0?owner.audio.plugin(automationRack(track)):lane.slot>0?owner.audio.effectPlugin(automationRack(track),lane.slot):nullptr)if(lane.index>=0&&lane.index<plugin->getParameters().size())return plugin->getParameters()[lane.index]->getValue();
         if(lane.slot==-1){if(t.instrument=="sample"){if(lane.index==4)return std::log(std::clamp(t.sampler.cutoff,20.,20000.)/20.)/std::log(1000.);if(lane.index==5)return t.sampler.resonance;}else{if(lane.index==0)return t.engine.tone;if(lane.index==1)return t.engine.reverb;if(lane.index==2)return t.engine.chorus;if(lane.index==3)return t.engine.pump;}}
         return .5;}
     return 1.;
 }
 juce::String ArrangementView::envelopeValueText(int track,double value)const{
-    const auto& t=owner.project.tracks[(size_t)track];const int target=laneTarget[(size_t)track];if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];if(lane.slot==-1&&lane.index==4){const double hz=20*std::pow(1000.,value);return hz>=1000?juce::String(hz/1000.,2)+" kHz":juce::String(hz,0)+" Hz";}if(lane.slot>=0)if(auto* plugin=lane.slot==0?owner.audio.plugin(track):owner.audio.effectPlugin(track,lane.slot))if(lane.index>=0&&lane.index<plugin->getParameters().size()){auto* p=plugin->getParameters()[lane.index];return p->getText((float)value,32)+" "+p->getLabel();}}
+    const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];if(lane.slot==-1&&lane.index==4){const double hz=20*std::pow(1000.,value);return hz>=1000?juce::String(hz/1000.,2)+" kHz":juce::String(hz,0)+" Hz";}if(lane.slot>=0)if(auto* plugin=lane.slot==0?owner.audio.plugin(automationRack(track)):owner.audio.effectPlugin(automationRack(track),lane.slot))if(lane.index>=0&&lane.index<plugin->getParameters().size()){auto* p=plugin->getParameters()[lane.index];return p->getText((float)value,32)+" "+p->getLabel();}}
     return juce::String(value*100,1)+"%";
 }
 juce::String ArrangementView::envelopeTitle(int track) const{
-    const auto& t=owner.project.tracks[(size_t)track];const int target=laneTarget[(size_t)track];
+    const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return tr("PAN AUTOMATION");
     if(target==laneMaster)return tr("MASTER VOLUME AUTOMATION");
-    if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];return (lane.slot<0?tr("Sound"):lane.slot==0?tr("Instrument"):t.effect(lane.slot)?utf(t.effect(lane.slot)->displayName()):tr("Missing effect"))+": "+juce::String::fromUTF8(lane.name.c_str());}
+    if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];return (automationRack(track)>=maxTracks?utf(t.name)+" / ":juce::String())+(lane.slot<0?tr("Sound"):lane.slot==0?tr("Instrument"):t.effect(lane.slot)?utf(t.effect(lane.slot)->displayName()):tr("Missing effect"))+": "+juce::String::fromUTF8(lane.name.c_str());}
     return tr("VOLUME AUTOMATION");
 }
 // The lane's target: volume, pan, the master volume, or a parameter of the track's instrument
 // or insert plugin (a new lane per parameter, at most maxParameterLanes per track).
-void ArrangementView::showLaneTargetMenu(int track){const int target=laneTarget[(size_t)track];const auto& lanes=owner.project.tracks[(size_t)track].parameters;owner.showAutomationPicker(track,target>=lanePlugin&&target-lanePlugin<(int)lanes.size()?lanes[(size_t)(target-lanePlugin)].slot:-2);}
+void ArrangementView::showLaneTargetMenu(int track){const int target=laneTarget[(size_t)track];const auto& lanes=owner.effectTrack(automationRack(track)).parameters;owner.showAutomationPicker(automationRack(track),target>=lanePlugin&&target-lanePlugin<(int)lanes.size()?lanes[(size_t)(target-lanePlugin)].slot:-2);}
 
 bool ArrangementView::emptyTrack(int ti) const {const auto& p=owner.project;if(!foldEmptyTracks||(ti>=0&&ti<maxTracks&&trackHeights[(size_t)ti]!=trackHeight)||ti<0||ti>=(int)p.tracks.size()||ti==owner.selectedTrack||volumeVisible[(size_t)ti])return false;
     for(const auto& c:p.tracks[(size_t)ti].clips)if(!c.notes.empty()||c.audioOffset>=0)return false;return true;}
@@ -513,6 +518,28 @@ bool ArrangementView::verifyAutomation(const juce::File& folder){
         laneTarget=targets;
     }
     mouseDown(click({(float)automationSlot.getCentreX(),(float)rulerHeight+16}));ok=!volumeVisible[(size_t)track]&&ok;
+    {
+        const auto targets=laneTarget;const auto bindings=laneRackSession;
+        owner.select(track,0);
+        for(int rack:{masterEffectTrack,returnEffectTrack,returnEffectTrack+1}){
+            ParameterAutomation lane;lane.slot=1;lane.index=0;lane.name="Rack QA";
+            owner.project.effectTarget(rack).parameters={lane};
+            owner.selectAutomation(rack,1,0,"Rack QA");owner.updateSizes();
+            const auto& current=owner.project.effectTarget(rack).parameters[0];
+            ok=automationRack(track)==rack && &envelope(track)==&current.curve&&envelopeTitle(track).contains("Rack QA")&&ok;
+            auto p=juce::Point<float>(headerWidth+48,volumeY(track,.75));mouseDown(click(p));mouseUp(click(p));
+            ok=owner.project.effectTarget(rack).parameters[0].curve.enabled&&std::abs(owner.project.effectTarget(rack).parameters[0].curve.valueAt(8)-.75)<.02&&ok;
+            owner.undo(false);ok=owner.project.effectTarget(rack).parameters[0].curve.isDefault()&&ok;
+            owner.undo(true);ok=owner.project.effectTarget(rack).parameters[0].curve.enabled&&ok;
+            mouseDown(click({(float)(owner.arrangementPort.getViewPositionX()+30),(float)(rowY(rowForTrack(track))+rowHeight(rowForTrack(track))+34)}));
+            ok=!owner.project.effectTarget(rack).parameters[0].curve.enabled&&ok;owner.undo(false);
+            ok=owner.project.effectTarget(rack).parameters[0].curve.enabled&&ok;
+        }
+        if(auto output=folder.getChildFile("rack-automation.png").createOutputStream()){juce::PNGImageFormat png;ok=png.writeImageToStream(owner.createComponentSnapshot(owner.getLocalBounds()),*output)&&ok;}
+        owner.project.returnEffects[1].parameters.clear();owner.refreshControls();
+        ok=laneRackSession[(size_t)track]==0&&laneTarget[(size_t)track]==laneVolume&&ok;
+        laneTarget=targets;laneRackSession=bindings;
+    }
     owner.project=saved;volumeVisible=visibility;pixelsPerBar=zoom;owner.changed();owner.undoStack.clear();owner.redoStack.clear();folder.getChildFile("volume-automation-ui.txt").replaceWithText(ok?"PASS hidden and bypassed default, lane button, add/move/curve, bypass, pan/master lanes and generated Tone ownership with Undo, hide, MIDI unchanged":"FAIL automation editing");return ok;
 }
 

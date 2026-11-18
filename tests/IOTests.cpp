@@ -23,6 +23,18 @@ int main(int argc,char** argv){try{
         auto malformed=fga::projectJson(p);(*(*malformed["tracks"].getArray())[0]["clips"].getArray())[0].getDynamicObject()->setProperty("loopPhase",4);check(fga::projectFromJson(malformed,loaded).failed(),"invalid loop phase rejected");
         for(int version=1;version<=4;++version){fga::Project legacy;legacy.normalise();auto old=fga::projectJson(legacy);old.getDynamicObject()->setProperty("version",version);check(fga::projectFromJson(old,loaded).wasOk()&&loaded.tracks[0].clips[0].audioOffset<0&&loaded.tracks[0].clips[0].loopPhase==0&&loaded.tracks[0].clips[0].feel[0]<0,"legacy project schemas retain default playback semantics");}
     }
+    {
+        auto p=fga::newProject(1);auto& c=p.tracks[0].clips[1];c.loopLength=4;c.loopSource={{0,.5,60,90,0,true},{2,1./32.,24,100,0,false,true}};
+        fga::rebuildClipLoop(c,p.clipLength(0,1));fga::Project back;
+        check(fga::projectFromJson(fga::projectJson(p),back).wasOk()&&back.tracks[0].clips[1].loopSource==c.loopSource,"loop source reverse and keyswitch ownership round-trip");
+        fga::rebuildClipLoop(back.tracks[0].clips[1],p.clipLength(0,1));check(back.tracks[0].clips[1].notes==c.notes,"loop rebuild after reload retains per-note flags");
+        fga::ParameterAutomation lane;lane.slot=1;lane.index=0;lane.name="Threshold";lane.parameterId="threshold";lane.curve.enabled=true;lane.curve.locked=true;lane.curve.points={{0,.2,.4},{8,.8,0}};
+        p.masterEffects.parameters={lane};p.enableReturnChains();p.returnEffects[0].parameters={lane};p.returnEffects[1].parameters={lane};
+        check(fga::projectFromJson(fga::projectJson(p),back).wasOk()&&back.masterEffects.parameters[0].curve==lane.curve&&back.returnEffects[0].parameters[0].curve==lane.curve&&back.returnEffects[1].parameters[0].parameterId==lane.parameterId,"master and both return automation persist with locks, curves and parameter IDs");
+        auto timed=back;check(timed.insertSection(0,{fga::Section::main,1,"Rack time edit"}),"insert section with rack automation");
+        check(timed.masterEffects.parameters[0].curve.points.back().beat==12&&timed.returnEffects[0].parameters[0].curve.points.back().beat==12&&timed.returnEffects[1].parameters[0].curve.points.back().beat==12,"rack automation follows inserted musical time");
+        auto bad=fga::projectJson(p);bad["rackAutomation"]["master"][0].getDynamicObject()->setProperty("slot",0);check(fga::projectFromJson(bad,back).failed(),"rack automation rejects instrument targets");
+    }
     {auto master=fga::newProject(1);fga::EffectSlot fx;fx.slot=2;fx.name="Master colour";fx.pluginName="Probe";fx.path="/Probe.vst3";fx.state="native-master-state";fx.bypassed=true;master.masterEffects.effects.push_back(fx);fga::Project loaded;auto json=fga::projectJson(master);
      check(fga::projectFromJson(json,loaded).wasOk()&&loaded.masterEffects.effects.size()==1&&loaded.masterEffects.effects[0].slot==2&&loaded.masterEffects.effects[0].state==fx.state&&loaded.masterEffects.effects[0].bypassed,"master effects, order, native state and bypass round-trip");
      auto* entries=json["masterEffects"].getArray();const auto duplicate=entries->getReference(0);entries->add(duplicate);check(fga::projectFromJson(json,loaded).failed(),"duplicate master effect slots are rejected");}

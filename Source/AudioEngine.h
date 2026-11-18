@@ -37,7 +37,7 @@ struct TrackMix {
     std::array<float,fgg::numLanes> laneVolume{};
     std::array<bool,fgg::numLanes> laneMute{};
 };
-struct FrozenAudio {juce::AudioBuffer<float> audio;double rate=44100,bpm=120;std::uint64_t session=0;};
+struct FrozenAudio {std::shared_ptr<const SampleAsset> asset;double rate=44100,bpm=120,gain=1;std::uint64_t session=0;};
 struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; bool returnChains=false; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
@@ -172,6 +172,7 @@ public:
     std::atomic<int> previewKey{0};LoudnessMeter loudness;
     void stopPreview();
     void freezeTrack(int,const juce::File&,double bpm,std::uint64_t session,double gain=1);
+    void freezeTrack(int,std::shared_ptr<const SampleAsset>,double bpm,std::uint64_t session,double gain=1);
     void unfreezeTrack(int);
     // A deleted handwritten track: the instruments (sample, plugin, effects) of the tracks after it
     // move down one slot as loaded, so nothing is reloaded; the freed last slot returns to internal.

@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.12
+
+- Fix Latin montuno interplay with both audible and muted piano; keep locked articulation data and distinguish generated keyswitches from musical low notes.
+- Preserve reverse and keyswitch ownership in loop sources across save/reload and timeline edits. Freeze retains its shared sample-memory reservation and decodes on the worker without duplicating PCM.
+- Automate insert parameters on return A/B and master through the existing timeline lane editor, with named rack targets, Undo/Redo and project persistence.
+- Effect chains show numbered insert order, serial connections and the current track/group/master/return signal path.
+
 ## 0.57.11
 
 - Lead hook: the song's motif picks where the lead starts and the first notes of every phrase, so the same idea returns from section to section while the take varies rhythm and answers. REGENERATE on a lead clip gives it a new idea.
