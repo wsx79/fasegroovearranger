@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.13
+
+- Progetti salvati prima della 0.57.12 con il profilo di articolazione Keyswitch: i loro keyswitch (Do0 / Do#0, un tick di 1/32, velocity 100) vengono riconosciuti al caricamento come scritti dal programma, così il passaggio successivo li sostituisce invece di aggiungerne un secondo gruppo. Un Do0 / Do#0 musicale con altra durata o velocity resta tuo.
+
 ## 0.57.12
 
 - Corretto l’interplay montuno Latin con piano attivo o muto; preservati i blocchi delle articolazioni e distinte le note musicali basse dai keyswitch generati.

@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.13
+
+- Projects saved before 0.57.12 with the Keyswitch articulation profile: their keyswitches (C0 / C#0, a 1/32 tick, velocity 100) are recognised on load as the program's own, so the next pass replaces them instead of adding a second set. A musical C0 / C#0 with another length or velocity stays yours.
+
 ## 0.57.12
 
 - Fix Latin montuno interplay with both audible and muted piano; keep locked articulation data and distinguish generated keyswitches from musical low notes.

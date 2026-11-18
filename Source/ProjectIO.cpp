@@ -331,6 +331,11 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
             if(auto r=readNoteFlags(b,"reverseLoopNotes",c.loopSource,false);r.failed())return r;
             if(auto r=readNoteFlags(b,"articulationKeys",c.notes,true);r.failed())return r;
             if(auto r=readNoteFlags(b,"articulationLoopKeys",c.loopSource,true);r.failed())return r;
+            // Before 0.57.12 the keyswitches the Keyswitch profile wrote carried no flag. A Keyswitch track whose clip
+            // has no flags is such a file: its own keys are the notes with their exact signature (C0 / C#0, a 1/32 tick,
+            // velocity 100), so a new pass replaces them instead of stacking a second set.
+            if(t.articulation==2&&!b.hasProperty("articulationKeys")&&!b.hasProperty("articulationLoopKeys"))
+                for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes)if((n.pitch==24||n.pitch==25)&&n.velocity==100&&std::abs(n.length-1./32.)<1e-6)n.articulationKey=true;
             t.clips.push_back(std::move(c));
         }p.tracks.push_back(std::move(t));
     }

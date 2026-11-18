@@ -33,6 +33,17 @@ int main(int argc,char** argv){try{
         check(fga::projectFromJson(fga::projectJson(p),back).wasOk()&&back.masterEffects.parameters[0].curve==lane.curve&&back.returnEffects[0].parameters[0].curve==lane.curve&&back.returnEffects[1].parameters[0].parameterId==lane.parameterId,"master and both return automation persist with locks, curves and parameter IDs");
         auto timed=back;check(timed.insertSection(0,{fga::Section::main,1,"Rack time edit"}),"insert section with rack automation");
         check(timed.masterEffects.parameters[0].curve.points.back().beat==12&&timed.returnEffects[0].parameters[0].curve.points.back().beat==12&&timed.returnEffects[1].parameters[0].curve.points.back().beat==12,"rack automation follows inserted musical time");
+        {   // A pre-0.57.12 file: Keyswitch-profile keys saved without ownership flags are recognised by their exact
+            // signature on load, so the next pass replaces them; a musical C0 played softer stays the musician's.
+            auto old=fga::newProject(1);auto& t=old.tracks[0];t.instrument="plugin";t.articulation=2;
+            old.tracks[0].clips[1].notes={{.97,1./32.,24,100,0,false,true},{1,.2,60,90,0},{3,.5,24,70,0}};
+            auto json=fga::projectJson(old);json["tracks"][0]["clips"][1].getDynamicObject()->removeProperty("articulationKeys");
+            fga::Project loaded;check(fga::projectFromJson(json,loaded).wasOk(),"legacy keyswitch project loads");
+            const auto& n=loaded.tracks[0].clips[1].notes;
+            check(n.size()==3&&n[0].articulationKey&&!n[1].articulationKey&&!n[2].articulationKey,"legacy keyswitches regain ownership; a musical C0 does not");
+            fga::applyArticulation(loaded,0,1);int keys=0;for(const auto& x:loaded.tracks[0].clips[1].notes)keys+=x.articulationKey;
+            check(keys==2,"a pass after loading a legacy file replaces its keyswitches instead of doubling them");
+        }
         auto bad=fga::projectJson(p);bad["rackAutomation"]["master"][0].getDynamicObject()->setProperty("slot",0);check(fga::projectFromJson(bad,back).failed(),"rack automation rejects instrument targets");
     }
     {auto master=fga::newProject(1);fga::EffectSlot fx;fx.slot=2;fx.name="Master colour";fx.pluginName="Probe";fx.path="/Probe.vst3";fx.state="native-master-state";fx.bypassed=true;master.masterEffects.effects.push_back(fx);fga::Project loaded;auto json=fga::projectJson(master);
