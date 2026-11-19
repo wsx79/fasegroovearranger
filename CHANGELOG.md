@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.14
+
+- Latin House: a new project starts on a Latin progression with a real tumbao bass (fifth on the and of two, root on four tied over the bar line, never on the one; four figures chosen by the take). Before, only a seeded GENERATE reached the Latin tables and a new project played the Afro bass under the montuno.
+- Latin guitar plays its own two-bar montuno (three figures) on the chords the engine voiced, instead of the Afro guitar cells.
+- Clave: Latin House plays the son clave 3-2 or 2-3; Afro House no longer plays the rim figure labelled "3:2 son clave", which was not a clave.
+- Afro House: tempo range 120–124 BPM; a drier bass (no pumping octaves, no added pickups); the piano no longer always opens on the tresillo (four heads, the tresillo is one of them).
+
 ## 0.57.13
 
 - Projects saved before 0.57.12 with the Keyswitch articulation profile: their keyswitches (C0 / C#0, a 1/32 tick, velocity 100) are recognised on load as the program's own, so the next pass replaces them instead of adding a second set. A musical C0 / C#0 with another length or velocity stays yours.

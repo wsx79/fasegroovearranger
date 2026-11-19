@@ -499,7 +499,8 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
 
     // ---- At most one sparse percussion line, maybe a low one ----
     if (genre == latin && r.chance (0.6f))
-        setLoop (Lane::rim, "x... ..x. .... x... .... x... x... ....");   // the son clave (Latin, not Afro)
+        setLoop (Lane::rim, ((seed >> 3) & 1u) ? "x... ..x. .... x... .... x... x... ...."    // son clave 3-2 (Latin, not Afro)
+                                               : ".... x... x... .... x... ..x. .... x...");  // son clave 2-3: same clave, the two side first
     else if (genre == afro && r.chance (0.55f))
         setLoop (Lane::rim, r.pick ({ "..x. .x.. x..x .x.. ..x. .x.. x... .x.x", "...x ..x. .... x... ...x ..x. ..x. ....",
                                       "..x. .... x... .x.. ..x. .... x..x ...." }));   // the modern afro house rim figure
@@ -524,8 +525,7 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
     {
         // Afro house (Black Coffee, Keinemusik, Caiiro): a warm four-on-the-floor kick, the open hat
         // on every offbeat, a swung 16th shaker between kick and backbeat, congas/bongos pushing
-        // just before beats 3 and 4, short tuned toms filling the gaps, sometimes a 3:2 clave on
-        // the rim. The backbeat is a clap layered with a snare, or a clap and a dry rimshot taking
+        // just before beats 3 and 4, short tuned toms filling the gaps. The backbeat is a clap layered with a snare, or a clap and a dry rimshot taking
         // turns; never a 12/8 bell.
         setBar (Lane::openHat, accent.chance (0.8f) ? "..x. ..x. ..x. ..x." : "..x. ..g. ..x. ..x.");
         for (int i = 2; i < randomBeatLength; i += 4)
@@ -538,8 +538,9 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
             setLoop (Lane::tom, accent.pick ({ ".... ..x. .... .x.. .... ..x. ..x. x...", "...x .... ..x. .... ...x .... .x.. ..x.",
                                                 ".... .... ..x. ...x .... .... ..x. x.x." }));
         p[Lane::rim].assign ((size_t) randomBeatLength, '.');
-        if (accent.chance (0.3f))
-            setLoop (Lane::rim, "x..x ..x. .... x... ..x. x... .... ....");   // 3:2 son clave, on the rim
+        // (no clave here: the figure once labelled "3:2 son clave" had four strokes in its first bar, so it
+        // was not one, and the clave belongs to Latin House; Afro keeps its rim on the sparse line above)
+        (void) accent.chance (0.3f);   // the draw stays, so the layers after it are unchanged
 
         p[Lane::clap].assign ((size_t) randomBeatLength, '.');
         p[Lane::snare].assign ((size_t) randomBeatLength, '.');

@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.14
+
+- Latin House: un progetto nuovo parte da una progressione Latin con un vero basso tumbao (quinta sul levare del due, fondamentale sul quattro legata oltre la stanghetta, mai sull’uno; quattro figure scelte dalla take). Prima solo un GENERATE con seed raggiungeva le tabelle Latin e un progetto nuovo suonava il basso Afro sotto il montuno.
+- La chitarra Latin suona un montuno proprio di due battute (tre figure) sugli accordi del motore, invece delle celle della chitarra Afro.
+- Clave: Latin House suona la son clave 3-2 o 2-3; Afro House non suona più la figura di rim chiamata “3:2 son clave”, che non era una clave.
+- Afro House: tempo tra 120 e 124 BPM; basso più asciutto (niente ottave pompate né anticipi aggiunti); il piano non parte più sempre dal tresillo (quattro teste, il tresillo è una di queste).
+
 ## 0.57.13
 
 - Progetti salvati prima della 0.57.12 con il profilo di articolazione Keyswitch: i loro keyswitch (Do0 / Do#0, un tick di 1/32, velocity 100) vengono riconosciuti al caricamento come scritti dal programma, così il passaggio successivo li sostituisce invece di aggiungerne un secondo gruppo. Un Do0 / Do#0 musicale con altra durata o velocity resta tuo.

@@ -56,6 +56,12 @@ sgk::GrooveSettings pianoSettings(const Settings& s, std::uint32_t seed) {
             "......x=....x=........x=....x=..","x.....x.....x...x.....x.....x...","x.....x...x.......x...x.....x...","......x=...x..x.......x=...x..x."};
         pattern.rightHand=right[mix(seed+41U)%6];pattern.leftHand=left[mix(seed+59U)%4];
     }
+    if(s.genre==afroHouseGenre){
+        // The Afro piano no longer always opens on the tresillo: the take picks the head of each bar
+        // (the tresillo stays one of four), the engine's tail answers it.
+        static const char* const heads[]{"x..x..x.","..x..x.x","x...x.x.",".x..x..x"};const char* head=heads[mix(seed+83U)%4];
+        auto& rh=pattern.rightHand;for(size_t bar=0;bar+8<=rh.size();bar+=16)for(size_t k=0;k<8;++k)rh[bar+k]=head[k];
+    }
     if(s.density<.35) pattern=sgk::applyIntention(pattern,sgk::Intention::minimal,seed);
     if(s.density>.72) pattern=sgk::addGhostNotes(pattern,seed);
     sgk::repairHolds(pattern.rightHand);sgk::repairHolds(pattern.leftHand);
@@ -176,8 +182,14 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     // Develop the selected bass figure without replacing its groove or its strong anchors.
     // Root/fifth/octave substitutions stay inside the current chord; pickups never
     // overwrite held notes. A take loops coherently through the song's sections.
+    // Latin House: a real tumbao under the montuno, the bass anticipating the harmony (the fifth on the and of two,
+    // the root on four, tied over the bar line, never on the one) instead of the Afro line it used to borrow.
+    // Four tumbao figures (the take or the seed picks one), all anticipating: pickups and octave answers vary.
+    static const std::string tumbaos[]{"......5=====R===......O=====R=.A","...R..5=....R===...R..5=...5R=.A","......5===.5R===......5===.OR===","..R...5=====R===..O...5=====R=.A"};
+    const std::string& tumbao=tumbaos[mix((take?take:e.riffSeed?e.riffSeed:seed)^0x7b3c2a19U)%4];
+    if(track==1&&s.genre==latinHouseGenre&&sgk::isBassLine(ps.bass)&&!(take||e.riffSeed))ps.bassLineOverride=tumbao;
     if(track==1&&(take||e.riffSeed)&&sgk::isBassLine(ps.bass)){
-        auto line=sgk::bassLines()[(size_t)sgk::bassLineIndex((int)ps.bass)].line;
+        auto line=s.genre==latinHouseGenre?tumbao:sgk::bassLines()[(size_t)sgk::bassLineIndex((int)ps.bass)].line;
         const auto source=line;
         for(size_t i=1;i<line.size();++i){
             const auto choice=mix((e.riffSeed?e.riffSeed:take)+(std::uint32_t)i*7919U);
@@ -188,7 +200,7 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
                 static constexpr char tones[]{'R','O','5'};
                 line[i]=tones[choice%3];
                 if(i%4!=0&&source[(i+1)%source.size()]!='='&&choice%3==0)line[i]='.';
-            }else if(source[i]=='.'&&source[i-1]!='='&&source[(i+1)%source.size()]!='='&&choice%4==0)line[i]=(choice&8)?'R':'5';
+            }else if(source[i]=='.'&&s.genre!=afroHouseGenre&&source[i-1]!='='&&source[(i+1)%source.size()]!='='&&choice%4==0)line[i]=(choice&8)?'R':'5';   // Afro stays dry: no extra pickups
         }
         ps.bassLineOverride=std::move(line);
     }
@@ -306,7 +318,7 @@ const GenreProfile& genreProfile(int genre) {
         {122,128,125,32,false}, // Jackin' House: 122–128, centre 125, shuffle not speed garage
         {124,130,126,32,true},  // Jackin' Piano
         {130,135,132,32,true},  // Garage / UK
-        {116,124,121,32,false}, // Afro House: percussion-led, swung, deep lift
+        {120,124,121,32,false}, // Afro House: percussion-led, swung, deep lift (120-124)
         {112,124,120,32,false}, // Funky / Disco
         {120,130,126,32,true},  // 90s Piano
         { 92,112, 98,16,false}, // Neo Soul / Broken: warm-up/broken-groove policy
@@ -696,6 +708,9 @@ void applyGenre(Project& p,int genre) {
     static const int bassLines[]{8,23,16,11,22,13,18,15,20,12,10,16,12};
     static_assert(std::size(bassLines)==(int)Genre::danceStabs+1);
     p.settings.bassMode=sgk::bassModeForLine(bassLines[engineGenre(p.settings.genre)]);
+    // Latin shares the Afro rows of these tables: a new Latin project starts on a Latin progression and on a
+    // bass line the tumbao is written over (before, only a seeded GENERATE reached the Latin tables).
+    if(p.settings.genre==latinHouseGenre){chooseProgression(p,3);p.settings.bassMode=sgk::bassModeForLine(8);}
     applyGenreSound(p);
     if(isElectronicGenre(p.settings.genre)){
         applyElectronicHarmony(p.settings,p.settings.seed);applyElectronicFeel(p.settings);
@@ -1241,7 +1256,7 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;
     static const std::vector<int> bassLines[]{
         {8,12,13}, {10,11,23}, {7,16,17}, {10,11,23}, {13,14,22},
-        {8,12,13,14}, {9,18,19}, {8,12,15}, {0,1,2,3,20,21,22},
+        {8,12,13,14}, {9,18,19}, {8,15,16}, {0,1,2,3,20,21,22},   /* Afro: offbeat, its own groove, the deep sub hold (no pumping octaves) */
         {8,12,13}, {4,5,10,23}, {7,16,17}, {8,12,13,14}
     };
     static const std::vector<int> latinBass{2,9,12};   // root/fifth/octave anticipations, no boogie or gospel walks
@@ -1845,6 +1860,21 @@ static void pianoTake(Clip& c,const Project& p,double beats){
         i=j;}
     c.notes=out;tidyNotes(c,beats);
 }
+// Latin House guitar plays a montuno of its own instead of the Afro guitar cells the engine shares:
+// a two-bar syncopated figure (the take picks one of three), on the chords the engine voiced.
+static void latinMontuno(Clip& c,double beats){
+    if(c.notes.size()<3)return;
+    static const char* const cells[]{"x.x..x.x.x..x.x...x..x.x.x.x.x.x","..x.x..x..x.x..x..x.x..x.x..x.x.","x..x.x.x..x..x.x.x..x.x.x..x.x.x"};
+    const char* cell=cells[mix(c.motifSeed^0x6d0e7a1fU)%3];
+    std::sort(c.notes.begin(),c.notes.end(),byStartPitch);
+    std::vector<std::vector<Note>> chords;for(const auto& n:c.notes){if(chords.empty()||n.start-chords.back().front().start>=1./24.)chords.push_back({});chords.back().push_back(n);}
+    std::vector<Note> out;
+    for(double bar=0;bar<beats-1e-9;bar+=8)for(int step=0;step<32;++step){if(cell[step]!='x')continue;const double at=bar+step*.25;if(at>=beats-1./32.)break;
+        const std::vector<Note>* chord=nullptr;for(const auto& g:chords)if(g.front().start<=at+1e-6)chord=&g;else break;
+        if(!chord){continue;}const double end=chord->front().start+chord->front().length;if(at-end>1.)continue;   // the engine rests here: so does the montuno
+        for(const auto& n:*chord){Note m=n;m.start=at;m.length=std::min(.22,beats-at);m.velocity=std::clamp(n.velocity+(step%4==0?6:step%2?-8:0),1,127);out.push_back(m);}}
+    if(out.size()>=3){c.notes=out;tidyNotes(c,beats);}
+}
 static void pianoMotif(Clip& c,const Project& p,double length){
     if(isElectronicGenre(p.settings.genre)||c.notes.size()<8)return;
     {   // decisions read the written grid (1/32), so a feel that moves a chord a few ms never changes them
@@ -2144,7 +2174,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(ti==0||ti==2||ti==3)fitSustainedTensions(clip,p,guide,p.clipStart(ti,(int)si),period);
             if(guide>=0&&guide<(int)p.sections.size()&&p.sections[(size_t)guide].energy>=0){const double v=energyVelocity(p.sections[(size_t)guide].energy);for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*v),1,127);}
             if(ti==1&&e.pattern<0&&!isElectronicGenre(s.genre))bassApproach(clip,p,p.clipStart(ti,(int)si),beats);
-            if(ti==0&&e.pattern<0){pianoMotif(clip,p,beats);pianoTake(clip,p,beats);}   // a chosen pattern plays as written
+            if(ti==0&&e.pattern<0){pianoMotif(clip,p,beats);pianoTake(clip,p,beats);}
+            if(ti==3&&e.pattern<0&&s.genre==latinHouseGenre&&!p.settings.guitarLead)latinMontuno(clip,beats);   // a chosen pattern plays as written
             if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}
             if((ti!=0&&ti!=2&&ti!=3&&ti!=leadTrack)||period>0)livePerformance(clip,p,ti,beats);   // band loops: the passes leave them as written
