@@ -67,7 +67,7 @@ std::unique_ptr<MixState> mixState(const Project& p){
     for(size_t ti=0;ti<(size_t)engineTrackCount&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
         x.group=t.group;x.sends=t.sends;
         for(const auto& fx:t.effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&x.effectCount<maxTrackEffects){x.effectOrder[(size_t)x.effectCount++]=fx.slot;x.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}
-        x.session=t.sessionId;x.eq=t.eq;x.sampler=t.sampler;x.sampleRoot=t.sampleRoot;
+        x.session=t.sessionId;x.sub=t.part==1;x.eq=t.eq;x.sampler=t.sampler;x.sampleRoot=t.sampleRoot;
         x.volume=t.volume;x.panAutomation=t.panAutomation;x.parameters=t.parameters;x.gain=t.gain;x.pan=t.pan;x.mute=t.mute;x.solo=t.solo;x.sound=t.sound;x.tone=t.engine.tone;x.reverb=t.engine.reverb;x.chorus=t.engine.chorus;
         x.pump=t.engine.pump;x.pumpRelease=t.engine.pumpRelease;x.pumpRate=std::clamp(t.engine.pumpRate,0,3);x.pumpSource=std::clamp(t.engine.pumpSource,0,1);
         x.drumNote=isDrumTrack((int)ti)?(t.engine.midiNote>=0?t.engine.midiNote:fgd::defaultNote((int)ti-4)):60;
@@ -479,7 +479,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
-            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);if(ti==1)i.bassLowPass.process(context);i.chorus.process(context);
+            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);i.chorus.process(context);
             i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
                 // Kick source: the last kick at or before the block start is found once, then each
@@ -498,6 +498,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
             if(i.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
 
+        if(i.controls&&i.controls->sub&&block.getNumChannels()>1)for(int s=0;s<count;++s){const float mid=.5f*(block.getSample(0,s)+block.getSample(1,s));block.setSample(0,s,mid);block.setSample(1,s,mid);}   // a sub-bass part leaves its chain mono
         captureSpectrum((int)ti,block,count,false);
         if(!dry)i.strip.process(block,count);
         captureSpectrum((int)ti,block,count,true);

@@ -33,6 +33,10 @@ int main(int argc,char** argv){try{
         check(fga::projectFromJson(fga::projectJson(p),back).wasOk()&&back.masterEffects.parameters[0].curve==lane.curve&&back.returnEffects[0].parameters[0].curve==lane.curve&&back.returnEffects[1].parameters[0].parameterId==lane.parameterId,"master and both return automation persist with locks, curves and parameter IDs");
         auto timed=back;check(timed.insertSection(0,{fga::Section::main,1,"Rack time edit"}),"insert section with rack automation");
         check(timed.masterEffects.parameters[0].curve.points.back().beat==12&&timed.returnEffects[0].parameters[0].curve.points.back().beat==12&&timed.returnEffects[1].parameters[0].curve.points.back().beat==12,"rack automation follows inserted musical time");
+        {   // An added sub-bass part survives save and load; a file without it has none.
+            auto v=fga::newProject(1);const int sub=v.addPartTrack(1);fga::Project back;
+            check(sub>=0&&fga::projectFromJson(fga::projectJson(v),back).wasOk()&&back.tracks[(size_t)sub].part==1&&back.tracks[(size_t)sub].clips==v.tracks[(size_t)sub].clips,"a sub-bass part round-trips with its notes");
+        }
         {   // VOCALS PRESENT round-trips; a file without it (older projects) loads it off.
             auto v=fga::newProject(1);v.settings.vocalsPresent=true;fga::Project back;
             check(fga::projectFromJson(fga::projectJson(v),back).wasOk()&&back.settings.vocalsPresent,"VOCALS PRESENT is saved and restored");

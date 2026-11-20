@@ -212,7 +212,7 @@ juce::var projectJson(const Project& p){
             // Old readers keep a bypassed curve silent; new readers also retain it.
             set(a,t.eq.enabled?"eq":"eqBypassed",q);
         }if(!t.sampler.isDefault())set(a,"sampler",samplerJson(t.sampler));if(!t.sampleHash.empty())set(a,"sampleHash",t.sampleHash);if(t.group>=0)set(a,"group",t.group);if(t.sends[0]!=0||t.sends[1]!=0){juce::Array<juce::var> sends;for(auto v:t.sends)sends.add(v);set(a,"sends",sends);}
-        if(t.vocalChops)set(a,"vocalChops",true);if(t.articulation>0)set(a,"articulation",t.articulation);set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
+        if(t.vocalChops)set(a,"vocalChops",true);if(t.part>0)set(a,"part",t.part);if(t.articulation>0)set(a,"articulation",t.articulation);set(a,"engine",engineJson(t.engine));if(t.freeTimeline)set(a,"freeTimeline",true);
         set(a,"volumeAutomation",envelopeJson(t.volume));
         // Pan and plugin automation are written only when used: older projects save as before.
         if(!t.panAutomation.isDefault())set(a,"panAutomation",envelopeJson(t.panAutomation));
@@ -277,7 +277,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     size_t noteCount=0;
     for(const auto& a:*tracks){if(!a.isObject())return juce::Result::fail("Traccia non valida.");Track t;t.kind=(int)p.tracks.size();if(migrateSlots){const double id=num(a,"kind",t.kind);if(id<0||id>=maxTracks||std::floor(id)!=id||usedSlots[(size_t)(int)id])return juce::Result::fail("Invalid or duplicate legacy track slot.");t.kind=(int)id;usedSlots[(size_t)t.kind]=true;}t.name=str(a,"name","Track");t.gain=num(a,"gain",.75);t.pan=num(a,"pan",0);t.mute=(bool)a["mute"];t.solo=(bool)a["solo"];t.locked=(bool)a["locked"];t.sound=(int)num(a,"sound",0);t.sampleRoot=(int)num(a,"sampleRoot",60);
         if(auto r=readSampler(a["sampler"],t.sampler);r.failed())return r;t.sampleHash=str(a,"sampleHash");t.group=(int)num(a,"group",-1);if(a.hasProperty("sends")){auto* sends=a["sends"].getArray();if(!sends||sends->size()!=2)return juce::Result::fail("Invalid send routing.");for(int i=0;i<2;++i)t.sends[(size_t)i]=(double)(*sends)[i];}
-        t.vocalChops=(bool)a.getProperty("vocalChops",false);t.articulation=std::clamp((int)num(a,"articulation",0),0,3);readEngine(a["engine"],t.engine);
+        t.vocalChops=(bool)a.getProperty("vocalChops",false);t.part=std::clamp((int)num(a,"part",0),0,2);t.articulation=std::clamp((int)num(a,"articulation",0),0,3);readEngine(a["engine"],t.engine);
         // Drum patterns were appended (Afro and Latin House): the random and user sentinels follow
         // the factory count, so a project saved with fewer patterns keeps its random/own beat.
         if(isDrumTrack(t.kind)){const int saved=(int)num(o,"drumPatternCount",70),now=(int)fgd::drumPatterns().size();if(saved>0&&saved!=now&&t.engine.pattern>=saved&&t.engine.pattern<=saved+1)t.engine.pattern+=now-saved;}

@@ -262,6 +262,7 @@ public:
     void showTrackMenu(int);
     void showAddTrackMenu();
     void addMidiTrack(bool vocal=false);
+    void addPartTrack(int part);   // SUB BASS (1) or COUNTER MELODY (2): an added track the arranger writes
     bool verifySampleImport(const juce::File&);
     void deleteMidiTrack(int);
     void showAddSectionMenu();

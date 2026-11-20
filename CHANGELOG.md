@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.16
+
+- SUB BASS and COUNTER MELODY in the + track menu: added parts the arranger writes from the band and rewrites with every new bass, piano or lead.
+  - Sub bass: the chord root under the bass between D1 and C#2, held while the bass plays and restruck only on a new root; mono and low-passed below 100 Hz; silent in intros, outros and breaks and before a drop's stop.
+  - Counter melody: two-to-four-note answers in the lead's gaps, on chord tones a fifth below the lead, stepping down to a resting tone; never with a lead note, never a semitone from a held piano note; with VOCALS PRESENT it answers only where the singer rests.
+
 ## 0.57.15
 
 - VOCALS PRESENT (beside GUITAR LEADS, saved with the project, off for older projects): the arrangement leaves room for a lead singer. In verses the lead and a solo guitar answer in the second half of each four-bar phrase, keys, strings and guitar stay below C6 and a little softer; in choruses the lead keeps its strong beats; in breaks it answers only. Intros, outros, kick, bass and drums stay as they are. No voice is generated.

@@ -331,13 +331,18 @@ void MainComponent::deleteMidiTrack(int track){
 }
 void MainComponent::showAddTrackMenu(){
     if(editingRestricted()||loadingPlugin||project.tracks.size()>=maxTracks)return;
-    juce::PopupMenu menu;menu.addItem(1,tr("Add MIDI track"));menu.addItem(2,tr("VOCAL CHOPS"));
-    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addTrackButton),[safe](int id){if(!safe||(id!=1&&id!=2))return;safe->addMidiTrack(id==2);});
+    juce::PopupMenu menu;menu.addItem(1,tr("Add MIDI track"));menu.addItem(2,tr("VOCAL CHOPS"));menu.addItem(3,tr("SUB BASS"));menu.addItem(4,tr("COUNTER MELODY"));
+    juce::Component::SafePointer<MainComponent> safe(this);menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&addTrackButton),[safe](int id){if(!safe||id<1||id>4)return;if(id<=2)safe->addMidiTrack(id==2);else safe->addPartTrack(id-2);});
 }
 void MainComponent::addMidiTrack(bool vocal){
     if(editingRestricted()||loadingPlugin||project.tracks.size()>=maxTracks)return;
     instrumentPanel.flushRender();checkpoint();const int track=vocal?project.addVocalChopsTrack():project.addMidiTrack();if(track<0)return;
     select(track,0);changed();showEditor();if(vocal)message(tr("Load a voice sample, then shape its slices in Studio. REGENERATE writes another sparse vocal phrase."));
+}
+void MainComponent::addPartTrack(int part){
+    if(editingRestricted()||loadingPlugin||project.tracks.size()>=maxTracks)return;
+    instrumentPanel.flushRender();checkpoint();const int track=project.addPartTrack(part);if(track<0)return;
+    select(track,0);changed();message(tr(part==1?"Sub bass: the chord root under the bass, mono below 100 Hz. It follows every new bass or harmony.":"Counter melody: short answers in the lead's gaps, a fifth below. It follows every new lead."));
 }
 juce::String MainComponent::effectPath(int track,int slot,juce::Colour& colour)const{
     const juce::String arrow=juce::String::fromUTF8(" \xe2\x86\x92 ");juce::String where;

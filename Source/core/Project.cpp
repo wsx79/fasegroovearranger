@@ -455,7 +455,7 @@ void Project::normalise() {
     if(tracks.size()>maxTracks) tracks.resize(maxTracks);
     while(tracks.size()<trackCount) { Track t; t.kind=(int)tracks.size(); t.name=t.kind==leadTrack?"Lead":t.kind<4?std::array<const char*,4>{"Piano","Bass","Strings","Guitar"}[(size_t)t.kind]:fgd::laneName(t.kind-4); if(t.kind==leadTrack){t.gain=.22;t.engine.density=.42;t.engine.roomForBand=false;t.engine.fillEvery=8;} tracks.push_back(t); }
     for(size_t i=0;i<tracks.size();++i) {
-        auto& t=tracks[i]; t.kind=(int)i; if(!isManualTrack(t.kind))t.vocalChops=false; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
+        auto& t=tracks[i]; t.kind=(int)i; if(!isManualTrack(t.kind)){t.vocalChops=false;t.part=0;}if(t.vocalChops)t.part=0; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.sampler.normalise();t.group=std::clamp(t.group,-1,1);for(auto& send:t.sends)send=finite(send,0,0,1);if(t.sampleHash.size()>64)t.sampleHash.clear();
         t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
         std::array<bool,maxTrackEffects> usedEffects{};
@@ -2009,6 +2009,60 @@ static void vocalSpace(Project& p,const std::function<bool(int,int)>& fresh){
             if(melody&&out.size()<2)continue;   // never empty a part completely
             c.notes=std::move(out);tidyNotes(c,p.clipLength(ti,(int)ci));}}
 }
+// Added band parts, written from the band the arranger just generated.
+// SUB BASS: the root of the chord under the bass, one octave band (D1-C#2, 37-69 Hz), held while
+// the bass plays and restruck only where the bass moves to another root, so the low end has one
+// controlled fundamental instead of a doubled line; mono and low-passed in the engine. Silent in
+// intros, outros and breaks, and on the beat before a drop's stop.
+// COUNTER MELODY: short answers (two to four notes) in the gaps the lead leaves, on chord tones a
+// fifth below the lead's register, stepping down to a resting tone; never sounding with a lead note,
+// never a semitone from a held piano note. With VOCALS PRESENT it answers only where the singer rests.
+static void generateParts(Project& p,Scope scope,int track,int section,int lastClip=-1){
+    for(int ti=trackCount;ti<(int)p.tracks.size();++ti){auto& t=p.tracks[(size_t)ti];if(t.part<=0||t.locked||((scope==Scope::track||scope==Scope::clip)&&ti!=track))continue;
+        struct Span{double from,to;int pitch;};
+        auto spans=[&](int src){std::vector<Span> out;if(src>=(int)p.tracks.size())return out;const auto& s=p.tracks[(size_t)src];if(s.mute)return out;for(size_t ci=0;ci<s.clips.size();++ci){const double at=p.clipStart(src,(int)ci);for(const auto& n:s.clips[ci].notes)out.push_back({at+n.start,at+n.start+n.length,n.pitch});}
+            std::sort(out.begin(),out.end(),[](const Span& a,const Span& b){return a.from<b.from;});return out;};
+        const auto bass=spans(1),lead=spans(leadTrack),piano=spans(0);
+        for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];
+            if(c.locked||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&ci!=section))continue;
+            if(c.seed<=1)c.seed=mix(p.settings.seed+(std::uint32_t)ti*131U+(std::uint32_t)ci*977U);
+            const double at=p.clipStart(ti,ci),length=p.clipLength(ti,ci);const int si=std::clamp(p.sectionAtBeat(at+.01),0,(int)p.sections.size()-1);const auto type=p.sections[(size_t)si].type;
+            const auto harmony=activeHarmony(p,si);c.notes.clear();c.loopSource.clear();c.loopLength=0;
+            if(t.part==1){
+                if(type==Section::intro||type==Section::outro||type==Section::breakdown)continue;
+                const double stop=si+1<(int)p.sections.size()&&p.sections[(size_t)si+1].type==Section::drop?p.sectionStart(si+1)-std::max(1,p.sections[(size_t)si].dropGap):at+length;
+                for(const auto& b:bass){if(b.to<=at||b.from>=std::min(at+length,stop))continue;const double from=std::max(b.from,at),to=std::min({b.to,at+length,stop});if(to-from<1./16.)continue;
+                    const auto chord=chordAtBeat(harmony,std::round(from*4)/4);int pitch=26+((chord.rootPc-26)%12+12)%12;   // D1..C#2
+                    if(!c.notes.empty()){auto& last=c.notes.back();if(last.pitch==pitch&&from-(at+last.start+last.length)<.5){last.length=to-at-last.start;continue;}}   // same root: hold, do not restrike
+                    c.notes.push_back({from-at,to-from,pitch,100,0});}
+            }else{
+                const bool vocals=p.settings.vocalsPresent;const double sectionFrom=p.sectionStart(si);
+                int centre=72;{double sum=0;int k=0;for(const auto& l:lead)if(l.from>=at&&l.from<at+length){sum+=l.pitch;++k;}if(k)centre=(int)std::lround(sum/k);}
+                const int home=centre-7;std::uint32_t r=mix(c.seed^0x5c0ffee1U);auto dice=[&](){return nextDice(r);};
+                const double density=std::clamp(takeFeel(t.engine.density,c.feel[0],p.settings.density),0.,1.);
+                auto leadAt=[&](double a,double b){for(const auto& l:lead)if(l.from<b&&l.to>a)return true;return false;};
+                auto rubs=[&](int pitch,double a,double b){for(const auto& s:piano)if(s.from<b&&s.to>a&&std::abs(s.pitch-pitch)%12==1)return true;return false;};
+                for(double bar=0;bar+4<=length+1e-9;bar+=2){const double a=at+bar,b=a+8;   // one answer at most every two bars, inside a gap of the lead
+                    if(type==Section::intro||type==Section::outro)break;
+                    if(vocals&&type==Section::main&&((int)std::floor((a-sectionFrom)/4+1e-9))%4<2)continue;
+                    if(dice()>.35+.5*density)continue;
+                    double gap=-1;for(double s=a;s<std::min(b,at+length)-1.5;s+=.5)if(!leadAt(s,s+1.5)){gap=s;break;}if(gap<0)continue;
+                    const int notes=2+(int)(dice()*3);int pitch=home;
+                    for(int k=0;k<notes;++k){const double s=gap+.5+k*.5;double len=k==notes-1?.9:.4;if(k==notes-1&&leadAt(s,s+len))len=.4;if(s+len>at+length||leadAt(s,s+len))break;
+                        const auto chord=chordAtBeat(harmony,s);int best=pitch;int distance=99;
+                        for(int q=pitch-4;q<=pitch+4;++q){const int iv=((q-chord.rootPc)%12+12)%12;if((iv==0||iv==chord.third||iv==chord.fifth||(k>0&&iv==chord.seventh))&&!rubs(q,s,s+.45)&&std::abs(q-pitch)<distance&&(k==0||q<=pitch)){distance=std::abs(q-pitch);best=q;}}
+                        if(distance==99)break;pitch=best;c.notes.push_back({s-at,len,pitch,k==0?92:80,0});pitch-=2;}
+                }
+            }
+            tidyNotes(c,length);}}
+}
+int Project::addPartTrack(int kind){
+    if(kind<1||kind>2)return -1;const int index=addMidiTrack();if(index<0)return index;auto& t=tracks[(size_t)index];
+    t.part=kind;t.name=kind==1?"Sub bass":"Counter melody";t.freeTimeline=false;t.clips.assign(sections.size(),{});
+    if(kind==1){t.sound=3;t.engine.tone=0;t.gain=.5;}   // organ fundamental under a 100 Hz low-pass: a sine-like sub
+    else{t.sound=0;t.engine.tone=.45;t.gain=.38;t.engine.density=.5;}
+    generateParts(*this,Scope::track,index,0);return index;
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -2038,6 +2092,8 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);preDropRisers(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
      bandPasses(p,fresh,[&](int ti,int ci){return editableTake(p,scope,track,section,ti,ci,lastClip);},&written);}
+    // the added parts follow the band they are written from: a new bass, piano or lead rewrites them too
+    {const bool source=scope==Scope::song||((scope==Scope::track||scope==Scope::clip||scope==Scope::section)&&(track==0||track==1||track==leadTrack));if(source)generateParts(p,Scope::song,0,0);else generateParts(p,scope,track,section,lastClip);}
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
     if(seed&&p.settings.randomAutomation)randomiseAutomationRange(p,scope,track,section,seed,-1,lastClip>=0?p.clipStart(track,lastClip)+p.clipLength(track,lastClip):-1.);
     if(scope==Scope::song)addElectronicToneAutomation(p);
@@ -2273,7 +2329,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
     std::array<std::vector<std::vector<Note>>,4> shaped;{const int bandTracks[4]{2,3,leadTrack,0};for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)shaped[(size_t)k].push_back(c.notes);}
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);preDropRisers(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);preDropRisers(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);generateParts(p,Scope::song,0,0);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;

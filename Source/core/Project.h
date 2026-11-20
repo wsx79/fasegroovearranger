@@ -145,6 +145,7 @@ struct Track {
     std::array<double,2> sends{};
     EngineOptions engine;
     bool vocalChops = false; // optional generated sample part; keeps legacy routing IDs
+    int part = 0;            // optional generated band part on an added track: 1 sub-bass, 2 counter-melody (0 none)
     // VST articulation profile, applied to generated clips while the track plays a plugin:
     // 0 off, 1 dynamics on the mod wheel (CC1), 2 keyswitches C0 long / C#0 short, 3 legato overlap.
     int articulation = 0;
@@ -152,7 +153,7 @@ struct Track {
     std::vector<Clip> clips;
 };
 inline bool sameEffectPlugins(const Track& a,const Track& b){if(a.effects.size()!=b.effects.size())return false;for(const auto& fx:a.effects){auto* old=b.effect(fx.slot);if(!old||old->path!=fx.path||old->pluginId!=fx.pluginId)return false;}return true;}
-inline bool hasGenerator(const Track& t){return !isManualTrack(t.kind)||t.vocalChops;}
+inline bool hasGenerator(const Track& t){return !isManualTrack(t.kind)||t.vocalChops||t.part>0;}
 struct Settings {
     int genre = 1, key = 9, scale = 1, extension = 2, voicing = 0;
     double bpm = 122, swing = .2, density = .55, humanize = .2;
@@ -234,6 +235,7 @@ struct Project {
     void normalise();
     bool deleteMidiTrack(int track); // fixed instrument tracks cannot be removed
     int addVocalChopsTrack();
+    int addPartTrack(int part);   // 1 sub-bass, 2 counter-melody: an added track the arranger writes
     int addMidiTrack(); // returns its stable routing ID, or -1 at capacity
     bool withinNoteBudget() const;
     bool insertSection(int index, SongSection section, int copyFrom = -1);

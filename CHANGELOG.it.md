@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.16
+
+- SUB BASSO e CONTROCANTO nel menu + traccia: parti aggiunte che l’arrangiatore scrive dalla band e riscrive a ogni nuovo basso, piano o Lead.
+  - Sub basso: la fondamentale dell’accordo sotto il basso, tra Re1 e Do#2, tenuta finché il basso suona e ribattuta solo su una nuova fondamentale; mono e filtrata sotto i 100 Hz; tace in intro, outro e break e prima dello stop del drop.
+  - Controcanto: risposte di due-quattro note negli spazi della Lead, su note dell’accordo una quinta sotto, scendendo a una nota di riposo; mai insieme a una nota della Lead, mai a un semitono da una nota tenuta del piano; con VOCE PRESENTE risponde solo dove il cantante tace.
+
 ## 0.57.15
 
 - VOCE PRESENTE (accanto a CHITARRA SOLISTA, salvata nel progetto, spenta nei progetti precedenti): l’arrangiamento lascia spazio a una voce solista. Nei verse la Lead e la chitarra solista rispondono nella seconda metà di ogni frase di 4 battute, tastiere, archi e chitarra restano sotto il Do6 e un po’ più piano; nei ritornelli la Lead tiene i tempi forti; nei break risponde soltanto. Intro, outro, cassa, basso e batteria restano come sono. Nessuna voce viene generata.

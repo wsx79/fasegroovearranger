@@ -29,6 +29,7 @@ struct TrackMix {
     VolumeAutomation volume,panAutomation;
     std::vector<ParameterAutomation> parameters; // copied on the message thread, only read by the audio thread
     double gain=.75,pan=0,tone=.5,reverb=.12,chorus=0,pump=0,pumpRelease=.2;
+    bool sub=false;   // a sub-bass part: low-passed and summed to mono
     SamplerSettings sampler;int sampleRoot=60;EqSettings eq;
     std::array<int,maxTrackEffects> effectOrder{};std::array<bool,maxTrackEffects> effectBypass{};int effectCount=0;
     int group=-1;std::array<double,2> sends{};

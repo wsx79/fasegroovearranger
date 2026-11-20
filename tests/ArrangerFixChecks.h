@@ -153,6 +153,22 @@ inline void verifyEditorRegenerate(){
                 if(x>=finish-8-1e-6&&x<finish){++riser;grid=grid&&std::abs(x*4-std::round(x*4))<1e-6;}if(x>=finish&&x<t.sectionStart(3)-1./32.)quiet=false;}}
             check(riser>=16&&grid,"a riser builds over the last two bars into the drop, on the sixteenth grid");check(quiet,"the riser stops where the band stops");}
     }
+    {   // SUB BASS and COUNTER MELODY: added parts written from the band, following it on every regeneration.
+        auto q=fga::newProject(0);q.settings.randomAutomation=false;fga::generate(q,fga::Scope::song,0,0,99);
+        const int sub=q.addPartTrack(1),counter=q.addPartTrack(2);check(sub>=0&&counter>=0&&q.tracks[(size_t)sub].part==1&&q.tracks[(size_t)counter].part==2,"sub-bass and counter-melody tracks are added");
+        auto lead=[&](double a,double b){for(size_t ci=0;ci<q.tracks[fga::leadTrack].clips.size();++ci){const double at=q.clipStart(fga::leadTrack,(int)ci);for(const auto& n:q.tracks[fga::leadTrack].clips[ci].notes)if(at+n.start<b&&at+n.start+n.length>a)return true;}return false;};
+        auto verify=[&](const char* when){size_t subNotes=0,counterNotes=0;bool rootOk=true,rangeOk=true,quietOk=true,apart=true,toneOk=true;
+            for(size_t ci=0;ci<q.tracks[(size_t)sub].clips.size();++ci){const double at=q.clipStart(sub,(int)ci);const int si=q.sectionAtBeat(at+.01);const auto type=q.sections[(size_t)si].type;
+                for(const auto& n:q.tracks[(size_t)sub].clips[ci].notes){++subNotes;const auto ch=fga::chordAtBeat(fga::activeHarmony(q,si),std::round((at+n.start)*4)/4);rootOk=rootOk&&((n.pitch-ch.rootPc)%12+12)%12==0;rangeOk=rangeOk&&n.pitch>=26&&n.pitch<=37;
+                    quietOk=quietOk&&type!=fga::Section::intro&&type!=fga::Section::outro&&type!=fga::Section::breakdown;}}
+            for(size_t ci=0;ci<q.tracks[(size_t)counter].clips.size();++ci){const double at=q.clipStart(counter,(int)ci);const int si=q.sectionAtBeat(at+.01);
+                for(const auto& n:q.tracks[(size_t)counter].clips[ci].notes){++counterNotes;apart=apart&&!lead(at+n.start,at+n.start+n.length*.9);const auto ch=fga::chordAtBeat(fga::activeHarmony(q,si),at+n.start);const int iv=((n.pitch-ch.rootPc)%12+12)%12;toneOk=toneOk&&(iv==0||iv==ch.third||iv==ch.fifth||iv==ch.seventh);}}
+            check(subNotes>0&&counterNotes>0,when);check(rootOk&&rangeOk,"the sub plays the chord root between D1 and C#2");check(quietOk,"the sub rests in intros, outros and breaks");
+            check(apart,"the counter melody never sounds with a lead note");check(toneOk,"the counter melody stays on chord tones");};
+        verify("both parts are written");
+        fga::generate(q,fga::Scope::track,fga::leadTrack,0,1234);verify("a new lead rewrites the counter melody");
+        auto again=q;fga::generate(again,fga::Scope::track,counter,0,0);check(again.tracks[(size_t)counter].clips==q.tracks[(size_t)counter].clips,"regenerating the counter melody alone is deterministic");
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.
