@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.17
+
+- Sub basso e cassa: il sub è in sidechain con la cassa (si abbassa a ogni colpo di cassa, con precisione al campione sulle note della cassa, e risale in un quarto di beat), e un attacco del sub entro un trentaduesimo da un colpo di cassa parte esattamente sul colpo, con l’oscillatore che riparte da fase zero, così i due bassi non si sommano e non “flammano”.
+
 ## 0.57.16
 
 - SUB BASSO e CONTROCANTO nel menu + traccia: parti aggiunte che l’arrangiatore scrive dalla band e riscrive a ogni nuovo basso, piano o Lead.

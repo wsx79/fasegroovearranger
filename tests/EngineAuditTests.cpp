@@ -129,6 +129,11 @@ struct EngineAuditTests {
             juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> r(wav.createReaderFor(file.createInputStream().release(),true));requireAudit(r!=nullptr,"dry WAV readable");juce::AudioBuffer<float> b(2,(int)r->lengthInSamples);r->read(&b,0,b.getNumSamples(),0,true,true);return b;};
         const auto piano=render("piano.wav",0),bass=render("bass.wav",1),kick=render("kick.wav",4),low=render("sub.wav",sub),mix=render("mix.wav",-1),again=render("again.wav",0);
         {double side=0,level=0;for(int s=0;s<low.getNumSamples();++s){side=std::max(side,(double)std::abs(low.getSample(0,s)-low.getSample(1,s)));level=std::max(level,(double)std::abs(low.getSample(0,s)));}requireAudit(level>.001&&side<1e-6,"the sub-bass part sounds and is mono");}
+        {   // the kick ducks the sub: right after each kick hit the sub is quieter than half a beat later
+            const double spb=44100.*60./project.settings.bpm;double at=0,later=0;int hits=0;
+            for(size_t ci=0;ci<project.tracks[4].clips.size();++ci){const double start=project.clipStart(4,(int)ci);for(const auto& n:project.tracks[4].clips[ci].notes){const int k=(int)std::lround((start+n.start)*spb);if(k+(int)(spb*.5)+441>=low.getNumSamples())continue;
+                for(int s=0;s<441;++s){at+=std::abs(low.getSample(0,k+s));later+=std::abs(low.getSample(0,k+(int)(spb*.5)+s));}++hits;}}
+            requireAudit(hits>0&&at<later*.6,"the kick ducks the sub-bass (sidechain)");}
         requireAudit(piano.getNumSamples()==bass.getNumSamples()&&bass.getNumSamples()==kick.getNumSamples()&&kick.getNumSamples()==mix.getNumSamples(),"every dry stem and the dry mix have the same length in samples");
         double repeat=0,error=0,energy=0;for(int ch=0;ch<2;++ch)for(int s=0;s<mix.getNumSamples();++s){repeat=std::max(repeat,(double)std::abs(again.getSample(ch,s)-piano.getSample(ch,s)));
             const double sum=(double)piano.getSample(ch,s)+bass.getSample(ch,s)+kick.getSample(ch,s)+low.getSample(ch,s);error=std::max(error,std::abs(sum-mix.getSample(ch,s)));energy+=std::abs(mix.getSample(ch,s));}

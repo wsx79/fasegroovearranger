@@ -166,6 +166,10 @@ inline void verifyEditorRegenerate(){
             check(subNotes>0&&counterNotes>0,when);check(rootOk&&rangeOk,"the sub plays the chord root between D1 and C#2");check(quietOk,"the sub rests in intros, outros and breaks");
             check(apart,"the counter melody never sounds with a lead note");check(toneOk,"the counter melody stays on chord tones");};
         verify("both parts are written");
+        {const auto& e=q.tracks[(size_t)sub].engine;check(e.pump>=.5&&e.pumpSource==1,"the sub is sidechained to the kick");
+         std::vector<double> kicks;for(size_t ci=0;ci<q.tracks[4].clips.size();++ci){const double at=q.clipStart(4,(int)ci);for(const auto& n:q.tracks[4].clips[ci].notes)kicks.push_back(at+n.start);}
+         bool aligned=true;for(size_t ci=0;ci<q.tracks[(size_t)sub].clips.size();++ci){const double at=q.clipStart(sub,(int)ci);for(const auto& n:q.tracks[(size_t)sub].clips[ci].notes){const double x=at+n.start;for(double k:kicks)if(std::abs(k-x)<=1./32.&&std::abs(k-x)>1e-9&&x>at+1e-9)aligned=false;}}
+         check(aligned,"a sub attack near a kick starts exactly on it");}
         fga::generate(q,fga::Scope::track,fga::leadTrack,0,1234);verify("a new lead rewrites the counter melody");
         auto again=q;fga::generate(again,fga::Scope::track,counter,0,0);check(again.tracks[(size_t)counter].clips==q.tracks[(size_t)counter].clips,"regenerating the counter melody alone is deterministic");
     }

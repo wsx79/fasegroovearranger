@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.17
+
+- Sub bass and kick: the sub is sidechained to the kick (ducked on every kick hit, sample-accurate on the kick's own notes, recovering in a quarter of a beat), and a sub attack within a 32nd of a kick hit starts exactly on it, its oscillator restarting at zero phase, so the two low ends neither stack nor flam.
+
 ## 0.57.16
 
 - SUB BASS and COUNTER MELODY in the + track menu: added parts the arranger writes from the band and rewrites with every new bass, piano or lead.

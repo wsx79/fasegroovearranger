@@ -2022,7 +2022,10 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
         struct Span{double from,to;int pitch;};
         auto spans=[&](int src){std::vector<Span> out;if(src>=(int)p.tracks.size())return out;const auto& s=p.tracks[(size_t)src];if(s.mute)return out;for(size_t ci=0;ci<s.clips.size();++ci){const double at=p.clipStart(src,(int)ci);for(const auto& n:s.clips[ci].notes)out.push_back({at+n.start,at+n.start+n.length,n.pitch});}
             std::sort(out.begin(),out.end(),[](const Span& a,const Span& b){return a.from<b.from;});return out;};
-        const auto bass=spans(1),lead=spans(leadTrack),piano=spans(0);
+        const auto bass=spans(1),lead=spans(leadTrack),piano=spans(0),kick=spans(4);
+        // phase with the kick: a sub attack within a 32nd of a kick hit starts exactly on it (the sub's oscillator restarts
+        // at zero phase on every note), so the two fundamentals begin together instead of a few milliseconds apart
+        auto onKick=[&](double beat){auto it=std::lower_bound(kick.begin(),kick.end(),beat-1./32.,[](const Span& s,double x){return s.from<x;});return it!=kick.end()&&std::abs(it->from-beat)<=1./32.?it->from:beat;};
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];
             if(c.locked||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&ci!=section))continue;
             if(c.seed<=1)c.seed=mix(p.settings.seed+(std::uint32_t)ti*131U+(std::uint32_t)ci*977U);
@@ -2031,7 +2034,7 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
             if(t.part==1){
                 if(type==Section::intro||type==Section::outro||type==Section::breakdown)continue;
                 const double stop=si+1<(int)p.sections.size()&&p.sections[(size_t)si+1].type==Section::drop?p.sectionStart(si+1)-std::max(1,p.sections[(size_t)si].dropGap):at+length;
-                for(const auto& b:bass){if(b.to<=at||b.from>=std::min(at+length,stop))continue;const double from=std::max(b.from,at),to=std::min({b.to,at+length,stop});if(to-from<1./16.)continue;
+                for(const auto& b:bass){if(b.to<=at||b.from>=std::min(at+length,stop))continue;const double from=std::max(onKick(b.from),at),to=std::min({b.to,at+length,stop});if(to-from<1./16.)continue;
                     const auto chord=chordAtBeat(harmony,std::round(from*4)/4);int pitch=26+((chord.rootPc-26)%12+12)%12;   // D1..C#2
                     if(!c.notes.empty()){auto& last=c.notes.back();if(last.pitch==pitch&&from-(at+last.start+last.length)<.5){last.length=to-at-last.start;continue;}}   // same root: hold, do not restrike
                     c.notes.push_back({from-at,to-from,pitch,100,0});}
@@ -2059,7 +2062,9 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
 int Project::addPartTrack(int kind){
     if(kind<1||kind>2)return -1;const int index=addMidiTrack();if(index<0)return index;auto& t=tracks[(size_t)index];
     t.part=kind;t.name=kind==1?"Sub bass":"Counter melody";t.freeTimeline=false;t.clips.assign(sections.size(),{});
-    if(kind==1){t.sound=3;t.engine.tone=0;t.gain=.5;}   // organ fundamental under a 100 Hz low-pass: a sine-like sub
+    // organ fundamental under a 100 Hz low-pass: a sine-like sub, ducked by every kick hit (sample-accurate
+    // sidechain on the kick's own notes) so kick and sub never stack their low end
+    if(kind==1){t.sound=3;t.engine.tone=0;t.gain=.5;t.engine.pump=.8;t.engine.pumpSource=1;t.engine.pumpRelease=.25;}
     else{t.sound=0;t.engine.tone=.45;t.gain=.38;t.engine.density=.5;}
     generateParts(*this,Scope::track,index,0);return index;
 }
