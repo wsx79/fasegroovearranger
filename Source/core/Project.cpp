@@ -1661,10 +1661,6 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start<b.start;});
         for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::max(1./32.,std::min(out[i].length,coverEnd(out[i].start)-out[i].start));}
         if(out.size()<2)continue;
-        // The final return develops the first: in the last of several drops the same hook sings an octave higher
-        // (when it fits), rather than the climax coming only from more notes and more velocity.
-        {int last=-1,drops=0;for(size_t si=0;si<p.sections.size();++si)if(p.sections[si].type==Section::drop){last=(int)si;++drops;}
-         if(drops>1&&p.sectionAtBeat(at+.01)==last){int top=0;for(const auto& n:out)top=std::max(top,n.pitch);if(top+12<=88)for(auto& n:out)n.pitch+=12;}}
         // a held melody note never sits a semitone from the accompaniment it sounds with: it moves to
         // the nearest chord tone that does not
         {struct Held{double from,to;int pitch;};std::vector<Held> band;for(int ti:{0,2,3}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].mute)continue;const auto& bt=p.tracks[(size_t)ti];
@@ -1942,6 +1938,55 @@ static void pianoClearsBass(Project& p,const std::function<bool(int,int)>& fresh
         auto together=[&](size_t i){size_t a=i,b=i;while(a>0&&c.notes[i].start-c.notes[a-1].start<1./24.)--a;while(b+1<c.notes.size()&&c.notes[b+1].start-c.notes[i].start<1./24.)++b;return (int)(b-a+1);};
         std::vector<Note> out;for(size_t i=0;i<c.notes.size();++i)if(!(rubs(c.notes[i])&&together(i)>=4))out.push_back(c.notes[i]);c.notes=out;}
 }
+// VOCALS PRESENT: the band leaves room for a lead singer, from the one project setting every
+// generation path reads. Verses (main): the lead and a solo guitar answer in the second half of
+// each four-bar phrase (the singer takes the first), the piano, guitar and strings stay below the
+// voice's presence range (a note from C6 up folds an octave down) and a little softer. Choruses
+// (drops): the lead keeps its strong beats only, softer. Breaks: the lead rests where the singer
+// would. Intros and outros stay as they are (DJ mixing); kick, bass and drums are never touched.
+// A verse or a drop that comes back is not a copy of the first one. The k-th return of a section
+// type (same harmony, same hook) varies by a fixed plan: odd returns and the final drop lift the lead
+// an octave (when it fits) and push the piano's bar-two chords an eighth early; every return enters
+// with one layer fewer for its first eight bars (the guitar on odd returns, the strings on even ones)
+// so the section grows as it goes. Notes only move by octaves or eighths: harmony and identity stay.
+static void repeatVariations(Project& p,const std::function<bool(int,int)>& fresh){
+    if(isElectronicGenre(p.settings.genre))return;
+    std::vector<int> occurrence(p.sections.size(),0);int lastDrop=-1,drops=0;
+    {std::array<int,6> seen{};for(size_t si=0;si<p.sections.size();++si){occurrence[si]=seen[(size_t)p.sections[si].type]++;if(p.sections[si].type==Section::drop){lastDrop=(int)si;++drops;}}}
+    auto sectionOf=[&](int ti,int ci){const int si=p.sectionAtBeat(p.clipStart(ti,ci)+.01);return si>=0&&si<(int)p.sections.size()&&(p.sections[(size_t)si].type==Section::main||p.sections[(size_t)si].type==Section::drop)?si:-1;};
+    for(int ti:{0,2,3,leadTrack}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& t=p.tracks[(size_t)ti];
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.empty()||!fresh(ti,(int)ci))continue;
+            const int si=sectionOf(ti,(int)ci);if(si<0)continue;const int k=occurrence[(size_t)si];const bool finalDrop=drops>1&&si==lastDrop;if(k==0&&!finalDrop)continue;
+            const double at=p.clipStart(ti,(int)ci),from=p.sectionStart(si),length=p.clipLength(ti,(int)ci);
+            if(ti==leadTrack&&(k%2==1||finalDrop)){int top=0;for(const auto& n:c.notes)top=std::max(top,n.pitch);if(top+12<=88)for(auto& n:c.notes)n.pitch+=12;}
+            if(ti==0&&k%2==1){auto clear=[&](double s,double e){return std::none_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return o.start<e-1e-6&&o.start+o.length>s+1e-6;});};   // only into an eighth the piano leaves silent
+                std::vector<size_t> push;for(size_t i=0;i<c.notes.size();++i){const auto& n=c.notes[i];const double rel=at+n.start-from;const int bar=(int)std::floor(rel/4+1e-9);if(bar%2==1&&std::abs(rel-bar*4)<1./32.&&n.start>=.5&&clear(n.start-.5,n.start))push.push_back(i);}
+                for(size_t i:push){c.notes[i].start-=.5;c.notes[i].length+=.5;}}
+            const bool layerOut=p.sections[(size_t)si].bars>=16&&((ti==3&&k%2==1&&!p.settings.guitarLead)||(ti==2&&k>=2&&k%2==0));
+            if(layerOut)c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return at+n.start-from<32.-1./32.;}),c.notes.end());
+            tidyNotes(c,length);}}
+}
+static void vocalSpace(Project& p,const std::function<bool(int,int)>& fresh){
+    if(!p.settings.vocalsPresent)return;
+    const bool soloGuitar=p.settings.guitarLead;
+    for(int ti:{0,2,3,leadTrack}){if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& t=p.tracks[(size_t)ti];const bool melody=ti==leadTrack||(ti==3&&soloGuitar);
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.empty()||!fresh(ti,(int)ci))continue;
+            const double at=p.clipStart(ti,(int)ci);const int si=std::max(0,p.sectionAtBeat(at+.01));if(si>=(int)p.sections.size())continue;const auto type=p.sections[(size_t)si].type;
+            if(type==Section::intro||type==Section::outro)continue;
+            const double from=p.sectionStart(si);std::vector<Note> out;
+            for(auto n:c.notes){const double rel=at+n.start-from;const int bar=(int)std::floor(rel/4+1e-9);
+                if(melody){
+                    if(type==Section::main&&bar%4<2)continue;                       // the singer's half of the phrase
+                    if(type==Section::breakdown&&bar%2==0)continue;                  // answers only
+                    if(type==Section::drop){const double beat=std::fmod(rel,1.);if(beat>.05&&beat<.95&&n.length<.5)continue;n.velocity=std::max(1,(int)std::lround(n.velocity*.88));}
+                }else if(type==Section::main||type==Section::drop){
+                    if(n.pitch>=84)n.pitch-=12;                                       // out of the voice's 2-5 kHz presence band
+                    if(type==Section::main)n.velocity=std::max(1,(int)std::lround(n.velocity*.9));
+                }
+                out.push_back(n);}
+            if(melody&&out.size()<2)continue;   // never empty a part completely
+            c.notes=std::move(out);tidyNotes(c,p.clipLength(ti,(int)ci));}}
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -1951,7 +1996,7 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
-    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);repeatVariations(p,fresh);vocalSpace(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     // only the takes this generation wrote: another clip of the track, or a locked one, keeps its articulation as it is

@@ -596,7 +596,7 @@ void MainComponent::refreshControls(){
         if(anchor>=project.tracks.size()||rack<maxTracks||index<0||index>=(int)effectTrack(rack).parameters.size()){arrangement.laneRackSession[anchor]=0;arrangement.laneTarget[anchor]=ArrangementView::laneVolume;}
     }
     ++uiRevision;
-    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);
+    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);vocalsButton.setToggleState(s.vocalsPresent,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     const auto songHarmony=activeHarmony(project,selectedSection);
@@ -781,7 +781,7 @@ void MainComponent::resized(){
         // since the arrangement folds them into GENERATE.
         for(auto* b:{&trackButton,&sectionButton,&clipButton})b->setVisible(false);
         x=12;place(genreBox,x,rowA,170);x+=176;place(durationLabel,x,rowA,48);x+=52;
-        const int editorW=56,tolEditorW=34,leadX=w-12-140,insertMax=leadX-8-(x+610);
+        const int editorW=56,tolEditorW=34,leadX=w-12-128,insertMax=leadX-8-(x+642);
         const int labelW=std::clamp(insertMax-(4+editorW+4+64+4+tolEditorW+4+78+8),48,108);
         const int afterTarget=insertMax-(labelW+4+editorW+4);
         const int tolLabelW=std::clamp(afterTarget-(tolEditorW+4+8),28,72);
@@ -790,8 +790,10 @@ void MainComponent::resized(){
         place(targetToleranceLabel,x,rowA,tolLabelW);x+=tolLabelW+4;place(targetToleranceEditor,x,rowA,tolEditorW);x+=tolEditorW+4;
         place(targetFitLabel,x,rowA,fitW);targetFitLabel.setVisible(song&&fitW>=36);x+=std::max(fitW,0)+4;divider(x,rowA+4,20);x+=9;
         place(arrangeButton,x,rowA,170);x+=176;place(songButton,x,rowA,150);place(generateMenuButton,x+150,rowA,26);x+=180;divider(x+4,rowA+4,20);x+=13;
-        place(addSectionButton,x,rowA,120);place(spotlightButton,x+132,rowA,100);
-        place(leadButton,w-12-140,rowA,140);
+        // SEARCH as its icon makes room for VOCALS PRESENT beside GUITAR LEADS (the two arrangement modes)
+        place(addSectionButton,x,rowA,100);spotlightButton.getProperties().set("fgaIconOnly",true);place(spotlightButton,x+106,rowA,36);
+        place(vocalsButton,x+148,rowA,std::max(0,leadX-6-(x+148)));vocalsButton.setVisible(song&&leadX-6-(x+148)>=96);
+        place(leadButton,leadX,rowA,128);
         const bool compactB=w<1360;const int progW=compactB?164:206,harmW=compactB?96:118;x=12;place(progressionBox,x,rowB,progW);x+=progW+6;place(harmonyButton,x,rowB,harmW);x+=harmW+4;place(chordEditButton,x,rowB,harmW);x+=harmW+4;divider(x+4,rowB+4,20);x+=13;
         place(extensionBox,x,rowB,112);x+=116;place(voicingBox,x,rowB,124);x+=128;divider(x+4,rowB+4,20);x+=13;
         const int feelWidth=std::clamp((w-272-x)/3-8,92,164);for(auto* s:{&densitySlider,&swingSlider,&humanizeSlider}){place(*s,x,rowB-6,feelWidth,48);x+=feelWidth+8;}place(studioButton,w-264,rowB,112);place(aiComposeButton,w-144,rowB,132);

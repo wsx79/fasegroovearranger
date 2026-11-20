@@ -450,7 +450,7 @@ private:
     static constexpr int controlBarHeight=56,toolRowHeight=36,statusHeight=28;
     int toolbarBottom()const{return controlBarHeight+(page==Page::editor?3:2)*toolRowHeight+(page==Page::arrangement?16:0);}
     juce::Rectangle<int> lcdArea;std::vector<int> lcdDividers;std::vector<juce::Rectangle<int>> toolbarDividers;
-    ActionButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
+    ActionButton backButton{"< ARRANGEMENT"},instrumentButton{"INSTRUMENT PANEL"},editButton{"EDIT MIDI"},leadButton{"GUITAR LEADS"},vocalsButton{"VOCALS PRESENT"},arrangeButton{"NEW ARRANGEMENT"},guitarNotesButton{"NOTES / LANES"};
     IconButton automationButton{IconButton::Icon::automation};
     bool automationAllTracks=false;
     void showAutomationScope(bool enabled);

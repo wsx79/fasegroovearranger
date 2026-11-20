@@ -118,6 +118,33 @@ inline void verifyEditorRegenerate(){
         }
         check(responds,"audible Latin montuno thins weak guitar attacks; mute disables the interaction");
     }
+    {   // VOCALS PRESENT: one project setting, read by every generation; OFF is the old behaviour.
+        auto off=fga::newProject(1);off.settings.randomAutomation=false;check(!off.settings.vocalsPresent,"VOCALS PRESENT is off by default");
+        auto on=off;on.settings.vocalsPresent=true;fga::generate(off,fga::Scope::song,0,0,4242);fga::generate(on,fga::Scope::song,0,0,4242);
+        auto again=fga::newProject(1);again.settings.randomAutomation=false;fga::generate(again,fga::Scope::song,0,0,4242);
+        check(again.tracks[fga::leadTrack].clips==off.tracks[fga::leadTrack].clips&&again.tracks[0].clips==off.tracks[0].clips,"VOCALS PRESENT off leaves generation as it was (deterministic)");
+        check(on.settings.vocalsPresent,"VOCALS PRESENT survives a song generation");
+        for(int ti:{1,4,5})check(on.tracks[(size_t)ti].clips==off.tracks[(size_t)ti].clips,"VOCALS PRESENT never touches kick, bass or the backbeat");
+        size_t leadOn=0,leadOff=0;bool verseRoom=true,introSame=true;
+        for(size_t ci=0;ci<on.tracks[fga::leadTrack].clips.size();++ci){leadOn+=on.tracks[fga::leadTrack].clips[ci].notes.size();leadOff+=off.tracks[fga::leadTrack].clips[ci].notes.size();
+            const int si=on.sectionAtBeat(on.clipStart(fga::leadTrack,(int)ci)+.01);if(si<0)continue;const auto type=on.sections[(size_t)si].type;const double from=on.sectionStart(si),at=on.clipStart(fga::leadTrack,(int)ci);
+            if(type==fga::Section::intro||type==fga::Section::outro)introSame=introSame&&on.tracks[fga::leadTrack].clips[ci]==off.tracks[fga::leadTrack].clips[ci];
+            if(type==fga::Section::main)for(const auto& n:on.tracks[fga::leadTrack].clips[ci].notes)verseRoom=verseRoom&&((int)std::floor((at+n.start-from)/4+1e-9))%4>=2;}
+        check(leadOn<leadOff,"VOCALS PRESENT thins the lead");check(verseRoom,"in a verse the lead answers only in the second half of each phrase");check(introSame,"intros and outros stay instrumental and unchanged");
+        for(int ti:{0,2,3})for(size_t ci=0;ci<on.tracks[(size_t)ti].clips.size();++ci){const int si=on.sectionAtBeat(on.clipStart(ti,(int)ci)+.01);if(si<0||(on.sections[(size_t)si].type!=fga::Section::main&&on.sections[(size_t)si].type!=fga::Section::drop))continue;
+            for(const auto& n:on.tracks[(size_t)ti].clips[ci].notes)check(n.pitch<84||on.tracks[(size_t)ti].clips[ci].locked,"keys, strings and guitar stay below the voice's presence range");}
+        auto regen=on;fga::generate(regen,fga::Scope::clip,fga::leadTrack,2,0);check(regen.tracks[fga::leadTrack].clips[2]==on.tracks[fga::leadTrack].clips[2],"a clip regeneration matches the song pass with VOCALS PRESENT");
+        auto genre=on;fga::applyGenre(genre,7);check(genre.settings.vocalsPresent,"a genre change keeps VOCALS PRESENT");
+    }
+    {   // A section that returns varies: the lead an octave higher on odd returns, a layer entering late.
+        auto r=fga::newProject(0);r.settings.randomAutomation=false;r.sections={{fga::Section::intro,8,"I"},{fga::Section::main,16,"A"},{fga::Section::drop,16,"D"},{fga::Section::main,16,"A2"},{fga::Section::drop,16,"D2"},{fga::Section::outro,8,"O"}};r.normalise();fga::generate(r,fga::Scope::song,0,0,77);
+        auto top=[&](int ci){int t=0;for(const auto& n:r.tracks[fga::leadTrack].clips[(size_t)ci].notes)t=std::max(t,n.pitch);return t;};
+        auto pcs=[&](int ti,int ci){std::set<int> s;for(const auto& n:r.tracks[(size_t)ti].clips[(size_t)ci].notes)s.insert(n.pitch%12);return s;};
+        check(top(4)>=top(2)+7||top(2)+12>88,"the second drop lifts the lead");
+        bool guitarLate=true;for(const auto& n:r.tracks[3].clips[3].notes)guitarLate=guitarLate&&n.start>=32-1./32.;check(guitarLate,"the returning verse brings the guitar in after eight bars");
+        check(!r.tracks[0].clips[3].notes.empty()&&r.tracks[0].clips[3].notes!=r.tracks[0].clips[1].notes,"the returning verse's piano is not a copy");
+        for(int ti:{0,fga::leadTrack}){const auto a=pcs(ti,2),b=pcs(ti,4);int common=0;for(int x:b)common+=a.count(x);check(common*10>=(int)b.size()*6,"a return keeps the harmony: its pitch classes are mostly the first one's");}
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.

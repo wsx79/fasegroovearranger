@@ -33,6 +33,12 @@ int main(int argc,char** argv){try{
         check(fga::projectFromJson(fga::projectJson(p),back).wasOk()&&back.masterEffects.parameters[0].curve==lane.curve&&back.returnEffects[0].parameters[0].curve==lane.curve&&back.returnEffects[1].parameters[0].parameterId==lane.parameterId,"master and both return automation persist with locks, curves and parameter IDs");
         auto timed=back;check(timed.insertSection(0,{fga::Section::main,1,"Rack time edit"}),"insert section with rack automation");
         check(timed.masterEffects.parameters[0].curve.points.back().beat==12&&timed.returnEffects[0].parameters[0].curve.points.back().beat==12&&timed.returnEffects[1].parameters[0].curve.points.back().beat==12,"rack automation follows inserted musical time");
+        {   // VOCALS PRESENT round-trips; a file without it (older projects) loads it off.
+            auto v=fga::newProject(1);v.settings.vocalsPresent=true;fga::Project back;
+            check(fga::projectFromJson(fga::projectJson(v),back).wasOk()&&back.settings.vocalsPresent,"VOCALS PRESENT is saved and restored");
+            auto json=fga::projectJson(v);json["settings"].getDynamicObject()->removeProperty("vocalsPresent");
+            check(fga::projectFromJson(json,back).wasOk()&&!back.settings.vocalsPresent,"an older project opens with VOCALS PRESENT off");
+        }
         {   // A pre-0.57.12 file: Keyswitch-profile keys saved without ownership flags are recognised by their exact
             // signature on load, so the next pass replaces them; a musical C0 played softer stays the musician's.
             auto old=fga::newProject(1);auto& t=old.tracks[0];t.instrument="plugin";t.articulation=2;

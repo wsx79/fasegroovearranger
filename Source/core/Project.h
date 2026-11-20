@@ -159,6 +159,7 @@ struct Settings {
     int bassMode = 3, stringsMode = 1;
     std::uint32_t seed = 1979;
     bool guitarLead = false;
+    bool vocalsPresent = false;   // VOCALS PRESENT: the arrangement leaves room for a lead singer (no voice is generated)
     int chordSteps = 16;
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
