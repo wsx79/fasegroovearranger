@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.15
+
+- VOCALS PRESENT (beside GUITAR LEADS, saved with the project, off for older projects): the arrangement leaves room for a lead singer. In verses the lead and a solo guitar answer in the second half of each four-bar phrase, keys, strings and guitar stay below C6 and a little softer; in choruses the lead keeps its strong beats; in breaks it answers only. Intros, outros, kick, bass and drums stay as they are. No voice is generated.
+- Returning verses and drops vary: odd returns and the final drop lift the lead an octave, the piano pushes bar-two chords an eighth early into silence, and a layer enters after eight bars (guitar on odd returns, strings on even ones). Harmony and hook stay the same.
+- Transitions: genres whose build-up has no snare roll rise into the drop with a percussion riser over the last two bars (congas for Afro and Latin, toms for Soulful, Gospel, Disco and Neo Soul, a soft shaker for Deep and Chill), alternating between drops.
+- WAV stems are dry (no inserts, sends, returns, master, normalisation or limiting), one per track that plays, all the same length; summed they give the dry mix. Every export starts at rest and the built-in piano and guitar voices seed their noise per note, so a render repeats sample for sample.
+
 ## 0.57.14
 
 - Latin House: a new project starts on a Latin progression with a real tumbao bass (fifth on the and of two, root on four tied over the bar line, never on the one; four figures chosen by the take). Before, only a seeded GENERATE reached the Latin tables and a new project played the Afro bass under the montuno.

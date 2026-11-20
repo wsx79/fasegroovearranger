@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.15
+
+- VOCE PRESENTE (accanto a CHITARRA SOLISTA, salvata nel progetto, spenta nei progetti precedenti): l’arrangiamento lascia spazio a una voce solista. Nei verse la Lead e la chitarra solista rispondono nella seconda metà di ogni frase di 4 battute, tastiere, archi e chitarra restano sotto il Do6 e un po’ più piano; nei ritornelli la Lead tiene i tempi forti; nei break risponde soltanto. Intro, outro, cassa, basso e batteria restano come sono. Nessuna voce viene generata.
+- I verse e i drop che ritornano cambiano: nei ritorni dispari e nell’ultimo drop la Lead sale di un’ottava, il piano anticipa di un ottavo gli accordi della seconda battuta dove c’è silenzio, e un layer entra dopo otto battute (chitarra nei ritorni dispari, archi in quelli pari). Armonia e hook restano gli stessi.
+- Transizioni: i generi il cui build-up non ha un rullo salgono verso il drop con un riser di percussioni nelle ultime due battute (conga per Afro e Latin, tom per Soulful, Gospel, Disco e Neo Soul, uno shaker leggero per Deep e Chill), alternato tra un drop e l’altro.
+- Gli stems WAV sono dry (niente insert, mandate, ritorni, master, normalizzazione o limiter), uno per ogni traccia che suona, tutti della stessa lunghezza; sommati danno il mix dry. Ogni export parte con le voci ferme e piano e chitarra interni generano il loro rumore in base alla nota, così un render si ripete identico campione per campione.
+
 ## 0.57.14
 
 - Latin House: un progetto nuovo parte da una progressione Latin con un vero basso tumbao (quinta sul levare del due, fondamentale sul quattro legata oltre la stanghetta, mai sull’uno; quattro figure scelte dalla take). Prima solo un GENERATE con seed raggiungeva le tabelle Latin e un progetto nuovo suonava il basso Afro sotto il montuno.
