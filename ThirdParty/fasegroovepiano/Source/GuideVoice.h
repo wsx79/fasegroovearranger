@@ -76,6 +76,10 @@ public:
         releaseLevel = 1.0;
         noiseState = 0.0;
         sampleCount = 0;
+        // The noise of a note depends on the note, not on what played before: every render of a song is identical.
+        random.setSeed ((juce::int64) note * 7919 + (juce::int64) std::lround (velocity * 127.0f) + 1);
+        carrierPhase = modPhase = tinePhase = bitePhase = lfoPhase = lesliePhase = vibratoPhase = 0.0;
+        organPhase.fill (0.0);
 
         const double pan = juce::jlimit (-1.0, 1.0, (note - 62) / 40.0);
         panL = std::cos ((pan + 1.0) * juce::MathConstants<double>::pi * 0.25) * juce::MathConstants<double>::sqrt2;

@@ -176,6 +176,8 @@ private:
         const float bright = juce::jlimit (0.05f, 1.0f, s.brightness * (0.5f + 0.5f * velocity) * (0.55f + 0.45f * tone) * (muted ? 0.6f : 1.0f));
         float lp = 0.0f;
         std::array<float, 16> history {};
+        // The pluck noise depends on the note, not on what played before: every render of a song is identical.
+        random.setSeed ((juce::int64) note * 7919 + (juce::int64) std::lround (velocity * 127.0f));
         const int pick = juce::jlimit (1, 15, (int) std::round (s.pickPoint * 16.0f));
         for (int i = 0; i < length; ++i)
         {

@@ -11,6 +11,9 @@ inline constexpr bool offlineLoudReady=false;
 struct AudioExportOptions {
     double sampleRate=0;int bitDepth=24;bool loudnessGuard=false;
     AudioExportMode mode=AudioExportMode::transparent;double ceilingDb=-1.;
+    // Dry render: no track inserts or channel strip, no sends/returns, no group dynamics, no master
+    // inserts or master automation, no normalisation or limiting. Stems and the dry mix sum exactly.
+    bool dry=false;
     AudioExportOptions()=default;
     // Preserve the historic positional API, including guard on/off.
     AudioExportOptions(double rate,int bits,bool guard=false):sampleRate(rate),bitDepth(bits),loudnessGuard(guard),mode(AudioExportMode::legacy){}

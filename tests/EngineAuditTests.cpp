@@ -115,6 +115,24 @@ struct EngineAuditTests {
         requireAudit(engine.exportAudio(project,file,-1,false,[]{return false;},[](double){},nullptr,options).wasOk(),"source and return tail export");juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> reader(wav.createReaderFor(file.createInputStream().release(),true));
         requireAudit(reader&&reader->lengthInSamples==(juce::int64)std::ceil((project.length()*60/project.settings.bpm+5+10)*reader->sampleRate),"source and used return tails must be added in series");std::cout<<"Source 5 s + return 10 s declared serial tails PASS\n";
     }
+    // Dry stems: one length for every stem, no sends/returns/master, and their sum is the dry mix sample for sample.
+    // Dry stems: one length for every stem, no sends/returns/master, and their sum is the dry mix sample for sample.
+    // Each file is rendered on a fresh offline engine, as the stem export does.
+    static void dryStems(){
+        auto project=newProject(0);project.sections={{Section::main,2,"Dry stems"}};project.normalise();generate(project);project.enableReturnChains();
+        for(size_t ti=0;ti<project.tracks.size();++ti)if(ti!=0&&ti!=1&&ti!=4)for(auto& clip:project.tracks[ti].clips)clip.notes.clear();
+        project.tracks[0].sends[0]=.6f;   // a send that a dry stem must not carry
+        const auto dir=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-dry-stems","",false);dir.createDirectory();struct Remove{juce::File d;~Remove(){d.deleteRecursively();}}remove{dir};
+        AudioExportOptions options;options.mode=AudioExportMode::legacy;options.bitDepth=24;options.dry=true;
+        auto render=[&](const char* name,int track){AudioEngine engine(AudioEngine::Offline{});const auto file=dir.getChildFile(name);requireAudit(engine.exportAudio(project,file,track,false,[]{return false;},[](double){},nullptr,options).wasOk(),"dry export");
+            juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> r(wav.createReaderFor(file.createInputStream().release(),true));requireAudit(r!=nullptr,"dry WAV readable");juce::AudioBuffer<float> b(2,(int)r->lengthInSamples);r->read(&b,0,b.getNumSamples(),0,true,true);return b;};
+        const auto piano=render("piano.wav",0),bass=render("bass.wav",1),kick=render("kick.wav",4),mix=render("mix.wav",-1),again=render("again.wav",0);
+        requireAudit(piano.getNumSamples()==bass.getNumSamples()&&bass.getNumSamples()==kick.getNumSamples()&&kick.getNumSamples()==mix.getNumSamples(),"every dry stem and the dry mix have the same length in samples");
+        double repeat=0,error=0,energy=0;for(int ch=0;ch<2;++ch)for(int s=0;s<mix.getNumSamples();++s){repeat=std::max(repeat,(double)std::abs(again.getSample(ch,s)-piano.getSample(ch,s)));
+            const double sum=(double)piano.getSample(ch,s)+bass.getSample(ch,s)+kick.getSample(ch,s);error=std::max(error,std::abs(sum-mix.getSample(ch,s)));energy+=std::abs(mix.getSample(ch,s));}
+        requireAudit(repeat==0,"a render is sample-identical when repeated (instrument noise is seeded per note)");
+        requireAudit(energy>1.&&error<1e-5,"the dry stems sum to the dry mix");std::cout<<"Dry stems: equal length, sum = dry mix (max error "<<error<<") PASS\n";
+    }
     static void returnPdc(){
         AudioEngine engine(AudioEngine::Offline{});auto project=newProject(0);project.enableReturnChains();project.masterGain=1;
         auto source=std::make_unique<AuditPlugin>();source->setLatencySamples(53);engine.instruments[0]->plugin=std::move(source);engine.instruments[0]->mode=2;
@@ -504,4 +522,4 @@ void runDeepAuditEngineTests(){fga::EngineAuditTests::handoffLifetime();fga::Eng
 
 void installEffectForReturnTests(fga::AudioEngine& engine,int track,std::unique_ptr<juce::AudioPluginInstance> plugin,int slot,const juce::PluginDescription& description){fga::EngineAuditTests::installEffect(engine,track,std::move(plugin),slot,description);}
 
-void runReturnPdcTests(){fga::EngineAuditTests::returnPdc();fga::EngineAuditTests::serialReturnTails();}
+void runReturnPdcTests(){fga::EngineAuditTests::returnPdc();fga::EngineAuditTests::serialReturnTails();fga::EngineAuditTests::dryStems();}

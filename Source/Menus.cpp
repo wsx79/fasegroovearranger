@@ -44,6 +44,8 @@ public:
 #endif
     }
     void run()override{
+        // WAV stems are dry (no inserts, sends, master or normalisation) and share one length: summed, they give the dry mix.
+        if(stems&&!isMp3)options.dry=true;
         reportProgress(0);
         if(threadShouldExit()){result=juce::Result::fail("Export cancelled");return;}
         // Write the arrangement map first, so it also accompanies any stems completed
@@ -318,7 +320,8 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
         // Stop the live callback and render the existing plugin instances. This avoids
         // reloading libraries/licences and frees the device callback during the export.
         audio.devices.removeAudioCallback(&audio);
-        std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row)tracks.push_back(trackAtRow(row));else tracks.push_back(single?track:-1);
+        std::vector<int> tracks;if(batch)for(int row=0;row<(int)project.tracks.size();++row){const int ti=trackAtRow(row);const auto& t=project.tracks[(size_t)ti];   // one stem per track that has something to play
+            if(std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return !c.notes.empty()||c.audioOffset>=0;}))tracks.push_back(ti);}else tracks.push_back(single?track:-1);
         juce::Component::SafePointer<MainComponent> safe(this);exportTask=std::make_unique<ExportTask>(audio,project,target,tracks,mp3,batch,encoding,[safe,target](juce::Result r){if(safe){safe->audio.devices.addAudioCallback(&safe->audio);safe->mediaBusy=false;safe->retiredJobs.retire(std::move(safe->exportTask));safe->updateEditingAvailability();safe->message(r.wasOk()?"Audio esportato: "+target.getFullPathName():r.getErrorMessage(),r.failed());}});
 #if FGA_SELF_TESTS
         static_cast<ExportTask*>(exportTask.get())->progressForTest=exportProgressForTest;
@@ -416,7 +419,7 @@ bool MainComponent::verifyExports(const juce::File& folder,const juce::PluginDes
     juce::WavAudioFormat wav;{const auto file=exportNamedFile(chosen,project,"wav");std::unique_ptr<juce::AudioFormatReader> reader(readWavFile(file).release());juce::AudioBuffer<float> samples(2,8192);const bool audible=reader&&reader->read(&samples,0,8192,4096,true,true)&&samples.getMagnitude(0,8192)>.0001f;check(audible&&reader->sampleRate==48000&&reader->bitsPerSample==16,"WAV export through the actual UI contains music at 48 kHz / 16 bit");}
     check(audio.plugin(0)==original,"export retains the already loaded instrument instance");
     exportFile(1,0,folder.getChildFile("Song.mid"));const auto midi=exportNamedFile(folder.getChildFile("Song.mid"),project,"mid");auto stream=midi.createInputStream();juce::MidiFile parsed;check(stream&&parsed.readFrom(*stream),"multitrack MIDI filename includes BPM and key and contains readable MIDI");
-    Localisation::setSetting("exportSampleRate","44100");Localisation::setSetting("exportBitDepth","24");exportFile(6,0,folder);check(settle(),"stem export completes and releases restrictions");const auto stems=folder.findChildFiles(juce::File::findDirectories,false,"*-stems-*");bool stemOk=stems.size()==1;if(stemOk){const auto files=stems[0].findChildFiles(juce::File::findFiles,false,"*.wav");stemOk=files.size()==(int)project.tracks.size();for(const auto& file:files){std::unique_ptr<juce::AudioFormatReader> reader(readWavFile(file).release());stemOk=reader&&reader->sampleRate==44100&&reader->bitsPerSample==24&&file.getFileName().contains("_120bpm_Db")&&stemOk;}const auto map=stems[0].getChildFile("Arrangiamento_120bpm_Db.txt").loadFileAsString();stemOk=stemOk&&map.contains("00:00.000 - 00:02.000  Intro")&&map.contains("00:02.000 - 00:06.000  Jackin groove");}check(stemOk,"all stems have the selected encoding, musical names and an exact section timeline TXT");
+    Localisation::setSetting("exportSampleRate","44100");Localisation::setSetting("exportBitDepth","24");exportFile(6,0,folder);check(settle(),"stem export completes and releases restrictions");const auto stems=folder.findChildFiles(juce::File::findDirectories,false,"*-stems-*");bool stemOk=stems.size()==1;if(stemOk){const auto files=stems[0].findChildFiles(juce::File::findFiles,false,"*.wav");int present=0;for(const auto& t:project.tracks)present+=std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return !c.notes.empty()||c.audioOffset>=0;});stemOk=files.size()==present&&present>0;   /* one stem per track with something to play */for(const auto& file:files){std::unique_ptr<juce::AudioFormatReader> reader(readWavFile(file).release());stemOk=reader&&reader->sampleRate==44100&&reader->bitsPerSample==24&&file.getFileName().contains("_120bpm_Db")&&stemOk;}const auto map=stems[0].getChildFile("Arrangiamento_120bpm_Db.txt").loadFileAsString();stemOk=stemOk&&map.contains("00:00.000 - 00:02.000  Intro")&&map.contains("00:02.000 - 00:06.000  Jackin groove");}check(stemOk,"all stems have the selected encoding, musical names and an exact section timeline TXT");
     exportFile(5,0,folder.getChildFile("cancel.wav"));if(exportTask)exportTask->signalThreadShouldExit();check(settle(),"cancelling export restores audio and editing");
     // Gate actual export progress so cancellation cannot accidentally arrive
     // after a short job has already completed. Only this self-test owns the gate.

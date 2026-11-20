@@ -9,7 +9,18 @@
  
      bool canPlaySound (juce::SynthesiserSound* s) override
      {
-@@ -158,7 +158,6 @@
+@@ -76,6 +76,10 @@
+         releaseLevel = 1.0;
+         noiseState = 0.0;
+         sampleCount = 0;
++        // The noise of a note depends on the note, not on what played before: every render of a song is identical.
++        random.setSeed ((juce::int64) note * 7919 + (juce::int64) std::lround (velocity * 127.0f) + 1);
++        carrierPhase = modPhase = tinePhase = bitePhase = lfoPhase = lesliePhase = vibratoPhase = 0.0;
++        organPhase.fill (0.0);
+ 
+         const double pan = juce::jlimit (-1.0, 1.0, (note - 62) / 40.0);
+         panL = std::cos ((pan + 1.0) * juce::MathConstants<double>::pi * 0.25) * juce::MathConstants<double>::sqrt2;
+@@ -158,7 +162,6 @@
      }
  
  private:
@@ -17,7 +28,7 @@
      //==============================================================================
      // Cheap maths for the per-sample loops (the guide sound runs up to 24 voices):
  
-@@ -516,6 +515,7 @@
+@@ -516,6 +519,7 @@
      //==============================================================================
      const std::atomic<float>& tone;
      const std::atomic<float>& soundChoice;
@@ -25,7 +36,7 @@
      juce::Random random;
  
      GuideSound sound = GuideSound::rhodes;
-@@ -549,3 +549,4 @@
+@@ -549,3 +553,4 @@
      bool strings = false;
      double padLow2 = 0.0, vibratoPhase = 0.0;
  };

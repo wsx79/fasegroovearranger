@@ -21,6 +21,8 @@
 - `bestChord` also matches diminished, half-diminished, augmented and suspended chords.
 - Progression names and chords: "Dorian Circle i - IV - VII - III" (Dorian's IV is major); "Funky Dominant I7 - IV7" plays explicit dominant sevenths (free chords 24, 29) instead of Mixolydian's IVmaj7.
 
+- `GuideVoice::startNote`: the voice's noise generator is seeded from the note and velocity and its free-running oscillator phases restart, so every render (export, stems, playback) of a song is sample-identical.
+
 ## Drums (`fgd`)
 
 - Jackin' house keeps a four-on-the-floor shuffle: `reinforceJackinHouse` after the dice, section variations and presets (main and drop); the swung "a" stays an accent in the humanizer; cowbell and tom from the first bar of the main part.
@@ -29,6 +31,8 @@
 - Not vendored (unused here): `generalMidiDrumName`, `makeRandomLane`, `defaultArrangement`.
 
 ## Guitar (`fgg`)
+
+- `GuideGuitar` pluck: the pick noise is seeded from the note and velocity, so every render of a song is sample-identical.
 
 - `GrooveSettings::stepsPerChord`: shared harmonic duration (8/16/32/64 steps per chord); the chord, its voicing, the push to the next chord and the loop length follow it. 16 is the plugin's one chord per bar.
 - Scale table, `diatonicChord`, `codeChord`, `circleOfFifthsProgression` and `transitionScore` live in `ThirdParty/engine-theory/BandTheory.inl` (same text as lead). Chord types `mMaj7`, `dim7` and `dom7b9` are appended so minor-major sevenths, diminished sevenths and flat nines are not collapsed.

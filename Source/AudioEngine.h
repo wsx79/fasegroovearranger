@@ -278,6 +278,7 @@ public:
     void restorePluginState(int,const juce::String&);
     void restoreEffectState(int,const juce::String&,int slot=1);
     // Same processing graph for playback and export. Export temporarily owns the engine.
+    bool dryRender=false;   // set only while an export owns the engine (AudioExportOptions::dry)
     juce::Result exportAudio(const Project&,const juce::File&,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak=nullptr,AudioExportOptions options={});
     // Worker only, exclusive offline ownership as exportAudio. Raw float mix plus
     // context-preserving post-insert/fader track taps; never an export UI mode.

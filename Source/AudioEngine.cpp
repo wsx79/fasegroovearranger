@@ -434,13 +434,13 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     RenderingScope renderingScope(rendering);
     const int clipSource=exporting.load()?-1:clipPlaybackTrack.load();
     const double samplesPerBeat=sampleRate*60./tempo.load(),end=beat+count/samplesPerBeat;
-    busGraph.begin(count,onlyTrack>=0);
+    const bool dry=dryRender;busGraph.begin(count,onlyTrack>=0||dry);
     if(analysisCapture)for(int track:analysisCapture->selected)analysisCapture->audio[(size_t)track].clear(0,count);
     for(auto& signal:detectorSignals)std::fill(signal.begin(),signal.begin()+count,0.f);
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
     refreshLatencies();
     // Master automation: one gain per sample for every track (the buffer is allocated once).
-    const bool masterActive=masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
+    const bool masterActive=!dry&&masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
     if(masterActive)for(int s=0;s<count;++s)masterGains[(size_t)s]=(float)masterAutomation->valueAt(beat+s/samplesPerBeat);
     for(int ti=0;ti<engineTrackCount;++ti){if(ti>=maxTracks||(onlyTrack>=0&&ti!=onlyTrack))continue;auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);int queued=i.midi.getNumEvents();bool dense=queued>16384;
         while(scheduled&&(clipSource<0||ti==clipSource)&&i.cursor<schedule.size()&&schedule[i.cursor].beat<end){if(queued>=16384){dense=true;i.cursor=cursorAt(i,end);break;}++queued;const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||(laneMuted(i,e)&&(e.controller>=0||e.velocity>0||!i.sounding[(size_t)std::clamp(e.pitch,0,127)])))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
@@ -493,13 +493,13 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     }
     for(int ti=0;ti<maxTracks;++ti){if(onlyTrack>=0&&ti!=onlyTrack)continue;auto& i=*instruments[(size_t)ti];auto& block=i.scratch;
         const auto* frozen=frozenAudio[(size_t)ti].current;const bool frozenPlaying=frozen&&i.controls&&frozen->session==i.controls->session&&frozen->asset&&frozen->asset->frames>1;
-        for(int k=0;!frozenPlaying&&k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,i.effectBypass[(size_t)(slot-1)]);if(!native&&i.effectBypass[(size_t)(slot-1)])continue;
+        for(int k=0;!frozenPlaying&&!dry&&k<i.effectCount;++k){const int slot=i.effectOrder[(size_t)k];auto* fx=i.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,i.effectBypass[(size_t)(slot-1)]);if(!native&&i.effectBypass[(size_t)(slot-1)])continue;
             if(i.effectInputs[(size_t)(slot-1)]==1)for(int sample=0;sample<count;++sample)block.setSample(0,sample,.5f*(block.getSample(0,sample)+block.getSample(1,sample)));
             i.chainMidi.clear();i.chainMidi.addEvents(i.effectMidi,0,count,0);processHosted(i,*fx,block,i.chainMidi,beat,slot);
             if(i.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
 
         captureSpectrum((int)ti,block,count,false);
-        i.strip.process(block,count);
+        if(!dry)i.strip.process(block,count);
         captureSpectrum((int)ti,block,count,true);
         i.applyDelay(block,count);
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
@@ -517,13 +517,14 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
         meters[(size_t)ti]=meter;sideMeters[(size_t)ti][0]=side[0];sideMeters[(size_t)ti][1]=side[1];if(meter>=1.f)trackClip[(size_t)ti].store(true);
     }
-    if(mixes.current&&mixes.current->returnChains){for(int b=0;b<2;++b){auto& rack=*instruments[(size_t)(returnEffectTrack+b)];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();for(int c=0;c<2;++c)block.copyFrom(c,0,busGraph.returnBuffer(b),c,0,count);
+    if(dry)for(int b=0;b<2;++b)busGraph.returnBuffer(b).clear(0,count);   // dry: the sends reach no return
+    else if(mixes.current&&mixes.current->returnChains){for(int b=0;b<2;++b){auto& rack=*instruments[(size_t)(returnEffectTrack+b)];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();for(int c=0;c<2;++c)block.copyFrom(c,0,busGraph.returnBuffer(b),c,0,count);
         for(int k=0;k<rack.effectCount;++k){const int slot=rack.effectOrder[(size_t)k];auto* fx=rack.effects[(size_t)(slot-1)].plugin.get();if(!fx)continue;const bool native=setNativeCompressorBypass(fx,rack.effectBypass[(size_t)(slot-1)]);if(!native&&rack.effectBypass[(size_t)(slot-1)])continue;if(rack.effectInputs[(size_t)(slot-1)]==1)for(int n=0;n<count;++n)block.setSample(0,n,.5f*(block.getSample(0,n)+block.getSample(1,n)));rack.chainMidi.clear();processHosted(rack,*fx,block,rack.chainMidi,beat,slot);if(rack.effectOutputs[(size_t)(slot-1)]==1)block.copyFrom(1,0,block,0,0,count);}
         rack.applyDelay(block,count);for(int c=0;c<2;++c)busGraph.returnBuffer(b).copyFrom(c,0,block,c,0,count);
     }}
     busGraph.finish(output,channels,count,masterActive?masterGains.data():nullptr);
     // Full mixes and live clip previews pass through the master inserts; stems stay dry of master inserts.
-    if((onlyTrack<0||clipSource>=0)&&(instruments[(size_t)masterEffectTrack]->effectCount>0||instruments[(size_t)masterEffectTrack]->strip.engaged())){auto& rack=*instruments[(size_t)masterEffectTrack];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();
+    if(!dry&&(onlyTrack<0||clipSource>=0)&&(instruments[(size_t)masterEffectTrack]->effectCount>0||instruments[(size_t)masterEffectTrack]->strip.engaged())){auto& rack=*instruments[(size_t)masterEffectTrack];auto& block=rack.scratch;block.setSize(block.getNumChannels(),count,false,false,true);block.clear();
         for(int ch=0;ch<std::min(channels,2);++ch)if(output[ch])block.copyFrom(ch,0,output[ch],count);
         // A mono device supplies one real side; duplicate it before a stereo or mono insert.
         if(channels==1&&output[0])block.copyFrom(1,0,block,0,0,count);
@@ -845,7 +846,9 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     if(!std::isfinite(options.ceilingDb)||options.ceilingDb<minExportCeilingDb||options.ceilingDb>maxExportCeilingDb)return juce::Result::fail("True Peak ceiling must be between -12 and -1 dBTP.");
     if(options.mode!=AudioExportMode::transparent&&options.mode!=AudioExportMode::loud&&options.mode!=AudioExportMode::legacy)return juce::Result::fail("Invalid export mode.");
     if(options.mode==AudioExportMode::loud&&!offlineLoudReady)return juce::Result::fail("Loud export is not validated; use Transparent.");
-    const bool modern=options.mode!=AudioExportMode::legacy;
+    // A dry file is written as rendered: no ceiling gain, no peak guard (stems share one level and sum to the dry mix).
+    const bool modern=options.mode!=AudioExportMode::legacy&&!options.dry;if(options.dry)options.loudnessGuard=false;
+    struct DryScope{bool& flag;DryScope(bool& f,bool on):flag(f){flag=on;}~DryScope(){flag=false;}} dryScope(dryRender,options.dry);
     if(rawPeak)*rawPeak=0;
     if(onlyTrack < -1 || onlyTrack>=engineTrackCount)return juce::Result::fail("Invalid export track");
     auto p=source;p.normalise();
@@ -869,12 +872,13 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     publish(p);
     int compensation=0;
     {const EngineControlLock lock(*this);for(int ti=0;ti<engineTrackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
-        playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();const double requestedRate=mp3?44100:options.sampleRate>0?options.sampleRate:deviceRate;
+        playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();for(auto& instrument:instruments)instrument->releaseVoices();   /* no voice of the previous render still ringing */const double requestedRate=mp3?44100:options.sampleRate>0?options.sampleRate:deviceRate;
         const bool changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
         if(changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);prepareDelayLines();resetAt(0);
+        mixes.adopt([this](const MixState& m){applyMix(m,true);});if(mixes.current)applyMix(*mixes.current,true);   // every export starts from its own mix at rest: no gain still ramping from before
         // Delay compensation moves every track later by the largest latency: render that much
         // more and drop it from the start, so the file lines up with the grid.
-        compensation=reportedLatency.load();if(onlyTrack>=0)compensation=std::max(0,compensation-std::min(instrumentLatency(*instruments[(size_t)masterEffectTrack]),Instrument::maxDelay-1));}
+        compensation=reportedLatency.load();if(onlyTrack>=0||options.dry)compensation=std::max(0,compensation-std::min(instrumentLatency(*instruments[(size_t)masterEffectTrack]),Instrument::maxDelay-1));}
     juce::TemporaryFile temp(file),floatStage(file);auto stream=(modern?floatStage.getFile():temp.getFile()).createOutputStream();if(!stream)return juce::Result::fail("Cannot write the audio file.");
     juce::StringPairArray metadata;metadata.set(juce::WavAudioFormat::acidTempo,exportTempo(p));
     // Full arrangement files include effect tails, so mark them as one-shots rather than
@@ -902,7 +906,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     if(!p.returnChains&&delayUsed){const auto& delay=p.buses[3];const double repeats=delay.feedback>0?std::ceil(std::log(.00003)/std::log(std::max(.00001,delay.feedback)))+1:1;effectTail=std::max(effectTail,repeats*delay.division*60./p.settings.bpm);}
     for(const auto& instrument:instruments){if(instrument->kind>=maxTracks)continue;double tail=3.;if(instrument->mode==2&&instrument->plugin){const double seconds=instrument->plugin->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail=std::max(tail,std::min(seconds,120.));}for(int k=0;k<instrument->effectCount;++k){const int id=instrument->effectOrder[(size_t)k]-1;if(auto* fx=instrument->effects[(size_t)id].plugin.get())if(!instrument->effectBypass[(size_t)id]){const double seconds=fx->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail+=std::min(seconds,120.);}}effectTail=std::max(effectTail,std::min(tail,120.));}
     if(p.returnChains){double returnTail=0;for(int b=0;b<2;++b){const bool used=std::any_of(p.tracks.begin(),p.tracks.end(),[b](const Track& track){return track.sends[(size_t)b]>0;});if(!used)continue;const auto& rack=*instruments[(size_t)(returnEffectTrack+b)];double tail=0;for(int k=0;k<rack.effectCount;++k){const int id=rack.effectOrder[(size_t)k]-1;if(auto* fx=rack.effects[(size_t)id].plugin.get())if(!rack.effectBypass[(size_t)id]){const double seconds=fx->getTailLengthSeconds();if(std::isfinite(seconds)&&seconds>0)tail=std::min(120.,tail+seconds);}}returnTail=std::max(returnTail,tail);}effectTail=std::min(120.,effectTail+returnTail);}
-    if(onlyTrack<0){const auto& rack=*instruments[(size_t)masterEffectTrack];for(int k=0;k<rack.effectCount;++k){const int index=rack.effectOrder[(size_t)k]-1;if(auto* effect=rack.effects[(size_t)index].plugin.get())if(!rack.effectBypass[(size_t)index]){const double tail=effect->getTailLengthSeconds();if(std::isfinite(tail)&&tail>0)effectTail=std::min(120.,effectTail+tail);}}}
+    if(onlyTrack<0&&!options.dry){const auto& rack=*instruments[(size_t)masterEffectTrack];for(int k=0;k<rack.effectCount;++k){const int index=rack.effectOrder[(size_t)k]-1;if(auto* effect=rack.effects[(size_t)index].plugin.get())if(!rack.effectBypass[(size_t)index]){const double tail=effect->getTailLengthSeconds();if(std::isfinite(tail)&&tail>0)effectTail=std::min(120.,effectTail+tail);}}}
     juce::AudioBuffer<float> buffer(2,blockSize);const auto total=(juce::int64)std::ceil((endSeconds+effectTail)*sampleRate);
     if(analysis){
         for(int ti=0;ti<maxTracks;++ti)analysis->latency=std::max(analysis->latency,std::min(instruments[(size_t)ti]->latency,Instrument::maxDelay-1));
