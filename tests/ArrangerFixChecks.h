@@ -145,6 +145,14 @@ inline void verifyEditorRegenerate(){
         check(!r.tracks[0].clips[3].notes.empty()&&r.tracks[0].clips[3].notes!=r.tracks[0].clips[1].notes,"the returning verse's piano is not a copy");
         for(int ti:{0,fga::leadTrack}){const auto a=pcs(ti,2),b=pcs(ti,4);int common=0;for(int x:b)common+=a.count(x);check(common*10>=(int)b.size()*6,"a return keeps the harmony: its pitch classes are mostly the first one's");}
     }
+    {   // Transitions into a drop: a genre-voiced percussion riser over the last two bars, on the grid, before the stop.
+        for(int genre:{(int)fga::Genre::soulful,fga::afroHouseGenre,fga::deepHouseGenre}){auto t=fga::newProject(genre);t.settings.randomAutomation=false;
+            t.sections={{fga::Section::intro,8,"I"},{fga::Section::main,16,"A"},{fga::Section::buildup,8,"U"},{fga::Section::drop,16,"D"},{fga::Section::outro,8,"O"}};t.normalise();fga::generate(t,fga::Scope::song,0,0,31);
+            const int ti=genre==fga::afroHouseGenre?13:genre==fga::deepHouseGenre?11:15;const double finish=t.sectionStart(3)-t.sections[2].dropGap;int riser=0;bool grid=true,quiet=true;
+            for(size_t ci=0;ci<t.tracks[(size_t)ti].clips.size();++ci){const double at=t.clipStart(ti,(int)ci);for(const auto& n:t.tracks[(size_t)ti].clips[ci].notes){const double x=at+n.start;
+                if(x>=finish-8-1e-6&&x<finish){++riser;grid=grid&&std::abs(x*4-std::round(x*4))<1e-6;}if(x>=finish&&x<t.sectionStart(3)-1./32.)quiet=false;}}
+            check(riser>=16&&grid,"a riser builds over the last two bars into the drop, on the sixteenth grid");check(quiet,"the riser stops where the band stops");}
+    }
     // Drums too.
     auto d=fga::newProject(1);d.tracks[4].clips[2].notes.clear();check(fga::regenerateClip(d,4,2,55)&&!d.tracks[4].clips[2].notes.empty(),"drum clip regenerates");
     // Locks: nothing changes.

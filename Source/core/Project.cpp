@@ -1534,6 +1534,28 @@ static void addSectionCrashes(Project& p,Scope scope,int track,int section){
         }
     }
 }
+// Into a drop, genres whose build-up has no snare roll still rise: over the last two bars before the
+// stop (or the drop) a percussion riser speeds up and grows, in the genre's own voice: congas for
+// Afro and Latin, toms for Soulful, Gospel, Disco and Neo Soul, a soft shaker for Deep and Chill.
+// Repeated drops alternate the figure (eighths into sixteenths, or a steady sixteenth swell), so no
+// two transitions sound the same. Never over a roll the user asked for; grid-locked; the stop
+// before the drop (applied afterwards) keeps its silence.
+static void preDropRisers(Project& p,Scope scope,int track,int section,int lastClip=-1){
+    const auto g=(Genre)p.settings.genre;if(isElectronicGenre(p.settings.genre)||genreProfile(p.settings.genre).rollingBuild)return;
+    const int ti=g==Genre::afroHouse||g==Genre::latinHouse?13:g==Genre::deepHouse||g==Genre::chill?11:g==Genre::soulful||g==Genre::gospel||g==Genre::discoHouse||g==Genre::neoSoul?15:-1;
+    if(ti<0||ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked||p.tracks[(size_t)ti].mute)return;
+    const bool soft=ti==11;int occurrence=0;
+    for(int si=0;si+1<(int)p.sections.size();++si){const auto& sec=p.sections[(size_t)si];if(p.sections[(size_t)si+1].type!=Section::drop||sec.snareRoll||sec.bars<4)continue;
+        if(sec.type!=Section::buildup&&!(sec.type==Section::main&&sec.bars>=16)){++occurrence;continue;}
+        const double finish=p.sectionStart(si+1)-std::max(0,sec.dropGap),from=finish-8.;const bool accelerate=occurrence++%2==0;
+        auto& t=p.tracks[(size_t)ti];
+        for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];if(c.audioOffset>=0||c.loopLength>0)continue;
+            const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);const double a=std::max(0.,from-start),b=std::min(length,finish-start);if(b<=a)continue;
+            c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=a-1./32.&&n.start<b;}),c.notes.end());
+            for(double at=a;at<b-1e-6;){const double done=(start+at-from)/8.,step=accelerate?(done<.5?.5:.25):.25;
+                const int velocity=(int)std::lround((soft?38:52)+(soft?34:58)*done);c.notes.push_back({at,std::min(step*.6,b-at),fgd::defaultNote(ti-4),std::clamp(velocity,1,127),ti-4});at+=step;}
+            tidyNotes(c,length);}}
+}
 static void transitionMacros(Project& p,Scope scope,int track,int section,int lastClip=-1){for(int si=0;si+1<(int)p.sections.size();++si){if(p.sections[(size_t)(si+1)].type!=Section::drop)continue;const auto& options=p.sections[(size_t)si];const double finish=p.sectionStart(si+1);for(int ti:{0,1,4,5,6,16}){auto& t=p.tracks[(size_t)ti];for(size_t ci=0;ci<t.clips.size();++ci){if(!editableTake(p,scope,track,section,ti,(int)ci,lastClip))continue;auto& c=t.clips[ci];const double start=p.clipStart(ti,(int)ci),length=p.clipLength(ti,(int)ci);if(start>=finish||start+length<=finish-4)continue;if(options.preDropSilence&&(ti==1||ti==4)){const double silence=finish-2-start;c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[silence](const Note& n){return n.start>=silence;}),c.notes.end());for(auto& n:c.notes)n.length=std::min(n.length,std::max(0.,silence-n.start));}if(options.snareRoll&&(ti==5||ti==6)){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[from,to](const Note& n){return n.start>=from&&n.start<to;}),c.notes.end());for(double at=from;at<to-1e-6;){const double remaining=to-at,step=remaining>2?.5:remaining>1?.25:.125;c.notes.push_back({at,std::min(step*.7,to-at),fgd::defaultNote(ti-4),std::clamp((int)(65+60*(1-remaining/4)),1,127),ti-4});at+=step;}}if(options.reverseCrash&&ti==16&&t.instrument=="sample"){const double from=std::max(0.,finish-4-start),to=std::min(length,finish-start);if(to>from)c.notes.push_back({from,to-from,t.sampleRoot,105,12,true});}tidyNotes(c,options.preDropSilence&&(ti==1||ti==4)?std::clamp(finish-2-start,0.,length):length);}}}}
 // A build-up has to rise: the engines render it as flat as a main section except for the
 // snare. Seeded per song and section: the bass usually leaves for the last bar or two, the
@@ -2013,7 +2035,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     if(seed&&(scope==Scope::track||scope==Scope::clip)&&isManualTrack(track)){p.normalise();prepareGenerationFeel(p,scope,track,section,seed,lastClip);}
     generateNotes(p,scope,track,section,seed,lastClip);
     generateVocalChops(p,scope,track,section,seed,lastClip);
-    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
+    addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);preDropRisers(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
      bandPasses(p,fresh,[&](int ti,int ci){return editableTake(p,scope,track,section,ti,ci,lastClip);},&written);}
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
@@ -2251,7 +2273,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
     std::array<std::vector<std::vector<Note>>,4> shaped;{const int bandTracks[4]{2,3,leadTrack,0};for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)shaped[(size_t)k].push_back(c.notes);}
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);preDropRisers(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
