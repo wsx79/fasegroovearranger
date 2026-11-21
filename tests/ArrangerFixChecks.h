@@ -135,6 +135,12 @@ inline void verifyEditorRegenerate(){
             for(const auto& n:on.tracks[(size_t)ti].clips[ci].notes)check(n.pitch<84||on.tracks[(size_t)ti].clips[ci].locked,"keys, strings and guitar stay below the voice's presence range");}
         auto regen=on;fga::generate(regen,fga::Scope::clip,fga::leadTrack,2,0);check(regen.tracks[fga::leadTrack].clips[2]==on.tracks[fga::leadTrack].clips[2],"a clip regeneration matches the song pass with VOCALS PRESENT");
         auto genre=on;fga::applyGenre(genre,7);check(genre.settings.vocalsPresent,"a genre change keeps VOCALS PRESENT");
+        // the button: the setting, then piano, strings, guitar and lead regenerate with their own takes
+        auto toggled=off;toggled.settings.vocalsPresent=true;for(int ti:{0,2,3,fga::leadTrack})fga::generate(toggled,fga::Scope::track,ti,0,0);
+        bool reshaped=toggled.tracks[fga::leadTrack].clips!=off.tracks[fga::leadTrack].clips;
+        for(size_t ci=0;ci<toggled.tracks[fga::leadTrack].clips.size();++ci){const int si=toggled.sectionAtBeat(toggled.clipStart(fga::leadTrack,(int)ci)+.01);if(si<0||toggled.sections[(size_t)si].type!=fga::Section::main)continue;const double from=toggled.sectionStart(si),at=toggled.clipStart(fga::leadTrack,(int)ci);
+            for(const auto& n:toggled.tracks[fga::leadTrack].clips[ci].notes)reshaped=reshaped&&((int)std::floor((at+n.start-from)/4+1e-9))%4>=2;}
+        check(reshaped,"switching VOCALS PRESENT on an existing song reshapes it (the verse rule holds)");
     }
     {   // A section that returns varies: the lead an octave higher on odd returns, a layer entering late.
         auto r=fga::newProject(0);r.settings.randomAutomation=false;r.sections={{fga::Section::intro,8,"I"},{fga::Section::main,16,"A"},{fga::Section::drop,16,"D"},{fga::Section::main,16,"A2"},{fga::Section::drop,16,"D2"},{fga::Section::outro,8,"O"}};r.normalise();fga::generate(r,fga::Scope::song,0,0,77);

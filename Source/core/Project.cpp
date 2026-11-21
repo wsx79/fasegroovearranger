@@ -2027,10 +2027,10 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
         // at zero phase on every note), so the two fundamentals begin together instead of a few milliseconds apart
         auto onKick=[&](double beat){auto it=std::lower_bound(kick.begin(),kick.end(),beat-1./32.,[](const Span& s,double x){return s.from<x;});return it!=kick.end()&&std::abs(it->from-beat)<=1./32.?it->from:beat;};
         for(int ci=0;ci<(int)t.clips.size();++ci){auto& c=t.clips[(size_t)ci];
-            if(c.locked||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&ci!=section))continue;
+            if(c.locked||c.loopLength>0||(scope==Scope::clip&&(ci<section||ci>(lastClip<0?section:lastClip)))||(scope==Scope::section&&ci!=section))continue;   // a looped clip keeps its loop
             if(c.seed<=1)c.seed=mix(p.settings.seed+(std::uint32_t)ti*131U+(std::uint32_t)ci*977U);
             const double at=p.clipStart(ti,ci),length=p.clipLength(ti,ci);const int si=std::clamp(p.sectionAtBeat(at+.01),0,(int)p.sections.size()-1);const auto type=p.sections[(size_t)si].type;
-            const auto harmony=activeHarmony(p,si);c.notes.clear();c.loopSource.clear();c.loopLength=0;
+            const auto harmony=activeHarmony(p,si);c.notes.clear();
             if(t.part==1){
                 if(type==Section::intro||type==Section::outro||type==Section::breakdown)continue;
                 const double stop=si+1<(int)p.sections.size()&&p.sections[(size_t)si+1].type==Section::drop?p.sectionStart(si+1)-std::max(1,p.sections[(size_t)si].dropGap):at+length;
@@ -2044,7 +2044,8 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
                 const int home=centre-7;std::uint32_t r=mix(c.seed^0x5c0ffee1U);auto dice=[&](){return nextDice(r);};
                 const double density=std::clamp(takeFeel(t.engine.density,c.feel[0],p.settings.density),0.,1.);
                 auto leadAt=[&](double a,double b){for(const auto& l:lead)if(l.from<b&&l.to>a)return true;return false;};
-                auto rubs=[&](int pitch,double a,double b){for(const auto& s:piano)if(s.from<b&&s.to>a&&std::abs(s.pitch-pitch)%12==1)return true;return false;};
+                double longest=0;for(const auto& s:piano)longest=std::max(longest,s.to-s.from);
+                auto rubs=[&](int pitch,double a,double b){for(auto it=std::lower_bound(piano.begin(),piano.end(),a-longest,[](const Span& s,double x){return s.from<x;});it!=piano.end()&&it->from<b;++it)if(it->to>a&&std::abs(it->pitch-pitch)%12==1)return true;return false;};
                 for(double bar=0;bar+4<=length+1e-9;bar+=2){const double a=at+bar,b=a+8;   // one answer at most every two bars, inside a gap of the lead
                     if(type==Section::intro||type==Section::outro)break;
                     if(vocals&&type==Section::main&&((int)std::floor((a-sectionFrom)/4+1e-9))%4<2)continue;
@@ -2053,7 +2054,7 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
                     const int notes=2+(int)(dice()*3);int pitch=home;
                     for(int k=0;k<notes;++k){const double s=gap+.5+k*.5;double len=k==notes-1?.9:.4;if(k==notes-1&&leadAt(s,s+len))len=.4;if(s+len>at+length||leadAt(s,s+len))break;
                         const auto chord=chordAtBeat(harmony,s);int best=pitch;int distance=99;
-                        for(int q=pitch-4;q<=pitch+4;++q){const int iv=((q-chord.rootPc)%12+12)%12;if((iv==0||iv==chord.third||iv==chord.fifth||(k>0&&iv==chord.seventh))&&!rubs(q,s,s+.45)&&std::abs(q-pitch)<distance&&(k==0||q<=pitch)){distance=std::abs(q-pitch);best=q;}}
+                        for(int q=pitch-4;q<=pitch+4;++q){const int iv=((q-chord.rootPc)%12+12)%12;if((iv==0||iv==chord.third||iv==chord.fifth||(k>0&&iv==chord.seventh))&&!rubs(q,s,s+len)&&std::abs(q-pitch)<distance&&(k==0||q<=pitch)){distance=std::abs(q-pitch);best=q;}}
                         if(distance==99)break;pitch=best;c.notes.push_back({s-at,len,pitch,k==0?92:80,0});pitch-=2;}
                 }
             }
@@ -2073,7 +2074,7 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci){auto& c=clips[ci];if(c.loopLength>0){kept.insert({ti,(int)ci});continue;}   // a loop clip is rebuilt from its source: left as the engine wrote it
-            const auto source=engineOutput(c.notes);
+            const auto source=engineOutput(c.notes)^(p.settings.vocalsPresent?0x9e3779b97f4a7c15ULL:0ULL);   // VOCALS PRESENT shapes the take: toggling it reshapes, never restores
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};

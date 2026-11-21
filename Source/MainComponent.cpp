@@ -737,6 +737,7 @@ void MainComponent::resized(){
     loadingView.setBounds(getLocalBounds());
     const int w=getWidth();auto place=[](juce::Component& c,int x,int y,int width,int height=28){c.setBounds(x,y,width,height);};
     const bool song=page==Page::arrangement,engine=page==Page::instrument,edit=page==Page::editor;
+    vocalsButton.setVisible(song);   // an arrangement control: hidden on the instrument and editor pages (the song layout refines it)
     if(piano.ghostTrack.getParentComponent()!=this){addChildComponent(piano.ghostTrack);addChildComponent(piano.expressionLane);}
     piano.ghostTrack.setVisible(edit);piano.expressionLane.setVisible(edit);activeNotesButton.setVisible(edit);updatePianoEditingState();
     arrangementPort.setVisible(song);if(!instrumentWindow)instrumentPort.setVisible(engine);pianoPort.setVisible(edit);inspectorPort.setVisible(song&&inspectorVisible);inspectorCollapse.setVisible(song&&inspectorVisible);inspectorResizer.setVisible(song&&inspectorVisible);mixer.setVisible(song);
