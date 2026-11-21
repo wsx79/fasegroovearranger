@@ -1860,9 +1860,14 @@ static void livePerformance(Clip& c,const Project& p,int ti,double beats){
 // Deep and Chill keys hold long chords, so a new take barely changed them. Each take now picks its
 // own voicing (the same chords one inversion up or down), whether a chord change is pushed an
 // eighth early, and whether a long chord is struck again on beat three. Decided on the written grid.
+static void chordTake(Clip& c,std::uint32_t salt,double beats,bool anticipate=true);
 static void pianoTake(Clip& c,const Project& p,double beats){
-    const auto g=(Genre)p.settings.genre;if((g!=Genre::deepHouse&&g!=Genre::chill)||c.notes.size()<4)return;
-    const std::uint32_t r=mix(c.seed^0x2c1b3c6dU);const int inversion=(int)(r%3)-1;const bool push=(r>>2)&1,restrike=(r>>3)&1;
+    const auto g=(Genre)p.settings.genre;if(g!=Genre::deepHouse&&g!=Genre::chill)return;chordTake(c,0x2c1b3c6dU,beats);
+}
+// Held chords (Deep / Chill keys, and the string pads of every genre) vary per take the same way.
+static void chordTake(Clip& c,std::uint32_t salt,double beats,bool anticipate){
+    if(c.notes.size()<4)return;
+    const std::uint32_t r=mix(c.seed^salt);const int inversion=(int)(r%3)-1;const bool push=anticipate&&((r>>2)&1),restrike=(r>>3)&1;
     std::sort(c.notes.begin(),c.notes.end(),byStartPitch);
     std::vector<Note> out;
     for(size_t i=0;i<c.notes.size();){size_t j=i;while(j<c.notes.size()&&std::round(c.notes[j].start*8)==std::round(c.notes[i].start*8))++j;
@@ -2063,9 +2068,9 @@ static void generateParts(Project& p,Scope scope,int track,int section,int lastC
 int Project::addPartTrack(int kind){
     if(kind<1||kind>2)return -1;const int index=addMidiTrack();if(index<0)return index;auto& t=tracks[(size_t)index];
     t.part=kind;t.name=kind==1?"Sub bass":"Counter melody";t.freeTimeline=false;t.clips.assign(sections.size(),{});
-    // organ fundamental under a 100 Hz low-pass: a sine-like sub, ducked by every kick hit (sample-accurate
-    // sidechain on the kick's own notes) so kick and sub never stack their low end
-    if(kind==1){t.sound=3;t.engine.tone=0;t.gain=.5;t.engine.pump=.8;t.engine.pumpSource=1;t.engine.pumpRelease=.25;}
+    // the Sub Sine voice (a pure sine), ducked by every kick hit (sample-accurate sidechain on the kick's own notes)
+    // so kick and sub never stack their low end; the engine's low-pass only trims what sits above it
+    if(kind==1){t.sound=7;t.engine.tone=.3;t.gain=.5;t.engine.pump=.8;t.engine.pumpSource=1;t.engine.pumpRelease=.25;}
     else{t.sound=0;t.engine.tone=.45;t.gain=.38;t.engine.density=.5;}
     generateParts(*this,Scope::track,index,0);return index;
 }
@@ -2304,6 +2309,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             if(guide>=0&&guide<(int)p.sections.size()&&p.sections[(size_t)guide].energy>=0){const double v=energyVelocity(p.sections[(size_t)guide].energy);for(auto& n:clip.notes)n.velocity=std::clamp((int)std::lround(n.velocity*v),1,127);}
             if(ti==1&&e.pattern<0&&!isElectronicGenre(s.genre))bassApproach(clip,p,p.clipStart(ti,(int)si),beats);
             if(ti==0&&e.pattern<0){pianoMotif(clip,p,beats);pianoTake(clip,p,beats);}
+            if(ti==2&&e.pattern<0&&!isElectronicGenre(s.genre))chordTake(clip,0x51a77e55U,beats,false);   // string pads: each take its own voicing and restrike (no anticipation: a pad holds its chord)
             if(ti==3&&e.pattern<0&&s.genre==latinHouseGenre&&!p.settings.guitarLead)latinMontuno(clip,beats);   // a chosen pattern plays as written
             if(t.engine.humanizeSeed&&(!isDrumTrack(ti)||isElectronicGenre(p.settings.genre)))applyFeelSeed(clip,t.engine.humanizeSeed,takeFeel(t.engine.humanize,clip.feel[2],p.settings.humanize));
             if(ti==2){varyStringsTake(clip);clip.stringsStyleAtGeneration=s.stringsMode;}

@@ -22,6 +22,7 @@
 - Progression names and chords: "Dorian Circle i - IV - VII - III" (Dorian's IV is major); "Funky Dominant I7 - IV7" plays explicit dominant sevenths (free chords 24, 29) instead of Mixolydian's IVmaj7.
 
 - `GuideVoice::startNote`: the voice's noise generator is seeded from the note and velocity and its free-running oscillator phases restart, so every render (export, stems, playback) of a song is sample-identical.
+- `GuideSound::sub` ("Sub Sine", `numGuideSounds` 8): a pure sine at the note's fundamental with a 3 ms fade-in, for the Arranger's sub-bass part.
 
 ## Drums (`fgd`)
 

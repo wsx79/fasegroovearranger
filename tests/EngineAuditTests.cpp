@@ -138,6 +138,10 @@ struct EngineAuditTests {
         double repeat=0,error=0,energy=0;for(int ch=0;ch<2;++ch)for(int s=0;s<mix.getNumSamples();++s){repeat=std::max(repeat,(double)std::abs(again.getSample(ch,s)-piano.getSample(ch,s)));
             const double sum=(double)piano.getSample(ch,s)+bass.getSample(ch,s)+kick.getSample(ch,s)+low.getSample(ch,s);error=std::max(error,std::abs(sum-mix.getSample(ch,s)));energy+=std::abs(mix.getSample(ch,s));}
         requireAudit(repeat==0,"a render is sample-identical when repeated (instrument noise is seeded per note)");
+        {AudioEngine engine(AudioEngine::Offline{});auto once=[&](const char* name){const auto file=dir.getChildFile(name);requireAudit(engine.exportAudio(project,file,0,false,[]{return false;},[](double){},nullptr,options).wasOk(),"export on one engine");
+            juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> r(wav.createReaderFor(file.createInputStream().release(),true));juce::AudioBuffer<float> b(2,(int)r->lengthInSamples);r->read(&b,0,b.getNumSamples(),0,true,true);return b;};
+         const auto first=once("first.wav"),second=once("second.wav");double d=0;for(int s=0;s<first.getNumSamples();++s)d=std::max(d,(double)std::abs(first.getSample(0,s)-second.getSample(0,s)));
+         requireAudit(d==0,"the first export of an engine matches the next one (no level still gliding at the start)");}
         requireAudit(energy>1.&&error<1e-5,"the dry stems sum to the dry mix");std::cout<<"Dry stems: equal length, sum = dry mix (max error "<<error<<") PASS\n";
     }
     static void returnPdc(){

@@ -42,7 +42,11 @@ inline void applyGenreSound(Project& p){
     for(int ti=0;ti<trackCount;++ti){auto& t=p.tracks[(size_t)ti];if(t.locked)continue;auto& e=t.engine;
         e.fillEvery=isHarmonicTrack(ti)?16:8;e.variationEvery=8;e.afterFill=true;
         if(ti==0){e.gate=a.gate;e.strum=a.strum;e.centre=p.settings.genre==(int)Genre::chill?67:64;e.octaveTop=p.settings.genre==(int)Genre::ninetiesHouse;e.density=a.density;e.humanize=p.settings.genre==(int)Genre::neoSoul?.32:.14;}
-        if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==(int)Genre::deepHouse||p.settings.genre==(int)Genre::ukGarage||isAfroLatinGenre(p.settings.genre)||p.settings.genre==(int)Genre::danceStabs)?2:0;e.humanize=.05;e.realism=true;}
+        if(ti==1){e.gate=.55;e.bassFeel=(p.settings.genre==(int)Genre::deepHouse||p.settings.genre==(int)Genre::ukGarage||isAfroLatinGenre(p.settings.genre)||p.settings.genre==(int)Genre::danceStabs)?2:0;e.humanize=.05;e.realism=true;
+            // four-on-the-floor genres: a light kick sidechain on the bass (sample-accurate on the kick's notes), so kick and
+            // bass share the low end; broken-beat Neo Soul and Chill keep a steady bass
+            const bool fourOnFloor=p.settings.genre!=(int)Genre::neoSoul&&p.settings.genre!=(int)Genre::chill&&!isElectronicGenre(p.settings.genre);
+            if(fourOnFloor){e.pump=.25;e.pumpSource=1;e.pumpRelease=.2;}else if(!isElectronicGenre(p.settings.genre)){e.pump=0;e.pumpSource=0;}}
         if(p.settings.genre==(int)Genre::jackinHouse){
             // The bass is a short funky line, not a held low organ chord.
             if(ti==1){e.gate=.30;e.humanize=.08;e.bassFeel=1;}

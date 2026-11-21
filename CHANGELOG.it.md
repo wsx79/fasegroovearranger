@@ -1,5 +1,15 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.18
+
+- Correzioni: attivare VOCE PRESENTE su un brano esistente rimodella anche le parti rimaste invariate; il controcanto controlla il piano per tutta la durata della nota (nessun semitono rimasto); una clip in loop sulle tracce sub basso o controcanto mantiene il loop; VOCE PRESENTE compare solo nella pagina arrangiamento.
+- Il primo export dopo l’avvio è identico ai successivi: i livelli del riverbero di ogni traccia non salgono più nei primi 10 ms.
+- Sub basso: una nuova voce interna, “Sub Sine” (una sinusoide pura da fase zero con 3 ms di attacco), sostituisce l’organo filtrato nelle nuove parti di sub.
+- Basso: nei generi a cassa dritta un leggero sidechain dalla cassa sul basso (Neo Soul, Chill e i generi elettronici mantengono il loro).
+- Archi: ogni take sceglie il proprio voicing e se ribattere gli accordi lunghi; meno take identiche su 20 rigenerazioni (UK Garage 28 → 7, Disco 53 → 30).
+- Il build-up di ogni genere apre il filtro delle tastiere verso il drop (un’automazione Tone generata; la Techno parte più scura).
+- Le intestazioni delle tracce nominano le parti aggiunte («SUB BASSO · generata», «CONTROCANTO · generata»).
+
 ## 0.57.17
 
 - Sub basso e cassa: il sub è in sidechain con la cassa (si abbassa a ogni colpo di cassa, con precisione al campione sulle note della cassa, e risale in un quarto di beat), e un attacco del sub entro un trentaduesimo da un colpo di cassa parte esattamente sul colpo, con l’oscillatore che riparte da fase zero, così i due bassi non si sommano e non “flammano”.

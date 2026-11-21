@@ -21,13 +21,13 @@
 #include <atomic>
 #include <cmath>
 
-enum class GuideSound { rhodes = 0, grand, housePiano, organ, wurlitzer, gospelOrgan, pad };
-constexpr int numGuideSounds = 7;
+enum class GuideSound { rhodes = 0, grand, housePiano, organ, wurlitzer, gospelOrgan, pad, sub };
+constexpr int numGuideSounds = 8;
 
 inline const char* guideSoundName (int sound) noexcept
 {
     static const char* const names[numGuideSounds] { "Rhodes (FM)", "Soulful Grand", "House Piano (M1 style)", "House Organ",
-                                                     "Wurlitzer", "Gospel Organ (Leslie)", "Warm Pad" };
+                                                     "Wurlitzer", "Gospel Organ (Leslie)", "Warm Pad", "Sub Sine" };
     return names[juce::jlimit (0, numGuideSounds - 1, sound)];
 }
 
@@ -95,6 +95,7 @@ public:
             case GuideSound::gospelOrgan: startOrgan(); startLeslie(); break;
             case GuideSound::wurlitzer:  startRhodes (note); startWurli(); break;
             case GuideSound::pad:        startPad();               break;
+            case GuideSound::sub:        gain = 0.22 * (0.5 + 0.5 * vel); carrierInc = freq / sr; break;   // a pure sine from zero phase
             case GuideSound::rhodes:
             default:                     startRhodes (note);       break;
         }
@@ -140,6 +141,7 @@ public:
                 case GuideSound::gospelOrgan: sample = renderOrgan (env) * leslieGain(); break;
                 case GuideSound::wurlitzer:  sample = renderWurli (env); break;
                 case GuideSound::pad:        sample = renderPad (env); break;
+                case GuideSound::sub:        sample = renderSub (env); break;
                 case GuideSound::rhodes:
                 default:                     sample = renderRhodes (env); break;
             }
@@ -361,6 +363,15 @@ private:
         gain = 0.085 * (0.55 + 0.45 * vel);
         indexDecay.set (0.22, sr);         // percussion
         clickDecay.set (0.002, sr);
+    }
+
+    // Sub: one sine at the note's fundamental, a 3 ms fade-in (no click), the release as every sound.
+    double renderSub (double& env) noexcept
+    {
+        env = juce::jmin (1.0, time / 0.003);
+        const double out = fastSin (carrierPhase);
+        carrierPhase += carrierInc; if (carrierPhase >= 1.0) carrierPhase -= 1.0;
+        return out * env;
     }
 
     double renderOrgan (double& env) noexcept

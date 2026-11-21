@@ -877,6 +877,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
         const bool changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
         if(changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);prepareDelayLines();resetAt(0);
         mixes.adopt([this](const MixState& m){applyMix(m,true);});if(mixes.current)applyMix(*mixes.current,true);   // every export starts from its own mix at rest: no gain still ramping from before
+        for(auto& i:instruments){i->reverb.setSampleRate(sampleRate);i->reverb.reset();i->chorus.reset();}   // the per-track reverb's levels too (they glide 10 ms after a change): the first export after start matches every later one
         // Delay compensation moves every track later by the largest latency: render that much
         // more and drop it from the start, so the file lines up with the grid.
         compensation=reportedLatency.load();if(onlyTrack>=0||options.dry)compensation=std::max(0,compensation-std::min(instrumentLatency(*instruments[(size_t)masterEffectTrack]),Instrument::maxDelay-1));}

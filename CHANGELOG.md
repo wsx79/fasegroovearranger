@@ -1,5 +1,15 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.18
+
+- Fixes: switching VOCALS PRESENT on an existing song reshapes the parts that had not changed; the counter melody checks the piano for its whole length (no semitone rubs left); a looped clip on a sub-bass or counter-melody track keeps its loop; VOCALS PRESENT shows only on the arrangement page.
+- The first export after start matches every later one: the per-track reverb's levels no longer glide in over the first 10 ms.
+- Sub bass: a new built-in voice, "Sub Sine" (a pure sine from zero phase with a 3 ms fade-in), replaces the filtered organ on new sub-bass parts.
+- Bass: in four-on-the-floor genres a light kick sidechain on the bass (Neo Soul, Chill and the electronic genres keep theirs).
+- String pads: each take picks its own voicing and whether long chords are struck again; identical takes over 20 regenerations drop (UK Garage 28 → 7, Disco 53 → 30).
+- Every genre's build-up opens the keys' filter into the drop (an owned Tone automation; Techno starts darker).
+- Track headers name the added parts ("SUB BASS · generated", "COUNTER MELODY · generated").
+
 ## 0.57.17
 
 - Sub bass and kick: the sub is sidechained to the kick (ducked on every kick hit, sample-accurate on the kick's own notes, recovering in a quarter of a beat), and a sub attack within a 32nd of a kick hit starts exactly on it, its oscillator restarting at zero phase, so the two low ends neither stack nor flam.

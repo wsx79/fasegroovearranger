@@ -49,16 +49,15 @@ void addElectronicToneAutomation(Project& p){
     if(p.tracks.empty())return;auto& track=p.tracks[0];
     if(track.locked||std::any_of(track.clips.begin(),track.clips.end(),[](const Clip& c){return c.locked;}))return;
     auto owned=std::find_if(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return lane.generatedTone;});
-    if(p.settings.genre!=technoGenre){
-        track.parameters.erase(std::remove_if(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return lane.generatedTone&&!lane.curve.locked;}),track.parameters.end());return;
-    }
+    // Every genre's build-up opens the keys' filter into the drop (a riser in the sound itself); Techno starts darker.
+    const double dip=p.settings.genre==technoGenre?.2:.35;
     if(track.freeTimeline||track.instrument!="internal")return;
     if(owned!=track.parameters.end()&&owned->curve.locked)return;
     if(std::any_of(track.parameters.begin(),track.parameters.end(),[](const ParameterAutomation& lane){return !lane.generatedTone&&lane.slot==-1&&lane.index==0;}))return;
     if(owned==track.parameters.end()&&track.parameters.size()>=(size_t)maxParameterLanes)return;
     ParameterAutomation lane;lane.slot=-1;lane.index=0;lane.name="Tone";lane.generatedTone=true;lane.curve.enabled=true;double at=0;const double neutral=track.engine.tone;
     lane.curve.points={{0,neutral,0}};bool build=false;
-    for(const auto& section:p.sections){const double end=at+section.bars*4.;if(section.type==Section::buildup){build=true;if(at>0)lane.curve.points.push_back({at-1./64.,neutral,0});lane.curve.points.push_back({at,.2,.35});lane.curve.points.push_back({end-1./16.,.85,0});lane.curve.points.push_back({end,neutral,0});}at=end;}
+    for(const auto& section:p.sections){const double end=at+section.bars*4.;if(section.type==Section::buildup){build=true;if(at>0)lane.curve.points.push_back({at-1./64.,neutral,0});lane.curve.points.push_back({at,dip,.35});lane.curve.points.push_back({end-1./16.,.85,0});lane.curve.points.push_back({end,neutral,0});}at=end;}
     if(build){lane.curve.points.push_back({p.length(),neutral,0});lane.curve.normalise(p.length(),1.);if(owned==track.parameters.end())track.parameters.push_back(std::move(lane));else *owned=std::move(lane);}
     else if(owned!=track.parameters.end())track.parameters.erase(owned);
 }
