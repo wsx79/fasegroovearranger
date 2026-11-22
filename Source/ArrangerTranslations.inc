@@ -980,7 +980,6 @@
 { "ARRANGE FROM VOCAL", "ARRANGIA DALLA VOCE", "ARREGLAR DESDE LA VOZ", "ARRANGER DEPUIS LA VOIX", "AUS DER STIMME ARRANGIEREN", "ARRANJAR A PARTIR DA VOZ" },
 { "Cannot read the vocal file.", "Impossibile leggere il file della voce.", "No se puede leer el archivo de voz.", "Impossible de lire le fichier de voix.", "Die Gesangsdatei kann nicht gelesen werden.", "Não é possível ler o arquivo de voz." },
 { "No sung melody found on the selected track.", "Nessuna melodia cantata trovata nella traccia selezionata.", "No se encontró melodía cantada en la pista seleccionada.", "Aucune mélodie chantée trouvée sur la piste sélectionnée.", "Keine gesungene Melodie auf der gewählten Spur gefunden.", "Nenhuma melodia cantada encontrada na faixa selecionada." },
-{ "notes", "note", "notas", "notes", "Noten", "notas" },
 { "sections", "sezioni", "secciones", "sections", "Abschnitte", "seções" },
 { "Arranged from the vocal", "Arrangiato dalla voce", "Arreglado desde la voz", "Arrangé depuis la voix", "Aus der Stimme arrangiert", "Arranjado a partir da voz" },
 { "Where the singer sings", "Dove canta il cantante", "Dónde canta el cantante", "Où chante le chanteur", "Wo gesungen wird", "Onde o cantor canta" },
