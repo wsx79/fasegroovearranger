@@ -26,6 +26,8 @@ void runEngineAuditTests();
 void runDeepAuditEngineTests();
 void runRecordedRegionTests();
 int main(int argc,char** argv){
+    std::cout<<std::unitbuf;   // a crash still shows the last check that passed (ctest --output-on-failure)
+    juce::SystemStats::setApplicationCrashHandler([](void*){std::cerr<<"CRASH\n"<<juce::SystemStats::getStackBacktrace()<<std::flush;});
     juce::ScopedJuceInitialiser_GUI gui;
     try{
         if(argc==2&&juce::String(argv[1])=="--sample-import-test"){runSampleImportTests();return 0;}
