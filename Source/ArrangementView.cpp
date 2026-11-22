@@ -332,6 +332,7 @@ VolumeAutomation& ArrangementView::envelope(int track) const{
     auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return t.panAutomation;
     if(target==laneMaster)return owner.project.masterAutomation;
+    if(target==laneTempo)return owner.project.tempoAutomation;
     if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size())return t.parameters[(size_t)(target-lanePlugin)].curve;
     return t.volume;
 }
@@ -339,6 +340,7 @@ double ArrangementView::envelopeMax(int track) const{const int target=laneTarget
 double ArrangementView::envelopeDefault(int track) const{
     const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return automationFromPan(t.pan);
+    if(target==laneTempo)return automationFromBpm(owner.project.settings.bpm);
     if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];
         if(auto* plugin=lane.slot==0?owner.audio.plugin(automationRack(track)):lane.slot>0?owner.audio.effectPlugin(automationRack(track),lane.slot):nullptr)if(lane.index>=0&&lane.index<plugin->getParameters().size())return plugin->getParameters()[lane.index]->getValue();
         if(lane.slot==-1){if(t.instrument=="sample"){if(lane.index==4)return std::log(std::clamp(t.sampler.cutoff,20.,20000.)/20.)/std::log(1000.);if(lane.index==5)return t.sampler.resonance;}else{if(lane.index==0)return t.engine.tone;if(lane.index==1)return t.engine.reverb;if(lane.index==2)return t.engine.chorus;if(lane.index==3)return t.engine.pump;}}
@@ -346,6 +348,7 @@ double ArrangementView::envelopeDefault(int track) const{
     return 1.;
 }
 juce::String ArrangementView::envelopeValueText(int track,double value)const{
+    if(laneTarget[(size_t)track]==laneTempo)return juce::String(bpmFromAutomation(value),1)+" BPM";
     const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];if(lane.slot==-1&&lane.index==4){const double hz=20*std::pow(1000.,value);return hz>=1000?juce::String(hz/1000.,2)+" kHz":juce::String(hz,0)+" Hz";}if(lane.slot>=0)if(auto* plugin=lane.slot==0?owner.audio.plugin(automationRack(track)):owner.audio.effectPlugin(automationRack(track),lane.slot))if(lane.index>=0&&lane.index<plugin->getParameters().size()){auto* p=plugin->getParameters()[lane.index];return p->getText((float)value,32)+" "+p->getLabel();}}
     return juce::String(value*100,1)+"%";
 }
@@ -353,6 +356,7 @@ juce::String ArrangementView::envelopeTitle(int track) const{
     const auto& t=owner.effectTrack(automationRack(track));const int target=laneTarget[(size_t)track];
     if(target==lanePan)return tr("PAN AUTOMATION");
     if(target==laneMaster)return tr("MASTER VOLUME AUTOMATION");
+    if(target==laneTempo)return tr("MASTER TEMPO AUTOMATION");
     if(target>=lanePlugin&&target-lanePlugin<(int)t.parameters.size()){const auto& lane=t.parameters[(size_t)(target-lanePlugin)];return (automationRack(track)>=maxTracks?utf(t.name)+" / ":juce::String())+(lane.slot<0?tr("Sound"):lane.slot==0?tr("Instrument"):t.effect(lane.slot)?utf(t.effect(lane.slot)->displayName()):tr("Missing effect"))+": "+juce::String::fromUTF8(lane.name.c_str());}
     return tr("VOLUME AUTOMATION");
 }

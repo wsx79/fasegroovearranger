@@ -18,7 +18,7 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
     auto p=source;p.normalise();
     if(onlyTrack < -1 || onlyTrack>=(int)p.tracks.size())throw std::out_of_range("MIDI track");
     Bytes out{'M','T','h','d'};be(out,6,4);be(out,1,2);be(out,onlyTrack<0?(std::uint32_t)p.tracks.size()+1:2,2);be(out,960,2);
-    Bytes conductor; text(conductor,0,3,p.name); const auto tempo=(std::uint32_t)std::llround(60000000.0/std::clamp(p.settings.bpm,30.0,300.0));
+    Bytes conductor; text(conductor,0,3,p.name); const auto tempo=(std::uint32_t)std::llround(60000000.0/std::clamp(p.bpmAt(0),30.0,300.0));
     meta(conductor,0,0x51,{(std::uint8_t)(tempo>>16),(std::uint8_t)(tempo>>8),(std::uint8_t)tempo});meta(conductor,0,0x58,{4,2,24,8});
     // SMF supports only major/minor. Keep the parent signature and spell Gb/Eb minor
     // consistently with the UI/export names; retain the exact mode in readable text.
@@ -28,10 +28,16 @@ std::vector<std::uint8_t> midiFile(const Project& source,int onlyTrack) {
     const auto opening=resolveSectionHarmony(p,0);const auto openSig=signature(opening);
     meta(conductor,0,0x59,{(std::uint8_t)openSig.first,(std::uint8_t)(openSig.second?1:0)});
     text(conductor,0,1,"Fase Groove Arranger | key="+std::to_string(opening.key)+" scale="+std::to_string(opening.scale)+" | "+sgk::spelledNote(opening.key,opening.key,opening.scale)+" "+sgk::scaleName(opening.scale));
-    std::uint32_t last=0;auto previous=openSig;
+    // Conductor events in time order: key signatures, section markers and the MASTER TEMPO lane
+    // (a tempo event every 1/16 note where the tempo moves, so a ramp plays back the same in a DAW).
+    struct Timed{std::uint32_t tick;int type;Bytes data;};std::vector<Timed> timed;auto previous=openSig;
     for(size_t si=0;si<p.sections.size();++si){auto at=(std::uint32_t)std::llround(p.sectionStart((int)si)*960);
-        if(si>0){const auto sig=signature(resolveSectionHarmony(p,(int)si));if(sig!=previous){meta(conductor,at-last,0x59,{(std::uint8_t)sig.first,(std::uint8_t)(sig.second?1:0)});previous=sig;last=at;}}
-        text(conductor,at-last,6,p.sections[si].name);last=at;}
+        if(si>0){const auto sig=signature(resolveSectionHarmony(p,(int)si));if(sig!=previous){timed.push_back({at,0x59,{(std::uint8_t)sig.first,(std::uint8_t)(sig.second?1:0)}});previous=sig;}}
+        const auto& name=p.sections[si].name;timed.push_back({at,6,Bytes(name.begin(),name.end())});}
+    if(p.tempoAutomation.active()){double sent=p.bpmAt(0);for(double b=.25;b<p.length();b+=.25){const double bpm=std::clamp(p.bpmAt(b),30.,300.);if(std::abs(bpm-sent)<.01)continue;sent=bpm;
+        const auto micro=(std::uint32_t)std::llround(60000000.0/bpm);timed.push_back({(std::uint32_t)std::llround(b*960),0x51,{(std::uint8_t)(micro>>16),(std::uint8_t)(micro>>8),(std::uint8_t)micro}});}}
+    std::stable_sort(timed.begin(),timed.end(),[](const Timed& a,const Timed& b){return a.tick<b.tick;});
+    std::uint32_t last=0;for(const auto& e:timed){meta(conductor,e.tick-last,e.type,e.data);last=e.tick;}
     auto end=(std::uint32_t)std::llround(p.length()*960);meta(conductor,end-last,0x2f,{});chunk(out,std::move(conductor));
     auto all=events(p,onlyTrack);
     for(int row=0;row<(int)p.tracks.size();++row){

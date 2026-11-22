@@ -23,9 +23,9 @@ inline juce::String exportTime(double seconds){
 }
 inline juce::String exportArrangementText(const Project& project){
     juce::String result="Fase Groove Arranger\n"+juce::String::fromUTF8(project.name.c_str())+"\nBPM: "+exportTempo(project)+"\nKey / Tonalita: "+exportKey(project)+"\n\nArrangement / Arrangiamento (mm:ss.mmm)\n";
-    const double secondsPerBeat=60./project.settings.bpm;
-    for(int i=0;i<(int)project.sections.size();++i)result+=exportTime(project.sectionStart(i)*secondsPerBeat)+" - "+exportTime(project.sectionStart(i+1)*secondsPerBeat)+"  "+juce::String::fromUTF8(project.sections[(size_t)i].name.c_str())+"\n";
-    result+="\nEnd / Fine: "+exportTime(project.length()*secondsPerBeat)+"\nAudio tails may extend beyond the arrangement. / Le code audio possono proseguire oltre la fine.\n";return result;
+    for(int i=0;i<(int)project.sections.size();++i)result+=exportTime(project.secondsAt(project.sectionStart(i)))+" - "+exportTime(project.secondsAt(project.sectionStart(i+1)))+"  "+juce::String::fromUTF8(project.sections[(size_t)i].name.c_str())+"\n";
+    if(project.tempoAutomation.active()){result+="\nMaster tempo / Tempo master (bar: BPM)\n";double last=-1;for(double b=0;b<project.length();b+=4){const double bpm=project.bpmAt(b);if(std::abs(bpm-last)>=.05){result+=juce::String((int)(b/4)+1)+": "+juce::String(bpm,1)+"\n";last=bpm;}}}
+    result+="\nEnd / Fine: "+exportTime(project.secondsAt(project.length()))+"\nAudio tails may extend beyond the arrangement. / Le code audio possono proseguire oltre la fine.\n";return result;
 }
 inline bool writeExportArrangement(const juce::File& folder,const Project& project){
     juce::TemporaryFile temp(folder.getChildFile("Arrangiamento"+exportSuffix(project)+".txt"));return temp.getFile().replaceWithText(exportArrangementText(project))&&temp.overwriteTargetFileWithTemporary();

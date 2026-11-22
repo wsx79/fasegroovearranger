@@ -341,6 +341,14 @@ double Project::clipLength(int track,int section) const {
     }
     return sections[(size_t)section].bars*4.;
 }
+double Project::bpmAt(double beat) const{return tempoAutomation.active()?bpmFromAutomation(tempoAutomation.valueAt(beat)):settings.bpm;}
+double Project::secondsAt(double beat) const{
+    if(!tempoAutomation.active())return beat*60./settings.bpm;
+    // Integrated in 1/64-beat steps (midpoint rule): exact for steps, within microseconds on ramps.
+    constexpr double step=1./64.;double seconds=0,b=0;const double end=std::max(0.,beat);
+    for(;b+step<=end;b+=step)seconds+=step*60./bpmAt(b+step*.5);
+    return seconds+(end-b)*60./bpmAt(b+(end-b)*.5);
+}
 double Project::length() const {
     // Running section starts: length() runs on every timer tick and paint.
     std::vector<double> starts(sections.size()+1,0.);for(size_t i=0;i<sections.size();++i)starts[i+1]=starts[i]+sections[i].bars*4.0;
@@ -496,7 +504,7 @@ void Project::normalise() {
         if(rack->parameters.size()>(size_t)maxParameterLanes)rack->parameters.resize(maxParameterLanes);
         for(auto& lane:rack->parameters){lane.generatedTone=false;lane.curve.normalise(length(),1.);}
     }
-    masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length()); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
+    masterGain=finite(masterGain,.8,0,2); masterAutomation.normalise(length());tempoAutomation.normalise(length(),1.); loopStart=finite(loopStart,0,0,length()); loopEnd=finite(loopEnd,length(),loopStart,length());
     if(loopEnd-loopStart<1./960.)loop=false;
 }
 bool Project::deleteMidiTrack(int track) {

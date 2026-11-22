@@ -66,6 +66,15 @@ int main(int argc,char** argv){
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
         runSpectrumChecks();runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
+        {   // MASTER TEMPO lane: a lane held at 60 BPM doubles a 120 BPM song's exported length
+            fga::AudioEngine tempoEngine(fga::AudioEngine::Offline{});auto song=fga::newProject(0);song.sections={{fga::Section::main,2,"Tempo"}};song.normalise();fga::generate(song,fga::Scope::song,0,0,4242);song.settings.bpm=120;song.normalise();
+            auto seconds=[&](const fga::Project& p){const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-tempo",".wav",false);
+                check(tempoEngine.exportAudio(p,file,-1,false,[]{return false;},[](double){},nullptr,{44100,24,fga::AudioExportMode::legacy}).wasOk(),"tempo lane export");
+                juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> r(wav.createReaderFor(file.createInputStream().release(),true));const double s=r?r->lengthInSamples/r->sampleRate:0;r.reset();file.deleteFile();return s;};
+            const double constant=seconds(song);auto slow=song;slow.tempoAutomation.enabled=true;slow.tempoAutomation.points={{0,fga::automationFromBpm(60),0}};slow.normalise();const double halved=seconds(slow);
+            const double music=song.secondsAt(song.length());check(std::abs((halved-constant)-music)<.1,"a tempo lane at half the BPM adds the song's length once (every beat twice as long)");
+            std::cout<<"PASS master tempo lane export: "<<constant<<" s at 120 BPM, "<<halved<<" s with the lane at 60 BPM\n";
+        }
         {
             fga::AudioEngine live(fga::AudioEngine::Offline{});fga::Project song;song.normalise();fga::applyGenre(song,0);song.settings.bpm=120;song.sections={{fga::Section::main,4,"Live feel"}};
             for(auto& t:song.tracks){t.clips.assign(1,{});t.gain=0;t.engine.reverb=t.engine.chorus=0;}song.tracks[0].gain=.5;song.normalise();fga::generate(song);

@@ -86,7 +86,7 @@ public:
     std::array<bool,maxTracks> volumeVisible{};
     // What each track's automation lane shows and edits: 0 volume, 1 pan, 2 master volume,
     // 3 + k the track's plugin parameter lane k.
-    enum LaneTarget { laneVolume=0, lanePan, laneMaster, lanePlugin };
+    enum LaneTarget { laneVolume=0, lanePan, laneMaster, laneTempo, lanePlugin };
     std::array<int,maxTracks> laneTarget{};
     // Rack automation shares the existing timeline editor, like master volume.
     // Session identity prevents a new project or removed rack from redirecting an edit.

@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.22
+
+- **Master tempo** lane (AUTOMATION → Master tempo): the song keeps a constant BPM unless you draw points; steps and ramps from 30 to 300 BPM. Playback, audio export and stems, the clock and ruler, the MIDI tempo map and the arrangement text file follow it; the arranger never writes it. Removing or bypassing the lane restores the constant BPM.
+
 ## 0.57.21
 
 - **ARRANGE FROM VOCAL** (GENERATE menu ▾): select an audio track with an imported vocal; the arranger finds its notes (pitch tracking), key and sung bars, writes chords that hold the melody in each sung section, turns VOCALS PRESENT on following the real phrases and re-renders the band on the new chords (one undo step).

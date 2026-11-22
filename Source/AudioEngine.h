@@ -39,7 +39,7 @@ struct TrackMix {
     std::array<bool,fgg::numLanes> laneMute{};
 };
 struct FrozenAudio {std::shared_ptr<const SampleAsset> asset;double rate=44100,bpm=120,gain=1;std::uint64_t session=0;};
-struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation; double master=.8,tempo=122; bool returnChains=false; };
+struct MixState { std::array<TrackMix,engineTrackCount> tracks;std::array<BusSettings,4> buses=defaultBuses(); VolumeAutomation masterAutomation,tempoAutomation; double master=.8,tempo=122; bool returnChains=false; };
 // The built-in guide sounds of each track (piano/bass, strings, guitar, drums).
 inline int builtInSoundCount(int track){return track==2?1:(track<2||isManualTrack(track))?numGuideSounds:4;}
 inline juce::String builtInSoundName(int track,int sound){return track==2?juce::String("String ensemble"):(track<2||isManualTrack(track))?juce::String(guideSoundName(sound)):track==3?juce::String(GuideGuitar::toneName(sound)):track==leadTrack?juce::String(GuideLead::toneName(sound)):juce::String(GuideDrums::kitName(sound));}
@@ -394,6 +394,7 @@ private:
     std::array<std::array<DirtyPluginState,maxTrackEffects+1>,engineTrackCount> pluginStateDirty;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
+    bool laneTempo=false;   // the master tempo lane set `tempo` in the last block (audio thread)
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
     int blockSize=512;
     double deviceRate=44100;

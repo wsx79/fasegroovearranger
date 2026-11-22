@@ -976,6 +976,8 @@
 { "Choose the encoding for all exported WAV files.", "Scegli la codifica per tutti i file WAV esportati.", "Elige la codificación de todos los WAV exportados.", "Choisissez l'encodage de tous les fichiers WAV exportés.", "Kodierung für alle exportierten WAV-Dateien wählen.", "Escolha a codificação de todos os WAV exportados." },
 { "Sample rate", "Frequenza di campionamento", "Frecuencia de muestreo", "Fréquence d'échantillonnage", "Abtastrate", "Taxa de amostragem" },
 { "Bit depth", "Profondità in bit", "Profundidad de bits", "Profondeur en bits", "Bittiefe", "Profundidade de bits" },
+{ "MASTER TEMPO AUTOMATION", "AUTOMAZIONE TEMPO MASTER", "AUTOMATIZACIÓN DEL TEMPO MAESTRO", "AUTOMATION DU TEMPO MASTER", "MASTER-TEMPO-AUTOMATION", "AUTOMAÇÃO DO ANDAMENTO MASTER" },
+{ "Master tempo", "Tempo master", "Tempo maestro", "Tempo master", "Master-Tempo", "Andamento master" },
 { "Where the imported vocal sings", "Dove canta la voce importata", "Donde canta la voz importada", "Là où chante la voix importée", "Wo die importierte Stimme singt", "Onde canta a voz importada" },
 { "ARRANGE FROM VOCAL", "ARRANGIA DALLA VOCE", "ARREGLAR DESDE LA VOZ", "ARRANGER DEPUIS LA VOIX", "AUS DER STIMME ARRANGIEREN", "ARRANJAR A PARTIR DA VOZ" },
 { "Cannot read the vocal file.", "Impossibile leggere il file della voce.", "No se puede leer el archivo de voz.", "Impossible de lire le fichier de voix.", "Die Gesangsdatei kann nicht gelesen werden.", "Não é possível ler o arquivo de voz." },

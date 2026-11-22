@@ -47,6 +47,9 @@ struct VolumeAutomation {
 // pan 0 = left, .5 = centre, 1 = right; a plugin parameter takes the value as it is.
 inline double panFromAutomation(double value){return std::clamp(value*2.-1.,-1.,1.);}
 inline double automationFromPan(double pan){return std::clamp((pan+1.)*.5,0.,1.);}
+// Master tempo lane: 0..1 <-> 30..300 BPM.
+inline double bpmFromAutomation(double value){return 30.+270.*std::clamp(value,0.,1.);}
+inline double automationFromBpm(double bpm){return std::clamp((bpm-30.)/270.,0.,1.);}
 // Stable target: -1 = native sound, 0 = instrument, 1..8 = effect instance ID.
 // The index is the plugin's own parameter index; the name is kept to show it and to find
 // the parameter again if the plugin's list changes.

@@ -568,7 +568,7 @@ bool MainComponent::writeGroovePreview(const juce::File& folder){
     // Whole songs: the form, the wave inside long sections and the stop before each drop (section times in the index).
     for(int genre:{0,7}){audio.stop();project=newProject(genre);generate(project,Scope::song,0,0,11u*2654435761U);audio.publish(project);const auto file=folder.getChildFile("song-"+juce::String(genre)+".wav");
         const auto r=audio.exportAudio(project,file,-1,false,[]{return false;},[](double){});ok=r.wasOk()&&ok;index+=(r.wasOk()?"PASS ":"FAIL ")+file.getFileName();
-        for(size_t si=0;si<project.sections.size();++si)index+="  "+juce::String::fromUTF8(project.sections[si].name.c_str())+"@"+juce::String(project.sectionStart((int)si)*60./project.settings.bpm,1)+"s";index+="\n";}
+        for(size_t si=0;si<project.sections.size();++si)index+="  "+juce::String::fromUTF8(project.sections[si].name.c_str())+"@"+juce::String(project.secondsAt(project.sectionStart((int)si)),1)+"s";index+="\n";}
     const auto& patterns=fgd::drumPatterns();
     for(size_t i=0;i<patterns.size();++i){const auto& category=patterns[i].category;
         if(category=="Afro House")render(afroHouseGenre,(int)i,1,true,8,"afro-"+juce::String(patterns[i].name).replaceCharacter(' ','-').toLowerCase());

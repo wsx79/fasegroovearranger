@@ -196,6 +196,11 @@ struct Project {
     const Track& effectTarget(int track)const{return track==masterEffectTrack?masterEffects:isReturnTrack(track)?returnEffects.at((size_t)(track-returnEffectTrack)):tracks.at((size_t)track);}
     double masterGain = .8;
     VolumeAutomation masterAutomation; // gain multiplier on the master, as a track's volume
+    // MASTER TEMPO: off (no points) the song plays at settings.bpm, constant. Only the user adds points;
+    // values 0..1 map linearly to 30..300 BPM (bpmFromAutomation). Generation never writes it.
+    VolumeAutomation tempoAutomation;
+    double bpmAt(double beat) const;        // the tempo at a song position
+    double secondsAt(double beat) const;    // song time of a position, through the tempo lane
     // Every automation envelope with its value ceiling (for edits that move or cut time).
     std::vector<std::pair<VolumeAutomation*, double>> envelopes();
     bool loop = false;

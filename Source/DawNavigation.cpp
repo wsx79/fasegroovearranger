@@ -31,7 +31,7 @@ juce::String MainComponent::timeText(double seconds,int decimals){
     juce::String text=whole>=3600?juce::String(whole/3600)+":"+juce::String((whole/60)%60).paddedLeft('0',2)+":"+juce::String(whole%60).paddedLeft('0',2):juce::String(whole/60)+":"+juce::String(whole%60).paddedLeft('0',2);
     if(decimals)text+="."+juce::String(ticks%factor).paddedLeft('0',decimals);return text;
 }
-juce::String MainComponent::rulerText(double beat)const{return timeDisplay?timeText(beat*60/project.settings.bpm,2):juce::String((int)std::llround(beat/4)+1);}
+juce::String MainComponent::rulerText(double beat)const{return timeDisplay?timeText(project.secondsAt(beat),2):juce::String((int)std::llround(beat/4)+1);}
 void MainComponent::toggleTimeDisplay(){
     timeDisplay=!timeDisplay;Localisation::setSetting("timelineTimeDisplay",timeDisplay?"1":"0");showPosition(timelinePosition());arrangement.repaint();repaint(lcdArea);
 }

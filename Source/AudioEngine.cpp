@@ -63,7 +63,7 @@ void mixTargets(Instrument& i,double,bool snap){
     else{i.leftGain.setTargetValue(left);i.rightGain.setTargetValue(right);i.baseGain.setTargetValue((float)(i.gain));}
 }
 std::unique_ptr<MixState> mixState(const Project& p){
-    auto m=std::make_unique<MixState>();m->buses=p.buses;m->master=p.masterGain;m->tempo=p.settings.bpm;m->masterAutomation=p.masterAutomation;m->returnChains=p.returnChains;
+    auto m=std::make_unique<MixState>();m->buses=p.buses;m->master=p.masterGain;m->tempo=p.settings.bpm;m->masterAutomation=p.masterAutomation;m->tempoAutomation=p.tempoAutomation;m->returnChains=p.returnChains;
     for(size_t ti=0;ti<(size_t)engineTrackCount&&ti<p.tracks.size();++ti){const auto& t=p.tracks[ti];auto& x=m->tracks[ti];
         x.group=t.group;x.sends=t.sends;
         for(const auto& fx:t.effects)if(fx.slot>=1&&fx.slot<=maxTrackEffects&&x.effectCount<maxTrackEffects){x.effectOrder[(size_t)x.effectCount++]=fx.slot;x.effectBypass[(size_t)(fx.slot-1)]=fx.bypassed;}
@@ -575,7 +575,10 @@ void AudioEngine::audioDeviceIOCallbackWithContext(const float* const* input,int
         const int soloClip=clipPlaybackTrack.load();const double from=soloClip>=0?clipPlaybackFrom.load():loopFrom.load();const bool hasLoop=soloClip>=0?clipPlaybackLoop.load():(looping.load()&&!loopBypassed.load()&&loopTo.load()-from>=1./960.);double boundary=soloClip>=0?clipPlaybackTo.load():hasLoop?loopTo.load():length.load();
         if(beat>=boundary-1e-9){if(hasLoop){currentBeat=from;needsChase=soloClip<0;resetAt(from);continue;}playing=false;needsReset=true;resetAt(beat);flushIdle(count-done);break;}
         // clamp before the cast: a long valid song at a high rate exceeds INT_MAX frames
-        const int remain=(int)std::clamp(std::ceil((boundary-beat)*sampleRate*60./tempo.load()),1.,(double)std::max(1,blockSize));int n=std::min({count-done,blockSize,remain});
+        // MASTER TEMPO lane: the tempo of each sub-block (at most 256 frames, so a ramp moves smoothly).
+        const bool lane=mixes.current&&mixes.current->tempoAutomation.active();
+        if(lane){tempo=bpmFromAutomation(mixes.current->tempoAutomation.valueAt(beat));laneTempo=true;}else if(laneTempo){if(mixes.current)tempo=mixes.current->tempo;laneTempo=false;}
+        const int remain=(int)std::clamp(std::ceil((boundary-beat)*sampleRate*60./tempo.load()),1.,(double)std::max(1,blockSize));int n=std::min({count-done,blockSize,remain,lane?256:blockSize});
         float* pointers[2]{};int used=std::min(2,channels);for(int ch=0;ch<used;++ch)pointers[ch]=output[ch]?output[ch]+done:nullptr;
         if(capture.active&&chaseRecord)chaseLiveRecord(beat);inputSegmentOffset=done;processLive(n,beat,capture.active.load());render(pointers,used,n,beat,soloClip);if(capture.active)capture.elapsed=capture.elapsed.load()+n*tempo.load()/(sampleRate*60);click(pointers,used,n,beat);currentBeat=beat+n*tempo.load()/(sampleRate*60.);done+=n;
     }
@@ -891,7 +894,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     metadata.set("ISFT","Fase Groove Arranger");metadata.set("ICMT","BPM: "+exportTempo(p)+"; Key: "+exportKey(p));
     juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");juce::Random dither(0x5eed);stream.release();
     // Keep identical stem lengths and retain natural sample/effect tails beyond the song.
-    double endSeconds=p.length()*60./p.settings.bpm;
+    double endSeconds=p.secondsAt(p.length());
     for(size_t ti=0;ti<p.tracks.size();++ti){const auto& track=p.tracks[ti];auto asset=sampleAsset((int)ti);if(track.instrument!="sample"||!asset)continue;
         const auto& settings=track.sampler;const int mode=settings.mode<0?(isDrumTrack((int)ti)?1:0):settings.mode;
         for(size_t ci=0;ci<track.clips.size();++ci)for(const auto& note:track.clips[ci].notes){double from=settings.start,to=settings.end;
@@ -902,7 +905,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
             // An audio clip plays only its region (trimmed start/end), not the whole file.
             if(track.clips[ci].audioOffset>=0&&track.clips[ci].audioDuration>0)duration=std::min(duration,track.clips[ci].audioDuration/speed+settings.release);
             if(mode==0){const double gate=note.length*60./p.settings.bpm+settings.release;duration=settings.loop?gate:std::min(duration,gate);}
-            endSeconds=std::max(endSeconds,(p.clipStart((int)ti,(int)ci)+note.start)*60./p.settings.bpm+duration);
+            endSeconds=std::max(endSeconds,p.secondsAt(p.clipStart((int)ti,(int)ci)+note.start)+duration);
         }
     }
     double effectTail=3.;bool delayUsed=false,reverbUsed=false;for(const auto& track:p.tracks){reverbUsed=reverbUsed||track.sends[0]>0;delayUsed=delayUsed||track.sends[1]>0;}
@@ -927,9 +930,10 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     ExportPeakGuard guardLimiter;if(!modern&&options.loudnessGuard){guardLimiter.prepare(blockSize);compensation+=guardLimiter.latency();}
     const double encodedShare=mp3?.8:1.,renderShare=analysis?1.:modern?(mp3?.4:.5):encodedShare;
     const juce::int64 renderTotal=total+compensation;
-    for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(blockSize,renderTotal-at);buffer.clear();
+    const bool tempoLane=p.tempoAutomation.active();double exportBeat=0;struct TempoRestore{std::atomic<double>& t;double v;~TempoRestore(){t=v;}} tempoRestore{tempo,p.settings.bpm};   // with the MASTER TEMPO lane the position advances at each block's tempo
+    for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(tempoLane?std::min(blockSize,256):blockSize,renderTotal-at);buffer.clear();
         const int skip=(int)std::clamp<juce::int64>(compensation-at,0,n);
-        {const EngineControlLock lock(*this);currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack,true,analysis);}
+        {const EngineControlLock lock(*this);if(tempoLane){tempo=p.bpmAt(exportBeat);currentBeat=exportBeat;exportBeat+=n*tempo.load()/(sampleRate*60.);}else currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack,true,analysis);}
         if(!modern&&options.loudnessGuard)guardLimiter.process(buffer,n);
         for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample){
             const float value=buffer.getSample(ch,sample);

@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.22
+
+- Corsia **Tempo master** (AUTOMAZIONE → Tempo master): il brano resta a BPM costante finché non disegni punti; gradini e rampe da 30 a 300 BPM. Riproduzione, export audio e stem, orologio e righello, mappa del tempo MIDI e file di testo dell’arrangiamento la seguono; l’arranger non la scrive mai. Rimuovere o bypassare la corsia ripristina il BPM costante.
+
 ## 0.57.21
 
 - **ARRANGIA DALLA VOCE** (menu ▾ di GENERA): seleziona una traccia audio con una voce importata; l’arranger trova le note (rilevamento dell’intonazione), la tonalità e le battute cantate, scrive accordi che contengono la melodia in ogni sezione cantata, attiva VOCE PRESENTE seguendo le frasi reali e rigenera la band sui nuovi accordi (un solo passo di annulla).

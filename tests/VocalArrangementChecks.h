@@ -30,3 +30,19 @@ inline void verifyVocalArrangement(){
     check(answers,"the lead never plays over a sung bar");
     std::cout<<"PASS arrange from vocal: notes, key, phrases, chords, lead answers\n";
 }
+// MASTER TEMPO lane: off by default (constant BPM), user points only; time map and MIDI tempo map.
+inline void verifyTempoLane(){
+    auto p=fga::newProject(0);p.sections={{fga::Section::main,4,"A"}};p.normalise();fga::generate(p,fga::Scope::song,0,0,4242);p.settings.bpm=120;p.normalise();
+    check(p.tempoAutomation.isDefault()&&p.bpmAt(9)==p.settings.bpm,"generation never writes the tempo lane: the BPM stays constant");
+    check(std::abs(p.secondsAt(8)-4)<1e-9,"constant tempo: 8 beats at 120 BPM last 4 s");
+    const auto constant=fga::midiFile(p,-1);
+    auto countTempo=[](const std::vector<std::uint8_t>& f){int n=0;for(size_t i=0;i+2<f.size();++i)if(f[i]==0xFF&&f[i+1]==0x51&&f[i+2]==3)++n;return n;};
+    check(countTempo(constant)==1,"without the lane the MIDI file has one tempo");
+    p.tempoAutomation.enabled=true;p.tempoAutomation.points={{0,fga::automationFromBpm(120),0},{8,fga::automationFromBpm(60),0}};p.normalise();
+    check(std::abs(p.bpmAt(4)-90)<1e-6&&std::abs(p.bpmAt(12)-60)<1e-6,"the lane ramps linearly and holds its last value");
+    check(std::abs(p.secondsAt(8)-8*std::log(2.))<.002,"a 120 to 60 BPM ramp over 8 beats lasts 8 ln 2 s");
+    check(std::abs(p.secondsAt(16)-(8*std::log(2.)+8))<.002,"after the ramp: one second per beat at 60 BPM");
+    check(countTempo(fga::midiFile(p,-1))>=20,"the MIDI file carries the tempo ramp");
+    p.tempoAutomation.enabled=false;check(fga::midiFile(p,-1)==constant&&std::abs(p.secondsAt(8)-4)<1e-9,"bypassing the lane restores the constant BPM exactly");
+    std::cout<<"PASS master tempo lane: constant by default, time map, MIDI tempo map\n";
+}

@@ -616,7 +616,7 @@ void MainComponent::refreshControls(){
         if(anchor>=project.tracks.size()||rack<maxTracks||index<0||index>=(int)effectTrack(rack).parameters.size()){arrangement.laneRackSession[anchor]=0;arrangement.laneTarget[anchor]=ArrangementView::laneVolume;}
     }
     ++uiRevision;
-    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)(project.length()*60/s.bpm)/60)+":"+juce::String((int)(project.length()*60/s.bpm)%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);vocalsButton.setToggleState(s.vocalsPresent,juce::dontSendNotification);
+    refreshing=true;auto& s=project.settings;const auto& tempo=genreProfile(s.genre);tempoSlider.setRange(s.freeTempo?30:tempo.minBpm,s.freeTempo?300:tempo.maxBpm,.1);durationLabel.setText(juce::String((int)project.secondsAt(project.length())/60)+":"+juce::String((int)project.secondsAt(project.length())%60).paddedLeft('0',2),juce::dontSendNotification);refreshTargetDurationEditor();leadButton.setToggleState(s.guitarLead,juce::dontSendNotification);vocalsButton.setToggleState(s.vocalsPresent,juce::dontSendNotification);
     // The section list is rebuilt (and translated) only when the sections change.
     {juce::StringArray names;for(const auto& section:project.sections)names.add(utf(section.name));if(names!=sectionSelectorNames){sectionSelectorNames=names;sectionSelector.clear(juce::dontSendNotification);for(int i=0;i<names.size();++i)sectionSelector.addItem(names[i],i+1);translateControls(sectionSelector);}}
     const auto songHarmony=activeHarmony(project,selectedSection);
@@ -776,7 +776,7 @@ void MainComponent::paint(juce::Graphics& g){
     if(page==Page::arrangement&&chordsLabel.isVisible()){const auto r=chordsLabel.getBounds().toFloat().expanded(4.f,1.f);g.setColour(Daw::chrome);g.fillRoundedRectangle(r,Daw::radius);g.setColour(secHarm?Daw::accent.withAlpha(.55f):juce::Colours::black.withAlpha(.5f));g.drawRoundedRectangle(r.reduced(.5f),Daw::radius,1.f);g.setColour(Daw::accent);g.fillRoundedRectangle(r.getX()+1.f,r.getY()+1.f,3.f,r.getHeight()-2.f,1.f);}
     // Status bar: messages on the left, the project and its length on the right.
     g.setColour(Daw::chrome);g.fillRect(0,h-statusHeight,w,statusHeight);g.setColour(juce::Colours::black.withAlpha(.6f));g.drawHorizontalLine(h-statusHeight,0,(float)w);
-    const double seconds=project.length()*60/project.settings.bpm;
+    const double seconds=project.secondsAt(project.length());
     const auto title=utf(project.name)+(dirty?" *":"")+juce::String::fromUTF8("  ·  ")+juce::String((int)seconds/60)+":"+juce::String((int)seconds%60).paddedLeft('0',2);
     g.setColour(Daw::textFaint);g.setFont(Daw::font(Daw::small));g.drawText(tr("by")+" Fabio 'Pitch' Serra",w-176,h-statusHeight,164,statusHeight,juce::Justification::centredRight);
     g.setColour(Daw::textDim);g.setFont(Daw::font(Daw::small,true));g.drawText(title,w-536,h-statusHeight,352,statusHeight,juce::Justification::centredRight,true);
@@ -1052,8 +1052,8 @@ void MainComponent::collectPortable(){
 }
 void MainComponent::showPosition(double beat){
     const int ticksIn=std::clamp((int)std::floor((beat-std::floor(beat))*960+1e-6),0,959);
-    positionLabel.setText(timeDisplay?timeText(beat*60/project.settings.bpm,3):juce::String((int)beat/4+1)+"."+juce::String((int)beat%4+1)+"."+juce::String(ticksIn).paddedLeft('0',3),juce::dontSendNotification);
-    const auto length=songLength();const auto legend=timeDisplay?"-"+timeText(std::max(0.,length-beat)*60/project.settings.bpm)+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
+    positionLabel.setText(timeDisplay?timeText(project.secondsAt(beat),3):juce::String((int)beat/4+1)+"."+juce::String((int)beat%4+1)+"."+juce::String(ticksIn).paddedLeft('0',3),juce::dontSendNotification);
+    const auto length=songLength();const auto legend=timeDisplay?"-"+timeText(std::max(0.,project.secondsAt(length)-project.secondsAt(beat)))+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
     if(positionLegend!=legend){positionLegend=legend;repaint(lcdArea.withWidth(132));}
 }
 void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
