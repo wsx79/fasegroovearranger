@@ -132,7 +132,11 @@ juce::Result finishOfflineExport(const juce::File& source,const juce::File& outp
     const auto frames=reader->lengthInSamples;
     result=writeScaled(*reader,output,bits,gain,cancelled,scaled(loud?.65:.5,.9));if(result.failed())return result;
     reader.reset();auto encoded=openWav(output);if(!encoded||encoded->lengthInSamples!=frames)return juce::Result::fail("Invalid encoded export WAV");
-    double outputPeak=0;result=scanPeak(*encoded,outputPeak,cancelled,scaled(.9,1));if(result.failed())return result;
+    // Unscaled and already 0.05 dB under the ceiling: the encoded file is the same audio within one LSB, so its
+    // true peak is the measured one; only a scaled or limited file is measured again (a second 16x scan).
+    double outputPeak=0;
+    if(!loud&&gain==1.&&inputPeak<=juce::Decibels::decibelsToGain(ceilingDb-.05)-std::ldexp(1.,1-bits)){outputPeak=inputPeak+std::ldexp(1.,1-bits);scaled(.9,1)(1.);if(cancelled())return stopped();}   // the verification step still reports progress and honours a late Cancel
+    else{result=scanPeak(*encoded,outputPeak,cancelled,scaled(.9,1));if(result.failed())return result;}
     if(outputPeak>juce::Decibels::decibelsToGain(ceilingDb))return juce::Result::fail("Encoded WAV exceeds True Peak ceiling");
     if(stats)*stats={inputPeak,outputPeak,gain,frames};
     return cancelled()?stopped():juce::Result::ok();

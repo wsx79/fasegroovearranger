@@ -33,6 +33,12 @@ int main(int argc,char** argv){
         if(argc==2&&juce::String(argv[1])=="--vocal-chops-test"){runVocalChopsTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--eq-spectrum"){runSpectrumChecks();return 0;}
         if(argc==2&&juce::String(argv[1])=="--sidechain"){runSidechainTests();return 0;}
+        if(argc>=2&&juce::String(argv[1])=="--render-benchmark"){   // CPU of a full song render, for profiling (not a ctest)
+            fga::AudioEngine engine(fga::AudioEngine::Offline{});auto p=fga::newProject(argc>2?juce::String(argv[2]).getIntValue():0);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,4242);
+            if(argc>3){const int bars=juce::String(argv[3]).getIntValue();p.sections={{fga::Section::main,bars,"Bench"}};p.normalise();fga::generate(p,fga::Scope::song,0,0,4242);}
+            const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-bench",".wav",false);
+            const auto t0=juce::Time::getMillisecondCounterHiRes();const auto r=engine.exportAudio(p,file,-1,false,[]{return false;},[](double){});const double ms=juce::Time::getMillisecondCounterHiRes()-t0;
+            const double seconds=p.length()*60/p.settings.bpm;file.deleteFile();std::cout<<(r.wasOk()?"OK ":"FAIL ")<<seconds<<" s of audio rendered in "<<ms/1000<<" s ("<<seconds*1000/ms<<"x real time)"<<std::endl;return r.wasOk()?0:1;}
         if(argc==2&&juce::String(argv[1])=="--assistant-project"){runAssistantProjectTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mastering-assistant"){runMasteringTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mix-assistant"){runMixAnalysisTests();return 0;}

@@ -127,7 +127,7 @@ void Instrument::prepare(double rate,int block){
     synth.setCurrentPlaybackSampleRate(rate);if(sampler)sampler->setCurrentPlaybackSampleRate(rate);if(isDrumTrack(kind))drums.prepare(rate);if(kind==3)guitar.prepare(rate);if(kind==leadTrack)lead.prepare(rate);
     auto preparePlugin=[&](juce::AudioPluginInstance* p){if(!p)return;p->releaseResources();p->setRateAndBufferSizeDetails(rate,block);p->prepareToPlay(rate,block);};
     preparePlugin(plugin.get());for(auto& fx:effects)preparePlugin(fx.plugin.get());
-    volumeGains.resize((size_t)block);panLeft.resize((size_t)block);panRight.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
+    volumeGains.resize((size_t)block);mixScratch.resize((size_t)block);panLeft.resize((size_t)block);panRight.resize((size_t)block);adoptChannels(block);bassLowPass.prepare({rate,(juce::uint32)block,2});bassLowPass.setType(juce::dsp::StateVariableTPTFilterType::lowpass);bassLowPass.setCutoffFrequency((float)(100+1400*tone.load()));reverb.setSampleRate(rate);chorus.prepare({rate,(juce::uint32)block,2});reset();
 }
 void Instrument::adoptChannels(int block){
     int channels=2;auto countChannels=[&](juce::AudioPluginInstance* p){if(p)channels=std::max({channels,p->getTotalNumOutputChannels(),p->getTotalNumInputChannels()});};countChannels(plugin.get());for(size_t k=0;k<effects.size();++k){auto* fx=effects[k].plugin.get();countChannels(fx);effectInputs[k]=fx?fx->getTotalNumInputChannels():0;effectOutputs[k]=fx?fx->getTotalNumOutputChannels():0;}
@@ -479,7 +479,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
-            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);i.chorus.process(context);
+            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&i.controls->chorus>0)i.chorus.process(context);   /* chorus off: its delay lines (set per sample) are skipped entirely */
             i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
                 // Kick source: the last kick at or before the block start is found once, then each
@@ -506,15 +506,17 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         i.midi.clear();i.guitarEvents.clear();i.leadEvents.clear();
         const bool audible=onlyTrack>=0?ti==onlyTrack:(!i.mute&&(!anySolo||i.solo));
         float meter=0,side[2]{};
-        if(audible){const bool detectorSource=busGraph.detects((int)ti);if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
+        // A track with nothing sounding in this block costs nothing more: its gains move on, its meters read zero.
+        const bool silent=audible&&block.getMagnitude(0,count)==0.f;
+        if(audible&&!silent){const bool detectorSource=busGraph.detects((int)ti);auto* mixed=i.mixScratch.data();if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
 
             // Pan automation: its own pan law per sample (as the static pan), on gain * master.
             const bool panActive=i.panAutomation&&i.panAutomation->active();
             if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
             else i.baseGain.skip(count);
             for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
-                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);continue;}
-                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);busGraph.add(ch,s,v,i.group,i.sends);side[ch]=std::max(side[ch],std::abs(v));}meter=std::max(meter,side[ch]);}
+                if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];mixed[s]=v;if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);side[ch]=std::max(side[ch],std::abs(v));}busGraph.addBlock(ch,mixed,count,i.group,i.sends);meter=std::max(meter,side[ch]);continue;}
+                for(int s=0;s<count;++s){const float v=in[s]*gain.getNextValue()*i.volumeGains[(size_t)s];mixed[s]=v;if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);side[ch]=std::max(side[ch],std::abs(v));}busGraph.addBlock(ch,mixed,count,i.group,i.sends);meter=std::max(meter,side[ch]);}
         }else{i.leftGain.skip(count);i.rightGain.skip(count);i.baseGain.skip(count);}
         meters[(size_t)ti]=meter;sideMeters[(size_t)ti][0]=side[0];sideMeters[(size_t)ti][1]=side[1];if(meter>=1.f)trackClip[(size_t)ti].store(true);
     }

@@ -114,6 +114,7 @@ struct Instrument {
     juce::SmoothedValue<float> baseGain;            // gain * master: the pan automation applies its own pan law
     double gain=.75,pan=0;ChannelStrip strip;bool frozenActive=false;std::array<bool,128> timelineCC{};bool timelineWheel=false;std::array<bool,maxTrackEffects+1> freezePaused{};
     juce::SmoothedValue<float> leftGain,rightGain;
+    std::vector<float> mixScratch;   // one channel of the track after gain/pan, handed to the bus graph as a block
     bool mute=false,solo=false;
     int group=-1;std::array<double,2> sends{};
     int mode=0; // 0 original guide, 1 user sampler, 2 user plugin, 3 missing instrument (silence)

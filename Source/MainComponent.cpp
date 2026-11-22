@@ -539,8 +539,22 @@ void MainComponent::updateEditingAvailability(){
     }
 }
 void MainComponent::stopPlaybackAndRecording(){audio.stop();if(studioWindow&&(audio.isRecording()||audio.isAudioRecording()))studioWindow->finishRecording();updateEditingAvailability();}
-void MainComponent::checkpoint(){++editRevision;lastCheckpointControl=nullptr;if(!loadingPlugin)captureUndoPluginStates();undoStack.push_back({project,false});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
-void MainComponent::checkpointMix(const void* control){++editRevision;const auto now=juce::Time::getMillisecondCounter();if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});if(undoStack.size()>40)undoStack.pop_front();redoStack.clear();}
+// Undo keeps up to 40 steps and at most ~256 MB of them (plugin states and long note lists make a copy heavy):
+// the oldest steps go first, never below eight. Sizes are estimated once per step.
+static std::size_t projectBytes(const Project& p){
+    std::size_t bytes=sizeof(Project);auto text=[&](const std::string& s){bytes+=s.capacity();};
+    for(const auto& t:p.tracks){bytes+=sizeof(Track);text(t.instrumentState);for(const auto& fx:t.effects){bytes+=sizeof(fx);text(fx.state);}
+        for(const auto& c:t.clips)bytes+=sizeof(Clip)+(c.notes.capacity()+c.loopSource.capacity())*sizeof(Note);bytes+=t.volume.points.capacity()*sizeof(t.volume.points[0])*2;}
+    for(const auto& fx:p.masterEffects.effects)text(fx.state);for(const auto& r:p.returnEffects)for(const auto& fx:r.effects)text(fx.state);
+    return bytes;
+}
+void MainComponent::trimHistory(){
+    if(!undoStack.empty()&&undoStack.back().bytes==0)undoStack.back().bytes=projectBytes(undoStack.back().project);
+    std::size_t total=0;for(const auto& h:undoStack)total+=h.bytes;
+    while(undoStack.size()>40||(undoStack.size()>8&&total>(std::size_t)256<<20)){total-=undoStack.front().bytes;undoStack.pop_front();}
+}
+void MainComponent::checkpoint(){++editRevision;lastCheckpointControl=nullptr;if(!loadingPlugin)captureUndoPluginStates();undoStack.push_back({project,false});trimHistory();redoStack.clear();}
+void MainComponent::checkpointMix(const void* control){++editRevision;const auto now=juce::Time::getMillisecondCounter();if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}lastCheckpointControl=control;lastCheckpointTime=now;if(!loadingPlugin)audio.reusePluginStates(project);undoStack.push_back({project,true});trimHistory();redoStack.clear();}
 // Wheel and keyboard steps on one control within half a second share one undo step.
 void MainComponent::checkpoint(const void* control){
     ++editRevision;const auto now=juce::Time::getMillisecondCounter();

@@ -27,12 +27,13 @@ public:
     void kick(int sample,float value){source(4,sample,value);}
     float reduction(int bus)const{return reductions[(size_t)std::clamp(bus,0,1)].load(std::memory_order_relaxed);}
     void finish(float* const* output,int channels,int count,const float* automation);
+    void addBlock(int ch,const float* values,int count,int group,const std::array<double,2>& sends);
     float level(int bus)const{return peaks[(size_t)std::clamp(bus,0,3)].load();}
 private:
     const std::array<BusSettings,4>* settings=nullptr;
     std::array<BusSettings,4> fallback=defaultBuses();
     std::array<juce::AudioBuffer<float>,2> groups,returns;
-    juce::AudioBuffer<float> dry,delay;
+    juce::AudioBuffer<float> dry,delay,scratch;   // scratch: a group-scaled channel for addBlock
     DelayPublication returnDelay;
     PublishedAudio* boundReturn=nullptr;
     std::atomic<int> requestedReturn{0};

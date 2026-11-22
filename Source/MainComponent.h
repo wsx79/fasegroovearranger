@@ -483,7 +483,8 @@ private:
     ActionButton sectionLoopButton{"LOOP CLIP"},pianoPlayButton{"PLAY CLIP"};
     ActionButton chordEditButton{"EDIT CHORDS"};
     juce::Label inspectorLabel,editorLabel;
-    struct HistoryEntry {Project project;bool mixOnly=false;};
+    struct HistoryEntry {Project project;bool mixOnly=false;std::size_t bytes=0;};
+    void trimHistory();
     std::deque<HistoryEntry> undoStack,redoStack;
     const void* lastCheckpointControl=nullptr;juce::uint32 lastCheckpointTime=0;
     double lastTimerBeat=-1;int lastPlayX=-1,soundBoxTrack=-1;
