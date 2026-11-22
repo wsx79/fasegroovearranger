@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.19
+
+- Faster rendering (about 30% less CPU for playback and export): tracks hand their audio to the mixer a block at a time, silent tracks skip their work, the chorus runs only when it is turned up, the drum synth uses a sine table and the piano drops partials once they fall below -100 dB.
+- Export: a file already under the ceiling is not measured twice for true peak (same result, quicker finish); Cancel still works at that step.
+- Undo keeps at most 40 steps and about 256 MB, so long sessions with plugin tracks no longer grow memory without bound.
+
 ## 0.57.18
 
 - Fixes: switching VOCALS PRESENT on an existing song reshapes the parts that had not changed; the counter melody checks the piano for its whole length (no semitone rubs left); a looped clip on a sub-bass or counter-melody track keeps its loop; VOCALS PRESENT shows only on the arrangement page.

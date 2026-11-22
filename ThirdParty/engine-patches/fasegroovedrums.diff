@@ -1,6 +1,32 @@
 --- a/Source/GuideDrums.h
 +++ b/Source/GuideDrums.h
-@@ -497,3 +497,4 @@
+@@ -285,7 +285,24 @@
+     {
+         phase += freq / sampleRate;
+         phase -= std::floor (phase);
+-        return std::sin ((float) (phase * juce::MathConstants<double>::twoPi));
++        return sineTable (phase);
++    }
++
++    /* Table sine with linear interpolation: same tone as std::sin (error ~1e-6), far cheaper per sample. */
++    static float sineTable (double phase) noexcept
++    {
++        static constexpr int size = 4096;
++        static const auto table = []
++        {
++            std::array<float, size + 1> t {};
++            for (int i = 0; i <= size; ++i)
++                t[(size_t) i] = (float) std::sin (juce::MathConstants<double>::twoPi * i / size);
++            return t;
++        }();
++        const double x = phase * size;
++        const int i = juce::jlimit (0, size - 1, (int) x);
++        const float frac = (float) (x - i);
++        return table[(size_t) i] + frac * (table[(size_t) i + 1] - table[(size_t) i]);
+     }
+ 
+     float renderVoice (Voice& v) noexcept
+@@ -497,3 +514,4 @@
      static constexpr int maxVoicesPerDrum = 4;
      std::array<Voice, 32> voices {};
  };

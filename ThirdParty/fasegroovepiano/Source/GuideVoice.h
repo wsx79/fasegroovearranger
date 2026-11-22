@@ -318,8 +318,14 @@ private:
             out += partials[(size_t) p].tick();
 
         if ((++sampleCount & 63) == 0)
-            for (int p = 0; p < numPartials; ++p)
-                partials[(size_t) p].normalise();
+            for (int p = numPartials; --p >= 0;)
+            {
+                /* Upper partials that decayed below -100 dB stop costing CPU (the first two drive the envelope). */
+                if (p >= 2 && std::abs (partials[(size_t) p].amp) < 1.0e-5)
+                    partials[(size_t) p] = partials[(size_t) --numPartials];
+                else
+                    partials[(size_t) p].normalise();
+            }
 
         // Hammer thump: a few ms of low-passed noise.
         if (const double hammerEnv = clickDecay.next(); hammerEnv > 1.0e-4)

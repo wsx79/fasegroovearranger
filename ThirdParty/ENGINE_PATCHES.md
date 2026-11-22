@@ -22,6 +22,7 @@
 - Progression names and chords: "Dorian Circle i - IV - VII - III" (Dorian's IV is major); "Funky Dominant I7 - IV7" plays explicit dominant sevenths (free chords 24, 29) instead of Mixolydian's IVmaj7.
 
 - `GuideVoice::startNote`: the voice's noise generator is seeded from the note and velocity and its free-running oscillator phases restart, so every render (export, stems, playback) of a song is sample-identical.
+- `GuideVoice::renderGrand`: partials after the first two are dropped once they decay below 1e-5 (-100 dB), checked every 64 samples.
 - `GuideSound::sub` ("Sub Sine", `numGuideSounds` 8): a pure sine at the note's fundamental with a 3 ms fade-in, for the Arranger's sub-bass part.
 
 ## Drums (`fgd`)
@@ -30,6 +31,7 @@
 - Afro House and Latin House are separate genres: `grooveCategories` appends "Latin House" (category 13, own swing in `genreSwing`); the earlier Latin/clave grooves move to it, Afro House gets modern grooves appended at the end of `drumPatterns` (earlier pattern numbers stay; the random/user sentinels move, the Arranger remaps them when loading older projects). `makeRandomPattern` has a `latin` genre (son clave, cowbell, tumbao congas) and a modern afro house one (straight four with small kick pushes, offbeat open hat, syncopated tom/rim loop, understated or syncopated clap and light snare, no 12/8 bell).
 - Clave (`makeRandomPattern`): Latin House plays the son clave 3-2 or 2-3 (chosen from the seed, so no extra dice draw); Afro House no longer sets the rim figure once labelled "3:2 son clave" (four strokes in its first bar, so not a clave). Its `accent.chance` draw is kept so the layers after it stay the same.
 - Not vendored (unused here): `generalMidiDrumName`, `makeRandomLane`, `defaultArrangement`.
+- `GuideDrums::sine`: a 4096-point interpolated sine table instead of `std::sin` per sample (error about 1e-6).
 
 ## Guitar (`fgg`)
 

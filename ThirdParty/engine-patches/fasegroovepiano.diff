@@ -61,10 +61,29 @@
      //==============================================================================
      // Cheap maths for the per-sample loops (the guide sound runs up to 24 voices):
  
-@@ -360,6 +365,15 @@
-         clickDecay.set (0.002, sr);
-     }
+@@ -313,8 +318,14 @@
+             out += partials[(size_t) p].tick();
  
+         if ((++sampleCount & 63) == 0)
+-            for (int p = 0; p < numPartials; ++p)
+-                partials[(size_t) p].normalise();
++            for (int p = numPartials; --p >= 0;)
++            {
++                /* Upper partials that decayed below -100 dB stop costing CPU (the first two drive the envelope). */
++                if (p >= 2 && std::abs (partials[(size_t) p].amp) < 1.0e-5)
++                    partials[(size_t) p] = partials[(size_t) --numPartials];
++                else
++                    partials[(size_t) p].normalise();
++            }
+ 
+         // Hammer thump: a few ms of low-passed noise.
+         if (const double hammerEnv = clickDecay.next(); hammerEnv > 1.0e-4)
+@@ -358,6 +369,15 @@
+         gain = 0.085 * (0.55 + 0.45 * vel);
+         indexDecay.set (0.22, sr);         // percussion
+         clickDecay.set (0.002, sr);
++    }
++
 +    // Sub: one sine at the note's fundamental, a 3 ms fade-in (no click), the release as every sound.
 +    double renderSub (double& env) noexcept
 +    {
@@ -72,12 +91,10 @@
 +        const double out = fastSin (carrierPhase);
 +        carrierPhase += carrierInc; if (carrierPhase >= 1.0) carrierPhase -= 1.0;
 +        return out * env;
-+    }
-+
+     }
+ 
      double renderOrgan (double& env) noexcept
-     {
-         const double vibrato = 1.0 + 0.0022 * fastSin (lfoPhase);
-@@ -516,6 +530,7 @@
+@@ -516,6 +536,7 @@
      //==============================================================================
      const std::atomic<float>& tone;
      const std::atomic<float>& soundChoice;
@@ -85,7 +102,7 @@
      juce::Random random;
  
      GuideSound sound = GuideSound::rhodes;
-@@ -549,3 +564,4 @@
+@@ -549,3 +570,4 @@
      bool strings = false;
      double padLow2 = 0.0, vibratoPhase = 0.0;
  };

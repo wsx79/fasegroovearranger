@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.19
+
+- Rendering più veloce (circa il 30% di CPU in meno in riproduzione ed export): le tracce passano l’audio al mixer un blocco alla volta, le tracce silenziose saltano il lavoro, il chorus lavora solo quando è alzato, il synth della batteria usa una tabella di seno e il piano scarta le parziali scese sotto -100 dB.
+- Export: un file già sotto il limite non viene misurato due volte per il true peak (stesso risultato, fine più rapida); Annulla funziona anche in quel passaggio.
+- L’annulla conserva al massimo 40 passi e circa 256 MB: le sessioni lunghe con tracce plugin non fanno più crescere la memoria senza limite.
+
 ## 0.57.18
 
 - Correzioni: attivare VOCE PRESENTE su un brano esistente rimodella anche le parti rimaste invariate; il controcanto controlla il piano per tutta la durata della nota (nessun semitono rimasto); una clip in loop sulle tracce sub basso o controcanto mantiene il loop; VOCE PRESENTE compare solo nella pagina arrangiamento.
