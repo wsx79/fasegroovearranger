@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.57.20**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.57.21**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.57.0** writes the lead melody per genre: its own rhythms, phrases with motif, answer and cadence, stepwise or repeated or leaping lines in the style's balance. **0.56.0** makes the band play together (in Latin the piano montuno leads and guitar and lead answer in its gaps; in Afro guitar and lead take turns by phrase), voices strings and guitar around the lead and the bass, adds DEVELOP (answers to your own theme), VST articulation profiles, a path bar on every plugin editor, AUTO/TRIM badges, a readable mixer and clickable sources in Bus & Send. **0.55.0** makes the Mix and Mastering Assistants process the sound, not only the levels: per-track EQ, compressors inserted where missing, reverb and delay sends, the kick sidechain, and on the master an EQ, a glue compressor and a lookahead limiter that reaches the LUFS target under the dBTP ceiling (every change selectable, A/B and one Undo). **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -532,7 +532,13 @@ Click a lane to add a gesture on that bar's chord. Its notes select and move tog
 
 ### Who carries the progression?
 
-**VOCALS PRESENT** in the main arrangement toolbar arranges for a singer you add later in another DAW (no voice is generated): in verses the lead and the solo guitar answer between the vocal phrases, keys, strings and guitar re-voice their top notes below the voice's presence range (a top note folds an octave down into the chord, or drops out when that would rub against a note already sounding). Right-click it to choose where the singer sings: **Bars 1-2 of every 4**, **Bars 3-4 of every 4** or **Bars 1-4 of every 8**.
+**VOCALS PRESENT** in the main arrangement toolbar arranges for a singer you add later in another DAW (no voice is generated): in verses the lead and the solo guitar answer between the vocal phrases, keys, strings and guitar re-voice their top notes below the voice's presence range (a top note folds an octave down into the chord, or drops out when that would rub against a note already sounding). Right-click it to choose where the singer sings: **Bars 1-2 of every 4**, **Bars 3-4 of every 4**, **Bars 1-4 of every 8** or **Where the imported vocal sings** (after ARRANGE FROM VOCAL).
+
+**ARRANGE FROM VOCAL** (GENERATE menu ▾) fits the song to a vocal you imported: drop the vocal WAV (a guide or an a cappella, at the song's tempo) on an audio track, select that track and choose it. The arranger finds the sung notes, the key and the bars the voice sings in, then:
+- sets the song's key; in every section where the voice sings at least two bars, writes four chords (one per bar, repeating) that hold the melody: the notes on the beat and the long notes count most, notes a semitone above a chord tone are avoided;
+- turns VOCALS PRESENT on following the real phrases: the lead and the solo guitar answer only in the bars the voice leaves free;
+- re-renders piano, bass, strings, guitar and lead on the new chords (the drums and locked tracks stay). It is one undo step; the vocal track itself is not changed.
+It reads one voice at a time: a mixed song or a doubled vocal gives fewer notes. The message shows the key, the notes found and the sections changed.
 
 **GUITAR LEADS** in the main arrangement toolbar changes the roles without opening the engine. The guitar panel and editor offer the same switch. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
 

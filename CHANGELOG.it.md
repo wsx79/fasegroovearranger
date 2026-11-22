@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.21
+
+- **ARRANGIA DALLA VOCE** (menu ▾ di GENERA): seleziona una traccia audio con una voce importata; l’arranger trova le note (rilevamento dell’intonazione), la tonalità e le battute cantate, scrive accordi che contengono la melodia in ogni sezione cantata, attiva VOCE PRESENTE seguendo le frasi reali e rigenera la band sui nuovi accordi (un solo passo di annulla).
+- VOCE PRESENTE, clic destro: **Dove canta la voce importata**, salvato nel progetto.
+
 ## 0.57.20
 
 - Export per il mix in un’altra DAW: WAV **32 bit float** (conserva l’headroom) e la scelta **Stem** nella finestra di codifica: **Senza effetti (dry)** o **Con effetti di traccia** (insert e channel strip di ogni traccia, senza mandate, master o normalizzazione).

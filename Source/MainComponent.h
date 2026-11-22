@@ -267,6 +267,8 @@ public:
     void deleteMidiTrack(int);
     void showAddSectionMenu();
     void showVocalPhraseMenu();
+    bool vocalTrackSelected()const;
+    void arrangeFromVocal();
     void addSongSection(Section);
     void fitGeneratedView();
     void showInstrument();

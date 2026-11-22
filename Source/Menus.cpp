@@ -112,7 +112,7 @@ void MainComponent::applyChordMenuChoice(int id){
 void MainComponent::showVocalPhraseMenu(){
     juce::PopupMenu m;const int current=project.settings.vocalPhrase;
     m.addSectionHeader(tr("Where the singer sings"));
-    m.addItem(1,tr("Bars 1-2 of every 4"),true,current==0);m.addItem(2,tr("Bars 3-4 of every 4"),true,current==1);m.addItem(3,tr("Bars 1-4 of every 8"),true,current==2);
+    m.addItem(1,tr("Bars 1-2 of every 4"),true,current==0);m.addItem(2,tr("Bars 3-4 of every 4"),true,current==1);m.addItem(3,tr("Bars 1-4 of every 8"),true,current==2);m.addItem(4,tr("Where the imported vocal sings"),!project.settings.vocalBars.empty(),current==3);
     juce::Component::SafePointer<MainComponent> safe(this);
     m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&vocalsButton),[safe](int id){
         if(!safe||id<1||safe->loadingPlugin||id-1==safe->project.settings.vocalPhrase)return;auto& self=*safe;

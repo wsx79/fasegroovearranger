@@ -2003,7 +2003,8 @@ static void vocalSpace(Project& p,const std::function<bool(int,int)>& fresh){
             const double from=p.sectionStart(si);std::vector<Note> out;
             for(auto n:c.notes){const double rel=at+n.start-from;const int bar=(int)std::floor(rel/4+1e-9);
                 if(melody){
-                    const bool singer=p.settings.vocalPhrase==1?bar%4>=2:p.settings.vocalPhrase==2?bar%8<4:bar%4<2;
+                    const auto& sung=p.settings.vocalBars;const int songBar=(int)std::floor((at+n.start)/4+1e-9);
+                    const bool singer=p.settings.vocalPhrase==3?songBar>=0&&songBar<(int)sung.size()&&sung[(size_t)songBar]:p.settings.vocalPhrase==1?bar%4>=2:p.settings.vocalPhrase==2?bar%8<4:bar%4<2;
                     if(type==Section::main&&singer)continue;                         // the singer's half of the phrase
                     if(type==Section::breakdown&&bar%2==0)continue;                  // answers only
                     if(type==Section::drop){const double beat=std::fmod(rel,1.);if(beat>.05&&beat<.95&&n.length<.5)continue;n.velocity=std::max(1,(int)std::lround(n.velocity*.88));}

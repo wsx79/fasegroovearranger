@@ -161,7 +161,8 @@ struct Settings {
     std::uint32_t seed = 1979;
     bool guitarLead = false;
     bool vocalsPresent = false;
-    int vocalPhrase = 0;   // where the singer sings: 0 bars 1-2 of 4, 1 bars 3-4 of 4, 2 bars 1-4 of 8 (the band answers in the rest)   // VOCALS PRESENT: the arrangement leaves room for a lead singer (no voice is generated)
+    int vocalPhrase = 0;   // where the singer sings: 0 bars 1-2 of 4, 1 bars 3-4 of 4, 2 bars 1-4 of 8, 3 the imported vocal (vocalBars)
+    std::vector<std::uint8_t> vocalBars;   // ARRANGE FROM VOCAL: per song bar, 1 where the imported voice sings   // VOCALS PRESENT: the arrangement leaves room for a lead singer (no voice is generated)
     int chordSteps = 16;
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};

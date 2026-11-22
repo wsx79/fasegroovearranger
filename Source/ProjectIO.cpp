@@ -190,7 +190,7 @@ juce::var projectJson(const Project& p){
     auto s=object();const auto& c=p.settings;
     set(s,"genre",c.genre);set(s,"key",c.key);set(s,"scale",c.scale);set(s,"extension",c.extension);set(s,"voicing",c.voicing);
     set(s,"bpm",c.bpm);set(s,"swing",c.swing);set(s,"density",c.density);set(s,"humanize",c.humanize);set(s,"seed",(juce::int64)c.seed);
-    set(s,"guitarLead",c.guitarLead);if(c.vocalsPresent)set(s,"vocalsPresent",true);if(c.vocalPhrase)set(s,"vocalPhrase",c.vocalPhrase);set(s,"randomAutomation",c.randomAutomation);if(c.freeTempo)set(s,"freeTempo",true);
+    set(s,"guitarLead",c.guitarLead);if(c.vocalsPresent)set(s,"vocalsPresent",true);if(c.vocalPhrase)set(s,"vocalPhrase",c.vocalPhrase);if(!c.vocalBars.empty()){std::string bars;for(auto b:c.vocalBars)bars+=b?'1':'0';set(s,"vocalBars",juce::String(bars));}set(s,"randomAutomation",c.randomAutomation);if(c.freeTempo)set(s,"freeTempo",true);
     set(s,"bassMode",c.bassMode);set(s,"stringsMode",c.stringsMode);set(s,"chordCount",c.chordCount);set(s,"chordSteps",c.chordSteps);
     if(c.targetEnabled&&c.targetSeconds>0)set(s,"targetSeconds",c.targetSeconds);if(std::abs(c.targetToleranceSeconds-5.)>1e-9)set(s,"targetToleranceSeconds",c.targetToleranceSeconds);
     juce::Array<juce::var> degrees,free,manual;for(int v:c.degrees)degrees.add(v);for(int v:c.freeChords)free.add(v);set(s,"degrees",degrees);set(s,"freeChords",free);for(bool v:c.manualChords)manual.add(v);set(s,"manualChords",manual);set(o,"settings",s);
@@ -247,7 +247,7 @@ juce::Result projectFromJson(const juce::var& o,Project& result){
     Project p;p.name=str(o,"name","Untitled groove");auto& s=p.settings;const auto j=o["settings"];
     s.genre=(int)num(j,"genre",1);s.key=(int)num(j,"key",9);s.scale=(int)num(j,"scale",1);s.extension=(int)num(j,"extension",2);s.voicing=(int)num(j,"voicing",0);
     s.bpm=num(j,"bpm",122);s.swing=num(j,"swing",.2);s.density=num(j,"density",.55);s.humanize=num(j,"humanize",.2);s.seed=seedValue(j.getProperty("seed",1979));
-    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.vocalsPresent=(bool)j.getProperty("vocalsPresent",false);s.vocalPhrase=std::clamp((int)num(j,"vocalPhrase",0),0,2);s.randomAutomation=(bool)j.getProperty("randomAutomation",false);s.freeTempo=(bool)j.getProperty("freeTempo",false);
+    s.chordSteps=(int)num(j,"chordSteps",16);s.guitarLead=(bool)j.getProperty("guitarLead",false);s.vocalsPresent=(bool)j.getProperty("vocalsPresent",false);s.vocalPhrase=std::clamp((int)num(j,"vocalPhrase",0),0,3);{const auto bars=j.getProperty("vocalBars",juce::var()).toString();s.vocalBars.clear();for(int i=0;i<std::min(bars.length(),4096);++i)s.vocalBars.push_back(bars[i]=='1'?1:0);}if(s.vocalPhrase==3&&s.vocalBars.empty())s.vocalPhrase=0;s.randomAutomation=(bool)j.getProperty("randomAutomation",false);s.freeTempo=(bool)j.getProperty("freeTempo",false);
     s.bassMode=(int)num(j,"bassMode",3);s.stringsMode=(int)num(j,"stringsMode",1);s.chordCount=(int)num(j,"chordCount",4);
     if(j.hasProperty("targetSeconds")){const double target=num(j,"targetSeconds",0);if(!std::isfinite(target)||target<=0||target>24*3600)return juce::Result::fail("Invalid target duration.");s.targetEnabled=true;s.targetSeconds=target;}
     if(j.hasProperty("targetToleranceSeconds")){const double tol=num(j,"targetToleranceSeconds",5);if(!std::isfinite(tol)||tol<0||tol>600)return juce::Result::fail("Invalid target tolerance.");s.targetToleranceSeconds=tol;}

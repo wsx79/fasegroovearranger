@@ -156,6 +156,7 @@ void verifyGenreIdentity(){
 #include "TimelineChecks.h"
 #include "RegenerationChecks.h"
 #include "ArrangerFixChecks.h"
+#include "VocalArrangementChecks.h"
 // Engine integration: the vendored generators' seed and genre fixes are live, and the
 // arranger's note extraction never leaves millisecond stubs or flams in pitched tracks.
 void verifyEngineIntegration(){
@@ -265,7 +266,7 @@ int main(int argc,char** argv){try{
     musicalchecks::verify();
     verifyRearrange();
     verifyAuditFixes();
-    verifyLeadIntegration();verifyEngineIntegration();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
+    verifyLeadIntegration();verifyEngineIntegration();verifyVocalArrangement();fixchecks::verifyUserReportedFixes();verifyRegeneration();verifyTimelineEditing();verifyClubEdgeCases();verifyClubSeedCases();verifyGuitarAudibility();verifyGenreIdentity();
     {
         auto vocal=fga::newProject(4);vocal.sections={{fga::Section::main,16,"Main"},{fga::Section::drop,8,"Drop"},{fga::Section::intro,8,"Intro"}};vocal.normalise();
         const auto lead=vocal.tracks[fga::leadTrack].clips;const int manual=vocal.addMidiTrack();vocal.tracks[(size_t)manual].clips[0].notes={{1,.5,72,100,0}};

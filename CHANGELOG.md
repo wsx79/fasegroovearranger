@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.21
+
+- **ARRANGE FROM VOCAL** (GENERATE menu ▾): select an audio track with an imported vocal; the arranger finds its notes (pitch tracking), key and sung bars, writes chords that hold the melody in each sung section, turns VOCALS PRESENT on following the real phrases and re-renders the band on the new chords (one undo step).
+- VOCALS PRESENT, right-click: **Where the imported vocal sings**, saved with the project.
+
 ## 0.57.20
 
 - Export for mixing in another DAW: **32 bit float** WAV (keeps the headroom), and a **Stems** choice in the encoding window: **Dry (no effects)** or **With track effects** (each track's inserts and channel strip, no sends, master or normalisation).
