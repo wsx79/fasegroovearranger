@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.57.19**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.57.20**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 La **0.57.0** scrive la melodia del Lead per genere: ritmi propri, frasi con motivo, risposta e cadenza, linee per grado, ribattute o a salti nell’equilibrio dello stile. La **0.56.0** fa suonare la band insieme (nel Latin il montuno del piano guida e chitarra e Lead rispondono nelle pause; nell’Afro chitarra e Lead si alternano per frase), dispone archi e chitarra attorno a Lead e basso, aggiunge SVILUPPA (risposte al tuo tema), profili di articolazione VST, la barra del percorso in ogni editor di plugin, i badge AUTO/TRIM, il mixer leggibile e le sorgenti cliccabili in Bus & Send. La **0.55.0** fa lavorare sul suono gli assistenti Mix e Mastering, non solo sui volumi: EQ per traccia, compressori inseriti dove mancano, mandate di riverbero e delay, sidechain della cassa e, sul master, EQ, compressore glue e limiter con lookahead che raggiunge il LUFS obiettivo sotto il tetto dBTP (ogni modifica selezionabile, confronto A/B e un solo Annulla). La **0.53.0** aggiunge il taglio delle clip dal bordo sinistro e legge il tempo salvato nei loop (ACID, Apple Loop, nome del file). La **0.52.0** ha permesso allo Studio di modificare stem e loop sulla timeline: tagli, velocità e guadagno si riflettono sulla clip. La **0.51.0** ha dato a pulsanti e potenziometri un aspetto hardware 3D e impedisce a potenziometri e fader di seguire la rotellina del mouse. La **0.50.0** ha portato il trascinamento fluido delle clip con SNAP on/off e griglie più fini, clip audio dai file trascinati con rilevamento di tempo e tonalità, l’Energia di sezione e una Durata obiettivo che costruisce il brano sulla lunghezza richiesta.
 
@@ -533,6 +533,8 @@ Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue 
 
 #### Chi porta avanti il giro?
 
+**VOCE PRESENTE** nella barra principale arrangia per una voce che aggiungerai poi in un’altra DAW (nessuna voce viene generata): nelle strofe la lead e la chitarra solista rispondono tra le frasi del cantante; tastiere, archi e chitarra cambiano il rivolto delle note alte sotto la zona di presenza della voce (la nota più alta scende di un’ottava dentro l’accordo, oppure viene tolta se sfregherebbe con una nota che sta già suonando). Clic destro per scegliere dove canta il cantante: **Battute 1-2 ogni 4**, **Battute 3-4 ogni 4** o **Battute 1-4 ogni 8**.
+
 **CHITARRA SOLISTA** nella barra principale cambia i ruoli senza aprire il motore. Lo stesso comando resta nel pannello e nell’editor della chitarra. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
 
 <p align="center"><img src="images/guide_mixer.png" alt="Il mixer della chitarra" width="900"></p>
@@ -592,7 +594,7 @@ Nella guida, **Ctrl/Cmd + F** porta alla ricerca. Le frecce accanto alla ricerca
 | In EXPORT | Cosa ottieni |
 |---|---|
 | **MIDI** | Il brano multitraccia, una traccia o tutte le tracce in file separati. Comprende tempo e marker delle sezioni; non contiene i suoni. |
-| **WAV** | Mix, singola traccia o tutti gli stem, stereo PCM a **16 o 24 bit** e **44,1 / 48 / 88,2 / 96 / 192 kHz**, da scegliere prima del percorso. È il formato da usare per continuare il mixaggio. |
+| **WAV** | Mix, singola traccia o tutti gli stem, stereo PCM a **16 o 24 bit** o **32 bit float** e **44,1 / 48 / 88,2 / 96 / 192 kHz**, da scegliere prima del percorso. È il formato da usare per continuare il mixaggio. |
 | **MP3** | Mix, singola traccia o tutti gli stem, stereo a 320 kbps / 44,1 kHz. L'encoder è incluso. |
 
 ### Esportare un WAV o gli stem, passo per passo
@@ -610,7 +612,7 @@ L'app ricorda separatamente l'ultima cartella di export e quella di salvataggio,
 
 Nei WAV sono salvati anche BPM e metrica come metadati ACID e una descrizione di tempo/tonalità. I file dell'intero arrangiamento conservano le code e sono marcati come **one-shot**, evitando di imporre una lunghezza di loop errata alla DAW di destinazione. Il riconoscimento automatico del tempo dipende dal programma che li importa; BPM nel nome e TXT restano sempre disponibili.
 
-Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono le code dei suoni e degli effetti. Anche una traccia vuota produce un file allineato. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
+Gli stem WAV partono tutti dall'inizio del brano, hanno la stessa durata e comprendono le code dei suoni e degli effetti. Vengono esportate solo le tracce che hanno qualcosa da suonare. Nella finestra di codifica **Stem** sceglie **Senza effetti (dry)**, che sommati danno il mix dry, oppure **Con effetti di traccia** (insert e channel strip di ogni traccia, senza mandate, master o normalizzazione), per il mix in un’altra DAW. **32 bit float** conserva l’headroom del mix; gli export a **16 bit** hanno il dither (TPDF), identico a ogni export. Il mix segue mute e solo; uno stem viene esportato anche se la sua traccia è muta e conserva gain, pan e livello master.
 
 > Per riportare gli stem in una DAW scegli WAV: conserva il PCM senza compressione con perdita per il mixaggio successivo. MP3 è adatto all’ascolto e alla condivisione.
 

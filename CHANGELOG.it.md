@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.20
+
+- Export per il mix in un’altra DAW: WAV **32 bit float** (conserva l’headroom) e la scelta **Stem** nella finestra di codifica: **Senza effetti (dry)** o **Con effetti di traccia** (insert e channel strip di ogni traccia, senza mandate, master o normalizzazione).
+- Gli export WAV a 16 bit hanno il dither (TPDF), identico a ogni export, invece del troncamento.
+- VOCE PRESENTE: clic destro per scegliere dove canta il cantante (battute 1-2 o 3-4 ogni 4, oppure 1-4 ogni 8); tastiere, archi e chitarra cambiano il rivolto delle note alte sotto la voce invece di abbassare di un’ottava ogni nota alta (una nota che sfregherebbe con un’altra già in corso viene tolta).
+
 ## 0.57.19
 
 - Rendering più veloce (circa il 30% di CPU in meno in riproduzione ed export): le tracce passano l’audio al mixer un blocco alla volta, le tracce silenziose saltano il lavoro, il chorus lavora solo quando è alzato, il synth della batteria usa una tabella di seno e il piano scarta le parziali scese sotto -100 dB.

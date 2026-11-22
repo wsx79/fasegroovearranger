@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.20
+
+- Export for mixing in another DAW: **32 bit float** WAV (keeps the headroom), and a **Stems** choice in the encoding window: **Dry (no effects)** or **With track effects** (each track's inserts and channel strip, no sends, master or normalisation).
+- 16-bit WAV exports are dithered (TPDF), identical on every export, instead of truncated.
+- VOCALS PRESENT: right-click to choose where the singer sings (bars 1-2 or 3-4 of every 4, or bars 1-4 of every 8); keys, strings and guitar re-voice their top notes below the voice instead of moving every high note an octave down (a note that would rub against one already sounding drops out instead).
+
 ## 0.57.19
 
 - Faster rendering (about 30% less CPU for playback and export): tracks hand their audio to the mixer a block at a time, silent tracks skip their work, the chorus runs only when it is turned up, the drum synth uses a sine table and the piano drops partials once they fall below -100 dB.

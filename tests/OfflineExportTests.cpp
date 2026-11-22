@@ -98,6 +98,12 @@ void runOfflineExportTests(){using namespace fga;
         }
         if(signal=="tone7"){
             const auto output=directory.getChildFile(prefix+"-transparent-16.wav");require(finishOfflineExport(input,output,16,AudioExportMode::transparent,-3,[]{return false;},[](double){}).wasOk(),"16-bit configurable ceiling export");
+            {const auto floatOut=directory.getChildFile(prefix+"-transparent-32.wav");require(finishOfflineExport(input,floatOut,32,AudioExportMode::transparent,-1,[]{return false;},[](double){}).wasOk(),"32-bit float export");
+                juce::WavAudioFormat wav;std::unique_ptr<juce::AudioFormatReader> r(wav.createReaderFor(floatOut.createInputStream().release(),true));require(r&&r->usesFloatingPointData&&r->bitsPerSample==32,"32-bit export is IEEE float");}
+            {// 16-bit: TPDF dither, identical on every export
+                const auto again=directory.getChildFile(prefix+"-transparent-16b.wav");require(finishOfflineExport(input,again,16,AudioExportMode::transparent,-3,[]{return false;},[](double){}).wasOk(),"second 16-bit export");
+                juce::MemoryBlock a,b;output.loadFileAsData(a);again.loadFileAsData(b);require(a==b,"dithered 16-bit export is deterministic");
+                juce::AudioBuffer<float> buf(2,64);juce::Random random(1);buf.clear();fga::ditherTo16(buf,0,64,random);float peak=buf.getMagnitude(0,64);require(peak>0&&peak<=1.f/32768.f+1e-9f,"TPDF dither stays within one LSB");}
             const auto cancelled=directory.getChildFile("cancelled-staging.wav");
             for(double stop:{.1,.6,.95}){bool cancel=false;const auto result=finishOfflineExport(input,cancelled,24,AudioExportMode::transparent,-1,[&]{return cancel;},[&](double p){if(p>=stop)cancel=true;});require(cancel&&result.failed(),"cancel offline analysis/write/verification");cancelled.deleteFile();}
         }

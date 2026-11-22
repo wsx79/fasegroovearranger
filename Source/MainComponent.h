@@ -266,6 +266,7 @@ public:
     bool verifySampleImport(const juce::File&);
     void deleteMidiTrack(int);
     void showAddSectionMenu();
+    void showVocalPhraseMenu();
     void addSongSection(Section);
     void fitGeneratedView();
     void showInstrument();

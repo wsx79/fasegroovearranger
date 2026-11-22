@@ -2003,11 +2003,19 @@ static void vocalSpace(Project& p,const std::function<bool(int,int)>& fresh){
             const double from=p.sectionStart(si);std::vector<Note> out;
             for(auto n:c.notes){const double rel=at+n.start-from;const int bar=(int)std::floor(rel/4+1e-9);
                 if(melody){
-                    if(type==Section::main&&bar%4<2)continue;                       // the singer's half of the phrase
+                    const bool singer=p.settings.vocalPhrase==1?bar%4>=2:p.settings.vocalPhrase==2?bar%8<4:bar%4<2;
+                    if(type==Section::main&&singer)continue;                         // the singer's half of the phrase
                     if(type==Section::breakdown&&bar%2==0)continue;                  // answers only
                     if(type==Section::drop){const double beat=std::fmod(rel,1.);if(beat>.05&&beat<.95&&n.length<.5)continue;n.velocity=std::max(1,(int)std::lround(n.velocity*.88));}
                 }else if(type==Section::main||type==Section::drop){
-                    if(n.pitch>=84)n.pitch-=12;                                       // out of the voice's 2-5 kHz presence band
+                    if(n.pitch>=84){
+                        // Out of the voice's 2-5 kHz presence band by re-voicing: the top note folds into the chord an
+                        // octave down unless that lands on (or a semitone from) a note already sounding there; then the
+                        // chord drops it, as long as something else still sounds with it.
+                        const int low=n.pitch-12;bool clash=false,others=false;
+                        for(const auto& o:c.notes){if((o.pitch==n.pitch&&o.start==n.start)||o.start>=n.start+n.length||n.start>=o.start+o.length)continue;others=true;if(std::abs(o.pitch-low)<=1)clash=true;}
+                        if(!clash)n.pitch=low;else if(others)continue;
+                    }
                     if(type==Section::main)n.velocity=std::max(1,(int)std::lround(n.velocity*.9));
                 }
                 out.push_back(n);}

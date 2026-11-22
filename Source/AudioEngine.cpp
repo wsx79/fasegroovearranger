@@ -845,7 +845,7 @@ juce::Result AudioEngine::renderAnalysis(const Project& source,const juce::File&
 juce::Result AudioEngine::renderExport(const Project& source,const juce::File& file,int onlyTrack,bool mp3,std::function<bool()> cancelled,std::function<void(double)> progress,double* rawPeak,AudioExportOptions options,AnalysisCapture* analysis){
     if(file.isDirectory())return juce::Result::fail("Export target is a directory.");
     if(isAudioRecording()||isRecording())return juce::Result::fail("Finish recording before exporting.");
-    if(!std::isfinite(options.sampleRate)||options.sampleRate<0||(options.sampleRate>0&&(options.sampleRate<8000||options.sampleRate>192000))||(options.bitDepth!=16&&options.bitDepth!=24))return juce::Result::fail("Invalid WAV encoding.");
+    if(!std::isfinite(options.sampleRate)||options.sampleRate<0||(options.sampleRate>0&&(options.sampleRate<8000||options.sampleRate>192000))||(options.bitDepth!=16&&options.bitDepth!=24&&options.bitDepth!=32))return juce::Result::fail("Invalid WAV encoding.");
     if(!std::isfinite(options.ceilingDb)||options.ceilingDb<minExportCeilingDb||options.ceilingDb>maxExportCeilingDb)return juce::Result::fail("True Peak ceiling must be between -12 and -1 dBTP.");
     if(options.mode!=AudioExportMode::transparent&&options.mode!=AudioExportMode::loud&&options.mode!=AudioExportMode::legacy)return juce::Result::fail("Invalid export mode.");
     if(options.mode==AudioExportMode::loud&&!offlineLoudReady)return juce::Result::fail("Loud export is not validated; use Transparent.");
@@ -889,7 +889,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     // inventing a loop beat count that would stretch the tail in another host.
     metadata.set(juce::WavAudioFormat::acidOneShot,"1");metadata.set(juce::WavAudioFormat::acidNumerator,juce::String(timeNumerator.load()));metadata.set(juce::WavAudioFormat::acidDenominator,juce::String(timeDenominator.load()));
     metadata.set("ISFT","Fase Groove Arranger");metadata.set("ICMT","BPM: "+exportTempo(p)+"; Key: "+exportKey(p));
-    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");stream.release();
+    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");juce::Random dither(0x5eed);stream.release();
     // Keep identical stem lengths and retain natural sample/effect tails beyond the song.
     double endSeconds=p.length()*60./p.settings.bpm;
     for(size_t ti=0;ti<p.tracks.size();++ti){const auto& track=p.tracks[ti];auto asset=sampleAsset((int)ti);if(track.instrument!="sample"||!asset)continue;
@@ -943,6 +943,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
             for(size_t k=0;frames>0&&k<analysis->selected.size();++k)if(!analysis->writers[k]->writeFromAudioSampleBuffer(analysis->audio[(size_t)analysis->selected[k]],from,frames))return juce::Result::fail("Cannot write analysis track.");
             analysis->written+=frames;
         }
+        if(n>skip&&!modern&&!mp3&&options.bitDepth==16)ditherTo16(buffer,skip,n-skip,dither);
         if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*renderShare);
     }
     if(!writer->flush())return juce::Result::fail("Cannot finish export staging WAV.");writer.reset();

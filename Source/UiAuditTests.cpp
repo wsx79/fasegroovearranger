@@ -288,8 +288,10 @@ MainComponent::MainComponent(){
     fitNotesButton.onClick=[this]{piano.fitNotes();piano.repaint();};
     guitarNotesButton.onClick=[this]{piano.guitarNotes=!piano.guitarNotes;Localisation::setSetting("pianoGuitarNotes",piano.guitarNotes?"1":"0");showEditor();};
     // VOCALS PRESENT: an arrangement mode, not a voice. The setting lives in the project; every generation reads it.
-    addAndMakeVisible(vocalsButton);vocalsButton.setComponentID("vocals-present");vocalsButton.setClickingTogglesState(true);Localisation::bindTip(vocalsButton,"Arrange for a lead singer: the lead and the solo guitar answer between the vocal phrases, keys and strings stay below the voice. No voice is generated.");
-    vocalsButton.onClick=[this]{if(loadingPlugin)return;checkpoint();project.settings.vocalsPresent=vocalsButton.getToggleState();for(int ti:{0,2,3,leadTrack})if(ti<(int)project.tracks.size()&&!project.tracks[(size_t)ti].locked)generate(project,Scope::track,ti,selectedSection);changed();};
+    addAndMakeVisible(vocalsButton);vocalsButton.setComponentID("vocals-present");vocalsButton.setClickingTogglesState(true);Localisation::bindTip(vocalsButton,"Arrange for a lead singer: the lead and the solo guitar answer between the vocal phrases, keys and strings stay below the voice. No voice is generated. Right-click: where the singer sings.");
+    vocalsButton.onClick=[this]{if(loadingPlugin)return;
+        if(juce::ModifierKeys::currentModifiers.isPopupMenu()){vocalsButton.setToggleState(project.settings.vocalsPresent,juce::dontSendNotification);showVocalPhraseMenu();return;}
+        checkpoint();project.settings.vocalsPresent=vocalsButton.getToggleState();for(int ti:{0,2,3,leadTrack})if(ti<(int)project.tracks.size()&&!project.tracks[(size_t)ti].locked)generate(project,Scope::track,ti,selectedSection);changed();};
     leadButton.setClickingTogglesState(true);leadButton.onClick=[this]{if(loadingPlugin)return;checkpoint();project.settings.guitarLead=!project.settings.guitarLead;generate(project,Scope::track,0,selectedSection);generate(project,Scope::track,3,selectedSection);changed();};
     durationLabel.getProperties().set("fgaTip","Song length follows genre, harmonic phrases and groove development.");durationLabel.setTooltip(tr("Song length follows genre, harmonic phrases and groove development."));
     addAndMakeVisible(targetDurationLabel);addAndMakeVisible(targetDurationEditor);

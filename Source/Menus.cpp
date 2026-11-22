@@ -26,8 +26,8 @@ AudioExportOptions exportSettings(){
         saved=="loud"&&offlineLoudReady?AudioExportMode::loud:AudioExportMode::transparent;
     double ceiling=Localisation::setting("exportCeilingDb","-1").getDoubleValue();
     if(!std::isfinite(ceiling))ceiling=-1;
-    AudioExportOptions options{known?(double)requested:48000.,Localisation::setting("exportBitDepth","24")=="16"?16:24,mode,std::clamp(ceiling,minExportCeilingDb,maxExportCeilingDb)};
-    options.loudnessGuard=historic=="1";return options;
+    AudioExportOptions options{known?(double)requested:48000.,[]{const auto d=Localisation::setting("exportBitDepth","24");return d=="16"?16:d=="32"?32:24;}(),mode,std::clamp(ceiling,minExportCeilingDb,maxExportCeilingDb)};
+    options.loudnessGuard=historic=="1";options.wetStems=Localisation::setting("exportStemsWet","0")=="1";return options;
 }
 void rename(const juce::String& title,const juce::String& value,std::function<void(juce::String)> cb){auto* dialog=new juce::AlertWindow(tr(title),"",juce::MessageBoxIconType::NoIcon);dialog->addTextEditor("name",value,"Nome");dialog->addButton("OK",1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->enterModalState(true,juce::ModalCallbackFunction::create([dialog,cb](int result){if(result==1)cb(dialog->getTextEditorContents("name"));}),true);}
 class ExportTask:public RenderProgressTask {
@@ -45,7 +45,7 @@ public:
     }
     void run()override{
         // WAV stems are dry (no inserts, sends, master or normalisation) and share one length: summed, they give the dry mix.
-        if(stems&&!isMp3)options.dry=true;
+        if(stems&&!isMp3){options.dry=!options.wetStems;if(options.wetStems){options.mode=AudioExportMode::legacy;options.loudnessGuard=false;}}
         reportProgress(0);
         if(threadShouldExit()){result=juce::Result::fail("Export cancelled");return;}
         // Write the arrangement map first, so it also accompanies any stems completed
@@ -108,6 +108,18 @@ void MainComponent::applyChordMenuChoice(int id){
     message(local?"Section chords written into unlocked tracks in this section.":"New chords written into unlocked tracks. GENERATE SONG draws another harmony.");
 }
 
+// VOCALS PRESENT, right-click: where the singer sings in a main section (the lead answers in the other bars).
+void MainComponent::showVocalPhraseMenu(){
+    juce::PopupMenu m;const int current=project.settings.vocalPhrase;
+    m.addSectionHeader(tr("Where the singer sings"));
+    m.addItem(1,tr("Bars 1-2 of every 4"),true,current==0);m.addItem(2,tr("Bars 3-4 of every 4"),true,current==1);m.addItem(3,tr("Bars 1-4 of every 8"),true,current==2);
+    juce::Component::SafePointer<MainComponent> safe(this);
+    m.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&vocalsButton),[safe](int id){
+        if(!safe||id<1||safe->loadingPlugin||id-1==safe->project.settings.vocalPhrase)return;auto& self=*safe;
+        self.checkpoint();self.project.settings.vocalPhrase=id-1;
+        if(self.project.settings.vocalsPresent)for(int ti:{0,2,3,leadTrack})if(ti<(int)self.project.tracks.size()&&!self.project.tracks[(size_t)ti].locked)generate(self.project,Scope::track,ti,self.selectedSection);
+        self.changed();});
+}
 void MainComponent::showAddSectionMenu(){
     if(loadingPlugin||project.sections.size()>=64)return;
     juce::PopupMenu menu;for(int type=0;type<6;++type)menu.addItem(type+1,tr(sectionName((Section)type)));
@@ -286,16 +298,16 @@ void MainComponent::exportFile(int type,int track,const juce::File& destination,
     if(single&&!juce::isPositiveAndBelow(track,(int)project.tracks.size()))return;
     if(!midi&&!mp3&&!configured&&destination==juce::File()){
         auto* dialog=new juce::AlertWindow(tr("WAV export"),tr("Choose the encoding for all exported WAV files."),juce::MessageBoxIconType::NoIcon);
-        dialog->setLookAndFeel(&theme);dialog->addComboBox("rate",{"44.1 kHz","48 kHz","88.2 kHz","96 kHz","192 kHz"},tr("Sample rate"));dialog->addComboBox("depth",{"16 bit PCM","24 bit PCM"},tr("Bit depth"));
+        dialog->setLookAndFeel(&theme);dialog->addComboBox("rate",{"44.1 kHz","48 kHz","88.2 kHz","96 kHz","192 kHz"},tr("Sample rate"));dialog->addComboBox("depth",{"16 bit PCM","24 bit PCM","32 bit float"},tr("Bit depth"));if(type==6)dialog->addComboBox("stems",{tr("Dry (no effects)"),tr("With track effects")},tr("Stems"));
         const int rates[]{44100,48000,88200,96000,192000};const int savedRate=Localisation::setting("exportSampleRate","48000").getIntValue();int selected=1;for(int i=0;i<5;++i)if(rates[i]==savedRate)selected=i;
-        dialog->getComboBoxComponent("rate")->setSelectedItemIndex(selected);dialog->getComboBoxComponent("depth")->setSelectedItemIndex(Localisation::setting("exportBitDepth","24")=="16"?0:1);
+        dialog->getComboBoxComponent("rate")->setSelectedItemIndex(selected);{const auto d=Localisation::setting("exportBitDepth","24");dialog->getComboBoxComponent("depth")->setSelectedItemIndex(d=="16"?0:d=="32"?2:1);}if(auto* s=dialog->getComboBoxComponent("stems"))s->setSelectedItemIndex(Localisation::setting("exportStemsWet","0")=="1"?1:0);
         dialog->addButton(tr("EXPORT"),1,juce::KeyPress(juce::KeyPress::returnKey));dialog->addButton(tr("Cancel"),0,juce::KeyPress(juce::KeyPress::escapeKey));dialog->setAlwaysOnTop(true);
         juce::Component::SafePointer<MainComponent> safe(this);
         dialog->enterModalState(true,juce::ModalCallbackFunction::create([safe,dialog,type,track](int result){
             if(safe&&result==1){
                 const int values[]{44100,48000,88200,96000,192000};
                 Localisation::setSetting("exportSampleRate",juce::String(values[std::clamp(dialog->getComboBoxComponent("rate")->getSelectedItemIndex(),0,4)]));
-                Localisation::setSetting("exportBitDepth",dialog->getComboBoxComponent("depth")->getSelectedItemIndex()==0?"16":"24");
+                {const int d=dialog->getComboBoxComponent("depth")->getSelectedItemIndex();Localisation::setSetting("exportBitDepth",d==0?"16":d==2?"32":"24");}if(auto* s=dialog->getComboBoxComponent("stems"))Localisation::setSetting("exportStemsWet",s->getSelectedItemIndex()==1?"1":"0");
                 // The native chooser must outlive the encoding window's modal teardown.
                 dialog->setVisible(false);dialog->setAlwaysOnTop(false);
                 juce::MessageManager::callAsync([safe,type,track]{if(safe)safe->exportFile(type,track,{},true);});

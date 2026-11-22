@@ -46,10 +46,16 @@ juce::Result scanPeak(juce::AudioFormatReader& reader,double& peak,const Cancel&
     }
     return juce::Result::ok();
 }
+// TPDF dither (two uniform draws, +-1 LSB peak) before 16-bit PCM: requantisation noise instead of
+// truncation distortion on fades and reverb tails. Fixed seed: every export of a song is identical.
+void tpdf16(juce::AudioBuffer<float>& buffer,int from,int n,juce::Random& random){
+    constexpr float lsb=1.f/32768.f;
+    for(int ch=0;ch<buffer.getNumChannels();++ch){auto* d=buffer.getWritePointer(ch,from);for(int s=0;s<n;++s)d[s]=juce::jlimit(-1.f,1.f-lsb,d[s]+(random.nextFloat()-random.nextFloat())*lsb);}
+}
 juce::Result writeScaled(juce::AudioFormatReader& reader,const juce::File& target,int bits,double gain,const Cancel& cancelled,const Progress& progress){
     auto writer=createWav(target,reader.sampleRate,bits,reader.metadataValues);
     if(!writer)return juce::Result::fail("Cannot create encoded export WAV");
-    juce::AudioBuffer<float> buffer(2,chunk);
+    juce::AudioBuffer<float> buffer(2,chunk);juce::Random dither(0x5eed);
     for(juce::int64 at=0;at<reader.lengthInSamples;at+=chunk){
         if(cancelled())return stopped();const int n=(int)std::min<juce::int64>(chunk,reader.lengthInSamples-at);
         if(!reader.read(&buffer,0,n,at,true,true))return juce::Result::fail("Cannot read export staging audio");
@@ -58,6 +64,7 @@ juce::Result writeScaled(juce::AudioFormatReader& reader,const juce::File& targe
             if(!std::isfinite(value)||std::abs(value)>=1.)return juce::Result::fail("Export exceeds PCM range");
             buffer.setSample(ch,s,(float)value);
         }
+        if(bits==16)tpdf16(buffer,0,n,dither);
         if(!writer->writeFromAudioSampleBuffer(buffer,0,n))return juce::Result::fail("Cannot write export WAV (disk space?)");
         progress((double)(at+n)/std::max<juce::int64>(1,reader.lengthInSamples));
     }
@@ -101,6 +108,7 @@ juce::Result renderLoud(juce::AudioFormatReader& reader,const juce::File& target
     return writer->flush()?juce::Result::ok():juce::Result::fail("Cannot finish Loud staging WAV");
 }
 }
+void ditherTo16(juce::AudioBuffer<float>& buffer,int from,int n,juce::Random& random){tpdf16(buffer,from,n,random);}
 juce::Result measureOfflineTruePeak(juce::AudioFormatReader& reader,double& peak,const Cancel& cancelled,const Progress& progress){
     if(reader.numChannels!=2||reader.lengthInSamples<1||!std::isfinite(reader.sampleRate)||reader.sampleRate<8000||reader.sampleRate>192000)
         return juce::Result::fail("Expected nonempty stereo WAV at 8-192 kHz for True Peak QA");
@@ -116,7 +124,7 @@ juce::Result ExportPeakGuard::verifyFile(const juce::File& file,int bits,const C
     return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Cannot finish loudness guard");
 }
 juce::Result finishOfflineExport(const juce::File& source,const juce::File& output,int bits,AudioExportMode mode,double ceilingDb,const Cancel& cancelled,const Progress& progress,OfflineExportStats* stats){
-    if(source==output||(bits!=16&&bits!=24)||!std::isfinite(ceilingDb)||ceilingDb<minExportCeilingDb||ceilingDb>maxExportCeilingDb||(mode!=AudioExportMode::transparent&&mode!=AudioExportMode::loud))return juce::Result::fail("Invalid offline export settings");
+    if(source==output||(bits!=16&&bits!=24&&bits!=32)||!std::isfinite(ceilingDb)||ceilingDb<minExportCeilingDb||ceilingDb>maxExportCeilingDb||(mode!=AudioExportMode::transparent&&mode!=AudioExportMode::loud))return juce::Result::fail("Invalid offline export settings");
     juce::TemporaryFile limited(source);auto reader=openWav(source);
     if(!reader||!reader->usesFloatingPointData||reader->numChannels!=2||!std::isfinite(reader->sampleRate)||reader->sampleRate<8000||reader->sampleRate>192000)return juce::Result::fail("Expected stereo float export staging WAV at 8-192 kHz");
     const bool loud=mode==AudioExportMode::loud;

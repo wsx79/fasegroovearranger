@@ -133,6 +133,10 @@ inline void verifyEditorRegenerate(){
         check(leadOn<leadOff,"VOCALS PRESENT thins the lead");check(verseRoom,"in a verse the lead answers only in the second half of each phrase");check(introSame,"intros and outros stay instrumental and unchanged");
         for(int ti:{0,2,3})for(size_t ci=0;ci<on.tracks[(size_t)ti].clips.size();++ci){const int si=on.sectionAtBeat(on.clipStart(ti,(int)ci)+.01);if(si<0||(on.sections[(size_t)si].type!=fga::Section::main&&on.sections[(size_t)si].type!=fga::Section::drop))continue;
             for(const auto& n:on.tracks[(size_t)ti].clips[ci].notes)check(n.pitch<84||on.tracks[(size_t)ti].clips[ci].locked,"keys, strings and guitar stay below the voice's presence range");}
+        for(int phrase:{1,2}){auto moved=off;moved.settings.vocalsPresent=true;moved.settings.vocalPhrase=phrase;fga::generate(moved,fga::Scope::song,0,0,4242);bool room=true;
+            for(size_t ci=0;ci<moved.tracks[fga::leadTrack].clips.size();++ci){const int si=moved.sectionAtBeat(moved.clipStart(fga::leadTrack,(int)ci)+.01);if(si<0||moved.sections[(size_t)si].type!=fga::Section::main)continue;const double from=moved.sectionStart(si),at=moved.clipStart(fga::leadTrack,(int)ci);
+                for(const auto& n:moved.tracks[fga::leadTrack].clips[ci].notes){const int bar=(int)std::floor((at+n.start-from)/4+1e-9);room=room&&(phrase==1?bar%4<2:bar%8>=4);}}
+            check(room,phrase==1?"singer on bars 3-4: the lead answers in bars 1-2":"8-bar phrases: the lead answers in bars 5-8");}
         auto regen=on;fga::generate(regen,fga::Scope::clip,fga::leadTrack,2,0);check(regen.tracks[fga::leadTrack].clips[2]==on.tracks[fga::leadTrack].clips[2],"a clip regeneration matches the song pass with VOCALS PRESENT");
         auto genre=on;fga::applyGenre(genre,7);check(genre.settings.vocalsPresent,"a genre change keeps VOCALS PRESENT");
         // the button: the setting, then piano, strings, guitar and lead regenerate with their own takes
