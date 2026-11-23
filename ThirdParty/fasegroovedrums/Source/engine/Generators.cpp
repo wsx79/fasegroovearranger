@@ -545,8 +545,13 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         p[Lane::clap].assign ((size_t) randomBeatLength, '.');
         p[Lane::snare].assign ((size_t) randomBeatLength, '.');
         const bool clave = std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit);
-        switch (accent.nextInt (5))
+        switch (accent.nextInt (8))
         {
+            // From the first kick: the clap (or snap) on all four beats with the kick, a soft snare on 2 and 4;
+            // on 1 and 3 with a dry rim on 2 and 4; or an accent on the one every other bar over the backbeat.
+            case 5:  setBar (Lane::clap, "x... x... x... x..."); setBar (Lane::snare, ".... g... .... g..."); break;
+            case 6:  setBar (Lane::clap, "x... .... x... ...."); if (! clave) setBar (Lane::rim, ".... x... .... x..."); break;
+            case 7:  setLoop (Lane::clap, "X... x... .... x... .... x... .... x..."); setLoop (Lane::snare, "g... .... .... .... .... .... .... ...."); break;
             case 0:  setBar (Lane::clap, ".... x... .... x..."); setBar (Lane::snare, ".... g... .... g..."); break;   // clap + snare layer
             case 1:  setBar (Lane::clap, ".... x... .... ...."); if (! clave) setBar (Lane::rim, ".... .... .... x..."); break;   // clap and rimshot take turns
             case 2:  setLoop (Lane::clap, ".... x... .... x... .... x... .... ...."); if (! clave) setLoop (Lane::rim, ".... .... .... .... .... .... .... x..g"); break;
@@ -558,6 +563,10 @@ DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre)
         // The kick stays on the four, warm and steady; now and then a pick-up into the next bar.
         if (accent.chance (0.3f))
             p[Lane::kick][31] = 'x';
+        // The rolling afro kick: a soft push into beat 3 (and now and then into the next one).
+        if (accent.chance (0.3f))
+            for (int bar = 0; bar < randomBeatLength; bar += 16)
+                p[Lane::kick][(size_t) (bar + 7)] = 'g';
     }
     else if (genre == latin)
     {

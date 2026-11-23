@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.23
+
+- Afro House drums: the clap (or a snare) can come from the first kick: on all four beats with a soft snare, on 1 and 3 with a rim on 2 and 4, or an accent on the one every other bar; a soft kick push into beat 3; the congas play three drums (tumba before beats 3 and 1, quinto on the soft offbeats) instead of one.
+- New drum kit **Afro Organic** (deep round kick without the click, woody snare, clap with its room, soft airy hats), the default for Afro House.
+
 ## 0.57.22
 
 - **Master tempo** lane (AUTOMATION → Master tempo): the song keeps a constant BPM unless you draw points; steps and ramps from 30 to 300 BPM. Playback, audio export and stems, the clock and ruler, the MIDI tempo map and the arrangement text file follow it; the arranger never writes it. Removing or bypassing the lane restores the constant BPM.

@@ -494,7 +494,7 @@ void Project::normalise() {
             if(c.audioOffset<0||c.audioDuration<=0){c.audioOffset=-1;c.audioDuration=0;}
             for(size_t f=0;f<3;++f)c.feel[f]=finite(c.feel[f],-1,-1,f==1?1.5:1.);
             {std::string cleaned;cleaned.reserve(c.name.size());for(unsigned char ch:c.name)if(ch>=32)cleaned.push_back((char)ch);while(!cleaned.empty()&&cleaned.front()==' ')cleaned.erase(cleaned.begin());while(!cleaned.empty()&&cleaned.back()==' ')cleaned.pop_back();if(cleaned.size()>128)cleaned.resize(128);c.name=std::move(cleaned);}
-            if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){if(t.instrument!="sample")n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.lane=(int)i-4;}
+            if(isDrumTrack((int)i))for(auto* notes:{&c.notes,&c.loopSource})for(auto& n:*notes){if(t.instrument!="sample"){const int base=e.midiNote>=0?e.midiNote:fgd::defaultNote((int)i-4);n.pitch=(int)i-4==(int)fgd::Lane::conga&&std::abs(n.pitch-base)<=3?n.pitch:base;}n.lane=(int)i-4;}   /* the congas keep their three drums (base, one above, two below) */
             tidyNotes(c,clipLength((int)i,(int)k));if(c.loopLength>0){Clip source;source.notes=std::move(c.loopSource);tidyNotes(source,c.loopLength);c.loopSource=std::move(source.notes);}else c.loopSource.clear();}
         if(t.freeTimeline)std::stable_sort(t.clips.begin(),t.clips.end(),[](const Clip& a,const Clip& b){return a.position<b.position;});
     }
@@ -2312,7 +2312,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             }
             } // Vendor engines are used only when the dedicated generator declines.
             if(isDrumTrack(ti)&&e.pattern<0&&type!=Section::intro&&type!=Section::outro&&type!=Section::breakdown)ornamentDrumTake(clip,ti,beats);
-            if(isDrumTrack(ti))for(auto& n:clip.notes){n.lane=ti-4;n.pitch=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);}
+            if(isDrumTrack(ti))for(auto& n:clip.notes){n.lane=ti-4;const int base=e.midiNote>=0?e.midiNote:fgd::defaultNote(ti-4);n.pitch=ti-4==(int)fgd::Lane::conga&&std::abs(n.pitch-(fgd::defaultNote(ti-4)))<=3?base+n.pitch-fgd::defaultNote(ti-4):base;}   /* congas: three drums around the lane note */
             shapeBandRoles(clip,p,ti,guide);
             shapeMixSection(clip,s.genre,ti,type,renderBars);
             if(ti==2&&(!isElectronicGenre(s.genre)||manualPart)&&ps.strings!=sgk::StringsMode::off&&clip.notes.empty()){

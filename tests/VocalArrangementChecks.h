@@ -46,3 +46,14 @@ inline void verifyTempoLane(){
     p.tempoAutomation.enabled=false;check(fga::midiFile(p,-1)==constant&&std::abs(p.secondsAt(8)-4)<1e-9,"bypassing the lane restores the constant BPM exactly");
     std::cout<<"PASS master tempo lane: constant by default, time map, MIDI tempo map\n";
 }
+// Afro House drums: the clap can come from the first kick, and the congas play three drums.
+inline void verifyAfroDrums(){
+    int fromOne=0,fourClaps=0;
+    for(std::uint32_t seed=1;seed<=80;++seed){const auto g=fgd::makeRandomPattern(seed,.6f,7);const auto& clap=g.lanes[(size_t)fgd::Lane::clap];const auto& kick=g.lanes[(size_t)fgd::Lane::kick];
+        if(fgd::isHit(clap[0])&&fgd::isHit(kick[0]))++fromOne;if(fgd::isHit(clap[0])&&fgd::isHit(clap[4])&&fgd::isHit(clap[8])&&fgd::isHit(clap[12]))++fourClaps;}
+    check(fromOne>=12&&fourClaps>=5,"Afro House: claps from the first kick (on all four, on 1 and 3, or the one accent) are generated");
+    std::set<int> congas;for(std::uint32_t seed:{11u,23u,42u}){auto p=fga::newProject(fga::afroHouseGenre);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed);
+        for(const auto& c:p.tracks[(size_t)(4+(int)fgd::Lane::conga)].clips)for(const auto& n:c.notes)congas.insert(n.pitch);}
+    check(congas.size()>=3,"Afro House congas play low, middle and high drums");
+    std::cout<<"PASS Afro House drums: "<<fromOne<<"/80 claps from the first kick, "<<congas.size()<<" conga pitches\n";
+}

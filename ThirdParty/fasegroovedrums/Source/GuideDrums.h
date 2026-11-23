@@ -27,10 +27,10 @@ using DrumSamples = std::array<std::shared_ptr<const DrumSample>, fgd::numLanes>
 class GuideDrums
 {
 public:
-    static constexpr int numKits = 4;
+    static constexpr int numKits = 5;
     static const char* kitName (int kit) noexcept
     {
-        static const char* names[] { "House 909", "Deep 808", "Disco Live", "Lo-Fi Soul" };
+        static const char* names[] { "House 909", "Deep 808", "Disco Live", "Lo-Fi Soul", "Afro Organic" };
         return kit >= 0 && kit < numKits ? names[kit] : "";
     }
 
@@ -125,6 +125,8 @@ private:
             { 58.0f, 125.0f, 0.020f, 0.22f, 0.80f, 1.5f,  200.0f, 0.22f, 1200.0f, 0.40f,  6000.0f, 0.060f, 0.45f, 0.30f, 0.18f, 0.15f },
             // Lo-Fi Soul: saturated, darker, dusty
             { 52.0f, 140.0f, 0.030f, 0.30f, 0.30f, 3.0f,  180.0f, 0.15f, 1500.0f, 0.55f,  5000.0f, 0.050f, 0.30f, 0.50f, 0.15f, 0.55f },
+            // Afro Organic: a deep round kick without the click, a woody snare, a clap with its room, soft airy hats
+            { 47.0f, 118.0f, 0.038f, 0.55f, 0.05f, 1.3f,  210.0f, 0.14f, 1600.0f, 0.60f,  7000.0f, 0.030f, 0.28f, 0.20f, 0.30f, 0.25f },
         };
         return kits[juce::jlimit (0, numKits - 1, k)];
     }

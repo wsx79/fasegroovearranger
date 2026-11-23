@@ -19,7 +19,7 @@ inline const GenreSound& genreSound(int genre){
         {1,4,0,0,0,0, .72,.54,.65,.68,.18,.00,.62, .56,.80,.12,.22}, // jackin: dry piano chops / articulate electric bass / 909
         {2,3,0,0,0,5, .75,.20,.60,.66,.30,.08,.64, .53,.86,.12,.21}, // piano jack: M1 / 909
         {0,3,0,1,2,5, .49,.04,.52,.62,.24,.05,.58, .48,.98,.12,.23}, // UK: chopped Rhodes / 808 sub
-        {4,3,3,2,4,2, .35,.10,.40,.48,.52,.24,.48, .40,.88,.17,.35}, // Afro: dark keys / nylon / percussion
+        {4,3,3,4,4,2, .35,.10,.40,.48,.52,.24,.48, .40,.88,.17,.35}, // Afro: dark keys / nylon / percussion / Afro Organic kit
         {4,4,2,2,6,9, .61,.52,.70,.60,.40,.16,.61, .42,.78,.31,.48}, // disco: Wurli / chorus guitar / strings
         {2,3,0,0,0,1, .83,.22,.62,.70,.50,.08,.60, .60,.87,.20,.15}, // 90s: M1 / 909
         {0,4,1,3,2,3, .28,.35,.28,.22,.78,.34,.42, .58,.78,.18,.28}, // neo soul: dark Rhodes / lo-fi / jazz

@@ -650,7 +650,12 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
             && sectionAllowsFills (s.section)
             && lane == (hasSnare ? (int) Lane::snare : (int) Lane::clap) && lifeNoise (lane, 57) < 0.55)
             symbol = stepInBar == 14 ? 'g' : 'x';
-        add (lane, symbol, s.notes[(size_t) lane], 1.0, false, roll);
+        // Afro and Latin hand drums: three congas, not one. The tumba (low) answers before beats 3 and 1,
+        // the quinto (high) slaps the soft offbeats, the conga keeps the rest.
+        int note = s.notes[(size_t) lane];
+        if (lane == (int) Lane::conga && (settingsGenre (s) == 7 || settingsGenre (s) == 13))   // Afro House, Latin House
+            note = nearNote (lane, stepInBar == 7 || stepInBar == 15 ? 2 : symbol == 'g' ? -1 : 0);
+        add (lane, symbol, note, 1.0, false, roll);
     }
 
     // ---- The fill ----

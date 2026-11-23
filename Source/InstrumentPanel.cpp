@@ -208,7 +208,7 @@ void InstrumentPanel::rebuild(){
     }
     heading("GUIDE SOUND");knob("TONE",0,100,1,e.tone*100,[](auto& o,double v){o.tone=v/100;}," %");
     knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");
-    juce::StringArray sounds;int soundCount=strings?1:track<2?7:4;
+    juce::StringArray sounds;int soundCount=strings?1:track<2?7:isDrumTrack(track)?GuideDrums::numKits:4;
     for(int i=0;i<soundCount;++i)sounds.add(strings?"String ensemble":track<2?guideSoundName(i):lead?GuideLead::toneName(i):guitar?GuideGuitar::toneName(i):GuideDrums::kitName(i));
     sharedChoice("Sound",sounds,std::min(owner.project.tracks[(size_t)track].sound,soundCount-1),[this](int value){owner.project.tracks[(size_t)owner.selectedTrack].sound=value;});
     if(piano||bass||strings){
