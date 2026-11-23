@@ -10,7 +10,7 @@
 #include "AiComposerWindow.h"
 #include "AiComposer.h"
 #include "UiText.h"
-#include "core/VocalArrangement.h"
+#include "AudioReference.h"
 #include "ExportSupport.h"
 #include "DarkTitleBar.h"
 #include "../ThirdParty/fasegroovepiano/Source/engine/GrooveEngine.h"
@@ -667,7 +667,9 @@ void MainComponent::showGenerateMenu(){
     menu.addItem(2,tr("REGENERATE TRACK"),true,false);
     menu.addItem(3,tr("REGENERATE SECTION"),true,false);
     menu.addItem(4,tr("REGENERATE CLIP"),true,false);
-    menu.addSeparator();menu.addItem(5,tr("ARRANGE FROM VOCAL"),vocalTrackSelected(),false);
+    menu.addSeparator();const bool audioTrack=vocalTrackSelected();   // from the selected audio track
+    menu.addItem(5,tr("ARRANGE FROM VOCAL"),audioTrack,false);menu.addItem(6,tr("VOCAL TO MIDI"),audioTrack,false);menu.addItem(7,tr("GROOVE FROM AUDIO"),audioTrack,false);
+    menu.addItem(8,tr("CHORDS FROM AUDIO"),audioTrack,false);menu.addItem(9,tr("SONG FORM FROM REFERENCE"),audioTrack,false);
     juce::Component::SafePointer<MainComponent> safe(this);
     menu.showMenuAsync(juce::PopupMenu::Options().withTargetComponent(&generateMenuButton).withMinimumWidth(generateMenuButton.getWidth()),
         [safe](int id){
@@ -675,7 +677,7 @@ void MainComponent::showGenerateMenu(){
             if(id==1)safe->regenerate(Scope::song);
             else if(id==2)safe->regenerate(Scope::track,safe->page!=Page::instrument);
             else if(id==3)safe->regenerate(Scope::section);
-            else if(id==5)safe->arrangeFromVocal();
+            else if(id==5)safe->arrangeFromVocal();else if(id==6)safe->vocalToMidi();else if(id==7)safe->grooveFromAudio();else if(id==8)safe->chordsFromAudio();else if(id==9)safe->formFromReference();
             else safe->regenerate(Scope::clip,safe->page!=Page::instrument);
         });
 }
@@ -686,32 +688,82 @@ bool MainComponent::vocalTrackSelected()const{
 }
 // ARRANGE FROM VOCAL: notes, key and phrases of the selected audio take shape the chords and leave room
 // for the singer; the band keeps its takes, re-rendered on the new chords (one undo step).
-void MainComponent::arrangeFromVocal(){
-    if(editingRestricted()||loadingPlugin||!vocalTrackSelected())return;
+// The selected audio take, clip by clip, as mono samples with the song beat each one starts at.
+bool MainComponent::readSelectedAudio(std::vector<AudioPart>& parts,double& rate,double& perSecond){
+    parts.clear();if(editingRestricted()||loadingPlugin||!vocalTrackSelected())return false;
     const auto& track=project.tracks[(size_t)selectedTrack];const juce::File file(juce::String::fromUTF8(track.instrumentPath.c_str()));
     juce::AudioFormatManager formats;formats.registerBasicFormats();std::unique_ptr<juce::AudioFormatReader> reader(formats.createReaderFor(file));
-    if(!reader||reader->sampleRate<8000){message(tr("Cannot read the vocal file."),true);return;}
-    juce::MouseCursor::showWaitCursor();
-    const int songBars=(int)std::ceil(project.length()/4);VocalAnalysis all;all.bars.assign((size_t)songBars,0);
-    const double perSecond=(track.sampler.sync&&track.sampler.sourceBpm>0?track.sampler.sourceBpm:project.settings.bpm)/60.;
-    std::array<double,12> pcs{};
+    if(!reader||reader->sampleRate<8000){message(tr("Cannot read the audio file."),true);return false;}
+    rate=reader->sampleRate;perSecond=(track.sampler.sync&&track.sampler.sourceBpm>0?track.sampler.sourceBpm:project.settings.bpm)/60.;
     for(size_t ci=0;ci<track.clips.size();++ci){const auto& c=track.clips[ci];if(c.audioOffset<0||c.audioDuration<=0)continue;
-        const auto from=(juce::int64)(c.audioOffset*reader->sampleRate),count=(juce::int64)std::min<double>(c.audioDuration*reader->sampleRate,600*reader->sampleRate);
+        const auto from=(juce::int64)(c.audioOffset*rate),count=(juce::int64)std::min<double>(c.audioDuration*rate,600*rate);
         if(count<=0||from>=reader->lengthInSamples)continue;const int n=(int)std::min<juce::int64>(count,reader->lengthInSamples-from);
         juce::AudioBuffer<float> audio((int)std::max(1u,std::min(2u,reader->numChannels)),n);reader->read(&audio,0,n,from,true,true);
-        std::vector<float> mono((size_t)n);for(int s=0;s<n;++s){float v=0;for(int ch=0;ch<audio.getNumChannels();++ch)v+=audio.getSample(ch,s);mono[(size_t)s]=v/audio.getNumChannels();}
-        const auto part=analyseVocal(mono,reader->sampleRate,project.clipStart(selectedTrack,(int)ci),perSecond,songBars);
-        for(const auto& note:part.notes){all.notes.push_back(note);pcs[(size_t)(note.pitch%12)]+=note.weight;}
-        for(size_t b=0;b<all.bars.size()&&b<part.bars.size();++b)all.bars[b]|=part.bars[b];all.voicedSeconds+=part.voicedSeconds;}
-    vocal::estimateKey(pcs,all.key,all.scale);
-    juce::MouseCursor::hideWaitCursor();
-    if(all.key<0||all.voicedSeconds<2){message(tr("No sung melody found on the selected track."),true);return;}
+        AudioPart part;part.at=project.clipStart(selectedTrack,(int)ci);part.samples.resize((size_t)n);
+        for(int s=0;s<n;++s){float v=0;for(int ch=0;ch<audio.getNumChannels();++ch)v+=audio.getSample(ch,s);part.samples[(size_t)s]=v/audio.getNumChannels();}
+        parts.push_back(std::move(part));}
+    return !parts.empty();
+}
+VocalAnalysis MainComponent::analyseSelectedVocal(){
+    VocalAnalysis all;std::vector<AudioPart> parts;double rate=0,perSecond=0;if(!readSelectedAudio(parts,rate,perSecond))return all;
+    juce::MouseCursor::showWaitCursor();const int songBars=(int)std::ceil(project.length()/4);all.bars.assign((size_t)songBars,0);std::array<double,12> pcs{};
+    for(const auto& part:parts){const auto one=analyseVocal(part.samples,rate,part.at,perSecond,songBars);
+        for(const auto& note:one.notes){all.notes.push_back(note);pcs[(size_t)(note.pitch%12)]+=note.weight;}
+        for(size_t b=0;b<all.bars.size()&&b<one.bars.size();++b)all.bars[b]|=one.bars[b];all.voicedSeconds+=one.voicedSeconds;}
+    vocal::estimateKey(pcs,all.key,all.scale);juce::MouseCursor::hideWaitCursor();
+    if(all.key<0||all.voicedSeconds<2){message(tr("No sung melody found on the selected track."),true);all.key=-1;}
+    return all;
+}
+AudioReference MainComponent::analyseSelectedAudio(){
+    AudioReference all;std::vector<AudioPart> parts;double rate=0,perSecond=0;if(!readSelectedAudio(parts,rate,perSecond))return all;
+    juce::MouseCursor::showWaitCursor();const int songBars=std::max((int)std::ceil(project.length()/4),(int)std::ceil((parts.back().at+parts.back().samples.size()/rate*perSecond)/4));all.bars.assign((size_t)songBars,{});std::array<double,12> total{};
+    for(const auto& part:parts){const auto one=audioref::analyse(part.samples,rate,part.at,perSecond,songBars);
+        for(size_t b=0;b<all.bars.size()&&b<one.bars.size();++b)if(one.bars[b].present){all.bars[b]=one.bars[b];for(int i=0;i<12;++i)total[(size_t)i]+=one.bars[b].chroma[(size_t)i];}
+        all.onsets.insert(all.onsets.end(),one.onsets.begin(),one.onsets.end());}
+    vocal::estimateKey(total,all.key,all.scale);juce::MouseCursor::hideWaitCursor();return all;
+}
+static const char* keyNames[12]{"C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"};
+// ARRANGE FROM VOCAL: notes, key and phrases of the selected audio take shape the chords and leave room
+// for the singer; the band keeps its takes, re-rendered on the new chords (one undo step).
+void MainComponent::arrangeFromVocal(){
+    const auto all=analyseSelectedVocal();if(all.key<0)return;
     checkpoint();const int sections=fitToVocal(project,all);
     applyInstrumentChange(project,0,true);
     for(int ti:{0,2,3,leadTrack})if(ti<(int)project.tracks.size()&&!project.tracks[(size_t)ti].locked)generate(project,Scope::track,ti,selectedSection);
     changed();
-    static const char* names[12]{"C","Db","D","Eb","E","F","F#","G","Ab","A","Bb","B"};
-    message(tr("Arranged from the vocal")+": "+names[all.key]+(all.scale==2?"m":"")+" · "+juce::String((int)all.notes.size())+" "+tr("notes")+" · "+juce::String(sections)+" "+tr("sections"));
+    message(tr("Arranged from the vocal")+": "+keyNames[all.key]+(all.scale==2?"m":"")+" · "+juce::String((int)all.notes.size())+" "+tr("notes")+" · "+juce::String(sections)+" "+tr("sections"));
+}
+// VOCAL TO MIDI: the sung melody on a new MIDI track (its own timeline), to export or to double.
+void MainComponent::vocalToMidi(){
+    const auto all=analyseSelectedVocal();if(all.key<0||all.notes.empty())return;
+    checkpoint();const int ti=project.addMidiTrack();if(ti<0){message(tr("The track limit has been reached."),true);return;}
+    auto& t=project.tracks[(size_t)ti];t.name=project.tracks[(size_t)selectedTrack].name+" melody";
+    double first=1e18,last=0;for(const auto& n:all.notes){first=std::min(first,n.beat);last=std::max(last,n.beat+n.length);}
+    const double from=std::floor(first/4)*4;auto& c=t.clips.front();c.position=from;c.span=std::max(4.,std::ceil((last-from)/4)*4);c.notes.clear();
+    for(const auto& n:all.notes)c.notes.push_back({n.beat-from,std::max(.0625,n.length),n.pitch,(int)std::clamp(std::lround(70+50*std::min(1.,n.weight/std::max(1e-9,all.notes.front().weight))),40L,120L),0});
+    project.normalise();changed();
+    message(tr("Melody to MIDI")+": "+juce::String((int)all.notes.size())+" "+tr("notes")+" · "+utf(t.name));
+}
+// GROOVE FROM AUDIO: the timing and accents of the selected audio's attacks drive the drums' 16ths.
+void MainComponent::grooveFromAudio(){
+    const auto a=analyseSelectedAudio();std::array<double,16> offsets{},accents{};
+    if(!audioref::grooveFrom(a,offsets,accents)){message(tr("Not enough attacks found on the selected track."),true);return;}
+    checkpoint();project.settings.grooveOffsets=offsets;project.settings.grooveAccents=accents;project.settings.grooveEnabled=true;generate(project);changed();
+    message(tr("Groove from the audio")+": "+juce::String((int)a.onsets.size())+" "+tr("attacks"));
+}
+// CHORDS FROM AUDIO: section chords from the pitch classes of the selected audio (a loop or a song).
+void MainComponent::chordsFromAudio(){
+    const auto a=analyseSelectedAudio();if(a.key<0){message(tr("No harmony found on the selected track."),true);return;}
+    checkpoint();const int sections=audioref::fitChords(project,a);applyInstrumentChange(project,0,true);
+    for(int ti:{0,2,3,leadTrack})if(ti<(int)project.tracks.size()&&!project.tracks[(size_t)ti].locked)generate(project,Scope::track,ti,selectedSection);
+    changed();message(tr("Chords from the audio")+": "+keyNames[a.key]+(a.scale==2?"m":"")+" · "+juce::String(sections)+" "+tr("sections"));
+}
+// SONG FORM FROM REFERENCE: the reference's key and its form (8-bar blocks by energy); the song is generated on it.
+void MainComponent::formFromReference(){
+    const auto a=analyseSelectedAudio();auto form=audioref::formFrom(a);if(form.empty()){message(tr("The reference is too short for a song form."),true);return;}
+    checkpoint();project.sections=form;if(a.key>=0){project.settings.key=a.key;project.settings.scale=a.scale;}project.normalise();
+    generate(project,Scope::song,0,0,(std::uint32_t)juce::Random::getSystemRandom().nextInt()|1u);selectedSection=0;changed();
+    int bars=0;for(const auto& s:form)bars+=s.bars;message(tr("Song form from the reference")+": "+juce::String((int)form.size())+" "+tr("sections")+" · "+juce::String(bars)+" bars");
 }
 void MainComponent::regenerate(Scope scope,bool newTake){
     flushGlobalFeel();

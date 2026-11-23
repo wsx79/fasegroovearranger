@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.24
+
+- GENERATE menu ▾, for the selected audio track: **VOCAL TO MIDI** (the sung melody on a new MIDI track), **GROOVE FROM AUDIO** (timing and accents of its attacks on the 16ths, no slicing needed), **CHORDS FROM AUDIO** (key and section chords from a loop or a song), **SONG FORM FROM REFERENCE** (key and form of a reference song in 8-bar blocks by energy; a new song is generated on it).
+
 ## 0.57.23
 
 - Afro House drums: the clap (or a snare) can come from the first kick: on all four beats with a soft snare, on 1 and 3 with a rim on 2 and 4, or an accent on the one every other bar; a soft kick push into beat 3; the congas play three drums (tumba before beats 3 and 1, quinto on the soft offbeats) instead of one.

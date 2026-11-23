@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.57.23**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.57.24**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.57.0** writes the lead melody per genre: its own rhythms, phrases with motif, answer and cadence, stepwise or repeated or leaping lines in the style's balance. **0.56.0** makes the band play together (in Latin the piano montuno leads and guitar and lead answer in its gaps; in Afro guitar and lead take turns by phrase), voices strings and guitar around the lead and the bass, adds DEVELOP (answers to your own theme), VST articulation profiles, a path bar on every plugin editor, AUTO/TRIM badges, a readable mixer and clickable sources in Bus & Send. **0.55.0** makes the Mix and Mastering Assistants process the sound, not only the levels: per-track EQ, compressors inserted where missing, reverb and delay sends, the kick sidechain, and on the master an EQ, a glue compressor and a lookahead limiter that reaches the LUFS target under the dBTP ceiling (every change selectable, A/B and one Undo). **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -539,6 +539,12 @@ Click a lane to add a gesture on that bar's chord. Its notes select and move tog
 - turns VOCALS PRESENT on following the real phrases: the lead and the solo guitar answer only in the bars the voice leaves free;
 - re-renders piano, bass, strings, guitar and lead on the new chords (the drums and locked tracks stay). It is one undo step; the vocal track itself is not changed.
 It reads one voice at a time: a mixed song or a doubled vocal gives fewer notes. The message shows the key, the notes found and the sections changed.
+
+The same menu has four more commands for the selected audio track (one undo step each):
+- **VOCAL TO MIDI**: the sung melody on a new MIDI track (its own timeline), to export to another DAW or to double with an instrument.
+- **GROOVE FROM AUDIO**: the timing and accents of the audio's attacks (a drum loop, a percussion or a whole song) on each 16th of the bar drive the generated parts; the offsets are measured against the audio's own beats. The same groove as EXTRACT GROOVE in the sampler, without slicing first.
+- **CHORDS FROM AUDIO**: the key and four chords per section (one per bar, repeating) from the pitches of a harmonic loop or a song; the band is re-rendered on them.
+- **SONG FORM FROM REFERENCE**: import a reference song at the project's tempo (detect its BPM first): its key and its form, in 8-bar blocks by energy (intro, main, breakdown, build-up, drop, outro), replace the song's sections and a new song is generated on them.
 
 **GUITAR LEADS** in the main arrangement toolbar changes the roles without opening the engine. The guitar panel and editor offer the same switch. With **SOLISTA** enabled, guitar carries the groove and piano leaves space, playing accompaniment and answers. Piano and guitar update while respecting generation locks. **UNDO** restores the previous roles.
 

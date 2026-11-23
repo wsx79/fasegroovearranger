@@ -3,6 +3,7 @@
 // Audio engine: edits while playing touch only what changed, loop wraps and stops release
 // notes, publishing never waits for the audio thread, MP3 export is gapless.
 #include "../Source/AudioEngine.h"
+#include "../Source/AudioReference.h"
 #include "../Source/ExportSupport.h"
 #include "../Source/ArrangementAudit.h"
 #include <cmath>
@@ -66,6 +67,25 @@ int main(int argc,char** argv){
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
         runSpectrumChecks();runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
+        {   // CHORDS / GROOVE / FORM FROM AUDIO on synthetic audio at 120 BPM (2 beats a second)
+            constexpr double rate=22050;const double bps=2;auto tone=[&](std::vector<float>& x,double from,double to,std::initializer_list<int> notes,float level){
+                for(int n:notes){const double f=440*std::pow(2.,(n-69)/12.);for(int s=(int)(from*rate);s<(int)(to*rate)&&s<(int)x.size();++s)for(int h=1;h<=3;++h)x[(size_t)s]+=level/h*(float)std::sin(juce::MathConstants<double>::twoPi*f*h*s/rate);}};
+            std::vector<float> loop((size_t)(rate*32),0.f);const std::vector<std::vector<int>> chords{{48,60,64,67},{53,60,65,69},{55,62,67,71},{57,60,64,69}};
+            for(int bar=0;bar<16;++bar)tone(loop,bar*2.,bar*2.+1.95,{chords[(size_t)(bar%4)][0],chords[(size_t)(bar%4)][1],chords[(size_t)(bar%4)][2],chords[(size_t)(bar%4)][3]},.05f);
+            const auto a=fga::audioref::analyse(loop,rate,0,bps,16);check(a.key==0&&a.scale==0,"C - F - G - Am audio is in C major");
+            auto p=fga::newProject(0);p.sections={{fga::Section::main,8,"A"},{fga::Section::main,8,"B"}};p.normalise();
+            check(fga::audioref::fitChords(p,a)==2&&p.sections[0].harmony.degrees[0]==0&&p.sections[0].harmony.degrees[1]==3&&p.sections[0].harmony.degrees[2]==4&&p.sections[0].harmony.degrees[3]==5,"chords from audio: I - IV - V - vi");
+            std::vector<float> clicks((size_t)(rate*16),0.f);   // 16ths, the off-16ths a fifth of a 16th late, the beats loud
+            for(int k=0;k<128;++k){const double beat=k*.25+(k%2?.05:0);const int at=(int)(beat/bps*rate);for(int s=0;s<200&&at+s<(int)clicks.size();++s)clicks[(size_t)(at+s)]=(k%4==0?.9f:.35f)*(float)std::exp(-s/40.)*(float)std::sin(s*.9);}
+            std::array<double,16> offsets{},accents{};const auto g=fga::audioref::analyse(clicks,rate,0,bps,8);check(fga::audioref::grooveFrom(g,offsets,accents),"groove from audio finds the attacks");
+            check(offsets[1]>.03&&offsets[1]<.07&&std::abs(offsets[0])<.02&&accents[0]>accents[1],"groove from audio: late off-16ths, loud beats");
+            std::vector<float> song((size_t)(rate*2*64),0.f);const float levels[]{.02f,.08f,.08f,.02f,.06f,.2f,.2f,.02f};
+            for(int block=0;block<8;++block)for(int bar=0;bar<8;++bar)tone(song,(block*8+bar)*2.,(block*8+bar)*2.+1.9,{57,64},levels[block]);
+            const auto form=fga::audioref::formFrom(fga::audioref::analyse(song,rate,0,bps,64));
+            bool shape=form.size()>=4&&form.front().type==fga::Section::intro&&form.back().type==fga::Section::outro&&std::any_of(form.begin(),form.end(),[](const fga::SongSection& s){return s.type==fga::Section::drop&&s.bars==16;});
+            check(shape,"song form from a reference: intro, ..., a 16-bar drop, outro");
+            std::cout<<"PASS audio reference: chords I-IV-V-vi, groove offset "<<offsets[1]<<", form of "<<form.size()<<" sections\n";
+        }
         {   // MASTER TEMPO lane: a lane held at 60 BPM doubles a 120 BPM song's exported length
             fga::AudioEngine tempoEngine(fga::AudioEngine::Offline{});auto song=fga::newProject(0);song.sections={{fga::Section::main,2,"Tempo"}};song.normalise();fga::generate(song,fga::Scope::song,0,0,4242);song.settings.bpm=120;song.normalise();
             auto seconds=[&](const fga::Project& p){const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-tempo",".wav",false);

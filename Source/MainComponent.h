@@ -4,6 +4,7 @@
 #include "RetiredJobs.h"
 #include "SampleImport.h"
 #include "AudioEngine.h"
+#include "AudioReference.h"
 #include "ProjectIO.h"
 #include "StudioIO.h"
 #include "DawTheme.h"
@@ -269,6 +270,11 @@ public:
     void showVocalPhraseMenu();
     bool vocalTrackSelected()const;
     void arrangeFromVocal();
+    struct AudioPart{double at=0;std::vector<float> samples;};
+    bool readSelectedAudio(std::vector<AudioPart>&,double& rate,double& perSecond);
+    VocalAnalysis analyseSelectedVocal();
+    AudioReference analyseSelectedAudio();
+    void vocalToMidi();void grooveFromAudio();void chordsFromAudio();void formFromReference();
     void addSongSection(Section);
     void fitGeneratedView();
     void showInstrument();

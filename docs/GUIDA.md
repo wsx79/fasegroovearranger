@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.57.23**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.57.24**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 La **0.57.0** scrive la melodia del Lead per genere: ritmi propri, frasi con motivo, risposta e cadenza, linee per grado, ribattute o a salti nell’equilibrio dello stile. La **0.56.0** fa suonare la band insieme (nel Latin il montuno del piano guida e chitarra e Lead rispondono nelle pause; nell’Afro chitarra e Lead si alternano per frase), dispone archi e chitarra attorno a Lead e basso, aggiunge SVILUPPA (risposte al tuo tema), profili di articolazione VST, la barra del percorso in ogni editor di plugin, i badge AUTO/TRIM, il mixer leggibile e le sorgenti cliccabili in Bus & Send. La **0.55.0** fa lavorare sul suono gli assistenti Mix e Mastering, non solo sui volumi: EQ per traccia, compressori inseriti dove mancano, mandate di riverbero e delay, sidechain della cassa e, sul master, EQ, compressore glue e limiter con lookahead che raggiunge il LUFS obiettivo sotto il tetto dBTP (ogni modifica selezionabile, confronto A/B e un solo Annulla). La **0.53.0** aggiunge il taglio delle clip dal bordo sinistro e legge il tempo salvato nei loop (ACID, Apple Loop, nome del file). La **0.52.0** ha permesso allo Studio di modificare stem e loop sulla timeline: tagli, velocità e guadagno si riflettono sulla clip. La **0.51.0** ha dato a pulsanti e potenziometri un aspetto hardware 3D e impedisce a potenziometri e fader di seguire la rotellina del mouse. La **0.50.0** ha portato il trascinamento fluido delle clip con SNAP on/off e griglie più fini, clip audio dai file trascinati con rilevamento di tempo e tonalità, l’Energia di sezione e una Durata obiettivo che costruisce il brano sulla lunghezza richiesta.
 
@@ -540,6 +540,12 @@ Clicca nella lane per aggiungere una pennata sull'accordo della battuta. Le sue 
 - attiva VOCE PRESENTE seguendo le frasi reali: la lead e la chitarra solista rispondono solo nelle battute lasciate libere dalla voce;
 - rigenera piano, basso, archi, chitarra e lead sui nuovi accordi (batteria e tracce bloccate restano). È un solo passo di annulla; la traccia della voce non viene modificata.
 Legge una voce alla volta: un brano già mixato o una voce raddoppiata danno meno note. Il messaggio indica tonalità, note trovate e sezioni cambiate.
+
+Lo stesso menu ha altri quattro comandi per la traccia audio selezionata (ognuno è un solo passo di annulla):
+- **VOCE IN MIDI**: la melodia cantata su una nuova traccia MIDI (con la sua timeline), da esportare in un’altra DAW o da raddoppiare con uno strumento.
+- **GROOVE DALL'AUDIO**: tempi e accenti degli attacchi dell’audio (un loop di batteria, una percussione o un brano intero) su ogni sedicesimo della battuta guidano le parti generate; gli spostamenti sono misurati rispetto ai battiti dell’audio stesso. È lo stesso groove di ESTRAI GROOVE nel campionatore, senza dover prima affettare.
+- **ACCORDI DALL'AUDIO**: tonalità e quattro accordi per sezione (uno per battuta, ripetuti) dalle altezze di un loop armonico o di un brano; la band viene rigenerata su di essi.
+- **FORMA DAL BRANO DI RIFERIMENTO**: importa un brano di riferimento al tempo del progetto (rileva prima il suo BPM): la sua tonalità e la sua forma, in blocchi di 8 battute secondo l’energia (intro, main, breakdown, build-up, drop, outro), sostituiscono le sezioni del brano e viene generato un nuovo brano su di esse.
 
 **CHITARRA SOLISTA** nella barra principale cambia i ruoli senza aprire il motore. Lo stesso comando resta nel pannello e nell’editor della chitarra. Con **SOLISTA** attivo, la chitarra porta il groove e il piano lascia spazio, con accordi e risposte di accompagnamento. Piano e chitarra vengono aggiornati rispettando i blocchi. **ANNULLA** torna ai ruoli precedenti.
 

@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.24
+
+- Menu ▾ di GENERA, per la traccia audio selezionata: **VOCE IN MIDI** (la melodia cantata su una nuova traccia MIDI), **GROOVE DALL'AUDIO** (tempi e accenti degli attacchi sui sedicesimi, senza affettare), **ACCORDI DALL'AUDIO** (tonalità e accordi per sezione da un loop o un brano), **FORMA DAL BRANO DI RIFERIMENTO** (tonalità e forma di un brano di riferimento in blocchi di 8 battute secondo l’energia; viene generato un nuovo brano su di essa).
+
 ## 0.57.23
 
 - Batteria Afro House: il clap (o uno snare) può partire dal primo kick: su tutti e quattro i tempi con uno snare leggero, sull'1 e sul 3 con il rim sul 2 e sul 4, o un accento sull'uno ogni due battute; una leggera spinta del kick verso il 3; le congas suonano tre tamburi (tumba prima del 3 e dell'1, quinto sui controtempi leggeri) invece di uno.
