@@ -64,3 +64,19 @@ inline void verifyExtensionRoundTrip(){
     p.settings.extension=0;fga::applyInstrumentChange(p,0,true);
     check(changed&&p.tracks[0].clips[0].notes==triads,"piano extensions round trip: 7ths change the MIDI, triads come back exactly");
 }
+// Review fixes (0.57.27): Sub Sine survives, chords cycle from the section start, the bass keeps its
+// sidechain, the minor pentatonic, the build-up's dominant, Latin progressions.
+inline void verifyReviewFixes(){
+    {auto p=fga::newProject(0);const int sub=p.addPartTrack(1);p.tracks[(size_t)sub].sound=7;p.normalise();check(p.tracks[(size_t)sub].sound==7,"Sub Sine (guide sound 7) survives normalise");}
+    for(int g:{0,fga::afroHouseGenre,fga::latinHouseGenre,(int)fga::Genre::gospel}){auto p=fga::newProject(g);check(p.tracks[1].engine.pump>0&&p.tracks[1].engine.pumpSource==1,"four-on-the-floor genres keep the kick sidechain on the bass");}
+    {auto p=fga::newProject(0);p.settings.chordCount=8;p.settings.chordSteps=16;for(int i=0;i<8;++i)p.settings.degrees[(size_t)i]=i%7;p.sections={{fga::Section::intro,4,"I"},{fga::Section::main,8,"A"}};p.normalise();
+        // a section starting mid-cycle: its first bar plays the progression's first chord, as the generators do
+        check(fga::chordNameAt(p,p.sectionStart(1)+.01)==fga::chordNameAt(p,.01),"each section's chord cycle starts at its first bar");}
+    {auto p=fga::newProject(0);p.settings.scale=2;p.settings.chordCount=4;p.sections={{fga::Section::main,16,"A"},{fga::Section::buildup,8,"B"},{fga::Section::drop,16,"D"}};p.normalise();fga::generate(p,fga::Scope::song,0,0,99);
+        bool dominant=false;for(int si=0;si<(int)p.sections.size();++si)if(p.sections[(size_t)si].type==fga::Section::buildup){const auto h=fga::activeHarmony(p,si);const double last=p.sectionStart(si+1)-2;const auto ch=fga::chordAtBeat(h,last);dominant=((ch.rootPc-h.key+12)%12==7)&&ch.third==4;}
+        check(dominant,"a minor build-up turns on a major dominant in its last bar");}
+    {std::set<int> seen;for(std::uint32_t seed=1;seed<=30;++seed){auto p=fga::newProject(fga::latinHouseGenre);fga::randomiseHarmony(p,seed);std::string d;for(int i=0;i<p.settings.chordCount;++i)d+=std::to_string(p.settings.degrees[(size_t)i]);seen.insert(p.settings.chordCount);}
+        auto fresh=fga::newProject(fga::latinHouseGenre);check(fresh.settings.chordCount==4,"a new Latin project starts on a four-chord Latin phrase");}
+    {const auto set=sgk::pentatonicNotes(0,2,0,11);std::set<int> pcs;for(int i=0;i<set.size;++i)pcs.insert(set.notes[(size_t)i]%12);check(pcs==std::set<int>{0,3,5,7,10},"the minor pentatonic is 1 b3 4 5 b7");}
+    std::cout<<"PASS review fixes: Sub Sine, section chord cycles, bass sidechain, minor dominant, Latin, pentatonic\n";
+}

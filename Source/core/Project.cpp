@@ -28,7 +28,7 @@ double finite(double x, double fallback, double lo, double hi) { return std::isf
 bool sameHarmony(const Settings& a,const Settings& b){
     if(a.chordCount!=b.chordCount)return false;
     for(int i=0;i<a.chordCount;++i){
-        const auto x=chordAtBeat(a,i*a.chordSteps*.25),y=chordAtBeat(b,i*b.chordSteps*.25);
+        auto a0=a,b0=b;a0.harmonyOrigin=b0.harmonyOrigin=0;const auto x=chordAtBeat(a0,i*a.chordSteps*.25),y=chordAtBeat(b0,i*b.chordSteps*.25);
         if(x.rootPc!=y.rootPc||x.tones.size!=y.tones.size)return false;
         for(int n=0;n<x.tones.size;++n)if(x.tones[n]!=y.tones[n])return false;
     }
@@ -153,7 +153,7 @@ template<class E, class Filter> std::vector<Note> notesFrom(const std::vector<E>
 }
 }
 Settings resolveSectionHarmony(const Project& p,int section){
-    auto s=p.settings;if(section<0||section>=(int)p.sections.size())return s;const auto& h=p.sections[(size_t)section].harmony;
+    auto s=p.settings;if(section<0||section>=(int)p.sections.size())return s;s.harmonyOrigin=p.sectionStart(section);const auto& h=p.sections[(size_t)section].harmony;
     if(h.enabled){
         if(h.key>=0)s.key=std::clamp(h.key,0,11);
         if(h.scale>=0)s.scale=std::clamp(h.scale,0,12);
@@ -468,7 +468,7 @@ void Project::normalise() {
     for(size_t i=0;i<tracks.size();++i) {
         auto& t=tracks[i]; t.kind=(int)i; if(!isManualTrack(t.kind)){t.vocalChops=false;t.part=0;}if(t.vocalChops)t.part=0; if(!t.freeTimeline)t.clips.resize(sections.size());else if(t.clips.size()>4096)t.clips.resize(4096);
         t.sampler.normalise();t.group=std::clamp(t.group,-1,1);for(auto& send:t.sends)send=finite(send,0,0,1);if(t.sampleHash.size()>64)t.sampleHash.clear();
-        t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,6);
+        t.gain=finite(t.gain,.75,0,2); t.pan=finite(t.pan,0,-1,1); t.sampleRoot=std::clamp(t.sampleRoot,0,127); t.sound=std::clamp(t.sound,0,7)   /* 8 guide sounds (Sub Sine is 7) */;
         std::array<bool,maxTrackEffects> usedEffects{};
         t.effects.erase(std::remove_if(t.effects.begin(),t.effects.end(),[&](const auto& fx){if(fx.slot<1||fx.slot>maxTrackEffects||usedEffects[(size_t)(fx.slot-1)])return true;usedEffects[(size_t)(fx.slot-1)]=true;return false;}),t.effects.end());
         for(auto& fx:t.effects){if(fx.name.size()>384)fx.name.resize(384);if(fx.pluginName.empty())fx.pluginName="Effect";}
@@ -618,6 +618,7 @@ void chooseProgression(Settings& s,int preset) {
     for(int i=0;i<s.chordCount;++i) {s.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);s.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void chooseProgression(Project& p,int preset) {chooseProgression(p.settings,preset);}
+namespace { static const std::vector<int>& genreProgressions(int genre); }   // defined with the song harmony below
 static void drawHarmony(Settings& s,std::uint32_t seed) {
     if(isElectronicGenre(s.genre)){
         const auto before=s;const int count=std::clamp(before.chordCount,1,8);applyElectronicHarmony(s,seed);
@@ -644,6 +645,13 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     if(exact.size()>=8)candidates=std::move(exact);
     else if(!complete.empty())candidates=std::move(complete);
     else if(!exact.empty())candidates=std::move(exact);
+    // Latin House draws from its own phrases (montuno turnarounds, ii-V, the Andalusian cadence).
+    // One of its phrases, in the song's key, starting on any of its chords (a montuno turns around well).
+    if(s.genre==latinHouseGenre&&std::none_of(s.manualChords.begin(),s.manualChords.begin()+count,[](bool m){return m;})){
+        const auto& latin=genreProgressions(latinHouseGenre);const int key=s.key;chooseProgression(s,latin[(size_t)(mix(seed^0x6a09e667U)%latin.size())]);s.key=key;
+        const int n=std::clamp(s.chordCount,1,8),rot=n>1?(int)(mix(seed^0xbb67ae85U)%(unsigned)n):0;
+        if(rot){std::rotate(s.degrees.begin(),s.degrees.begin()+rot,s.degrees.begin()+n);std::rotate(s.freeChords.begin(),s.freeChords.begin()+rot,s.freeChords.begin()+n);}
+        return;}
     // Afro House stays hypnotic: its own written vamps, or a two-chord vamp repeated over the
     // length; never a diminished or half-diminished degree (audit M7, Afro only).
     if(s.genre==afroHouseGenre){
@@ -662,7 +670,7 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     // A scale with only a handful of written progressions of this length would repeat
     // itself after a few rolls: share the draw with the genre's progression generator.
     const size_t pool=std::max<size_t>(candidates.size()*2,32);
-    if(candidates.empty()||(s.genre!=afroHouseGenre&&mix(seed^0x51ed270bU)%pool>=candidates.size())){
+    if(candidates.empty()||(s.genre!=afroHouseGenre&&s.genre!=latinHouseGenre&&mix(seed^0x51ed270bU)%pool>=candidates.size())){
         auto degrees=sgk::randomProgression(seed,count,s.scale,engineGenre(s.genre));
         // Two-chord vamps (Deep, Jackin', Afro) leave the walk only one move, so it kept
         // returning the same dozen pairs. Dorian and Aeolian draw from the full set of
@@ -721,7 +729,8 @@ void applyGenre(Project& p,int genre) {
     p.settings.bassMode=sgk::bassModeForLine(bassLines[engineGenre(p.settings.genre)]);
     // Latin shares the Afro rows of these tables: a new Latin project starts on a Latin progression and on a
     // bass line the tumbao is written over (before, only a seeded GENERATE reached the Latin tables).
-    if(p.settings.genre==latinHouseGenre){chooseProgression(p,3);p.settings.bassMode=sgk::bassModeForLine(8);}
+    if(p.settings.genre==latinHouseGenre){int first=3;for(int id:genreProgressions(latinHouseGenre)){const auto& all=sgk::progressionPresets();if(id<(int)all.size()&&sgk::presetSlots(all[(size_t)id],p.settings.extension).size()==4){first=id;break;}}
+        chooseProgression(p,first);p.settings.bassMode=sgk::bassModeForLine(8);}   // a four-chord Latin phrase, not the two-chord ii-V
     applyGenreSound(p);
     if(isElectronicGenre(p.settings.genre)){
         applyElectronicHarmony(p.settings,p.settings.seed);applyElectronicFeel(p.settings);
@@ -965,8 +974,8 @@ std::string chordNameAt(const Project& p,double beat){
 void chordCell(const Project& p,double beat,double& start,double& end,std::string& name){
     beat=std::max(0.,beat);const int sec=p.sectionAtBeat(beat);const auto harmony=resolveSectionHarmony(p,sec);
     const double chordBeats=std::max(.25,harmony.chordSteps*.25);const double secStart=p.sectionStart(sec);
-    start=std::max(secStart,std::floor(beat/chordBeats)*chordBeats);
-    const double secEnd=p.sectionStart(sec+1);const double next=(std::floor(beat/chordBeats)+1)*chordBeats;end=secEnd>start?std::min(next,secEnd):next;
+    const double cell=std::floor((beat-secStart)/chordBeats);start=std::max(secStart,secStart+cell*chordBeats);   // cells from the section start, as the chords cycle
+    const double secEnd=p.sectionStart(sec+1);const double next=secStart+(cell+1)*chordBeats;end=secEnd>start?std::min(next,secEnd):next;
     if(end<=start)end=start+chordBeats;name=chordNameAt(p,start);
 }
 namespace {
@@ -1284,7 +1293,7 @@ static void sectionHarmonies(Project& p,std::uint32_t seed){
         breakdown.degrees={breakdown.degrees[0],breakdown.degrees[(size_t)second],0,0,0,0,0,0};breakdown.freeChords={breakdown.freeChords[0],breakdown.freeChords[(size_t)second],-1,-1,-1,-1,-1,-1};
         breakdown.chordCount=2;breakdown.chordSteps=std::min(64,s.chordSteps*2);}
     Settings build=s;if(build.chordCount==4&&build.chordSteps==16){for(int i=0;i<4;++i){build.degrees[(size_t)i+4]=build.degrees[(size_t)i];build.freeChords[(size_t)i+4]=build.freeChords[(size_t)i];}build.chordCount=8;}   /* eight bars: the turn only in the last one */
-    if(build.chordCount>=2){build.degrees[(size_t)(build.chordCount-1)]=4;build.freeChords[(size_t)(build.chordCount-1)]=-1;}
+    if(build.chordCount>=2){build.degrees[(size_t)(build.chordCount-1)]=4;build.freeChords[(size_t)(build.chordCount-1)]=24+7;}   // a dominant on the fifth (major V/V7 even in minor, not v)
     auto store=[&](SectionHarmony& h,const Settings& from){h.enabled=true;h.automatic=true;h.key=from.key;h.scale=from.scale;h.chordCount=from.chordCount;h.chordSteps=from.chordSteps;h.degrees=from.degrees;h.freeChords=from.freeChords;h.manualChords.fill(false);};
     for(auto& section:p.sections){auto& h=section.harmony;if(h.enabled&&!h.automatic)continue;h.enabled=false;h.automatic=false;   /* the user's own section chords stay */
         if(section.type==Section::drop&&found)store(h,drop);else if(section.type==Section::breakdown)store(h,breakdown);else if(section.type==Section::buildup&&s.chordCount>=2)store(h,build);}
@@ -1736,7 +1745,8 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         std::uint32_t h=mix(c.motifSeed^mix(t.engine.riffSeed+0x4b1d2c3eU));bool hook=false;auto dice=[&](){return nextDice(hook?h:r);};
         auto harmony=[&](double beat){return activeHarmony(p,std::max(0,p.sectionAtBeat(at+beat)));};
         auto scaleOk=[&](int pitch,double beat){const auto h=harmony(beat);const int pc=((pitch-h.key)%12+12)%12;std::array<bool,12> in{};
-            for(int d=0;d<7;++d){const int root=((sgk::buildChord(0,h.scale,d,sgk::Extension::triad).rootPc)%12+12)%12;if(style.pentatonic&&(d==3||d==6))continue;in[(size_t)root]=true;}return in[(size_t)pc];};
+            if(style.pentatonic){const auto set=sgk::pentatonicNotes(0,h.scale,0,11);for(int i=0;i<set.size;++i)in[(size_t)(((set.notes[(size_t)i])%12+12)%12)]=true;}   // the scale's own pentatonic (minor: 1 b3 4 5 b7)
+            else for(int d=0;d<7;++d){const int root=((sgk::buildChord(0,h.scale,d,sgk::Extension::triad).rootPc)%12+12)%12;in[(size_t)root]=true;}return in[(size_t)pc];};
         auto chordTone=[&](int pitch,double beat){const auto ch=chordAtBeat(harmony(beat),at+beat);const int iv=((pitch-ch.rootPc)%12+12)%12;return iv==0||iv==ch.third||iv==ch.fifth||iv==ch.seventh;};
         auto stepFrom=[&](int pitch,int dir,double beat){int q=pitch;for(int k=0;k<4;++k){q+=dir;if(scaleOk(q,beat))return q;}return pitch+dir*2;};
         auto nearestChordTone=[&](int pitch,double beat){for(int k=0;k<7;++k){if(chordTone(pitch+k,beat))return pitch+k;if(chordTone(pitch-k,beat))return pitch-k;}return pitch;};

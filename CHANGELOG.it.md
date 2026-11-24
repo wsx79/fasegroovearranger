@@ -1,5 +1,16 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.27
+
+- Correzioni da una revisione della 0.57.26:
+  - il suono guida Sub Sine resta tale (al salvataggio diventava Warm Pad) e ogni traccia con voce guida elenca tutti gli 8 suoni;
+  - tutte le parti seguono lo stesso accordo: i cicli di accordi partono da ogni sezione (come le parti li suonano), così basso, lead, sub, controcanto, nomi degli accordi e righello non si sfasano più dal piano dopo un build-up di 4 battute o con progressioni da 8 accordi;
+  - il leggero sidechain del kick sul basso torna attivo nei generi in quattro (veniva azzerato);
+  - una lead pentatonica usa la pentatonica della scala (minore: 1 b3 4 5 b7);
+  - l'ultima battuta del build-up è una dominante maggiore anche in minore (V, non v);
+  - RANDOM CHORDS in Latin House pesca frasi Latin, e un nuovo progetto Latin parte da una frase Latin di quattro accordi;
+  - il "7" di una linea di basso su una triade suona la quinta, non una settima minore aggiunta.
+
 ## 0.57.26
 
 - Forma per genere: Afro House e Deep House passano dall’intro al groove (niente breakdown subito dopo l’intro); ogni drop ha un build-up prima (non in Neo Soul, Chill e negli stili jackin; un’intro entra comunque direttamente nel groove). Le forme scritte da te restano come sono.

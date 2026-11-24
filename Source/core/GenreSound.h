@@ -57,7 +57,7 @@ inline void applyGenreSound(Project& p){
         // Keep user instruments and their mix/routing. Genre changes configure
         // their MIDI vocabulary, while the original guide palette is curated.
         if(t.instrument!="internal")continue;
-        t.pan=0;e.chorus=0;e.pump=0;e.reverb=0;
+        t.pan=0;e.chorus=0;if(ti!=1)e.pump=0;e.reverb=0;   // the bass keeps the kick sidechain set above
         if(ti==0){t.sound=a.piano;t.gain=a.pianoGain;e.tone=a.pianoTone;e.reverb=p.settings.genre==(int)Genre::chill?.24:p.settings.genre==(int)Genre::jackinHouse?.025:.10;e.chorus=p.settings.genre==(int)Genre::soulful||p.settings.genre==(int)Genre::neoSoul?.12:0;}
         else if(ti==1){t.sound=a.bass;t.gain=a.bassGain;e.tone=a.bassTone;}
         else if(ti==2){t.gain=a.stringsGain;e.tone=p.settings.genre==(int)Genre::discoHouse?.56:.25;e.reverb=.18;}

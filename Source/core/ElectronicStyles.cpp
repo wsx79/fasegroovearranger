@@ -22,7 +22,7 @@ std::array<int,4> voiceTriad(const sgk::Chord& chord,const std::array<int,4>& pr
     }return best;
 }
 }
-sgk::Chord chordAtBeat(const Settings& s,double beat){sgk::GrooveSettings g;g.keyRoot=s.key;g.scale=s.scale;g.extension=(sgk::Extension)s.extension;g.progressionLength=s.chordCount;g.progression=s.degrees;g.freeChords=s.freeChords;return sgk::GrooveEngine::chordForSlot(g,(int)(std::max(0.,beat)/(s.chordSteps*.25))%s.chordCount);}
+sgk::Chord chordAtBeat(const Settings& s,double beat){beat-=s.harmonyOrigin;   /* the cycle starts at the section, as the generators play it */sgk::GrooveSettings g;g.keyRoot=s.key;g.scale=s.scale;g.extension=(sgk::Extension)s.extension;g.progressionLength=s.chordCount;g.progression=s.degrees;g.freeChords=s.freeChords;return sgk::GrooveEngine::chordForSlot(g,(int)(std::max(0.,beat)/(s.chordSteps*.25))%s.chordCount);}
 void applyElectronicFeel(Settings& s){s.swing=s.genre==technoGenre?0.:.12;s.humanize=.4;}
 void applyElectronicHarmony(Settings& s,std::uint32_t seed){
     s.extension=0;s.voicing=0;s.freeChords.fill(-1);s.manualChords.fill(false);s.degrees.fill(0);
@@ -76,7 +76,7 @@ bool generateElectronicClip(const Project& p,Clip& clip,int track,double begin,d
     const auto rhythm=draw(motif+401U),contour=draw(motif+809U),reply=draw(motif+1201U);
     // A sliced loop can have a source origin before beat zero. Wrap that
     // preroll through the current section's harmonic cycle, never another section.
-    auto chordForBeat=[](const Settings& harmony,double beat){const double cycle=harmony.chordCount*harmony.chordSteps*.25;return chordAtBeat(harmony,std::fmod(std::fmod(beat,cycle)+cycle,cycle));};
+    auto chordForBeat=[](Settings harmony,double beat){beat-=harmony.harmonyOrigin;harmony.harmonyOrigin=0;   /* from the section start */ const double cycle=harmony.chordCount*harmony.chordSteps*.25;return chordAtBeat(harmony,std::fmod(std::fmod(beat,cycle)+cycle,cycle));};
     auto note=[&](double at,double length,int pitch,int velocity,int lane=0){
         if(at<0||at>=beats)return;
         if((track==3||track==leadTrack)&&(e.laneMute[(size_t)lane]||e.laneLevel[(size_t)lane]<=0))return;

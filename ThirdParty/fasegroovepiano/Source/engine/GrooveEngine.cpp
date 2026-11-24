@@ -4380,7 +4380,7 @@ void GrooveEngine::collectBassLine (long long step, const GrooveSettings& s, con
 
         case '3': note = root + (chord.third >= 0 ? chord.third : 4); break;
 
-        case '7': note = root + (chord.seventh >= 0 ? chord.seventh : 10); break;
+        case '7': note = root + (chord.seventh >= 0 ? chord.seventh : fifth); break;   // a triad has no seventh: its fifth
 
         case '6': note = root + sixth; break;
 

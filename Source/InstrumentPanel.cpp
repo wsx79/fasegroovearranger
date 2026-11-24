@@ -208,8 +208,8 @@ void InstrumentPanel::rebuild(){
     }
     heading("GUIDE SOUND");knob("TONE",0,100,1,e.tone*100,[](auto& o,double v){o.tone=v/100;}," %");
     knob("REVERB",0,100,1,e.reverb*100,[](auto& o,double v){o.reverb=v/100;}," %");
-    juce::StringArray sounds;int soundCount=strings?1:track<2?7:isDrumTrack(track)?GuideDrums::numKits:4;
-    for(int i=0;i<soundCount;++i)sounds.add(strings?"String ensemble":track<2?guideSoundName(i):lead?GuideLead::toneName(i):guitar?GuideGuitar::toneName(i):GuideDrums::kitName(i));
+    juce::StringArray sounds;const bool guide=track<2||isManualTrack(track);int soundCount=strings?1:guide?numGuideSounds:isDrumTrack(track)?GuideDrums::numKits:4;
+    for(int i=0;i<soundCount;++i)sounds.add(strings?"String ensemble":guide?guideSoundName(i):lead?GuideLead::toneName(i):guitar?GuideGuitar::toneName(i):GuideDrums::kitName(i));
     sharedChoice("Sound",sounds,std::min(owner.project.tracks[(size_t)track].sound,soundCount-1),[this](int value){owner.project.tracks[(size_t)owner.selectedTrack].sound=value;});
     if(piano||bass||strings){
         for(int i=0;i<3;++i)action(i==0?"Piano":i==1?"Bass":"Strings",[this,i]{juce::Component::SafePointer<InstrumentPanel> self(this);juce::MessageManager::callAsync([self,i]{if(self){self->owner.select(i,self->owner.selectedSection);self->owner.showInstrument();}});});

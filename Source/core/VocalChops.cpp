@@ -79,7 +79,7 @@ void generateVocalChops(Project& p,Scope scope,int track,int section,std::uint32
                 if(length<=0)continue;
                 const auto harmony=resolveSectionHarmony(p,guide);const double cycle=harmony.chordCount*harmony.chordSteps*.25;
                 const double absolute=p.clipStart(ti,ci)+wrapped;
-                const auto chord=chordAtBeat(harmony,std::fmod(std::fmod(absolute,cycle)+cycle,cycle));
+                const double inSection=absolute-harmony.harmonyOrigin;auto cell=harmony;cell.harmonyOrigin=0;const auto chord=chordAtBeat(cell,std::fmod(std::fmod(inSection,cycle)+cycle,cycle));   // the cycle from the section start
                 const unsigned slot=(unsigned)std::max(0,kept[n].slot);int pitch=t.sampleRoot;
                 if(t.instrument=="internal"){const int intervals[]{0,chord.third,chord.fifth,12};pitch=60+chord.rootPc+intervals[slot%4];}
                 else if(t.sampler.mode==2&&t.sampler.sliceCount>0)pitch=t.sampler.sliceBase+(int)(slot%(unsigned)t.sampler.sliceCount);

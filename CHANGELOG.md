@@ -1,5 +1,16 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.27
+
+- Fixes from a review of 0.57.26:
+  - the Sub Sine guide sound is kept (it turned into Warm Pad on save), and every guide-voice track lists all 8 sounds;
+  - every part follows the same chord: chord cycles start at each section (as the parts play them), so bass, lead, sub, counter melody, chord names and the ruler no longer drift from the piano after a 4-bar build-up or with 8-chord progressions;
+  - the light kick sidechain on the bass is applied again in the four-on-the-floor genres (it was reset);
+  - a pentatonic lead uses the scale's own pentatonic (minor: 1 b3 4 5 b7);
+  - the build-up's last bar is a major dominant in minor keys too (V, not v);
+  - RANDOM CHORDS in Latin House draws Latin phrases, and a new Latin project starts on a four-chord Latin phrase;
+  - a bass line's "7" on a triad plays the fifth, not an added flat seventh.
+
 ## 0.57.26
 
 - Song form by genre: Afro House and Deep House go from the intro into the groove (no breakdown right after the intro); every drop gets a build-up before it (not in Neo Soul, Chill and the jackin styles; an intro still drops straight into the groove). Forms you write stay as written.

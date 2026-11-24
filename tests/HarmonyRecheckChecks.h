@@ -33,7 +33,7 @@ inline std::vector<std::pair<int,int>> signature(const fga::Clip& clip,bool rhyt
 inline void verify(){
     using namespace fga;
     {auto p=fixture(0);p.sections[1].bars=8;p.settings.chordSteps=64;p.sections[1].harmony.enabled=false;p.normalise();
-        for(double beat:{4.,15.,16.,20.,31.,32.}){double a,b;std::string name;chordCell(p,beat,a,b,name);check(a<=beat&&b>beat,"ruler chord cell contains the inspected beat");check(name==chordNameAt(p,beat),"ruler harmony matches played harmony at non-aligned section starts");check(b<=std::min((std::floor(beat/16)+1)*16,p.sectionStart(2)),"ruler stops at the actual global chord boundary");}}
+        for(double beat:{4.,15.,16.,20.,31.,32.}){double a,b;std::string name;chordCell(p,beat,a,b,name);check(a<=beat&&b>beat,"ruler chord cell contains the inspected beat");check(name==chordNameAt(p,beat),"ruler harmony matches played harmony at non-aligned section starts");{const double from=p.sectionStart(p.sectionAtBeat(beat));check(b<=std::min(from+(std::floor((beat-from)/16)+1)*16,p.sectionStart(2)),"ruler stops at the chord boundary, counted from the section start as the parts play it");}}}
     for(int genre=0;genre<numGenres;++genre){
         const auto base=fixture(genre);
         for(int track:{0,1,2,3,leadTrack})for(int mode:{0,1,2,5})for(int key=0;key<12;++key)for(double start:{0.,1.25})for(double phase:{0.,1.25,2.75}){

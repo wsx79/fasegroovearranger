@@ -165,6 +165,7 @@ struct Settings {
     int vocalPhrase = 0;   // where the singer sings: 0 bars 1-2 of 4, 1 bars 3-4 of 4, 2 bars 1-4 of 8, 3 the imported vocal (vocalBars)
     std::vector<std::uint8_t> vocalBars;   // ARRANGE FROM VOCAL: per song bar, 1 where the imported voice sings   // VOCALS PRESENT: the arrangement leaves room for a lead singer (no voice is generated)
     int chordSteps = 16;
+    double harmonyOrigin = 0;   // the song beat where this harmony's chord cycle starts (its section's start); not saved
     int chordCount = 4;
     std::array<int, 8> degrees {0, 3, 5, 4, 0, 3, 5, 4};
     std::array<int, 8> freeChords {-1,-1,-1,-1,-1,-1,-1,-1};
@@ -335,7 +336,7 @@ inline double energyScale(int energy){return energy==0?.55:energy==1?.8:1.;}
 inline double energyVelocity(int energy){return energy==0?.9:energy==1?.96:energy==2?1.05:energy==3?1.1:1.;}
 Settings resolveSectionHarmony(const Project&,int section);
 inline bool sectionHarmonyEnabled(const Project& p,int section){return section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled;}
-inline Settings activeHarmony(const Project& p,int section){return sectionHarmonyEnabled(p,section)?resolveSectionHarmony(p,section):p.settings;}
+inline Settings activeHarmony(const Project& p,int section){return resolveSectionHarmony(p,section);}   // the section's chords (or the song's), cycling from the section start
 inline void storeHarmony(Project& p,int section,const Settings& s){
     if(section>=0&&section<(int)p.sections.size())p.sections[(size_t)section].harmony.automatic=false;   // an edit makes the section's chords the user's
     if(sectionHarmonyEnabled(p,section)){auto& h=p.sections[(size_t)section].harmony;h.key=s.key;h.scale=s.scale;h.chordCount=s.chordCount;h.chordSteps=s.chordSteps;h.degrees=s.degrees;h.freeChords=s.freeChords;h.manualChords=s.manualChords;}
