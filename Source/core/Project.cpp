@@ -1012,7 +1012,7 @@ int mixEntry(int genre,int track,int bars) {
     // Strings scheduled on the final bar never sound: a 32-bar cue scaled onto
     // a shorter intro lands on the last bar and the whole part is removed.
     // Keep at least eight bars, and half of a longer intro or outro.
-    if(track==2&&bars>=8&&at>bars-8){
+    if((track==2||(track==1&&isAfroLatinGenre(genre)))&&bars>=8&&at>bars-8){   // Afro/Latin: the bass moves with the strings (same entry)
         const int keep=std::min(bars,std::max(8,(bars/2/8)*8));
         at=bars-keep;
     }

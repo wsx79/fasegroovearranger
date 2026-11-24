@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.30
+
+- Afro e Latin House: in un intro o outro da 24 battute il basso entra insieme agli archi (gli archi entravano 8 battute prima).
+
 ## 0.57.29
 
 - Afro e Latin House: gli archi entrano insieme al basso in ogni intro e outro (in quelli da 32 battute entravano 8 battute prima, un pad sopra la sola batteria).

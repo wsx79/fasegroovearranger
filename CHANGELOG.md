@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.30
+
+- Afro and Latin House: in a 24-bar intro or outro the bass comes in with the strings (the strings came 8 bars early).
+
 ## 0.57.29
 
 - Afro and Latin House: the strings come in with the bass in every intro and outro (in the 32-bar ones they came 8 bars early, a pad over drums alone).
