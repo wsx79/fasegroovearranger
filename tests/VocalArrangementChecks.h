@@ -89,7 +89,11 @@ inline void verifyReviewFixes2(){
             std::vector<int> d(h.degrees.begin(),h.degrees.begin()+h.chordCount);if(std::find(phrases.begin(),phrases.end(),d)==phrases.end())phrases.push_back(d);else phrases.push_back({-1});}
         if(phrases.size()>=2){++songsWithTwo;variedSongs+=std::set<std::vector<int>>(phrases.begin(),phrases.end()).size()>=2;}}
     check(dropsSeen>0&&dropsOnTonic==dropsSeen,"every automatic drop starts on the tonic, so the build-up's dominant resolves");
-    check(songsWithTwo==0||variedSongs*2>=songsWithTwo,"a later drop takes another phrase");
+    check(songsWithTwo==0||variedSongs==songsWithTwo,"a later drop takes another phrase (or the same with another cadence)");
+    for(int g:{0,1,3,8,9,12})for(std::uint32_t seed:{5u,77u,901u}){auto p=fga::newProject(g);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed);const auto main=fga::activeHarmony(p,-1);
+        for(int si=0;si<(int)p.sections.size();++si)if(p.sections[(size_t)si].type==fga::Section::drop&&p.sections[(size_t)si].harmony.automatic){const auto d=fga::activeHarmony(p,si);bool same=d.chordCount==main.chordCount;for(int i=0;same&&i<d.chordCount;++i)same=d.degrees[(size_t)i]==main.degrees[(size_t)i]&&d.freeChords[(size_t)i]==main.freeChords[(size_t)i];check(!same,"the drop's phrase contrasts with the main part's");}}
+    for(int g:{fga::latinHouseGenre,fga::afroHouseGenre}){auto p=fga::newProject(g);p.settings.randomAutomation=false;p.sections={{fga::Section::intro,32,"Intro"},{fga::Section::main,16,"Main"}};p.normalise();fga::generate(p);
+        double bass=1e9,strings=1e9;for(const auto& n:p.tracks[1].clips[0].notes)bass=std::min(bass,n.start);for(const auto& n:p.tracks[2].clips[0].notes)strings=std::min(strings,n.start);check(strings>=bass-4,"a 32-bar Afro/Latin intro brings the strings in with the bass, not before");}
     for(int g:{fga::latinHouseGenre,fga::afroHouseGenre})for(int bars:{8,16}){auto p=fga::newProject(g);p.settings.randomAutomation=false;p.sections={{fga::Section::intro,bars,"Intro"},{fga::Section::main,16,"Main"}};p.normalise();fga::generate(p);
         double bass=1e9,strings=1e9;for(const auto& n:p.tracks[1].clips[0].notes)bass=std::min(bass,n.start);for(const auto& n:p.tracks[2].clips[0].notes)strings=std::min(strings,n.start);
         check((bars<16||bass<36)&&strings>=bass-4,"a short Afro/Latin intro: rhythm-only DJ blend, then the bass, and no strings alone before it");}

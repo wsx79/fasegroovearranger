@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.29
+
+- Afro and Latin House: the strings come in with the bass in every intro and outro (in the 32-bar ones they came 8 bars early, a pad over drums alone).
+- The drop's phrase, once started on the tonic, must still differ from the main part's (a rotated vi–ii–V–I became I–vi–ii–V, the verse again); when the genre has a single drop phrase, a later drop keeps it with another cadence.
+
 ## 0.57.28
 
 - Harmony: every drop starts on the tonic (I or i), so the build-up's dominant resolves into it; a later drop takes another phrase of the genre, so the second chorus is not a copy of the first.

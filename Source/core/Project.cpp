@@ -994,7 +994,7 @@ int mixEntry(int genre,int track,int bars) {
     static_assert(std::size(harmony)==(int)Genre::danceStabs+1);
     int entry=0;
     if(track==leadTrack)entry=24;
-    else if(track<4)entry=harmony[engineGenre(genre)][track];
+    else if(track<4)entry=harmony[engineGenre(genre)][isAfroLatinGenre(genre)&&track==2?1:track];   // Afro/Latin: the strings come in with the bass, never a pad over drums alone
     else{
         const int lane=track-4;
         // Kick, closed hats and shaker provide a countable pulse from bar one.
@@ -1296,8 +1296,10 @@ static void sectionHarmonies(Project& p,std::uint32_t seed){
     auto onTonic=[](Settings a){const int n=std::clamp(a.chordCount,1,8);for(int r=0;r<n;++r)if(a.degrees[(size_t)r]==0&&a.freeChords[(size_t)r]<0){std::rotate(a.degrees.begin(),a.degrees.begin()+r,a.degrees.begin()+n);std::rotate(a.freeChords.begin(),a.freeChords.begin()+r,a.freeChords.begin()+n);return std::optional<Settings>(a);}return std::optional<Settings>();};
     if(!loop){const auto first=mix(seed+4111U)%choices.size();
         for(size_t n=0;n<choices.size()&&drops.size()<2;++n){Settings answer=s;chooseProgression(answer,choices[(first+n)%choices.size()]);answer.key=s.key;
-            if(answer.scale!=s.scale||sameHarmony(answer,s)||answer.chordCount<2)continue;const auto tonic=onTonic(answer);if(!tonic)continue;
+            if(answer.scale!=s.scale||sameHarmony(answer,s)||answer.chordCount<2)continue;const auto tonic=onTonic(answer);if(!tonic||sameHarmony(*tonic,s))continue;   // rotated, it must still contrast with the main part
             if(std::any_of(drops.begin(),drops.end(),[&](const Settings& d){return sameHarmony(d,*tonic);}))continue;drops.push_back(*tonic);}}
+    // one phrase only: the later drop keeps it with another cadence (its last chord becomes IV, or vi)
+    if(drops.size()==1&&drops.front().chordCount>=3){Settings again=drops.front();const size_t last=(size_t)(again.chordCount-1);again.degrees[last]=again.degrees[last]==3?5:3;again.freeChords[last]=-1;if(!sameHarmony(again,s)&&!sameHarmony(again,drops.front()))drops.push_back(again);}
     const bool found=!drops.empty();const Settings drop=found?drops.front():s;
     Settings breakdown=found?drop:s;{const int count=breakdown.chordCount;const int second=count>=4?2:count>1?1:0;
         breakdown.degrees={breakdown.degrees[0],breakdown.degrees[(size_t)second],0,0,0,0,0,0};breakdown.freeChords={breakdown.freeChords[0],breakdown.freeChords[(size_t)second],-1,-1,-1,-1,-1,-1};

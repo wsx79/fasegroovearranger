@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.29
+
+- Afro e Latin House: gli archi entrano insieme al basso in ogni intro e outro (in quelli da 32 battute entravano 8 battute prima, un pad sopra la sola batteria).
+- La frase del drop, dopo essere stata fatta partire dalla tonica, deve restare diversa da quella della main (un vi–ii–V–I ruotato diventava I–vi–ii–V, di nuovo la strofa); quando il genere ha una sola frase per il drop, un drop successivo la tiene con un’altra cadenza.
+
 ## 0.57.28
 
 - Armonia: ogni drop parte dalla tonica (I o i), così la dominante del build-up risolve su di essa; un drop successivo prende un'altra frase del genere, così il secondo ritornello non è una copia del primo.
