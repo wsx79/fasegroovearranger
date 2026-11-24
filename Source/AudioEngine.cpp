@@ -803,7 +803,12 @@ void AudioEngine::capturePluginStates(Project& p){
     const bool all=pluginStateCaptured!=pluginStateGeneration;bool dirty=all;
     for(const auto& track:pluginStateDirty)for(const auto& slot:track)dirty=dirty||slot.value.load(std::memory_order_acquire);
     if(!dirty){reusePluginStates(p);return;}
-    const juce::ScopedLock lock(mutex);if(exporting)return;
+    // A plugin saves its state while no block is being processed when the transport is stopped (the engine
+    // lock waits for the block and holds the next one). During playback the state is read alongside the audio,
+    // as hosts do (plugins must allow it): holding the audio there would drop out on every edit.
+    std::optional<EngineControlLock> quiet;std::optional<juce::ScopedLock> control;
+    if(!playing.load()&&!isRecording()&&!isAudioRecording())quiet.emplace(*this);else control.emplace(mutex);
+    if(exporting)return;
     cachedInstrumentStates.resize(instruments.size());cachedEffectStates.resize(instruments.size());
     auto capture=[&](int track,int slot,const std::string& saved,std::string& cached)->const std::string&{
         const bool changed=pluginStateDirty[(size_t)track][(size_t)slot].value.exchange(false,std::memory_order_acq_rel);

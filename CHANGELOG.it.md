@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.31
+
+- Gli stati dei plugin vengono salvati (alle modifiche e all'annulla) mentre nessun blocco audio è in corso quando il trasporto è fermo; in riproduzione vengono letti insieme all'audio, come fanno gli host, così le modifiche non interrompono mai il suono.
+- Annulla, Ripeti e le scorciatoie aspettano che un progetto o un annulla abbiano finito di ricaricare i plugin (un secondo annulla poteva applicare lo stato sbagliato).
+
 ## 0.57.30
 
 - Afro e Latin House: in un intro o outro da 24 battute il basso entra insieme agli archi (gli archi entravano 8 battute prima).

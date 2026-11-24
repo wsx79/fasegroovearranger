@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.31
+
+- Plugin states are saved (on edits and Undo) while no audio block is running when the transport is stopped; during playback they are read alongside the audio, as hosts do, so edits never drop the sound out.
+- Undo, Redo and shortcuts wait until a project or an Undo has finished reloading its plugins (a second Undo could apply the wrong state).
+
 ## 0.57.30
 
 - Afro and Latin House: in a 24-bar intro or outro the bass comes in with the strings (the strings came 8 bars early).
