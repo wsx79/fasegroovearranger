@@ -80,3 +80,21 @@ inline void verifyReviewFixes(){
     {const auto set=sgk::pentatonicNotes(0,2,0,11);std::set<int> pcs;for(int i=0;i<set.size;++i)pcs.insert(set.notes[(size_t)i]%12);check(pcs==std::set<int>{0,3,5,7,10},"the minor pentatonic is 1 b3 4 5 b7");}
     std::cout<<"PASS review fixes: Sub Sine, section chord cycles, bass sidechain, minor dominant, Latin, pentatonic\n";
 }
+// Second review (0.57.28): the drop resolves the build-up's dominant, later drops vary, short Afro/Latin
+// intros stand on bass and percussion, Latin RANDOM CHORDS keeps the mode, automation blocks = valueAt.
+inline void verifyReviewFixes2(){
+    int dropsOnTonic=0,dropsSeen=0,variedSongs=0,songsWithTwo=0;
+    for(int g:{0,1,3,8,9,12})for(std::uint32_t seed:{5u,77u,901u}){auto p=fga::newProject(g);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed);std::vector<std::vector<int>> phrases;
+        for(int si=0;si<(int)p.sections.size();++si)if(p.sections[(size_t)si].type==fga::Section::drop&&p.sections[(size_t)si].harmony.automatic){const auto h=fga::activeHarmony(p,si);++dropsSeen;dropsOnTonic+=h.degrees[0]==0&&h.freeChords[0]<0;
+            std::vector<int> d(h.degrees.begin(),h.degrees.begin()+h.chordCount);if(std::find(phrases.begin(),phrases.end(),d)==phrases.end())phrases.push_back(d);else phrases.push_back({-1});}
+        if(phrases.size()>=2){++songsWithTwo;variedSongs+=std::set<std::vector<int>>(phrases.begin(),phrases.end()).size()>=2;}}
+    check(dropsSeen>0&&dropsOnTonic==dropsSeen,"every automatic drop starts on the tonic, so the build-up's dominant resolves");
+    check(songsWithTwo==0||variedSongs*2>=songsWithTwo,"a later drop takes another phrase");
+    for(int g:{fga::latinHouseGenre,fga::afroHouseGenre})for(int bars:{8,16}){auto p=fga::newProject(g);p.settings.randomAutomation=false;p.sections={{fga::Section::intro,bars,"Intro"},{fga::Section::main,16,"Main"}};p.normalise();fga::generate(p);
+        double bass=1e9,strings=1e9;for(const auto& n:p.tracks[1].clips[0].notes)bass=std::min(bass,n.start);for(const auto& n:p.tracks[2].clips[0].notes)strings=std::min(strings,n.start);
+        check((bars<16||bass<36)&&strings>=bass-4,"a short Afro/Latin intro: rhythm-only DJ blend, then the bass, and no strings alone before it");}
+    {auto p=fga::newProject(fga::latinHouseGenre);for(std::uint32_t seed=1;seed<=20;++seed){const int scale=p.settings.scale;fga::randomiseHarmony(p,seed);check(p.settings.scale==scale,"Latin RANDOM CHORDS keeps the song's mode");}}
+    {fga::VolumeAutomation a;a.enabled=true;a.points={{0,.2,0},{1.5,1.4,.5},{3,.6,-.3},{8,1,0}};std::vector<float> out(300);a.render(out.data(),300,-.2,1./37.);
+        bool same=true;for(int s=0;s<300;++s)same=same&&std::abs(out[(size_t)s]-(float)a.valueAt(-.2+s/37.))<1e-5f;check(same,"automation rendered over a block equals valueAt sample by sample");}
+    std::cout<<"PASS second review fixes: drops on the tonic ("<<dropsOnTonic<<"/"<<dropsSeen<<"), varied drops, short Afro/Latin intros, Latin mode, automation blocks\n";
+}

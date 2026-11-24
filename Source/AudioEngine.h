@@ -394,7 +394,8 @@ private:
     std::array<std::array<DirtyPluginState,maxTrackEffects+1>,engineTrackCount> pluginStateDirty;
     std::uint64_t pluginStateGeneration=1,pluginStateCaptured=0;
     const VolumeAutomation* masterAutomation=nullptr; // inside the adopted MixState
-    bool laneTempo=false;   // the master tempo lane set `tempo` in the last block (audio thread)
+    bool laneTempo=false;
+    std::uint64_t latencySignature=0;   // audio thread: the chain and latencies the delay compensation was last computed for   // the master tempo lane set `tempo` in the last block (audio thread)
     std::vector<float> masterGains=std::vector<float>((size_t)Instrument::maxDelay,1.f); // allocated once
     int blockSize=512;
     double deviceRate=44100;

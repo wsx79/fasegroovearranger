@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.28
+
+- Armonia: ogni drop parte dalla tonica (I o i), così la dominante del build-up risolve su di essa; un drop successivo prende un'altra frase del genere, così il secondo ritornello non è una copia del primo.
+- Afro e Latin House: un intro o un outro corto (16 battute o meno) tiene le prime 8 battute solo ritmiche (il mix del DJ), poi basso e archi entrano insieme (mai archi da soli sopra la batteria); tastiere, chitarra e lead arrivano con la main.
+- RANDOM CHORDS in Latin House mantiene il modo del brano (il minore resta minore).
+- Motore: la compensazione della latenza dei plugin si ricalcola solo quando cambiano strumenti, insert, latenze dichiarate o mix, non a ogni blocco, quindi i suoi delay non si svuotano più durante la riproduzione; il riverbero guida a zero viene saltato; le automazioni di master, volume e pan si leggono lungo il blocco invece di cercarle a ogni campione.
+
 ## 0.57.27
 
 - Correzioni da una revisione della 0.57.26:

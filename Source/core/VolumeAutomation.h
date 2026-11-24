@@ -28,6 +28,15 @@ struct VolumeAutomation {
         t+=a.curve*t*(1.-t);
         return a.value+(end->value-a.value)*t;
     }
+    // The envelope over a block, one value per sample: the segment index advances with the beat instead of
+    // a search per sample. Same values as valueAt.
+    void render(float* out,int count,double beat,double beatsPerSample,bool ignoreEnabled=false) const {
+        if((!ignoreEnabled&&!enabled)||points.empty()){std::fill(out,out+count,1.f);return;}
+        size_t next=(size_t)(std::upper_bound(points.begin(),points.end(),beat,[](double b,const VolumePoint& p){return b<p.beat;})-points.begin());
+        for(int s=0;s<count;++s){const double b=beat+s*beatsPerSample;while(next<points.size()&&points[next].beat<=b)++next;
+            if(next==0){out[s]=(float)points.front().value;continue;}const auto& a=points[next-1];if(next==points.size()){out[s]=(float)a.value;continue;}
+            double t=std::clamp((b-a.beat)/(points[next].beat-a.beat),0.,1.);t+=a.curve*t*(1.-t);out[s]=(float)(a.value+(points[next].value-a.value)*t);}
+    }
     bool active() const {return enabled&&!points.empty();}
     // True when the lane actually moves (not a flat line): shown in blue in the interface.
     bool moves() const {if(!active())return false;for(const auto& p:points)if(std::abs(p.value-points.front().value)>1e-6)return true;return false;}

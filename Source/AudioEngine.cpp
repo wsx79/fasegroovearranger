@@ -375,7 +375,8 @@ void AudioEngine::processHosted(Instrument& instrument,juce::AudioPluginInstance
     smooth();paused=false;
 }
 static bool delayStorageMissing(const Instrument& i){return i.delay>0&&(i.delayLine.getNumChannels()<2||i.delayLine.getNumSamples()<=i.delay);}
-void AudioEngine::prepareDelayLines(){
+void AudioEngine::prepareDelayLines(){latencySignature=0;   // the next block recomputes the compensation
+
     refreshLatencies();sidechainRouting(instruments,true);refreshLatencies();
     for(auto& ptr:instruments){auto& i=*ptr;if(delayStorageMissing(i)){int capacity=2;while(capacity<=i.delay)capacity*=2;i.delayLine.setSize(2,capacity);}else if(i.delay==0&&i.delayLine.getNumSamples()>0)i.delayLine.setSize(0,0);}
     int returns=0;if(mixes.current&&mixes.current->returnChains)for(int b=0;b<2;++b)returns=std::max(returns,instrumentLatency(*instruments[(size_t)(returnEffectTrack+b)]));
@@ -438,10 +439,18 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     if(analysisCapture)for(int track:analysisCapture->selected)analysisCapture->audio[(size_t)track].clear(0,count);
     for(auto& signal:detectorSignals)std::fill(signal.begin(),signal.begin()+count,0.f);
     bool anySolo=false;for(auto& i:instruments)anySolo=anySolo||i->solo;
-    refreshLatencies();
+    {   // plugin delay compensation is recomputed only when the instruments, their inserts, their reported latencies
+        // or the mix change, not on every block (so its delays flush only then)
+        std::uint64_t signature=(std::uint64_t)reinterpret_cast<std::uintptr_t>(mixes.current);
+        for(size_t ti=0;ti<instruments.size();++ti){const auto& i=*instruments[ti];auto add=[&](std::uint64_t v){signature=(signature^v)*1099511628211ULL;};
+            add((std::uint64_t)instrumentLatency(i));add((std::uint64_t)reinterpret_cast<std::uintptr_t>(i.plugin.get()));add((std::uint64_t)reinterpret_cast<std::uintptr_t>(i.sampler.get()));add((std::uint64_t)i.mode);add((std::uint64_t)i.effectCount);
+            for(int k=0;k<i.effectCount;++k){add((std::uint64_t)i.effectOrder[(size_t)k]);}for(const auto& fx:i.effects)add((std::uint64_t)reinterpret_cast<std::uintptr_t>(fx.plugin.get()));
+            if(ti<frozenAudio.size())add((std::uint64_t)reinterpret_cast<std::uintptr_t>(frozenAudio[ti].current));}
+        if(signature!=latencySignature){latencySignature=signature;refreshLatencies();}
+    }
     // Master automation: one gain per sample for every track (the buffer is allocated once).
     const bool masterActive=!dry&&masterAutomation&&masterAutomation->active()&&count<=(int)masterGains.size();
-    if(masterActive)for(int s=0;s<count;++s)masterGains[(size_t)s]=(float)masterAutomation->valueAt(beat+s/samplesPerBeat);
+    if(masterActive)masterAutomation->render(masterGains.data(),count,beat,1./samplesPerBeat);
     for(int ti=0;ti<engineTrackCount;++ti){if(ti>=maxTracks||(onlyTrack>=0&&ti!=onlyTrack))continue;auto& i=*instruments[(size_t)ti];const auto& schedule=eventsOf(i);int queued=i.midi.getNumEvents();bool dense=queued>16384;
         while(scheduled&&(clipSource<0||ti==clipSource)&&i.cursor<schedule.size()&&schedule[i.cursor].beat<end){if(queued>=16384){dense=true;i.cursor=cursorAt(i,end);break;}++queued;const auto& e=schedule[i.cursor++];if(e.beat<beat-1e-8||(laneMuted(i,e)&&(e.controller>=0||e.velocity>0||!i.sounding[(size_t)std::clamp(e.pitch,0,127)])))continue;int at=std::clamp((int)std::llround((e.beat-beat)*samplesPerBeat),0,count-1);
             if(i.mode==1&&e.velocity>0&&e.controller<0&&e.audioOffset>=0)SampleSynth::addRegionEvent(i.midi,at,e.pitch,e.velocity,e.audioOffset,e.audioDuration,e.fadeIn,e.fadeOut,e.reverse);
@@ -480,7 +489,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
             juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&i.controls->chorus>0)i.chorus.process(context);   /* chorus off: its delay lines (set per sample) are skipped entirely */
-            i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);
+            if(i.controls&&i.controls->reverb>0)i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);   /* at zero the guide reverb is unity: skipped, as the chorus */
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
                 // Kick source: the last kick at or before the block start is found once, then each
                 // sample only steps over the kicks it passes (times grow through the block).
@@ -508,11 +517,11 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         float meter=0,side[2]{};
         // A track with nothing sounding in this block costs nothing more: its gains move on, its meters read zero.
         const bool silent=audible&&block.getMagnitude(0,count)==0.f;
-        if(audible&&!silent){const bool detectorSource=busGraph.detects((int)ti);auto* mixed=i.mixScratch.data();if(i.volume&&i.volume->enabled&&!i.volume->points.empty())for(int s=0;s<count;++s)i.volumeGains[(size_t)s]=(float)i.volume->valueAt(beat+s/samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
+        if(audible&&!silent){const bool detectorSource=busGraph.detects((int)ti);auto* mixed=i.mixScratch.data();if(i.volume&&i.volume->enabled&&!i.volume->points.empty())i.volume->render(i.volumeGains.data(),count,beat,1./samplesPerBeat);else std::fill(i.volumeGains.begin(),i.volumeGains.begin()+count,1.f);
 
             // Pan automation: its own pan law per sample (as the static pan), on gain * master.
             const bool panActive=i.panAutomation&&i.panAutomation->active();
-            if(panActive){for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panAutomation->valueAt(beat+s/samplesPerBeat));const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
+            if(panActive){i.panAutomation->render(i.panRight.data(),count,beat,1./samplesPerBeat);for(int s=0;s<count;++s){const double pan=panFromAutomation(i.panRight[(size_t)s]);const float base=i.baseGain.getNextValue();i.panLeft[(size_t)s]=base*(float)std::min(1.,1.-pan);i.panRight[(size_t)s]=base*(float)std::min(1.,1.+pan);}}
             else i.baseGain.skip(count);
             for(int ch=0;ch<std::min(2,channels);++ch){if(!output[ch]){(ch==0?i.leftGain:i.rightGain).skip(count);continue;}auto* in=block.getReadPointer(std::min(ch,block.getNumChannels()-1));auto& gain=ch==0?i.leftGain:i.rightGain;
                 if(panActive){gain.skip(count);const auto& pg=ch==0?i.panLeft:i.panRight;for(int s=0;s<count;++s){const float v=in[s]*pg[(size_t)s]*i.volumeGains[(size_t)s];mixed[s]=v;if(analysisCapture&&analysisCapture->audio[(size_t)ti].getNumChannels())analysisCapture->audio[(size_t)ti].setSample(ch,s,v);if(detectorSource)busGraph.source(ti,s,v);side[ch]=std::max(side[ch],std::abs(v));}busGraph.addBlock(ch,mixed,count,i.group,i.sends);meter=std::max(meter,side[ch]);continue;}
@@ -541,7 +550,7 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
     for(int ch=0;ch<channels;++ch)if(output[ch])for(int n=0;n<count;++n)if(!std::isfinite(output[ch][n]))output[ch][n]=0;
     loudness.process(output,channels,count);
 }
-void AudioEngine::prepareBuses(double rate,int block){for(auto& detector:detectorSignals)detector.resize((size_t)block);loudness.prepare(rate);busGraph.prepare(rate,block);if(mixes.current)busGraph.configure(mixes.current->buses,mixes.current->tempo,mixes.current->master,true,mixes.current->returnChains);}
+void AudioEngine::prepareBuses(double rate,int block){latencySignature=0;for(auto& detector:detectorSignals)detector.resize((size_t)block);loudness.prepare(rate);busGraph.prepare(rate,block);if(mixes.current)busGraph.configure(mixes.current->buses,mixes.current->tempo,mixes.current->master,true,mixes.current->returnChains);}
 void AudioEngine::audioDeviceAboutToStart(juce::AudioIODevice* d){
     const EngineControlLock lock(*this);
     if(recordingAudio&&audioRecorder){audioRecorder->rateChanged=true;audioRecordFault=true;}

@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.28
+
+- Harmony: every drop starts on the tonic (I or i), so the build-up's dominant resolves into it; a later drop takes another phrase of the genre, so the second chorus is not a copy of the first.
+- Afro and Latin House: a short intro or outro (16 bars or less) keeps its first 8 bars rhythm only (the DJ's blend), then bass and strings come in together (no strings alone over the drums); keys, guitar and lead arrive with the main part.
+- RANDOM CHORDS in Latin House keeps the song's mode (minor stays minor).
+- Engine: the plugin delay compensation is recomputed only when the instruments, their inserts, their reported latencies or the mix change, not on every block, so its delays no longer flush mid-playback; the guide reverb is skipped at zero; master, volume and pan automation are read along the block instead of searched for every sample.
+
 ## 0.57.27
 
 - Fixes from a review of 0.57.26:

@@ -3,6 +3,7 @@
 #include "Project.h"
 #include "GenreSound.h"
 #include <set>
+#include <optional>
 #include <map>
 #include <functional>
 #include "ElectronicStyles.h"
@@ -648,10 +649,11 @@ static void drawHarmony(Settings& s,std::uint32_t seed) {
     // Latin House draws from its own phrases (montuno turnarounds, ii-V, the Andalusian cadence).
     // One of its phrases, in the song's key, starting on any of its chords (a montuno turns around well).
     if(s.genre==latinHouseGenre&&std::none_of(s.manualChords.begin(),s.manualChords.begin()+count,[](bool m){return m;})){
-        const auto& latin=genreProgressions(latinHouseGenre);const int key=s.key;chooseProgression(s,latin[(size_t)(mix(seed^0x6a09e667U)%latin.size())]);s.key=key;
+        const auto& latin=genreProgressions(latinHouseGenre);std::vector<int> same;for(int id:latin){Settings probe=s;chooseProgression(probe,id);if(probe.scale==s.scale)same.push_back(id);}   // the song's mode stays
+        if(!same.empty()){const int key=s.key;chooseProgression(s,same[(size_t)(mix(seed^0x6a09e667U)%same.size())]);s.key=key;
         const int n=std::clamp(s.chordCount,1,8),rot=n>1?(int)(mix(seed^0xbb67ae85U)%(unsigned)n):0;
         if(rot){std::rotate(s.degrees.begin(),s.degrees.begin()+rot,s.degrees.begin()+n);std::rotate(s.freeChords.begin(),s.freeChords.begin()+rot,s.freeChords.begin()+n);}
-        return;}
+        return;}}
     // Afro House stays hypnotic: its own written vamps, or a two-chord vamp repeated over the
     // length; never a diminished or half-diminished degree (audit M7, Afro only).
     if(s.genre==afroHouseGenre){
@@ -1003,6 +1005,10 @@ int mixEntry(int genre,int track,int bars) {
     if(isElectronicGenre(genre)&&track==1)entry=genre==technoGenre?8:16;
     if(genre==technoGenre&&track==leadTrack)entry=16;
     int at=std::clamp(((entry*bars/32+7)/8)*8,0,bars);
+    // A short Afro or Latin intro/outro (16 bars or less): its first 8 bars stay rhythm only (the DJ's blend),
+    // then bass and strings come in together (never a pad alone over the drums); keys, guitar and lead
+    // arrive with the main part.
+    if(isAfroLatinGenre(genre)&&bars<=16&&(track<4||track==leadTrack))return (track==1||track==2)&&bars>=16?8:bars;
     // Strings scheduled on the final bar never sound: a 32-bar cue scaled onto
     // a shorter intro lands on the last bar and the whole part is removed.
     // Keep at least eight bars, and half of a longer intro or outro.
@@ -1283,20 +1289,25 @@ static const std::vector<int>& genreProgressions(int genre){
 static void sectionHarmonies(Project& p,std::uint32_t seed){
     const auto& s=p.settings;if(isElectronicGenre(s.genre))return;
     const bool loop=s.genre==deepHouseGenre||s.genre==(int)Genre::afroHouse||s.genre==(int)Genre::chill;
-    const auto& choices=genreProgressions(s.genre);Settings drop=s;bool found=false;
+    // The drop starts on the tonic (I or i), so the build-up's dominant resolves; a later drop takes another
+    // phrase, so the second chorus is not a copy of the first. A phrase that holds the tonic elsewhere is
+    // rotated to start on it.
+    const auto& choices=genreProgressions(s.genre);std::vector<Settings> drops;
+    auto onTonic=[](Settings a){const int n=std::clamp(a.chordCount,1,8);for(int r=0;r<n;++r)if(a.degrees[(size_t)r]==0&&a.freeChords[(size_t)r]<0){std::rotate(a.degrees.begin(),a.degrees.begin()+r,a.degrees.begin()+n);std::rotate(a.freeChords.begin(),a.freeChords.begin()+r,a.freeChords.begin()+n);return std::optional<Settings>(a);}return std::optional<Settings>();};
     if(!loop){const auto first=mix(seed+4111U)%choices.size();
-        for(int pass=0;pass<2&&!found;++pass)for(size_t n=0;n<choices.size();++n){Settings answer=s;chooseProgression(answer,choices[(first+n)%choices.size()]);answer.key=s.key;
-            if(answer.scale!=s.scale||sameHarmony(answer,s)||answer.chordCount<2)continue;
-            if(pass==0&&answer.degrees[0]==s.degrees[0]&&answer.freeChords[0]==s.freeChords[0])continue;   // prefer a phrase that starts elsewhere
-            drop=answer;found=true;break;}}
+        for(size_t n=0;n<choices.size()&&drops.size()<2;++n){Settings answer=s;chooseProgression(answer,choices[(first+n)%choices.size()]);answer.key=s.key;
+            if(answer.scale!=s.scale||sameHarmony(answer,s)||answer.chordCount<2)continue;const auto tonic=onTonic(answer);if(!tonic)continue;
+            if(std::any_of(drops.begin(),drops.end(),[&](const Settings& d){return sameHarmony(d,*tonic);}))continue;drops.push_back(*tonic);}}
+    const bool found=!drops.empty();const Settings drop=found?drops.front():s;
     Settings breakdown=found?drop:s;{const int count=breakdown.chordCount;const int second=count>=4?2:count>1?1:0;
         breakdown.degrees={breakdown.degrees[0],breakdown.degrees[(size_t)second],0,0,0,0,0,0};breakdown.freeChords={breakdown.freeChords[0],breakdown.freeChords[(size_t)second],-1,-1,-1,-1,-1,-1};
         breakdown.chordCount=2;breakdown.chordSteps=std::min(64,s.chordSteps*2);}
     Settings build=s;if(build.chordCount==4&&build.chordSteps==16){for(int i=0;i<4;++i){build.degrees[(size_t)i+4]=build.degrees[(size_t)i];build.freeChords[(size_t)i+4]=build.freeChords[(size_t)i];}build.chordCount=8;}   /* eight bars: the turn only in the last one */
     if(build.chordCount>=2){build.degrees[(size_t)(build.chordCount-1)]=4;build.freeChords[(size_t)(build.chordCount-1)]=24+7;}   // a dominant on the fifth (major V/V7 even in minor, not v)
     auto store=[&](SectionHarmony& h,const Settings& from){h.enabled=true;h.automatic=true;h.key=from.key;h.scale=from.scale;h.chordCount=from.chordCount;h.chordSteps=from.chordSteps;h.degrees=from.degrees;h.freeChords=from.freeChords;h.manualChords.fill(false);};
+    int dropIndex=0;
     for(auto& section:p.sections){auto& h=section.harmony;if(h.enabled&&!h.automatic)continue;h.enabled=false;h.automatic=false;   /* the user's own section chords stay */
-        if(section.type==Section::drop&&found)store(h,drop);else if(section.type==Section::breakdown)store(h,breakdown);else if(section.type==Section::buildup&&s.chordCount>=2)store(h,build);}
+        if(section.type==Section::drop&&found){store(h,drops[(size_t)(dropIndex++)%drops.size()]);}else if(section.type==Section::breakdown)store(h,breakdown);else if(section.type==Section::buildup&&s.chordCount>=2)store(h,build);}
 }
 void newSongHarmony(Project& p,std::uint32_t seed) {
     auto& s=p.settings;const auto before=s;
