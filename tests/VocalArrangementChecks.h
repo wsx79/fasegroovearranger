@@ -57,3 +57,10 @@ inline void verifyAfroDrums(){
     check(congas.size()>=3,"Afro House congas play low, middle and high drums");
     std::cout<<"PASS Afro House drums: "<<fromOne<<"/80 claps from the first kick, "<<congas.size()<<" conga pitches\n";
 }
+inline void verifyExtensionRoundTrip(){
+    auto p=fga::newProject(1);p.sections={{fga::Section::main,4,"Main"}};p.normalise();fga::generate(p);
+    p.settings.extension=1;fga::applyInstrumentChange(p,0,true);p.settings.extension=0;fga::applyInstrumentChange(p,0,true);const auto triads=p.tracks[0].clips[0].notes;const auto all=p.tracks;
+    p.settings.extension=2;fga::applyInstrumentChange(p,0,true);const bool changed=p.tracks[0].clips[0].notes!=triads;
+    p.settings.extension=0;fga::applyInstrumentChange(p,0,true);
+    check(changed&&p.tracks[0].clips[0].notes==triads,"piano extensions round trip: 7ths change the MIDI, triads come back exactly");
+}

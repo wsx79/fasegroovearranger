@@ -54,7 +54,7 @@ inline int fitChords(Project& p,const AudioReference& a){
         for(int b=0;b<bars;++b){const int bar=first+b;if(bar<0||bar>=(int)a.bars.size()||!a.bars[(size_t)bar].present)continue;++heard;double sum=0;for(double v:a.bars[(size_t)bar].chroma)sum+=v;if(sum<=0)continue;
             for(int i=0;i<12;++i)slots[(size_t)(b%count)][(size_t)i]+=a.bars[(size_t)bar].chroma[(size_t)i]/sum;}
         if(heard<2)continue;auto& h=p.sections[(size_t)si].harmony;const auto before=activeHarmony(p,si);
-        h.enabled=true;h.key=a.key;h.scale=a.scale;h.chordCount=count;h.chordSteps=16;h.freeChords.fill(-1);h.manualChords.fill(false);
+        h.enabled=true;h.automatic=false;h.key=a.key;h.scale=a.scale;h.chordCount=count;h.chordSteps=16;h.freeChords.fill(-1);h.manualChords.fill(false);
         h.degrees=vocal::chooseDegrees(slots,a.key,a.scale,before.degrees);++changed;}
     return changed;
 }

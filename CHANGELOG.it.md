@@ -1,5 +1,13 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.25
+
+- L’armonia si sviluppa nel brano: il drop ha una sua frase del genere (stessa tonalità, un altro accordo di partenza), il breakdown due dei suoi accordi a metà velocità, il build-up gira sulla dominante nell’ultima battuta (Deep, Afro e Chill tengono il giro della main nel drop; Techno ed Electro un solo giro).
+- Una band, non parti separate: il basso su note dell’accordo sui tempi forti; archi e chitarra mai a una seconda o nona minore dal piano o dalla lead; piano, archi e chitarra fuori dal registro del basso mentre il basso suona.
+- La lead riprende il suo motivo in ogni frase di 8 battute (A B A′ B′), adattato agli accordi.
+- Piano, archi e lead suonano "in tasca" (il loro posizionamento entro circa 6 ms, non una dispersione casuale); la dinamica della lead segue la frase.
+- Nei brani con drop le parti main sono più leggere (la band, non la batteria), così il drop è la sezione più piena.
+
 ## 0.57.24
 
 - Menu ▾ di GENERA, per la traccia audio selezionata: **VOCE IN MIDI** (la melodia cantata su una nuova traccia MIDI), **GROOVE DALL'AUDIO** (tempi e accenti degli attacchi sui sedicesimi, senza affettare), **ACCORDI DALL'AUDIO** (tonalità e accordi per sezione da un loop o un brano), **FORMA DAL BRANO DI RIFERIMENTO** (tonalità e forma di un brano di riferimento in blocchi di 8 battute secondo l’energia; viene generato un nuovo brano su di essa).

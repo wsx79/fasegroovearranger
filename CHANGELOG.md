@@ -1,5 +1,13 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.25
+
+- Harmony develops through the song: the drop gets its own phrase of the genre (same key, another first chord), the breakdown two of its chords at half speed, the build-up turns on the dominant in its last bar (Deep, Afro, Chill keep the main loop in the drop; Techno and Electro one loop).
+- One band, not separate parts: the bass on chord tones on the strong beats; strings and guitar never a minor second or ninth from the piano or the lead; piano, strings and guitar out of the bass register while the bass plays.
+- The lead brings back its motif in every 8-bar phrase (A B A′ B′), moved to fit the chords.
+- Piano, strings and lead play in a pocket (their own placement within about 6 ms, not random scatter); the lead's dynamics follow the phrase.
+- In songs with drops the main parts are lighter (the band, not the drums), so the drop is the fuller section.
+
 ## 0.57.24
 
 - GENERATE menu ▾, for the selected audio track: **VOCAL TO MIDI** (the sung melody on a new MIDI track), **GROOVE FROM AUDIO** (timing and accents of its attacks on the 16ths, no slicing needed), **CHORDS FROM AUDIO** (key and section chords from a loop or a song), **SONG FORM FROM REFERENCE** (key and form of a reference song in 8-bar blocks by energy; a new song is generated on it).

@@ -78,6 +78,7 @@ struct SectionHarmony {
     bool enabled=false;int key=-1,scale=-1,chordCount=4,chordSteps=16;
     std::array<int,8> degrees{0,3,4,0,0,0,0,0},freeChords{-1,-1,-1,-1,-1,-1,-1,-1};
     std::array<bool,8> manualChords{};
+    bool automatic=false;   // written by GENERATE SONG (drop, breakdown, build-up phrases), not by the user: a new song renews it
 };
 struct SongSection { Section type = Section::main; int bars = 8; std::string name = "Main"; SectionHarmony harmony;bool preDropSilence=false,snareRoll=false,reverseCrash=false;
     int dropGap=0; // automatic full-band stop before the next drop, in beats (0 none, up to 8); not an authored edit
@@ -336,6 +337,7 @@ Settings resolveSectionHarmony(const Project&,int section);
 inline bool sectionHarmonyEnabled(const Project& p,int section){return section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled;}
 inline Settings activeHarmony(const Project& p,int section){return sectionHarmonyEnabled(p,section)?resolveSectionHarmony(p,section):p.settings;}
 inline void storeHarmony(Project& p,int section,const Settings& s){
+    if(section>=0&&section<(int)p.sections.size())p.sections[(size_t)section].harmony.automatic=false;   // an edit makes the section's chords the user's
     if(sectionHarmonyEnabled(p,section)){auto& h=p.sections[(size_t)section].harmony;h.key=s.key;h.scale=s.scale;h.chordCount=s.chordCount;h.chordSteps=s.chordSteps;h.degrees=s.degrees;h.freeChords=s.freeChords;h.manualChords=s.manualChords;}
     else{p.settings.key=s.key;p.settings.scale=s.scale;p.settings.chordCount=s.chordCount;p.settings.chordSteps=s.chordSteps;p.settings.degrees=s.degrees;p.settings.freeChords=s.freeChords;p.settings.manualChords=s.manualChords;}
 }

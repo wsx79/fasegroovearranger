@@ -42,6 +42,27 @@ int main(int argc,char** argv){
             const auto file=juce::File::getSpecialLocation(juce::File::tempDirectory).getNonexistentChildFile("fga-bench",".wav",false);
             const auto t0=juce::Time::getMillisecondCounterHiRes();const auto r=engine.exportAudio(p,file,-1,false,[]{return false;},[](double){});const double ms=juce::Time::getMillisecondCounterHiRes()-t0;
             const double seconds=p.length()*60/p.settings.bpm;file.deleteFile();std::cout<<(r.wasOk()?"OK ":"FAIL ")<<seconds<<" s of audio rendered in "<<ms/1000<<" s ("<<seconds*1000/ms<<"x real time)"<<std::endl;return r.wasOk()?0:1;}
+        if(argc==2&&juce::String(argv[1])=="--form-dump"){   // section forms per genre over 20 new songs (not a ctest)
+            const char* names="MIBUDO";
+            for(int genre=0;genre<fga::numGenres;++genre){int breakAfterIntro=0,dropNoBuild=0,drops=0;std::string first;
+                for(std::uint32_t seed=1;seed<=20;++seed){auto p=fga::newProject(genre);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed*7919u);
+                    std::string f;for(const auto& s:p.sections)f+=names[(int)s.type];if(seed<=3)first+=f+" ";
+                    if(f.size()>1&&f[0]=='I'&&f[1]=='B')++breakAfterIntro;
+                    for(size_t i=0;i<f.size();++i)if(f[i]=='D'){++drops;if(i==0||f[i-1]!='U')++dropNoBuild;}}
+                std::cout<<"FORM genre="<<genre<<" breakAfterIntro="<<breakAfterIntro<<"/20 dropWithoutBuild="<<dropNoBuild<<"/"<<drops<<" e.g. "<<first<<"\n";}
+            return 0;}
+        if(argc==3&&juce::String(argv[1])=="--music-dump"){   // notes, sections and chords of each genre's song, for a musical review (not a ctest)
+            const juce::File folder(argv[2]);folder.createDirectory();
+            for(int genre=0;genre<fga::numGenres;++genre)for(std::uint32_t seed:{4242u,777u}){auto p=fga::newProject(genre);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed);
+                juce::String out;out<<"{\"genre\":"<<genre<<",\"bpm\":"<<p.settings.bpm<<",\"key\":"<<p.settings.key<<",\"scale\":"<<p.settings.scale<<",\"sections\":[";
+                for(size_t si=0;si<p.sections.size();++si)out<<(si?",":"")<<"["<<(int)p.sections[si].type<<","<<p.sections[si].bars<<","<<p.sectionStart((int)si)<<"]";
+                out<<"],\"chords\":[";for(int b=0;b*4<p.length();++b)out<<(b?",":"")<<"\""<<fga::chordNameAt(p,b*4.+.01)<<"\"";
+                out<<"],\"tracks\":[";bool first=true;
+                for(int ti=0;ti<(int)p.tracks.size();++ti){const auto& t=p.tracks[(size_t)ti];out<<(first?"":",")<<"{\"i\":"<<ti<<",\"name\":\""<<juce::String(t.name).replace("\"","")<<"\",\"notes\":[";first=false;bool n0=true;
+                    for(int ci=0;ci<(int)t.clips.size();++ci){const double at=p.clipStart(ti,ci);for(const auto& n:t.clips[(size_t)ci].notes){out<<(n0?"":",")<<"["<<juce::String(at+n.start,4)<<","<<juce::String(n.length,4)<<","<<n.pitch<<","<<n.velocity<<"]";n0=false;}}
+                    out<<"]}";}
+                out<<"]}";folder.getChildFile("g"+juce::String(genre)+"-"+juce::String(seed)+".json").replaceWithText(out);}
+            return 0;}
         if(argc==2&&juce::String(argv[1])=="--assistant-project"){runAssistantProjectTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mastering-assistant"){runMasteringTests();return 0;}
         if(argc==2&&juce::String(argv[1])=="--mix-assistant"){runMixAnalysisTests();return 0;}

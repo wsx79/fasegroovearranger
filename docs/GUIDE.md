@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.57.24**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.57.25**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.57.0** writes the lead melody per genre: its own rhythms, phrases with motif, answer and cadence, stepwise or repeated or leaping lines in the style's balance. **0.56.0** makes the band play together (in Latin the piano montuno leads and guitar and lead answer in its gaps; in Afro guitar and lead take turns by phrase), voices strings and guitar around the lead and the bass, adds DEVELOP (answers to your own theme), VST articulation profiles, a path bar on every plugin editor, AUTO/TRIM badges, a readable mixer and clickable sources in Bus & Send. **0.55.0** makes the Mix and Mastering Assistants process the sound, not only the levels: per-track EQ, compressors inserted where missing, reverb and delay sends, the kick sidechain, and on the master an EQ, a glue compressor and a lookahead limiter that reaches the LUFS target under the dBTP ceiling (every change selectable, A/B and one Undo). **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -908,6 +908,17 @@ The generated native Techno Tone build follows the current song structure when y
 Structural Undo checkpoints refresh the last active visible plugin editor, including edits that send no JUCE notification. Losing editor focus also marks its state for refresh. Other instances retain their caches; mixer gestures avoid state reads and explicit project saves read all states. This fallback is covered by the native test plugin; Serum/Vital native-editor compatibility still requires testing with those products.
 
 ## Harmony consistency and MIDI key names
+
+**A song develops its harmony.** GENERATE SONG gives the drop (the chorus) its own phrase from the genre's library, in the same key and starting on another chord; the breakdown takes two of the drop's chords at half the speed; the build-up repeats the main phrase and turns on the dominant (V) in its last bar, into the drop. Deep House, Afro House and Chill keep the main loop in the drop (only the breakdown and the build-up change); Techno and Electro keep one loop. These section chords are automatic: a new song renews them, and the ones you edit in a section stay yours.
+
+**Parts that sound as one band.** After generation the arranger also:
+- keeps the bass on chord tones (root, third, fifth, seventh) on beats 1 and 3, and on 2 and 4 when a held note would sit a semitone from the root; chromatic approach notes on the weak 16ths stay;
+- moves a strings or guitar note that would sit a minor second or ninth from a piano or lead note an octave away (or leaves it out of the chord);
+- keeps piano, strings and guitar out of the bass register while the bass plays (nothing under the bass note, no strings or guitar under E3);
+- brings back the lead's motif: in each 8-bar phrase the third pair of bars returns to the first pair's rhythm and shape and the fourth to the second, moved to fit the chords, the last note resolving on a chord tone (A B A′ B′);
+- plays piano, strings and lead in a pocket: each part keeps its own placement (behind, ahead, swung) within about 6 ms instead of scattering, and the lead's dynamics follow the phrase;
+- in songs with drops, thins the band (not the drums) in the main parts, so the drop is the fuller section.
+
 
 Generated guitar/lead parts and hand-entered guitar lanes use the same chord adapter. Supported minor-major sevenths, diminished sevenths and dominant flat ninths retain their quality; a 7ths dominant does not gain a flat ninth simply from manual insertion. The smaller guitar/lead vocabulary can still omit unsupported upper extensions.
 

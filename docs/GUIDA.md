@@ -30,7 +30,7 @@ della famiglia: scegli tonalità, accordi e groove, ascolti il brano con i suoni
 - [Esportazione](#4-esportare-midi-e-audio-nella-daw)
 - [Salvare e verificare i preset dei plugin](#salvare-e-verificare-i-preset-dei-plugin)
 
-La guida è aggiornata alla **0.57.24**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
+La guida è aggiornata alla **0.57.25**. Le schermate accompagnano le procedure; alcune usano i nomi inglesi. L’icona **?** nell’app apre questa stessa guida, con ricerca, indice e immagini ingrandibili.
 
 La **0.57.0** scrive la melodia del Lead per genere: ritmi propri, frasi con motivo, risposta e cadenza, linee per grado, ribattute o a salti nell’equilibrio dello stile. La **0.56.0** fa suonare la band insieme (nel Latin il montuno del piano guida e chitarra e Lead rispondono nelle pause; nell’Afro chitarra e Lead si alternano per frase), dispone archi e chitarra attorno a Lead e basso, aggiunge SVILUPPA (risposte al tuo tema), profili di articolazione VST, la barra del percorso in ogni editor di plugin, i badge AUTO/TRIM, il mixer leggibile e le sorgenti cliccabili in Bus & Send. La **0.55.0** fa lavorare sul suono gli assistenti Mix e Mastering, non solo sui volumi: EQ per traccia, compressori inseriti dove mancano, mandate di riverbero e delay, sidechain della cassa e, sul master, EQ, compressore glue e limiter con lookahead che raggiunge il LUFS obiettivo sotto il tetto dBTP (ogni modifica selezionabile, confronto A/B e un solo Annulla). La **0.53.0** aggiunge il taglio delle clip dal bordo sinistro e legge il tempo salvato nei loop (ACID, Apple Loop, nome del file). La **0.52.0** ha permesso allo Studio di modificare stem e loop sulla timeline: tagli, velocità e guadagno si riflettono sulla clip. La **0.51.0** ha dato a pulsanti e potenziometri un aspetto hardware 3D e impedisce a potenziometri e fader di seguire la rotellina del mouse. La **0.50.0** ha portato il trascinamento fluido delle clip con SNAP on/off e griglie più fini, clip audio dai file trascinati con rilevamento di tempo e tonalità, l’Energia di sezione e una Durata obiettivo che costruisce il brano sulla lunghezza richiesta.
 
@@ -912,6 +912,17 @@ Il Tone Techno interno generato segue la struttura corrente quando rigeneri il b
 I checkpoint strutturali di Annulla rileggono l’ultimo editor plugin visibile attivo, incluse le modifiche senza notifiche JUCE. Anche la perdita del focus segnala lo stato da aggiornare. Le altre istanze mantengono la cache; i gesti del mixer evitano queste letture e il salvataggio esplicito rilegge tutti gli stati. Il ripiego è verificato con il plugin nativo di test; la compatibilità degli editor nativi Serum/Vital richiede ancora prove con quei prodotti.
 
 ## Coerenza armonica e nomi delle tonalità MIDI
+
+**Un brano sviluppa la sua armonia.** GENERA BRANO dà al drop (il ritornello) una sua frase dalla libreria del genere, nella stessa tonalità e con un altro accordo di partenza; il breakdown prende due accordi del drop a metà velocità; il build-up ripete la frase della main e gira sulla dominante (V) nella sua ultima battuta, verso il drop. Deep House, Afro House e Chill tengono il giro della main anche nel drop (cambiano solo breakdown e build-up); Techno ed Electro tengono un solo giro. Questi accordi di sezione sono automatici: un nuovo brano li rinnova, quelli che modifichi in una sezione restano tuoi.
+
+**Parti che suonano come una band.** Dopo la generazione l’arranger inoltre:
+- tiene il basso su note dell’accordo (fondamentale, terza, quinta, settima) sui tempi 1 e 3, e sul 2 e sul 4 quando una nota tenuta cadrebbe a un semitono dalla fondamentale; le note cromatiche di avvicinamento sui sedicesimi deboli restano;
+- sposta di un’ottava una nota di archi o chitarra che cadrebbe a una seconda o nona minore da una nota di piano o lead (o la toglie dall’accordo);
+- tiene piano, archi e chitarra fuori dal registro del basso mentre il basso suona (niente sotto la nota del basso, niente archi o chitarra sotto il Mi3);
+- riporta il motivo della lead: in ogni frase di 8 battute la terza coppia di battute riprende ritmo e profilo della prima e la quarta della seconda, adattate agli accordi, con l’ultima nota che risolve su una nota dell’accordo (A B A′ B′);
+- fa suonare piano, archi e lead "in tasca": ogni parte mantiene il proprio posizionamento (indietro, avanti, swing) entro circa 6 ms invece di disperdersi, e la dinamica della lead segue la frase;
+- nei brani con drop alleggerisce la band (non la batteria) nelle parti main, così il drop è la sezione più piena.
+
 
 Chitarra/lead generati e lane chitarra inserite a mano usano lo stesso adattatore degli accordi. Settime minori-maggiori, settime diminuite e dominanti con nona minore supportate conservano la loro qualità; una dominante con palette 7ths non acquisisce una nona minore solo perché inserita a mano. Il vocabolario più ridotto di chitarra/lead può ancora omettere estensioni superiori non supportate.
 

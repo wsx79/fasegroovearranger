@@ -109,7 +109,7 @@ inline int fitToVocal(Project& p,const VocalAnalysis& a){
             for(double b=std::max(n.beat,from);b<std::min(n.beat+n.length,from+bars*4.);){const int bar=(int)std::floor((b-from)/4);const double end=std::min({n.beat+n.length,from+(bar+1)*4.});
                 const double onBeat=std::fmod(b-from,1.)<.1?1.5:1.;slots[(size_t)(bar%count)][(size_t)(n.pitch%12)]+=(end-b)*onBeat*n.weight;b=end;}}
         auto& h=p.sections[(size_t)si].harmony;const auto before=activeHarmony(p,si);
-        h.enabled=true;h.key=a.key;h.scale=a.scale;h.chordCount=count;h.chordSteps=16;h.freeChords.fill(-1);h.manualChords.fill(false);
+        h.enabled=true;h.automatic=false;h.key=a.key;h.scale=a.scale;h.chordCount=count;h.chordSteps=16;h.freeChords.fill(-1);h.manualChords.fill(false);
         h.degrees=vocal::chooseDegrees(slots,a.key,a.scale,before.degrees);++changed;}
     return changed;
 }

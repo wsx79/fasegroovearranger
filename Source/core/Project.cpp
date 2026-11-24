@@ -172,7 +172,10 @@ sgk::GrooveSettings pianoEngineSettings(const Project& p,int track,std::uint32_t
     auto s=p.settings;const auto& t=p.tracks[(size_t)track];const auto& e=t.engine;
     if(clip){int section=p.sectionAtBeat(clip->position);if(!t.freeTimeline)for(size_t i=0;i<t.clips.size();++i)if(&t.clips[i]==clip){section=(int)i;break;}s=resolveSectionHarmony(p,section);}
     if(clip){s.density=takeFeel(e.density,clip->feel[0],s.density);s.swing=takeFeel(e.swing,clip->feel[1],s.swing);s.humanize=takeFeel(e.humanize,clip->feel[2],s.humanize);}
-    double energy=1;if(clip){const int section=t.freeTimeline?p.sectionAtBeat(clip->position):[&]{for(size_t i=0;i<t.clips.size();++i)if(&t.clips[i]==clip)return (int)i;return -1;}();if(section>=0&&section<(int)p.sections.size())energy=energyScale(p.sections[(size_t)section].energy);}
+    double energy=1;if(clip){const int section=t.freeTimeline?p.sectionAtBeat(clip->position):[&]{for(size_t i=0;i<t.clips.size();++i)if(&t.clips[i]==clip)return (int)i;return -1;}();if(section>=0&&section<(int)p.sections.size()){const auto& sec=p.sections[(size_t)section];
+        // Auto energy: in a song with drops the main part (the verse) leaves room, so the drop is the fuller one.
+        const bool drops=std::any_of(p.sections.begin(),p.sections.end(),[](const SongSection& x){return x.type==Section::drop;});
+        energy=sec.energy>=0?energyScale(sec.energy):sec.type==Section::main&&drops&&!isElectronicGenre(p.settings.genre)&&!isDrumTrack(track)?.82:1.;}}   /* the groove stays: only the band thins */
     s.density=std::clamp(s.density*energy,0.,1.);
     auto trackSettings=s;if(e.density>=0)trackSettings.density=std::clamp(e.density*energy,0.,1.);
     // A regenerated track/song shares its musical take across sections. Legacy
@@ -1205,7 +1208,7 @@ void renewForm(Project& p) {
     const double from=p.loopStart,to=p.loopEnd;
     bool otherGenre=false;
     for(int genre=0;genre<numGenres;++genre)if(genre!=p.settings.genre&&factoryForm(p,genre))otherGenre=true;
-    const bool authored=std::any_of(p.sections.begin(),p.sections.end(),[](const SongSection& sec){return sec.harmony.enabled||sec.preDropSilence||sec.snareRoll||sec.reverseCrash;})
+    const bool authored=std::any_of(p.sections.begin(),p.sections.end(),[](const SongSection& sec){return (sec.harmony.enabled&&!sec.harmony.automatic)||sec.preDropSilence||sec.snareRoll||sec.reverseCrash;})
 ;   // GENERATE SONG renews everything but the genre: audio and handwritten tracks no longer keep the form
     if(!authored&&(otherGenre||factoryForm(p,p.settings.genre))){
         arrangeSongVariant(p,freshFormVariant(p,p.settings.seed));
@@ -1216,14 +1219,8 @@ void renewForm(Project& p) {
     for(auto& t:p.tracks)if(t.freeTimeline&&!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
     p.normalise();
 }
-void newSongHarmony(Project& p,std::uint32_t seed) {
-    auto& s=p.settings;const auto before=s;
-    if(isElectronicGenre(s.genre)){
-        s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;applyElectronicHarmony(s,seed);return;
-    }
-    // Complete genre phrases avoid the unrelated modal/diminished turns of an
-    // unrestricted walk. All these library entries contain two, four or eight
-    // chords, so automatic dance forms retain their phrase boundaries.
+// The genre's library of complete phrases (two, four or eight chords).
+static const std::vector<int>& genreProgressions(int genre){
     static const std::vector<int> progressions[]{
         {4,5,8,11,12,19,27,33,54,59,60,76},
         {2,3,4,8,12,19,29,54,57,59,61,62},
@@ -1242,7 +1239,39 @@ void newSongHarmony(Project& p,std::uint32_t seed) {
     // Latin House is brighter and moves every bar (montuno turnarounds, ii-V, the
     // Andalusian cadence); Afro House stays on hypnotic minor and modal vamps.
     static const std::vector<int> latinProgressions{3,4,12,21,22,32,33,49,52,59,74,90,93};
-    const auto& choices=s.genre==latinHouseGenre?latinProgressions:progressions[engineGenre(s.genre)];
+    return genre==latinHouseGenre?latinProgressions:progressions[engineGenre(genre)];
+}
+// A song is not one loop: the drop (the chorus) answers the main part with another phrase of the genre in
+// the same key, the breakdown takes two of its chords at half the speed, and the build-up's phrase turns
+// on the dominant into the drop. Loop genres (Deep, Afro, Chill) keep the main loop in the drop; the
+// electronic ones keep one loop everywhere. Sections with chords set by hand stay as they are.
+static void sectionHarmonies(Project& p,std::uint32_t seed){
+    const auto& s=p.settings;if(isElectronicGenre(s.genre))return;
+    const bool loop=s.genre==deepHouseGenre||s.genre==(int)Genre::afroHouse||s.genre==(int)Genre::chill;
+    const auto& choices=genreProgressions(s.genre);Settings drop=s;bool found=false;
+    if(!loop){const auto first=mix(seed+4111U)%choices.size();
+        for(int pass=0;pass<2&&!found;++pass)for(size_t n=0;n<choices.size();++n){Settings answer=s;chooseProgression(answer,choices[(first+n)%choices.size()]);answer.key=s.key;
+            if(answer.scale!=s.scale||sameHarmony(answer,s)||answer.chordCount<2)continue;
+            if(pass==0&&answer.degrees[0]==s.degrees[0]&&answer.freeChords[0]==s.freeChords[0])continue;   // prefer a phrase that starts elsewhere
+            drop=answer;found=true;break;}}
+    Settings breakdown=found?drop:s;{const int count=breakdown.chordCount;const int second=count>=4?2:count>1?1:0;
+        breakdown.degrees={breakdown.degrees[0],breakdown.degrees[(size_t)second],0,0,0,0,0,0};breakdown.freeChords={breakdown.freeChords[0],breakdown.freeChords[(size_t)second],-1,-1,-1,-1,-1,-1};
+        breakdown.chordCount=2;breakdown.chordSteps=std::min(64,s.chordSteps*2);}
+    Settings build=s;if(build.chordCount==4&&build.chordSteps==16){for(int i=0;i<4;++i){build.degrees[(size_t)i+4]=build.degrees[(size_t)i];build.freeChords[(size_t)i+4]=build.freeChords[(size_t)i];}build.chordCount=8;}   /* eight bars: the turn only in the last one */
+    if(build.chordCount>=2){build.degrees[(size_t)(build.chordCount-1)]=4;build.freeChords[(size_t)(build.chordCount-1)]=-1;}
+    auto store=[&](SectionHarmony& h,const Settings& from){h.enabled=true;h.automatic=true;h.key=from.key;h.scale=from.scale;h.chordCount=from.chordCount;h.chordSteps=from.chordSteps;h.degrees=from.degrees;h.freeChords=from.freeChords;h.manualChords.fill(false);};
+    for(auto& section:p.sections){auto& h=section.harmony;if(h.enabled&&!h.automatic)continue;h.enabled=false;h.automatic=false;   /* the user's own section chords stay */
+        if(section.type==Section::drop&&found)store(h,drop);else if(section.type==Section::breakdown)store(h,breakdown);else if(section.type==Section::buildup&&s.chordCount>=2)store(h,build);}
+}
+void newSongHarmony(Project& p,std::uint32_t seed) {
+    auto& s=p.settings;const auto before=s;
+    if(isElectronicGenre(s.genre)){
+        s.key=(before.key+1+(int)(mix(seed+907U)%11))%12;applyElectronicHarmony(s,seed);return;
+    }
+    // Complete genre phrases avoid the unrelated modal/diminished turns of an
+    // unrestricted walk. All these library entries contain two, four or eight
+    // chords, so automatic dance forms retain their phrase boundaries.
+    const auto& choices=genreProgressions(s.genre);
     const auto first=mix(seed+701U)%choices.size();
     for(size_t i=0;i<choices.size();++i) {
         chooseProgression(p,choices[(first+i)%choices.size()]);
@@ -1624,6 +1653,38 @@ const LeadStyle& leadStyle(int genre){
     return styles[(size_t)std::clamp(genre,0,(int)std::size(styles)-1)];
 }
 }
+// A melody a listener can follow: in each 8-bar phrase the lead's third pair of bars returns to the
+// motif of the first (A B A' B'), and the fourth to the second with its last note resolving on a chord
+// tone. The motif keeps its rhythm and its shape; it moves by the diatonic step that puts the most of
+// its beats on the new chord's tones (sequence), so it follows the harmony. A pair with no lead
+// (the singer's bars, a rest) stays empty.
+static void leadMotifs(Project& p,const std::function<bool(int,int)>& fresh){
+    if((int)p.tracks.size()<=leadTrack)return;auto& t=p.tracks[(size_t)leadTrack];if(t.locked||t.instrument=="sample")return;
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.size()<6||!fresh(leadTrack,(int)ci))continue;
+        const double at=p.clipStart(leadTrack,(int)ci),length=p.clipLength(leadTrack,(int)ci);const int si=p.sectionAtBeat(at+.01);if(si<0)continue;
+        const double phraseOrigin=p.sectionStart(si)-at;bool changed=false;
+        int lo=127,hi=0;for(const auto& n:c.notes){lo=std::min(lo,n.pitch);hi=std::max(hi,n.pitch);}   // the motif stays inside the take's own range
+        auto block=[&](double from){std::vector<Note> out;for(const auto& n:c.notes)if(n.start>=from-1./16.&&n.start<from+8-1./16.)out.push_back(n);return out;};
+        auto inScale=[&](int pitch,double beat){const auto h=activeHarmony(p,std::max(0,p.sectionAtBeat(at+beat+.01)));const auto& iv=sgk::scaleIntervals(h.scale);const int pc=((pitch-h.key)%12+12)%12;return std::find(iv.begin(),iv.end(),pc)!=iv.end();};
+        auto chordTone=[&](int pitch,double beat){const int s=std::max(0,p.sectionAtBeat(at+beat+.01));const auto ch=chordAtBeat(activeHarmony(p,s),at+beat+.01);const int iv=((pitch-ch.rootPc)%12+12)%12;return iv==0||iv==ch.third||iv==ch.fifth||(ch.seventh>0&&iv==ch.seventh);};
+        auto place=[&](const std::vector<Note>& motif,double from,double to,bool resolve){
+            const auto target=block(to);if(motif.size()<3||target.size()<2||to+8>length+1e-6)return;
+            int best=0;double bestScore=-1e9;
+            for(int shift=-5;shift<=5;++shift){double score=-std::abs(shift)*.05;bool ok=true;
+                for(const auto& n:motif){const double b=n.start-from+to;const int q=n.pitch+shift;if(q<std::max(lo,t.engine.rangeLow)||q>std::min(hi,t.engine.rangeHigh)||!inScale(q,b)){ok=false;break;}
+                    const bool onBeat=std::abs(b-std::round(b))<1./16.;if(onBeat)score+=chordTone(q,b)?1.:-.5;}
+                if(ok&&score>bestScore){bestScore=score;best=shift;}}
+            if(bestScore<=-1e8)return;
+            c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=to-1./16.&&n.start<to+8-1./16.;}),c.notes.end());
+            double first=1e9,last=0;for(const auto& n:target){first=std::min(first,n.start);last=std::max(last,n.start+n.length);}   // where the lead was playing: a stop or a rest stays silent
+            for(size_t i=0;i<motif.size();++i){Note n=motif[i];n.start=n.start-from+to;n.pitch+=best;if(n.start<first-.5||n.start>=last)continue;n.length=std::min(n.length,last-n.start);
+                if(resolve&&i+1==motif.size()&&!chordTone(n.pitch,n.start))for(int d:{-1,1,-2,2,-3,3})if(chordTone(n.pitch+d,n.start)&&n.pitch+d>=lo&&n.pitch+d<=hi){n.pitch+=d;break;}
+                c.notes.push_back(n);}
+            changed=true;};
+        for(double phrase=phraseOrigin;phrase+32<=length+1e-6;phrase+=32){if(phrase<0)continue;
+            place(block(phrase),phrase,phrase+16,false);place(block(phrase+8),phrase+8,phrase+24,true);}
+        if(changed){std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});tidyNotes(c,length);}}
+}
 static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh){
     if((int)p.tracks.size()<=leadTrack)return;auto& t=p.tracks[(size_t)leadTrack];
     if(t.locked||t.engine.pattern>=0||isElectronicGenre(p.settings.genre))return;   // electronic leads keep their own engine path
@@ -1731,7 +1792,7 @@ static void ensembleVoicing(Project& p,const std::function<bool(int,int)>& inSco
         std::sort(against.begin(),against.end(),[](const Span& a,const Span& b){return a.from<b.from;});double longest=0;for(const auto& o:against)longest=std::max(longest,o.to-o.from);
         auto window=[&](double from){return std::lower_bound(against.begin(),against.end(),from-longest,[](const Span& s,double x){return s.from<x;});};
         for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.notes.empty()||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);bool moved=false;
-            auto clashes=[&](int pitch,double from,double to){int count=0;for(auto it=window(from);it!=against.end()&&it->from<to;++it){const auto& o=*it;if(o.to<=from||std::min(o.to,to)-std::max(o.from,from)<.25)continue;const int lo=std::min(pitch,o.pitch),hi=std::max(pitch,o.pitch);if(hi!=lo&&(hi-lo)%12==1)++count;}return count;};
+            auto clashes=[&](int pitch,double from,double to){int count=0;for(auto it=window(from);it!=against.end()&&it->from<to;++it){const auto& o=*it;if(o.to<=from||std::min(o.to,to)-std::max(o.from,from)<.125)continue;const int lo=std::min(pitch,o.pitch),hi=std::max(pitch,o.pitch);if(hi!=lo&&(hi-lo)%12==1)++count;}return count;};
             for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;const int now=clashes(n.pitch,from,to);if(!now)continue;
                 int best=n.pitch,fewest=now;for(int shift:{-12,12,-24,24}){const int q=n.pitch+shift;if(q<36||q>96)continue;
                     if(std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.pitch==q&&std::abs(o.start-n.start)<1./16.;}))continue;
@@ -1831,6 +1892,21 @@ static void bassApproach(Clip& c,const Project& p,double at,double beats){
         auto rubs=[&](int pitch){const int iv=((pitch+1-now.rootPc)%12+12)%12;return iv==0||iv==now.third||iv==now.fifth||iv==now.seventh;};
         int approach=-1;for(const int d:{sign*step,-sign*step,sign*(3-step),-sign*(3-step)}){const int q=next.pitch+d;if(!rubs(q)&&std::abs(q-n.pitch)<=7){approach=q;break;}}
         if(approach>=0)n.pitch=approach;}
+}
+// A player's pocket, not dice: each note's distance from its grid point (16ths and 8th triplets) stays within
+// 0.012 beats (about 6 ms) of the take's own median placement on that kind of step, so the part keeps its feel (behind,
+// ahead, swung) without random scatter. The lead's dynamics follow the phrase: each velocity stays within 6 of
+// the mean of its neighbours. The guitar keeps its strums as they are.
+static void tightenPocket(std::vector<Note>& notes,int ti){
+    if(notes.size()<4||ti==3)return;
+    auto grid=[](double b){const double a=std::round(b*4)/4,t=std::round(b*6)/6;return std::abs(b-a)<=std::abs(b-t)+1e-9?a:t;};
+    std::array<std::vector<double>,2> offsets;for(const auto& n:notes){const double g=grid(n.start);offsets[(size_t)(std::abs(std::fmod(g*2,1.))>1e-6?1:0)].push_back(n.start-g);}
+    std::array<double,2> pocket{};for(int k=0;k<2;++k){auto& o=offsets[(size_t)k];if(o.empty())continue;std::nth_element(o.begin(),o.begin()+(long)o.size()/2,o.end());pocket[(size_t)k]=o[o.size()/2];}
+    for(auto& n:notes){const double g=grid(n.start),off=n.start-g;if(std::abs(off)>.06)continue;const double target=pocket[(size_t)(std::abs(std::fmod(g*2,1.))>1e-6?1:0)];
+        const double start=std::max(0.,g+target+std::clamp(off-target,-.012,.012));   /* a clamp, so a second pass changes nothing */
+        if(std::any_of(notes.begin(),notes.end(),[&](const Note& o){return &o!=&n&&o.pitch==n.pitch&&o.start<n.start+n.length&&o.start+o.length>std::min(start,n.start)-1./32.&&(o.start<n.start||o.start<start+n.length);}))continue;   /* never into a note of the same pitch */n.start=start;}   /* the whole note moves: its length stays */
+    if(ti==leadTrack&&notes.size()>=3){std::vector<int> v;for(const auto& n:notes)v.push_back(n.velocity);
+        for(size_t i=1;i+1<notes.size();++i){const double mean=.5*(v[i-1]+v[i+1]);notes[i].velocity=std::clamp((int)std::lround(std::clamp((double)v[i],mean-6,mean+6)),1,127);}}   /* within 6 of its neighbours: idempotent too */
 }
 static void livePerformance(Clip& c,const Project& p,int ti,double beats){
     if(c.notes.empty())return;
@@ -2091,6 +2167,62 @@ int Project::addPartTrack(int kind){
     else{t.sound=0;t.engine.tone=.45;t.gain=.38;t.engine.density=.5;}
     generateParts(*this,Scope::track,index,0);return index;
 }
+// The bass's strong beats belong to the chord: a note on beat 1 or 3 that is not its root, third, fifth or
+// seventh (a 13th under the piano's seventh, a 9th under its root) moves to the nearest root, fifth or
+// third; the passing notes on the weak 16ths stay.
+static void bassOnChordTones(Project& p,const std::function<bool(int,int)>& inScope){
+    if((int)p.tracks.size()<2)return;auto& t=p.tracks[1];if(t.locked||t.instrument=="sample")return;
+    for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.empty()||!inScope(1,(int)ci))continue;const double at=p.clipStart(1,(int)ci);bool moved=false;
+        for(auto& n:c.notes){const double beat=at+n.start;const double inBeat=std::fmod(beat,1.);if(!(inBeat<1./16.||inBeat>1-1./16.))continue;
+            const bool strong=std::abs(std::fmod(std::round(beat),2.))<.5;   // beats 1 and 3
+            const int si=p.sectionAtBeat(beat+.01);if(si<0)continue;const auto ch=chordAtBeat(activeHarmony(p,si),beat+.01);const int iv=((n.pitch-ch.rootPc)%12+12)%12;
+            if(iv==0||iv==ch.third||iv==ch.fifth||(ch.seventh>0&&iv==ch.seventh))continue;
+            if(!strong&&(iv!=1&&iv!=11||n.length<.25))continue;   // beats 2 and 4: only a held note a semitone from the root
+            int best=n.pitch,dist=99;for(int target:{0,ch.fifth,ch.third})for(int q=n.pitch-6;q<=n.pitch+6;++q)if(((q-ch.rootPc)%12+12)%12==target&&q>=24&&q<=62&&std::abs(q-n.pitch)+(target==0?0:1)<dist){dist=std::abs(q-n.pitch)+(target==0?0:1);best=q;}
+            if(best!=n.pitch){n.pitch=best;moved=true;}}
+        if(moved)tidyNotes(c,p.clipLength(1,(int)ci));}
+}
+// The last word on semitones between parts, after every other pass (the lead's answers included): the
+// lead and the piano keep their notes; a strings note a minor second or ninth from a piano or lead note it
+// sounds with for an 8th or more moves an octave (or goes, when the chord keeps two other notes); then the
+// guitar against piano, strings and lead.
+static void finalVoicing(Project& p,const std::function<bool(int,int)>& inScope){
+    if((int)p.tracks.size()<=leadTrack||isElectronicGenre(p.settings.genre))return;
+    struct Span{double from,to;int pitch;};
+    auto spans=[&](int ti){std::vector<Span> out;const auto& t=p.tracks[(size_t)ti];if(t.mute)return out;for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(ti,(int)ci);for(const auto& n:t.clips[ci].notes)out.push_back({at+n.start,at+n.start+n.length,n.pitch});}return out;};
+    auto declash=[&](int ti,std::vector<Span> against){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute||against.empty())return;
+        std::sort(against.begin(),against.end(),[](const Span& a,const Span& b){return a.from<b.from;});double longest=0;for(const auto& o:against)longest=std::max(longest,o.to-o.from);
+        auto window=[&](double from){return std::lower_bound(against.begin(),against.end(),from-longest,[](const Span& s,double x){return s.from<x;});};
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||c.notes.empty()||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);bool moved=false;
+            auto clashes=[&](int pitch,double from,double to){int count=0;for(auto it=window(from);it!=against.end()&&it->from<to;++it){const auto& o=*it;if(o.to<=from||std::min(o.to,to)-std::max(o.from,from)<.125)continue;const int lo=std::min(pitch,o.pitch),hi=std::max(pitch,o.pitch);if(hi!=lo&&(hi-lo)%12==1)++count;}return count;};
+            for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;const int now=clashes(n.pitch,from,to);if(!now)continue;
+                int best=n.pitch,fewest=now;for(int shift:{12,-12,24,-24}){const int q=n.pitch+shift;if(q<40||q>96)continue;
+                    if(std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.pitch==q&&std::abs(o.start-n.start)<1./16.;}))continue;
+                    const int k=clashes(q,from,to);if(k<fewest){fewest=k;best=q;}}
+                if(best!=n.pitch){n.pitch=best;moved=true;}
+                // still rubbing: a chord note goes when the chord keeps two other notes; a single line note stays
+                if(fewest>0&&std::count_if(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.velocity>0&&std::abs(o.start-n.start)<1./16.;})>=2){n.velocity=0;moved=true;}}
+            if(moved){c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(ti,(int)ci));}}};
+    // The low register is the bass's: a piano note below the bass note it sounds with, and a strings or
+    // guitar note under E3 while the bass plays, move up an octave (or go, when that octave is already there).
+    {const auto bass=spans(1);if(!bass.empty())for(int ti:{0,2,3}){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute)continue;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!inScope(ti,(int)ci))continue;const double at=p.clipStart(ti,(int)ci);bool moved=false;
+            for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;
+                for(const auto& b:bass)if(b.from<to&&b.to>from&&std::min(b.to,to)-std::max(b.from,from)>=.125&&(n.pitch<b.pitch||(ti>0&&n.pitch<52))&&n.pitch+12<=96){
+                    if(std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& o){return &o!=&n&&o.pitch==n.pitch+12&&std::abs(o.start-n.start)<1./16.;}))n.velocity=0;else n.pitch+=12;moved=true;break;}}
+            if(moved){c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(ti,(int)ci));}}}}
+    // the lead resolves instead: a lead note held a quarter beat or more a minor second or ninth from a piano
+    // note moves to the nearest chord tone within a whole tone that rubs with nothing (an appoggiatura that resolves)
+    {auto piano=spans(0);std::sort(piano.begin(),piano.end(),[](const Span& a,const Span& b){return a.from<b.from;});auto& t=p.tracks[(size_t)leadTrack];
+     if(!t.locked&&!piano.empty())for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!inScope(leadTrack,(int)ci))continue;const double at=p.clipStart(leadTrack,(int)ci);bool moved=false;
+        auto rubs=[&](int pitch,double from,double to){for(const auto& o:piano){if(o.from>=to)break;if(o.to<=from||std::min(o.to,to)-std::max(o.from,from)<.25)continue;const int d=std::abs(pitch-o.pitch);if(d%12==1&&d<25)return true;}return false;};
+        for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;if(n.length<.25||!rubs(n.pitch,from,to))continue;const int si=p.sectionAtBeat(from+.01);if(si<0)continue;const auto ch=chordAtBeat(activeHarmony(p,si),from+.01);
+            for(int d:{-1,1,-2,2}){const int q=n.pitch+d,iv=((q-ch.rootPc)%12+12)%12;if((iv==0||iv==ch.third||iv==ch.fifth||(ch.seventh>0&&iv==ch.seventh))&&q>=t.engine.rangeLow&&q<=t.engine.rangeHigh&&!rubs(q,from,to)){n.pitch=q;moved=true;break;}}}
+        if(moved)tidyNotes(c,p.clipLength(leadTrack,(int)ci));}}
+    const auto lead=spans(leadTrack);   // the piano keeps its voicing (APPLY and harmony edits round-trip it exactly)
+    auto upper=spans(0);upper.insert(upper.end(),lead.begin(),lead.end());declash(2,upper);
+    const auto strings=spans(2);upper.insert(upper.end(),strings.begin(),strings.end());declash(3,upper);
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -2100,13 +2232,15 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
-    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);bandInterplay(p,fresh);repeatVariations(p,fresh);vocalSpace(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);
+    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);leadMotifs(p,fresh);bandInterplay(p,fresh);repeatVariations(p,fresh);vocalSpace(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);bassOnChordTones(p,articulate);finalVoicing(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     // only the takes this generation wrote: another clip of the track, or a locked one, keeps its articulation as it is
     for(size_t ti=0;ti<p.tracks.size();++ti)if(p.tracks[ti].articulation>0&&!p.tracks[ti].locked)for(size_t ci=0;ci<p.tracks[ti].clips.size();++ci)if(p.tracks[ti].clips[ci].loopLength<=0&&articulate((int)ti,(int)ci))applyArticulation(p,(int)ti,(int)ci);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size())continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(clips[ci].loopLength<=0&&(kept.count({ti,(int)ci})||freshIn(ti,(int)ci)))clips[ci].bandResult=engineOutput(clips[ci].notes);}
+    // a note the passes cut at a clip's edge to a few milliseconds is a click, not a note
+    for(int ti=0;ti<4&&ti<(int)p.tracks.size();++ti)if(!p.tracks[(size_t)ti].locked)for(auto& c:p.tracks[(size_t)ti].clips)if(!c.locked&&c.loopLength<=0)c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.length<1./128.;}),c.notes.end());
 }
 void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     p.normalise();const int lastClip=scope==Scope::song?-1:partitionHarmonyClips(p,scope,track,section);
@@ -2148,7 +2282,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(p.settings.genre==latinHouseGenre){static constexpr int latinFeel[][2]{{7,0},{7,1},{0,1},{8,1}};const auto& f=latinFeel[mix(seed+977U)%4];p.settings.voicing=f[0];p.settings.extension=f[1];}   // montuno: octave triads and close 7ths, not the Afro quartal stacks
         else if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
-        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);p.refitAudioClips();
+        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);if(!harmonyLocked)sectionHarmonies(p,seed);p.refitAudioClips();
     }
     if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);
     const auto& s=p.settings;
@@ -2216,6 +2350,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             const int harmonicBars=(int)std::ceil(harmonicBeats/4.);
             auto harmonicNotes=[&](const auto& events,auto filter){
                 auto notes=notesFrom(events,harmonicBeats,filter);
+                if(ti==0||ti==2||ti==leadTrack)tightenPocket(notes,ti);   // the engine's take, played in a pocket
                 if(prefix>0){
                     notes.erase(std::remove_if(notes.begin(),notes.end(),[&](const Note& n){return n.start+n.length<=prefix||n.start>=prefix+beats;}),notes.end());
                     for(auto& n:notes){const double end=std::min(n.start+n.length,prefix+beats);n.start=std::max(n.start,prefix);n.length=end-n.start;n.start-=prefix;}
