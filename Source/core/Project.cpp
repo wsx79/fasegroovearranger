@@ -2268,6 +2268,25 @@ static void finalVoicing(Project& p,const std::function<bool(int,int)>& inScope)
         for(auto& n:c.notes){const double from=at+n.start,to=from+n.length;if(n.length<.25||!rubs(n.pitch,from,to))continue;const int si=p.sectionAtBeat(from+.01);if(si<0)continue;const auto ch=chordAtBeat(activeHarmony(p,si),from+.01);
             for(int d:{-1,1,-2,2}){const int q=n.pitch+d,iv=((q-ch.rootPc)%12+12)%12;if((iv==0||iv==ch.third||iv==ch.fifth||(ch.seventh>0&&iv==ch.seventh))&&q>=t.engine.rangeLow&&q<=t.engine.rangeHigh&&!rubs(q,from,to)){n.pitch=q;moved=true;break;}}}
         if(moved)tidyNotes(c,p.clipLength(leadTrack,(int)ci));}}
+    // Pads and comping keep their place from section to section: when a strings or guitar section's centre lies 9
+    // semitones or more from the section before, the whole section moves an octave toward it (a pad does not
+    // jump an octave at a section change). Then no chord under C3 holds a third or a second (the low-interval
+    // limit): the lower note goes up an octave, or out when that octave is already there.
+    for(int ti:{2,3}){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute||(ti==3&&p.settings.guitarLead))continue;double previous=-1;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];std::vector<int> pitches;for(const auto& n:c.notes)pitches.push_back(n.pitch);
+            if(pitches.size()<4){continue;}std::nth_element(pitches.begin(),pitches.begin()+(long)pitches.size()/2,pitches.end());double centre=pitches[pitches.size()/2];
+            if(previous>0&&!c.locked&&c.loopLength<=0&&inScope(ti,(int)ci)&&std::abs(centre-previous)>=9){const int shift=centre>previous?-12:12;
+                const int ceiling=p.settings.vocalsPresent?83:96;const bool fits=std::all_of(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.pitch+shift>=40&&n.pitch+shift<=ceiling;});   /* under the voice with VOCALS PRESENT */
+                if(fits){for(auto& n:c.notes)n.pitch+=shift;centre+=shift;}}
+            previous=centre;}}
+    for(int ti:{0,2,3}){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute)continue;
+        for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];if(c.locked||c.loopLength>0||!inScope(ti,(int)ci))continue;bool moved=false;
+            for(int pass=0;pass<3;++pass){std::map<long,std::vector<Note*>> chords;for(auto& n:c.notes)if(n.velocity>0)chords[std::lround(n.start*16)].push_back(&n);
+                bool any=false;for(auto& [at,ns]:chords){std::sort(ns.begin(),ns.end(),[](const Note* a,const Note* b){return a->pitch<b->pitch;});
+                    for(size_t k=0;k+1<ns.size();++k)if(ns[k]->pitch<48&&ns[k+1]->pitch-ns[k]->pitch<5){Note* low=ns[k];const int up=low->pitch+12;
+                        if(std::any_of(ns.begin(),ns.end(),[&](const Note* o){return o!=low&&o->pitch==up;}))low->velocity=0;else low->pitch=up;moved=any=true;break;}}
+                if(!any)break;}
+            if(moved){c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(ti,(int)ci));}}}
     const auto lead=spans(leadTrack);   // the piano keeps its voicing (APPLY and harmony edits round-trip it exactly)
     auto upper=spans(0);upper.insert(upper.end(),lead.begin(),lead.end());declash(2,upper);
     const auto strings=spans(2);upper.insert(upper.end(),strings.begin(),strings.end());declash(3,upper);

@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.32
+
+- Archi e chitarra mantengono il registro da una sezione all'altra: una sezione il cui centro salterebbe di 9 semitoni o più si sposta di un'ottava verso quella precedente (i pad non saltano più di un'ottava al cambio sezione; sotto la voce con VOCE PRESENTE).
+- Limite degli intervalli gravi: niente terze o seconde sotto il Do3 negli accordi di piano, archi e chitarra (la nota più bassa sale di un'ottava, o viene tolta se raddoppiata).
+
 ## 0.57.31
 
 - Gli stati dei plugin vengono salvati (alle modifiche e all'annulla) mentre nessun blocco audio è in corso quando il trasporto è fermo; in riproduzione vengono letti insieme all'audio, come fanno gli host, così le modifiche non interrompono mai il suono.

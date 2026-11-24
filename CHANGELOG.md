@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.32
+
+- Strings and guitar keep their register from section to section: a section whose centre would jump 9 semitones or more moves an octave toward the one before (pads no longer leap an octave at a section change; under the voice with VOCALS PRESENT).
+- Low-interval limit: no third or second under C3 inside a piano, strings or guitar chord (the lower note goes up an octave, or out when doubled).
+
 ## 0.57.31
 
 - Plugin states are saved (on edits and Undo) while no audio block is running when the transport is stopped; during playback they are read alongside the audio, as hosts do, so edits never drop the sound out.
