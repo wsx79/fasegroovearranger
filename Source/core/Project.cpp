@@ -785,7 +785,17 @@ bool factoryForm(const Project& p,int genre) {
     for(int variant=0;variant<4;++variant){const auto form=genreForm(genre,variant);if(form.size()!=p.sections.size())continue;
         bool same=true;for(size_t i=0;i<form.size();++i)if(form[i].type!=p.sections[i].type||form[i].name!=p.sections[i].name){same=false;break;}
         if(same)return true;
-    }return false;
+    }
+    // ...or that form as GENERATE SONG shaped it (naturalForm): a "Rise" build-up inserted before a drop or made
+    // of an 8-bar breakdown, an opening breakdown become the "Groove" (with the main after it merged in)
+    for(int variant=0;variant<4;++variant){const auto form=genreForm(genre,variant);const auto& s=p.sections;size_t i=0,j=0;bool same=true;
+        while(same&&i<s.size()){
+            if(s[i].type==Section::buildup&&s[i].name=="Rise"&&!(j<form.size()&&form[j].type==Section::buildup&&form[j].name=="Rise")){if(j<form.size()&&form[j].type==Section::breakdown&&j+1<form.size()&&form[j+1].type==Section::drop)++j;++i;continue;}
+            if(j>=form.size()){same=false;break;}
+            if(s[i].type==Section::main&&s[i].name=="Groove"&&form[j].type==Section::breakdown){++i;++j;if(j<form.size()&&form[j].type==Section::main&&!(i<s.size()&&s[i].type==Section::main&&s[i].name==form[j].name))++j;continue;}
+            if(form[j].type!=s[i].type||form[j].name!=s[i].name)same=false;++i;++j;}
+        if(same&&j==form.size())return true;}
+    return false;
 }
 int freshFormVariant(const Project& p,std::uint32_t seed){
     const int first=(int)(mix(seed+(unsigned)p.settings.genre*733U+307U)%4);
@@ -802,9 +812,9 @@ static void chooseDropGaps(Project& p,std::uint32_t seed){
         if(si==1&&si+1<p.sections.size()&&s.type==Section::breakdown&&p.sections[0].type==Section::intro&&p.sections[si+1].type!=Section::drop){s.dropGap=(mix(seed^0x3c6ef372U)&1)?4:2;continue;}   // the first break stops, then the track starts
         if(si+1>=p.sections.size()||p.sections[si+1].type!=Section::drop||s.type==Section::drop||s.type==Section::intro||s.bars<2)continue;
         const auto r=mix(seed^(0x68e31da4U+(std::uint32_t)si*0x1b873593U));const bool build=s.type==Section::buildup;const int roll=(int)((r>>8)%100);
-        // A build-up always empties before the drop lands: half a bar, a whole bar, or (a long build) two bars
+        // A build-up nearly always empties before the drop lands: half a bar, a whole bar, or (a long build) two bars
         // of nothing. Other sections stop less often and for less.
-        if(build)s.dropGap=s.bars>=16&&roll<18?8:roll<62?4:2;
+        if(build)s.dropGap=roll>=88?0:s.bars>=16&&roll<18?8:roll<62?4:2;   // one build in eight runs straight into the drop
         else if(s.type==Section::main&&s.bars>=16)s.dropGap=roll<50?4:2;   // a verse that runs straight into a drop lifts and stops like a build
         else if((int)(r%100)<55)s.dropGap=roll<40?4:roll<80?2:1;}
 }
@@ -1217,6 +1227,22 @@ void renewForm(Project& p) {
         return;
     }
     for(auto& t:p.tracks)if(t.freeTimeline&&!isManualTrack(t.kind)){t.freeTimeline=false;t.clips.assign(p.sections.size(),{});}
+    p.normalise();
+}
+// The form as these genres are built: Afro and Deep House start their groove after the intro (the
+// breakdown comes later); every drop is prepared by a build-up (Neo Soul and Chill, song forms, and the
+// jackin styles, groove to groove, may go straight into it): the last 8 bars of a section of 16 or more before it become the build-up, or an
+// 8-bar breakdown turns into one (eight-bar phrases stay whole).
+// A drop that follows a drop continues it. Not applied when tracks or clips are locked.
+static void naturalForm(Project& p,bool grooveAfterIntro=true){
+    if(p.sections.size()<3||std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
+    const int g=p.settings.genre;auto& s=p.sections;
+    if(grooveAfterIntro&&(g==deepHouseGenre||g==(int)Genre::afroHouse)&&s[0].type==Section::intro&&s[1].type==Section::breakdown){s[1].type=Section::main;s[1].name="Groove";
+        if(s[2].type==Section::main){s[1].bars+=s[2].bars;s.erase(s.begin()+2);}}   // one groove section (its length is the two)
+    if(g==(int)Genre::neoSoul||g==(int)Genre::chill||g==(int)Genre::jackinHouse||g==(int)Genre::pianoJack)return;   // song forms; the jack goes from groove to groove
+    for(size_t i=1;i<s.size();++i){if(s[i].type!=Section::drop||s[i-1].type==Section::buildup||s[i-1].type==Section::drop||s[i-1].type==Section::intro||s[i-1].bars<8)continue;   /* an intro drops straight into the groove (the DJ way) */
+        if(s[i-1].bars>=16){s[i-1].bars-=8;SongSection rise;rise.type=Section::buildup;rise.bars=8;rise.name="Rise";rise.dropGap=s[i-1].dropGap>0?s[i-1].dropGap:4;s[i-1].dropGap=0;s.insert(s.begin()+(long)i,rise);++i;}   // eight-bar phrases stay whole
+        else if(s[i-1].type==Section::breakdown&&s[i-1].bars==8&&i>=2&&s[i-2].type!=Section::buildup){s[i-1].type=Section::buildup;s[i-1].name="Rise";}}
     p.normalise();
 }
 // The genre's library of complete phrases (two, four or eight chords).
@@ -2223,6 +2249,26 @@ static void finalVoicing(Project& p,const std::function<bool(int,int)>& inScope)
     auto upper=spans(0);upper.insert(upper.end(),lead.begin(),lead.end());declash(2,upper);
     const auto strings=spans(2);upper.insert(upper.end(),strings.begin(),strings.end());declash(3,upper);
 }
+// Two comping instruments, two roles: outside the drops the guitar leaves the piano's attacks to the piano
+// and plays in the spaces between them (strums on the same 16th as a piano chord thin out), so the keys and
+// the guitar answer each other instead of hitting together; in the drops both play. Every other shared
+// strum goes, at most a third of them, so each take keeps its own figure; the solo guitar (GUITAR LEADS) is a melody and stays.
+static void bandRoles(Project& p,const std::function<bool(int,int)>& inScope){
+    if((int)p.tracks.size()<4||isElectronicGenre(p.settings.genre)||p.settings.guitarLead)return;auto& g=p.tracks[3];if(g.locked||g.mute||p.tracks[0].mute)return;
+    std::vector<double> piano;{const auto& t=p.tracks[0];for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(0,(int)ci);for(const auto& n:t.clips[ci].notes)piano.push_back(at+n.start);}}
+    std::sort(piano.begin(),piano.end());if(piano.empty())return;
+    auto pianoAt=[&](double b){auto it=std::lower_bound(piano.begin(),piano.end(),b-1./32.);return it!=piano.end()&&*it<=b+1./32.;};
+    for(size_t ci=0;ci<g.clips.size();++ci){auto& c=g.clips[ci];if(c.locked||c.loopLength>0||c.notes.size()<4||!inScope(3,(int)ci))continue;const double at=p.clipStart(3,(int)ci);
+        const int si=p.sectionAtBeat(at+.01);if(si<0||p.sections[(size_t)si].type==Section::drop)continue;
+        std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});
+        std::vector<std::pair<size_t,size_t>> groups;for(size_t i=0;i<c.notes.size();){size_t j=i+1;while(j<c.notes.size()&&c.notes[j].start-c.notes[i].start<1./16.)++j;groups.push_back({i,j});i=j;}
+        if((double)groups.size()<3*p.clipLength(3,(int)ci)/4)continue;   // a sparse guitar (fewer than 3 strums a bar) already leaves room
+        std::vector<bool> drop(groups.size(),false);size_t dropped=0;
+        size_t together=0;for(size_t k=0;k<groups.size()&&dropped*3<groups.size();++k)if(pianoAt(at+c.notes[groups[k].first].start)&&together++%2==1){drop[k]=true;++dropped;}   // every other shared strum, at most a third: the take keeps its own figure
+        if(!dropped)continue;
+        for(size_t k=0;k<groups.size();++k)if(drop[k])for(size_t i=groups[k].first;i<groups[k].second;++i)c.notes[i].velocity=0;
+        c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(3,(int)ci));}
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -2232,7 +2278,7 @@ static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,co
             if(shaped&&c.bandSource==source&&ci<(*shaped)[(size_t)k].size()&&engineOutput((*shaped)[(size_t)k][ci])==c.bandResult){c.notes=(*shaped)[(size_t)k][ci];kept.insert({ti,(int)ci});}
             else if(freshIn(ti,(int)ci))c.bandSource=source;}}   // a clip this pass does not rewrite keeps its record
     const auto fresh=[&](int ti,int ci){return !kept.count({ti,ci})&&freshIn(ti,ci);};
-    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);leadMotifs(p,fresh);bandInterplay(p,fresh);repeatVariations(p,fresh);vocalSpace(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);bassOnChordTones(p,articulate);finalVoicing(p,fresh);
+    sectionTension(p,fresh);pianoClearsBass(p,fresh);shapeLeadMelody(p,fresh);leadMotifs(p,fresh);bandInterplay(p,fresh);repeatVariations(p,fresh);vocalSpace(p,fresh);ensembleVoicing(p,fresh);leadAnswer(p,fresh);if(!isElectronicGenre(p.settings.genre))trimHoldovers(p,fresh);bassOnChordTones(p,articulate);bandRoles(p,fresh);finalVoicing(p,fresh);
     for(int k=0;k<4;++k){const int ti=bandTracks[k];if(ti>=(int)p.tracks.size()||p.tracks[(size_t)ti].locked)continue;auto& clips=p.tracks[(size_t)ti].clips;
         for(size_t ci=0;ci<clips.size();++ci)if(!clips[ci].locked&&clips[ci].loopLength<=0&&fresh(ti,(int)ci))livePerformance(clips[ci],p,ti,p.clipLength(ti,(int)ci));}
     // only the takes this generation wrote: another clip of the track, or a locked one, keeps its articulation as it is
@@ -2282,7 +2328,11 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
         });
         if(!harmonyLocked){newSongHarmony(p,seed);const auto feel=sgk::genreRiffFeel(engineGenre(p.settings.genre),seed);if(p.settings.genre==latinHouseGenre){static constexpr int latinFeel[][2]{{7,0},{7,1},{0,1},{8,1}};const auto& f=latinFeel[mix(seed+977U)%4];p.settings.voicing=f[0];p.settings.extension=f[1];}   // montuno: octave triads and close 7ths, not the Afro quartal stacks
         else if(!isElectronicGenre(p.settings.genre)){p.settings.voicing=feel.voicing;p.settings.extension=feel.extension;}}   // a new song, a new piano colour
-        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);if(!harmonyLocked)sectionHarmonies(p,seed);p.refitAudioClips();
+        auto shape=[](const Project& q){std::vector<int> v;for(const auto& x:q.sections)v.push_back((int)x.type);return v;};const auto userForm=shape(p);   /* the order of section types */
+        varySongTempo(p,seed);renewForm(p);varyForm(p,seed);fitFormToTarget(p);
+        if(shape(p)!=userForm){   // a form the user wrote stays as written (renewForm kept it)
+            // the genre's shape, but never the last song's form again: then the opening break stays, or the drawn form as it is
+            Project natural=p;naturalForm(natural);if(shape(natural)==userForm){natural=p;naturalForm(natural,false);}if(shape(natural)!=userForm)p=natural;}if(!harmonyLocked)sectionHarmonies(p,seed);p.refitAudioClips();
     }
     if(scope==Scope::song)partitionHarmonyClips(p,scope,track,section);
     const auto& s=p.settings;

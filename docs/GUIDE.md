@@ -30,7 +30,7 @@ family genres: pick a key, chords and a groove, listen with the guide sounds, th
 - [Export](#4-exporting-midi-and-audio-to-your-daw)
 - [Saving and checking plugin presets](#saving-and-checking-plugin-presets)
 
-This guide is current for **0.57.25**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
+This guide is current for **0.57.26**. Screenshots accompany the procedures; some use English control names. The app’s **?** icon opens the same manual with search, contents and enlargeable images.
 
 **0.57.0** writes the lead melody per genre: its own rhythms, phrases with motif, answer and cadence, stepwise or repeated or leaping lines in the style's balance. **0.56.0** makes the band play together (in Latin the piano montuno leads and guitar and lead answer in its gaps; in Afro guitar and lead take turns by phrase), voices strings and guitar around the lead and the bass, adds DEVELOP (answers to your own theme), VST articulation profiles, a path bar on every plugin editor, AUTO/TRIM badges, a readable mixer and clickable sources in Bus & Send. **0.55.0** makes the Mix and Mastering Assistants process the sound, not only the levels: per-track EQ, compressors inserted where missing, reverb and delay sends, the kick sidechain, and on the master an EQ, a glue compressor and a lookahead limiter that reaches the LUFS target under the dBTP ceiling (every change selectable, A/B and one Undo). **0.53.0** adds front-edge clip trimming and reads the tempo saved in loops (ACID, Apple loops, file names). **0.52.0** let the Studio edit stems and loops on the timeline: trims, speed and gain follow on the clip. **0.51.0** gave buttons and knobs a 3D hardware look and stops knobs and faders from following the mouse wheel. **0.50.0** brought fluid clip dragging with SNAP on/off and finer grids, audio clips from dropped files with tempo and key detection, section Energy, and a Target duration that builds the song to the requested length.
 
@@ -917,7 +917,10 @@ Structural Undo checkpoints refresh the last active visible plugin editor, inclu
 - keeps piano, strings and guitar out of the bass register while the bass plays (nothing under the bass note, no strings or guitar under E3);
 - brings back the lead's motif: in each 8-bar phrase the third pair of bars returns to the first pair's rhythm and shape and the fourth to the second, moved to fit the chords, the last note resolving on a chord tone (A B A′ B′);
 - plays piano, strings and lead in a pocket: each part keeps its own placement (behind, ahead, swung) within about 6 ms instead of scattering, and the lead's dynamics follow the phrase;
-- in songs with drops, thins the band (not the drums) in the main parts, so the drop is the fuller section.
+- in songs with drops, thins the band (not the drums) in the main parts, so the drop is the fuller section;
+- outside the drops gives the piano and the guitar two roles: when the guitar is busy (3 strums a bar or more), every other strum on the same 16th as a piano chord goes (at most a third), so they answer each other.
+
+**The form follows the genre.** A new song's form is built the way these genres are: Afro House and Deep House go from the intro into the groove (the breakdown comes later); every drop is prepared by a build-up (the last 8 bars of a section of 16 or more before it, or an 8-bar breakdown turned into one; it usually stops before the drop, one in eight runs straight in), except in Neo Soul and Chill (song forms) and the jackin styles (groove to groove); an intro drops straight into the groove, and a drop that follows a drop continues it. A form you wrote stays as written.
 
 
 Generated guitar/lead parts and hand-entered guitar lanes use the same chord adapter. Supported minor-major sevenths, diminished sevenths and dominant flat ninths retain their quality; a 7ths dominant does not gain a flat ninth simply from manual insertion. The smaller guitar/lead vocabulary can still omit unsupported upper extensions.

@@ -49,7 +49,7 @@ int main(int argc,char** argv){
                     std::string f;for(const auto& s:p.sections)f+=names[(int)s.type];if(seed<=3)first+=f+" ";
                     if(f.size()>1&&f[0]=='I'&&f[1]=='B')++breakAfterIntro;
                     for(size_t i=0;i<f.size();++i)if(f[i]=='D'){++drops;if(i==0||f[i-1]!='U')++dropNoBuild;}}
-                std::cout<<"FORM genre="<<genre<<" breakAfterIntro="<<breakAfterIntro<<"/20 dropWithoutBuild="<<dropNoBuild<<"/"<<drops<<" e.g. "<<first<<"\n";}
+                std::cout<<"FORM genre="<<genre<<" distinct="<<[&]{std::set<std::string> u;for(std::uint32_t seed=1;seed<=20;++seed){auto q=fga::newProject(genre);q.settings.randomAutomation=false;fga::generate(q,fga::Scope::song,0,0,seed*7919u);std::string f;for(const auto& s:q.sections)f+=names[(int)s.type];u.insert(f);}return u.size();}()<<" breakAfterIntro="<<breakAfterIntro<<"/20 dropWithoutBuild="<<dropNoBuild<<"/"<<drops<<" e.g. "<<first<<"\n";}
             return 0;}
         if(argc==3&&juce::String(argv[1])=="--music-dump"){   // notes, sections and chords of each genre's song, for a musical review (not a ctest)
             const juce::File folder(argv[2]);folder.createDirectory();

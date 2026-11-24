@@ -1,5 +1,10 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.26
+
+- Forma per genere: Afro House e Deep House passano dall’intro al groove (niente breakdown subito dopo l’intro); ogni drop ha un build-up prima (non in Neo Soul, Chill e negli stili jackin; un’intro entra comunque direttamente nel groove). Le forme scritte da te restano come sono.
+- Piano e chitarra hanno due ruoli fuori dai drop: una chitarra fitta dirada le pennate sugli attacchi del piano e suona negli spazi, così le main sono più leggere e i due si rispondono.
+
 ## 0.57.25
 
 - L’armonia si sviluppa nel brano: il drop ha una sua frase del genere (stessa tonalità, un altro accordo di partenza), il breakdown due dei suoi accordi a metà velocità, il build-up gira sulla dominante nell’ultima battuta (Deep, Afro e Chill tengono il giro della main nel drop; Techno ed Electro un solo giro).

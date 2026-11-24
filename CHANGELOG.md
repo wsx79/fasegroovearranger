@@ -1,5 +1,10 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.26
+
+- Song form by genre: Afro House and Deep House go from the intro into the groove (no breakdown right after the intro); every drop gets a build-up before it (not in Neo Soul, Chill and the jackin styles; an intro still drops straight into the groove). Forms you write stay as written.
+- Piano and guitar get two roles outside the drops: a busy guitar thins its strums on the piano's attacks and plays in the spaces, so the main parts are lighter and the two answer each other.
+
 ## 0.57.25
 
 - Harmony develops through the song: the drop gets its own phrase of the genre (same key, another first chord), the breakdown two of its chords at half speed, the build-up turns on the dominant in its last bar (Deep, Afro, Chill keep the main loop in the drop; Techno and Electro one loop).
