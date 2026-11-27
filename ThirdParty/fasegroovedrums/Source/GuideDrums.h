@@ -195,9 +195,21 @@ private:
 
         // The closed hat chokes the open hat, like on a real hi-hat; not one that has only just
         // started (a closed hat on the same step, a few ms later with the humanize, would silence it).
+        // A closed hat on the same step as an open one (within 40 ms) is not played: one hi-hat cannot
+        // sound both, and the open hat is the written accent.
         if (lane == (int) fgd::Lane::closedHat)
+        {
+            for (auto& v : voices)
+                if (v.active && v.lane == (int) fgd::Lane::openHat && ! v.choking && secondsPlayed (v) <= 0.04)
+                    return;
             for (auto& v : voices)
                 if (v.active && v.lane == (int) fgd::Lane::openHat && secondsPlayed (v) > 0.04)
+                    v.choking = true;
+        }
+        // ...and the open hat wins over a closed one that started a moment before it (the humanize).
+        if (lane == (int) fgd::Lane::openHat)
+            for (auto& v : voices)
+                if (v.active && v.lane == (int) fgd::Lane::closedHat && secondsPlayed (v) <= 0.04)
                     v.choking = true;
 
         // A drum keeps at most a few voices of its own: a long sample on fast 16ths fades its own
