@@ -269,7 +269,8 @@ jobs:
           test -f packages/FaseGrooveArranger-Windows-Setup.exe
           extras=$(find packages -type f ! -name 'FaseGrooveArranger-Linux.zip' ! -name 'FaseGrooveArranger-macOS.zip' ! -name 'FaseGrooveArranger-Windows.zip' ! -name 'FaseGrooveArranger-Windows-Setup.exe' -print)
           if [ -n "$extras" ]; then echo "$extras" >&2; exit 1; fi
-          gh release create "$TAG" --target "${{ github.sha }}" --title "Fase Groove Arranger ${TAG#v}" --notes-file release-notes.md \
+          pre=(); case "$TAG" in *-*) pre=(--prerelease --latest=false);; esac
+          gh release create "$TAG" "${pre[@]}" --target "${{ github.sha }}" --title "Fase Groove Arranger ${TAG#v}" --notes-file release-notes.md \
             packages/FaseGrooveArranger-Linux.zip \
             packages/FaseGrooveArranger-macOS.zip \
             packages/FaseGrooveArranger-Windows.zip \
