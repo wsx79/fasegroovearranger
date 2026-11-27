@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.58.1
+
+- Le melodie del Lead suonano di nuovo le loro note: due terzi venivano tagliati a un click di 15 ms ovunque la frase originale avesse una breve pausa. Ora la melodia tiene ogni nota fino alla successiva o alla fine della frase; una nota che resterebbe più corta di un sedicesimo viene tolta, così lo stop prima del drop resta silenzioso.
+
 ## 0.58.0
 
 - Release Candidate: raccoglie il lavoro delle 0.57.x su armonia per sezione, forme naturali dei brani, ruoli e voicing della band, corsia tempo master e arrangiamento dalla voce.

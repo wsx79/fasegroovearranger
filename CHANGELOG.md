@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.58.1
+
+- Lead melodies play their notes again: two thirds of them were cut to a 15 ms click wherever the original phrase had a short gap. The melody now holds each note until the next one or the end of its phrase; a note that would be left shorter than a 16th is left out, so the stop before a drop stays silent.
+
 ## 0.58.0
 
 - Release Candidate: it gathers the 0.57.x work on harmony per section, natural song forms, the band's roles and voicing, the master tempo lane and arranging from a vocal.
