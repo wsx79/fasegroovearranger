@@ -1,8 +1,8 @@
 # Novità — Fase Groove Arranger
 
-## 0.58.0-rc.1
+## 0.58.0
 
-- Release candidate della 0.58.0: raccoglie il lavoro delle 0.57.x su armonia per sezione, forme naturali dei brani, ruoli e voicing della band, corsia tempo master e arrangiamento dalla voce. Pre-release: l'app non la propone come aggiornamento.
+- Release Candidate: raccoglie il lavoro delle 0.57.x su armonia per sezione, forme naturali dei brani, ruoli e voicing della band, corsia tempo master e arrangiamento dalla voce.
 - Batteria guida: hi-hat chiuso e aperto non suonano mai insieme; uno suonato entro 40 ms dall'altro è lo stesso colpo, e uno successivo lo strozza, come su un hi-hat vero.
 
 ## 0.57.33

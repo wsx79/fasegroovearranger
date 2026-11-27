@@ -1,8 +1,8 @@
 # Changelog — Fase Groove Arranger
 
-## 0.58.0-rc.1
+## 0.58.0
 
-- Release candidate for 0.58.0: it gathers the 0.57.x work on harmony per section, natural song forms, the band's roles and voicing, the master tempo lane and arranging from a vocal. Pre-release: the app does not offer it as an update.
+- Release Candidate: it gathers the 0.57.x work on harmony per section, natural song forms, the band's roles and voicing, the master tempo lane and arranging from a vocal.
 - Guide drums: a closed and an open hi-hat never sound together; one played within 40 ms of the other is the same hit, and a later one chokes it, as on a real hi-hat.
 
 ## 0.57.33
