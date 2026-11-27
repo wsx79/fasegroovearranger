@@ -1,5 +1,12 @@
 # Novità — Fase Groove Arranger
 
+## 0.57.33
+
+- Il basso si aggancia al kick in riproduzione ed export (audio e MIDI): un attacco che cade 0-25 ms dopo un kick suona insieme a esso, così kick e basso non fanno più "flam" nel grave (succedeva in 30 dei 32 brani di prova). Le note nel progetto restano come scritte.
+- Il basso non scende mai sotto il Mi1 (quel registro è della parte sub): le note più basse salgono di un'ottava.
+- Un breakdown che entra in una main o in un drop senza build-up e senza stop finisce con un fill di un tempo in crescendo (rullante a sedicesimi; tom in Afro e Latin House).
+- Con la corsia del tempo master righello, orologio e tempi di export si calcolano segmento per segmento tra i punti della corsia invece che a passi di 1/64 di battito dall'inizio del brano (un brano lungo con la corsia del tempo non rallenta più la timeline).
+
 ## 0.57.32
 
 - Archi e chitarra mantengono il registro da una sezione all'altra: una sezione il cui centro salterebbe di 9 semitoni o più si sposta di un'ottava verso quella precedente (i pad non saltano più di un'ottava al cambio sezione; sotto la voce con VOCE PRESENTE).

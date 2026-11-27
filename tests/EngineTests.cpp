@@ -88,6 +88,18 @@ int main(int argc,char** argv){
         }
         if(argc==2&&juce::String(argv[1])=="--engine-audit"){runEngineAuditTests();return 0;}
         runSpectrumChecks();runImprovementEngineTests();runStudioEngineTests();runEngineAuditTests();
+        {   // the newer project fields survive save and load: tempo lane, vocal phrase and bars, automatic section chords
+            auto p=fga::newProject(0);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,4242);
+            p.tempoAutomation.enabled=true;p.tempoAutomation.points={{0,fga::automationFromBpm(120),0},{16,fga::automationFromBpm(110),.3}};
+            p.settings.vocalsPresent=true;p.settings.vocalPhrase=3;p.settings.vocalBars={1,0,1,1,0};p.normalise();
+            bool anyAutomatic=false;for(const auto& sec:p.sections)anyAutomatic=anyAutomatic||sec.harmony.automatic;
+            fga::Project q;check(fga::projectFromJson(fga::projectJson(p),q).wasOk(),"project with the newer fields reloads");
+            bool same=q.tempoAutomation==p.tempoAutomation&&q.settings.vocalPhrase==3&&q.settings.vocalBars==p.settings.vocalBars&&q.sections.size()==p.sections.size();
+            for(size_t i=0;same&&i<p.sections.size();++i)same=q.sections[i].harmony.automatic==p.sections[i].harmony.automatic&&q.sections[i].harmony.enabled==p.sections[i].harmony.enabled;
+            check(anyAutomatic&&same,"tempo lane, vocal phrase/bars and automatic section chords round-trip through the project file");
+            for(size_t t=0;t<p.tracks.size()&&same;++t)same=q.tracks[t].clips==p.tracks[t].clips;check(same,"the generated MIDI round-trips exactly");
+            std::cout<<"PASS project file round trip of the 0.57.2x fields\n";
+        }
         {   // CHORDS / GROOVE / FORM FROM AUDIO on synthetic audio at 120 BPM (2 beats a second)
             constexpr double rate=22050;const double bps=2;auto tone=[&](std::vector<float>& x,double from,double to,std::initializer_list<int> notes,float level){
                 for(int n:notes){const double f=440*std::pow(2.,(n-69)/12.);for(int s=(int)(from*rate);s<(int)(to*rate)&&s<(int)x.size();++s)for(int h=1;h<=3;++h)x[(size_t)s]+=level/h*(float)std::sin(juce::MathConstants<double>::twoPi*f*h*s/rate);}};

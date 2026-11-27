@@ -1,5 +1,12 @@
 # Changelog — Fase Groove Arranger
 
+## 0.57.33
+
+- The bass locks to the kick when it is played and exported (audio and MIDI): an attack landing 0-25 ms after a kick plays with it, so kick and bass no longer flam in the low end (it happened in 30 of 32 test songs). The notes in the project stay as written.
+- The bass never goes under E1 (the sub-bass part owns that range): lower notes move up an octave.
+- A breakdown that runs into a main part or a drop with no build-up and no stop ends on a one-beat fill rising into it (16th snares; toms in Afro and Latin House).
+- With the master tempo lane the ruler, clock and export time are computed segment by segment between the lane's points instead of in 1/64-beat steps from the song start (a long song with a tempo lane no longer slows the timeline down).
+
 ## 0.57.32
 
 - Strings and guitar keep their register from section to section: a section whose centre would jump 9 semitones or more moves an octave toward the one before (pads no longer leap an octave at a section change; under the voice with VOCALS PRESENT).

@@ -348,10 +348,12 @@ double Project::clipLength(int track,int section) const {
 double Project::bpmAt(double beat) const{return tempoAutomation.active()?bpmFromAutomation(tempoAutomation.valueAt(beat)):settings.bpm;}
 double Project::secondsAt(double beat) const{
     if(!tempoAutomation.active())return beat*60./settings.bpm;
-    // Integrated in 1/64-beat steps (midpoint rule): exact for steps, within microseconds on ramps.
-    constexpr double step=1./64.;double seconds=0,b=0;const double end=std::max(0.,beat);
-    for(;b+step<=end;b+=step)seconds+=step*60./bpmAt(b+step*.5);
-    return seconds+(end-b)*60./bpmAt(b+(end-b)*.5);
+    // Segment by segment between the lane's points (Simpson's rule, 16 steps each): the time of a position costs
+    // a few dozen evaluations per point, not one per 1/64 beat from the song start (the ruler asks it per label).
+    const double end=std::max(0.,beat);auto inv=[&](double b){return 60./bpmAt(b);};
+    auto simpson=[&](double a,double z){if(z<=a)return 0.;constexpr int n=16;const double h=(z-a)/n;double sum=inv(a)+inv(z);for(int i=1;i<n;++i)sum+=inv(a+i*h)*(i%2?4:2);return sum*h/3;};
+    double seconds=0,from=0;for(const auto& point:tempoAutomation.points){if(point.beat<=from)continue;if(point.beat>=end)break;seconds+=simpson(from,point.beat);from=point.beat;}
+    return seconds+simpson(from,end);
 }
 double Project::length() const {
     // Running section starts: length() runs on every timer tick and paint.
@@ -2311,6 +2313,25 @@ static void bandRoles(Project& p,const std::function<bool(int,int)>& inScope){
         for(size_t k=0;k<groups.size();++k)if(drop[k])for(size_t i=groups[k].first;i<groups[k].second;++i)c.notes[i].velocity=0;
         c.notes.erase(std::remove_if(c.notes.begin(),c.notes.end(),[](const Note& n){return n.velocity==0;}),c.notes.end());tidyNotes(c,p.clipLength(3,(int)ci));}
 }
+// The rhythm section: a bass note under E1 goes up an octave (the sub part owns that range); and a breakdown that
+// leads into a main part or a drop without a build-up or a stop ends on a one-beat fill (16th snares,
+// toms in Afro and Latin) rising into it.
+static void rhythmSection(Project& p,Scope scope,int track,int section,int lastClip=-1){
+    if((int)p.tracks.size()<17)return;const auto inScope=[&](int ti,int ci){return editableTake(p,scope,track,section,ti,ci,lastClip);};
+    [[maybe_unused]] auto onsets=[&](int ti){std::vector<double> out;const auto& t=p.tracks[(size_t)ti];if(t.mute)return out;for(size_t ci=0;ci<t.clips.size();++ci){const double at=p.clipStart(ti,(int)ci);for(const auto& n:t.clips[ci].notes)out.push_back(at+n.start);}std::sort(out.begin(),out.end());return out;};
+    {auto& bass=p.tracks[1];
+     if(!bass.locked&&bass.instrument!="sample")for(size_t ci=0;ci<bass.clips.size();++ci){auto& c=bass.clips[ci];if(c.locked||c.loopLength>0||!inScope(1,(int)ci))continue;bool moved=false;
+        for(auto& n:c.notes)if(n.pitch<28){n.pitch+=12;moved=true;}
+        if(moved)tidyNotes(c,p.clipLength(1,(int)ci));}}
+    const bool hands=isAfroLatinGenre(p.settings.genre);const int fillTrack=4+(int)(hands?fgd::Lane::tom:fgd::Lane::snare);auto& fill=p.tracks[(size_t)fillTrack];
+    if(!fill.locked&&!isElectronicGenre(p.settings.genre))for(size_t si=1;si<p.sections.size()&&si<fill.clips.size()+1;++si){const auto& prev=p.sections[si-1];const auto type=p.sections[si].type;
+        if(prev.type!=Section::breakdown||(type!=Section::main&&type!=Section::drop)||prev.dropGap>0||prev.bars<2||fill.freeTimeline)continue;const size_t ci=si-1;
+        if(ci>=fill.clips.size()||fill.clips[ci].locked||!inScope(fillTrack,(int)ci))continue;auto& c=fill.clips[ci];const double end=prev.bars*4.;
+        const bool busy=std::any_of(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.start>=end-1-1e-6;});if(busy)continue;
+        const int pitch=fill.engine.midiNote>=0?fill.engine.midiNote:fgd::defaultNote(fillTrack-4);
+        for(int k=0;k<4;++k)c.notes.push_back({end-1+k*.25,.2,pitch+(hands?(k<2?2:0):0),56+k*14,fillTrack-4});
+        std::sort(c.notes.begin(),c.notes.end(),[](const Note& a,const Note& b){return a.start<b.start;});}
+}
 static void bandPasses(Project& p,const std::function<bool(int,int)>& freshIn,const std::function<bool(int,int)>& articulate,const std::array<std::vector<std::vector<Note>>,4>* shaped=nullptr){
     // A clip whose engine output is the one already shaped gets its shaped notes back, untouched.
     static constexpr int bandTracks[4]{2,3,leadTrack,0};std::set<std::pair<int,int>> kept;
@@ -2342,6 +2363,7 @@ void generate(Project& p,Scope scope,int track,int section,std::uint32_t seed) {
     addSectionCrashes(p,scope,track,section);transitionMacros(p,scope,track,section,lastClip);shapeBuildups(p,scope,track,section,lastClip);preDropRisers(p,scope,track,section,lastClip);applyDropGaps(p,scope,track,section,lastClip);
     {const auto fresh=[&](int ti,int ci){for(int k=0;k<4;++k)if(bandTracks[k]==ti){const auto& before=written[(size_t)k];return scope==Scope::song||ci>=(int)before.size()||before[(size_t)ci]!=p.tracks[(size_t)ti].clips[(size_t)ci].notes;}return false;};
      bandPasses(p,fresh,[&](int ti,int ci){return editableTake(p,scope,track,section,ti,ci,lastClip);},&written);}
+    rhythmSection(p,scope,track,section,lastClip);   // last: the bass locks to the kick after the band passes have voiced around it
     // the added parts follow the band they are written from: a new bass, piano or lead rewrites them too
     {const bool source=scope==Scope::song||((scope==Scope::track||scope==Scope::clip||scope==Scope::section)&&(track==0||track==1||track==leadTrack));if(source)generateParts(p,Scope::song,0,0);else generateParts(p,scope,track,section,lastClip);}
     // An explicit regeneration (a seed) also rolls the automation of that scope, when asked for.
@@ -2585,7 +2607,7 @@ void applyGlobalFeel(Project& p,unsigned parameters){
     }
     // Apply the existing takes once; no new form, harmony, tempo or automation.
     std::array<std::vector<std::vector<Note>>,4> shaped;{const int bandTracks[4]{2,3,leadTrack,0};for(int k=0;k<4;++k)if(bandTracks[k]<(int)p.tracks.size())for(const auto& c:p.tracks[(size_t)bandTracks[k]].clips)shaped[(size_t)k].push_back(c.notes);}
-    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);preDropRisers(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);generateParts(p,Scope::song,0,0);
+    generateNotes(p,Scope::song,0,0,0);generateVocalChops(p,Scope::song,0,0,0);addSectionCrashes(p,Scope::song,0,0);transitionMacros(p,Scope::song,0,0);shapeBuildups(p,Scope::song,0,0);preDropRisers(p,Scope::song,0,0);applyDropGaps(p,Scope::song,0,0);bandPasses(p,[](int,int){return true;},[](int,int){return true;},&shaped);rhythmSection(p,Scope::song,0,0);generateParts(p,Scope::song,0,0);
 }
 bool regenerateClip(Project& p,int track,int clip,std::uint32_t seed) {
     if(track<0||track>=(int)p.tracks.size()||!hasGenerator(p.tracks[(size_t)track]))return false;
@@ -2822,6 +2844,12 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
             }
         }
     }
+    // The bass locks to the kick as it is played and exported (the notes in the project stay as written, so the
+    // band generated around them is unchanged): a bass attack 0-25 ms after a kick is played with it, not as a
+    // flam in the low end; the note keeps its end.
+    if((int)p.tracks.size()>4&&!p.tracks[1].mute){std::vector<double> kicks;for(const auto& e:out)if(e.track==4&&e.velocity>0&&e.controller<0)kicks.push_back(e.beat);std::sort(kicks.begin(),kicks.end());
+        const double window=.025*p.bpmAt(0)/60.;
+        if(!kicks.empty())for(auto& e:out)if(e.track==1&&e.velocity>0&&e.controller<0&&e.audioOffset<0){auto it=std::upper_bound(kicks.begin(),kicks.end(),e.beat);if(it!=kicks.begin()){const double k=*(it-1);if(e.beat-k>1e-6&&e.beat-k<=window)e.beat=k;}}}
     std::stable_sort(out.begin(),out.end(),[](const TimedEvent& a,const TimedEvent& b){if(a.beat!=b.beat)return a.beat<b.beat;if((a.controller>=0)!=(b.controller>=0))return a.controller>=0;return a.velocity<b.velocity;});return out;
 }
 }
