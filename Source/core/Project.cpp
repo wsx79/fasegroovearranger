@@ -1751,8 +1751,8 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         std::sort(melody.begin(),melody.end(),[](const Note& a,const Note& b){return a.start<b.start;});
         auto playing=[&](double beat){const Note* prev=nullptr;const Note* next=nullptr;for(const auto& n:melody){if(n.start<=beat+1e-6)prev=&n;else{next=&n;break;}}
             if(!prev)return false;const double end=prev->start+prev->length;return beat<end||(next&&next->start-end<=1.&&beat<next->start);};
-        auto coverEnd=[&](double beat){double end=-1;for(const auto& n:melody){const double e=n.start+n.length;if(n.start<=beat+1e-6){if(beat<e||end>=0&&n.start-end<=1.)end=std::max(end,e);else end=-1;}
-                else if(end>=0&&n.start-end<=1.)end=std::max(end,e);else if(end>=0)break;}return end<0?beat:end;};
+        /* the end of the run of melody notes (gaps of a beat at most) that plays at this beat, a gap after a note included */
+        auto coverEnd=[&](double beat){if(!playing(beat))return beat;double end=beat;for(const auto& n:melody){const double e=n.start+n.length;if(n.start<=beat+1e-6)end=std::max(end,e);else if(n.start-end<=1.)end=std::max(end,e);else break;}return end;};
         double loudness=0;for(const auto& n:melody)loudness+=n.velocity;loudness/=melody.size();
         // the take's dice follow the engine's own take (its notes), so every regeneration is a new melody
         std::uint32_t r=mix(c.seed^mix(c.motifSeed+0x6c8e9cf5U)^mix(t.engine.riffSeed+0x2545f491U));for(const auto& n:melody)r=mix(r^(std::uint32_t)((n.pitch-melody.front().pitch+64)*131+std::lround(n.start*4)*7));/* intervals: an octave change keeps the take */// The hook: the song's motif (shared by every take of the lead) picks where the line starts and the first
@@ -1801,7 +1801,9 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
         out.erase(std::remove_if(out.begin(),out.end(),[&](const Note& n){return n.start>=length-1./32.||!playing(n.start);}),out.end());
         // one voice: each note ends before the next starts
         std::sort(out.begin(),out.end(),[](const Note& a,const Note& b){return a.start<b.start;});
-        for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::max(1./32.,std::min(out[i].length,coverEnd(out[i].start)-out[i].start));}
+        for(size_t i=0;i<out.size();++i){if(i+1<out.size())out[i].length=std::min(out[i].length,out[i+1].start-out[i].start-1./64.);out[i].length=std::min(out[i].length,coverEnd(out[i].start)-out[i].start);}
+        /* a note left with less than a 16th before the next one or the end of the phrase is a click, not a note */
+        out.erase(std::remove_if(out.begin(),out.end(),[](const Note& n){return n.length<1./16.;}),out.end());
         if(out.size()<2)continue;
         // a held melody note never sits a semitone from the accompaniment it sounds with: it moves to
         // the nearest chord tone that does not
@@ -1812,8 +1814,10 @@ static void shapeLeadMelody(Project& p,const std::function<bool(int,int)>& fresh
             for(int k=1;k<7;++k){bool done=false;for(int q:{n.pitch-k,n.pitch+k})if(q>=low-2&&q<=high+2&&chordTone(q,n.start)&&!rubs(q,n.start,n.start+n.length)){n.pitch=q;done=true;break;}if(done)break;}}}
         // NEW FEEL and humanize stay audible: each note takes the micro-timing of the engine's nearest onset
         for(auto& n:out){const Note* near=nullptr;for(const auto& m:melody)if(!near||std::abs(m.start-n.start)<std::abs(near->start-n.start))near=&m;
+            const double placed=n.start;   /* the cover is measured where the note was placed, before its micro-timing */
             if(near&&std::abs(near->start-n.start)<.5){const double offset=near->start-std::round(near->start*4)/4;if(std::abs(offset)<.1)n.start=std::max(0.,n.start+offset);}
-            n.length=std::max(1./32.,std::min(n.length,coverEnd(n.start)-n.start));}
+            n.length=std::min(n.length,coverEnd(placed)-n.start);}
+        out.erase(std::remove_if(out.begin(),out.end(),[](const Note& n){return n.length<1./16.;}),out.end());
         for(size_t i=0;i+1<out.size();++i)out[i].length=std::max(1./64.,std::min(out[i].length,out[i+1].start-out[i].start-1./128.));
         c.notes=std::move(chords);c.notes.insert(c.notes.end(),out.begin(),out.end());tidyNotes(c,length);
     }
