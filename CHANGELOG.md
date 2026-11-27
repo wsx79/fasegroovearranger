@@ -1,5 +1,18 @@
 # Changelog — Fase Groove Arranger
 
+## 0.58.2
+
+- Piano, bass, strings and guitar count the chord cycle from each section's start, like the lead, the sub and the ruler: a section that does not start on the cycle (6 bars after 8, three chords in eight bars) no longer plays other chords than the rest of the band.
+- Import MIDI no longer reads past its tables on diminished, half-diminished, augmented or sus chords (a Bm7b5 was read as B major); those chords come in as the major, minor or dominant they stand for.
+- Build-ups: the progression fills the eight bars and turns only in the last one (a short vamp hit the dominant every two or three bars); Afro and Dorian turn on a major bVII instead of a V7.
+- The bass locks to the kick also after a bass or kick edit, at the tempo where the kick plays, and never to a muted kick.
+- VARY FORM and the target duration move free MIDI and audio clips and the automation with the sections, never cut a free clip, and measure the song through the MASTER TEMPO lane.
+- Guide chorus and reverb play when automation raises them from zero.
+- Strings and guitar never move under the bass register at a section change.
+- Shared engines (Fase Groove Drums, Guitar, Piano): edited grooves keep their genre; Afro/Latin tumba on the Low Conga, congas and clave from the intro, kick pushes kept; guitar ROOT lane on the root, four-string arpeggio, walks into the next chord; gospel thirds fill walks down; Lydian Jack bVII major; lighter guide drum synthesis.
+- 164 error messages and 26 menu items and labels are translated in every language (some Italian texts showed in the English interface).
+- Release notes match the exact version; a push no longer cancels a release build under way.
+
 ## 0.58.1
 
 - Lead melodies play their notes again: two thirds of them were cut to a 15 ms click wherever the original phrase had a short gap. The melody now holds each note until the next one or the end of its phrase; a note that would be left shorter than a 16th is left out, so the stop before a drop stays silent.

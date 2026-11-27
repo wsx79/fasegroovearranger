@@ -133,7 +133,9 @@ DrumPattern applySection (const DrumPattern& source, Section section)
             for (int l = 0; l < numLanes; ++l)
             {
                 const auto lane = (Lane) l;
-                if (lane == Lane::kick || lane == Lane::closedHat || lane == Lane::openHat || lane == Lane::shaker)
+                // Afro and Latin open and close on their hand percussion (congas, clave), the DJ's blend
+                const bool percussion = (genre == afro || genre == 13) && (lane == Lane::conga || lane == Lane::rim);
+                if (lane == Lane::kick || lane == Lane::closedHat || lane == Lane::openHat || lane == Lane::shaker || percussion)
                     soften (p.lanes[(size_t) l]);
                 else
                     p.lanes[(size_t) l].assign ((size_t) len, '.');

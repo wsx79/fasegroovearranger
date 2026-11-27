@@ -164,7 +164,9 @@ void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
         // length) only that track's events are rebuilt. Other publishers (export, tests) drop them.
         const juce::ScopedLock cacheLock(publishedLock);
         const bool reuse=normalised&&publishedValid&&onlyTrack>=0&&onlyTrack<engineTrackCount&&songLength==published.length;
-        if(reuse){std::swap(*next,published);next->schedules[(size_t)onlyTrack].clear();for(auto& e:events(p,onlyTrack))next->schedules[(size_t)onlyTrack].push_back(e);next->hashes[(size_t)onlyTrack]=hashEvents(next->schedules[(size_t)onlyTrack]);}
+        if(reuse){std::swap(*next,published);
+            // the bass locks to the kick: a kick edit rebuilds the bass's schedule too
+            for(int rebuilt:{onlyTrack,onlyTrack==4?1:-1}){if(rebuilt<0||rebuilt>=engineTrackCount)continue;next->schedules[(size_t)rebuilt].clear();for(auto& e:events(p,rebuilt))next->schedules[(size_t)rebuilt].push_back(e);next->hashes[(size_t)rebuilt]=hashEvents(next->schedules[(size_t)rebuilt]);}}
         else{for(auto& e:events(p))if(e.track>=0&&e.track<engineTrackCount)next->schedules[(size_t)e.track].push_back(e);
             for(size_t ti=0;ti<(size_t)engineTrackCount;++ti)next->hashes[ti]=hashEvents(next->schedules[ti]);}
         publishedValid=normalised;next->length=songLength;if(normalised)published=*next;
@@ -199,7 +201,7 @@ void AudioEngine::applyMix(const MixState& m,bool snap){
         i.mute=t.mute;i.solo=t.solo;i.sound=(float)t.sound;i.tone=(float)t.tone;
         i.bassLowPass.setCutoffFrequency((float)(100+1400*t.tone));i.drums.setKit(t.sound);i.drums.setTone((float)t.tone);i.guitar.setSound(t.sound);i.guitar.setTone((float)t.tone);i.lead.setSound(t.sound);i.lead.setTone((float)t.tone);
         for(size_t lane=0;lane<i.guitarLevels.size();++lane){i.guitarLevels[lane]=t.laneVolume[lane];if(i.guitarMuted[lane]!=t.laneMute[lane]){i.guitarMuted[lane]=t.laneMute[lane];if(playing){i.resync=true;needsResync=true;}}}
-        juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.chorus*.5f);i.chorus.setRate(.35f);i.chorus.setDepth(.25f);
+        juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)t.reverb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)t.chorus*.5f);i.reverbLevel=t.reverb;i.chorusLevel=t.chorus;i.chorus.setRate(.35f);i.chorus.setDepth(.25f);
         i.pump=t.pump;i.pumpRelease=t.pumpRelease;i.pumpRate=t.pumpRate;i.pumpSource=t.pumpSource;if(isDrumTrack((int)ti))i.drumNotes[ti-4]=t.drumNote;}
     if(sidechainRouting(instruments,false))delayStorageNeeded=true;
 }
@@ -301,7 +303,7 @@ void AudioEngine::applySoundAutomation(Instrument& i,double beat){
         else if(i.mode==1){if(lane.index==4){sampler.filter=true;sampler.cutoff=20.*std::pow(1000.,value);}else if(lane.index==5){sampler.filter=true;sampler.resonance=value;}}}
     if(i.mode==1){if(auto* synth=dynamic_cast<SampleSynth*>(i.sampler.get()))synth->configure(sampler,t.sampleRoot,tempo.load());return;}
     if(i.mode!=0)return;i.tone=(float)tone;i.drums.setTone((float)tone);i.guitar.setTone((float)tone);i.lead.setTone((float)tone);i.bassLowPass.setCutoffFrequency((float)(100+1400*tone));
-    juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)verb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)chorus*.5f);i.pump=pump;
+    juce::Reverb::Parameters rp;rp.roomSize=.4f;rp.wetLevel=(float)verb*.4f;rp.dryLevel=.5f;rp.width=1;i.reverb.setParameters(rp);i.chorus.setMix((float)chorus*.5f);i.reverbLevel=verb;i.chorusLevel=chorus;i.pump=pump;
 }
 // Hosted lanes are evaluated at exact breakpoint boundaries and bounded ramp intervals.
 void AudioEngine::applyParameterAutomation(Instrument& i,double beat,int slot){
@@ -488,8 +490,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
-            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&i.controls->chorus>0)i.chorus.process(context);   /* chorus off: its delay lines (set per sample) are skipped entirely */
-            if(i.controls&&i.controls->reverb>0)i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);   /* at zero the guide reverb is unity: skipped, as the chorus */
+            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&i.chorusLevel>0)i.chorus.process(context);   /* chorus off: its delay lines (set per sample) are skipped entirely */
+            if(i.controls&&i.reverbLevel>0)i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);   /* at zero the guide reverb is unity: skipped, as the chorus */
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
                 // Kick source: the last kick at or before the block start is found once, then each
                 // sample only steps over the kicks it passes (times grow through the block).
@@ -891,7 +893,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     } guard{*this};
     publish(p);
     int compensation=0;
-    {const EngineControlLock lock(*this);for(int ti=0;ti<engineTrackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Ricollega gli strumenti mancanti prima di esportare.");
+    {const EngineControlLock lock(*this);for(int ti=0;ti<engineTrackCount;++ti)if(instruments[(size_t)ti]->mode==3&&(onlyTrack<0||ti==onlyTrack))return juce::Result::fail("Relink the missing instruments before exporting.");
         playing=false;currentBeat=0;needsChase=false;collectGarbage();adoptState();for(auto& instrument:instruments)instrument->releaseVoices();   /* no voice of the previous render still ringing */const double requestedRate=mp3?44100:options.sampleRate>0?options.sampleRate:deviceRate;
         const bool changedRate=requestedRate!=sampleRate;sampleRate=requestedRate;publishTransport();prepareBuses(sampleRate,blockSize);
         if(changedRate)for(auto& i:instruments)i->prepare(sampleRate,blockSize);prepareDelayLines();resetAt(0);
@@ -906,7 +908,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     // inventing a loop beat count that would stretch the tail in another host.
     metadata.set(juce::WavAudioFormat::acidOneShot,"1");metadata.set(juce::WavAudioFormat::acidNumerator,juce::String(timeNumerator.load()));metadata.set(juce::WavAudioFormat::acidDenominator,juce::String(timeDenominator.load()));
     metadata.set("ISFT","Fase Groove Arranger");metadata.set("ICMT","BPM: "+exportTempo(p)+"; Key: "+exportKey(p));
-    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("Encoder WAV non disponibile.");juce::Random dither(0x5eed);stream.release();
+    juce::WavAudioFormat format;std::unique_ptr<juce::AudioFormatWriter> writer(format.createWriterFor(stream.get(),sampleRate,2,modern?32:mp3?24:options.bitDepth,metadata,0));if(!writer)return juce::Result::fail("WAV encoder not available.");juce::Random dither(0x5eed);stream.release();
     // Keep identical stem lengths and retain natural sample/effect tails beyond the song.
     double endSeconds=p.secondsAt(p.length());
     for(size_t ti=0;ti<p.tracks.size();++ti){const auto& track=p.tracks[ti];auto asset=sampleAsset((int)ti);if(track.instrument!="sample"||!asset)continue;
@@ -945,13 +947,13 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
     const double encodedShare=mp3?.8:1.,renderShare=analysis?1.:modern?(mp3?.4:.5):encodedShare;
     const juce::int64 renderTotal=total+compensation;
     const bool tempoLane=p.tempoAutomation.active();double exportBeat=0;struct TempoRestore{std::atomic<double>& t;double v;~TempoRestore(){t=v;}} tempoRestore{tempo,p.settings.bpm};   // with the MASTER TEMPO lane the position advances at each block's tempo
-    for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Esportazione annullata.");int n=(int)std::min<juce::int64>(tempoLane?std::min(blockSize,256):blockSize,renderTotal-at);buffer.clear();
+    for(juce::int64 at=0;at<renderTotal;){if(cancelled())return juce::Result::fail("Export cancelled.");int n=(int)std::min<juce::int64>(tempoLane?std::min(blockSize,256):blockSize,renderTotal-at);buffer.clear();
         const int skip=(int)std::clamp<juce::int64>(compensation-at,0,n);
         {const EngineControlLock lock(*this);if(tempoLane){tempo=p.bpmAt(exportBeat);currentBeat=exportBeat;exportBeat+=n*tempo.load()/(sampleRate*60.);}else currentBeat=at*p.settings.bpm/(sampleRate*60.);render(buffer.getArrayOfWritePointers(),2,n,currentBeat,onlyTrack,true,analysis);}
         if(!modern&&options.loudnessGuard)guardLimiter.process(buffer,n);
         for(int ch=0;ch<2;++ch)for(int sample=0;sample<n;++sample){
             const float value=buffer.getSample(ch,sample);
-            if(!std::isfinite(value))return juce::Result::fail("Audio non finito: controlla lo strumento e i livelli.");
+            if(!std::isfinite(value))return juce::Result::fail("Audio is not finite: check the instrument and its levels.");
             if(rawPeak)*rawPeak=std::max(*rawPeak,(double)std::abs(value));
             if(!modern)buffer.setSample(ch,sample,std::clamp(value,-.999f,.999f));
         }
@@ -962,7 +964,7 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
             analysis->written+=frames;
         }
         if(n>skip&&!modern&&!mp3&&options.bitDepth==16)ditherTo16(buffer,skip,n-skip,dither);
-        if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("Scrittura WAV fallita (spazio disco?).");at+=n;progress((double)at/(double)renderTotal*renderShare);
+        if(n>skip&&!writer->writeFromAudioSampleBuffer(buffer,skip,n-skip))return juce::Result::fail("WAV writing failed (disk space?).");at+=n;progress((double)at/(double)renderTotal*renderShare);
     }
     if(!writer->flush())return juce::Result::fail("Cannot finish export staging WAV.");writer.reset();
     if(analysis){
@@ -976,25 +978,25 @@ juce::Result AudioEngine::renderExport(const Project& source,const juce::File& f
         if(result.failed())return result;
     }else if(options.loudnessGuard){auto guarded=ExportPeakGuard::verifyFile(temp.getFile(),mp3?24:options.bitDepth,cancelled,options.ceilingDb);if(guarded.failed())return guarded;}
     // The final progress notification may deliver cancellation after the last render block.
-    if(cancelled())return juce::Result::fail("Esportazione annullata.");
-    if(!mp3)return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare il WAV.");
-    auto wavStream=temp.getFile().createInputStream();if(!wavStream)return juce::Result::fail("WAV temporaneo non leggibile.");
-    std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(wavStream.release(),true));if(!reader)return juce::Result::fail("WAV temporaneo non valido.");
-    Mp3Encoder encoder;if(!encoder.valid())return juce::Result::fail("Encoder MP3 non disponibile.");
+    if(cancelled())return juce::Result::fail("Export cancelled.");
+    if(!mp3)return temp.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Cannot finish the WAV.");
+    auto wavStream=temp.getFile().createInputStream();if(!wavStream)return juce::Result::fail("Temporary WAV is unreadable.");
+    std::unique_ptr<juce::AudioFormatReader> reader(format.createReaderFor(wavStream.release(),true));if(!reader)return juce::Result::fail("Invalid temporary WAV.");
+    Mp3Encoder encoder;if(!encoder.valid())return juce::Result::fail("MP3 encoder not available.");
     juce::TemporaryFile encoded(file);auto out=encoded.getFile().createOutputStream();if(!out)return juce::Result::fail("Cannot write the MP3 file.");
     const int frame=encoder.frameSize();juce::AudioBuffer<float> audio(2,frame);std::vector<std::int16_t> pcm((size_t)frame*2);
     // Gapless: an Info/LAME frame first (patched at the end) tells decoders to skip the encoder
     // delay and padding; enough silence is encoded after the song that the decoder's own delay
     // never cuts the tail. The MP3 then lines up sample-exactly with the WAV.
-    if(!out->write(Mp3Encoder::infoFrame(0,0,0).data(),(size_t)Mp3Encoder::infoFrameBytes))return juce::Result::fail("Scrittura MP3 fallita.");
+    if(!out->write(Mp3Encoder::infoFrame(0,0,0).data(),(size_t)Mp3Encoder::infoFrameBytes))return juce::Result::fail("MP3 writing failed.");
     std::uint32_t frames=0;const juce::int64 encodeTotal=total+Mp3Encoder::encoderDelay+Mp3Encoder::decoderDelay;
-    for(juce::int64 at=0;at<encodeTotal;at+=frame){++frames;if(cancelled())return juce::Result::fail("Esportazione annullata.");audio.clear();if(at<total)reader->read(&audio,0,(int)std::min<juce::int64>(frame,total-at),at,true,true);
+    for(juce::int64 at=0;at<encodeTotal;at+=frame){++frames;if(cancelled())return juce::Result::fail("Export cancelled.");audio.clear();if(at<total)reader->read(&audio,0,(int)std::min<juce::int64>(frame,total-at),at,true,true);
         for(int i=0;i<frame;++i)for(int ch=0;ch<2;++ch)pcm[(size_t)i*2+(size_t)ch]=(std::int16_t)std::lround(std::clamp(audio.getSample(ch,i),-.999f,.999f)*32767.f);
-        auto bytes=encoder.encode(pcm.data());if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");progress(.8+.2*std::min(1.,(double)(at+frame)/(double)encodeTotal));
-    }auto bytes=encoder.flush();if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("Scrittura MP3 fallita.");
+        auto bytes=encoder.encode(pcm.data());if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("MP3 writing failed.");progress(.8+.2*std::min(1.,(double)(at+frame)/(double)encodeTotal));
+    }auto bytes=encoder.flush();if(!bytes.empty()&&!out->write(bytes.data(),bytes.size()))return juce::Result::fail("MP3 writing failed.");
     const auto info=Mp3Encoder::infoFrame(frames,(std::uint32_t)out->getPosition(),total);
-    if(!out->setPosition(0)||!out->write(info.data(),info.size()))return juce::Result::fail("Scrittura MP3 fallita.");out->flush();if(out->getStatus().failed())return juce::Result::fail("Scrittura MP3 fallita.");out.reset();
-    if(cancelled())return juce::Result::fail("Esportazione annullata.");
-    return encoded.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Impossibile completare MP3.");
+    if(!out->setPosition(0)||!out->write(info.data(),info.size()))return juce::Result::fail("MP3 writing failed.");out->flush();if(out->getStatus().failed())return juce::Result::fail("MP3 writing failed.");out.reset();
+    if(cancelled())return juce::Result::fail("Export cancelled.");
+    return encoded.overwriteTargetFileWithTemporary()?juce::Result::ok():juce::Result::fail("Cannot finish the MP3.");
 }
 }

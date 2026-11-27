@@ -4,6 +4,7 @@
 // vibrato, 120 BPM), then a rest bar. Notes, key, phrases and the chords fitted under them.
 #pragma once
 #include "../Source/core/VocalArrangement.h"
+#include "../Source/core/ElectronicStyles.h"
 inline void verifyVocalArrangement(){
     constexpr double rate=22050,bpm=120;const double bps=bpm/60;
     const std::vector<std::vector<int>> bars{{60,64,67,64},{65,69,72,69},{67,71,74,71},{}};
@@ -82,6 +83,20 @@ inline void verifyReviewFixes(){
 }
 // Second review (0.57.28): the drop resolves the build-up's dominant, later drops vary, short Afro/Latin
 // intros stand on bass and percussion, Latin RANDOM CHORDS keeps the mode, automation blocks = valueAt.
+// A section that does not start on the chord cycle (6 bars after an 8-bar one, 4 one-bar chords): the
+// band's engines count the progression from the section start, as the ruler and chordAtBeat do.
+inline void verifySectionChordCycle(){
+    for(int g:{0,1,2}){auto p=fga::newProject(g);p.settings.randomAutomation=false;
+        p.sections={{fga::Section::main,8,"Main 1"},{fga::Section::main,6,"Main 2"},{fga::Section::main,8,"Main 3"}};p.normalise();
+        p.settings.chordCount=4;p.settings.chordSteps=16;p.settings.degrees={0,5,3,4,0,0,0,0};p.settings.freeChords.fill(-1);
+        fga::generate(p);int bars=0,onRoot=0;
+        for(int si=1;si<3;++si){const double from=p.sectionStart(si);const auto h=fga::resolveSectionHarmony(p,si);
+            for(int b=0;b<p.sections[(size_t)si].bars;++b){const double beat=from+b*4;const int root=fga::chordAtBeat(h,beat+.01).rootPc;bool hit=false,any=false;
+                for(size_t ci=0;ci<p.tracks[1].clips.size();++ci){const double at=p.clipStart(1,(int)ci);for(const auto& n:p.tracks[1].clips[ci].notes)if(at+n.start>=beat-.1&&at+n.start<beat+1){any=true;hit=hit||n.pitch%12==root;}}
+                if(any){++bars;onRoot+=hit;}}}
+        std::cout<<"CHORD_CYCLE genre="<<g<<" bass_on_root="<<onRoot<<"/"<<bars<<std::endl;
+        check(bars>0&&onRoot*10>=bars*9,"the bass follows the section's chord cycle in a section off the cycle");}
+}
 inline void verifyReviewFixes2(){
     int dropsOnTonic=0,dropsSeen=0,variedSongs=0,songsWithTwo=0;
     for(int g:{0,1,3,8,9,12})for(std::uint32_t seed:{5u,77u,901u}){auto p=fga::newProject(g);p.settings.randomAutomation=false;fga::generate(p,fga::Scope::song,0,0,seed);std::vector<std::vector<int>> phrases;

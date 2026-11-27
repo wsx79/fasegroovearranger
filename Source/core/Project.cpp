@@ -617,7 +617,7 @@ void chooseProgression(Settings& s,int preset) {
     const auto& all=sgk::progressionPresets(); const auto& pr=all[(size_t)std::clamp(preset,0,(int)all.size()-1)];
     s.manualChords.fill(false);s.freeChords.fill(-1);
     s.scale=pr.scale; auto slots=sgk::presetSlots(pr,s.extension);
-    s.chordCount=std::min(8,(int)slots.size());
+    s.chordCount=std::clamp((int)slots.size(),1,8);
     for(int i=0;i<s.chordCount;++i) {s.degrees[(size_t)i]=std::max(0,slots[(size_t)i].degree);s.freeChords[(size_t)i]=slots[(size_t)i].freeCode;}
 }
 void chooseProgression(Project& p,int preset) {chooseProgression(p.settings,preset);}
@@ -1171,26 +1171,41 @@ static int formPhraseBars(const Project& p){
 // phrases first, then 4-bar steps, growing the shortest main/drop or trimming the longest
 // section; the tempo moves only for the last few seconds, inside the genre's range.
 // An empty target leaves the generated form exactly as before.
+// A section resize by the form tools (VARY FORM, target duration): what follows moves with the section end,
+// free MIDI and audio clips included. A free clip inside the bars a shorter section gives up is never cut:
+// that section keeps its length.
+static bool resizeFormSection(Project& p,int index,int bars){
+    const bool free=std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.freeTimeline&&!t.clips.empty();});
+    if(!free){p.resizeSection(index,bars);return true;}
+    const double oldEnd=p.sectionStart(index+1),newEnd=p.sectionStart(index)+std::clamp(bars,1,128)*4.;
+    if(newEnd>oldEnd){if(!p.splitFreeAt(oldEnd))return false;p.shiftFreeFrom(oldEnd,newEnd-oldEnd);}
+    else if(newEnd<oldEnd){for(const auto& t:p.tracks)if(t.freeTimeline)for(const auto& c:t.clips)if(c.position<oldEnd-1e-6&&c.position+c.span>newEnd+1e-6)return false;
+        p.shiftFreeFrom(oldEnd,newEnd-oldEnd);}
+    p.resizeSection(index,bars,true);return true;
+}
 void fitFormToTarget(Project& p){
     const auto& s=p.settings;if(!s.targetEnabled||!(s.targetSeconds>0)||p.sections.empty()||!(s.bpm>0))return;
     // Audio clips and handwritten tracks no longer freeze the form: they keep their place in time.
     if(std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
     const int phrase=std::clamp(formPhraseBars(p),4,32);
     auto totalBars=[&]{int n=0;for(const auto& x:p.sections)n+=x.bars;return n;};
+    // the song's real length in seconds (the MASTER TEMPO lane included), as bars at the project tempo
+    auto songBars=[&]{p.normalise();return p.secondsAt(p.length())*s.bpm/240.;};
     const auto body=[](Section t){return t==Section::main||t==Section::drop;};
+    std::vector<char> fixed(p.sections.size(),0);   // a section a free clip keeps from shrinking
     for(int guard=0;guard<512;++guard){
-        const double target=s.targetSeconds*s.bpm/240.,tolerance=s.targetToleranceSeconds*s.bpm/240.,diff=target-totalBars();
+        const double target=s.targetSeconds*s.bpm/240.,tolerance=s.targetToleranceSeconds*s.bpm/240.,diff=target-songBars();
         if(std::abs(diff)<=tolerance+1e-9)break;
         int step=std::abs(diff)>=phrase*.75?phrase:4;if(step==4&&std::abs(diff)<2)break;
         int pick=-1;
         if(diff>0){for(int pass=0;pass<2&&pick<0;++pass)for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];if((pass==0)!=body(x.type)||x.bars+step>128)continue;if(pick<0||x.bars<p.sections[(size_t)pick].bars)pick=(int)i;}
-            if(pick<0)break;p.sections[(size_t)pick].bars+=step;}
+            if(pick<0)break;if(!resizeFormSection(p,pick,p.sections[(size_t)pick].bars+step))break;}
         else{for(int attempt=0;attempt<2&&pick<0;++attempt){if(attempt){if(step<=4)break;step=4;}   // nothing can lose a whole phrase: breaks and builds can still lose four bars
-            for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}}
-            if(pick<0)break;p.sections[(size_t)pick].bars-=step;}
+            for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(fixed[i]||x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}
+            if(pick<0)break;if(!resizeFormSection(p,pick,p.sections[(size_t)pick].bars-step)){fixed[(size_t)pick]=1;continue;}}}
     }
-    const double seconds=totalBars()*240./s.bpm;
-    if(std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
+    const double seconds=p.secondsAt(p.length());
+    if(!p.tempoAutomation.active()&&std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
         p.settings.bpm=std::clamp(std::round(totalBars()*240./s.targetSeconds*10)/10,low,high);}
     p.normalise();
 }
@@ -1223,7 +1238,7 @@ void varyForm(Project& p,std::uint32_t seed) {
         else if(type==Section::breakdown||type==Section::buildup){choices=bb;count=2;}
         for(int k=0;k<count;++k)if(choices[k]!=next.back()&&choices[k]%8==0){next.back()=choices[k];break;}
     }
-    for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)p.resizeSection((int)i,next[i]);
+    for(size_t i=0;i<next.size();++i)if(next[i]!=p.sections[i].bars)resizeFormSection(p,(int)i,next[i]);
 }
 // Without locks a new song follows the current settings: a factory form of
 // another genre becomes this genre's form, and tracks detached by timeline
@@ -1306,8 +1321,13 @@ static void sectionHarmonies(Project& p,std::uint32_t seed){
     Settings breakdown=found?drop:s;{const int count=breakdown.chordCount;const int second=count>=4?2:count>1?1:0;
         breakdown.degrees={breakdown.degrees[0],breakdown.degrees[(size_t)second],0,0,0,0,0,0};breakdown.freeChords={breakdown.freeChords[0],breakdown.freeChords[(size_t)second],-1,-1,-1,-1,-1,-1};
         breakdown.chordCount=2;breakdown.chordSteps=std::min(64,s.chordSteps*2);}
-    Settings build=s;if(build.chordCount==4&&build.chordSteps==16){for(int i=0;i<4;++i){build.degrees[(size_t)i+4]=build.degrees[(size_t)i];build.freeChords[(size_t)i+4]=build.freeChords[(size_t)i];}build.chordCount=8;}   /* eight bars: the turn only in the last one */
-    if(build.chordCount>=2){build.degrees[(size_t)(build.chordCount-1)]=4;build.freeChords[(size_t)(build.chordCount-1)]=24+7;}   // a dominant on the fifth (major V/V7 even in minor, not v)
+    /* eight bars: the progression repeats to fill them and the turn comes only in the last one (a short vamp
+       would otherwise hit the dominant every two or three bars) */
+    Settings build=s;{const int perChord=build.chordSteps/16;const int slots=perChord>=1&&8%perChord==0?8/perChord:0;
+        if(slots>build.chordCount&&slots<=8){const int count=std::max(1,build.chordCount);for(int i=count;i<slots;++i){build.degrees[(size_t)i]=build.degrees[(size_t)(i%count)];build.freeChords[(size_t)i]=build.freeChords[(size_t)(i%count)];}build.chordCount=slots;}}
+    if(build.chordCount>=2){const size_t last=(size_t)(build.chordCount-1);
+        if(s.genre==afroHouseGenre||s.scale==1){build.degrees[last]=6;build.freeChords[last]=10;}   // Afro and Dorian turn on the major bVII (in any scale), not a V7
+        else{build.degrees[last]=4;build.freeChords[last]=24+7;}}   // a dominant on the fifth (major V/V7 even in minor, not v)
     auto store=[&](SectionHarmony& h,const Settings& from){h.enabled=true;h.automatic=true;h.key=from.key;h.scale=from.scale;h.chordCount=from.chordCount;h.chordSteps=from.chordSteps;h.degrees=from.degrees;h.freeChords=from.freeChords;h.manualChords.fill(false);};
     int dropIndex=0;
     for(auto& section:p.sections){auto& h=section.harmony;if(h.enabled&&!h.automatic)continue;h.enabled=false;h.automatic=false;   /* the user's own section chords stay */
@@ -2282,7 +2302,7 @@ static void finalVoicing(Project& p,const std::function<bool(int,int)>& inScope)
         for(size_t ci=0;ci<t.clips.size();++ci){auto& c=t.clips[ci];std::vector<int> pitches;for(const auto& n:c.notes)pitches.push_back(n.pitch);
             if(pitches.size()<4){continue;}std::nth_element(pitches.begin(),pitches.begin()+(long)pitches.size()/2,pitches.end());double centre=pitches[pitches.size()/2];
             if(previous>0&&!c.locked&&c.loopLength<=0&&inScope(ti,(int)ci)&&std::abs(centre-previous)>=9){const int shift=centre>previous?-12:12;
-                const int ceiling=p.settings.vocalsPresent?83:96;const bool fits=std::all_of(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.pitch+shift>=40&&n.pitch+shift<=ceiling;});   /* under the voice with VOCALS PRESENT */
+                const int ceiling=p.settings.vocalsPresent?83:96;const bool fits=std::all_of(c.notes.begin(),c.notes.end(),[&](const Note& n){return n.pitch+shift>=52&&n.pitch+shift<=ceiling;});   /* under the voice with VOCALS PRESENT */
                 if(fits){for(auto& n:c.notes)n.pitch+=shift;centre+=shift;}}
             previous=centre;}}
     for(int ti:{0,2,3}){auto& t=p.tracks[(size_t)ti];if(t.locked||t.mute)continue;
@@ -2463,7 +2483,8 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             const double begin=p.clipStart(ti,(int)si)-(period>0?clip.loopPhase:0.);
             const double chordBeats=resolveSectionHarmony(p,guide).chordSteps*.25;
             const double grid=std::max(4.,chordBeats);
-            const double prefix=(ti<4||ti==leadTrack)?std::fmod(std::fmod(begin,grid)+grid,grid):0.;
+            const double origin=p.sectionStart(guide);   /* the chord cycle counts from the section start, as chordAtBeat and the ruler do */
+            const double prefix=(ti<4||ti==leadTrack)?std::fmod(std::fmod(begin-origin,grid)+grid,grid):0.;
             const double harmonicBeats=beats+prefix;
             const int harmonicBars=(int)std::ceil(harmonicBeats/4.);
             auto harmonicNotes=[&](const auto& events,auto filter){
@@ -2489,7 +2510,7 @@ static void generateNotes(Project& p,Scope scope,int track,int section,std::uint
             // the plugin's generic accelerating snare/piano build pattern.
             const auto engineType=type==Section::buildup&&!profile.rollingBuild?Section::main:type;
             const auto rhythmType=mixing?Section::main:engineType;
-            const int rawOffset=(int)std::llround((begin-prefix)/(ps.stepsPerChord*.25));
+            const int rawOffset=(int)std::llround((begin-origin-prefix)/(ps.stepsPerChord*.25));
             const int chordOffset=(rawOffset%ps.progressionLength+ps.progressionLength)%ps.progressionLength;
             for(auto* row:{&ps.progression,&ps.freeChords,&ps.inversions})
                 std::rotate(row->begin(),row->begin()+chordOffset,row->begin()+ps.progressionLength);
@@ -2851,9 +2872,14 @@ std::vector<TimedEvent> events(const Project& p,int onlyTrack) {
     // The bass locks to the kick as it is played and exported (the notes in the project stay as written, so the
     // band generated around them is unchanged): a bass attack 0-25 ms after a kick is played with it, not as a
     // flam in the low end; the note keeps its end.
-    if((int)p.tracks.size()>4&&!p.tracks[1].mute){std::vector<double> kicks;for(const auto& e:out)if(e.track==4&&e.velocity>0&&e.controller<0)kicks.push_back(e.beat);std::sort(kicks.begin(),kicks.end());
-        const double window=.025*p.bpmAt(0)/60.;
-        if(!kicks.empty())for(auto& e:out)if(e.track==1&&e.velocity>0&&e.controller<0&&e.audioOffset<0){auto it=std::upper_bound(kicks.begin(),kicks.end(),e.beat);if(it!=kicks.begin()){const double k=*(it-1);if(e.beat-k>1e-6&&e.beat-k<=window)e.beat=k;}}}
+    // A muted kick pulls nothing; the bass's own schedule (one track rebuilt after an edit) reads the kicks too.
+    if((int)p.tracks.size()>4&&!p.tracks[1].mute&&!p.tracks[4].mute&&(onlyTrack<0||onlyTrack==1)){std::vector<double> kicks;
+        if(onlyTrack<0){for(const auto& e:out)if(e.track==4&&e.velocity>0&&e.controller<0)kicks.push_back(e.beat);}
+        else for(const auto& e:events(p,4))if(e.track==4&&e.velocity>0&&e.controller<0)kicks.push_back(e.beat);
+        std::sort(kicks.begin(),kicks.end());
+        if(!kicks.empty())for(auto& e:out)if(e.track==1&&e.velocity>0&&e.controller<0&&e.audioOffset<0){auto it=std::upper_bound(kicks.begin(),kicks.end(),e.beat);if(it!=kicks.begin()){const double k=*(it-1);
+            const double window=.025*p.bpmAt(k)/60.;   /* 25 ms at the tempo where the kick plays (MASTER TEMPO lane) */
+            if(e.beat-k>1e-6&&e.beat-k<=window)e.beat=k;}}}
     std::stable_sort(out.begin(),out.end(),[](const TimedEvent& a,const TimedEvent& b){if(a.beat!=b.beat)return a.beat<b.beat;if((a.controller>=0)!=(b.controller>=0))return a.controller>=0;return a.velocity<b.velocity;});return out;
 }
 }

@@ -14,6 +14,29 @@
 #include <array>
 #include <cmath>
 #include <memory>
+#include <cstdint>
+#include <cstring>
+
+namespace guide_detail
+{
+    /** e^x for the envelopes, x <= 0 (an exponential decay): 2^(x log2 e), the fraction by a
+        degree-5 polynomial, under 1e-4 relative error (0.001 dB). Several per sample and voice, so std::exp
+        was the guide kit's main cost. */
+    inline float fastExp (double xd) noexcept
+    {
+        const float x = (float) xd * 1.4426950409f;
+        if (x < -126.0f)
+            return 0.0f;
+        if (x > 0.0f)
+            return (float) std::exp2 (x);
+        const float fl = std::floor (x), f = x - fl;
+        const float p = 1.0f + f * (0.693147182f + f * (0.240226507f + f * (0.0555041087f + f * (0.00961812911f + f * 0.00133335581f))));
+        const auto bits = (std::uint32_t) ((int) fl + 127) << 23;   // 2^floor(x) as a float's exponent
+        float scale;
+        std::memcpy (&scale, &bits, sizeof scale);
+        return p * scale;
+    }
+}
 
 /** A drum's own sample, loaded by the user in place of the built-in sound. */
 struct DrumSample
@@ -256,7 +279,7 @@ private:
             {
                 v.sample = std::move (s);
                 v.gain = std::pow (juce::jlimit (0.0f, 1.0f, velocity), 1.3f) * 0.9f * juce::jlimit (0.0f, 4.0f, laneVolume[(size_t) lane]);
-                v.sampleStep = v.sample->sampleRate / sampleRate * std::pow (2.0, (double) offset / 12.0);
+                v.sampleStep = v.sample->sampleRate / sampleRate * std::pow (2.0, (lane == (int) fgd::Lane::conga ? -4.0 : 1.0) * (double) offset / 12.0);   // a conga a note up is the lower drum (tumba), as in the synth
                 v.maxTime = (float) (v.sample->audio.getNumSamples() / v.sample->sampleRate) + 0.05f;
                 return;
             }
@@ -329,17 +352,17 @@ private:
         {
             case fgd::Lane::kick:
             {
-                const double f = k.kickLow + (k.kickHigh - k.kickLow) * std::exp (-t / k.kickPitchTime);
-                const float body = sine (v.phase1, f) * std::exp (-t / k.kickDecay);
-                const float click = v.noise() * std::exp (-t / 0.0015f) * k.kickClick;
+                const double f = k.kickLow + (k.kickHigh - k.kickLow) * guide_detail::fastExp (-t / k.kickPitchTime);
+                const float body = sine (v.phase1, f) * guide_detail::fastExp (-t / k.kickDecay);
+                const float click = v.noise() * guide_detail::fastExp (-t / 0.0015f) * k.kickClick;
                 out = std::tanh (k.kickDrive * (body + click)) / std::tanh (k.kickDrive);
                 break;
             }
             case fgd::Lane::snare:
             {
-                const double f = k.snareTone * (1.0 + 0.35 * std::exp (-t / 0.008));
-                const float toneOut = (0.65f * sine (v.phase1, f) + 0.35f * sine (v.phase2, f * 1.78)) * std::exp (-t / 0.07f);
-                const float n = v.f2.bandPass (v.f1.highPass (v.noise())) * 2.2f * std::exp (-t / k.snareNoiseDecay);
+                const double f = k.snareTone * (1.0 + 0.35 * guide_detail::fastExp (-t / 0.008));
+                const float toneOut = (0.65f * sine (v.phase1, f) + 0.35f * sine (v.phase2, f * 1.78)) * guide_detail::fastExp (-t / 0.07f);
+                const float n = v.f2.bandPass (v.f1.highPass (v.noise())) * 2.2f * guide_detail::fastExp (-t / k.snareNoiseDecay);
                 out = k.snareToneMix * toneOut + (1.0f - k.snareToneMix * 0.5f) * n;
                 break;
             }
@@ -349,16 +372,16 @@ private:
                 float env = 0.0f;
                 for (int i = 0; i < 3; ++i)
                     if (const float d = t - 0.0105f * (float) i; d >= 0.0f)
-                        env += std::exp (-d / 0.0035f);
+                        env += guide_detail::fastExp (-d / 0.0035f);
                 if (t > 0.021f)
-                    env += 0.75f * std::exp (-(t - 0.021f) / k.clapDecay);
+                    env += 0.75f * guide_detail::fastExp (-(t - 0.021f) / k.clapDecay);
                 out = v.f2.highPass (v.f1.bandPass (v.noise())) * 2.6f * env;
                 break;
             }
             case fgd::Lane::rim:
             {
-                const float body = (0.6f * sine (v.phase1, 1700.0) + 0.5f * sine (v.phase2, 480.0)) * std::exp (-t / 0.011f);
-                out = body + v.f1.highPass (v.noise()) * std::exp (-t / 0.0025f) * 0.6f;
+                const float body = (0.6f * sine (v.phase1, 1700.0) + 0.5f * sine (v.phase2, 480.0)) * guide_detail::fastExp (-t / 0.011f);
+                out = body + v.f1.highPass (v.noise()) * guide_detail::fastExp (-t / 0.0025f) * 0.6f;
                 break;
             }
             case fgd::Lane::closedHat:
@@ -366,34 +389,34 @@ private:
             {
                 const float src = k.metal * metal (v, 1.0f) + (1.0f - k.metal * 0.6f) * v.noise();
                 const float decay = v.lane == (int) fgd::Lane::closedHat ? k.closedDecay : k.openDecay;
-                out = v.f2.highPass (v.f1.highPass (src)) * std::exp (-t / decay) * 1.6f;
+                out = v.f2.highPass (v.f1.highPass (src)) * guide_detail::fastExp (-t / decay) * 1.6f;
                 break;
             }
             case fgd::Lane::ride:
             {
                 const float src = 0.8f * metal (v, 1.55f) + 0.25f * v.noise();
-                const float wash = v.f2.highPass (v.f1.bandPass (src)) * std::exp (-t / 1.1f) * 1.6f;
-                out = wash + 0.12f * sine (v.phase1, 3400.0) * std::exp (-t / 0.6f);
+                const float wash = v.f2.highPass (v.f1.bandPass (src)) * guide_detail::fastExp (-t / 1.1f) * 1.6f;
+                out = wash + 0.12f * sine (v.phase1, 3400.0) * guide_detail::fastExp (-t / 0.6f);
                 break;
             }
             case fgd::Lane::shaker:
             {
-                const float env = (1.0f - std::exp (-t / 0.007f)) * std::exp (-t / 0.045f);
+                const float env = (1.0f - guide_detail::fastExp (-t / 0.007f)) * guide_detail::fastExp (-t / 0.045f);
                 out = v.f2.highPass (v.f1.highPass (v.noise())) * env * 2.4f;
                 break;
             }
             case fgd::Lane::tambourine:
             {
-                float env = std::exp (-t / 0.055f);
-                if (t > 0.018f) env += 0.55f * std::exp (-(t - 0.018f) / 0.05f);
+                float env = guide_detail::fastExp (-t / 0.055f);
+                if (t > 0.018f) env += 0.55f * guide_detail::fastExp (-(t - 0.018f) / 0.05f);
                 const float jingles = v.f1.bandPass (v.noise()) * 2.0f + 0.4f * v.f2.highPass (metal (v, 3.1f));
                 out = jingles * env;
                 break;
             }
             case fgd::Lane::conga:
             {
-                const double f = 330.0 * v.pitch * (1.0 + 0.12 * std::exp (-t / 0.01));
-                out = sine (v.phase1, f) * std::exp (-t / 0.17f) + v.f1.bandPass (v.noise()) * std::exp (-t / 0.006f) * 0.8f;
+                const double f = 330.0 * v.pitch * (1.0 + 0.12 * guide_detail::fastExp (-t / 0.01));
+                out = sine (v.phase1, f) * guide_detail::fastExp (-t / 0.17f) + v.f1.bandPass (v.noise()) * guide_detail::fastExp (-t / 0.006f) * 0.8f;
                 break;
             }
             case fgd::Lane::cowbell:
@@ -401,19 +424,19 @@ private:
                 v.phase1 += 540.0 / sampleRate; v.phase1 -= std::floor (v.phase1);
                 v.phase2 += 800.0 / sampleRate; v.phase2 -= std::floor (v.phase2);
                 const float sq = (v.phase1 < 0.5 ? 0.5f : -0.5f) + (v.phase2 < 0.5 ? 0.5f : -0.5f);
-                out = v.f1.bandPass (sq) * 1.6f * (0.6f * std::exp (-t / 0.018f) + 0.4f * std::exp (-t / 0.22f));
+                out = v.f1.bandPass (sq) * 1.6f * (0.6f * guide_detail::fastExp (-t / 0.018f) + 0.4f * guide_detail::fastExp (-t / 0.22f));
                 break;
             }
             case fgd::Lane::tom:
             {
-                const double f = 105.0 * v.pitch * (1.0 + 0.45 * std::exp (-t / 0.03));
-                out = sine (v.phase1, f) * std::exp (-t / 0.32f) + v.f1.bandPass (v.noise()) * std::exp (-t / 0.008f) * 0.3f;
+                const double f = 105.0 * v.pitch * (1.0 + 0.45 * guide_detail::fastExp (-t / 0.03));
+                out = sine (v.phase1, f) * guide_detail::fastExp (-t / 0.32f) + v.f1.bandPass (v.noise()) * guide_detail::fastExp (-t / 0.008f) * 0.3f;
                 break;
             }
             case fgd::Lane::crash:
             {
                 const float src = 0.5f * metal (v, 1.9f) + 0.65f * v.noise();
-                const float env = (1.0f - std::exp (-t / 0.002f)) * std::exp (-t / 1.5f);
+                const float env = (1.0f - guide_detail::fastExp (-t / 0.002f)) * guide_detail::fastExp (-t / 1.5f);
                 out = v.f2.highPass (v.f1.highPass (src)) * env * 1.5f;
                 break;
             }

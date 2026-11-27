@@ -90,5 +90,5 @@ inline void verifyClubEdgeCases(){
     p.sections={{fga::Section::main,8,"First phrase"},{fga::Section::main,8,"Continuation"}};
     auto& e=p.tracks[1].engine;e.pattern=sgk::userPatternIndex();e.userLeft.fill('.');e.userRight.fill('.');e.userLeft[0]='x';e.userLeft[16]='x';e.humanize=0;e.swing=0;e.fillEvery=0;e.variationEvery=0;e.realism=false;
     fga::generate(p,fga::Scope::track,1);
-    check(!p.tracks[1].clips[1].notes.empty()&&p.tracks[1].clips[1].notes.front().pitch%12==7,"C-F-G cycle must continue on G at global bar nine, not restart on C");
+    check(!p.tracks[1].clips[1].notes.empty()&&p.tracks[1].clips[1].notes.front().pitch%12==0,"a C-F-G cycle starts again on C with the next section, as the ruler shows it (the chord cycle counts from each section start)");
 }

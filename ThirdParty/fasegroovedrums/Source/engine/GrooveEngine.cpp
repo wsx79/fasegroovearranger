@@ -175,7 +175,7 @@ namespace
     int settingsGenre (const DrumSettings& s) noexcept
     {
         if (s.pattern == userPatternIndex())
-            return -1;
+            return s.userGenre;
         if (s.pattern == randomPatternIndex())
             return s.randomGenre;
         const auto& presets = drumPatterns();
@@ -259,6 +259,9 @@ DrumPattern GrooveEngine::basePattern (const DrumSettings& s)
     {
         DrumPattern p;
         p.name = "User pattern";
+        // an edited preset keeps its genre: pocket, accents, congas, fills and section rules stay
+        if (s.userGenre >= 0 && s.userGenre < (int) grooveCategories().size())
+            p.category = grooveCategories()[(size_t) s.userGenre];
         for (int l = 0; l < numLanes; ++l)
             p.lanes[(size_t) l].assign (s.user[(size_t) l].begin(), s.user[(size_t) l].end());
         fitPattern (p, length);
@@ -359,7 +362,7 @@ bool GrooveEngine::samePattern (const DrumSettings& a, const DrumSettings& b) no
         && a.sectionVariation == b.sectionVariation && a.grooveBars == b.grooveBars
         && a.riffSeed == b.riffSeed
         && (! usesSeed || (a.density == b.density && a.randomGenre == b.randomGenre))
-        && (! usesUser || a.user == b.user);
+        && (! usesUser || (a.user == b.user && a.userGenre == b.userGenre));
 }
 
 void GrooveEngine::prepare (Prepared& r, const DrumSettings& s)
@@ -606,7 +609,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         char symbol = pattern.lanes[(size_t) lane][(size_t) pos];
         if (inFill && ! fillKeeps (style, lane, customLanes))
             continue;
-        if (lightStart && (lane == (int) Lane::conga || lane == (int) Lane::cowbell || lane == (int) Lane::tom))
+        if (lightStart && ((lane == (int) Lane::conga && settingsGenre (s) != 7 && settingsGenre (s) != 13)   // Afro/Latin congas play from the start
+                           || lane == (int) Lane::cowbell || lane == (int) Lane::tom))
             continue;
         if (lane == (int) Lane::kick)
         {
@@ -614,7 +618,9 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
                 continue;
             // Room for the bass: on a four-on-the-floor groove the kick's pick-ups only come at the end
             // of four bars, and never on the last 16th before the one.
-            if (s.bassSpace && resolved.fourFloor && stepInBar % 4 != 0 && (stepInBar == 15 || phraseBar != 3))
+            // Afro and Latin keep their kick pushes: they are the groove, and their basslines are written around them.
+            if (s.bassSpace && resolved.fourFloor && settingsGenre (s) != 7 && settingsGenre (s) != 13
+                && stepInBar % 4 != 0 && (stepInBar == 15 || phraseBar != 3))
                 continue;
         }
         // The build-up's snare roll: quarters, 8ths, 16ths, then 32nds in its last bar.
@@ -654,7 +660,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
         // the quinto (high) slaps the soft offbeats, the conga keeps the rest.
         int note = s.notes[(size_t) lane];
         if (lane == (int) Lane::conga && (settingsGenre (s) == 7 || settingsGenre (s) == 13))   // Afro House, Latin House
-            note = nearNote (lane, stepInBar == 7 || stepInBar == 15 ? 2 : symbol == 'g' ? -1 : 0);
+            note = nearNote (lane, stepInBar == 7 || stepInBar == 15 ? 1 : symbol == 'g' ? -1 : 0);   // 64 Low Conga, 62 Mute Hi Conga
         add (lane, symbol, note, 1.0, false, roll);
     }
 

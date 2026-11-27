@@ -45,6 +45,7 @@ struct DrumSettings
     std::uint32_t riffSeed = 1;            // used when pattern == randomPatternIndex()
     float density = 0.5f;
     int randomGenre = 0;                   // the genre NEW BEAT writes in (grooveCategories() index)
+    int userGenre = -1;                    // the genre of the groove the user pattern was copied from (-1: none)
 
     std::array<int, numLanes> notes {};    // the MIDI note of each lane (General MIDI by default)
     std::array<float, numLanes> levels {}; // velocity scale of each lane (1 = as written)

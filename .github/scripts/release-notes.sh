@@ -6,7 +6,7 @@ version="${1#v}"
 
 section() {
   awk -v heading="## ${version}" '
-    index($0, heading) == 1 { found = 1; next }
+    $0 == heading || index($0, heading " ") == 1 { found = 1; next }
     found && /^## / { exit }
     found { print }
   ' "$1"

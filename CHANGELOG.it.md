@@ -1,5 +1,18 @@
 # Novità — Fase Groove Arranger
 
+## 0.58.2
+
+- Piano, basso, archi e chitarra contano il ciclo degli accordi dall'inizio di ogni sezione, come lead, sub e righello: una sezione che non parte a inizio ciclo (6 battute dopo 8, tre accordi in otto battute) non suona più accordi diversi dal resto della band.
+- Import MIDI non esce più dalle sue tabelle con accordi diminuiti, semidiminuiti, aumentati o sus (un Bm7b5 veniva letto come Si maggiore); quegli accordi entrano come il maggiore, minore o dominante che rappresentano.
+- Build-up: la progressione riempie le otto battute e gira solo nell'ultima (un vamp corto colpiva la dominante ogni due o tre battute); Afro e dorico girano su un bVII maggiore invece di un V7.
+- Il basso si aggancia al kick anche dopo una modifica a basso o kick, al tempo in cui suona il kick, e mai a un kick in mute.
+- VARIA FORMA e la durata obiettivo spostano clip MIDI e audio liberi e automazioni con le sezioni, non tagliano mai un clip libero e misurano il brano attraverso la corsia MASTER TEMPO.
+- Chorus e riverbero della guida suonano quando un'automazione li alza da zero.
+- Archi e chitarra non scendono mai sotto il registro del basso a un cambio di sezione.
+- Motori condivisi (Fase Groove Drums, Guitar, Piano): i groove modificati tengono il genere; tumba Afro/Latin sulla Low Conga, conghe e clave dall'intro, spinte di cassa mantenute; lane ROOT della chitarra sulla fondamentale, arpeggio a quattro corde, walk verso l'accordo successivo; fill gospel thirds che scende; bVII maggiore in Lydian Jack; sintesi della batteria guida più leggera.
+- 164 messaggi d'errore e 26 voci di menu ed etichette sono tradotti in tutte le lingue (alcuni testi italiani comparivano nell'interfaccia inglese).
+- Le note di rilascio corrispondono alla versione esatta; un push non annulla più una build di rilascio in corso.
+
 ## 0.58.1
 
 - Le melodie del Lead suonano di nuovo le loro note: due terzi venivano tagliati a un click di 15 ms ovunque la frase originale avesse una breve pausa. Ora la melodia tiene ogni nota fino alla successiva o alla fine della frase; una nota che resterebbe più corta di un sedicesimo viene tolta, così lo stop prima del drop resta silenzioso.

@@ -291,8 +291,8 @@ public:
         sampler.addAndMakeVisible(sliceGrid);sliceGrid.addItemList({"Snap off","Zero crossing","1/32","1/16 triplet","1/16","1/8 triplet","1/8","Beat","2 beats","Bar","2 bars","4 bars"},1);
         sliceGrid.setScrollWheelEnabled(false);sliceGrid.setTooltip("Slice grid follows project BPM, playback pitch and Tempo Sync. Snap off permits precise manual cuts; grid origin is trim start.");
         sliceGrid.onChange=[this]{if(updating||!selected())return;owner.checkpoint();auto& s=selected()->sampler;const int id=sliceGrid.getSelectedId();s.sliceSnapBeats=id>2?sliceGridBeats[(size_t)(id-3)]:0;s.snap=id==2;commit();};
-        addAndMakeVisible(importLimits);importLimits.setButtonText("LIMITS");importLimits.onClick=[this]{owner.showSampleImportLimits();};
-        addAndMakeVisible(cancelImport);cancelImport.setButtonText("CANCEL LOAD");cancelImport.onClick=[this]{owner.cancelSampleImport();refresh();};
+        addAndMakeVisible(importLimits);importLimits.setButtonText(tr("LIMITS"));importLimits.onClick=[this]{owner.showSampleImportLimits();};
+        addAndMakeVisible(cancelImport);cancelImport.setButtonText(tr("CANCEL LOAD"));cancelImport.onClick=[this]{owner.cancelSampleImport();refresh();};
         performance.addAndMakeVisible(sliceBank);sliceBank.onChange=[this]{releasePads();refresh();};
         for(int i=0;i<16;++i){auto* pad=control<juce::TextButton>(performance);pads[(size_t)i]=pad;pad->onStateChange=[this,pad,i]{const bool down=pad->isDown()&&pad->isEnabled()&&pad->isVisible()&&selected()!=nullptr;if(down==padHeld[(size_t)i])return;padHeld[(size_t)i]=down;if(down){padTracks[(size_t)i]=track;padNotes[(size_t)i]=selected()->sampler.sliceBase+std::max(0,sliceBank.getSelectedId()-1)*16+i;}owner.audio.liveMidi(padTracks[(size_t)i],down?juce::MidiMessage::noteOn(1,padNotes[(size_t)i],.85f):juce::MidiMessage::noteOff(1,padNotes[(size_t)i]));};}
         Localisation::bindText(trimSilence,"TRIM SILENCE");performance.addAndMakeVisible(trimSilence);Localisation::bindTip(trimSilence,"Move START and END to where the sound begins and ends, removing silence before and after it. Audio clips on the timeline follow. Undo restores it.");
