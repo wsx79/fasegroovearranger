@@ -4,11 +4,16 @@
 #include "GrooveEngine.h"
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 #include <cstdint>
 
 namespace sgk
 {
+// offTime of a note that is not sounding: below any real time, a count-in or pre-roll (negative beats)
+// included (with -1 a note due to end before beat 0 was taken for silent and never got its note-off)
+static constexpr double noteIsOff = std::numeric_limits<double>::lowest();
+
 
 namespace
 {
@@ -1019,14 +1024,14 @@ const char* stringsModeName (int m) noexcept
 //==============================================================================
 GrooveEngine::GrooveEngine()
 {
-    offTime.fill (-1.0);
+    offTime.fill (noteIsOff);
     pending.reserve (512);
     scratch.reserve (256);   // as the pending notes: a full block of note-offs never grows here
 }
 
 bool GrooveEngine::anyNoteSounding() const noexcept
 {
-    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t >= 0.0; });
+    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t > noteIsOff; });
 }
 
 int GrooveEngine::loopLengthInSteps (const GrooveSettings& s) noexcept
@@ -1911,10 +1916,10 @@ void GrooveEngine::collectStep (long long step, const GrooveSettings& s, const G
                     return std::find (scale.begin(), scale.end(), mod (note - s.keyRoot, 12)) != scale.end();
                 };
                 const int top = v.rightHand.highest();
-                const int dir = moveUp ? 1 : -1;
-                int neighbour = top + dir;
-                while (! inScale (neighbour) && std::abs (neighbour - top) < 3)
-                    neighbour += dir;
+                auto stepFrom = [&] (int dir) { int n = top + dir; while (! inScale (n) && std::abs (n - top) < 3) n += dir; return n; };
+                int neighbour = stepFrom (moveUp ? 1 : -1);
+                if (neighbour > std::max (s.rangeHigh, s.rangeLow + 12))   // the chord range holds the neighbour too
+                    neighbour = stepFrom (-1);
                 const int below = v.rightHand.size > 1 ? v.rightHand[v.rightHand.size - 2] : -1;
                 if (neighbour != below && neighbour > below)
                 {
@@ -2565,7 +2570,9 @@ void GrooveEngine::collectStrings (long long step, const GrooveSettings& s, doub
             if (inChord == 0)
             {
                 play (cachedStrings[(size_t) slot], (spc - (runs ? 4 : 0)) * stepLength - 0.02, vel);
-                stringsUntil = t + (spc - (runs ? 4 : 0)) * stepLength;
+                // the chord counts as covered to its end: the run fills its last beat, the pad must not
+                // be struck again there (playback would differ from the export)
+                stringsUntil = t + spc * stepLength;
             }
             else if (runs && inChord >= spc - 4)
             {
@@ -2606,7 +2613,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n = 0; n < numTracked; ++n)
     {
         const double t = offTime[(size_t) n];
-        if (t >= 0.0 && (t < ppq || (inclusive && t <= ppq)))
+        if (t > noteIsOff && (t < ppq || (inclusive && t <= ppq)))
             scratch.push_back (n);
     }
 
@@ -2616,7 +2623,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n : scratch)
     {
         out.push_back ({ offTime[(size_t) n], n & 127, 0, partOf[(size_t) n] });
-        offTime[(size_t) n] = -1.0;
+        offTime[(size_t) n] = noteIsOff;
     }
 }
 
@@ -2706,7 +2713,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GrooveSettings&
         const auto k = (size_t) trackIndex (p.note, p.part, s.separateBass);
         auto& off = offTime[k];
 
-        if (off >= 0.0)
+        if (off > noteIsOff)
         {
             if (p.tie || onTime[k] == p.ppq)   // tied, or same note twice at once: extend
             {
@@ -2738,10 +2745,10 @@ void GrooveEngine::allNotesOff (double ppq, std::vector<NoteEvent>& out)
 {
     for (int n = 0; n < numTracked; ++n)
     {
-        if (offTime[(size_t) n] >= 0.0)
+        if (offTime[(size_t) n] > noteIsOff)
         {
             out.push_back ({ ppq, n & 127, 0, partOf[(size_t) n] });
-            offTime[(size_t) n] = -1.0;
+            offTime[(size_t) n] = noteIsOff;
         }
     }
     stringsUntil = -1.0;

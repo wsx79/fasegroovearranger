@@ -1,8 +1,9 @@
 # Novità — Fase Groove Arranger
 
-## 0.59.2
+## 0.60.0
 
 - La durata obiettivo calcola il tempo dalle sezioni davvero ridimensionate (una sezione trattenuta da una clip libera tiene la sua lunghezza).
+- Motori condivisi: nessuna nota appesa prima del beat 0, il pad crescente degli archi non viene ribattuto, gli accordi di 11ª e 13ª prendono solo colori consonanti, la maggiore armonica scrive i bemolli.
 
 ## 0.59.1
 

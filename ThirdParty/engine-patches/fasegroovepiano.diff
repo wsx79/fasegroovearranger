@@ -58,15 +58,15 @@
      nudged. Seed 0 gives genreRiffFeel(genre). */
 --- a/Source/engine/GrooveEngine.cpp
 +++ b/Source/engine/GrooveEngine.cpp
-@@ -6,7 +6,6 @@
- #include <algorithm>
+@@ -7,7 +7,6 @@
+ #include <limits>
  #include <cmath>
  #include <cstdint>
 -#include <tuple>
  
  namespace sgk
  {
-@@ -1032,9 +1031,6 @@
+@@ -1037,9 +1036,6 @@
  
  int GrooveEngine::loopLengthInSteps (const GrooveSettings& s) noexcept
  {
@@ -76,7 +76,7 @@
      const int patternLength = GrooveEngine::patternLength (s);
      const int progression = std::clamp (s.progressionLength, 1, maxProgressionLength) * std::max (1, s.stepsPerChord);
  
-@@ -1104,7 +1100,14 @@
+@@ -1109,7 +1105,14 @@
  
      // A bass line from the library has its own rhythm: show that one in the grid.
      if (isBassLine (s.bass) && (s.section == Section::main || s.section == Section::drop))
@@ -91,7 +91,7 @@
  
      if (s.grooveBars == 1 && p.length() > 16)
      {
-@@ -1143,7 +1146,7 @@
+@@ -1148,7 +1151,7 @@
          || s.section != cachedSection || s.segmentOrder != cachedOrder
          || s.userRight != cachedUserRight || s.userLeft != cachedUserLeft || s.grooveBars != cachedBars
          || s.movement != cachedMovement || s.sectionVariation != cachedSectionVariation || cachedPattern.rightHand.empty()
@@ -100,7 +100,7 @@
      {
          cachedPattern = resolvePattern (s);
          cachedVariation = makeVariation (cachedPattern, s.riffSeed * 17u + (std::uint32_t) s.pattern);
-@@ -1158,6 +1161,7 @@
+@@ -1163,6 +1166,7 @@
              cachedTakes[k] = s.realism ? makeVariation (cachedPattern, s.riffSeed * 53u + (std::uint32_t) s.pattern + k * 7919u)
                                         : GroovePattern {};
          cachedBass = (int) s.bass;
@@ -108,7 +108,7 @@
          cachedRealism = s.realism;
          cachedBars = s.grooveBars;
          cachedMovement = s.movement;
-@@ -1228,7 +1232,7 @@
+@@ -1233,7 +1237,7 @@
      std::array<bool, numTracked> isOpen {};
      for (const auto& e : all)
      {
@@ -117,7 +117,7 @@
          if (e.isNoteOn())
          {
              if (e.ppq >= lengthInBeats)
-@@ -1398,24 +1402,6 @@
+@@ -1403,24 +1407,6 @@
          kept.sort();
          *hand = kept;
      }
@@ -142,7 +142,7 @@
  }
  
  GrooveEngine::HarmonyKey GrooveEngine::harmonyKey (const GrooveSettings& s) noexcept
-@@ -1452,11 +1438,6 @@
+@@ -1457,11 +1443,6 @@
          out[(size_t) i] = out[(size_t) len - 1];
  }
  
@@ -154,7 +154,7 @@
  
  void GrooveEngine::voiceProgression (const GrooveSettings& s,
                                       std::array<Chord, maxProgressionLength>& chords,
-@@ -2019,7 +2000,7 @@
+@@ -2024,7 +2005,7 @@
          // bass, and intro, outro and breakdown have no bass anyway.
          if (s.section == Section::main || s.section == Section::drop)
          {
@@ -163,7 +163,7 @@
              return;
          }
          bassMode = BassMode::root;
-@@ -2113,7 +2094,7 @@
+@@ -2118,7 +2099,7 @@
              const int root = cachedBassRoots[(size_t) slotFor (symbol)];
              // The chord's own 5th (a b5 on a half-diminished chord), not always a perfect one.
              const int fifthAbove = chords[(size_t) slotFor (symbol)].fifth >= 0 ? chords[(size_t) slotFor (symbol)].fifth : 7;
@@ -172,7 +172,7 @@
              const double t = (hitTime (90, human * hv.bassTime) + human * hv.bassLate * 0.02);
              const int vel = hitVelocity (symbol, 0.9, 91, human * hv.bassVel);
              const bool tie = isTiedFromPush (pattern.leftHand, pos);
-@@ -2227,7 +2208,7 @@
+@@ -2232,7 +2213,7 @@
      int gap = 1;
      while (gap < n && (line[(size_t) ((pos + gap) % n)] == '.' || line[(size_t) ((pos + gap) % n)] == '='))
          ++gap;
@@ -181,7 +181,7 @@
      const double steps = symbol == 'G' ? 0.3
                         : hold > 0      ? hold + gate
                                         : std::max (std::min ({ gate * gap, 4.0, gap - 0.08 }), std::min (gate, 0.9));
-@@ -2541,11 +2522,7 @@
+@@ -2546,11 +2527,7 @@
      if (mode == StringsMode::off)
          return;
      if (stringsFollowPiano (mode))
@@ -194,7 +194,7 @@
  
      const int spc = std::max (1, s.stepsPerChord);
      const double t = (double) step * stepLength;
-@@ -2676,13 +2653,7 @@
+@@ -2683,13 +2660,7 @@
  
      // The strings' pad starts with each chord; starting (or turning them on) in the middle of a
      // chord, it comes in at once for the rest of it.
@@ -209,7 +209,7 @@
      {
          const int spc = std::max (1, s.stepsPerChord);
          const auto now = (long long) std::floor (startPpq / stepLength + 1.0e-9);
-@@ -2697,33 +2668,11 @@
+@@ -2704,33 +2675,11 @@
              }
      }
  
@@ -248,7 +248,7 @@
      }
  
      pending.erase (std::remove_if (pending.begin(), pending.end(),
-@@ -2754,7 +2703,7 @@
+@@ -2761,7 +2710,7 @@
      {
          flushOffsUpTo (p.ppq, true, out);
  
@@ -256,8 +256,8 @@
 +        const auto k = (size_t) trackIndex (p.note, p.part, s.separateBass);
          auto& off = offTime[k];
  
-         if (off >= 0.0)
-@@ -2799,169 +2748,4 @@
+         if (off > noteIsOff)
+@@ -2806,169 +2755,4 @@
  }
  
  

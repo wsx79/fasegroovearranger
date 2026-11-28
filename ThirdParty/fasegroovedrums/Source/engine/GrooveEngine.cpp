@@ -4,11 +4,16 @@
 #include "GrooveEngine.h"
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 #include <numeric>
 
 namespace fgd
 {
+// offTime of a note that is not sounding: below any real time, a count-in or pre-roll (negative beats)
+// included (with -1 a note due to end before beat 0 was taken for silent and never got its note-off)
+static constexpr double noteIsOff = std::numeric_limits<double>::lowest();
+
 
 namespace
 {
@@ -234,7 +239,7 @@ DrumSettings::DrumSettings() noexcept
 //==============================================================================
 GrooveEngine::GrooveEngine()
 {
-    offTime.fill (-1.0);
+    offTime.fill (noteIsOff);
     laneOf.fill (0);
     pending.reserve (2048);   // a big offline block of rolls and flams at a fast tempo: never grown on the audio thread
     scratch.reserve (128);
@@ -771,7 +776,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n = 0; n < 128; ++n)
     {
         const double off = offTime[(size_t) n];
-        if (off >= 0.0 && (off < ppq || (inclusive && off <= ppq)))
+        if (off > noteIsOff && (off < ppq || (inclusive && off <= ppq)))
             scratch.push_back (n);
     }
 
@@ -781,7 +786,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n : scratch)
     {
         out.push_back ({ offTime[(size_t) n], n, 0, laneOf[(size_t) n] });
-        offTime[(size_t) n] = -1.0;
+        offTime[(size_t) n] = noteIsOff;
     }
 }
 
@@ -808,11 +813,11 @@ void GrooveEngine::emitPending (double startPpq, double endPpq, std::vector<Note
                     && p.ppq - (offTime[(size_t) n] - noteLength ((int) Lane::openHat)) > 0.05)
                 {
                     out.push_back ({ p.ppq, n, 0, (int) Lane::openHat });
-                    offTime[(size_t) n] = -1.0;
+                    offTime[(size_t) n] = noteIsOff;
                 }
 
         auto& off = offTime[(size_t) p.note];
-        if (off >= 0.0)
+        if (off > noteIsOff)
             out.push_back ({ p.ppq, p.note, 0, laneOf[(size_t) p.note] });   // retrigger
 
         out.push_back ({ p.ppq, p.note, p.velocity, p.lane });
@@ -845,16 +850,16 @@ void GrooveEngine::render (double startPpq, double endPpq, const DrumSettings& s
 void GrooveEngine::allNotesOff (double ppq, std::vector<NoteEvent>& out)
 {
     for (int n = 0; n < 128; ++n)
-        if (offTime[(size_t) n] >= 0.0)
+        if (offTime[(size_t) n] > noteIsOff)
         {
             out.push_back ({ ppq, n, 0, laneOf[(size_t) n] });
-            offTime[(size_t) n] = -1.0;
+            offTime[(size_t) n] = noteIsOff;
         }
 }
 
 bool GrooveEngine::anyNoteSounding() const noexcept
 {
-    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t >= 0.0; });
+    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t > noteIsOff; });
 }
 
 //==============================================================================

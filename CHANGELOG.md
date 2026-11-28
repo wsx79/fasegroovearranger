@@ -1,8 +1,9 @@
 # Changelog — Fase Groove Arranger
 
-## 0.59.2
+## 0.60.0
 
 - The target duration works out the tempo from the sections it really resized (a section a free clip holds keeps its length).
+- Shared engines: no hung note before beat 0, the strings' rising pad is not struck twice, 11th and 13th chords only take consonant colours, harmonic major spells its flats.
 
 ## 0.59.1
 

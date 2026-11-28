@@ -4,11 +4,16 @@
 #include "GrooveEngine.h"
 
 #include <algorithm>
+#include <limits>
 #include <cmath>
 #include <numeric>
 
 namespace fgg
 {
+// offTime of a note that is not sounding: below any real time, a count-in or pre-roll (negative beats)
+// included (with -1 a note due to end before beat 0 was taken for silent and never got its note-off)
+static constexpr double noteIsOff = std::numeric_limits<double>::lowest();
+
 
 namespace
 {
@@ -190,7 +195,7 @@ GuitarSettings::GuitarSettings() noexcept
 //==============================================================================
 GrooveEngine::GrooveEngine()
 {
-    offTime.fill (-1.0);
+    offTime.fill (noteIsOff);
     onTime.fill (0.0);
     laneOf.fill (0);
     graceOf.fill (false);
@@ -801,7 +806,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n = 0; n < 128; ++n)
     {
         const double off = offTime[(size_t) n];
-        if (off >= 0.0 && (off < ppq || (inclusive && off <= ppq)))
+        if (off > noteIsOff && (off < ppq || (inclusive && off <= ppq)))
             scratch.push_back (n);
     }
 
@@ -811,7 +816,7 @@ void GrooveEngine::flushOffsUpTo (double ppq, bool inclusive, std::vector<NoteEv
     for (int n : scratch)
     {
         out.push_back ({ offTime[(size_t) n], n, 0, laneOf[(size_t) n] });
-        offTime[(size_t) n] = -1.0;
+        offTime[(size_t) n] = noteIsOff;
     }
 }
 
@@ -861,7 +866,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
         // One guitar, six strings: a new chord stops the chord still ringing.
         if (p.choke)
             for (int n = 0; n < 128; ++n)
-                if (offTime[(size_t) n] >= 0.0 && isChordLane (laneOf[(size_t) n]) && ! graceOf[(size_t) n])
+                if (offTime[(size_t) n] > noteIsOff && isChordLane (laneOf[(size_t) n]) && ! graceOf[(size_t) n])
                     offTime[(size_t) n] = std::min (offTime[(size_t) n], std::max (p.ppq, onTime[(size_t) n] + minimumRing));
         flushOffsUpTo (p.ppq, true, out);
 
@@ -871,7 +876,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
             const int ks = std::clamp (s.keyswitch[(size_t) std::clamp (p.articulation, 0, numArticulations - 1)], 0, 127);
             if (ks != p.note)
             {
-                if (offTime[(size_t) ks] >= 0.0)
+                if (offTime[(size_t) ks] > noteIsOff)
                     out.push_back ({ p.ppq, ks, 0, laneOf[(size_t) ks] });
                 out.push_back ({ p.ppq, ks, 100, keyswitchLane });
                 offTime[(size_t) ks] = p.ppq + 0.03;
@@ -883,7 +888,7 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
         }
 
         auto& off = offTime[(size_t) p.note];
-        if (off >= 0.0)
+        if (off > noteIsOff)
             out.push_back ({ p.ppq, p.note, 0, laneOf[(size_t) p.note] });   // the same string again
 
         out.push_back ({ p.ppq, p.note, p.velocity, p.lane, -1, p.articulation });
@@ -899,17 +904,17 @@ void GrooveEngine::render (double startPpq, double endPpq, const GuitarSettings&
 void GrooveEngine::allNotesOff (double ppq, std::vector<NoteEvent>& out)
 {
     for (int n = 0; n < 128; ++n)
-        if (offTime[(size_t) n] >= 0.0)
+        if (offTime[(size_t) n] > noteIsOff)
         {
             out.push_back ({ ppq, n, 0, laneOf[(size_t) n] });
-            offTime[(size_t) n] = -1.0;
+            offTime[(size_t) n] = noteIsOff;
         }
     lastArticulation = -1;   // after a stop or a jump the next note sends its keyswitch again
 }
 
 bool GrooveEngine::anyNoteSounding() const noexcept
 {
-    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t >= 0.0; });
+    return std::any_of (offTime.begin(), offTime.end(), [] (double t) { return t > noteIsOff; });
 }
 
 //==============================================================================
