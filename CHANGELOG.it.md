@@ -12,6 +12,11 @@
 - Motori condivisi (Fase Groove Drums, Guitar, Piano): i groove modificati tengono il genere; tumba Afro/Latin sulla Low Conga, conghe e clave dall'intro, spinte di cassa mantenute; lane ROOT della chitarra sulla fondamentale, arpeggio a quattro corde, walk verso l'accordo successivo; fill gospel thirds che scende; bVII maggiore in Lydian Jack; sintesi della batteria guida più leggera.
 - 164 messaggi d'errore e 26 voci di menu ed etichette sono tradotti in tutte le lingue (alcuni testi italiani comparivano nell'interfaccia inglese).
 - Le note di rilascio corrispondono alla versione esatta; un push non annulla più una build di rilascio in corso.
+- Montuno della chitarra in Latin House: accordo pieno su ogni tempo, spezzato in mezzo (nota alta con la voce sotto, o con la sua ottava), e il levare prima di un cambio d'accordo anticipa il nuovo accordo.
+- La Techno ha l'apertura del filtro nel build-up anche quando si sceglie il genere (come con SONG).
+- Progressioni e linee di basso dei generi si cercano per nome, così un preset aggiunto a una libreria non le sposta mai.
+- Generazione più veloce: le ricerche nella frase del lead e il taglio delle note tenute non scorrono più tutto il brano per ogni nota; il pump del basso calcola un esponenziale per blocco.
+- Motori condivisi: il Variation Lab trasforma i diminuiti nella loro dominante; le due metà di un riff di piano casuale sono diverse; i nomi dei preset corrispondono agli accordi; la batteria preferisce l'hi-hat aperto al chiuso solo quando l'aperto suona; la chitarra riconosce C6 e Csus2 dalla nota di basso.
 
 ## 0.58.1
 

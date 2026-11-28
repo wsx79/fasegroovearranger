@@ -12,6 +12,11 @@
 - Shared engines (Fase Groove Drums, Guitar, Piano): edited grooves keep their genre; Afro/Latin tumba on the Low Conga, congas and clave from the intro, kick pushes kept; guitar ROOT lane on the root, four-string arpeggio, walks into the next chord; gospel thirds fill walks down; Lydian Jack bVII major; lighter guide drum synthesis.
 - 164 error messages and 26 menu items and labels are translated in every language (some Italian texts showed in the English interface).
 - Release notes match the exact version; a push no longer cancels a release build under way.
+- Latin House guitar montuno: full chord on each beat, broken (top note with the voice under it, or with its octave) in between, and the offbeat before a chord change anticipates the new chord.
+- Techno gets the build-up filter opening also when the genre is chosen (as on SONG).
+- Genre progressions and bass lines are looked up by name, so a preset added to a library never shifts them.
+- Faster generation: the lead's phrase lookups and the held-note trims no longer scan the whole song for each note; the bass pump computes one exponential per block.
+- Shared engines: Variation Lab maps diminished chords to their dominant; a random piano riff's halves differ; preset names match their chords; drums choose open over closed hat only when the open one plays; the guitar recognises C6 and Csus2 from their bass note.
 
 ## 0.58.1
 

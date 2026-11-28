@@ -194,7 +194,7 @@ GrooveEngine::GrooveEngine()
     onTime.fill (0.0);
     laneOf.fill (0);
     graceOf.fill (false);
-    pending.reserve (1024);
+    pending.reserve (4096);   // a dense block (16ths with grace notes and slides, offline renders) never grows on the audio thread
     scratch.reserve (128);
 }
 
@@ -318,7 +318,7 @@ int GrooveEngine::loopLengthInSteps (const GuitarSettings& s) noexcept
     if (! s.useLiveChord)
     {
         // The chords come round after numChords bars (or fewer, when they repeat inside).
-        steps = lcm (steps, chordPeriod (s) * std::max(1,s.stepsPerChord));
+        steps = lcm (steps, chordPeriod (s) * std::max (1, s.stepsPerChord));
     }
     if (s.variationEvery > 0)
         steps = lcm (steps, s.variationEvery * 16);
@@ -367,7 +367,7 @@ bool GrooveEngine::samePattern (const GuitarSettings& a, const GuitarSettings& b
         && a.sectionVariation == b.sectionVariation && a.grooveBars == b.grooveBars
         && a.riffSeed == b.riffSeed   // (the variation bar takes it too)
         && (! usesSeed || (a.density == b.density && a.randomGenre == b.randomGenre))
-        && (! usesUser || a.user == b.user);
+        && (! usesUser || (a.user == b.user && a.randomGenre == b.randomGenre));   // an edited groove plays in its genre
 }
 
 void GrooveEngine::prepare (Prepared& r, const GuitarSettings& s)
@@ -379,8 +379,8 @@ void GrooveEngine::prepare (Prepared& r, const GuitarSettings& s)
 
 const GrooveEngine::Prepared& GrooveEngine::patternFor (const GuitarSettings& s)
 {
-    if (prepared != nullptr && samePattern (prepared->key, s))
-        return *prepared;
+    if (prepared != nullptr && (realtime || samePattern (prepared->key, s)))
+        return *prepared;   // realtime: the new groove arrives from the message thread, no allocation here
     if (! cacheValid || ! samePattern (cache.key, s))
     {
         prepare (cache, s);
@@ -394,11 +394,12 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
 {
     const long long bar = floorDiv (step, 16);
     const int stepInBar = mod (step, 16);
-    const auto chordSlot=floorDiv(step,std::max(1,s.stepsPerChord));
+    // one chord per stepsPerChord 16ths (16: a bar, as the plugin always played)
+    const auto chordSlot = floorDiv (step, std::max (1, s.stepsPerChord));
     const auto chord = chordAt (s, chordSlot);
     const ChordVoicing& voicing = voicingAt (s, chordSlot);
     // The chord of the next bar: the last 8th of a bar can push into it.
-    const auto nextSlot=floorDiv(step+2,std::max(1,s.stepsPerChord));
+    const auto nextSlot = floorDiv (step + 2, std::max (1, s.stepsPerChord));
     const auto nextChord = chordAt (s, nextSlot);
     const ChordVoicing& nextVoicing = voicingAt (s, nextSlot);
 
@@ -540,7 +541,7 @@ void GrooveEngine::collectStep (long long step, const GuitarSettings& s, const G
 
         const bool chordHit = isChordLane (lane);
         // A chord hit on the last 8th of a bar plays the chord coming next (the push).
-        const bool push = s.pushChanges && chordHit && mod(step,std::max(1,s.stepsPerChord)) >= std::max(1,s.stepsPerChord)-2 && symbol != 'g' && ! (nextChord == chord);
+        const bool push = s.pushChanges && chordHit && mod (step, std::max (1, s.stepsPerChord)) >= std::max (1, s.stepsPerChord) - 2 && symbol != 'g' && ! (nextChord == chord);
         // Now and then (with Humanize) the last bar of the phrase answers with another top note.
         // The chance follows Humanize; a step keeps its choice for the whole phrase.
         const bool answer = human > 0.0 && phraseBar == 3
@@ -957,4 +958,3 @@ std::vector<NoteEvent> GrooveEngine::renderArrangement (const GuitarSettings& s,
 }
 
 } // namespace fgg
-

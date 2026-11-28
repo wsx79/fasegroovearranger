@@ -382,8 +382,8 @@ void GrooveEngine::prepare (Prepared& r, const DrumSettings& s)
 
 const GrooveEngine::Prepared& GrooveEngine::patternFor (const DrumSettings& s)
 {
-    if (prepared != nullptr && samePattern (prepared->key, s))
-        return *prepared;
+    if (prepared != nullptr && (realtime || samePattern (prepared->key, s)))
+        return *prepared;   // realtime: the new groove arrives from the message thread, no allocation here
     if (! cacheValid || ! samePattern (cache.key, s))
     {
         prepare (cache, s);
@@ -490,7 +490,8 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
     };
 
     // Exact genre: "Jackin' Piano" also begins with "Jackin" and must not grow a 909 turnaround.
-    const bool jackin = pattern.category == "Jackin'";
+    static const int jackinGenre = categoryIndex ("Jackin'");   // once: not a string compare per step
+    const bool jackin = resolved.genre == jackinGenre;
     const bool hasSnare = std::any_of (pattern.lanes[(size_t) Lane::snare].begin(), pattern.lanes[(size_t) Lane::snare].end(), isHit);
     // Jackin': the clap lands a hair before the 909 snare under it, so the two flam.
     const double jackFlam = jackin && hasSnare ? -0.006 * tempo / 60.0 : 0.0;
@@ -604,6 +605,7 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
     const bool dropGap = s.section == Section::buildup && s.sectionBars > 0 && sectionStep >= s.sectionBars * 16 - 8;
 
     // ---- The groove as written (what a fill leaves of it) ----
+    const std::size_t grooveStart = pending.size();
     for (int lane = 0; lane < numLanes; ++lane)
     {
         char symbol = pattern.lanes[(size_t) lane][(size_t) pos];
@@ -634,11 +636,6 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
             if (buildSteps >= 32.0 && (s.sectionBars > 0 ? sectionStep : pos) >= (long long) buildSteps - 16)
                 roll = 2;
         }
-        // The open hat and the closed hat on the same step: the open hat (one hi-hat can't play
-        // both, and the closed one would choke it in a drum rack).
-        if (lane == (int) Lane::closedHat && isHit (symbol) && isHit (pattern.lanes[(size_t) Lane::openHat][(size_t) pos])
-            && ! s.muted[(size_t) Lane::openHat] && ! (inFill && ! fillKeeps (style, (int) Lane::openHat, customLanes)))
-            continue;
         // ...and now and then a soft note that isn't written: a hat or shaker 16th, or the clap's
         // ghost, just before the next bar.
         if (symbol == '.' && human > 0.0 && ! inFill && stepInBar >= 13 && stepInBar % 2 == 1 && phraseBar % 2 == 1)
@@ -663,6 +660,12 @@ void GrooveEngine::collectStep (long long step, const DrumSettings& s, const Pre
             note = nearNote (lane, stepInBar == 7 || stepInBar == 15 ? 1 : symbol == 'g' ? -1 : 0);   // 64 Low Conga, 62 Mute Hi Conga
         add (lane, symbol, note, 1.0, false, roll);
     }
+    // The open hat and the closed hat on the same step: the open hat (one hi-hat can't play both, and the
+    // closed one would choke it in a drum rack). Decided on what was added: an open hat left out by its
+    // chance, the humanizer or the section must not take the closed one with it.
+    if (std::any_of (pending.begin() + (std::ptrdiff_t) grooveStart, pending.end(), [] (const PendingOn& e) { return e.lane == (int) Lane::openHat; }))
+        pending.erase (std::remove_if (pending.begin() + (std::ptrdiff_t) grooveStart, pending.end(),
+                                       [] (const PendingOn& e) { return e.lane == (int) Lane::closedHat; }), pending.end());
 
     // ---- The fill ----
     if (inFill)
@@ -918,4 +921,3 @@ std::vector<NoteEvent> GrooveEngine::renderArrangement (const DrumSettings& s, c
 }
 
 } // namespace fgd
-

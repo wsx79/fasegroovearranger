@@ -125,7 +125,9 @@ namespace
                 const unsigned type = chordTypeMask (t);
                 fit = std::max (fit, 3 * popCount (mask & type) - 3 * popCount (mask & ~type) - 2 * popCount (type & ~mask));
             }
-            const int score = 2 * fit + (r == mod12 (lowest) ? 1 : 0);
+            // the bass note is the root unless another root fits clearly better: C E G A is C6 (not Am7
+            // over C), C D G is Csus2 (not D7sus4); an inversion still keeps its root (C/E is C)
+            const int score = 2 * fit + (r == mod12 (lowest) ? 5 : 0);
             if (score > bestScore)
             {
                 bestScore = score;
@@ -627,7 +629,7 @@ const std::vector<Progression>& progressions()
         { "Gospel Plagal  I - iv - V - I", "Soulful & Gospel", 9, { 0, 3, 4, 0 }, {  } },
         { "Lydian Dom Funk  I7#11 - II", "Modal & exotic", 10, { 0, 1 }, {  } },
         { "Soul Borrowed  I - iv - bVII - I", "Soulful & Gospel", 11, { 0, 3, 6, 0 }, {  } },
-        { "Dark Deep  I - II (Phrygian dom.)", "Modal & exotic", 12, { 0, 1 }, {  } },
+        { "Dark Deep  I - bII (Phrygian dom.)", "Modal & exotic", 12, { 0, 1 }, {  } },
         { "Phrygian Deep  i - II - i - vii", "Modal & exotic", 5, { 0, 1, 0, 6 }, {  } },
         { "Deep House Classic  vi - IV - I - V", "Deep house", 0, { 5, 3, 0, 4 }, {  } },
         { "Jackin' Dorian  i - IV - i - v", "Jackin' & funky", 1, { 0, 3, 0, 4 }, {  } },
@@ -703,7 +705,7 @@ const std::vector<Progression>& progressions()
         { "Dorian Pull  i - ii - v", "Deep house", 1, { 0, 1, 4 }, {  } },
         { "Dorian Step Down  i - v - IV - III", "Deep house", 1, { 0, 4, 3, 2 }, {  } },
         { "Dorian Glide  i - VII - IV", "Deep house", 1, { 0, 6, 3 }, {  } },
-        { "Dorian Lift  i - IV - ii - IV", "Deep house", 1, { 0, 3, 1, 3 }, {  } },
+        { "Dorian Lilt  i - IV - ii - IV", "Deep house", 1, { 0, 3, 1, 3 }, {  } },
         { "Dorian Rise  i - ii - v - v", "Deep house", 1, { 0, 1, 4, 4 }, {  } },
         { "Dorian Walk  i - IV - ii - III", "Deep house", 1, { 0, 3, 1, 2 }, {  } },
         { "Dorian Bloom  i - VII - III - IV", "Deep house", 1, { 0, 6, 2, 3 }, {  } },
@@ -743,8 +745,8 @@ const std::vector<Progression>& progressions()
         { "Tritone Turn  I - bII7", "Neo soul & jazz", 0, { 0, 0 }, { 0, 25 } },
         { "Soul Ballad  I - vi - IV - iv", "Neo soul & jazz", 0, { 0, 0, 0, 0 }, { 0, 21, 5, 17 } },
         { "Lydian Soul  I - II - iii - II", "Neo soul & jazz", 4, { 0, 1, 2, 1 }, {  } },
-        { "Jazz Waltz  I - vi - ii - V - iii - VI7 - ii - V", "Neo soul & jazz", 0, { 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 21, 14, 31, 16, 33, 14, 31 } },
-        { "Chill Sus  I7sus - IV - I7sus - bVII", "Deep house", 0, { 0, 0, 0, 0 }, { 24, 5, 24, 10 } },
+        { "Jazz Turnaround  I - vi - ii - V - iii - VI7 - ii - V", "Neo soul & jazz", 0, { 0, 0, 0, 0, 0, 0, 0, 0 }, { 0, 21, 14, 31, 16, 33, 14, 31 } },
+        { "Chill Seven  I7 - IV - I7 - bVII", "Deep house", 0, { 0, 0, 0, 0 }, { 24, 5, 24, 10 } },
         { "Deep Lydian  I - II - I - vii", "Deep house", 4, { 0, 1, 0, 6 }, {  } },
         { "Sunset  IV - I - V - vi", "Deep house", 0, { 3, 0, 4, 5 }, {  } },
         { "Moonlight  vi - iii - IV - V", "Deep house", 0, { 5, 2, 3, 4 }, {  } },
@@ -898,7 +900,7 @@ const std::vector<GuitarPattern>& guitarPatterns()
         groove ("Piano House Chank", "Piano House",
                 { { CK, "..x. ..x. ..xx ..x." }, { ST, "X... .... .... ...." }, { RT, "X... .... X... ...." } }),
         groove ("Uplifting Chords", "Piano House",
-                { { DN, "X... .... X... ...." }, { UP, "..x. ..x. ..x. .xx." }, { SC, ".... g... .... g..." } }),
+                { { DN, "X... .... X... ..x." }, { UP, "..x. ..x. ..x. .x.." }, { SC, ".... g... .... g..." } }),
 
         // ---- Soulful: warm strums and chanks under the vocal ----
         groove ("Soulful Sunday", "Soulful",

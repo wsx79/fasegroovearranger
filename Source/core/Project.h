@@ -335,6 +335,11 @@ inline double takeFeel(double track,double take,double global){return track>=0?t
 inline double energyScale(int energy){return energy==0?.55:energy==1?.8:1.;}
 inline double energyVelocity(int energy){return energy==0?.9:energy==1?.96:energy==2?1.05:energy==3?1.1:1.;}
 Settings resolveSectionHarmony(const Project&,int section);
+int progressionPresetNamed(const char* name);   // -1 when missing
+int bassLineNamed(const char* name);
+const std::vector<const char*>& genrePresetNames();
+const std::vector<const char*>& afroPresetNames();
+const std::vector<const char*>& genreBassLineNames();
 inline bool sectionHarmonyEnabled(const Project& p,int section){return section>=0&&section<(int)p.sections.size()&&p.sections[(size_t)section].harmony.enabled;}
 inline Settings activeHarmony(const Project& p,int section){return resolveSectionHarmony(p,section);}   // the section's chords (or the song's), cycling from the section start
 inline void storeHarmony(Project& p,int section,const Settings& s){

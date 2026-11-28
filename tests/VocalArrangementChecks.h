@@ -85,6 +85,13 @@ inline void verifyReviewFixes(){
 // intros stand on bass and percussion, Latin RANDOM CHORDS keeps the mode, automation blocks = valueAt.
 // A section that does not start on the chord cycle (6 bars after an 8-bar one, 4 one-bar chords): the
 // band's engines count the progression from the section start, as the ruler and chordAtBeat do.
+inline void verifyLibraryNames(){
+    bool all=fga::genrePresetNames().size()==13&&fga::genreBassLineNames().size()==13;
+    for(const char* n:fga::genrePresetNames())all=all&&fga::progressionPresetNamed(n)>=0;
+    for(const char* n:fga::afroPresetNames())all=all&&fga::progressionPresetNamed(n)>=0;
+    for(const char* n:fga::genreBassLineNames())all=all&&fga::bassLineNamed(n)>=0;
+    check(all,"every progression and bass line the genres name exists in the libraries");
+}
 inline void verifySectionChordCycle(){
     for(int g:{0,1,2}){auto p=fga::newProject(g);p.settings.randomAutomation=false;
         p.sections={{fga::Section::main,8,"Main 1"},{fga::Section::main,6,"Main 2"},{fga::Section::main,8,"Main 3"}};p.normalise();

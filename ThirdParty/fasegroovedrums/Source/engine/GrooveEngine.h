@@ -137,6 +137,9 @@ public:
     static void prepare (Prepared&, const DrumSettings&);
     static bool samePattern (const DrumSettings& a, const DrumSettings& b) noexcept;
     void setPrepared (const Prepared* p) noexcept { prepared = p; }
+    /** On the audio thread (true) a groove prepared for older settings keeps playing until the message
+        thread hands over the new one (at most one timer tick): the engine never builds one there. */
+    void setRealtime (bool on) noexcept { realtime = on; }
 
     /** Offline render of a whole clip starting at bar 1, with every note closed. */
     static std::vector<NoteEvent> renderClip (const DrumSettings& s, double lengthInBeats);
@@ -169,6 +172,7 @@ private:
     // The resolved pattern: the one prepared ahead when it matches, else built here (and kept,
     // rebuilt only when its inputs change).
     const Prepared* prepared = nullptr;
+    bool realtime = false;
     Prepared cache;
     bool cacheValid = false;
     // Offline renders: only the steps in [stepBegin, stepEnd) play (a clip's last pushed hit
@@ -177,4 +181,3 @@ private:
 };
 
 } // namespace fgd
-

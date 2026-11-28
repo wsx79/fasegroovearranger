@@ -1,11 +1,54 @@
 --- a/Source/engine/Drums.cpp
 +++ b/Source/engine/Drums.cpp
-@@ -71,20 +71,6 @@
-         case 49: case 52: case 55: case 57:   return (int) Lane::crash;
-         default:                              return -1;
-     }
--}
--
+@@ -297,13 +297,13 @@
+         groove ("Afro Son Clave", "Latin House",
+                 { { K, fourFloor }, { C, ".... x... .... x..." }, { R, "x... ..x. .... x... .... x... x... ...." },
+                   { SH, "..xx ..x. ..xx ..x." }, { CG, ".... ..x. .... x.x." }, { S, ".g.. .... .g.. ..x." } }),
+-        groove ("Afro Toms", "Afro & Latin",
++        groove ("Afro Toms", "Afro House",
+                 { { K, fourFloor }, { C, ".... x... .... x..." }, { SH, "g.gx g.xx ..xx g.xx" }, { TM, "xx.x x.xx .... ...." },
+                   { OH, "..x. ..x. ..x. ..x." }, { S, ".... g... .... x..g" } }),
+         groove ("Latin House", "Latin House",
+                 { { K, fourFloor }, { C, backbeat }, { CB, "x..x ..x. ..x. x..." }, { CG, ".... ..x. .... x.x." },
+                   { CH, "..x. ..x. ..x. ..x." }, { SH, "g.xg xgxg g.xg xgxg" }, { S, "...g .... ...g ..g." } }),
+-        groove ("Tribal House", "Afro & Latin",
++        groove ("Tribal House", "Afro House",
+                 { { K, fourFloor }, { TM, "..x. .xx. ..xx ...g" }, { CG, ".... .... .xxx x..." }, { SH, "..xx ..x. ..xx ..x." },
+                   { R, "x... ..x. .... x... .... x... x... ...." }, { S, "..g. x... ..g. x..g" } }),
+ 
+@@ -380,22 +380,22 @@
+         // Modern afro house: a round four-on-the-floor kick, the open hat on the offbeats, a lightly
+         // shuffled shaker and a syncopated tom/rim loop. The backbeat stays understated: a snap,
+         // a clap on 4 only or every other bar, a syncopated clap, never the house clap on 2 and 4.
+-        groove ("Afro Groove", "Afro & Latin",
++        groove ("Afro Groove", "Afro House",
+                 { { K, "X... X... X... X... X... X... X... X..x" }, { C, ".... x... .... x..." }, { S, ".... g... .... g..." }, { OH, "..x. ..x. ..x. ..x." }, { SH, "gxXx gxXx gxXx gxXx" },
+                   { TM, "x..x ..x. ..x. x... x..x ..x. ..x. .x.x" }, { R, ".... .... .... .... .... ..x. .... ...." } }),
+-        groove ("Afro Rim Roll", "Afro & Latin",
++        groove ("Afro Rim Roll", "Afro House",
+                 { { K, fourFloor }, { R, "..x. .x.. x..x .x.. ..x. .x.. x... .x.x" }, { CH, "g.x. g.x. g.x. g.xx" },
+                   { OH, offbeats }, { TM, ".... .... .... ..x. .... .... ..x. x..." } }),
+-        groove ("Afro Tresillo", "Afro & Latin",
++        groove ("Afro Tresillo", "Afro House",
+                 { { K, "X... X... X... X... X..x ..x. X... X..." }, { C, ".... x... .... ...." }, { S, "...g ..x. ...g ..x." }, { OH, offbeats },
+                   { SH, "gxXx gxXx gxXx gxXx" }, { TM, ".... .... ..x. x..x" }, { CG, "..g. .x.. ..g. .x.." } }),
+-        groove ("Afro Bongos", "Afro & Latin",
++        groove ("Afro Bongos", "Afro House",
+                 { { K, "X... X... X... X..x" }, { C, ".... .... .... x..." }, { R, ".... x... .... ...." }, { S, ".... ...g .... ..g." }, { OH, offbeats },
+                   { SH, "g.Xx g.Xx g.Xx g.XX" }, { CG, "x.gx .x.g x.gx ..x. x.gx .x.g x.gx .xx." } }),
+-        groove ("Afro Tom Loop", "Afro & Latin",
++        groove ("Afro Tom Loop", "Afro House",
+                 { { K, fourFloor }, { C, ".... .... .... x... .... x... .... x..g" }, { OH, offbeats }, { SH, "ggXg ggXg ggXg ggXx" },
+                   { TM, "..x. ..x. .x.. x..x ..x. ..x. .x.. x..." }, { CG, ".... ...x .... .x.. .... ...x ..g. .x.." } }),
+-        groove ("Afro Shuffle", "Afro & Latin",
++        groove ("Afro Shuffle", "Afro House",
+                 { { K, fourFloor }, { S, ".... x... .... x..g" }, { CH, "x.xg x.xg x.xg x.xx" }, { OH, "..g. ..x. ..g. ..x." },
+                   { CG, "...x ..x. .x.. x..x" }, { R, "..x. .... .... .x.." } }),
+ 
+@@ -410,24 +410,10 @@
+     return patterns;
+ }
+ 
 -const char* generalMidiDrumName (int note) noexcept
 -{
 -    static const char* names[] {
@@ -18,312 +61,34 @@
 -        "Short Whistle", "Long Whistle", "Short Guiro", "Long Guiro", "Claves", "Hi Wood Block",
 -        "Low Wood Block", "Mute Cuica", "Open Cuica", "Mute Triangle", "Open Triangle", "Shaker" };
 -    return note >= 35 && note <= 82 ? names[note - 35] : "";
- }
- 
- //==============================================================================
-@@ -304,20 +290,20 @@
-                 { { K, "X... .... ..X. ...x" }, { S, ".... X... .... X..g" }, { CH, "x.xx x.x. x.xx x.x." },
-                   { OH, ".... .... .... ..x." } }),
- 
--        // ---- Afro & Latin: the clave, shakers, toms and congas talking ----
--        groove ("Afro House", "Afro & Latin",
-+        // ---- Afro House (and, moved to their own genre, the Latin House grooves): percussion talking ----
-+        groove ("Latin Afro Clave", "Latin House",
-                 { { K, fourFloor }, { R, "x... ..x. .... x... .... x... x... ...." }, { SH, "xxxx xxxx xxxx xxxx" },
-                   { TM, "..x. .xx. .... ...." }, { CG, "..xx g... ..xx g..g" }, { S, ".... ..g. x... ..g." } }),
--        groove ("Afro Son Clave", "Afro & Latin",
-+        groove ("Afro Son Clave", "Latin House",
-                 { { K, fourFloor }, { C, ".... x... .... x..." }, { R, "x... ..x. .... x... .... x... x... ...." },
-                   { SH, "..xx ..x. ..xx ..x." }, { CG, ".... ..x. .... x.x." }, { S, ".g.. .... .g.. ..x." } }),
--        groove ("Afro Toms", "Afro & Latin",
-+        groove ("Afro Toms", "Afro House",
-                 { { K, fourFloor }, { C, ".... x... .... x..." }, { SH, "g.gx g.xx ..xx g.xx" }, { TM, "xx.x x.xx .... ...." },
-                   { OH, "..x. ..x. ..x. ..x." }, { S, ".... g... .... x..g" } }),
--        groove ("Latin House", "Afro & Latin",
-+        groove ("Latin House", "Latin House",
-                 { { K, fourFloor }, { C, backbeat }, { CB, "x..x ..x. ..x. x..." }, { CG, ".... ..x. .... x.x." },
-                   { CH, "..x. ..x. ..x. ..x." }, { SH, "g.xg xgxg g.xg xgxg" }, { S, "...g .... ...g ..g." } }),
--        groove ("Tribal House", "Afro & Latin",
-+        groove ("Tribal House", "Afro House",
-                 { { K, fourFloor }, { TM, "..x. .xx. ..xx ...g" }, { CG, ".... .... .xxx x..." }, { SH, "..xx ..x. ..xx ..x." },
-                   { R, "x... ..x. .... x... .... x... x... ...." }, { S, "..g. x... ..g. x..g" } }),
- 
-@@ -389,6 +375,37 @@
-         groove ("Hands Up", "Dance Stabs",
-                 { { K, fourFloor }, { S, ".... X... .... X... .... X... ..X. XXXX" }, { C, backbeat }, { OH, offbeats },
-                   { CH, "xxxx xxxx xxxx xxxx" }, { CR, crashBar1 } }),
-+
-+        // ---- Afro House (appended: earlier pattern numbers in saved projects stay the same) ----
-+        // Modern afro house: a round four-on-the-floor kick, the open hat on the offbeats, a lightly
-+        // shuffled shaker and a syncopated tom/rim loop. The backbeat stays understated: a snap,
-+        // a clap on 4 only or every other bar, a syncopated clap, never the house clap on 2 and 4.
-+        groove ("Afro Groove", "Afro House",
-+                { { K, "X... X... X... X... X... X... X... X..x" }, { C, ".... x... .... x..." }, { S, ".... g... .... g..." }, { OH, "..x. ..x. ..x. ..x." }, { SH, "gxXx gxXx gxXx gxXx" },
-+                  { TM, "x..x ..x. ..x. x... x..x ..x. ..x. .x.x" }, { R, ".... .... .... .... .... ..x. .... ...." } }),
-+        groove ("Afro Rim Roll", "Afro House",
-+                { { K, fourFloor }, { R, "..x. .x.. x..x .x.. ..x. .x.. x... .x.x" }, { CH, "g.x. g.x. g.x. g.xx" },
-+                  { OH, offbeats }, { TM, ".... .... .... ..x. .... .... ..x. x..." } }),
-+        groove ("Afro Tresillo", "Afro House",
-+                { { K, "X... X... X... X... X..x ..x. X... X..." }, { C, ".... x... .... ...." }, { S, "...g ..x. ...g ..x." }, { OH, offbeats },
-+                  { SH, "gxXx gxXx gxXx gxXx" }, { TM, ".... .... ..x. x..x" }, { CG, "..g. .x.. ..g. .x.." } }),
-+        groove ("Afro Bongos", "Afro House",
-+                { { K, "X... X... X... X..x" }, { C, ".... .... .... x..." }, { R, ".... x... .... ...." }, { S, ".... ...g .... ..g." }, { OH, offbeats },
-+                  { SH, "g.Xx g.Xx g.Xx g.XX" }, { CG, "x.gx .x.g x.gx ..x. x.gx .x.g x.gx .xx." } }),
-+        groove ("Afro Tom Loop", "Afro House",
-+                { { K, fourFloor }, { C, ".... .... .... x... .... x... .... x..g" }, { OH, offbeats }, { SH, "ggXg ggXg ggXg ggXx" },
-+                  { TM, "..x. ..x. .x.. x..x ..x. ..x. .x.. x..." }, { CG, ".... ...x .... .x.. .... ...x ..g. .x.." } }),
-+        groove ("Afro Shuffle", "Afro House",
-+                { { K, fourFloor }, { S, ".... x... .... x..g" }, { CH, "x.xg x.xg x.xg x.xx" }, { OH, "..g. ..x. ..g. ..x." },
-+                  { CG, "...x ..x. .x.. x..x" }, { R, "..x. .... .... .x.." } }),
-+
-+        // ---- Latin House additions: cascara on the ride, tumbao congas, timbale toms ----
-+        groove ("Latin Cascara", "Latin House",
-+                { { K, fourFloor }, { C, backbeat }, { RD, "x.x. xx.x .xx. x.x." }, { CB, "x... x... x... x..." },
-+                  { CG, "..g. x.Xx ..g. x.Xx" }, { SH, "..x. ..x. ..x. ..x." } }),
-+        groove ("Latin Timbales", "Latin House",
-+                { { K, fourFloor }, { C, backbeat }, { R, "x..x ..x. ..x. x... .... x... x... ...." }, { CB, "x.x. x.x. x.x. x.x." },
-+                  { TM, ".... .... .... ..xx .... .... .... xxXX" }, { CG, ".... ..x. .... x.x." } }),
-     };
-     return patterns;
- }
-@@ -396,8 +413,8 @@
+-}
+-
  const std::vector<const char*>& grooveCategories()
  {
      static const std::vector<const char*> categories { "Piano House", "Soulful", "Deep", "Gospel", "Jackin'", "Jackin' Piano", "Garage & UK",
--                                                       "Afro & Latin", "Funky & Disco", "'90s Piano House", "Neo Soul & Broken",
--                                                       "Chill & Pads", "Dance Stabs" };
+-                                                       "Afro & Latin" /* the name the family LINK knows; Latin House has its own genre */, "Funky & Disco", "'90s Piano House", "Neo Soul & Broken",
 +                                                       "Afro House", "Funky & Disco", "'90s Piano House", "Neo Soul & Broken",
-+                                                       "Chill & Pads", "Dance Stabs", "Latin House" };
+                                                        "Chill & Pads", "Dance Stabs", "Latin House" };
      return categories;
  }
- 
-@@ -428,7 +445,8 @@
- {
-     // In 16th shuffle: 50 + swing*100/6. 0.36 is 56%, 0.6 is 60%, 0.72 is 62%. Chicago jack sits
-     // at 62%; soulful and disco play almost straight.
--    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.72f, 0.6f, 0.75f, 0.35f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f };
-+    // Afro house shuffles its 16ths (60%, the swung shaker); Latin house stays almost straight.
-+    static const float swing[] { 0.45f, 0.2f, 0.5f, 0.3f, 0.72f, 0.6f, 0.75f, 0.6f, 0.3f, 0.45f, 0.9f, 0.3f, 0.1f, 0.25f };
-     return category >= 0 && category < (int) std::size (swing) ? swing[category] : 0.2f;
- }
- 
-@@ -443,3 +461,4 @@
- }
- 
- } // namespace fgd
-+
 --- a/Source/engine/Drums.h
 +++ b/Source/engine/Drums.h
-@@ -36,9 +36,6 @@
- /** The lane a MIDI note plays in the default (General MIDI) mapping, or -1. Covers the GM
-     neighbours too (e.g. 35 = kick, 40 = snare, 44 = closed hat, 41..50 = toms). */
- int laneForGeneralMidiNote (int note) noexcept;
--
+@@ -63,9 +63,6 @@
+ const std::vector<DrumPattern>& drumPatterns();
+ 
+ /** Genre headings of the groove menu, in display order. */
 -/** Name of a General MIDI drum note ("Acoustic Bass Drum", "Hand Clap" ...), or "". */
 -const char* generalMidiDrumName (int note) noexcept;
+-
+ const std::vector<const char*>& grooveCategories();
+ int categoryIndex (const std::string& category) noexcept;   // -1 when unknown
  
- //==============================================================================
- /** A drum groove: one line per lane, one character per 16th step:
-@@ -88,3 +85,4 @@
- void fitPattern (DrumPattern&, int length);
- 
- } // namespace fgd
-+
 --- a/Source/engine/Generators.cpp
 +++ b/Source/engine/Generators.cpp
-@@ -53,7 +53,40 @@
-     enum class Kick { fourFloor, twoStep, broken, halfTime };
- 
-     // The genres, in grooveCategories() order.
--    enum Genre { pianoHouse = 0, soulful, deep, gospel, jackin, jackinPiano, garage, afro, funky, nineties, neoSoul, chill, dance };
-+    enum Genre { pianoHouse = 0, soulful, deep, gospel, jackin, jackinPiano, garage, afro, funky, nineties, neoSoul, chill, dance, latin };
-+
-+    /** Jackin' house after the dice, a section variation or a preset: open hat on every
-+        offbeat, a loud closed hat on the swung "a" (the accent curve makes that 16th the
-+        punch), and a syncopated shaker when that layer is thin. Kick and backbeat stay. */
-+    void reinforceJackinHouse (DrumPattern& p)
-+    {
-+        const int len = p.length();
-+        for (int i = 0; i < len; ++i)
-+        {
-+            if (i % 4 == 2)
-+            {
-+                p[Lane::openHat][(size_t) i] = 'x';
-+                p[Lane::closedHat][(size_t) i] = '.';
-+            }
-+            else if (i % 4 == 3)
-+            {
-+                // The swung accent is a closed hat. An open hat on the same step
-+                // would choke it, so the shuffle never reached the MIDI.
-+                if (p[Lane::closedHat][(size_t) i] != 'X' && p[Lane::closedHat][(size_t) i] != 'f')
-+                    p[Lane::closedHat][(size_t) i] = 'x';
-+                p[Lane::openHat][(size_t) i] = '.';
-+            }
-+        }
-+        int odd = 0;
-+        for (int i = 1; i < len; i += 2)
-+            odd += isHit (p[Lane::shaker][(size_t) i]) ? 1 : 0;
-+        if (odd < 8)
-+        {
-+            static const char steps[] = "g.xx..x.g.xx..xg";
-+            for (int i = 0; i < len; ++i)
-+                p[Lane::shaker][(size_t) i] = steps[i % 16];
-+        }
-+    }
+@@ -796,51 +796,5 @@
+     }
  }
  
- //==============================================================================
-@@ -174,6 +207,11 @@
-         default:
-             break;
-     }
-+
-+    // Main and drop keep the jack even when a section variation moved the hats.
-+    // Breakdown and the snare-roll build stay as the section wrote them.
-+    if ((section == Section::main || section == Section::drop) && genre == jackin)
-+        reinforceJackinHouse (p);
- 
-     if (section != Section::main)
-         p.name = source.name + " / " + sectionName ((int) section);
-@@ -255,12 +293,13 @@
-             case jackin:      return { 0.0f,  0.0f,  0.5f,  0.2f,  0.05f, 0.7f,  0.45f, 0.55f, 0.7f,  Lane::cowbell };
-             case jackinPiano: return { 0.5f,  0.0f,  0.35f, 0.35f, 0.15f, 0.35f, 0.15f, 0.4f,  0.1f, Lane::rim };
-             case garage:      return { 0.0f,  0.85f, 0.15f, 0.15f, 0.0f,  0.55f, 0.2f,  0.2f,  0.85f, Lane::rim };
--            case afro:        return { 0.35f, 0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.15f, 0.0f, Lane::conga };
-+            case afro:        return { 0.75f, 0.2f,  0.25f, 0.8f,  0.0f,  0.55f, 0.8f,  0.15f, 0.0f, Lane::rim };
-             case funky:       return { 0.95f, 0.35f, 0.3f,  0.1f,  0.5f,  0.25f, 0.2f,  0.3f,  0.6f, Lane::cowbell };
-             case nineties:    return { 0.8f,  0.05f, 0.2f,  0.2f,  0.35f, 0.1f,  0.05f, 0.25f, 0.6f, Lane::conga };
-             case neoSoul:     return { 0.0f,  0.15f, 0.15f, 0.25f, 0.0f,  0.2f,  0.05f, 0.1f,  0.7f, Lane::rim };
-             case chill:       return { 0.05f, 0.0f,  0.25f, 0.55f, 0.05f, 0.15f, 0.05f, 0.05f, 0.15f, Lane::rim };
-             case dance:       return { 0.85f, 0.0f,  0.1f,  0.0f,  0.3f,  0.15f, 0.0f,  0.2f,  0.6f, Lane::conga };
-+            case latin:       return { 0.6f,  0.0f,  0.2f,  0.9f,  0.0f,  0.8f,  0.65f, 0.3f,  0.1f, Lane::cowbell };
-             default:          return { 0.2f,  0.0f,  0.2f,  0.4f,  0.0f,  0.3f,  0.1f,  0.2f,  0.2f, Lane::rim };
-         }
-     }
-@@ -453,16 +492,23 @@
-     };
-     if (! brokenBeat && ! garageBeat && ! chillBeat && genre != dance && sixteenths() < 8 && r.chance (0.55f + 0.45f * density))
-         setBar (genre == gospel || genre == funky || genre == nineties ? Lane::tambourine : Lane::shaker,
--                genre == soulful ? "xxxx xxxx xxxx xxxx" : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
-+                genre == soulful ? "xxxx xxxx xxxx xxxx"
-+                    // Afro house: a lightly shuffled shaker with its accent on the offbeat.
-+                    : genre == afro ? pickOf ({ "gxXx gxXx gxXx gxXx", "g.Xx g.Xx g.Xx g.XX", "ggXg ggXg ggXg ggXx" })
-+                    : pickOf ({ "..xx ..x. ..xx ..x.", "..xx ..xx ..xg ..xx", "g.xg xgxg g.xg xgxg", "xgx. xgxx xgx. xgxx" }));
- 
-     // ---- At most one sparse percussion line, maybe a low one ----
--    if (genre == afro && r.chance (0.6f))
--        setLoop (Lane::rim, "x... ..x. .... x... .... x... x... ....");   // the son clave
-+    if (genre == latin && r.chance (0.6f))
-+        setLoop (Lane::rim, ((seed >> 3) & 1u) ? "x... ..x. .... x... .... x... x... ...."    // son clave 3-2 (Latin, not Afro)
-+                                               : ".... x... x... .... x... ..x. .... x...");  // son clave 2-3: same clave, the two side first
-+    else if (genre == afro && r.chance (0.55f))
-+        setLoop (Lane::rim, r.pick ({ "..x. .x.. x..x .x.. ..x. .x.. x... .x.x", "...x ..x. .... x... ...x ..x. ..x. ....",
-+                                      "..x. .... x... .x.. ..x. .... x..x ...." }));   // the modern afro house rim figure
-     else if (r.chance (style.percussion * more))   // (on the congas when the rim already plays the backbeat)
-         setBar (std::any_of (p[style.percussionLane].begin(), p[style.percussionLane].end(), isHit) ? Lane::conga : style.percussionLane,
-                 pickCell (r, percCells));
-     if (r.chance (style.lowPercussion * more))
--        setBar (genre == afro || genre == deep || genre == jackin ? Lane::tom : Lane::conga, pickCell (r, lowPercCells));
-+        setBar (genre == afro || genre == latin || genre == deep || genre == jackin ? Lane::tom : Lane::conga, pickCell (r, lowPercCells));
- 
-     // ---- Bar 2 answers at its very end ----
-     if (r.chance (0.3f + 0.4f * density))
-@@ -477,33 +523,61 @@
-     Random accent (seed * 2246822519u + 3266489917u);
-     if (genre == afro)
-     {
--        // Three against four: a dotted-8th figure on the congas (or the shaker), and with the
--        // clave the clap often gives way.
--        if (accent.chance (0.5f))
--            setBar (! std::any_of (p[Lane::conga].begin(), p[Lane::conga].end(), isHit) ? Lane::conga : Lane::shaker, "x..x ..x. .x.. x..x");
--        if (std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit) && accent.chance (0.4f))
--            p[Lane::clap].assign ((size_t) randomBeatLength, '.');
--
--        // The snare talks too, lightly: a half-time hit, a sparse backbeat or a syncopated
--        // figure with ghosts around the clave (never the full house backbeat).
--        if (! std::any_of (p[Lane::snare].begin(), p[Lane::snare].end(), isHit))
--            setBar (Lane::snare, accent.pick ({ ".... .... x... ....", ".... ..g. x... ..g.", "...g ..x. ...g x...",
--                                                ".g.. x... .g.. ..x.", "..g. .... ..x. .g..", ".... g..x .... g.x.",
--                                                "...x .... ..g. x..g", ".... .... x..g ..g." }));
--
--        // From the first kick: the clap (or snap) on all four beats with a soft snare on 2 and 4, on 1 and 3
--        // with a dry rim on 2 and 4, or an accent on the one every other bar over the backbeat.
--        switch (accent.nextInt (5))
--        {
--            case 0:  setBar (Lane::clap, "x... x... x... x..."); setBar (Lane::snare, ".... g... .... g..."); break;
--            case 1:  setBar (Lane::clap, "x... .... x... ...."); if (! std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit)) setBar (Lane::rim, ".... x... .... x..."); break;
--            case 2:  setLoop (Lane::clap, "X... x... .... x... .... x... .... x..."); break;
--            default: break;
--        }
--        // The rolling afro kick: a soft push into beat 3.
-+        // Afro house (Black Coffee, Keinemusik, Caiiro): a warm four-on-the-floor kick, the open hat
-+        // on every offbeat, a swung 16th shaker between kick and backbeat, congas/bongos pushing
-+        // just before beats 3 and 4, short tuned toms filling the gaps. The backbeat is a clap layered with a snare, or a clap and a dry rimshot taking
-+        // turns; never a 12/8 bell.
-+        setBar (Lane::openHat, accent.chance (0.8f) ? "..x. ..x. ..x. ..x." : "..x. ..g. ..x. ..x.");
-+        for (int i = 2; i < randomBeatLength; i += 4)
-+            p[Lane::closedHat][(size_t) i] = '.';
-+        if (! std::any_of (p[Lane::shaker].begin(), p[Lane::shaker].end(), isHit) || accent.chance (0.5f))
-+            setBar (Lane::shaker, accent.pick ({ "gxXx gxXx gxXx gxXx", "g.Xx g.Xx g.Xx g.XX", "ggXg ggXg ggXg ggXx" }));
-+        setBar (Lane::conga, accent.pick ({ "...g ..xx ...g .x..", "..g. ...x ..g. .xx.", ".... ..gx ..g. .x.x", "...x ...x ..g. .x..",
-+                                            "..gx ...x .... .xx." }));
-+        if (accent.chance (0.6f))
-+            setLoop (Lane::tom, accent.pick ({ ".... ..x. .... .x.. .... ..x. ..x. x...", "...x .... ..x. .... ...x .... .x.. ..x.",
-+                                                ".... .... ..x. ...x .... .... ..x. x.x." }));
-+        p[Lane::rim].assign ((size_t) randomBeatLength, '.');
-+        // (no clave here: the figure once labelled "3:2 son clave" had four strokes in its first bar, so it
-+        // was not one, and the clave belongs to Latin House; Afro keeps its rim on the sparse line above)
-+        (void) accent.chance (0.3f);   // the draw stays, so the layers after it are unchanged
-+
-+        p[Lane::clap].assign ((size_t) randomBeatLength, '.');
-+        p[Lane::snare].assign ((size_t) randomBeatLength, '.');
-+        const bool clave = std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit);
-+        switch (accent.nextInt (8))
-+        {
-+            // From the first kick: the clap (or snap) on all four beats with the kick, a soft snare on 2 and 4;
-+            // on 1 and 3 with a dry rim on 2 and 4; or an accent on the one every other bar over the backbeat.
-+            case 5:  setBar (Lane::clap, "x... x... x... x..."); setBar (Lane::snare, ".... g... .... g..."); break;
-+            case 6:  setBar (Lane::clap, "x... .... x... ...."); if (! clave) setBar (Lane::rim, ".... x... .... x..."); break;
-+            case 7:  setLoop (Lane::clap, "X... x... .... x... .... x... .... x..."); setLoop (Lane::snare, "g... .... .... .... .... .... .... ...."); break;
-+            case 0:  setBar (Lane::clap, ".... x... .... x..."); setBar (Lane::snare, ".... g... .... g..."); break;   // clap + snare layer
-+            case 1:  setBar (Lane::clap, ".... x... .... ...."); if (! clave) setBar (Lane::rim, ".... .... .... x..."); break;   // clap and rimshot take turns
-+            case 2:  setLoop (Lane::clap, ".... x... .... x... .... x... .... ...."); if (! clave) setLoop (Lane::rim, ".... .... .... .... .... .... .... x..g"); break;
-+            case 3:  setBar (Lane::clap, ".... x... .... x..g"); break;
-+            default: setBar (Lane::clap, ".... .... .... x..."); if (! clave) setBar (Lane::rim, ".... x... .... ...."); break;
-+        }
-+        p[Lane::cowbell].assign ((size_t) randomBeatLength, '.');
-+
-+        // The kick stays on the four, warm and steady; now and then a pick-up into the next bar.
-+        if (accent.chance (0.3f))
-+            p[Lane::kick][31] = 'x';
-+        // The rolling afro kick: a soft push into beat 3 (and now and then into the next one).
-         if (accent.chance (0.3f))
-             for (int bar = 0; bar < randomBeatLength; bar += 16)
-                 p[Lane::kick][(size_t) (bar + 7)] = 'g';
-+    }
-+    else if (genre == latin)
-+    {
-+        // Three against four on the congas (the tumbao's dotted figure) and the cowbell on the
-+        // beat; with the clave the clap often gives way.
-+        if (accent.chance (0.5f))
-+            setBar (! std::any_of (p[Lane::conga].begin(), p[Lane::conga].end(), isHit) ? Lane::conga : Lane::shaker, "x..x ..x. .x.. x..x");
-+        if (accent.chance (0.5f) && ! std::any_of (p[Lane::cowbell].begin(), p[Lane::cowbell].end(), isHit))
-+            setBar (Lane::cowbell, accent.pick ({ "x... x... x... x...", "x..x ..x. ..x. x..." }));
-+        if (std::any_of (p[Lane::rim].begin(), p[Lane::rim].end(), isHit) && accent.chance (0.4f))
-+            p[Lane::clap].assign ((size_t) randomBeatLength, '.');
-     }
-     else if (genre == deep && accent.chance (0.5f))
-     {
-@@ -526,44 +600,11 @@
-                 p[Lane::snare][(size_t) at] = 'g';
-     }
- 
-+    if (genre == jackin)
-+        reinforceJackinHouse (p);
-+
-     normalisePattern (p, randomBeatLength);
-     return p;
--}
 -
 -std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre)
 -{
@@ -359,31 +124,8 @@
 -    if (density > 0.5f && lane != Lane::kick && lane != Lane::crash)
 -        line[(size_t) (16 + r.pick ({ 11, 13, 14, 15 }))] = 'g';
 -    return line;
- }
- 
- DrumPattern makeVariation (const DrumPattern& source, std::uint32_t seed)
-@@ -618,7 +659,7 @@
-     };
- 
-     // House (and an unnamed grid) keeps the original five moves and the same dice.
--    const int table = genre == garage ? 1 : genre == afro ? 2 : genre == neoSoul ? 3 : 0;
-+    const int table = genre == garage ? 1 : genre == afro || genre == latin ? 2 : genre == neoSoul ? 3 : 0;
-     const int choices = table == 0 ? 5 : 4;
-     const int moves = 1 + r.nextInt (2);
-     for (int m = 0; m < moves; ++m)
-@@ -636,7 +677,7 @@
-                 default: at (Lane::closedHat, 15) = 'g'; break;
-             }
-         }
--        else if (table == 2)   // afro: the congas answer. No tom, no open hat.
-+        else if (table == 2)   // afro/latin: the percussion answers. No open hat lift.
-         {
-             switch (which)
-             {
-@@ -753,13 +794,5 @@
-     }
- }
- 
+-}
+-
 -const std::vector<ArrangementPart>& defaultArrangement()
 -{
 -    static const std::vector<ArrangementPart> parts {
@@ -394,63 +136,21 @@
 -}
 -
  } // namespace fgd
-+
+ 
 --- a/Source/engine/Generators.h
 +++ b/Source/engine/Generators.h
-@@ -33,10 +33,6 @@
-     density 0..1 goes from a bare kick-clap-hat to busy 16ths and percussion. Same seed = same beat. */
- DrumPattern makeRandomPattern (std::uint32_t seed, float density, int genre);
+@@ -67,14 +67,5 @@
+     int endFill = -1;              // fill on its last bar: -1 as set in the Song panel, -2 none, else a fill style
+ };
  
 -/** A new two-bar line for one drum only, in the style of a genre (density as above). Never empty:
 -    a drum the genre rarely uses gets a light, fitting part. Same seed = same line. */
 -std::string makeRandomLane (Lane lane, std::uint32_t seed, float density, int genre);
 -
- /** A variation of a groove for the turnaround bar. House keeps its open-hat lift, kick pick-up,
-     clap flam, snare drag and tom; garage, afro, neo soul and chill use their own moves.
-     Same seed = same variation. */
-@@ -71,7 +67,5 @@
-     int endFill = -1;              // fill on its last bar: -1 as set in the Song panel, -2 none, else a fill style
- };
- 
+-
 -/** Intro 8 | Main 16 | Break 8 | Build-up 4 | Drop 16 | Outro 8 */
 -const std::vector<ArrangementPart>& defaultArrangement();
-+} // namespace fgd
- 
--} // namespace fgd
---- a/Source/engine/GrooveEngine.cpp
-+++ b/Source/engine/GrooveEngine.cpp
-@@ -527,8 +527,10 @@
-             return false;
-         if (symbol == 'g')
-             return true;
-+        // Ghosts on the "e" come and go. The swung "a" is the accent (jackin'
-+        // and garage) and stays put, the same way a written 'X' does.
-         if (followsAccentGroove (lane) && stepInBar % 2 == 1)
--            return true;
-+            return stepInBar % 4 != 3;
-         return (lane == (int) Lane::clap || lane == (int) Lane::snare || lane == (int) Lane::rim) && stepInBar % 4 != 0;
-     };
-     auto lifeNoise = [&] (int lane, int salt) { return noise (phraseBar * 16 + stepInBar, seedSalt + lane * 101 + salt + phrase * 977); };
-@@ -592,7 +594,9 @@
-     };
- 
-     // The song: the main part starts lighter (no hand percussion for its first eight bars).
--    const bool lightStart = s.section == Section::main && s.sectionBars >= 16 && sectionBar >= 0 && sectionBar < 8;
-+    // Jackin' keeps the cowbell and the tom from bar one. Other genres still
-+    // start the main part without hand percussion.
-+    const bool lightStart = ! jackin && s.section == Section::main && s.sectionBars >= 16 && sectionBar >= 0 && sectionBar < 8;
-     // The build-up's last two beats: no kick, so the drop hits harder.
-     const bool dropGap = s.section == Section::buildup && s.sectionBars > 0 && sectionStep >= s.sectionBars * 16 - 8;
- 
-@@ -908,3 +912,4 @@
- }
- 
+-
+-
  } // namespace fgd
-+
---- a/Source/engine/GrooveEngine.h
-+++ b/Source/engine/GrooveEngine.h
-@@ -176,3 +176,4 @@
- };
  
- } // namespace fgd
-+

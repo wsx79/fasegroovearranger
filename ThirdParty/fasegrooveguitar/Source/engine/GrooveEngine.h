@@ -158,6 +158,9 @@ public:
     static void prepare (Prepared&, const GuitarSettings&);
     static bool samePattern (const GuitarSettings& a, const GuitarSettings& b) noexcept;
     void setPrepared (const Prepared* p) noexcept { prepared = p; }
+    /** On the audio thread (true) a groove prepared for older settings keeps playing until the message
+        thread hands over the new one (at most one timer tick): the engine never builds one there. */
+    void setRealtime (bool on) noexcept { realtime = on; }
 
     /** Renders a whole song (intro, main, break...) with section markers. */
     struct Marker { double ppq; std::string name; };
@@ -208,6 +211,7 @@ private:
     // The resolved pattern: the one prepared ahead when it matches, else built here (and kept,
     // rebuilt only when its inputs change).
     const Prepared* prepared = nullptr;
+    bool realtime = false;
     Prepared cache;
     bool cacheValid = false;
 };

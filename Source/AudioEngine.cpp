@@ -497,7 +497,9 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
                 // sample only steps over the kicks it passes (times grow through the block).
                 auto next=kick.begin();bool hasKick=false;double lastKick=0;
                 if(i.pumpSource==1){next=std::upper_bound(kick.begin(),kick.end(),beat,[](double t,const TimedEvent& e){return t<e.beat;});for(auto it=next;it!=kick.begin();){--it;if(it->controller<0&&it->velocity>0){hasKick=true;lastKick=it->beat;break;}}}
-                for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){for(;next!=kick.end()&&!(time<next->beat);++next)if(next->controller<0&&next->velocity>0){hasKick=true;lastKick=next->beat;}phase=hasKick?time-lastKick:100;}const float gain=(float)(1-i.pump*std::exp(-phase/std::max(.05,i.pumpRelease)));for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
+                const double release=std::max(.05,i.pumpRelease),decay=std::exp(-1./samplesPerBeat/release);double env=-1,prevPhase=-1;   /* the duck's release, one exp per block: it decays by a fixed ratio per sample and restarts exactly when the phase does */
+                for(int sample=0;sample<count;++sample){const double time=beat+sample/samplesPerBeat;double phase=std::fmod(time,rates[std::clamp(i.pumpRate,0,3)]);if(i.pumpSource==1){for(;next!=kick.end()&&!(time<next->beat);++next)if(next->controller<0&&next->velocity>0){hasKick=true;lastKick=next->beat;}phase=hasKick?time-lastKick:100;}
+                    if(env<0||phase<prevPhase||phase-prevPhase>1.5/samplesPerBeat)env=std::exp(-phase/release);else env*=decay;prevPhase=phase;const float gain=(float)(1-i.pump*env);for(int ch=0;ch<2;++ch)block.setSample(ch,sample,block.getSample(ch,sample)*gain);}}
         }
         auto& detector=detectorSignals[(size_t)ti];
         for(int n=0;n<count;++n)detector[(size_t)n]=(!i.mute&&(!anySolo||i.solo))?std::max(std::abs(block.getSample(0,n)),std::abs(block.getSample(1,n))):0;

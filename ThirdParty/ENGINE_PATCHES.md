@@ -28,6 +28,7 @@
 - Clave (`makeRandomPattern`): Latin House plays the son clave 3-2 or 2-3 (chosen from the seed, so no extra dice draw); Afro House no longer sets the rim figure once labelled "3:2 son clave" (four strokes in its first bar, so not a clave). Its `accent.chance` draw is kept so the layers after it stay the same.
 - Afro House (the Arranger's modern afro block): eight backbeats, three of them from the first kick (clap on all four with a soft snare, on 1 and 3 with a rim, the one accent every other bar); the plugin's older afro block gets the same three as its own variants.
 - Not vendored (unused here): `generalMidiDrumName`, `makeRandomLane`, `defaultArrangement`.
+- Genre 7 is named "Afro House" here (the Arranger's genre list and `Menus.cpp` use that name); the plugin keeps "Afro & Latin" for it, the name its LINK with Piano and Guitar knows. The grooves are the same, in the same order.
 
 ## Guitar (`fgg`)
 
