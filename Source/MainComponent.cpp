@@ -3,6 +3,7 @@
 #include <map>
 #include "Branding.h"
 #include "MainComponent.h"
+#include "ComposedText.h"
 #include "RenderProgressTask.h"
 #include "NativeCompressor.h"
 #include "NativeReturnEffects.h"
@@ -562,12 +563,15 @@ void MainComponent::checkpoint(const void* control){
     if(!undoStack.empty()&&control!=nullptr&&control==lastCheckpointControl&&now-lastCheckpointTime<500){lastCheckpointTime=now;return;}
     checkpoint();lastCheckpointControl=control;lastCheckpointTime=now;
 }
-void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshControls();refreshGraphicEq();arrangement.repaint();mixer.repaint();repaintHeader();}
+// The bass locks to the kick when its events are built (events()): a mute on either track changes the lock,
+// so the bass's schedule is rebuilt then (the mix alone is not enough).
+void MainComponent::refreshKickLock(){if((int)project.tracks.size()<=4)return;const int now=(project.tracks[1].mute?1:0)|(project.tracks[4].mute?2:0);if(now==kickLockMutes)return;kickLockMutes=now;audio.publish(project,true,1);}
+void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshKickLock();refreshControls();refreshGraphicEq();arrangement.repaint();mixer.repaint();repaintHeader();}
 // Only the window header (display legends, page title) and the status bar (project name and
 // length) are painted by the window itself.
 void MainComponent::repaintHeader(){repaint(0,0,getWidth(),toolbarBottom()+1);repaint(0,getHeight()-statusHeight,getWidth(),statusHeight);}
 void MainComponent::changed(bool schedule,int onlyTrack){audio.invalidateFrozenTempo(project.settings.bpm);audio.previewKey=project.settings.key;project.normalise();
-    songLengthCache=-1;chordNameCacheReady=false;dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else audio.updateMix(project);refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
+    songLengthCache=-1;chordNameCacheReady=false;dirty=true;audio.setLoop(project.loop,project.loopStart,project.loopEnd);if(schedule)audio.publish(project,true,onlyTrack);else{audio.updateMix(project);refreshKickLock();}refreshControls();arrangement.repaint();piano.repaint();repaintHeader();}
 // Derived data asked for by paint() and the 20 Hz timer: recomputed only when the
 // harmony settings (chord names) or the form (length) change.
 const std::vector<std::string>& MainComponent::cachedChordNames(){
@@ -1108,7 +1112,7 @@ void MainComponent::showPosition(double beat){
     const auto length=songLength();const auto legend=timeDisplay?"-"+timeText(std::max(0.,project.secondsAt(length)-project.secondsAt(beat)))+" "+tr("remaining"):"/ "+juce::String((int)length/4)+" "+tr("bars");
     if(positionLegend!=legend){positionLegend=legend;repaint(lcdArea.withWidth(132));}
 }
-void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",tr(text));statusLabel.setText(tr(text),juce::dontSendNotification);}
+void MainComponent::message(const juce::String& text,bool error){statusLabel.setColour(juce::Label::textColourId,error?Palette::toms:Palette::dim);statusLabel.getProperties().set("labelSource",text);statusLabel.getProperties().set("labelLast",fga::trComposed(text));statusLabel.setText(fga::trComposed(text),juce::dontSendNotification);}
 bool MainComponent::keyPressed(const juce::KeyPress& k){
     if(restoringProject)return true;   // shortcuts (undo, redo, edits) wait until the plugins are restored
     if(loadingView.isVisible())return true;

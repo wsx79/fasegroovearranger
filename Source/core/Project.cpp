@@ -1194,22 +1194,27 @@ void fitFormToTarget(Project& p){
     // Audio clips and handwritten tracks no longer freeze the form: they keep their place in time.
     if(std::any_of(p.tracks.begin(),p.tracks.end(),[](const Track& t){return t.locked||std::any_of(t.clips.begin(),t.clips.end(),[](const Clip& c){return c.locked;});}))return;
     const int phrase=std::clamp(formPhraseBars(p),4,32);
-    auto totalBars=[&]{int n=0;for(const auto& x:p.sections)n+=x.bars;return n;};
-    // the song's real length in seconds (the MASTER TEMPO lane included), as bars at the project tempo
-    auto songBars=[&]{p.normalise();return p.secondsAt(p.length())*s.bpm/240.;};
+    // Planned on the bar counts alone (no project rebuilt per step): the song's length in seconds runs
+    // through the MASTER TEMPO lane, as bars at the project tempo; the sections are resized once, at the end.
+    std::vector<int> bars;for(const auto& x:p.sections)bars.push_back(x.bars);
+    auto totalBars=[&]{int n=0;for(int b:bars)n+=b;return n;};
+    auto songBars=[&]{return p.secondsAt(totalBars()*4.)*s.bpm/240.;};
     const auto body=[](Section t){return t==Section::main||t==Section::drop;};
-    std::vector<char> fixed(p.sections.size(),0);   // a section a free clip keeps from shrinking
+    // a section a free clip crosses at its end can't give up bars without cutting it
+    auto shrinkable=[&](size_t i,int to){const double start=p.sectionStart((int)i),oldEnd=p.sectionStart((int)i+1),newEnd=start+to*4.;
+        for(const auto& t:p.tracks)if(t.freeTimeline)for(const auto& c:t.clips)if(c.position<oldEnd-1e-6&&c.position+c.span>newEnd+1e-6)return false;return true;};
     for(int guard=0;guard<512;++guard){
         const double target=s.targetSeconds*s.bpm/240.,tolerance=s.targetToleranceSeconds*s.bpm/240.,diff=target-songBars();
         if(std::abs(diff)<=tolerance+1e-9)break;
         int step=std::abs(diff)>=phrase*.75?phrase:4;if(step==4&&std::abs(diff)<2)break;
         int pick=-1;
-        if(diff>0){for(int pass=0;pass<2&&pick<0;++pass)for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];if((pass==0)!=body(x.type)||x.bars+step>128)continue;if(pick<0||x.bars<p.sections[(size_t)pick].bars)pick=(int)i;}
-            if(pick<0)break;if(!resizeFormSection(p,pick,p.sections[(size_t)pick].bars+step))break;}
+        if(diff>0){for(int pass=0;pass<2&&pick<0;++pass)for(size_t i=0;i<bars.size();++i){if((pass==0)!=body(p.sections[i].type)||bars[i]+step>128)continue;if(pick<0||bars[i]<bars[(size_t)pick])pick=(int)i;}
+            if(pick<0)break;bars[(size_t)pick]+=step;}
         else{for(int attempt=0;attempt<2&&pick<0;++attempt){if(attempt){if(step<=4)break;step=4;}   // nothing can lose a whole phrase: breaks and builds can still lose four bars
-            for(size_t i=0;i<p.sections.size();++i){const auto& x=p.sections[i];const int floor=body(x.type)?8:x.type==Section::buildup?4:x.type==Section::breakdown?4:8;if(fixed[i]||x.bars-step<floor)continue;if(pick<0||x.bars>p.sections[(size_t)pick].bars)pick=(int)i;}
-            if(pick<0)break;if(!resizeFormSection(p,pick,p.sections[(size_t)pick].bars-step)){fixed[(size_t)pick]=1;continue;}}}
+            for(size_t i=0;i<bars.size();++i){const auto type=p.sections[i].type;const int floor=body(type)?8:type==Section::buildup?4:type==Section::breakdown?4:8;if(bars[i]-step<floor||!shrinkable(i,bars[i]-step))continue;if(pick<0||bars[i]>bars[(size_t)pick])pick=(int)i;}
+            if(pick<0)break;bars[(size_t)pick]-=step;}}
     }
+    for(size_t i=0;i<bars.size();++i)if(bars[i]!=p.sections[i].bars)resizeFormSection(p,(int)i,bars[i]);
     const double seconds=p.secondsAt(p.length());
     if(!p.tempoAutomation.active()&&std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
         p.settings.bpm=std::clamp(std::round(totalBars()*240./s.targetSeconds*10)/10,low,high);}

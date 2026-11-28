@@ -1,6 +1,7 @@
 // Copyright (C) 2026 Fabio 'Pitch' Serra
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "AiComposerWindow.h"
+#include "ComposedText.h"
 #include "AiComposer.h"
 #include "MainComponent.h"
 #include "UiText.h"
@@ -86,7 +87,7 @@ public:
         guideHelp.setTooltip(text("Open the manual: AI services, free API quotas, setup and third-party credits.","Apri la guida: servizi IA, quote API gratuite, configurazione e crediti di terzi."));
         for(auto* box:{&provider,&model,&duration})box->setTooltip(text("Choose the service, model and requested song duration.","Scegli servizio, modello e durata richiesta."));
         model.setTextWhenNothingSelected(activeProvider==3?text("No local model detected","Nessun modello locale rilevato"):text("Choose or enter a model","Scegli o scrivi un modello"));
-        status.setText(statusPrefix+tr(statusKey),juce::dontSendNotification);
+        status.setText(statusPrefix+fga::trComposed(statusKey),juce::dontSendNotification);
         if(previewText&&preview.getText()==previewRendered)renderPreview();
         resized();repaint();
     }
@@ -192,7 +193,7 @@ public:
 private:
     MainComponent& owner;double progressValue=-1;juce::ProgressBar progress{progressValue};juce::ComboBox provider,model,mode,duration;juce::TextEditor key,endpoint,prompt,preview;juce::Label status;IconButton generate,apply;juce::TextButton cancel,keyHelp,checkServer,guideHelp,energyPrompt{"ENERGY +"},sparsePrompt{"SPARSE"};juce::ToggleButton listen;juce::Viewport tracksPort;juce::Component tracksBody;std::vector<std::unique_ptr<juce::ToggleButton>> tracks;std::vector<std::uint64_t> trackIdentities;std::array<juce::String,(size_t)AiProvider::count> keys;int activeProvider=-1,leftWidth=548;bool ready=false,modelsReady=false;int requestId=0,modelRequestId=0;Project base,composition;std::unique_ptr<CompositionJob> job;std::unique_ptr<ModelListJob> modelsJob;
     juce::String statusKey,statusPrefix,previewRendered;std::function<juce::String()> previewText;
-    void setStatus(juce::String sourceKey,juce::String prefix={}){statusKey=std::move(sourceKey);statusPrefix=std::move(prefix);status.setText(statusPrefix+tr(statusKey),juce::dontSendNotification);}
+    void setStatus(juce::String sourceKey,juce::String prefix={}){statusKey=std::move(sourceKey);statusPrefix=std::move(prefix);status.setText(statusPrefix+fga::trComposed(statusKey),juce::dontSendNotification);}
     void renderPreview(){previewRendered=previewText();preview.setText(previewRendered,false);}
     void setPreview(std::function<juce::String()> text){previewText=std::move(text);renderPreview();}
     void setPreviewKey(juce::String sourceKey){setPreview([sourceKey]{return tr(sourceKey);});}

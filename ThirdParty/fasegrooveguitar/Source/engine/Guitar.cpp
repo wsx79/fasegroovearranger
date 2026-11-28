@@ -630,7 +630,7 @@ const std::vector<Progression>& progressions()
         { "Lydian Dom Funk  I7#11 - II", "Modal & exotic", 10, { 0, 1 }, {  } },
         { "Soul Borrowed  I - iv - bVII - I", "Soulful & Gospel", 11, { 0, 3, 6, 0 }, {  } },
         { "Dark Deep  I - bII (Phrygian dom.)", "Modal & exotic", 12, { 0, 1 }, {  } },
-        { "Phrygian Deep  i - II - i - vii", "Modal & exotic", 5, { 0, 1, 0, 6 }, {  } },
+        { "Phrygian Deep  i - bII - i - bvii", "Modal & exotic", 5, { 0, 1, 0, 6 }, {  } },
         { "Deep House Classic  vi - IV - I - V", "Deep house", 0, { 5, 3, 0, 4 }, {  } },
         { "Jackin' Dorian  i - IV - i - v", "Jackin' & funky", 1, { 0, 3, 0, 4 }, {  } },
         { "Neo Soul  ii - iii - IV - V", "Soulful & Gospel", 0, { 1, 2, 3, 4 }, {  } },

@@ -1,6 +1,6 @@
 # Changelog — Fase Groove Arranger
 
-## 0.58.2
+## 0.59.0
 
 - Piano, bass, strings and guitar count the chord cycle from each section's start, like the lead, the sub and the ruler: a section that does not start on the cycle (6 bars after 8, three chords in eight bars) no longer plays other chords than the rest of the band.
 - Import MIDI no longer reads past its tables on diminished, half-diminished, augmented or sus chords (a Bm7b5 was read as B major); those chords come in as the major, minor or dominant they stand for.
@@ -17,6 +17,11 @@
 - Genre progressions and bass lines are looked up by name, so a preset added to a library never shifts them.
 - Faster generation: the lead's phrase lookups and the held-note trims no longer scan the whole song for each note; the bass pump computes one exponential per block.
 - Shared engines: Variation Lab maps diminished chords to their dominant; a random piano riff's halves differ; preset names match their chords; drums choose open over closed hat only when the open one plays; the guitar recognises C6 and Csus2 from their bass note.
+- The bass's lock to the kick follows a mute of the bass or the kick at once.
+- Guide reverb and chorus fade out when automation brings them to zero (their tail was cut).
+- The target duration plans the form on the bar counts and resizes the sections once (it rebuilt the whole project up to 512 times).
+- A push marked [release] is never cancelled by a later push.
+- Ten messages made of a text and a value (sample limits, a missing sample, the export peak, the AI service's reply) are translated in every language.
 
 ## 0.58.1
 

@@ -104,7 +104,7 @@ struct Instrument {
     std::array<int,maxTrackEffects> effectOrder{};std::array<bool,maxTrackEffects> effectBypass{};int effectCount=0;
     const TrackMix* controls=nullptr;
     bool soundAutomated=false;
-    double reverbLevel=0,chorusLevel=0;   // the guide reverb and chorus as they play now (knob or automation)
+    double reverbLevel=0,chorusLevel=0;int reverbFade=0,chorusFade=0;   // samples still to process after the level reached zero   // the guide reverb and chorus as they play now (knob or automation)
     juce::PluginDescription pluginDescription; // as loaded: re-creates them for a private export
     const std::vector<TimedEvent>* schedule=nullptr; // inside the adopted ScheduleState
     const VolumeAutomation* volume=nullptr;         // inside the adopted MixState

@@ -27,9 +27,9 @@ permissions:
 env:
   FULL_SUITE: ${{ github.event_name == 'schedule' || inputs.full_suite }}
 concurrency:
-  # the nightly build never cancels a push run; a release (workflow_dispatch or tag) has a group of its own,
+  # the nightly build never cancels a push run; a release (workflow_dispatch, tag or a [release] push) has a group of its own,
   # so a push to main never cancels a publish already under way
-  group: build-${{ github.event_name == 'schedule' && 'nightly' || (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/')) && format('release-{0}', github.run_id) || github.head_ref || github.ref_name }}
+  group: build-${{ github.event_name == 'schedule' && 'nightly' || (github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || contains(github.event.head_commit.message, '[release]')) && format('release-{0}', github.run_id) || github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
   family:

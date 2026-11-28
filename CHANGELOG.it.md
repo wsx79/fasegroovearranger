@@ -1,6 +1,6 @@
 # Novità — Fase Groove Arranger
 
-## 0.58.2
+## 0.59.0
 
 - Piano, basso, archi e chitarra contano il ciclo degli accordi dall'inizio di ogni sezione, come lead, sub e righello: una sezione che non parte a inizio ciclo (6 battute dopo 8, tre accordi in otto battute) non suona più accordi diversi dal resto della band.
 - Import MIDI non esce più dalle sue tabelle con accordi diminuiti, semidiminuiti, aumentati o sus (un Bm7b5 veniva letto come Si maggiore); quegli accordi entrano come il maggiore, minore o dominante che rappresentano.
@@ -17,6 +17,11 @@
 - Progressioni e linee di basso dei generi si cercano per nome, così un preset aggiunto a una libreria non le sposta mai.
 - Generazione più veloce: le ricerche nella frase del lead e il taglio delle note tenute non scorrono più tutto il brano per ogni nota; il pump del basso calcola un esponenziale per blocco.
 - Motori condivisi: il Variation Lab trasforma i diminuiti nella loro dominante; le due metà di un riff di piano casuale sono diverse; i nomi dei preset corrispondono agli accordi; la batteria preferisce l'hi-hat aperto al chiuso solo quando l'aperto suona; la chitarra riconosce C6 e Csus2 dalla nota di basso.
+- L'aggancio del basso al kick segue subito il mute del basso o del kick.
+- Riverbero e chorus guida sfumano quando l'automazione li porta a zero (la coda si troncava).
+- La durata obiettivo pianifica la forma sui numeri di battute e ridimensiona le sezioni una volta (ricostruiva l'intero progetto fino a 512 volte).
+- Una push marcata [release] non viene mai annullata da una push successiva.
+- Dieci messaggi fatti di un testo e un valore (limiti dei campioni, campione mancante, picco dell'export, risposta del servizio AI) sono tradotti in tutte le lingue.
 
 ## 0.58.1
 

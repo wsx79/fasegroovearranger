@@ -490,8 +490,8 @@ void AudioEngine::render(float* const* output,int channels,int count,double beat
         publishActiveNotes(ti);
         if(i.outputs==1&&block.getNumChannels()>1)block.copyFrom(1,0,block,0,0,count); // mono instrument: both sides
         if(i.mode==0){
-            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&i.chorusLevel>0)i.chorus.process(context);   /* chorus off: its delay lines (set per sample) are skipped entirely */
-            if(i.controls&&i.reverbLevel>0)i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);   /* at zero the guide reverb is unity: skipped, as the chorus */
+            juce::dsp::AudioBlock<float> stereo(block.getArrayOfWritePointers(),2,(size_t)count);juce::dsp::ProcessContextReplacing<float> context(stereo);const bool sub=i.controls&&i.controls->sub;if(ti==1||sub)i.bassLowPass.process(context);if(i.controls&&(i.chorusLevel>0||i.chorusFade>0)){i.chorus.process(context);if(i.chorusLevel>0)i.chorusFade=(int)(.05*sampleRate);else if((i.chorusFade-=count)<=0){i.chorusFade=0;i.chorus.reset();}}   /* chorus off: its delay lines (set per sample) are skipped entirely */
+            if(i.controls&&(i.reverbLevel>0||i.reverbFade>0)){i.reverb.processStereo(block.getWritePointer(0),block.getWritePointer(1),count);if(i.reverbLevel>0)i.reverbFade=(int)(.05*sampleRate);else if((i.reverbFade-=count)<=0){i.reverbFade=0;i.reverb.reset();}}   /* down to zero: 50 ms more, so the levels glide out (no cut), then cleared */   /* at zero the guide reverb is unity: skipped, as the chorus */
             if(i.pump>0){static const double rates[]{1,.5,2,.25};const auto& kick=eventsOf(*instruments[4]);
                 // Kick source: the last kick at or before the block start is found once, then each
                 // sample only steps over the kicks it passes (times grow through the block).
