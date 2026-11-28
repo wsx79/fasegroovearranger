@@ -1,5 +1,9 @@
 # Changelog — Fase Groove Arranger
 
+## 0.59.2
+
+- The target duration works out the tempo from the sections it really resized (a section a free clip holds keeps its length).
+
 ## 0.59.1
 
 - The bass's lock to the kick follows the mutes after loading a project, a new song or an undo too.

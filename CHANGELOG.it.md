@@ -1,5 +1,9 @@
 # Novità — Fase Groove Arranger
 
+## 0.59.2
+
+- La durata obiettivo calcola il tempo dalle sezioni davvero ridimensionate (una sezione trattenuta da una clip libera tiene la sua lunghezza).
+
 ## 0.59.1
 
 - L'aggancio del basso al kick segue i mute anche dopo il caricamento di un progetto, un brano nuovo o un undo.

@@ -1216,7 +1216,8 @@ void fitFormToTarget(Project& p){
             for(size_t i=0;i<bars.size();++i){const auto type=p.sections[i].type;const int floor=body(type)?8:type==Section::buildup?4:type==Section::breakdown?4:8;if(bars[i]-step<floor||!shrinkable(i,bars[i]-step))continue;if(pick<0||bars[i]>bars[(size_t)pick])pick=(int)i;}
             if(pick<0)break;bars[(size_t)pick]-=step;}}
     }
-    for(size_t i=0;i<bars.size();++i)if(bars[i]!=p.sections[i].bars)resizeFormSection(p,(int)i,bars[i]);
+    // a section a free clip keeps from resizing stays as it is, and the tempo below is worked out from what was applied
+    for(size_t i=0;i<bars.size();++i)if(bars[i]!=p.sections[i].bars&&!resizeFormSection(p,(int)i,bars[i]))bars[i]=p.sections[i].bars;
     const double seconds=p.secondsAt(p.length());
     if(!p.tempoAutomation.active()&&std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
         p.settings.bpm=std::clamp(std::round((totalBars()+tail/4.)*240./s.targetSeconds*10)/10,low,high);}
