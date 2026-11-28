@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MasteringAssistantWindow.h"
+#include "ComposedText.h"
 #include "MixAssistantWindow.h"
 #include "MixerRoutingWindow.h"
 #include "AssistantProject.h"
@@ -58,7 +59,7 @@ class MasteringAssistantWindow::Panel:public juce::Component,private juce::Timer
     void complete(){
         const bool previewJob=job->side>=0;
         if(job->language!=Localisation::current()){invalidate();show(tr("Language changed; analyse again."));}
-        else if(job->result.failed()){show(job->result.getErrorMessage());report.reset();}
+        else if(job->result.failed()){show(fga::trComposed(job->result.getErrorMessage()));report.reset();}
         else if(revision!=owner.controlRevision()){show(tr("Project changed while working; analyse again."));report.reset();}
         else if(previewJob){
             if(canAudition()&&std::abs(owner.audio.spectrumSampleRate()-report->comparisonRate)<.1){

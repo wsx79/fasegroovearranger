@@ -158,6 +158,7 @@ AudioEngine::AudioEngine(Offline){prepareBuses(sampleRate,blockSize);for(int i=0
 AudioEngine::~AudioEngine(){finishAudioRecording();setMidiInput({});lifetime.reset();devices.removeAudioCallback(this);const EngineControlLock lock(*this);for(auto& i:instruments){if(i->plugin)i->plugin->releaseResources();for(auto& fx:i->effects)if(fx.plugin)fx.plugin->releaseResources();}}
 void AudioEngine::publish(const Project& source,bool normalised,int onlyTrack){
     std::optional<Project> canonical;if(!normalised){canonical=source;canonical->normalise();}const auto& p=canonical?*canonical:source;
+    if((onlyTrack<0||onlyTrack==1||onlyTrack==4)&&(int)p.tracks.size()>4)publishedLockMutes=(p.tracks[1].mute?1:0)|(p.tracks[4].mute?2:0);   // the mutes the bass's lock to the kick was built with
     auto next=std::make_unique<ScheduleState>();const double songLength=p.length();
     {
         // The edited project's last schedules are kept here: when one track changed (same song

@@ -1,5 +1,11 @@
 # Changelog — Fase Groove Arranger
 
+## 0.59.1
+
+- The bass's lock to the kick follows the mutes after loading a project, a new song or an undo too.
+- The target duration counts free clips past the last section.
+- More composed messages are translated: a sample loaded, a missing sample while a project opens, the Mastering Assistant's errors.
+
 ## 0.59.0
 
 - Piano, bass, strings and guitar count the chord cycle from each section's start, like the lead, the sub and the ruler: a section that does not start on the cycle (6 bars after 8, three chords in eight bars) no longer plays other chords than the rest of the band.

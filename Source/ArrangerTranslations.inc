@@ -1873,3 +1873,4 @@
 { " seconds).", " secondi).", " segundos).", " secondes).", " Sekunden).", " segundos)." },
 { " MiB); the previous sample remains reserved during replacement.", " MiB); il campione precedente resta riservato durante la sostituzione.", " MiB); la muestra anterior sigue reservada durante el reemplazo.", " Mio) ; l'échantillon précédent reste réservé pendant le remplacement.", " MiB); das vorherige Sample bleibt während des Ersetzens reserviert.", " MiB); a amostra anterior fica reservada durante a substituição." },
 { " dB and was limited to -0.01 dBFS.", " dB ed è stato limitato a -0,01 dBFS.", " dB y se limitó a -0,01 dBFS.", " dB et a été limité à -0,01 dBFS.", " dB und wurde auf -0,01 dBFS begrenzt.", " dB e foi limitado a -0,01 dBFS." },
+{ "Sample loaded: ", "Campione caricato: ", "Muestra cargada: ", "Échantillon chargé : ", "Sample geladen: ", "Amostra carregada: " },

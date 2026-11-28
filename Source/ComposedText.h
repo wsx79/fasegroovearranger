@@ -10,7 +10,7 @@
 namespace fga {
 inline juce::String trComposed(const juce::String& text){
     static const std::pair<const char*,const char*> forms[]{
-        {"Missing sample: ",""},{"Cannot copy sample: ",""},{"Sample copy failed: ",""},{"Sample import failed: ",""},
+        {"Missing sample: ",""},{"Sample loaded: ",""},{"Cannot copy sample: ",""},{"Sample copy failed: ",""},{"Sample import failed: ",""},
         {"Sample file exceeds the configured file limit ("," MiB)."},{"Sample exceeds the configured duration limit ("," seconds)."},
         {"Sample exceeds the configured decoded-memory limit ("," MiB)."},
         {"Sample exceeds the total decoded-memory budget ("," MiB); the previous sample remains reserved during replacement."},

@@ -200,6 +200,7 @@ public:
     // `normalised`: the caller has just normalised the project, so it is used as is (no copy).
     // onlyTrack: only that track's notes changed since the last normalised publish.
     void publish(const Project&,bool normalised=false,int onlyTrack=-1);
+    int publishedLockMutes=0;   // message thread: bass (1) and kick (2) mutes of the bass schedule last published
     void updateMix(const Project&);
     void collectGarbage(){if(delayStorageNeeded.exchange(false)){const EngineControlLock lock(*this);prepareDelayLines();}for(auto& instrument:instruments)instrument->delayLine.collect();busGraph.collectRetired();for(auto& cache:frozenAudio)cache.collect();schedules.collect();mixes.collect();previews.collect();}
     // Message thread: notify plugin editors of parameter automation queued by the audio thread.

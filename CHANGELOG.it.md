@@ -1,5 +1,11 @@
 # Novità — Fase Groove Arranger
 
+## 0.59.1
+
+- L'aggancio del basso al kick segue i mute anche dopo il caricamento di un progetto, un brano nuovo o un undo.
+- La durata obiettivo conta anche le clip libere oltre l'ultima sezione.
+- Altri messaggi composti sono tradotti: campione caricato, campione mancante all'apertura di un progetto, errori del Mastering Assistant.
+
 ## 0.59.0
 
 - Piano, basso, archi e chitarra contano il ciclo degli accordi dall'inizio di ogni sezione, come lead, sub e righello: una sezione che non parte a inizio ciclo (6 battute dopo 8, tre accordi in otto battute) non suona più accordi diversi dal resto della band.

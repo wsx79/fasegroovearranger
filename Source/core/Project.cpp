@@ -1198,7 +1198,9 @@ void fitFormToTarget(Project& p){
     // through the MASTER TEMPO lane, as bars at the project tempo; the sections are resized once, at the end.
     std::vector<int> bars;for(const auto& x:p.sections)bars.push_back(x.bars);
     auto totalBars=[&]{int n=0;for(int b:bars)n+=b;return n;};
-    auto songBars=[&]{return p.secondsAt(totalBars()*4.)*s.bpm/240.;};
+    // free clips past the last section move with the song's end: their tail is part of the length
+    const double tail=std::max(0.,p.length()-p.sectionStart((int)p.sections.size()));
+    auto songBars=[&]{return p.secondsAt(totalBars()*4.+tail)*s.bpm/240.;};
     const auto body=[](Section t){return t==Section::main||t==Section::drop;};
     // a section a free clip crosses at its end can't give up bars without cutting it
     auto shrinkable=[&](size_t i,int to){const double start=p.sectionStart((int)i),oldEnd=p.sectionStart((int)i+1),newEnd=start+to*4.;
@@ -1217,7 +1219,7 @@ void fitFormToTarget(Project& p){
     for(size_t i=0;i<bars.size();++i)if(bars[i]!=p.sections[i].bars)resizeFormSection(p,(int)i,bars[i]);
     const double seconds=p.secondsAt(p.length());
     if(!p.tempoAutomation.active()&&std::abs(seconds-s.targetSeconds)>s.targetToleranceSeconds){const auto& profile=genreProfile(s.genre);const double low=s.freeTempo?30.:profile.minBpm,high=s.freeTempo?300.:profile.maxBpm;
-        p.settings.bpm=std::clamp(std::round(totalBars()*240./s.targetSeconds*10)/10,low,high);}
+        p.settings.bpm=std::clamp(std::round((totalBars()+tail/4.)*240./s.targetSeconds*10)/10,low,high);}
     p.normalise();
 }
 void varyForm(Project& p,std::uint32_t seed) {

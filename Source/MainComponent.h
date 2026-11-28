@@ -258,7 +258,6 @@ public:
     void changed(bool schedule=true,int onlyTrack=-1);
     void mixChanged();
     void refreshKickLock();
-    int kickLockMutes=0;   // bass (1) and kick (2) mutes the bass's schedule was built with
     void select(int track,int section);
     std::vector<int> selectedNoteIndices()const{return std::vector<int>(piano.selected.begin(),piano.selected.end());}
     juce::String effectPath(int track,int slot,juce::Colour& colour)const;   // "PIANO → INSERT 2 → COMPRESSOR"

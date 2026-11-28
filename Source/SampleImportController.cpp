@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 #include "MainComponent.h"
+#include "ComposedText.h"
 #include "Localisation.h"
 #include "StudioWindow.h"
 namespace fga {
@@ -81,7 +82,7 @@ void MainComponent::pollSampleImport(){
         lastSampleImportStatus="Sample loaded: "+job.file.getFileName();if(job.embedded.bpm>0)lastSampleImportStatus+="  ·  "+juce::String(job.embedded.bpm,job.embedded.bpm==std::round(job.embedded.bpm)?0:1)+" BPM ("+tr(job.embedded.source)+")";else if(!appending&&job.detectTempo&&job.chosenBpm()>0)lastSampleImportStatus+="  ·  "+juce::String(job.chosenBpm(),1)+" BPM ("+tr("measured")+")";if(appending&&job.analyse){if(job.embedded.bpm<=0)lastSampleImportStatus+="  ·  "+audioAnalysisSummary(project.tracks[(size_t)track]);message(lastSampleImportStatus);}else if(!appending&&!restoring&&job.detectTempo&&job.chosenBpm()>0)message(lastSampleImportStatus);
     }else{
         lastSampleImportStatus=result.getErrorMessage();
-        if(restoring){audio.markMissing(track);reportExternal(lastSampleImportStatus+" · "+juce::String(t.name));}
+        if(restoring){audio.markMissing(track);reportExternal(fga::trComposed(lastSampleImportStatus)+" · "+juce::String(t.name));}
         else message(lastSampleImportStatus,true);
     }
     if(studioWindow)studioWindow->refreshSampleState();

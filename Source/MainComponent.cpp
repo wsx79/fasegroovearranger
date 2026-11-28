@@ -565,7 +565,7 @@ void MainComponent::checkpoint(const void* control){
 }
 // The bass locks to the kick when its events are built (events()): a mute on either track changes the lock,
 // so the bass's schedule is rebuilt then (the mix alone is not enough).
-void MainComponent::refreshKickLock(){if((int)project.tracks.size()<=4)return;const int now=(project.tracks[1].mute?1:0)|(project.tracks[4].mute?2:0);if(now==kickLockMutes)return;kickLockMutes=now;audio.publish(project,true,1);}
+void MainComponent::refreshKickLock(){if((int)project.tracks.size()<=4)return;const int now=(project.tracks[1].mute?1:0)|(project.tracks[4].mute?2:0);if(now==audio.publishedLockMutes)return;audio.publish(project,true,1);}
 void MainComponent::mixChanged(){dirty=true;audio.updateMix(project);refreshKickLock();refreshControls();refreshGraphicEq();arrangement.repaint();mixer.repaint();repaintHeader();}
 // Only the window header (display legends, page title) and the status bar (project name and
 // length) are painted by the window itself.
